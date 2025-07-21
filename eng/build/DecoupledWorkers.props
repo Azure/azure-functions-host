@@ -2,11 +2,6 @@
   <!-- Organize workers into versioned folder structure -->
   <Target Name="OrganizeWorkersByVersion" AfterTargets="ResolvePackageAssets" BeforeTargets="AssignTargetPaths">
     <ItemGroup>
-      <!-- Java Worker -->
-      <None Condition="'%(None.NuGetPackageId)' == 'Microsoft.Azure.Functions.JavaWorker'">
-        <TargetPath>decoupledWorkers/java/%(None.NuGetPackageVersion)/%(None.RecursiveDir)%(None.Filename)%(None.Extension)</TargetPath>
-      </None>
-      
       <!-- Node Worker -->
       <None Condition="'%(None.NuGetPackageId)' == 'Microsoft.Azure.Functions.NodeJsWorker' And '%(Filename)%(Extension)' != 'nodejsWorker.js' And '%(Filename)%(Extension)' != 'worker-bundle.js'">
         <TargetPath>decoupledWorkers/node/%(None.NuGetPackageVersion)/%(None.RecursiveDir)%(None.Filename)%(None.Extension)</TargetPath>
@@ -15,12 +10,7 @@
       <!-- Move nodejsWorker.js and worker-bundle.js to dist/src subfolder -->
       <None Condition="'%(None.NuGetPackageId)' == 'Microsoft.Azure.Functions.NodeJsWorker' And ('%(Filename)%(Extension)' == 'nodejsWorker.js' Or '%(Filename)%(Extension)' == 'worker-bundle.js')">
         <TargetPath>decoupledWorkers/node/%(None.NuGetPackageVersion)/dist/src/%(None.Filename)%(None.Extension)</TargetPath>
-      </None>
-            
-      <!-- .NET Isolated Worker -->
-      <None Condition="'%(None.NuGetPackageId)' == 'Microsoft.Azure.Functions.DotNetIsolatedNativeHost'">
-        <TargetPath>decoupledWorkers/dotnet-isolated/%(None.NuGetPackageVersion)/%(None.RecursiveDir)%(None.Filename)%(None.Extension)</TargetPath>
-      </None>      
+      </None>            
     </ItemGroup>
   </Target>
 
