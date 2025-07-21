@@ -250,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                     service.AddSingleton(testEnvironment);
                     service.Configure<FunctionsHostingConfigOptions>(o => o.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, workersAvailableForResolution));
                 },
-                configureScriptHostAppConfiguration: configBuilder =>
+                configureWebHostAppConfiguration: configBuilder =>
                 {
                     configBuilder.AddInMemoryCollection(inMemorySettings);
                 });
