@@ -336,11 +336,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 return new ExtensionPackageReference[]
                 {
-            new ExtensionPackageReference
-            {
-                Id = "Microsoft.Azure.WebJobs.Extensions.EventHubs",
-                Version = "4.3.0"
-            }
+                    new ExtensionPackageReference
+                    {
+                        Id = "Microsoft.Azure.WebJobs.Extensions.EventHubs",
+                        Version = "4.3.0"
+                    }
                 };
             }
 
@@ -352,14 +352,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 {
                     o.Functions = new[]
                     {
-                    "EventHubTrigger",
-                    "HttpTrigger",
-                    "HttpTrigger-CustomRoute-Get",
-                    "HttpTrigger-Disabled",
-                    "HttpTrigger-Identities",
-                    "ManualTrigger",
-                    "proxyroute"
-                };
+                        "EventHubTrigger",
+                        "HttpTrigger",
+                        "HttpTrigger-CustomRoute-Get",
+                        "HttpTrigger-Disabled",
+                        "HttpTrigger-Identities",
+                        "ManualTrigger",
+                        "proxyroute"
+                    };
                 });
             }
         }
