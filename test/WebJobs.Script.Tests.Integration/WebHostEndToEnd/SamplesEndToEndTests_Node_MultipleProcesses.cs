@@ -1,11 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.WebJobs.Script.Tests;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,13 +10,17 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     // Base abstract class for test implementations
-    public abstract class SamplesEndToEndTestsMultipleProcessesBase<TTestFixture> : IClassFixture<TTestFixture>
-        where TTestFixture : EndToEndTestFixture
+    public abstract class SamplesEndToEndTestsMultipleProcessesBase<TTestFixture> : IClassFixture<TTestFixture> where TTestFixture : EndToEndTestFixture
     {
         protected readonly TTestFixture _fixture;
 
@@ -130,61 +129,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Node_MultipleProcesses : SamplesEndToEndTestsMultipleProcessesBase<MultipleProcessesTestFixture>, IAsyncLifetime
+    public class SamplesEndToEndTests_Node_MultipleProcesses : SamplesEndToEndTestsMultipleProcessesBase<SamplesEndToEndTests_Node_MultipleProcesses.MultipleProcessesTestFixture>, IAsyncLifetime
     {
-        public SamplesEndToEndTests_Node_MultipleProcesses(MultipleProcessesTestFixture fixture)
-            : base(fixture)
+        public SamplesEndToEndTests_Node_MultipleProcesses(MultipleProcessesTestFixture fixture) : base(fixture)
         {
         }
 
         public Task InitializeAsync() => _fixture.InitializeAsync();
 
         public Task DisposeAsync() => _fixture.DisposeAsync();
-    }
 
-    public class MultipleProcessesTestFixture : EndToEndTestFixture
-    {
-        public MultipleProcessesTestFixture()
-            : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName, 3)
+        public class MultipleProcessesTestFixture : EndToEndTestFixture
         {
-        }
-
-        protected override Task CreateTestStorageEntities()
-        {
-            // not needed
-            return Task.CompletedTask;
-        }
-
-        public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
-        {
-            base.ConfigureScriptHost(webJobsBuilder);
-            webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+            public MultipleProcessesTestFixture()
+                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName, 3)
             {
-                o.Functions =
-                [
-                    "HttpTrigger",
-                    "HttpTrigger-Timeout",
-                ];
-            });
+            }
 
-            webJobsBuilder.Services.AddOptions<LanguageWorkerOptions>()
-                .PostConfigure(o =>
+            protected override Task CreateTestStorageEntities()
+            {
+                // not needed
+                return Task.CompletedTask;
+            }
+
+            public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
+            {
+                base.ConfigureScriptHost(webJobsBuilder);
+                webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {
-                    var nodeConfig = o.WorkerConfigs.SingleOrDefault(c => c.Description.Language == "node");
-                    if (nodeConfig is not null)
-                    {
-                        nodeConfig.CountOptions.ProcessStartupInterval = TimeSpan.FromSeconds(3);
-                    }
+                    o.Functions =
+                    [
+                        "HttpTrigger",
+                        "HttpTrigger-Timeout",
+                    ];
                 });
+
+                webJobsBuilder.Services.AddOptions<LanguageWorkerOptions>()
+                    .PostConfigure(o =>
+                    {
+                        var nodeConfig = o.WorkerConfigs.SingleOrDefault(c => c.Description.Language == "node");
+                        if (nodeConfig is not null)
+                        {
+                            nodeConfig.CountOptions.ProcessStartupInterval = TimeSpan.FromSeconds(3);
+                        }
+                    });
+            }
         }
     }
 
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Node_MultipleProcesses2 : SamplesEndToEndTestsMultipleProcessesBase<MultipleProcessesTestFixture2>, IAsyncLifetime
+    public class SamplesEndToEndTests_Node_MultipleProcesses_DecoupledWorker : SamplesEndToEndTestsMultipleProcessesBase<MultipleProcessesTestFixtureDecoupledWorker>, IAsyncLifetime
     {
-        public SamplesEndToEndTests_Node_MultipleProcesses2(MultipleProcessesTestFixture2 fixture)
-            : base(fixture)
+        public SamplesEndToEndTests_Node_MultipleProcesses_DecoupledWorker(MultipleProcessesTestFixtureDecoupledWorker fixture) : base(fixture)
         {
         }
 
@@ -193,17 +190,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public Task DisposeAsync() => _fixture.DisposeAsync();
     }
 
-    public class MultipleProcessesTestFixture2 : EndToEndTestFixture
+    public class MultipleProcessesTestFixtureDecoupledWorker : SamplesEndToEndTests_Node_MultipleProcesses.MultipleProcessesTestFixture
     {
-        public MultipleProcessesTestFixture2()
-            : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName, 3)
+        public MultipleProcessesTestFixtureDecoupledWorker()
         {
-        }
-
-        protected override Task CreateTestStorageEntities()
-        {
-            // not needed
-            return Task.CompletedTask;
         }
 
         public override void ConfigureWebHost(IServiceCollection services)
@@ -215,35 +205,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         public override void ConfigureWebHost(IConfigurationBuilder configBuilder)
         {
-        //    base.ConfigureWebHost(configBuilder);
+            base.ConfigureWebHost(configBuilder);
 
             var inMemorySettings = new Dictionary<string, string>();
             inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("decoupledWorkers");
 
             configBuilder.AddInMemoryCollection(inMemorySettings);
-        }
-
-        public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
-        {
-            base.ConfigureScriptHost(webJobsBuilder);
-            webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
-            {
-                o.Functions =
-                [
-                    "HttpTrigger",
-                    "HttpTrigger-Timeout",
-                ];
-            });
-
-            webJobsBuilder.Services.AddOptions<LanguageWorkerOptions>()
-                .PostConfigure(o =>
-                {
-                    var nodeConfig = o.WorkerConfigs.SingleOrDefault(c => c.Description.Language == "node");
-                    if (nodeConfig is not null)
-                    {
-                        nodeConfig.CountOptions.ProcessStartupInterval = TimeSpan.FromSeconds(3);
-                    }
-                });
         }
     }
 }
