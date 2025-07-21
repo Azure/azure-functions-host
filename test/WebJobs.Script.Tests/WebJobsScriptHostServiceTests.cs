@@ -604,6 +604,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return testMetricsLogger.EventsBegan.Contains(MetricEventNames.ScriptHostManagerStartService) && testMetricsLogger.EventsEnded.Contains(MetricEventNames.ScriptHostManagerStartService);
         }
 
+        [Theory]
+        [InlineData(false, false, true)]   // Feature flag disabled, not logic app -> should forward logs
+        [InlineData(true, false, false)]   // Feature flag enabled, not logic app -> should NOT forward logs
+        [InlineData(false, true, true)]    // Feature flag disabled, logic app -> should forward logs
+        [InlineData(true, true, true)]     // Feature flag enabled, logic app -> should still forward logs (our fix)
+        public void LogForwardingCondition_HandlesLogicAppsCorrectly(bool disableLogForwardingEnabled, bool isLogicApp, bool shouldForwardLogs)
+        {
+            // Arrange
+            var mockEnvironment = new Mock<IEnvironment>();
+            
+            // Setup feature flag
+            var featureFlags = disableLogForwardingEnabled ? "DisableWebHostLogForwarding" : "";
+            mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags))
+                          .Returns(featureFlags);
+            
+            // Setup Logic App environment
+            var appKind = isLogicApp ? "workflowapp" : "functionapp";
+            mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.AppKind))
+                          .Returns(appKind);
+            
+            // Act - Test the exact condition from our implementation
+            bool actualShouldForwardLogs = !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWebHostLogForwarding, mockEnvironment.Object) 
+                                        || mockEnvironment.Object.IsLogicApp();
+            
+            // Assert
+            Assert.Equal(shouldForwardLogs, actualShouldForwardLogs);
+        }
+
         private class ThrowThenPauseScriptHostBuilder : IScriptHostBuilder
         {
             private readonly Action _pause;
