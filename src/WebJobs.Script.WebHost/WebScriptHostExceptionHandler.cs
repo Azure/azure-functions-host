@@ -29,7 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             FunctionTimeoutException timeoutException = exceptionInfo.SourceException as FunctionTimeoutException;
 
-            if (timeoutException is null) // this seems to happen when the worker channel is already shutting down. Ex. One timeout is being handled and another comes in during shutdown.
+            // this seems to happen when the worker channel is already shutting down. Ex. One timeout is being handled and another comes in during shutdown.
+            if (timeoutException is null)
             {
                 _logger.LogDebug("A timeout exception has occurred, but worker channel is already shutting down", exceptionInfo.SourceException);
                 return;
