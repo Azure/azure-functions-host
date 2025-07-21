@@ -915,7 +915,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task Specialization_DotnetIsolatedApp_WorkerProbingPaths_Logs()
+        public async Task Specialization_DotnetIsolatedApp_WorkerProbingPaths_MultiLangEnv_Logs()
         {
             var loggerProvider = new TestLoggerProvider();
 
@@ -934,11 +934,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string fallbackPath = Path.Combine(Directory.GetCurrentDirectory(), "workers");
             string workerProbingPath = Path.Combine(Directory.GetCurrentDirectory(), "decoupledWorkers");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, workerProbingPath);
+
+            var inMemorySettings = new Dictionary<string, string>();
+            inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("decoupledWorkers");
 
             builder.ConfigureServices(services =>
             {
                 services.Configure<FunctionsHostingConfigOptions>(o => o.Features["WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION"] = "dotnet-isolated|java");
+            });
+
+            builder.ConfigureAppConfiguration(c =>
+            {
+                c.AddInMemoryCollection(inMemorySettings);
             });
 
             using var testServer = new TestServer(builder);
@@ -948,9 +955,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "java");
-            SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-
 
             var logs = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage);
 

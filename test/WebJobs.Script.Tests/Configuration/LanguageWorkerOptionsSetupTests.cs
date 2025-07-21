@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
-            var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists"};
+            var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
 
             var jsonObj = new
             {
