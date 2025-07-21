@@ -605,17 +605,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(false, false, true)]   // Feature flag disabled, not logic app -> should forward logs
-        [InlineData(true, false, false)]   // Feature flag enabled, not logic app -> should NOT forward logs
-        [InlineData(false, true, true)]    // Feature flag disabled, logic app -> should forward logs
-        [InlineData(true, true, true)]     // Feature flag enabled, logic app -> should still forward logs (our fix)
-        public void LogForwardingCondition_HandlesLogicAppsCorrectly(bool disableLogForwardingEnabled, bool isLogicApp, bool shouldForwardLogs)
+        [InlineData(false, false, false, true)]   // EnableHostLogs: false, RestrictHostLogs: false, IsLogicApp: false -> should forward logs (default behavior)
+        [InlineData(false, true, false, false)]   // EnableHostLogs: false, RestrictHostLogs: true, IsLogicApp: false -> should NOT forward logs (restricted)
+        [InlineData(true, false, false, true)]    // EnableHostLogs: true, RestrictHostLogs: false, IsLogicApp: false -> should forward logs (feature flag enables)
+        [InlineData(true, true, false, true)]     // EnableHostLogs: true, RestrictHostLogs: true, IsLogicApp: false -> should forward logs (feature flag takes precedence)
+        [InlineData(false, false, true, true)]    // EnableHostLogs: false, RestrictHostLogs: false, IsLogicApp: true -> should forward logs
+        [InlineData(false, true, true, true)]     // EnableHostLogs: false, RestrictHostLogs: true, IsLogicApp: true -> should still forward logs (our fix)
+        [InlineData(true, false, true, true)]     // EnableHostLogs: true, RestrictHostLogs: false, IsLogicApp: true -> should forward logs
+        [InlineData(true, true, true, true)]      // EnableHostLogs: true, RestrictHostLogs: true, IsLogicApp: true -> should forward logs
+        public void LogForwardingCondition_HandlesLogicAppsCorrectly(bool enableHostLogs, bool restrictHostLogs, bool isLogicApp, bool shouldForwardLogs)
         {
             // Arrange
             var mockEnvironment = new Mock<IEnvironment>();
+            var mockHostingOptions = new Mock<FunctionsHostingConfigOptions>();
             
             // Setup feature flag
-            var featureFlags = disableLogForwardingEnabled ? "DisableWebHostLogForwarding" : "";
+            var featureFlags = enableHostLogs ? "EnableHostLogs" : "";
             mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags))
                           .Returns(featureFlags);
             
@@ -623,9 +628,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var appKind = isLogicApp ? "workflowapp" : "functionapp";
             mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.AppKind))
                           .Returns(appKind);
+                          
+            // Setup hosting config
+            mockHostingOptions.Setup(o => o.RestrictHostLogs).Returns(restrictHostLogs);
             
             // Act - Test the exact condition from our implementation
-            bool actualShouldForwardLogs = !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWebHostLogForwarding, mockEnvironment.Object) 
+            bool actualShouldForwardLogs = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs, mockEnvironment.Object) 
+                                        || !mockHostingOptions.Object.RestrictHostLogs 
                                         || mockEnvironment.Object.IsLogicApp();
             
             // Assert

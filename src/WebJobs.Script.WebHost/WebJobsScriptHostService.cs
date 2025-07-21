@@ -365,7 +365,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 ActiveHost = localHost;
 
-                if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWebHostLogForwarding, _environment) || _environment.IsLogicApp())
+                if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs, _environment) || !_hostingConfigOptions.Value.RestrictHostLogs || _environment.IsLogicApp())
                 {
                     // Forward logs to AppInsights/OpenTelemetry.
                     // These are not tracked by the AppInsights and OpenTelemetry logger provider as these are added in the script host.
