@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public override void ConfigureWebHost(IConfigurationBuilder configBuilder)
         {
             var inMemorySettings = new Dictionary<string, string>();
-            inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("DecoupledWorkers");
+            inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("decoupledWorkers");
 
             configBuilder.AddInMemoryCollection(inMemorySettings);
         }

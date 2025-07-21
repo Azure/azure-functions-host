@@ -933,7 +933,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(path, loggerProvider);
 
             string fallbackPath = Path.Combine(Directory.GetCurrentDirectory(), "workers");
-            string workerProbingPath = Path.Combine(Directory.GetCurrentDirectory(), "DecoupledWorkers");
+            string workerProbingPath = Path.Combine(Directory.GetCurrentDirectory(), "decoupledWorkers");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, workerProbingPath);
 
             builder.ConfigureServices(services =>
@@ -956,10 +956,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Contains("Placeholder mode is enabled: True", logs);
 
-            var javaLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("DecoupledWorkers"));
+            var javaLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("decoupledWorkers"));
             Assert.True(javaLog.Any());
 
-            var nodeLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:") && !p.Contains("DecoupledWorkers"));
+            var nodeLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:") && !p.Contains("decoupledWorkers"));
             Assert.True(nodeLog.Any());
 
             loggerProvider.ClearAllLogMessages();
@@ -975,7 +975,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Contains("Completed language worker channel specialization", newLogs);
 
-            var newJavaLog = newLogs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("DecoupledWorkers"));
+            var newJavaLog = newLogs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("decoupledWorkers"));
             Assert.True(newJavaLog.Any());
 
             var newNodeLog = newLogs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:"));

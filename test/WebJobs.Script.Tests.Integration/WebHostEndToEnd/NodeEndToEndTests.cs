@@ -1,7 +1,17 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Autofac.Core;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
+using System.Web.Http;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Logging;
@@ -17,28 +27,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web.Http;
 using Xunit;
 using Xunit.Abstractions;
-using static Microsoft.Azure.AppService.Proxy.Runtime.Trace;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    public abstract class NodeEndToEndTestsBase<TTestFixture>
-        : EndToEndTestsBase<TTestFixture> where TTestFixture : EndToEndTestFixture
+    public abstract class NodeEndToEndTestsBase<TTestFixture> : EndToEndTestsBase<TTestFixture> where TTestFixture : EndToEndTestFixture
     {
-        protected NodeEndToEndTestsBase(TTestFixture fixture)
-            : base(fixture)
+        protected NodeEndToEndTestsBase(TTestFixture fixture) : base(fixture)
         {
         }
 
@@ -896,8 +892,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
     public class NodeEndToEndTests : NodeEndToEndTestsBase<NodeEndToEndTests.TestFixture>
     {
-        public NodeEndToEndTests(TestFixture fixture)
-            : base(fixture)
+        public NodeEndToEndTests(TestFixture fixture) : base(fixture)
         {
         }
 
@@ -905,8 +900,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             private static readonly string rootPath = Path.Combine("TestScripts", "Node");
 
-            public TestFixture()
-                : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
+            public TestFixture() : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
             {
             }
 
@@ -945,28 +939,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, nameof(NodeEndToEndTests))]
-    public class NodeEndToEndTests2 : NodeEndToEndTestsBase<NodeEndToEndTests2.TestFixture2>
+    public class NodeEndToEndTests_DecoupledWorkers : NodeEndToEndTestsBase<NodeEndToEndTests_DecoupledWorkers.TestFixture_DecoupledWorkers>
     {
-        public NodeEndToEndTests2(TestFixture2 fixture)
-            : base(fixture)
+        public NodeEndToEndTests_DecoupledWorkers(TestFixture_DecoupledWorkers fixture) : base(fixture)
         {
         }
 
-        public class TestFixture2 : EndToEndTestFixture
+        public class TestFixture_DecoupledWorkers : EndToEndTestFixture
         {
             private static readonly string rootPath = Path.Combine("TestScripts", "Node");
 
-            public TestFixture2()
-                : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
+            public TestFixture_DecoupledWorkers() : base(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
             {
             }
 
             public override void ConfigureScriptHost(IConfigurationBuilder configBuilder)
             {
-                //ConfigureScriptHost(configBuilder);
-
                 var inMemorySettings = new Dictionary<string, string>();
-                inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("DecoupledWorkers");
+                inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("decoupledWorkers");
 
                 configBuilder.AddInMemoryCollection(inMemorySettings);
             }
@@ -1009,14 +999,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     });
             }
         }
-    }
-
-    public class Payload
-    {
-        [JsonProperty(PropertyName = "id")]
-        public string Id { get; set; }
-
-        [JsonProperty(PropertyName = "prop1")]
-        public string Prop1 { get; set; }
     }
 }
