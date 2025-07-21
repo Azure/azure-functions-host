@@ -10,24 +10,18 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
-    // Base abstract class for test implementations
-    public abstract class SamplesEndToEndTestsMultipleProcessesBase<TTestFixture> : IClassFixture<TTestFixture> where TTestFixture : EndToEndTestFixture
+    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
+    [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
+    public class SamplesEndToEndTests_Node_MultipleProcesses : IAsyncLifetime
     {
-        protected readonly TTestFixture _fixture;
-
-        protected SamplesEndToEndTestsMultipleProcessesBase(TTestFixture fixture)
-        {
-            _fixture = fixture;
-        }
+        private readonly MultipleProcessesTestFixture _fixture = new();
 
         [Fact]
         public async Task NodeProcess_Different_AfterHostRestart()
@@ -125,21 +119,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             return webHostPids.Concat(jobHostPids);
         }
-    }
-
-    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-    [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Node_MultipleProcesses : SamplesEndToEndTestsMultipleProcessesBase<SamplesEndToEndTests_Node_MultipleProcesses.MultipleProcessesTestFixture>, IAsyncLifetime
-    {
-        public SamplesEndToEndTests_Node_MultipleProcesses(MultipleProcessesTestFixture fixture) : base(fixture)
-        {
-        }
 
         public Task InitializeAsync() => _fixture.InitializeAsync();
 
-        public Task DisposeAsync() => _fixture.DisposeAsync();
+        Task IAsyncLifetime.DisposeAsync() => _fixture?.DisposeAsync();
 
-        public class MultipleProcessesTestFixture : EndToEndTestFixture
+        private class MultipleProcessesTestFixture : EndToEndTestFixture
         {
             public MultipleProcessesTestFixture()
                 : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName, 3)
@@ -174,43 +159,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         }
                     });
             }
-        }
-    }
-
-    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-    [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Node_MultipleProcesses_DecoupledWorker : SamplesEndToEndTestsMultipleProcessesBase<MultipleProcessesTestFixtureDecoupledWorker>, IAsyncLifetime
-    {
-        public SamplesEndToEndTests_Node_MultipleProcesses_DecoupledWorker(MultipleProcessesTestFixtureDecoupledWorker fixture) : base(fixture)
-        {
-        }
-
-        public Task InitializeAsync() => _fixture.InitializeAsync();
-
-        public Task DisposeAsync() => _fixture.DisposeAsync();
-    }
-
-    public class MultipleProcessesTestFixtureDecoupledWorker : SamplesEndToEndTests_Node_MultipleProcesses.MultipleProcessesTestFixture
-    {
-        public MultipleProcessesTestFixtureDecoupledWorker()
-        {
-        }
-
-        public override void ConfigureWebHost(IServiceCollection services)
-        {
-            base.ConfigureWebHost(services);
-
-            services.Configure<FunctionsHostingConfigOptions>(o => o.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "node"));
-        }
-
-        public override void ConfigureWebHost(IConfigurationBuilder configBuilder)
-        {
-            base.ConfigureWebHost(configBuilder);
-
-            var inMemorySettings = new Dictionary<string, string>();
-            inMemorySettings["languageWorkers:probingPaths:0"] = Path.GetFullPath("decoupledWorkers");
-
-            configBuilder.AddInMemoryCollection(inMemorySettings);
         }
     }
 }
