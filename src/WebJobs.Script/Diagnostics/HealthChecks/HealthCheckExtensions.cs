@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         {
             ArgumentNullException.ThrowIfNull(builder);
             builder.AddCheck<WebHostHealthCheck>(
-                "az.functions.web_host.lifecycle", tags: [HealthCheckTags.Liveness]);
+                HealthCheckNames.WebHostLifeCycle, tags: [HealthCheckTags.Liveness]);
             return builder;
         }
 
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         {
             ArgumentNullException.ThrowIfNull(builder);
             builder.AddCheck<ScriptHostHealthCheck>(
-                "az.functions.script_host.lifecycle", tags: [HealthCheckTags.Readiness]);
+                HealthCheckNames.ScriptHostLifeCycle, tags: [HealthCheckTags.Readiness]);
             return builder;
         }
     }

@@ -52,10 +52,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             // assert
             returned.Should().BeSameAs(builder.Object);
             builder.Verify(b => b.Add(IsRegistration<WebHostHealthCheck>(
-                "az.functions.web_host.lifecycle", HealthCheckTags.Liveness)),
+                HealthCheckNames.WebHostLifeCycle, HealthCheckTags.Liveness)),
                 Times.Once);
             builder.Verify(b => b.Add(IsRegistration<ScriptHostHealthCheck>(
-                "az.functions.script_host.lifecycle", HealthCheckTags.Readiness)),
+                HealthCheckNames.ScriptHostLifeCycle, HealthCheckTags.Readiness)),
                 Times.Once);
             builder.VerifyNoOtherCalls();
         }
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             // assert
             returned.Should().BeSameAs(builder.Object);
             builder.Verify(b => b.Add(IsRegistration<WebHostHealthCheck>(
-                "az.functions.web_host.lifecycle", HealthCheckTags.Liveness)),
+                HealthCheckNames.WebHostLifeCycle, HealthCheckTags.Liveness)),
                 Times.Once);
             builder.VerifyNoOtherCalls();
         }
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             // assert
             returned.Should().BeSameAs(builder.Object);
             builder.Verify(b => b.Add(IsRegistration<ScriptHostHealthCheck>(
-                "az.functions.script_host.lifecycle", HealthCheckTags.Readiness)),
+                HealthCheckNames.ScriptHostLifeCycle, HealthCheckTags.Readiness)),
                 Times.Once);
             builder.VerifyNoOtherCalls();
         }
