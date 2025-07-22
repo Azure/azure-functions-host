@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
-using static Microsoft.Azure.WebJobs.Script.WebHost.Models.FunctionAppSecrets;
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -140,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
 
                         // before caching  any secrets, validate them
-                        string masterKeyValue = hostSecrets.MasterKey.Value;
+                        string masterKeyValue = hostSecrets.MasterKey?.Value;
                         var functionKeys = hostSecrets.FunctionKeys.ToDictionary(p => p.Name, p => p.Value);
                         var systemKeys = hostSecrets.SystemKeys.ToDictionary(p => p.Name, p => p.Value);
                         ValidateHostSecrets(masterKeyValue, functionKeys, systemKeys);
@@ -740,7 +739,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             return new HostSecrets
             {
-                MasterKey = _keyValueConverterFactory.ReadKey(hostSecrets.MasterKey),
+                MasterKey = hostSecrets.MasterKey is null ? null : _keyValueConverterFactory.ReadKey(hostSecrets.MasterKey),
                 FunctionKeys = hostSecrets.FunctionKeys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList(),
                 SystemKeys = hostSecrets.SystemKeys?.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList() ?? new List<Key>()
             };
