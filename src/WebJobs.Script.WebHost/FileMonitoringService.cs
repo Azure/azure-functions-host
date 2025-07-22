@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (Interlocked.Read(ref _suspensionRequestsCount) > 0)
             {
-                _logger.LogDebug("Restart requested while currently suspended. Ignoring request.");
+                _logger.LogDebug($"Restart requested due to '{reason}' while currently suspended. Ignoring request.");
             }
             else
             {
@@ -297,7 +297,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 changeDescription = "File";
                 if (File.Exists(e.FullPath))
                 {
-                    TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, isShutdown: true);
+                    string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "{0} change of type '{1}' detected for '{2}'", changeDescription, e.ChangeType.ToString(), e.FullPath);
+                    TraceFileChangeRestart(fileChangeMsg, isShutdown: true);
                     Shutdown();
                 }
             }
@@ -320,16 +321,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     shutdown = true;
                 }
 
-                TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
-                ScheduleRestartAsync("Monitored file change detected.", shutdown)
+                string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "{0} change of type '{1}' detected for '{2}'", changeDescription, e.ChangeType.ToString(), e.FullPath);
+                TraceFileChangeRestart(fileChangeMsg, shutdown);
+                ScheduleRestartAsync(fileChangeMsg, shutdown)
                     .ContinueWith(t => _logger.LogError(t.Exception, $"Error restarting host (full shutdown: {shutdown})"),
                         TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
         }
 
-        private void TraceFileChangeRestart(string changeDescription, string changeType, string path, bool isShutdown)
+        private void TraceFileChangeRestart(string fileChangeMsg, bool isShutdown)
         {
-            string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "{0} change of type '{1}' detected for '{2}'", changeDescription, changeType, path);
             _logger.LogInformation(fileChangeMsg);
 
             string action = isShutdown ? "shutdown" : "restart";
