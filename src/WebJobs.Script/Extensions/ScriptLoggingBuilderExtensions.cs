@@ -34,7 +34,15 @@ namespace Microsoft.Extensions.Logging
             SetSystemLogCategoryPrefixes(restrictHostLogs);
 
             builder.AddFilter<T>(null, LogLevel.None);
-            builder.AddFilter<T>((c, l) => Filter(c, l, level));
+            // If the logger provider is AppInsights, allow all categories regardless of restrictHostLogs
+            if (typeof(T).Name.Contains("ApplicationInsights"))
+            {
+                builder.AddFilter<T>((c, l) => l >= level);
+            }
+            else
+            {
+                builder.AddFilter<T>((c, l) => Filter(c, l, level));
+            }
             return builder;
         }
 
@@ -48,7 +56,7 @@ namespace Microsoft.Extensions.Logging
             return _filteredCategoryCache.GetOrAdd(category, c => _allowedLogCategoryPrefixes.Any(p => c.StartsWith(p)));
         }
 
-        private static void SetSystemLogCategoryPrefixes(bool restrictHostLogs)
+        private static void SetSystemLogCategoryPrefixes(bool restrictHostLogs, bool a = false)
         {
             var previous = _allowedLogCategoryPrefixes;
             _allowedLogCategoryPrefixes = restrictHostLogs ? ScriptConstants.RestrictedSystemLogCategoryPrefixes : ScriptConstants.SystemLogCategoryPrefixes;
