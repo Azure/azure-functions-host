@@ -531,6 +531,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public bool IsLegacyExtensionBundle() => true;
 
+            public string GetOutdatedBundleVersion() { return string.Empty; /* no-op for test */ }
         }
 
         private class PostConfigureServices

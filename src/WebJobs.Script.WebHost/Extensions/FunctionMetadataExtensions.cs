@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -175,7 +176,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         private static async Task<JObject> GetFunctionConfigFromFile(string path)
         {
-            return JObject.Parse(await FileUtility.ReadAsync(path));
+            var fileContent = await FileUtility.ReadAsync(path);
+            var jObject = JObject.Parse(fileContent);
+
+            if (jObject.TryGetValue("bindings", StringComparison.OrdinalIgnoreCase, out JToken bindingsToken) && bindingsToken is JArray bindingsArray)
+            {
+                for (int i = 0; i < bindingsArray.Count; i++)
+                {
+                    if (bindingsArray[i] is JObject binding)
+                    {
+                        bindingsArray[i] = MetadataJsonHelper.SanitizeProperties(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames);
+                    }
+                }
+            }
+
+            return jObject;
         }
 
         private static JObject GetFunctionConfigFromMetadata(FunctionMetadata metadata)
