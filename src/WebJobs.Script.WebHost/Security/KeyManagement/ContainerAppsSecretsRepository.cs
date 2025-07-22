@@ -30,7 +30,12 @@ public class ContainerAppsSecretsRepository : ISecretsRepository
         _logger = logger;
     }
 
-    public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
+    // explicitly implementing this to avoid "unused" warnings on build
+    event EventHandler<SecretsChangedEventArgs> ISecretsRepository.SecretsChanged
+    {
+        add { }
+        remove { }
+    }
 
     public bool IsEncryptionSupported => false;
 
