@@ -3,10 +3,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -562,12 +566,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 
         public void IsDynamicWorkerResolutionEnabled_HostingConfigAndFeatureFlags_WorksAsExpected(string featureFlagValue, string hostingConfigSetting, bool expected)
         {
-            HashSet<string> hostingConfigEnabledWorkers = hostingConfigSetting?.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
+            var mockConfiguration = new Mock<IConfiguration>();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingConfigSetting);
 
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(AzureWebJobsFeatureFlags, featureFlagValue);
 
-            bool result = testEnvironment.IsDynamicWorkerResolutionEnabled(hostingConfigEnabledWorkers);
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var resolverOptions = new WorkerConfigurationResolverOptions();
+            resolverOptionssetup.Configure(resolverOptions);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+
+            bool result = testEnvironment.IsDynamicWorkerResolutionEnabled(optionsMonitor);
 
             Assert.Equal(expected, result);
         }
@@ -581,15 +594,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("| ", null, "workflowapp", false)]
         public void IsDynamicWorkerResolutionEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp, bool expected)
         {
+            var mockConfiguration = new Mock<IConfiguration>();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingConfigSetting);
+
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(AppKind, multilanguageApp);
             testEnvironment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
 
-            HashSet<string> hostingConfigEnabledWorkers = hostingConfigSetting?.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
+            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var resolverOptions = new WorkerConfigurationResolverOptions();
+            resolverOptionssetup.Configure(resolverOptions);
+            var optionsMonitor = GetOptionsMonitor(resolverOptions);
 
-            bool result = testEnvironment.IsDynamicWorkerResolutionEnabled(hostingConfigEnabledWorkers);
+            bool result = testEnvironment.IsDynamicWorkerResolutionEnabled(optionsMonitor);
 
             Assert.Equal(expected, result);
+        }
+
+        private static IOptionsMonitor<WorkerConfigurationResolverOptions> GetOptionsMonitor(WorkerConfigurationResolverOptions resolverOptions)
+        {
+            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
+            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
+
+            return optionsMonitor;
         }
     }
 }

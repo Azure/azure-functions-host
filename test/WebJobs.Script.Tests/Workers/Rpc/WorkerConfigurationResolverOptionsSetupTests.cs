@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -23,7 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockConfiguration = new Mock<IConfiguration>();
             _mockEnvironment = new Mock<IEnvironment>();
             _mockScriptHostManager = new Mock<IScriptHostManager>();
-            _setup = new WorkerConfigurationResolverOptionsSetup(_mockConfiguration.Object, _mockEnvironment.Object, _mockScriptHostManager.Object);
+            var hostingOptions = new FunctionsHostingConfigOptions();
+
+            _setup = new WorkerConfigurationResolverOptionsSetup(_mockConfiguration.Object, _mockEnvironment.Object, _mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
         }
 
         [Fact]
@@ -39,7 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var configuration = configBuilder.Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, mockScriptHostManager.Object);
+            var hostingOptions = new FunctionsHostingConfigOptions();
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var options = new WorkerConfigurationResolverOptions();
 
             // Act

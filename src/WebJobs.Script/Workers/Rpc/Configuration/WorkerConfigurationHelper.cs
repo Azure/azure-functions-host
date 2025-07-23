@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             JsonSerializerOptions jsonSerializerOptions,
             string workerDir,
             IWorkerProfileManager profileManager,
-            IConfigurationSection configSection,
+            IConfiguration configSection,
             ILogger logger)
         {
             var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workersDirPath;
         }
 
-        internal static string GetWorkersDirPath(IConfigurationSection configuration)
+        internal static string GetWorkersDirPath(IConfiguration configuration)
         {
             var workersDirectorySection = configuration?.GetSection($"{WorkerConstants.WorkersDirectorySectionName}");
 

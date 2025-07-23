@@ -29,16 +29,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         public DynamicWorkerConfigurationResolver(ILogger logger,
                                         IFileSystem fileSystem,
                                         IWorkerProfileManager workerProfileManager,
-                                        HashSet<string> workersAvailableForResolutionViaHostingConfig,
-                                        List<string> workerProbingPaths,
                                         IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigResolverOptions)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig;
-            _workerProbingPaths = workerProbingPaths;
             _workerConfigurationResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
+            _workerProbingPaths = workerConfigResolverOptions.CurrentValue.ProbingPaths;
+            _workersAvailableForResolutionViaHostingConfig = workerConfigResolverOptions.CurrentValue.WorkersAvailableForResolution ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
 
         public List<string> GetWorkerConfigPaths()
