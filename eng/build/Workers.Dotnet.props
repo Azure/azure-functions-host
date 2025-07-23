@@ -1,7 +1,7 @@
 <Project>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.12" />
+    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.13" />
   </ItemGroup>
 
   <Target Name="CleanDotnetWorkerFiles" BeforeTargets="AssignTargetPaths" Condition="'$(RuntimeIdentifier)' != ''">
