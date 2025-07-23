@@ -31,16 +31,18 @@ namespace Microsoft.Extensions.Logging
 
         public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level, bool restrictHostLogs = false) where T : ILoggerProvider
         {
-            SetSystemLogCategoryPrefixes(restrictHostLogs);
-
             builder.AddFilter<T>(null, LogLevel.None);
             // If the logger provider is AppInsights, allow all categories regardless of restrictHostLogs
             if (typeof(T).Name.Contains("ApplicationInsights"))
             {
+                SetSystemLogCategoryPrefixes(false);
+
                 builder.AddFilter<T>((c, l) => l >= level);
             }
             else
             {
+                SetSystemLogCategoryPrefixes(restrictHostLogs);
+
                 builder.AddFilter<T>((c, l) => Filter(c, l, level));
             }
             return builder;

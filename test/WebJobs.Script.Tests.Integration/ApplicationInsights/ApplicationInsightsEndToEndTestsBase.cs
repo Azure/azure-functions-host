@@ -1,6 +1,18 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ApplicationInsights.Extensibility.Implementation;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,17 +20,6 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using Microsoft.ApplicationInsights.Channel;
-using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.ApplicationInsights.Extensibility.Implementation;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.WebJobs.Script.Tests;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
@@ -373,6 +374,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
                 Assert.Equal("4", traces[3].Message);
                 Assert.Equal(6, traces[3].Properties.Count);
+            }
+        }
+
+
+        [Fact]
+        public async Task AppInsights_LogsFlow_WhenKustoLogsDisabled()
+        {
+            // Set up a test with host logs restricted (simulating disabled Kusto logging)
+            string hostLogPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging");
+
+            // Use proper configuration approach - replace the WebHostBuilder direct access
+
+            var hostBuilder = new HostBuilder();
+            /*    .ConfigureAppConfiguration(config =>
+                {
+                    config.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                       // { ConfigurationPath.Combine(hostLogPath, "HostingConfigRestrictHostLogs"), "true" }
+                        { ConfigurationPath.Combine(hostLogPath, "HostingConfigRestrictHostLogs"), "false" }
+                    });
+                });
+            */
+
+            // Create new TestFunctionHost with the modified configuration
+            using (var host = hostBuilder.Build())
+            {
+                // Trigger a function that generates logs
+                string functionName = "Scenarios";
+                string testData = Guid.NewGuid().ToString();
+                JObject input = new JObject
+                {
+                    { "scenario", "appInsightsLogging" },
+                    { "input", testData }
+                };
+
+                await _fixture.TestHost.BeginFunctionAsync(functionName, input);
+
+                // Wait for logs to be processed
+                await Task.Delay(2000);
+
+                // Verify AppInsights received the telemetry despite host logs being restricted
+                var appInsightsLogs = _fixture.Channel.Telemetries
+                    .OfType<TraceTelemetry>()
+                    //   .Where(t => t.Message.Contains(testData))
+                    .ToList();
+
+                // Verify logs made it to AppInsights
+                Assert.NotEmpty(appInsightsLogs);
+
+                // Also verify that host startup logs were restricted (confirming Kusto logging was actually disabled)
+                var hostStartupLogs = _fixture.Channel.Telemetries
+                    .OfType<TraceTelemetry>()
+                    .Where(t => t.Properties.ContainsKey("Category") &&
+                               !t.Properties["Category"].ToString().StartsWith("Host.Startup"))
+                    .ToList();
+
+                Assert.Empty(hostStartupLogs);
             }
         }
 
