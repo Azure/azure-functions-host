@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
-using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -13,30 +12,58 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class GrpcMessageExtensionUtilities
     {
-        public static object ConvertFromHttpMessageToExpando(RpcHttp inputMessage)
+        private static readonly object BoxedTrue = true;
+        private static readonly object BoxedFalse = false;
+        private static readonly IReadOnlyDictionary<string, object> EmptyHeaders = new Dictionary<string, object>();
+
+        public static ExpandoObject ConvertFromHttpMessageToExpando(RpcHttp inputMessage)
         {
-            if (inputMessage == null)
+            if (inputMessage is null)
             {
                 return null;
             }
 
-            dynamic expando = new ExpandoObject();
-            expando.method = inputMessage.Method;
-            expando.query = inputMessage.Query as IDictionary<string, string>;
-            expando.statusCode = inputMessage.StatusCode;
-            expando.headers = inputMessage.Headers.ToDictionary(p => p.Key, p => (object)p.Value);
-            expando.enableContentNegotiation = inputMessage.EnableContentNegotiation;
+            var expando = new ExpandoObject();
+            IDictionary<string, object> dict = expando;
 
-            expando.cookies = new List<Tuple<string, string, CookieOptions>>();
-            foreach (RpcHttpCookie cookie in inputMessage.Cookies)
+            dict["method"] = inputMessage.Method;
+            dict["query"] = inputMessage.Query;
+            dict["statusCode"] = inputMessage.StatusCode;
+            dict["enableContentNegotiation"] = inputMessage.EnableContentNegotiation ? BoxedTrue : BoxedFalse;
+
+            if (inputMessage.Headers is { Count: > 0 })
             {
-                expando.cookies.Add(RpcHttpCookieConverter(cookie));
+                var headerDict = new Dictionary<string, object>(inputMessage.Headers.Count);
+                foreach (var kvp in inputMessage.Headers)
+                {
+                    headerDict[kvp.Key] = kvp.Value;
+                }
+                dict["headers"] = headerDict;
+            }
+            else
+            {
+                dict["headers"] = EmptyHeaders;
             }
 
-            if (inputMessage.Body != null)
+            if (inputMessage.Cookies is { Count: > 0 })
             {
-                expando.body = inputMessage.Body.ToObject();
+                var cookiesList = new List<Tuple<string, string, CookieOptions>>(inputMessage.Cookies.Count);
+                foreach (var cookie in inputMessage.Cookies)
+                {
+                    cookiesList.Add(RpcHttpCookieConverter(cookie));
+                }
+                dict["cookies"] = cookiesList;
             }
+            else
+            {
+                dict["cookies"] = Array.Empty<Tuple<string, string, CookieOptions>>();
+            }
+
+            if (inputMessage.Body is not null)
+            {
+                dict["body"] = inputMessage.Body.ToObject();
+            }
+
             return expando;
         }
 
@@ -80,27 +107,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal static void UpdateWorkerMetadata(this WorkerMetadata workerMetadata, RpcWorkerConfig workerConfig)
         {
-            workerMetadata.RuntimeName = string.IsNullOrEmpty(workerMetadata.RuntimeName)
-                                            ? workerConfig.Description.Language : workerMetadata.RuntimeName;
-            workerMetadata.RuntimeVersion = string.IsNullOrEmpty(workerMetadata.RuntimeVersion)
-                                            ? workerConfig.Description.DefaultRuntimeVersion : workerMetadata.RuntimeVersion;
+            workerMetadata.RuntimeName ??= workerConfig.Description.Language;
+            workerMetadata.RuntimeVersion ??= workerConfig.Description.DefaultRuntimeVersion;
         }
 
-        private static SameSiteMode RpcSameSiteEnumConverter(RpcHttpCookie.Types.SameSite sameSite)
+        private static SameSiteMode RpcSameSiteEnumConverter(RpcHttpCookie.Types.SameSite sameSite) => sameSite switch
         {
-            switch (sameSite)
-            {
-                case RpcHttpCookie.Types.SameSite.Strict:
-                    return SameSiteMode.Strict;
-                case RpcHttpCookie.Types.SameSite.Lax:
-                    return SameSiteMode.Lax;
-                case RpcHttpCookie.Types.SameSite.None:
-                    return SameSiteMode.Unspecified;
-                case RpcHttpCookie.Types.SameSite.ExplicitNone:
-                    return SameSiteMode.None;
-                default:
-                    return SameSiteMode.Unspecified;
-            }
-        }
+            RpcHttpCookie.Types.SameSite.Strict => SameSiteMode.Strict,
+            RpcHttpCookie.Types.SameSite.Lax => SameSiteMode.Lax,
+            RpcHttpCookie.Types.SameSite.None => SameSiteMode.Unspecified,
+            RpcHttpCookie.Types.SameSite.ExplicitNone => SameSiteMode.None,
+            _ => SameSiteMode.Unspecified
+        };
     }
 }

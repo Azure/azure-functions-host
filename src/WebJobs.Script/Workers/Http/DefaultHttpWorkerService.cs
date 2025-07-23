@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -24,17 +25,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly ILogger _logger;
         private readonly bool _enableRequestTracing;
+        private readonly IHttpProxyService _httpProxyService;
+        private readonly Uri _destinationPrefix;
+        private readonly string _userAgentString;
 
-        public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IEnvironment environment, IOptions<ScriptJobHostOptions> scriptHostOptions)
-            : this(CreateHttpClient(httpWorkerOptions), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>(), environment, scriptHostOptions)
+        public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IEnvironment environment,
+            IOptions<ScriptJobHostOptions> scriptHostOptions, IHttpProxyService httpProxyService)
+            : this(CreateHttpClient(httpWorkerOptions), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>(), environment, scriptHostOptions, httpProxyService)
         {
         }
 
-        internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger, IEnvironment environment, IOptions<ScriptJobHostOptions> scriptHostOptions)
+        internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger, IEnvironment environment,
+            IOptions<ScriptJobHostOptions> scriptHostOptions, IHttpProxyService httpProxyService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _httpWorkerOptions = httpWorkerOptions.Value ?? throw new ArgumentNullException(nameof(httpWorkerOptions.Value));
+            _httpProxyService = httpProxyService ?? throw new ArgumentNullException(nameof(httpProxyService));
             _enableRequestTracing = environment.IsCoreTools();
             if (scriptHostOptions.Value.FunctionTimeout == null)
             {
@@ -47,6 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // Set 1 minute greater than FunctionTimeout to ensure invoction failure due to timeout is raised before httpClient raises operation cancelled exception
                 _httpClient.Timeout = scriptHostOptions.Value.FunctionTimeout.Value.Add(TimeSpan.FromMinutes(1));
             }
+
+            _destinationPrefix = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).Uri;
+            _userAgentString = $"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}";
         }
 
         private static HttpClient CreateHttpClient(IOptions<HttpWorkerOptions> httpWorkerOptions)
@@ -61,14 +71,42 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction())
             {
+                if (_httpWorkerOptions.EnableProxyingHttpRequest)
+                {
+                    return ProxyInvocationRequest(scriptInvocationContext);
+                }
+
                 // type is empty for httpWorker section. EnableForwardingHttpRequest is opt-in for custom handler section.
                 if (_httpWorkerOptions.Type == CustomHandlerType.None || _httpWorkerOptions.EnableForwardingHttpRequest)
                 {
                     return ProcessHttpInAndOutInvocationRequest(scriptInvocationContext);
                 }
-                return ProcessDefaultInvocationRequest(scriptInvocationContext);
             }
+
             return ProcessDefaultInvocationRequest(scriptInvocationContext);
+        }
+
+        internal async Task ProxyInvocationRequest(ScriptInvocationContext scriptInvocationContext)
+        {
+            try
+            {
+                if (!scriptInvocationContext.TryGetHttpRequest(out HttpRequest httpRequest))
+                {
+                    throw new InvalidOperationException($"Cannot proxy the HttpTrigger function {scriptInvocationContext.FunctionMetadata.Name} without an input of type {nameof(HttpRequest)}.");
+                }
+
+                AddProxyingHeaders(httpRequest, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+
+                // YARP only requires the destination prefix. The path and query string are added by the YARP proxy during SendAsync using info from the HttpContext.
+                _httpProxyService.StartForwarding(scriptInvocationContext, _destinationPrefix);
+
+                await _httpProxyService.EnsureSuccessfulForwardingAsync(scriptInvocationContext); // this will throw if forwarding is unsuccessful
+                scriptInvocationContext.ResultSource.SetResult(ScriptInvocationResult.Success);
+            }
+            catch (Exception exc)
+            {
+                scriptInvocationContext.ResultSource.TrySetException(exc);
+            }
         }
 
         internal async Task ProcessHttpInAndOutInvocationRequest(ScriptInvocationContext scriptInvocationContext)
@@ -162,7 +200,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             httpRequest.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequest.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
-            httpRequest.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+            httpRequest.Headers.UserAgent.ParseAdd(_userAgentString);
+        }
+
+        private void AddProxyingHeaders(HttpRequest httpRequest, string invocationId)
+        {
+            // if there are existing headers, override them
+            httpRequest.Headers[HttpWorkerConstants.HostVersionHeaderName] = ScriptHost.Version;
+            httpRequest.Headers[HttpWorkerConstants.InvocationIdHeaderName] = invocationId;
         }
 
         internal string GetPathValue(HttpWorkerOptions httpWorkerOptions, string functionName, HttpRequest httpRequest)

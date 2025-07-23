@@ -63,38 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets or sets a value indicating whether SWT tokens should be sent on outgoing requests.
-        /// </summary>
-        internal bool SwtIssuerEnabled
-        {
-            get
-            {
-                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigSwtIssuerEnabled, true);
-            }
-
-            set
-            {
-                _features[ScriptConstants.HostingConfigSwtIssuerEnabled] = value ? "1" : "0";
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether to use cgroup memory metrics for reporting memory usage.
-        /// </summary>
-        internal bool IsCGroupMemoryMetricsEnabled
-        {
-            get
-            {
-                return GetFeatureAsBooleanOrDefault(ScriptConstants.FeatureFlagEnableCGroupMemoryMetrics, false);
-            }
-
-            set
-            {
-                _features[ScriptConstants.FeatureFlagEnableCGroupMemoryMetrics] = value ? "1" : "0";
-            }
-        }
-
-        /// <summary>
         /// Gets or sets a string delimited by '|' that contains a list of admin APIs that are allowed to
         /// be invoked internally by platform components.
         /// </summary>

@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
             }
 
-            bool isDotnetIsolatedApp = IsDotnetIsolatedApp(functionMetadataCollection, SystemEnvironment.Instance);
+            bool isDotnetIsolatedApp = Utility.IsDotnetIsolatedApp(SystemEnvironment.Instance, functionMetadataCollection);
             bool isDotnetApp = isPrecompiledFunctionApp || isDotnetIsolatedApp;
             var isLogicApp = SystemEnvironment.Instance.IsLogicApp();
 
@@ -235,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     await using var stream = File.OpenRead(metadataFilePath);
                     var extensionReferences = await JsonSerializer.DeserializeAsync(stream, ExtensionReferencesJsonContext.Default.ExtensionReferences);
 
-                    if (extensionReferences?.Extensions == null || extensionReferences.Extensions.Length == 0)
+                    if (extensionReferences?.Extensions == null)
                     {
                         _logger.ScriptStartUpUnableParseMetadataMissingProperty(metadataFilePath);
                         return [];
@@ -340,16 +340,10 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
         }
 
-        private bool IsDotnetIsolatedApp(IEnumerable<FunctionMetadata> functions, IEnvironment environment)
-        {
-            string workerRuntime = Utility.GetWorkerRuntime(functions, environment);
-            return workerRuntime?.Equals(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) ?? false;
-        }
-
         private ExtensionRequirementsInfo GetExtensionRequirementsInfo()
         {
             ExtensionRequirementsInfo requirementsInfo = _extensionRequirementOptions.Value.Bundles != null || _extensionRequirementOptions.Value.Extensions != null
-                ? new ExtensionRequirementsInfo(_extensionRequirementOptions.Value.Bundles, _extensionRequirementOptions.Value.Extensions)
+                ? new ExtensionRequirementsInfo(_extensionRequirementOptions.Value.Bundles?.ToArray() ?? [], _extensionRequirementOptions.Value.Extensions?.ToArray() ?? [])
                 : DependencyHelper.GetExtensionRequirements();
             return requirementsInfo;
         }

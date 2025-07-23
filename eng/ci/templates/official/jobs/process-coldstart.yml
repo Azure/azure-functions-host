@@ -37,7 +37,6 @@ jobs:
       artifact: $(artifactName)
 
   steps:
-  - checkout: none
   - pwsh: |
         $sampleSize = $env:SAMPLE_SIZE
         $values = @()
@@ -98,15 +97,8 @@ jobs:
       scriptType: 'pscore'
       scriptLocation: 'inlineScript'
       inlineScript: |
-        $json = Get-Content -Path $(resultsJsonPath) -Raw
-        $dateTimeUtc = [datetimeoffset]::UtcNow
-
-        $query = @"
-        INSERT INTO ColdStart (DateTimeUtc, OS, Description, Document)
-        VALUES ('$dateTimeUtc', '${{ parameters.os }}', '${{ parameters.description }}', '$json')
-        "@
-
-        Invoke-Sqlcmd -ConnectionString "$(ColdStartResultsSqlConnectionString)" -Query $query
-
+        $env:PATH = [System.IO.Path]::Combine($env:USERPROFILE, ".dotnet", "tools") + ";$env:PATH"
+        dotnet tool install -g Microsoft.Azure.Functions.ColdStartDataWriter --prerelease
+        func-cold-start-data-writer --os '${{ parameters.os }}' --description '${{ parameters.description }}' --sql-connection '$(ColdStartResultsSqlConnectionString)' --document-file-path '$(resultsJsonPath)'
     displayName: Persist results
     condition: eq(variables['Build.Reason'], 'Schedule')

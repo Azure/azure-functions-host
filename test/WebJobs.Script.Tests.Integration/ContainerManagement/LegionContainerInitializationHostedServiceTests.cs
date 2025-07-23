@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             using (var env = new TestScopedEnvironmentVariable(WebSiteAuthEncryptionKey, containerEncryptionKey))
             {
                 var serializeObject = JsonConvert.SerializeObject(hostAssignmentContext);
-                return SimpleWebTokenHelper.Encrypt(serializeObject);
+                return EncryptionHelper.Encrypt(serializeObject);
             }
         }
 

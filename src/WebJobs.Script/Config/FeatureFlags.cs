@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
@@ -16,14 +16,14 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public static bool IsEnabled(string name, IEnvironment environment)
         {
-            string featureFlags = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags);
-            if (!string.IsNullOrEmpty(featureFlags))
+            var featureFlags = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags);
+
+            if (string.IsNullOrEmpty(featureFlags))
             {
-                string[] flags = featureFlags.Split(',');
-                return flags.Contains(name, StringComparer.OrdinalIgnoreCase);
+                return false;
             }
 
-            return false;
+            return featureFlags.ContainsToken(name, separator: ',', StringComparison.OrdinalIgnoreCase);
         }
     }
 }
