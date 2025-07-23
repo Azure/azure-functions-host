@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // reset values that the tests are configuring
             var metricsPublisher = (FlexConsumptionMetricsPublisher)_fixture.Host.JobHostServices.GetService<IMetricsPublisher>();
             metricsPublisher.IsAlwaysReady = false;
-            metricsPublisher.MetricsFilePath = _fixture.MetricsPublishPath;
+            metricsPublisher.MetricsFileManager.MetricsFilePath = _fixture.MetricsPublishPath;
 
             _fixture.CleanupMetricsFiles();
         }
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             if (!metricsPublishEnabled)
             {
-                metricsPublisher.MetricsFilePath = null;
+                metricsPublisher.MetricsFileManager.MetricsFilePath = null;
             }
 
             int activityDuration = 2500;

@@ -24,19 +24,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly IList<LogMessage> _logMessages = new List<LogMessage>();
         private readonly ITestOutputHelper _testOutput; // optionally write direct to the test output
 
-        public TestLogger(string category, ITestOutputHelper testOutput = null)
-            : this(category, new LoggerExternalScopeProvider())
+        public TestLogger(string category, string hostInstanceId = null, IExternalScopeProvider scopeProvider = null, ITestOutputHelper testOutput = null)
         {
+            Category = category;
+            HostInstanceId = hostInstanceId;
+            _scopeProvider = scopeProvider ?? new LoggerExternalScopeProvider();
             _testOutput = testOutput;
         }
 
-        public TestLogger(string category, IExternalScopeProvider scopeProvider)
-        {
-            Category = category;
-            _scopeProvider = scopeProvider;
-        }
-
         public string Category { get; private set; }
+
+        public string HostInstanceId { get; private set; }
 
         private string DebuggerDisplay => $"Category: {Category}, Count: {_logMessages.Count}";
 
@@ -74,14 +72,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Exception = exception,
                 FormattedMessage = formatter(state, exception),
                 Category = Category,
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
+                HostInstanceId = HostInstanceId
             };
 
             lock (_syncLock)
             {
                 _logMessages.Add(logMessage);
             }
-            _testOutput?.WriteLine($"{logLevel}: {formatter(state, exception)}");
+
+            _testOutput?.WriteLine($"{logMessage}");
+
+            // Uncomment this when debugging test failures in CI.
+            // Console.WriteLine($"{logMessage}");
         }
     }
 
@@ -103,9 +106,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public DateTime Timestamp { get; set; }
 
+        public string HostInstanceId { get; set; }
+
         public override string ToString()
         {
-            return $"[{Timestamp.ToString("HH:mm:ss.fff")}] [{Category}] {FormattedMessage} {Exception}";
+            string hostInstance = string.IsNullOrEmpty(HostInstanceId) ? string.Empty : $" [{HostInstanceId}]";
+
+            return $"[{Timestamp:HH:mm:ss.fff}]{hostInstance} [{Level}] [{Category}] {FormattedMessage} {Exception}";
         }
     }
 }

@@ -131,6 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             _metrics.EndEvent(invokeLatencyEvent);
+            _hostMetrics.TrackFunctionExecutionDuration(item.Duration.TotalSeconds, functionName);
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken)) => Task.CompletedTask;

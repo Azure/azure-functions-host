@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             string testLogPath = Path.Combine(baseTestPath, "Logs");
 
             var syncTriggerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
-            syncTriggerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new SyncTriggersResult { Success = true });
+            syncTriggerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new TriggersOperationResult { Success = true });
 
             FileUtility.CopyDirectory(sourceFunctionApp, appContent);
             var host = new TestFunctionHost(sourceFunctionApp, testLogPath,

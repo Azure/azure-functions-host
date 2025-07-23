@@ -8,11 +8,12 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Grpc.Net.Client.Balancer;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using NuGet.Versioning;
@@ -294,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return matchingVersion?.ToString();
         }
 
-        private NuGetVersion ResolvePlatformReleaseChannelVersion(IList<NuGetVersion> orderedByDescBundles) => _platformReleaseChannel switch
+        private NuGetVersion ResolvePlatformReleaseChannelVersion(IList<NuGetVersion> orderedByDescBundles) => _platformReleaseChannel.ToUpper() switch
         {
             ScriptConstants.StandardPlatformChannelNameUpper or ScriptConstants.ExtendedPlatformChannelNameUpper => GetStandardOrExtendedBundleVersion(orderedByDescBundles),
             ScriptConstants.LatestPlatformChannelNameUpper or "" => GetLatestBundleVersion(orderedByDescBundles),
@@ -306,27 +307,36 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         // However, Functions and Rapid Update should treat Standard and Extended the same, resolving to n-1.
         private NuGetVersion GetStandardOrExtendedBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
         {
+            var latest = orderedByDescBundlesList.FirstOrDefault();
+
             if (orderedByDescBundlesList.Count > 1)
             {
+                var previous = orderedByDescBundlesList[1];
+                _logger.LogInformation("Applying platform release channel configuration {platformReleaseChannelName}. Previous bundle version {previous} will be used instead of latest version {latest}.", _platformReleaseChannel, previous, latest);
+
                 // These channels should resolve to the version prior to latest. This list is in descending order, which makes latest [0], and prior-to-latest [1].
-                return orderedByDescBundlesList[1];
+                return previous;
             }
 
             // keep the latest version, log a notice
-            var latest = orderedByDescBundlesList.FirstOrDefault();
-            _logger.LogInformation("Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latest);
+            _logger.LogWarning("Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {latestBundleVersion} will be used", _platformReleaseChannel, latest);
             return latest;
         }
 
-        private static NuGetVersion GetLatestBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
+        private NuGetVersion GetLatestBundleVersion(IList<NuGetVersion> orderedByDescBundlesList)
         {
-            return orderedByDescBundlesList.FirstOrDefault();
+            var latest = orderedByDescBundlesList.FirstOrDefault();
+            if (string.Equals(_platformReleaseChannel.ToUpper(), ScriptConstants.LatestPlatformChannelNameUpper))
+            {
+                _logger.LogInformation("Applying platform release channel configuration {platformReleaseChannelName}. Bundle version {latest} will be used", _platformReleaseChannel, latest);
+            }
+            return latest;
         }
 
         private NuGetVersion HandleUnknownPlatformReleaseChannelName(IList<NuGetVersion> orderedByDescBundlesList)
         {
             var latest = GetLatestBundleVersion(orderedByDescBundlesList);
-            _logger.LogInformation("Unknown platform release channel name {platformReleaseChannelName}. The latest bundle version, {latestBundleVersion}, will be used.", _platformReleaseChannel, latest);
+            _logger.LogWarning("Unknown platform release channel name {platformReleaseChannelName}. The latest bundle version, {latestBundleVersion}, will be used.", _platformReleaseChannel, latest);
             return latest;
         }
 
@@ -366,6 +376,34 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
             // if no bin directory is present something is wrong
             return FileUtility.DirectoryExists(binPath) ? binPath : null;
+        }
+
+        public string GetOutdatedBundleVersion()
+        {
+            // If the extension bundle version is not set or if the extension bundle is not the default one,
+            // return empty string
+            if (string.IsNullOrEmpty(_extensionBundleVersion) ||
+                !string.Equals(_options?.Id, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            // Extract the major version number from the version string
+            int dotIndex = _extensionBundleVersion.IndexOf('.');
+            if (dotIndex <= 0 || !int.TryParse(_extensionBundleVersion.AsSpan(0, dotIndex), out var majorVersion) || majorVersion == 0)
+            {
+                return null;
+            }
+
+            int latestMajorVersion = ScriptConstants.ExtensionBundleV4MajorVersion;
+
+            // Return the version if it's outdated
+            if (majorVersion < latestMajorVersion)
+            {
+                return _extensionBundleVersion;
+            }
+
+            return null;
         }
     }
 }

@@ -166,6 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             HasOtelServices(sc).Should().BeTrue();
             sc.Should().Contain(sd => sd.ServiceType.FullName == "OpenTelemetry.Trace.IConfigureTracerProviderBuilder");
             sc.Should().Contain(sd => sd.ServiceType.FullName == "OpenTelemetry.Logs.IConfigureLoggerProviderBuilder");
+            sc.Should().Contain(sd => sd.ServiceType.FullName == "OpenTelemetry.Metrics.IConfigureMeterProviderBuilder");
 
             host.Services.GetService<TelemetryClient>().Should().BeNull();
 
@@ -221,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             Resource resource = detector.Detect();
 
             Assert.Equal($"/subscriptions/AAAAA-AAAAA-AAAAA-AAA/resourceGroups/rg/providers/Microsoft.Web/sites/appName",
-                resource.Attributes.FirstOrDefault(a => a.Key == "cloud.resource.id").Value);
+                resource.Attributes.FirstOrDefault(a => a.Key == "cloud.resource_id").Value);
             Assert.Equal($"EastUS", resource.Attributes.FirstOrDefault(a => a.Key == "cloud.region").Value);
         }
 
@@ -231,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             FunctionsResourceDetector detector = new FunctionsResourceDetector();
             Resource resource = detector.Detect();
 
-            Assert.Equal(4, resource.Attributes.Count());
+            Assert.Equal(3, resource.Attributes.Count());
         }
 
         [Fact]
@@ -258,8 +259,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             using var host = hostBuilder.Build();
 
             // Act
-            var tracerProviderDescriptors = GetTracerProviderDescriptors(serviceCollection);
-            var resolvedClient = ExtractClientFromDescriptors(tracerProviderDescriptors);
+            var tracerProviderDescriptors = GetProviderDescriptors(serviceCollection, "IConfigureTracerProviderBuilder", "ConfigureTracerProviderBuilderCallbackWrapper");
+            var resolvedClient = ExtractTraceManagedIdentityCredential(tracerProviderDescriptors);
 
             // Extract the clientId from the client object
             var clientIdValue = resolvedClient?.GetType().GetProperty("ClientId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(resolvedClient)?.ToString();
@@ -293,17 +294,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             using var host = hostBuilder.Build();
 
             // Act
-            var tracerProviderDescriptors = GetTracerProviderDescriptors(serviceCollection);
-            var resolvedClient = ExtractClientFromDescriptors(tracerProviderDescriptors);
+            var tracerProviderDescriptors = GetProviderDescriptors(serviceCollection, "IConfigureTracerProviderBuilder", "ConfigureTracerProviderBuilderCallbackWrapper");
+            var tracerResolvedClient = ExtractTraceManagedIdentityCredential(tracerProviderDescriptors);
+
+            var meterProviderDescriptors = GetProviderDescriptors(serviceCollection, "IConfigureMeterProviderBuilder", "ConfigureMeterProviderBuilderCallbackWrapper");
+            var meterResolvedClient = ExtractMeterManagedIdentityCredential(meterProviderDescriptors);
 
             // Extract the clientId from the client object
-            var clientIdValue = resolvedClient?.GetType().GetProperty("ClientId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(resolvedClient)?.ToString();
+            var tracerClientIdValue = tracerResolvedClient?.GetType().GetProperty("ClientId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(tracerResolvedClient)?.ToString();
+            var meterClientIdValue = meterResolvedClient?.GetType().GetProperty("ClientId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(meterResolvedClient)?.ToString();
 
             // Assert
             serviceCollection.Should().NotBeNullOrEmpty();
             // No clientId should be present as it was not provided
-            clientIdValue.Should().BeNull();
-            resolvedClient.GetType().Name.Should().Be("ManagedIdentityClient");
+            tracerClientIdValue.Should().BeNull();
+            meterClientIdValue.Should().BeNull();
+            tracerResolvedClient.GetType().Name.Should().Be("ManagedIdentityClient");
+            meterResolvedClient.GetType().Name.Should().Be("ManagedIdentityCredential");
         }
 
         [Fact]
@@ -378,17 +385,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             });
         }
 
-        private static List<ServiceDescriptor> GetTracerProviderDescriptors(IServiceCollection services)
+        private static List<ServiceDescriptor> GetProviderDescriptors(IServiceCollection services, string serviceType, string instance)
         {
             return services
                 .Where(descriptor =>
                     descriptor.Lifetime == ServiceLifetime.Singleton &&
-                    descriptor.ServiceType.Name == "IConfigureTracerProviderBuilder" &&
-                    descriptor.ImplementationInstance?.GetType().Name == "ConfigureTracerProviderBuilderCallbackWrapper")
+                    descriptor.ServiceType.Name == serviceType &&
+                    descriptor.ImplementationInstance?.GetType().Name == instance)
                 .ToList();
         }
 
-        private static object ExtractClientFromDescriptors(List<ServiceDescriptor> descriptors)
+        private static object ExtractTraceManagedIdentityCredential(List<ServiceDescriptor> descriptors)
         {
             foreach (var descriptor in descriptors)
             {
@@ -413,6 +420,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
                             var clientProperty = managedIdentityCredential.GetType().GetProperty("Client", BindingFlags.Instance | BindingFlags.NonPublic);
                             return clientProperty?.GetValue(managedIdentityCredential);
                         }
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static object ExtractMeterManagedIdentityCredential(List<ServiceDescriptor> descriptors)
+        {
+            foreach (var descriptor in descriptors)
+            {
+                if (descriptor.ImplementationInstance is not { } implementation)
+                {
+                    continue;
+                }
+
+                var configureField = implementation.GetType().GetField("configure", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (configureField?.GetValue(implementation) is not Action<IServiceProvider, MeterProviderBuilder> configureAction)
+                {
+                    continue;
+                }
+
+                var firstTarget = configureAction.Target;
+                if (firstTarget is null)
+                {
+                    continue;
+                }
+
+                foreach (var field in firstTarget.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                {
+                    if (field.GetValue(firstTarget) is not Delegate secondDelegate)
+                    {
+                        continue;
+                    }
+
+                    var secondTarget = secondDelegate.Target;
+                    if (secondTarget is null)
+                    {
+                        continue;
+                    }
+
+                    var configureField2 = secondTarget.GetType().GetField("configure", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (configureField2?.GetValue(secondTarget) is not Delegate configureAction2)
+                    {
+                        continue;
+                    }
+
+                    var thirdTarget = configureAction2.Target;
+                    if (thirdTarget is null)
+                    {
+                        continue;
+                    }
+
+                    var credentialField = thirdTarget.GetType().GetField("credential", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (credentialField?.GetValue(thirdTarget) is ManagedIdentityCredential managedIdentityCredential)
+                    {
+                        return managedIdentityCredential;
                     }
                 }
             }

@@ -3,8 +3,7 @@
   <!-- PlaceholderSimulation.props
     This props file is to be imported only when test placeholder behavior. Importing this file will set up the WebHost to simulate placeholder behavior.
     There are integrity checks in this file to ensure correct use:
-      1. Must not be imported during CI.
-      2. PlaceholderSimulation must be set to 'true' on import and remain 'true' for the entire build.
+      1. PlaceholderSimulation must be set to 'true' on import and remain 'true' for the entire build.
   -->
 
   <PropertyGroup>
@@ -12,11 +11,6 @@
     <_PlaceholderSimulationOriginal>$(PlaceholderSimulation)</_PlaceholderSimulationOriginal>
     <DefineConstants>$(DefineConstants)PLACEHOLDER_SIMULATION;</DefineConstants>
   </PropertyGroup>
-
-  <!-- Verify this is not imported during CI build or without PlaceholderSimulation=true -->
-  <Target Name="_PlaceholderFailWrongImport" BeforeTargets="Build" Condition="'$(CI)' == 'true' OR '$(_PlaceholderSimulationOriginal)' != 'true'">
-    <Error Text="PlaceholderSimulation is enabled, but CI is true. PlaceholderSimulation is not allowed in CI." />
-  </Target>
 
   <!-- Verify PlaceholderSimulation remains 'true' for the entire build. -->
   <Target Name="_PlaceholderFailWrongValue" AfterTargets="Build" Condition="'$(PlaceholderSimulation)' != 'true'">

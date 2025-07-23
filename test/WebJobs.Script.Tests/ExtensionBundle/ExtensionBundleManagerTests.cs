@@ -418,8 +418,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
         [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
         [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.3.0")]
+        [InlineData("latest", "[4.*, 5.0.0)", null, "4.3.0")]
         [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.2.0")]
+        [InlineData("standard", "[4.*, 5.0.0)", null, "4.2.0")]
         [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.2.0")]
+        [InlineData("extended", "[4.*, 5.0.0)", null, "4.2.0")]
         public void WhenPlatformReleaseChannelSet_ExpectedVersionChosen(string platformReleaseChannelName, string versionRange, string hostConfigMaxVersion, string expectedVersion)
         {
             var range = VersionRange.Parse(versionRange);
@@ -462,7 +465,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var expected = "4.20.0";
 
             var loggedString = $"Unable to apply platform release channel configuration {platformReleaseChannelName}. Only one matching bundle version is available. {expected} will be used";
-            var mockLogger = GetVerifiableMockLogger(loggedString);
+            var mockLogger = GetVerifiableMockLogger(loggedString, LogLevel.Warning);
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(() => mockLogger.Object);
 
@@ -485,7 +488,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             var incorrectChannelName = "someIncorrectReleaseChannelName";
             var loggedString = $"Unknown platform release channel name {incorrectChannelName}. The latest bundle version, {expected}, will be used.";
-            var mockLogger = GetVerifiableMockLogger(loggedString);
+            var mockLogger = GetVerifiableMockLogger(loggedString, LogLevel.Warning);
             var mockLoggerFactory = new Mock<ILoggerFactory>();
             mockLoggerFactory.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(() => mockLogger.Object);
 
@@ -573,12 +576,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0" };
         }
 
-        private Mock<ILogger> GetVerifiableMockLogger(string stringToVerify)
+        private Mock<ILogger> GetVerifiableMockLogger(string stringToVerify, LogLevel logLevel)
         {
             var mockLogger = new Mock<ILogger>();
             mockLogger
                 .Setup(x => x.Log(
-                    LogLevel.Information,
+                    logLevel,
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString().Contains(stringToVerify)),
                     It.IsAny<Exception>(),

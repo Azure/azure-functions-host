@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
@@ -60,22 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             set
             {
                 _features[RpcWorkerConstants.ShutdownWebhostWorkerChannelsOnHostShutdown] = value ? "1" : "0";
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether SWT tokens should be sent on outgoing requests.
-        /// </summary>
-        internal bool SwtIssuerEnabled
-        {
-            get
-            {
-                return GetFeatureAsBooleanOrDefault(ScriptConstants.HostingConfigSwtIssuerEnabled, true);
-            }
-
-            set
-            {
-                _features[ScriptConstants.HostingConfigSwtIssuerEnabled] = value ? "1" : "0";
             }
         }
 
@@ -145,6 +128,22 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             set
             {
                 _features[ScriptConstants.FeatureFlagEnableOrderedInvocationmessages] = value ? "1" : "0";
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to ignore the TestData property during read and write operations of functions metadata.
+        /// </summary>
+        internal bool IsTestDataSuppressionEnabled
+        {
+            get
+            {
+                return GetFeatureAsBooleanOrDefault(ScriptConstants.FeatureFlagEnableTestDataSuppression, false);
+            }
+
+            set
+            {
+                _features[ScriptConstants.FeatureFlagEnableTestDataSuppression] = value ? "1" : "0";
             }
         }
 

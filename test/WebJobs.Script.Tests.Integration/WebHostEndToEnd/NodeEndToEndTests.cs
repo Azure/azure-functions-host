@@ -885,35 +885,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         
 #endif
 
-        public class TestFixture(IMessageSink sink)
+        public class TestFixture()
             : EndToEndTestFixture(rootPath, "node", RpcWorkerConstants.NodeLanguageWorkerName)
         {
             private static readonly string rootPath = Path.Combine("TestScripts", "Node");
-            private readonly AzuriteFixture _azurite = new(sink);
-
-            public override async Task InitializeAsync()
-            {
-                await _azurite.InitializeAsync();
-                await base.InitializeAsync();
-            }
-
-            public override async Task DisposeAsync()
-            {
-                await base.DisposeAsync();
-                await _azurite.DisposeAsync();
-            }
-
-            public override void ConfigureScriptHost(IConfigurationBuilder configBuilder)
-            {
-                string connectionString = _azurite.GetConnectionString();
-                configBuilder.AddInMemoryCollection(new Dictionary<string, string>
-                {
-                    { "AzureWebJobsStorage", connectionString },
-                    { "ConnectionStrings:AzureWebJobsStorage", connectionString },
-                });
-
-                base.ConfigureScriptHost(configBuilder);
-            }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
@@ -922,8 +897,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 webJobsBuilder.AddAzureStorage()
                     .Services.Configure<ScriptJobHostOptions>(o =>
                     {
-                        o.Functions = new[]
-                        {
+                        o.Functions =
+                        [
                             "BlobTriggerToBlob",
                             "HttpTrigger",
                             "HttpTrigger-Scenarios",
@@ -942,7 +917,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                             "TableOut",
                             "TimerTrigger",
                             "Scenarios"
-                        };
+                        ];
                     });
             }
         }

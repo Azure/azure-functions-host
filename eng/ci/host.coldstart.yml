@@ -1,0 +1,234 @@
+# No triggers for code push to any branch.
+trigger: none
+
+# No PR triggers for now
+pr: none
+
+schedules:
+  - cron: "0 5 * * *"
+    displayName: Nightly Build
+    branches:
+      include:
+      - dev
+    always: true
+
+parameters:
+
+# Function apps to include in the run.
+- name: includeHelloHttpNet9
+  displayName: Include HelloHttpNet9 (.NET9 Web Application)
+  type: boolean
+  default: true
+- name: includeHelloHttpNet9NoProxy
+  displayName: Include HelloHttpNet9NoProxy (.NET9 Worker Application)
+  type: boolean
+  default: true
+- name: includeHelloHttpNode
+  displayName: Include HelloHttpNode (Node Application)
+  type: boolean
+  default: false
+
+# Dotnet trace profile collection & jit trace generation.
+- name: collectNetTrace
+  displayName: Collect DotNet trace
+  type: boolean
+  default: false
+- name: netTraceCollectArguments
+  displayName: DotNet trace profile collection arguments (Valid only if "Collect DotNet trace" is true)). Example `-n Microsoft.Azure.WebJobs.Script.WebHost --profile cpu-sampling --duration 00:00:00:10`
+  type: string
+  default: '-n Microsoft.Azure.WebJobs.Script.WebHost --providers Microsoft-Diagnostics-DiagnosticSource:0xfffffffffffff7ff:5,Microsoft-Windows-DotNETRuntime:0xC0001801F9:5,FunctionsSystemLogsEventSource:0xFFFFFFFFFFFFFFFF:5 --stopping-event-provider-name Microsoft-Diagnostics-DiagnosticSource --stopping-event-event-name Activity1/Stop'
+- name: createJitTrace
+  displayName: Create Jit trace (Ensure "Collect DotNet trace" is set to true)
+  type: boolean
+  default: false
+
+- name: collectPerfViewProfileOnWindows
+  displayName: Collect PerfView Profile (on Windows)
+  type: boolean
+  default: false
+- name: perfViewCollectArguments
+  displayName: PerfView profile collection arguments (Valid only if "Collect PerfView Profile" is true))
+  type: string
+  default: '/NoGui /AcceptEula /NoV2Rundown /NoNGenRundown /NoClrRundown /BufferSizeMB=64 /CircularMB=64 /Providers=a7044dd6-c8ef-4980-858c-942d972b6250'
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+  - template: /eng/ci/templates/variables/coldstart.yml@self
+  - template: /ci/variables/cfs.yml@eng
+  - name: shouldCollectPerfViewProfileOnWindows
+    ${{ if eq(variables['Build.Reason'], 'Schedule') }}:  # We always collect PerfView profile on nightly runs.
+      value: true
+    ${{ if ne(variables['Build.Reason'], 'Schedule') }}:
+      value: ${{ parameters.collectPerfViewProfileOnWindows }}
+
+extends:
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc-benchmarking
+      image: 1es-windows-2022-benchmark-runner-vanilla
+      os: windows
+
+    stages:
+    - stage: RunWindows
+      displayName: Record latency(Windows)
+      jobs:
+      - ${{ each appId in split(variables.runInstances, ',') }}:
+        - ${{ if eq(parameters.includeHelloHttpNet9, true) }}:
+          - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+            parameters:
+              description: .NET9 Web Application
+              functionAppName: HelloHttpNet9
+              instanceId: ${{ appId }} 
+              collectPerfViewProfileOnWindows: ${{ variables.shouldCollectPerfViewProfileOnWindows }}
+              perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
+              netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+              collectNetTrace: ${{ parameters.collectNetTrace }}
+              createJitTrace: ${{ parameters.createJitTrace }}
+        - ${{ if eq(parameters.includeHelloHttpNet9NoProxy, true) }}:
+          - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+            parameters:
+              description: .NET9 Worker Application
+              functionAppName: HelloHttpNet9NoProxy
+              instanceId: ${{ appId }}
+              collectPerfViewProfileOnWindows: ${{ variables.shouldCollectPerfViewProfileOnWindows }}
+              perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
+              netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+              collectNetTrace: ${{ parameters.collectNetTrace }}
+              createJitTrace: ${{ parameters.createJitTrace }}
+        - ${{ if eq(parameters.includeHelloHttpNode, true) }}:
+          - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+            parameters:
+              description: Node Application
+              functionAppName: HelloHttpNode
+              instanceId: ${{ appId }}
+              collectPerfViewProfileOnWindows: ${{ variables.shouldCollectPerfViewProfileOnWindows }}
+              perfViewCollectArguments: ${{ parameters.perfViewCollectArguments }}
+              netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+              collectNetTrace: ${{ parameters.collectNetTrace }}
+              createJitTrace: ${{ parameters.createJitTrace }}
+
+    - stage: CalculateWindows
+      displayName: Process results(Windows)
+      dependsOn: RunWindows
+      condition: always()
+      jobs:
+      - ${{ if eq(parameters.includeHelloHttpNet9, true) }}:
+        - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+          parameters:
+            functionAppName: HelloHttpNet9
+            description: .NET9 Web Application
+            runInstances: 
+              items: ${{ split(variables.runInstances, ',') }}
+      - ${{ if eq(parameters.includeHelloHttpNet9NoProxy, true) }}:
+        - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+          parameters:
+            functionAppName: HelloHttpNet9NoProxy
+            description: .NET9 Worker Application
+            runInstances: 
+              items: ${{ split(variables.runInstances, ',') }}
+      - ${{ if eq(parameters.includeHelloHttpNode, true) }}:
+        - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+          parameters:
+            functionAppName: HelloHttpNode
+            description: Node Application
+            runInstances: 
+              items: ${{ split(variables.runInstances, ',') }}
+
+# # LINUX
+    - stage: RunLinux
+      dependsOn: []
+      displayName:  Record latency(Linux)
+      jobs:
+      - ${{ each appId in split(variables.runInstances, ',') }}:
+        - ${{ if eq(parameters.includeHelloHttpNet9, true) }}:
+          - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+            parameters:
+              description: .NET9 Web Application
+              functionAppName: HelloHttpNet9
+              instanceId: ${{ appId }}
+              os: Linux
+              collectNetTrace: ${{ parameters.collectNetTrace }}
+              netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+              createJitTrace: ${{ parameters.createJitTrace }}
+        - ${{ if eq(parameters.includeHelloHttpNet9NoProxy, true) }}:
+          - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+            parameters:
+              description: .NET9 Worker Application
+              functionAppName: HelloHttpNet9NoProxy
+              instanceId: ${{ appId }}
+              os: Linux
+              collectNetTrace: ${{ parameters.collectNetTrace }}
+              netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+              createJitTrace: ${{ parameters.createJitTrace }}
+        - ${{ if eq(parameters.includeHelloHttpNode, true) }}:
+          - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
+            parameters:
+              description: Node Application
+              functionAppName: HelloHttpNode
+              instanceId: ${{ appId }}
+              os: Linux
+              collectNetTrace: ${{ parameters.collectNetTrace }}
+              netTraceCollectArguments: ${{ parameters.netTraceCollectArguments }}
+              createJitTrace: ${{ parameters.createJitTrace }}  
+
+    - stage: CalculateLinux
+      displayName:  Process results(Linux)
+      dependsOn: RunLinux
+      condition: always()
+      jobs:
+      - ${{ if eq(parameters.includeHelloHttpNet9, true) }}:
+        - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+          parameters:
+            functionAppName: HelloHttpNet9
+            description: .NET9 Web Application
+            os: Linux
+            runInstances: 
+              items: ${{ split(variables.runInstances, ',') }}
+      - ${{ if eq(parameters.includeHelloHttpNet9NoProxy, true) }}:
+        - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+          parameters:
+            functionAppName: HelloHttpNet9NoProxy
+            description: .NET9 Worker Application
+            os: Linux
+            runInstances: 
+              items: ${{ split(variables.runInstances, ',') }}
+      - ${{ if eq(parameters.includeHelloHttpNode, true) }}:
+        - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
+          parameters:
+            functionAppName: HelloHttpNode
+            description: Node Application
+            os: Linux
+            runInstances: 
+              items: ${{ split(variables.runInstances, ',') }}
+
+# Merge JIT traces from different function apps and dedupe.
+    - stage: MergeWindowsJitTraceFiles
+      displayName: Create jit trace(Windows)
+      condition: and(succeeded(), eq('${{ parameters.createJitTrace }}', true))
+      dependsOn:
+        - CalculateWindows
+      jobs:
+      - template: /eng/ci/templates/official/jobs/merge-jittrace.yml@self
+        parameters:
+          os: Windows
+
+    - stage: MergeLinuxJitTraceFiles
+      displayName: Create jit trace(Linux)
+      condition: and(succeeded(), eq('${{ parameters.createJitTrace }}', true))
+      dependsOn:
+        - CalculateLinux
+      jobs:
+      - template: /eng/ci/templates/official/jobs/merge-jittrace.yml@self
+        parameters:
+          os: Linux

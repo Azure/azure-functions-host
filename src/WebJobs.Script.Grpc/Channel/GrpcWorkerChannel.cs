@@ -26,12 +26,14 @@ using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Trace;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -66,8 +68,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _disposing;
         private WorkerInitResponse _initMessage;
         private RpcWorkerChannelState _state;
-        private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
-        private IDictionary<string, Exception> _metadataRequestErrors = new Dictionary<string, Exception>();
+        private IDictionary<string, Exception> _functionLoadErrors = new ConcurrentDictionary<string, Exception>();
+        private IDictionary<string, Exception> _metadataRequestErrors = new ConcurrentDictionary<string, Exception>();
         private ConcurrentDictionary<string, ExecutingInvocation> _executingInvocations = new();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
@@ -887,7 +889,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
-                AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
+                AddAdditionalTraceContext(invocationRequest, context);
                 _executingInvocations.TryAdd(invocationRequest.InvocationId, new(context, _messageDispatcherFactory.Create(invocationRequest.InvocationId)));
                 _metricsLogger.LogEvent(string.Format(MetricEventNames.WorkerInvoked, Id), functionName: Sanitizer.Sanitize(context.FunctionMetadata.Name));
 
@@ -1282,6 +1284,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                                 // TODO fix RpcException catch all https://github.com/Azure/azure-functions-dotnet-worker/issues/370
                                 var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
                                 context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
+                                Activity.Current?.RecordException(exception);
+                                Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
                             }
                             else
                             {
@@ -1677,8 +1681,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
+        private void AddAdditionalTraceContext(InvocationRequest invocationRequest, ScriptInvocationContext context)
         {
+            MapField<string, string> attributes = invocationRequest.TraceContext.Attributes;
             bool isOtelEnabled = _scriptHostOptions?.Value.TelemetryMode == TelemetryMode.OpenTelemetry;
             bool isAIEnabled = _environment.IsApplicationInsightsAgentEnabled();
 
@@ -1718,7 +1723,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (isOtelEnabled)
             {
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
-                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.ResolveTriggerType(context.FunctionMetadata?.Trigger?.Type));
+                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInvocationId, invocationRequest.InvocationId);
             }
         }
 
