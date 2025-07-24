@@ -1603,13 +1603,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
                 var resultSource = invocationContexts[i].ResultSource;
                 Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
-                Assert.IsType<WorkerShutdownException>(resultSource.Task.Exception.InnerException);
-
-                if (hasFailureException)
-                {
-                    var workerShutdownException = (WorkerShutdownException)resultSource.Task.Exception.InnerException;
-                    Assert.Contains(workerException.Message, workerShutdownException.Reason);
-                }
+                Assert.IsType<FunctionAbortedException>(resultSource.Task.Exception.InnerException);
             }
         }
 

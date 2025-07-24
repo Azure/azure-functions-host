@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -1558,9 +1559,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Shutdown(Exception workerException)
         {
-            WorkerShutdownException shutdownException = workerException is not null
-                ? new WorkerShutdownException("Worker encountered a fatal error and is shutting down.", workerException)
-                : new WorkerShutdownException("Worker encountered a fatal error and is shutting down.");
+            var shutdownException = workerException;
+
+            if (workerException is null || workerException is FunctionTimeoutException)
+            {
+                shutdownException = new FunctionAbortedException(workerException?.Message ?? "Worker channel is shutting down. Aborting function.", workerException);
+            }
 
             foreach (var invocation in _executingInvocations?.Values)
             {
