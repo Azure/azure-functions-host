@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerConfigResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
-            _workerConfigurationResolver = _workerConfigurationResolver ?? throw new ArgumentNullException(nameof(_workerConfigurationResolver));
+            _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
             _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
         }
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver, _workerConfigResolverOptions);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }

@@ -19,11 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             JsonSerializerOptions jsonSerializerOptions,
             string workerDir,
             IWorkerProfileManager profileManager,
-            IConfiguration configSection,
+            Dictionary<string, string> configSection,
             ILogger logger)
         {
             var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
             var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
+
             workerDescription.WorkerDirectory = workerDir;
 
             // Read the profiles from worker description and load the profile for which the conditions match
@@ -37,11 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            // Check if any app settings are provided for that language
-            var languageSection = configSection?.GetSection($"{workerDescription.Language}");
             workerDescription.Arguments ??= new List<string>();
-            GetWorkerDescriptionFromAppSettings(workerDescription, languageSection);
-            AddArgumentsFromAppSettings(workerDescription, languageSection);
+
+            GetWorkerDescriptionFromAppSettings(workerDescription, configSection);
+            AddArgumentsFromAppSettings(workerDescription, configSection);
 
             // Validate workerDescription
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger);
@@ -112,21 +112,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return descriptionProfiles;
         }
 
-        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
+        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, Dictionary<string, string> languageSection)
         {
-            var defaultExecutablePathSetting = languageSection?.GetSection($"{WorkerConstants.WorkerDescriptionDefaultExecutablePath}");
-            workerDescription.DefaultExecutablePath = defaultExecutablePathSetting?.Value != null ? defaultExecutablePathSetting.Value : workerDescription.DefaultExecutablePath;
+            if (languageSection is not null && languageSection.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultExecutablePath}", out string defaultExecutablePathSetting))
+            {
+                workerDescription.DefaultExecutablePath = defaultExecutablePathSetting;
+            }
 
-            var defaultRuntimeVersionAppSetting = languageSection?.GetSection($"{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}");
-            workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting?.Value != null ? defaultRuntimeVersionAppSetting.Value : workerDescription.DefaultRuntimeVersion;
+            if (languageSection is not null && languageSection.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}", out string defaultRuntimeVersionAppSetting))
+            {
+                workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting;
+            }
         }
 
-        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
+        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, Dictionary<string, string> languageSection)
         {
-            var argumentsSection = languageSection?.GetSection($"{WorkerConstants.WorkerDescriptionArguments}");
-            if (argumentsSection?.Value != null)
+            if (languageSection is not null && languageSection.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionArguments}", out string argumentsSection))
             {
-                ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsSection.Value, @"\s+"));
+                if (argumentsSection is not null)
+                {
+                    ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsSection, @"\s+"));
+                }
             }
         }
 
@@ -146,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         internal static string GetWorkersDirPath(IConfiguration configuration)
         {
-            var workersDirectorySection = configuration?.GetSection($"{WorkerConstants.WorkersDirectorySectionName}");
+            var workersDirectorySection = configuration?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
 
             string workersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
 

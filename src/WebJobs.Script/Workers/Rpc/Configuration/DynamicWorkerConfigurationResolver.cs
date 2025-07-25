@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             // profiles evaluation
-            RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
+            var workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
                 workerConfig: workerConfig,
                 jsonSerializerOptions: _jsonSerializerOptions,
                 workerDir: workerDir,

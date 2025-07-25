@@ -51,8 +51,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             options.IsPlaceholderModeEnabled = _environment.IsPlaceholderModeEnabled();
             options.IsMultiLanguageWorkerEnvironment = _environment.IsMultiLanguageRuntimeEnvironment();
 
-            options.LanguageSection = configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}");
-            options.WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(options.LanguageSection);
+            // Convert the entire configuration to JSON
+            var configDict = new Dictionary<string, string>();
+            foreach (var kvp in configuration.AsEnumerable())
+            {
+                if (kvp.Key.StartsWith("languageWorkers"))
+                {
+                    configDict[kvp.Key] = kvp.Value;
+                }
+            }
+
+            options.LanguageSection = configDict;
+            options.WorkersDir = configuration?.GetSection($"{WorkerConstants.WorkersDirectorySectionName}")?.Value;
+            options.WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(configuration);
 
             options.ProbingPaths = GetWorkerProbingPaths();
             options.WorkersAvailableForResolution = GetWorkersAvailableForResolutionViaHostingConfig(_functionsHostingConfigOptions);
