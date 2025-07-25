@@ -241,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var workerConfigurationResolverOptions = p.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
                 var workerProfileManager = p.GetService<IWorkerProfileManager>();
                 var loggerFactory = p.GetService<ILoggerFactory>();
-                var logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
+                var logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
 
                 if (environment.IsDynamicWorkerResolutionEnabled(workerConfigurationResolverOptions))
                 {

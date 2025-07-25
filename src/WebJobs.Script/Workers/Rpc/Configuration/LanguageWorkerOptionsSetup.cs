@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerConfigResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
-            _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
         }
 
         public void Configure(LanguageWorkerOptions options)
