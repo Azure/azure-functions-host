@@ -243,12 +243,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             // profiles evaluation
-            var workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
+            RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
                 workerConfig: workerConfig,
                 jsonSerializerOptions: _jsonSerializerOptions,
                 workerDir: workerDir,
                 profileManager: _profileManager,
-                configSection: _workerConfigurationResolverOptions.CurrentValue.LanguageSection,
+                languageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
                 logger: _logger);
 
             if (workerDescription.IsDisabled == true)

@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(options.IsPlaceholderModeEnabled); // Default placeholder mode
             Assert.False(options.IsMultiLanguageWorkerEnvironment); // Default multi-language mode
             Assert.Equal("/default/workers", options.WorkersDirPath);
-            Assert.NotNull(options.LanguageSection);
+            Assert.NotNull(options.LanguageWorkersSettings);
         }
     }
 }

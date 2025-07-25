@@ -14,7 +14,6 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NuGet.Protocol;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -130,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     var workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
 
-                    var workerDescription = WorkerConfigurationHelper.GetWorkerDescription(workerConfig, _jsonSerializerOptions, workerDir, _profileManager, _workerConfigurationResolverOptions.CurrentValue.LanguageSection, _logger);
+                    RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(workerConfig, _jsonSerializerOptions, workerDir, _profileManager, _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings, _logger);
 
                     if (workerDescription.IsDisabled == true)
                     {

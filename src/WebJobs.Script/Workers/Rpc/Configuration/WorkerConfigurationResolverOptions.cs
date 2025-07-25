@@ -21,8 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public HashSet<string> WorkersAvailableForResolution { get; set; }
 
-        public Dictionary<string, string> LanguageSection { get; set; }
-
         public string WorkersDir { get; set; }
+
+        public Dictionary<string, string> LanguageWorkersSettings { get; set; }
     }
 }

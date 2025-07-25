@@ -40,7 +40,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using NuGet.Common;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -136,22 +135,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return new EtwEventGenerator();
                 }
-            });
-
-            services.AddSingleton<IWorkerConfigurationResolver>(p =>
-            {
-                var environment = p.GetService<IEnvironment>();
-                var workerConfigurationResolverOptions = p.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
-                var workerProfileManager = p.GetService<IWorkerProfileManager>();
-                var loggerFactory = p.GetService<ILoggerFactory>();
-                var logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
-
-                if (environment.IsDynamicWorkerResolutionEnabled(workerConfigurationResolverOptions))
-                {
-                    return new DynamicWorkerConfigurationResolver(logger, FileUtility.Instance, workerProfileManager, workerConfigurationResolverOptions);
-                }
-
-                return new DefaultWorkerConfigurationResolver(logger, workerConfigurationResolverOptions);
             });
 
             // Management services
@@ -251,6 +234,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Refresh WorkerConfigurationResolverOptions and LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
             services.ConfigureOptionsWithChangeTokenSource<WorkerConfigurationResolverOptions, WorkerConfigurationResolverOptionsSetup, HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, HostBuiltChangeTokenSource<LanguageWorkerOptions>>();
+
+            services.AddSingleton<IWorkerConfigurationResolver>(p =>
+            {
+                var environment = p.GetService<IEnvironment>();
+                var workerConfigurationResolverOptions = p.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
+                var workerProfileManager = p.GetService<IWorkerProfileManager>();
+                var loggerFactory = p.GetService<ILoggerFactory>();
+                var logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
+
+                if (environment.IsDynamicWorkerResolutionEnabled(workerConfigurationResolverOptions))
+                {
+                    return new DynamicWorkerConfigurationResolver(logger, FileUtility.Instance, workerProfileManager, workerConfigurationResolverOptions);
+                }
+
+                return new DefaultWorkerConfigurationResolver(logger, workerConfigurationResolverOptions);
+            });
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);

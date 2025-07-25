@@ -19,12 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             JsonSerializerOptions jsonSerializerOptions,
             string workerDir,
             IWorkerProfileManager profileManager,
-            Dictionary<string, string> configSection,
+            Dictionary<string, string> languageWorkersSettings,
             ILogger logger)
         {
             var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
             var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
-
             workerDescription.WorkerDirectory = workerDir;
 
             // Read the profiles from worker description and load the profile for which the conditions match
@@ -40,8 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             workerDescription.Arguments ??= new List<string>();
 
-            GetWorkerDescriptionFromAppSettings(workerDescription, configSection);
-            AddArgumentsFromAppSettings(workerDescription, configSection);
+            // Check if any app settings are provided for that language
+            GetWorkerDescriptionFromAppSettings(workerDescription, languageWorkersSettings);
+            AddArgumentsFromAppSettings(workerDescription, languageWorkersSettings);
 
             // Validate workerDescription
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger);
@@ -127,12 +127,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, Dictionary<string, string> languageSection)
         {
-            if (languageSection is not null && languageSection.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionArguments}", out string argumentsSection))
+            if (languageSection is not null && languageSection.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionArguments}", out string argumentsValue))
             {
-                if (argumentsSection is not null)
-                {
-                    ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsSection, @"\s+"));
-                }
+                ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsValue, @"\s+"));
             }
         }
 
