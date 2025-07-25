@@ -575,10 +575,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(AzureWebJobsFeatureFlags, featureFlagValue);
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             bool result = testEnvironment.IsDynamicWorkerResolutionEnabled(optionsMonitor);
 
@@ -604,24 +601,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             testEnvironment.SetEnvironmentVariable(AppKind, multilanguageApp);
             testEnvironment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             bool result = testEnvironment.IsDynamicWorkerResolutionEnabled(optionsMonitor);
 
             Assert.Equal(expected, result);
-        }
-
-        private static IOptionsMonitor<WorkerConfigurationResolverOptions> GetOptionsMonitor(WorkerConfigurationResolverOptions resolverOptions)
-        {
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
-
-            return optionsMonitor;
         }
     }
 }

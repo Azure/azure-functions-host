@@ -57,10 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node");
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
@@ -100,11 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
-
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
@@ -155,11 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
-
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(_mockConfig.Object, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(_mockConfig.Object, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
@@ -169,16 +158,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Assert
             Assert.Equal(result.Count, 1);
             Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, languageWorker))));
-        }
-
-        private static IOptionsMonitor<WorkerConfigurationResolverOptions> GetOptionsMonitor(WorkerConfigurationResolverOptions resolverOptions)
-        {
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
-
-            return optionsMonitor;
         }
     }
 }

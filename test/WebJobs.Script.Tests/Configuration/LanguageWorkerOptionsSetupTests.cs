@@ -66,11 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 });
 
             var hostingOptions = new FunctionsHostingConfigOptions();
-
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), optionsMonitor);
 
@@ -120,11 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
-
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
@@ -170,11 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
-
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
@@ -219,11 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
-
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), optionsMonitor);
 
@@ -267,11 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
-
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), optionsMonitor);
 
@@ -313,11 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, workerRuntime);
-
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
-            var optionsMonitor = GetOptionsMonitor(resolverOptions);
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
@@ -335,16 +311,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
-        }
-
-        private static IOptionsMonitor<WorkerConfigurationResolverOptions> GetOptionsMonitor(WorkerConfigurationResolverOptions resolverOptions)
-        {
-            var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
-            var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<WorkerConfigurationResolverOptions>(factory, changeTokens, factory);
-
-            return optionsMonitor;
         }
     }
 }

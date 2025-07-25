@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal class WorkerConfigurationResolverOptionsSetup : IConfigureOptions<WorkerConfigurationResolverOptions>
+    internal sealed class WorkerConfigurationResolverOptionsSetup : IConfigureOptions<WorkerConfigurationResolverOptions>
     {
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
