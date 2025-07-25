@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -104,16 +105,20 @@ public class ContainerAppsSecretsRepository : ISecretsRepository
         return functionSecrets;
     }
 
-    private static async Task<IDictionary<string, string>> GetFromFilesAsync(string path)
+    private async Task<IDictionary<string, string>> GetFromFilesAsync(string path)
     {
         string[] files = await FileUtility.GetFilesAsync(path, "*");
         var secrets = new Dictionary<string, string>(files.Length);
 
+        StringBuilder sb = new StringBuilder("Loaded secrets from files:");
+
         foreach (var file in files)
         {
             secrets.Add(Path.GetFileName(file), await FileUtility.ReadAsync(file));
+            sb.AppendLine($"  {file}");
         }
 
+        _logger.LogDebug(sb.ToString());
         return secrets;
     }
 
