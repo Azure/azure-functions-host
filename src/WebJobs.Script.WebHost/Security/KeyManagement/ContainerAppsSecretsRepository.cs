@@ -49,7 +49,7 @@ public class ContainerAppsSecretsRepository : ISecretsRepository
             throw new ArgumentNullException(nameof(functionName), $"{nameof(functionName)} cannot be null or empty with {nameof(type)} = {nameof(ScriptSecretsType.Function)}");
         }
 
-        return type == ScriptSecretsType.Host ? await ReadHostSecretsAsync() : await ReadFunctionSecretsAsync(functionName?.ToLowerInvariant());
+        return type == ScriptSecretsType.Host ? await ReadHostSecretsAsync() : await ReadFunctionSecretsAsync(functionName.ToLowerInvariant());
     }
 
     public Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
@@ -122,14 +122,23 @@ public class ContainerAppsSecretsRepository : ISecretsRepository
         return secrets;
     }
 
+    /// <summary>
+    /// no-op - allow stale secrets to remain.
+    /// </summary>
+    public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger)
+        => await Task.Yield();
+
+    /// <summary>
+    /// Runtime is not responsible for encryption so this code will never be executed.
+    /// </summary>
     public Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
-        => throw new NotImplementedException();
+        => throw new NotSupportedException();
 
-    public Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger)
-        => throw new NotImplementedException();
-
+    /// <summary>
+    /// Runtime is not responsible for encryption so this code will never be executed.
+    /// </summary>
     public Task<string[]> GetSecretSnapshots(ScriptSecretsType type, string functionName)
-        => throw new NotImplementedException();
+        => throw new NotSupportedException();
 
     private static Key ParseKeyWithPrefix(string prefix, string key, string value)
         => new(key.Substring(prefix.Length), value);
