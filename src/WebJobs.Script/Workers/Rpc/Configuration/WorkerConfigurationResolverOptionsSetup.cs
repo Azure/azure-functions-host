@@ -74,14 +74,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         internal List<string> GetWorkerProbingPaths()
         {
-            var probingPaths = new List<string>();
+            // If Configuration section is set, read probing paths from configuration.
+            IConfigurationSection probingPathsSection = _configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")
+                                                                ?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
 
-            // If Environment variable is set, read probing paths from Environment
-            string probingPathsEnvValue = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.WorkerProbingPaths, null);
+            var probingPathsList = probingPathsSection?.AsEnumerable();
 
-            if (!string.IsNullOrEmpty(probingPathsEnvValue))
+            List<string> probingPaths = new List<string>();
+
+            if (probingPathsList is not null)
             {
-                probingPaths = probingPathsEnvValue.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+                for (int i = 0; i < probingPathsList.Count(); i++)
+                {
+                    var path = probingPathsSection.GetSection($"{i}").Value;
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        probingPaths.Add(path);
+                    }
+                }
             }
             else
             {

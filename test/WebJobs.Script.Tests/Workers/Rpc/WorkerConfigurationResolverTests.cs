@@ -4,6 +4,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -20,17 +22,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
     public class WorkerConfigurationResolverTests
     {
         private readonly Mock<IWorkerProfileManager> _mockProfileManager;
-        private readonly Mock<IConfiguration> _mockConfig;
         private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
         private readonly string _fallbackPath = Path.GetFullPath("workers");
-        private List<string> _probingPaths;
 
         public WorkerConfigurationResolverTests()
         {
             _mockProfileManager = new Mock<IWorkerProfileManager>();
-            _mockConfig = new Mock<IConfiguration>();
-
-            _probingPaths = new List<string> { _probingPath1, string.Empty, null, "path-not-exists" };
         }
 
         [Theory]
@@ -43,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
         {
             // Arrange
-            string probingPathValue = string.Join(';', _probingPath1, string.Empty, "path-not-exists");
+            var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
 
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -53,14 +50,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths)).Returns(probingPathValue);
+
+            var config = GetConfiguration(probingPaths);
 
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node");
 
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
@@ -100,11 +98,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 probingPaths = new List<string>();
             }
 
+            var config = GetConfiguration(probingPaths);
+
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
@@ -147,6 +147,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 probingPaths = new List<string>();
             }
 
+            var config = GetConfiguration(probingPaths);
+
             var mockProfileManager = new Mock<IWorkerProfileManager>();
             var mockConfig = new Mock<IConfiguration>();
 
@@ -158,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(_mockConfig.Object, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
@@ -168,6 +170,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Assert
             Assert.Equal(result.Count, 1);
             Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, languageWorker))));
+        }
+
+        private IConfiguration GetConfiguration(List<string> probingPaths)
+        {
+            var jsonObj = new
+            {
+                languageWorkers = new
+                {
+                    probingPaths
+                }
+            };
+
+            var jsonString = JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
+            var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
+
+            var configurationBuilder = new ConfigurationBuilder()
+                .Add(new ScriptEnvironmentVariablesConfigurationSource())
+                .AddJsonStream(jsonStream);
+
+            return configurationBuilder.Build();
         }
     }
 }
