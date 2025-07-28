@@ -45,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                 {
                     if (resultSource is not null && resultSource.Task.IsFaulted)
                     {
-                        throw resultSource.Task.Exception?.InnerException ?? new HttpRequestException("The function invocation tied to this HTTP request failed.");
+                        throw resultSource.Task.Exception?.InnerException ??
+                            new HttpRequestException($"The function invocation tied to this HTTP request failed. Invocation ID: {scriptInvocationContext.ExecutionContext.InvocationId}");
                     }
 
                     return await base.SendAsync(request, cancellationToken);
