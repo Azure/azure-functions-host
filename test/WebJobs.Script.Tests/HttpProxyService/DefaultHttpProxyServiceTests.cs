@@ -12,7 +12,7 @@ using Moq;
 using Xunit;
 using Yarp.ReverseProxy.Forwarder;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Tests.Http
 {
     public class DefaultHttpProxyServiceTests
     {
