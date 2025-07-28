@@ -17,18 +17,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public DefaultWorkerConfigurationResolver(ILoggerFactory loggerFactory, IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
-            if (loggerFactory is null)
-            {
-                throw new ArgumentNullException(nameof(loggerFactory));
-            }
-
-            _logger = _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
+            _ = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
         }
 
         public List<string> GetWorkerConfigPaths()
         {
+            // "workers" directory path within the Host
             var workersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
+
             _logger.LogDebug("Workers Directory set to: {workersDirPath}", workersDirPath);
 
             List<string> workerConfigs = new();

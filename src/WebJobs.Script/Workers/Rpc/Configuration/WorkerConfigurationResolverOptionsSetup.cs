@@ -56,27 +56,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             options.LanguageWorkersSettings = GetLanguageWorkersSettings(configuration);
         }
 
-        internal Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
-        {
-            // Convert the required configuration sections to Dictionary
-            var languageWorkersSettings = new Dictionary<string, string>();
-
-            foreach (var kvp in configuration.AsEnumerable())
-            {
-                if (kvp.Key.StartsWith(RpcWorkerConstants.LanguageWorkersSectionName))
-                {
-                    languageWorkersSettings[kvp.Key] = kvp.Value;
-                }
-            }
-
-            return languageWorkersSettings;
-        }
-
         internal List<string> GetWorkerProbingPaths()
         {
             // If Configuration section is set, read probing paths from configuration.
-            IConfigurationSection probingPathsSection = _configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")
-                                                                ?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
+            IConfigurationSection probingPathsSection = _configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
 
             var probingPathsList = probingPathsSection?.AsEnumerable();
 
@@ -95,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
             else
             {
-                if (_environment.IsWindowsEnvironment())
+                if (_environment.IsHostedWindowsEnvironment())
                 {
                     // Harcoded site extensions path for Windows until Antares sets it as an Environment variable.
                     // Example probing path for Windows: "c:\\home\\SiteExtensions\\workers"
@@ -124,6 +107,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             //Move 2 directories up to get to the SiteExtensions directory
             return Directory.GetParent(assemblyDir)?.Parent?.FullName;
+        }
+
+        internal Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
+        {
+            // Convert the required configuration sections to Dictionary
+            var languageWorkersSettings = new Dictionary<string, string>();
+
+            foreach (var kvp in configuration.AsEnumerable())
+            {
+                if (kvp.Key.StartsWith(RpcWorkerConstants.LanguageWorkersSectionName))
+                {
+                    languageWorkersSettings[kvp.Key] = kvp.Value;
+                }
+            }
+
+            return languageWorkersSettings;
         }
     }
 }

@@ -285,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in a Windows App Service app; otherwise, false.</returns>
-        public static bool IsWindowsEnvironment(this IEnvironment environment)
+        public static bool IsHostedWindowsEnvironment(this IEnvironment environment)
         {
             return environment.IsWindowsAzureManagedHosting() || environment.IsWindowsConsumption() || environment.IsWindowsElasticPremium();
         }
