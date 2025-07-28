@@ -2,16 +2,17 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Core;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
-
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -74,6 +75,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         }
                     }
                 }
+            }
+            catch (IOException ex) when (ex.InnerException is ConnectionAbortedException && context.CancellationToken.IsCancellationRequested)
+            {
+                // Expected when the client disconnects.
+                // Client side stream termination (e.g., process exit or network interruption)
+                // can cause MoveNext() to throw an IOException with a ConnectionAbortedException as the inner exception.
+                // If ServerCallContext's cancellation token is also canceled at this point, the exception can be safely ignored.
+                return;
             }
             catch (Exception rpcException)
             {
