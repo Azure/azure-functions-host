@@ -33,6 +33,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -338,7 +339,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (applicationHostOptions.HasParentScope)
                 {
-                    // Forward the host LanguageWorkerOptions to the Job Host.
+                    // Forward the host WorkerConfigurationResolverOptions and LanguageWorkerOptions to the Job Host.
+                    var workerResolverOptions = applicationHostOptions.RootServiceProvider.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
+                    services.AddSingleton(workerResolverOptions);
+                    services.AddSingleton<IOptions<WorkerConfigurationResolverOptions>>(s => new OptionsWrapper<WorkerConfigurationResolverOptions>(workerResolverOptions.CurrentValue));
+
                     var languageWorkerOptions = applicationHostOptions.RootServiceProvider.GetService<IOptionsMonitor<LanguageWorkerOptions>>();
                     services.AddSingleton(languageWorkerOptions);
                     services.AddSingleton<IOptions<LanguageWorkerOptions>>(s => new OptionsWrapper<LanguageWorkerOptions>(languageWorkerOptions.CurrentValue));
@@ -346,6 +351,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
+                    services.ConfigureOptions<WorkerConfigurationResolverOptionsSetup>();
                     services.ConfigureOptions<LanguageWorkerOptionsSetup>();
                     AddCommonServices(services);
                 }

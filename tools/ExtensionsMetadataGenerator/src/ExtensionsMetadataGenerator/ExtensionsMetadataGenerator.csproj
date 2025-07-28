@@ -5,40 +5,66 @@
     <TargetFrameworks>netstandard2.0;net46</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator</RootNamespace>
-    <BuildOutputTargetFolder>tools</BuildOutputTargetFolder>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
     <IsPackable>true</IsPackable>
-    <BeforePack>PackReferenceAssemblies</BeforePack>
     <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
   </PropertyGroup>
 
+  <!-- MSBuild extension props -->
+  <PropertyGroup>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+  </PropertyGroup>
+
   <ItemGroup>
-    <ConsoleProject Include="..\ExtensionsMetadataGenerator.Console\ExtensionsMetadataGenerator.Console.csproj" />
+    <!-- Explicitly set TFM to net6.0 as auto-resolution will fail with incompatible TFM. -->
+    <!-- https://github.com/Microsoft/msbuild/issues/2399 -->
+    <ProjectReference
+      Include="../ExtensionsMetadataGenerator.Console/ExtensionsMetadataGenerator.Console.csproj"
+      ReferenceOutputAssembly="false"
+      PrivateAssets="all"
+      Private="false"
+      SetTargetFramework="TargetFramework=net6.0"
+      Condition="'$(TargetFramework)' == 'netstandard2.0'"/>
   </ItemGroup>
 
-  <Target Name="BuildGeneratorConsole" Condition="'$(TargetFramework)' == 'netstandard2.0'" AfterTargets="Build">
-    <MSBuild Projects="@(ConsoleProject)" Targets="Restore;Build" Properties="Configuration=$(Configuration);Platform=$(Platform);TargetFramework=netcoreapp2.0;OutputPath=$(OutputPath)\generator" />
+  <Target Name="_IncludeConsoleReferences" BeforeTargets="AssignTargetPaths" Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <MSBuild Projects="@(ProjectReference)" Targets="GetTargetPath">
+      <Output TaskParameter="TargetOutputs" PropertyName="_ConsoleOutputPath" />
+    </MSBuild>
+
+    <PropertyGroup>
+      <_ConsoleOutputPath>$([System.IO.Path]::GetDirectoryName($(_ConsoleOutputPath)))</_ConsoleOutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_ConsoleFiles Include="$(_ConsoleOutputPath)/*" />
+      <None Include="@(_ConsoleFiles)" Link="generator/%(RecursiveDir)%(Filename)%(Extension)"  CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
   </Target>
 
   <ItemGroup>
-    <Content Include="Targets\**\*" Pack="true" PackagePath="build" />
+    <Content Include="Targets/**" Pack="true" PackagePath="build" />
   </ItemGroup>
 
   <Target Name="UpdateRuntimeAssemblies" BeforeTargets="Build">
     <Exec Command="pwsh ./updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Unix' "/>
-    <Exec Command="powershell.exe -command .\updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Windows_NT' "/>
+    <Exec Command="powershell.exe -command ./updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Windows_NT' "/>
   </Target>
 
-  <Target Name="PackReferenceAssemblies">
+  <Target Name="_CollectRuntimeDependencies" DependsOnTargets="_ComputeTargetFrameworkItems" BeforeTargets="_GetPackageFiles">
+    <MSBuild Projects="@(_InnerBuildProjects)" Targets="GetOutputFiles">
+      <Output TaskParameter="TargetOutputs" ItemName="_InnerOutputFiles" />
+    </MSBuild>
+
     <ItemGroup>
-      <Content Include="$(OutputPath)\netstandard2.0\generator\*" Pack="true" PackagePath="tools\netstandard2.0\generator" />
       <Content
-        Include="$(OutputPath)\netstandard2.0\*.dll"
-        Exclude="**\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll"
+        Include="@(_InnerOutputFiles)"
         Pack="true"
-        PackagePath="tools\netstandard2.0\" />
+        PackagePath="tools/%(_InnerOutputFiles.PackagePath)" />
     </ItemGroup>
   </Target>
 
@@ -57,6 +83,23 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Runtime.Loader" Version="4.3.0" />
+    <PackageReference Include="System.Runtime.Loader" Version="4.3.0" PrivateAssets="all" />
   </ItemGroup>
+
+  <Target Name="RemoveFrameworkDependencies" AfterTargets="_WalkEachTargetPerFramework">
+    <ItemGroup>
+      <_FrameworkAssemblyReferences Remove="@(_FrameworkAssemblyReferences)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="GetOutputFiles" Returns="@(_OutputFiles)">
+    <ItemGroup>
+      <_OutputFiles Include="$(OutputPath)**/*.dll" Exclude="$(OutputPath)**/Microsoft.Build.*.dll" />
+      <_OutputFiles Include="$(OutputPath)**/*.dll.config" />
+      <_OutputFiles Include="$(OutputPath)**/*.exe" />
+      <_OutputFiles Include="$(OutputPath)**/*.json" />
+      <_OutputFiles Update="@(_OutputFiles)" PackagePath="$([System.IO.Path]::Combine($(TargetFramework), %(RecursiveDir)))" />
+    </ItemGroup>
+  </Target>
+
 </Project>
