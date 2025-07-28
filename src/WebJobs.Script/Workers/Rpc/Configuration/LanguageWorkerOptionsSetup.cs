@@ -23,7 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
+        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigResolverOptions;
+        private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
@@ -31,7 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                           IMetricsLogger metricsLogger,
                                           IWorkerProfileManager workerProfileManager,
                                           IScriptHostManager scriptHostManager,
-                                          IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
+                                          IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigResolverOptions,
+                                          IWorkerConfigurationResolver workerConfigurationResolver)
         {
             if (loggerFactory is null)
             {
@@ -43,9 +45,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
+            _workerConfigResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
+            _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
-            _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
         }
 
         public void Configure(LanguageWorkerOptions options)
@@ -77,11 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var resolverFactory = new WorkerConfigurationResolverFactory(configuration, _logger, _environment, _workerProfileManager, _functionsHostingConfigOptions);
-
-            IWorkerConfigurationResolver workerConfigurationResolver = resolverFactory.CreateResolver();
-
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, workerConfigurationResolver);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver, _workerConfigResolverOptions);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }

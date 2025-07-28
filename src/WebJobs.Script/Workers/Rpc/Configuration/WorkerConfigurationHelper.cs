@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             JsonSerializerOptions jsonSerializerOptions,
             string workerDir,
             IWorkerProfileManager profileManager,
-            IConfiguration config,
+            Dictionary<string, string> languageWorkersSettings,
             ILogger logger)
         {
             var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
@@ -37,11 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            // Check if any app settings are provided for that language
-            var languageSection = config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
             workerDescription.Arguments ??= new List<string>();
-            GetWorkerDescriptionFromAppSettings(workerDescription, languageSection);
-            AddArgumentsFromAppSettings(workerDescription, languageSection);
+
+            if (languageWorkersSettings is not null)
+            {
+                // Check if any app settings are provided for that language
+                GetWorkerDescriptionFromAppSettings(workerDescription, languageWorkersSettings);
+                AddArgumentsFromAppSettings(workerDescription, languageWorkersSettings);
+            }
 
             // Validate workerDescription
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger);
@@ -112,21 +115,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return descriptionProfiles;
         }
 
-        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
+        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, Dictionary<string, string> languageWorkersSettings)
         {
-            var defaultExecutablePathSetting = languageSection?.GetSection($"{WorkerConstants.WorkerDescriptionDefaultExecutablePath}");
-            workerDescription.DefaultExecutablePath = defaultExecutablePathSetting?.Value != null ? defaultExecutablePathSetting.Value : workerDescription.DefaultExecutablePath;
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultExecutablePath}", out string defaultExecutablePathSetting))
+            {
+                workerDescription.DefaultExecutablePath = defaultExecutablePathSetting;
+            }
 
-            var defaultRuntimeVersionAppSetting = languageSection?.GetSection($"{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}");
-            workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting?.Value != null ? defaultRuntimeVersionAppSetting.Value : workerDescription.DefaultRuntimeVersion;
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}", out string defaultRuntimeVersionAppSetting))
+            {
+                workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting;
+            }
         }
 
-        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
+        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, Dictionary<string, string> languageWorkersSettings)
         {
-            var argumentsSection = languageSection?.GetSection($"{WorkerConstants.WorkerDescriptionArguments}");
-            if (argumentsSection?.Value != null)
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionArguments}", out string argumentsValue))
             {
-                ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsSection.Value, @"\s+"));
+                ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsValue, @"\s+"));
             }
         }
 

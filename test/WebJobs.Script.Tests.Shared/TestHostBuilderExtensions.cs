@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -83,6 +84,8 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddFunctionMetadataManager();
             services.AddHostMetrics();
             services.AddConfiguration();
+            services.ConfigureOptions<WorkerConfigurationResolverOptionsSetup>();
+            services.AddSingleton<IWorkerConfigurationResolver, DefaultWorkerConfigurationResolver>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
 
             configureRootServices?.Invoke(services);
