@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var hostingOptions = new FunctionsHostingConfigOptions();
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var resolver = new DefaultWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), optionsMonitor);
+            var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, optionsMonitor);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var resolver = new DynamicWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), FileUtility.Instance, testProfileManager.Object, optionsMonitor);
+            var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var resolver = new DynamicWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), FileUtility.Instance, testProfileManager.Object, optionsMonitor);
+            var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var resolver = new DefaultWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), optionsMonitor);
+            var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, optionsMonitor);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var hostingOptions = new FunctionsHostingConfigOptions();
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var resolver = new DefaultWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), optionsMonitor);
+            var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, optionsMonitor);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
@@ -295,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, workerRuntime);
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var resolver = new DynamicWorkerConfigurationResolver(loggerFactory.CreateLogger("Test"), FileUtility.Instance, testProfileManager.Object, optionsMonitor);
+            var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
             LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();

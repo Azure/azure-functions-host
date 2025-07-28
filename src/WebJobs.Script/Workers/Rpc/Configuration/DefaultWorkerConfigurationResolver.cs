@@ -15,9 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly ILogger _logger;
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
 
-        public DefaultWorkerConfigurationResolver(ILogger logger, IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
+        public DefaultWorkerConfigurationResolver(ILoggerFactory loggerFactory, IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            if (loggerFactory is null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
+            _logger = _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
         }
 

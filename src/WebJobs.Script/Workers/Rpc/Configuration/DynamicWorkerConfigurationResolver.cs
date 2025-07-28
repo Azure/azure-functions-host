@@ -26,12 +26,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
 
-        public DynamicWorkerConfigurationResolver(ILogger logger,
+        public DynamicWorkerConfigurationResolver(ILoggerFactory loggerFactory,
                                         IFileSystem fileSystem,
                                         IWorkerProfileManager workerProfileManager,
                                         IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigResolverOptions)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            if (loggerFactory is null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerConfigurationResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));

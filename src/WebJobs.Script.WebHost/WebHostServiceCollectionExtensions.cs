@@ -240,11 +240,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var environment = p.GetService<IEnvironment>();
                 var workerConfigurationResolverOptions = p.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
                 var workerProfileManager = p.GetService<IWorkerProfileManager>();
-                var logger = p.GetService<ILoggerFactory>().CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
+                var loggerFactory = p.GetService<ILoggerFactory>();
 
                 return environment.IsDynamicWorkerResolutionEnabled(workerConfigurationResolverOptions) ?
-                            new DynamicWorkerConfigurationResolver(logger, FileUtility.Instance, workerProfileManager, workerConfigurationResolverOptions) :
-                            new DefaultWorkerConfigurationResolver(logger, workerConfigurationResolverOptions);
+                            new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, workerProfileManager, workerConfigurationResolverOptions) :
+                            new DefaultWorkerConfigurationResolver(loggerFactory, workerConfigurationResolverOptions);
             });
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();

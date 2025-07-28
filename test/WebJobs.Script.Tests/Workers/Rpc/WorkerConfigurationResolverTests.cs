@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -20,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
     {
         private readonly Mock<IWorkerProfileManager> _mockProfileManager;
         private readonly Mock<IConfiguration> _mockConfig;
-        private readonly Mock<ILogger> _mockLogger;
         private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
         private readonly string _fallbackPath = Path.GetFullPath("workers");
         private List<string> _probingPaths;
@@ -29,7 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _mockProfileManager = new Mock<IWorkerProfileManager>();
             _mockConfig = new Mock<IConfiguration>();
-            _mockLogger = new Mock<ILogger>();
 
             _probingPaths = new List<string> { _probingPath1, string.Empty, null, "path-not-exists" };
         }
@@ -46,6 +45,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Arrange
             string probingPathValue = string.Join(';', _probingPath1, string.Empty, "path-not-exists");
 
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
             var mockEnvironment = new Mock<IEnvironment>();
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
@@ -60,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
@@ -81,6 +84,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void GetWorkerConfigs_MultiLanguageWorker_NullOREmptyProbingPath_ReturnsExpectedConfigs(string probingPathValue, string releaseChannel)
         {
             // Arrange
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
             var mockEnvironment = new Mock<IEnvironment>();
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
@@ -100,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(_mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
@@ -142,7 +149,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var mockProfileManager = new Mock<IWorkerProfileManager>();
             var mockConfig = new Mock<IConfiguration>();
-            var mockLogger = new Mock<ILogger>();
+
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
 
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
@@ -151,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(_mockConfig.Object, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(_mockLogger.Object, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, _mockProfileManager.Object, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
