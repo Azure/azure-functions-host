@@ -50,13 +50,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             options.ReleaseChannel = EnvironmentExtensions.GetPlatformReleaseChannel(_environment);
             options.IsPlaceholderModeEnabled = _environment.IsPlaceholderModeEnabled();
             options.IsMultiLanguageWorkerEnvironment = _environment.IsMultiLanguageRuntimeEnvironment();
-            options.WorkersDir = configuration?.GetSection($"{WorkerConstants.WorkersDirectorySectionName}")?.Value;
             options.WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(configuration);
             options.ProbingPaths = GetWorkerProbingPaths();
             options.WorkersAvailableForResolution = GetWorkersAvailableForResolutionViaHostingConfig(_functionsHostingConfigOptions);
+            options.LanguageWorkersSettings = GetLanguageWorkersSettings(configuration);
+        }
 
-            // Convert the entire configuration to JSON
+        internal Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
+        {
+            // Convert the required configuration sections to Dictionary
             var configDict = new Dictionary<string, string>();
+
             foreach (var kvp in configuration.AsEnumerable())
             {
                 if (kvp.Key.StartsWith(RpcWorkerConstants.LanguageWorkersSectionName))
@@ -65,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            options.LanguageWorkersSettings = configDict;
+            return configDict;
         }
 
         internal List<string> GetWorkerProbingPaths()
