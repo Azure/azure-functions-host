@@ -130,7 +130,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WorkerProbingPaths, probingPathValue);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
