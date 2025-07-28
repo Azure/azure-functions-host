@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -7,55 +7,69 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    /// <summary>
-    /// Factory for creating worker configuration resolvers depending on if dynamic worker resolution is enabled or not.
-    /// </summary>
-    internal sealed class WorkerConfigurationResolverFactory : IWorkerConfigurationResolverFactory
+    internal sealed class WorkerConfigurationResolverOptionsSetup : IConfigureOptions<WorkerConfigurationResolverOptions>
     {
         private readonly IConfiguration _configuration;
-        private readonly ILogger _logger;
         private readonly IEnvironment _environment;
-        private readonly IWorkerProfileManager _workerProfileManager;
+        private readonly IScriptHostManager _scriptHostManager;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
-        public WorkerConfigurationResolverFactory(
-                    IConfiguration configuration,
-                    ILogger logger, IEnvironment environment,
-                    IWorkerProfileManager workerProfileManager,
-                    IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
+        public WorkerConfigurationResolverOptionsSetup(IConfiguration configuration,
+                                                        IEnvironment environment,
+                                                        IScriptHostManager scriptHostManager,
+                                                        IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
+            _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
         }
 
-        public IWorkerConfigurationResolver CreateResolver()
+        public void Configure(WorkerConfigurationResolverOptions options)
         {
-            HashSet<string> workersAvailableForResolution = GetWorkersAvailableForResolutionViaHostingConfig(_functionsHostingConfigOptions);
-            List<string> probingPaths = GetWorkerProbingPaths();
-            bool dynamicWorkerResolutionEnabled = _environment.IsDynamicWorkerResolutionEnabled(workersAvailableForResolution);
-
-            if (dynamicWorkerResolutionEnabled)
+            var configuration = _configuration;
+            if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
             {
-                return new DynamicWorkerConfigurationResolver(_configuration,
-                                                                _logger,
-                                                                _environment,
-                                                                FileUtility.Instance,
-                                                                _workerProfileManager,
-                                                                workersAvailableForResolution,
-                                                                probingPaths);
+                var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
+                if (latestConfiguration is not null)
+                {
+                    configuration = new ConfigurationBuilder()
+                        .AddConfiguration(_configuration)
+                        .AddConfiguration(latestConfiguration)
+                        .Build();
+                }
             }
 
-            return new DefaultWorkerConfigurationResolver(_configuration, _logger);
+            options.WorkerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            options.ReleaseChannel = EnvironmentExtensions.GetPlatformReleaseChannel(_environment);
+            options.IsPlaceholderModeEnabled = _environment.IsPlaceholderModeEnabled();
+            options.IsMultiLanguageWorkerEnvironment = _environment.IsMultiLanguageRuntimeEnvironment();
+            options.WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(configuration);
+            options.ProbingPaths = GetWorkerProbingPaths();
+            options.WorkersAvailableForResolution = GetWorkersAvailableForResolutionViaHostingConfig(_functionsHostingConfigOptions);
+            options.LanguageWorkersSettings = GetLanguageWorkersSettings(configuration);
+        }
+
+        internal Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
+        {
+            // Convert the required configuration sections to Dictionary
+            var languageWorkersSettings = new Dictionary<string, string>();
+
+            foreach (var kvp in configuration.AsEnumerable())
+            {
+                if (kvp.Key.StartsWith(RpcWorkerConstants.LanguageWorkersSectionName))
+                {
+                    languageWorkersSettings[kvp.Key] = kvp.Value;
+                }
+            }
+
+            return languageWorkersSettings;
         }
 
         internal List<string> GetWorkerProbingPaths()

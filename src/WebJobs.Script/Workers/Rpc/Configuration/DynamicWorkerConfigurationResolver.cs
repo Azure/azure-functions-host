@@ -10,6 +10,7 @@ using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
@@ -17,30 +18,30 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     // It searches for worker configs in specified probing paths and the fallback path, and returns a list of worker configuration paths.
     internal sealed class DynamicWorkerConfigurationResolver : IWorkerConfigurationResolver
     {
-        private readonly IConfiguration _config;
         private readonly ILogger _logger;
         private readonly IWorkerProfileManager _profileManager;
-        private readonly IEnvironment _environment;
         private readonly IFileSystem _fileSystem;
         private readonly HashSet<string> _workersAvailableForResolutionViaHostingConfig;
         private readonly List<string> _workerProbingPaths;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
+        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
 
-        public DynamicWorkerConfigurationResolver(IConfiguration config,
-                                        ILogger logger,
-                                        IEnvironment environment,
+        public DynamicWorkerConfigurationResolver(ILoggerFactory loggerFactory,
                                         IFileSystem fileSystem,
                                         IWorkerProfileManager workerProfileManager,
-                                        HashSet<string> workersAvailableForResolutionViaHostingConfig,
-                                        List<string> workerProbingPaths)
+                                        IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigResolverOptions)
         {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            if (loggerFactory is null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _workersAvailableForResolutionViaHostingConfig = workersAvailableForResolutionViaHostingConfig;
-            _workerProbingPaths = workerProbingPaths;
+            _workerConfigurationResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
+            _workerProbingPaths = workerConfigResolverOptions.CurrentValue.ProbingPaths;
+            _workersAvailableForResolutionViaHostingConfig = workerConfigResolverOptions.CurrentValue.WorkersAvailableForResolution ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         }
 
         public List<string> GetWorkerConfigPaths()
@@ -50,13 +51,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // Sample path: "<rootProbingPath>/<workerRuntimeDir>/<workerVersion>/"
             var outputDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            var workerRuntime = _workerConfigurationResolverOptions.CurrentValue.WorkerRuntime;
 
             // Search for worker configs in probing paths
             ResolveWorkerConfigsFromProbingPaths(workerRuntime, outputDict);
 
-            if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                !_environment.IsPlaceholderModeEnabled() &&
+            if (!_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
+                !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
                 workerRuntime is not null &&
                 outputDict.ContainsKey(workerRuntime))
             {
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return;
             }
 
-            string releaseChannel = EnvironmentExtensions.GetPlatformReleaseChannel(_environment);
+            string releaseChannel = _workerConfigurationResolverOptions.CurrentValue.ReleaseChannel;
 
             // probing path directory structure is: <probingPath>/<workerRuntimeDir>/<workerVersion>/<worker.config.json>
             foreach (var probingPath in _workerProbingPaths)
@@ -107,8 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     // Skip worker directories that don't match the current runtime or are not enabled via hosting config
                     // Do not load all worker directories after the specialization is done and if it is not a multi-language runtime environment
                     if (!_workersAvailableForResolutionViaHostingConfig.Contains(workerRuntimeDir) ||
-                            (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                            !_environment.IsPlaceholderModeEnabled() &&
+                            (!_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
+                            !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
                             ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir)))
                     {
                         continue;
@@ -159,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private void ResolveWorkerConfigsFromWithinHost(string workerRuntime, Dictionary<string, string> outputDict)
         {
-            var fallbackPath = WorkerConfigurationHelper.GetWorkersDirPath(_config);
+            var fallbackPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
 
             _logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", fallbackPath);
 
@@ -170,8 +171,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     string workerDir = Path.GetFileName(workerPath).ToLower();
 
                     if (outputDict.ContainsKey(workerDir) ||
-                        (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                        !_environment.IsPlaceholderModeEnabled() &&
+                        (!_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
+                        !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
                         ShouldSkipWorkerDirectory(workerRuntime, workerDir)))
                     {
                         continue;
@@ -183,8 +184,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         outputDict[workerDir] = workerPath;
                     }
 
-                    if (!_environment.IsMultiLanguageRuntimeEnvironment() &&
-                        !_environment.IsPlaceholderModeEnabled() &&
+                    if (!_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
+                        !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
                         workerRuntime is not null &&
                         outputDict.ContainsKey(workerRuntime))
                     {
@@ -252,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 jsonSerializerOptions: _jsonSerializerOptions,
                 workerDir: workerDir,
                 profileManager: _profileManager,
-                config: _config,
+                languageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
                 logger: _logger);
 
             if (workerDescription.IsDisabled == true)

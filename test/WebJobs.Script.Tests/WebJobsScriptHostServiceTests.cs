@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -40,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Mock<IScriptWebHostEnvironment> _mockScriptWebHostEnvironment;
         private Mock<IEnvironment> _mockEnvironment;
         private HostBuiltChangeTokenSource<LanguageWorkerOptions> _hostBuiltChangeTokenSource = new();
+        private HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions> _hostBuiltChangeTokenSourceResolverOptions = new();
         private IConfiguration _mockConfig;
         private OptionsWrapper<HostHealthMonitorOptions> _healthMonitorOptions;
         private HostPerformanceManager _hostPerformanceManager;
@@ -119,7 +121,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
                 _mockConfig, mockEventManager.Object, _hostMetrics, _functionsHostingConfigOptions,
-                _hostBuiltChangeTokenSource);
+                _hostBuiltChangeTokenSource,
+                _hostBuiltChangeTokenSourceResolverOptions);
 
             await _hostService.StartAsync(CancellationToken.None);
 
@@ -151,7 +154,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
                 new Mock<IApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions,
-                _hostBuiltChangeTokenSource);
+                _hostBuiltChangeTokenSource,
+                _hostBuiltChangeTokenSourceResolverOptions);
 
             await _hostService.StartAsync(CancellationToken.None);
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
@@ -181,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
-                _mockConfig, new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource);
+                _mockConfig, new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions);
 
             await _hostService.StartAsync(CancellationToken.None);
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
@@ -236,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
-                _mockConfig, new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource);
+                _mockConfig, new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions);
 
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
             TestLoggerProvider hostBLogger = hostB.Object.GetTestLoggerProvider();
@@ -312,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
-                _mockConfig, new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource);
+                _mockConfig, new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions);
 
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
 
@@ -382,7 +386,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
                new Mock<IApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager(),
-               _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource);
+               _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions);
 
             Task startTask = _hostService.StartAsync(CancellationToken.None);
 
@@ -433,7 +437,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
-                _mockConfig, new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource);
+                _mockConfig, new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions);
 
             var hostLogger = host.Object.GetTestLoggerProvider();
 
@@ -471,7 +475,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
                new Mock<IApplicationLifetime>().Object, _mockConfig,
-               new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource);
+               new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions);
 
             // Simulate a call to specialize coming from the PlaceholderSpecializationMiddleware. This
             // can happen before we ever start the service, which could create invalid state.
@@ -527,7 +531,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
                 new Mock<IApplicationLifetime>().Object, config, new TestScriptEventManager(),
-                _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource);
+                _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions);
 
             Assert.Equal(expectedResult, _hostService.ShouldEnforceSequentialRestart());
         }
@@ -565,7 +569,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                             _hostPerformanceManager, _healthMonitorOptions, new TestMetricsLogger(),
                             new Mock<IApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager(),
-                            _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource))
+                            _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions))
             {
                 await _hostService.StartAsync(CancellationToken.None);
 
