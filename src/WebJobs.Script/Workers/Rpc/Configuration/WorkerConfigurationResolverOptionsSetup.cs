@@ -59,17 +59,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
         {
             // Convert the required configuration sections to Dictionary
-            var configDict = new Dictionary<string, string>();
+            var languageWorkersSettings = new Dictionary<string, string>();
 
             foreach (var kvp in configuration.AsEnumerable())
             {
                 if (kvp.Key.StartsWith(RpcWorkerConstants.LanguageWorkersSectionName))
                 {
-                    configDict[kvp.Key] = kvp.Value;
+                    languageWorkersSettings[kvp.Key] = kvp.Value;
                 }
             }
 
-            return configDict;
+            return languageWorkersSettings;
         }
 
         internal List<string> GetWorkerProbingPaths()

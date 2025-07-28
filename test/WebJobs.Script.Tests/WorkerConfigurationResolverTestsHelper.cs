@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     internal static class WorkerConfigurationResolverTestsHelper
     {
-        internal static IOptionsMonitor<WorkerConfigurationResolverOptions> GetWorkerConfigurationResolverOptions(IConfiguration configuration,
+        internal static IOptionsMonitor<WorkerConfigurationResolverOptions> GetTestWorkerConfigurationResolverOptions(IConfiguration configuration,
                                         IEnvironment environment,
                                         IScriptHostManager scriptHostManager,
                                         IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
