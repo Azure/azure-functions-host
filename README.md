@@ -1,4 +1,4 @@
-![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/master/src/Azure.Functions.Cli/npm/assets/azure-functions-logo-color-raster.png)
+![Azure Functions Logo](https://raw.githubusercontent.com/Azure/azure-functions-cli/main/eng/tools/publish-tools/npm/assets/azure-functions-logo-color-raster.png)
 
 |Branch|Status|
 |---|---|
