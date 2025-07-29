@@ -32,9 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("node")]
         public void LanguageWorkerOptions_Expected_ListOfConfigs(string workerRuntime)
         {
-            var loggerProvider = new TestLoggerProvider();
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(loggerProvider);
+            var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
             var testEnvironment = new TestEnvironment();
             var testMetricLogger = new TestMetricsLogger();
             var configurationBuilder = new ConfigurationBuilder()
@@ -68,13 +66,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }
                 });
 
-            var hostingOptions = new FunctionsHostingConfigOptions();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, null);
 
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, optionsMonitor);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
-            LanguageWorkerOptions options = new LanguageWorkerOptions();
+            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
+            var options = new LanguageWorkerOptions();
+
             setup.Configure(options);
 
             if (string.IsNullOrEmpty(workerRuntime))
@@ -108,29 +106,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var testMetricLogger = new TestMetricsLogger();
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            string probingPathValue = string.Join(';', _probingPath1, string.Empty, "path-not-exists");
 
             testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
 
             var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
-
-            var jsonObj = new
-            {
-                languageWorkers = new
-                {
-                    probingPaths
-                }
-            };
-
-            var jsonString = JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
-            var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
-
-            var configurationBuilder = new ConfigurationBuilder()
-                .Add(new ScriptEnvironmentVariablesConfigurationSource())
-                .AddJsonStream(jsonStream);
-
-            var configuration = configurationBuilder.Build();
+            var configuration = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);

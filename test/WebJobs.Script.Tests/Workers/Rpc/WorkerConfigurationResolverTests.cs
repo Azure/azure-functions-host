@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
 
-            var config = GetConfiguration(probingPaths);
+            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
 
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 probingPaths = new List<string>();
             }
 
-            var config = GetConfiguration(probingPaths);
+            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
 
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 probingPaths = new List<string>();
             }
 
-            var config = GetConfiguration(probingPaths);
+            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
 
             var mockProfileManager = new Mock<IWorkerProfileManager>();
             var mockConfig = new Mock<IConfiguration>();
@@ -170,26 +170,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Assert
             Assert.Equal(result.Count, 1);
             Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, languageWorker))));
-        }
-
-        private IConfiguration GetConfiguration(List<string> probingPaths)
-        {
-            var jsonObj = new
-            {
-                languageWorkers = new
-                {
-                    probingPaths
-                }
-            };
-
-            var jsonString = JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
-            var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
-
-            var configurationBuilder = new ConfigurationBuilder()
-                .Add(new ScriptEnvironmentVariablesConfigurationSource())
-                .AddJsonStream(jsonStream);
-
-            return configurationBuilder.Build();
         }
     }
 }
