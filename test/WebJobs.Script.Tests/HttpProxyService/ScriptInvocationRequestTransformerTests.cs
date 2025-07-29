@@ -131,5 +131,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
             var forwardedProto = proxyRequest.Headers.GetValues("X-Forwarded-Proto");
             Assert.Contains(originalProto, forwardedProto);
         }
+
+        [Fact]
+        public async Task TransformRequestAsync_PreservesStandardRequestHeaders()
+        {
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Scheme = "https";
+            httpContext.Request.Host = new HostString("example.com");
+            httpContext.Request.Path = "/api/test";
+            var remoteAddress = "192.168.1.100";
+            httpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(remoteAddress);
+
+            // Add various standard headers that should be preserved
+            httpContext.Request.Headers["Authorization"] = "Bearer token123";
+            httpContext.Request.Headers["User-Agent"] = "TestClient/1.0";
+            httpContext.Request.Headers["Accept"] = "application/json";
+            httpContext.Request.Headers["Content-Type"] = "application/json";
+            httpContext.Request.Headers["X-Custom-Header"] = "custom-value";
+            httpContext.Request.Headers["Cache-Control"] = "no-cache";
+            httpContext.Request.Headers["Accept-Encoding"] = "gzip, deflate";
+
+            var proxyRequest = new HttpRequestMessage(HttpMethod.Post, "http://localhost:7071/api/test");
+            const string destinationPrefix = "http://localhost:7071";
+
+            await _transformer.TransformRequestAsync(httpContext, proxyRequest, destinationPrefix, CancellationToken.None);
+
+            // Verify that standard headers are preserved
+            Assert.True(proxyRequest.Headers.Contains("Authorization"), "Authorization header should be preserved");
+            Assert.True(proxyRequest.Headers.Contains("User-Agent"), "User-Agent header should be preserved");
+            Assert.True(proxyRequest.Headers.Contains("Accept"), "Accept header should be preserved");
+            Assert.True(proxyRequest.Headers.Contains("X-Custom-Header"), "Custom headers should be preserved");
+            Assert.True(proxyRequest.Headers.Contains("Cache-Control"), "Cache-Control header should be preserved");
+            Assert.True(proxyRequest.Headers.Contains("Accept-Encoding"), "Accept-Encoding header should be preserved");
+
+            // Verify header values
+            var authHeader = proxyRequest.Headers.GetValues("Authorization");
+            Assert.Contains("Bearer token123", authHeader);
+
+            var userAgentHeader = proxyRequest.Headers.GetValues("User-Agent");
+            Assert.Contains("TestClient/1.0", userAgentHeader);
+
+            var acceptHeader = proxyRequest.Headers.GetValues("Accept");
+            Assert.Contains("application/json", acceptHeader);
+
+            var customHeader = proxyRequest.Headers.GetValues("X-Custom-Header");
+            Assert.Contains("custom-value", customHeader);
+
+            var cacheControlHeader = proxyRequest.Headers.GetValues("Cache-Control");
+            Assert.Contains("no-cache", cacheControlHeader);
+
+            var acceptEncodingHeader = proxyRequest.Headers.GetValues("Accept-Encoding");
+            Assert.Contains("gzip", acceptEncodingHeader);
+            Assert.Contains("deflate", acceptEncodingHeader);
+
+            // Verify that Content-Type is properly handled for the request content
+            if (proxyRequest.Content != null)
+            {
+                Assert.Equal("application/json", proxyRequest.Content.Headers.ContentType?.MediaType);
+            }
+
+            // Also verify X-Forwarded headers are still added
+            Assert.True(proxyRequest.Headers.Contains("X-Forwarded-For"));
+            Assert.True(proxyRequest.Headers.Contains("X-Forwarded-Host"));
+            Assert.True(proxyRequest.Headers.Contains("X-Forwarded-Proto"));
+        }
     }
 }

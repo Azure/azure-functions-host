@@ -11,7 +11,7 @@ using Yarp.ReverseProxy.Forwarder;
 
 namespace Microsoft.Azure.WebJobs.Script.Http
 {
-    internal class ScriptInvocationRequestTransformer : HttpTransformer
+    internal sealed class ScriptInvocationRequestTransformer : HttpTransformer
     {
         public override async ValueTask TransformRequestAsync(HttpContext httpContext, HttpRequestMessage proxyRequest, string destinationPrefix, CancellationToken cancellationToken)
         {
