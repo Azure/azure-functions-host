@@ -242,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var workerProfileManager = p.GetService<IWorkerProfileManager>();
                 var loggerFactory = p.GetService<ILoggerFactory>();
 
-                return environment.IsDynamicWorkerResolutionEnabled(workerConfigurationResolverOptions) ?
+                return Utility.IsDynamicWorkerResolutionEnabled(environment, workerConfigurationResolverOptions) ?
                             new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, workerProfileManager, workerConfigurationResolverOptions) :
                             new DefaultWorkerConfigurationResolver(loggerFactory, workerConfigurationResolverOptions);
             });

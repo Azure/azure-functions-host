@@ -10,8 +10,6 @@ using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
-using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 using static Microsoft.Azure.WebJobs.Script.Utility;
 
@@ -702,37 +700,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static string GetPlatformReleaseChannel(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariable(AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
-        }
-
-        /// <summary>
-        /// Checks if the Dynamic Worker Resolution feature is disabled via feature flag.
-        /// Returns true if the feature is disabled, false otherwise.
-        /// </summary>
-        public static bool IsWorkerResolutionFeatureDisabled(this IEnvironment environment)
-        {
-            return FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, environment);
-        }
-
-        // Users can disable dynamic worker resolution via setting the appropriate feature flag.
-        // Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
-        // Feature flag takes precedence over hosting config options.
-        public static bool IsDynamicWorkerResolutionEnabled(this IEnvironment environment, IOptionsMonitor<WorkerConfigurationResolverOptions> options)
-        {
-            if (environment.IsWorkerResolutionFeatureDisabled() || options.CurrentValue.WorkersAvailableForResolution is null)
-            {
-                return false;
-            }
-
-            string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-
-            if (!environment.IsMultiLanguageRuntimeEnvironment() &&
-                !string.IsNullOrWhiteSpace(workerRuntime) &&
-                !environment.IsPlaceholderModeEnabled())
-            {
-                return options.CurrentValue.WorkersAvailableForResolution.Contains(workerRuntime);
-            }
-
-            return options.CurrentValue.WorkersAvailableForResolution.Any();
         }
 
         public static bool IsApplicationInsightsAgentEnabled(this IEnvironment environment)
