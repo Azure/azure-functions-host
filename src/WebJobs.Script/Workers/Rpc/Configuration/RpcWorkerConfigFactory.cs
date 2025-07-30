@@ -11,8 +11,10 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -26,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
+        private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
+        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -38,7 +42,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         ISystemRuntimeInformation systemRuntimeInfo,
                                         IEnvironment environment,
                                         IMetricsLogger metricsLogger,
-                                        IWorkerProfileManager workerProfileManager)
+                                        IWorkerProfileManager workerProfileManager,
+                                        IWorkerConfigurationResolver workerConfigurationResolver,
+                                        IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -47,14 +53,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
+            _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
 
-            WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
-            var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
-
-            if (!string.IsNullOrEmpty(workersDirectorySection.Value))
-            {
-                WorkersDirPath = workersDirectorySection.Value;
-            }
+            WorkersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
         }
 
         public string WorkersDirPath { get; }
@@ -68,20 +70,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal static string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
-        {
-#pragma warning disable SYSLIB0012 // Type or member is obsolete
-            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
-#pragma warning restore SYSLIB0012 // Type or member is obsolete
-            string workersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
-            if (!directoryExists(workersDirPath))
-            {
-                // Site Extension. Default to parent directory
-                workersDirPath = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
-            }
-            return workersDirPath;
-        }
-
         internal void BuildWorkerProviderDictionary()
         {
             AddProviders();
@@ -90,15 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            _logger.LogDebug("Workers Directory set to: {WorkersDirPath}", WorkersDirPath);
+            List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigPaths();
 
-            foreach (var workerDir in Directory.EnumerateDirectories(WorkersDirPath))
+            foreach (var workerConfig in workerConfigs)
             {
-                string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
-                if (File.Exists(workerConfigPath))
-                {
-                    AddProvider(workerDir);
-                }
+                AddProvider(workerConfig);
             }
         }
 

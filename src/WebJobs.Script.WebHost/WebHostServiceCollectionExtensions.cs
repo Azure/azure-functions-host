@@ -29,7 +29,9 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
 using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
@@ -217,6 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
             services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsChangeTokenSource>();
             services.ConfigureOptions<StandbyOptionsSetup>();
+            services.ConfigureOptions<WorkerConfigurationResolverOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
@@ -228,11 +231,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddHostingConfigOptions(configuration);
             services.ConfigureOptions<ExtensionRequirementOptionsSetup>();
 
-            // Refresh LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
-            services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, HostBuiltChangeTokenSource<LanguageWorkerOptions>>();
-
+            // Refresh WorkerConfigurationResolverOptions and LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
+            services.ConfigureOptionsWithChangeTokenSource<WorkerConfigurationResolverOptions, WorkerConfigurationResolverOptionsSetup, HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions>>();
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
+
+            services.AddSingleton<IWorkerConfigurationResolver>(p =>
+            {
+                var workerConfigurationResolverOptions = p.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
+                var loggerFactory = p.GetService<ILoggerFactory>();
+                return new DefaultWorkerConfigurationResolver(loggerFactory, workerConfigurationResolverOptions);
+            });
 
             // Add AzureBlobStorageProvider to WebHost (also needed for ScriptHost) and AzureTableStorageProvider
             services.AddAzureStorageProviders();
