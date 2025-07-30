@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
     public class WorkerConfigurationResolverOptionsSetupTests
     {
         [Fact]
-        public void Configure_WithRealEnvironmentValues_SetsCorrectDefaults()
+        public void Configure_WithRealEnvironmentValues_SetsCorrectValues()
         {
             // Arrange
             var testEnvironment = new TestEnvironment();
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void Configure_WithRealEnvironmentValues_SetsCorrectDefaults1()
+        public void Configure_WithRealEnvironmentValues_Works()
         {
             // Arrange
             var testEnvironment = new TestEnvironment();

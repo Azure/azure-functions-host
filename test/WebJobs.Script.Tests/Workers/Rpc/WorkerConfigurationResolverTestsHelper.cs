@@ -1,10 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -24,12 +20,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (functionsHostingConfigOptions is null)
             {
                 var hostingOptions = new FunctionsHostingConfigOptions();
-                functionsHostingConfigOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
+                functionsHostingConfigOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions);
             }
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, environment, scriptHostManager, functionsHostingConfigOptions);
+            var resolverOptionsSetup = new WorkerConfigurationResolverOptionsSetup(configuration, environment, scriptHostManager, functionsHostingConfigOptions);
             var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
+            resolverOptionsSetup.Configure(resolverOptions);
 
             var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
             var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();

@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public List<string> GetWorkerConfigPaths()
         {
-            // "workers" directory path within the Host
             var workersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
 
             _logger.LogDebug("Workers Directory set to: {workersDirPath}", workersDirPath);
