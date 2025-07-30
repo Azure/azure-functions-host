@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -121,9 +122,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// Runs tests with Node language provider function.
         /// </summary>
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task CodelessFunction_CanUse_SingleJavascriptLanguageProviders(bool enableDynamicWorkerResolution)
+        [InlineData(true, typeof(DynamicWorkerConfigurationResolver))]
+        [InlineData(false, typeof(DefaultWorkerConfigurationResolver))]
+        public async Task CodelessFunction_CanUse_SingleJavascriptLanguageProviders(bool enableDynamicWorkerResolution, Type resolverType)
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
             var settings = new Dictionary<string, string>()
@@ -145,6 +146,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var functions = new[] { "InProcCSFunction", "JavascriptFunction" };
                 using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider }, testEnvironment, enableDynamicWorkerResolution))
                 {
+                    var services = host.WebHostServices.GetService<IWorkerConfigurationResolver>();
+                    Assert.True(services.GetType() == resolverType);
+
                     var cSharpFunctionKey = await host.GetFunctionSecretAsync("InProcCSFunction");
                     using var cSharpHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/InProcCSFunction?name=Azure&code={cSharpFunctionKey}");
                     Assert.Equal(HttpStatusCode.OK, cSharpHttpTriggerResponse.StatusCode);
