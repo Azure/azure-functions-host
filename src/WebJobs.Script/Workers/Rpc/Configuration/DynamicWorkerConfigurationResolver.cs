@@ -31,8 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                         IWorkerProfileManager workerProfileManager,
                                         IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigResolverOptions)
         {
-            _ = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
+            _logger = loggerFactory is not null ? loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig) : throw new ArgumentNullException(nameof(loggerFactory));
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerConfigurationResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));

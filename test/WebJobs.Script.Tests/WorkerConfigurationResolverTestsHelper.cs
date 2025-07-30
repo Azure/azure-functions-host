@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (functionsHostingConfigOptions is null)
             {
                 var hostingOptions = new FunctionsHostingConfigOptions();
-                functionsHostingConfigOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions);
+                functionsHostingConfigOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
             }
 
             var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, environment, scriptHostManager, functionsHostingConfigOptions);
