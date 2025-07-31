@@ -1,5 +1,10 @@
 <Project>
 
+  <PropertyGroup Condition="'$(MinorVersionPrefix)' == ''">
+    <MinorVersionPrefix Condition="'$(TargetFramework)' == 'net6.0'">6</MinorVersionPrefix>
+    <MinorVersionPrefix Condition="'$(TargetFramework)' == 'net8.0'">8</MinorVersionPrefix>
+  </PropertyGroup>
+
   <!--
     Import the first 'Directory.Version.props' seen from project being built up.
     This allows each directory cone to set its own versioning at the time this file needs it set.
@@ -24,13 +29,9 @@
     <AssemblyVersion>$(VersionPrefix.Substring(0, $(VersionPrefix.LastIndexOf('.')))).0.0</AssemblyVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(CI)' != 'true'">
-    <!-- Constant file version for local dev. -->
-    <FileVersion>42.42.42.4242</FileVersion>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(CI)' == 'true'">
-    <FileVersion>$(VersionPrefix).$(BuildNumber)</FileVersion>
+  <PropertyGroup>
+    <FileVersion Condition="'$(CI)' != 'true'">42.42.42.4242</FileVersion> <!-- Constant file version for local dev. -->
+    <FileVersion Condition="'$(CI)' == 'true'">$(VersionPrefix).$(BuildNumber)</FileVersion>
   </PropertyGroup>
 
 </Project>

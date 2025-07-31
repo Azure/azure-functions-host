@@ -14,6 +14,12 @@
     <Version>$(VersionPrefix)-$(VersionSuffix)</Version>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(MinorVersionPrefix)' != ''">
+    <!-- Removing MinorVersionPrefix from the package version. -->
+    <!-- NOTE: this relies on minor version being 1 digit. -->
+    <PackageVersion>$(Version.Remove(2, $(MinorVersionPrefix.Length)))</PackageVersion>
+  </PropertyGroup>
+
   <!-- When building in Azure pipelines, update the build number. -->
   <!-- Specifically use '$(TF_BUILD)' and not '$(CI)' to ensure we are in Azure pipelines. -->
   <Target Name="UpdateAzDoBuildNumber" Condition="'$(TF_BUILD)' == 'true' AND '$(UpdateBuildNumber)' == 'true'" BeforeTargets="BeforeBuild">
