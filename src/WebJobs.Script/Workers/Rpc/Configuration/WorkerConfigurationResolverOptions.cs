@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    public class WorkerConfigurationResolverOptions
+    public sealed class WorkerConfigurationResolverOptions
     {
         // Gets or sets the workers directory path within the Host or defined by IConfiguration.
         public string WorkersDirPath { get; set; }
