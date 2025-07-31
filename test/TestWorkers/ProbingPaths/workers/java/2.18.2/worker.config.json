@@ -1,0 +1,12 @@
+{
+    "description": {
+        "isDisabled": true,
+        "language": "java",
+        "extensions": [".jar"],
+        "defaultExecutablePath": "%JAVA_HOME%/bin/java",
+        "defaultWorkerPath": "azure-functions-java-worker.jar",
+        "arguments": []
+    },
+    "hostRequirements": [],
+    "profiles": []
+}

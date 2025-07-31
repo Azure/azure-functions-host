@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
     public class WorkerConfigurationResolverOptionsSetupTests
     {
         [Fact]
-        public void Configure_WithRealEnvironmentValues_SetsCorrectValues()
+        public void Configure_WithRealEnvironmentValues_SetsCorrectDefaults()
         {
             // Arrange
             var testEnvironment = new TestEnvironment();
@@ -25,6 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
                     [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = "/default/workers",
+                    [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{RpcWorkerConstants.WorkerProbingPathsSectionName}:0"] = "testPath1",
+                    [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{RpcWorkerConstants.WorkerProbingPathsSectionName}:1"] = "testPath2",
+                    [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{RpcWorkerConstants.WorkerProbingPathsSectionName}:2"] = " ",
                 });
             var configuration = configBuilder.Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
@@ -38,11 +41,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             setup.Configure(options);
 
             // Assert
+            Assert.Null(options.WorkerRuntime);
+            Assert.Equal(ScriptConstants.LatestPlatformChannelNameUpper, options.ReleaseChannel);
+            Assert.False(options.IsPlaceholderModeEnabled);
+            Assert.False(options.IsMultiLanguageWorkerEnvironment);
             Assert.Equal("/default/workers", options.WorkersDirPath);
+            Assert.NotNull(options.LanguageWorkersSettings);
+
+            Assert.Equal(2, options.ProbingPaths.Count);
+            Assert.True(options.ProbingPaths.Contains("testPath1"));
+            Assert.True(options.ProbingPaths.Contains("testPath2"));
+
+            Assert.False(options.WorkersAvailableForResolution.Any());
         }
 
         [Fact]
-        public void Configure_WithRealEnvironmentValues_Works()
+        public void Configure_WithRealEnvironmentValues_SetsCorrectDefaults1()
         {
             // Arrange
             var testEnvironment = new TestEnvironment();
@@ -59,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, "workflowapp");
 
             var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node");
 
             var setup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var options = new WorkerConfigurationResolverOptions();
@@ -67,7 +82,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             setup.Configure(options);
 
             // Assert
+            Assert.Equal("java", options.WorkerRuntime);
+            Assert.Equal("standard", options.ReleaseChannel);
+            Assert.False(options.IsPlaceholderModeEnabled);
+            Assert.False(options.IsMultiLanguageWorkerEnvironment);
             Assert.Equal("/default/workers", options.WorkersDirPath);
+            Assert.NotNull(options.LanguageWorkersSettings);
+
+            Assert.NotNull(options.ProbingPaths);
+            Assert.False(options.ProbingPaths.Any());
+
+            Assert.True(options.WorkersAvailableForResolution.Count == 2);
+            Assert.True(options.WorkersAvailableForResolution.Contains("java"));
+            Assert.True(options.WorkersAvailableForResolution.Contains("node"));
         }
     }
 }

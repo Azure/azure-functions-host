@@ -240,9 +240,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             services.AddSingleton<IWorkerConfigurationResolver>(p =>
             {
+                var environment = p.GetService<IEnvironment>();
                 var workerConfigurationResolverOptions = p.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
+                var workerProfileManager = p.GetService<IWorkerProfileManager>();
                 var loggerFactory = p.GetService<ILoggerFactory>();
-                return new DefaultWorkerConfigurationResolver(loggerFactory, workerConfigurationResolverOptions);
+
+                return Utility.IsDynamicWorkerResolutionEnabled(environment, workerConfigurationResolverOptions) ?
+                            new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, workerProfileManager, workerConfigurationResolverOptions) :
+                            new DefaultWorkerConfigurationResolver(loggerFactory, workerConfigurationResolverOptions);
             });
 
             // Add AzureBlobStorageProvider to WebHost (also needed for ScriptHost) and AzureTableStorageProvider

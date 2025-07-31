@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -1057,6 +1058,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<ArgumentNullException>(() => Utility.ValidateRetryOptions(retryOptions));
             Assert.Equal("Value cannot be null. (Parameter 'DelayInterval')", ex.Message);
+        }
+
+        [Theory]
+        [InlineData(null, "node", true)]
+        [InlineData(null, "java|node", true)]
+        [InlineData(null, "", false)]
+        [InlineData(null, "| ", false)]
+        [InlineData(null, null, false)]
+        [InlineData(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, "node", false)]
+        [InlineData(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, "java|node", false)]
+        [InlineData(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, "| ", false)]
+
+        public void IsDynamicWorkerResolutionEnabled_HostingConfigAndFeatureFlags_WorksAsExpected(string featureFlagValue, string hostingConfigSetting, bool expected)
+        {
+            var mockConfiguration = new Mock<IConfiguration>();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingConfigSetting);
+
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlagValue);
+
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+
+            bool result = Utility.IsDynamicWorkerResolutionEnabled(testEnvironment, optionsMonitor);
+
+            Assert.Equal(expected, result);
+        }
+
+        [Theory]
+        [InlineData("node", "node", null, true)]
+        [InlineData("node", "java", null, false)]
+        [InlineData("java|node", null, null, true)]
+        [InlineData("node", "node", "workflowapp", true)]
+        [InlineData("java|node", null, "workflowapp", true)]
+        [InlineData("| ", null, "workflowapp", false)]
+        public void IsDynamicWorkerResolutionEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp, bool expected)
+        {
+            var mockConfiguration = new Mock<IConfiguration>();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingConfigSetting);
+
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, multilanguageApp);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
+
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+
+            bool result = Utility.IsDynamicWorkerResolutionEnabled(testEnvironment, optionsMonitor);
+
+            Assert.Equal(expected, result);
         }
 
         [Fact]
