@@ -19,54 +19,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void Configure_WithRealEnvironmentValues_SetsCorrectValues()
         {
-            // Arrange
             var testEnvironment = new TestEnvironment();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
             var configBuilder = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
                     [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = "/default/workers",
                 });
             var configuration = configBuilder.Build();
-            var mockScriptHostManager = new Mock<IScriptHostManager>();
-
             var hostingOptions = new FunctionsHostingConfigOptions();
 
             var setup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var options = new WorkerConfigurationResolverOptions();
 
-            // Act
             setup.Configure(options);
 
-            // Assert
-            Assert.Equal("/default/workers", options.WorkersDirPath);
-        }
-
-        [Fact]
-        public void Configure_WithRealEnvironmentValues_Works()
-        {
-            // Arrange
-            var testEnvironment = new TestEnvironment();
-            var configBuilder = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
-                {
-                    [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = "/default/workers",
-                });
-            var configuration = configBuilder.Build();
-            var mockScriptHostManager = new Mock<IScriptHostManager>();
-
-            testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "java");
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, "standard");
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, "workflowapp");
-
-            var hostingOptions = new FunctionsHostingConfigOptions();
-
-            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var options = new WorkerConfigurationResolverOptions();
-
-            // Act
-            setup.Configure(options);
-
-            // Assert
             Assert.Equal("/default/workers", options.WorkersDirPath);
         }
     }

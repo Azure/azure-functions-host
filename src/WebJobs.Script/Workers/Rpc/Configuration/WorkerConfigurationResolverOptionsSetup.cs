@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,23 +49,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         internal static string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
         {
-#pragma warning disable SYSLIB0012 // Type or member is obsolete
-            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
-#pragma warning restore SYSLIB0012 // Type or member is obsolete
-            string workersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            var assemblyPath = Assembly.GetExecutingAssembly().Location;
+            var assemblyDir = Path.GetDirectoryName(assemblyPath);
+            string workersDirPath = Path.Combine(assemblyDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
+
             if (!directoryExists(workersDirPath))
             {
-                // Site Extension. Default to parent directory
-                workersDirPath = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
+                // Site Extension Path. Default to parent directory.
+                workersDirPath = Path.Combine(Directory.GetParent(assemblyDir).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
             }
             return workersDirPath;
         }
 
         internal static string GetWorkersDirPath(IConfiguration configuration)
         {
-            var workersDirectorySection = configuration?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
-
             string workersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
+            var workersDirectorySection = configuration?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
 
             if (!string.IsNullOrEmpty(workersDirectorySection?.Value))
             {
