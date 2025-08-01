@@ -3,8 +3,6 @@
 
 using System;
 using System.IO;
-using System.Reflection;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -14,19 +12,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     internal sealed class WorkerConfigurationResolverOptionsSetup : IConfigureOptions<WorkerConfigurationResolverOptions>
     {
         private readonly IConfiguration _configuration;
-        private readonly IEnvironment _environment;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
-        public WorkerConfigurationResolverOptionsSetup(IConfiguration configuration,
-                                                        IEnvironment environment,
-                                                        IScriptHostManager scriptHostManager,
-                                                        IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
+        public WorkerConfigurationResolverOptionsSetup(IConfiguration configuration, IScriptHostManager scriptHostManager)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
-            _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
         }
 
         public void Configure(WorkerConfigurationResolverOptions options)
@@ -49,14 +40,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         internal static string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
         {
-            var assemblyPath = Assembly.GetExecutingAssembly().Location;
-            var assemblyDir = Path.GetDirectoryName(assemblyPath);
+            var assemblyDir = AppContext.BaseDirectory;
             string workersDirPath = Path.Combine(assemblyDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
 
             if (!directoryExists(workersDirPath))
             {
                 // Site Extension Path. Default to parent directory.
-                workersDirPath = Path.Combine(Directory.GetParent(assemblyDir).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
+                var parentDir = Directory.GetParent(assemblyDir.TrimEnd(Path.DirectorySeparatorChar)).FullName;
+                workersDirPath = Path.Combine(parentDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
             }
             return workersDirPath;
         }
