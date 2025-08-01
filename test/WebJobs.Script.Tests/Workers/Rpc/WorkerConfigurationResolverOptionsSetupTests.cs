@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Linq;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -35,6 +35,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             setup.Configure(options);
 
             Assert.Equal("/default/workers", options.WorkersDirPath);
+        }
+
+        [Fact]
+        public void Format_SerializesOptionsToJson()
+        {
+            var options = new WorkerConfigurationResolverOptions
+            {
+                WorkersDirPath = "/test/workers"
+            };
+
+            string json = options.Format();
+
+            Assert.NotNull(json);
+            Assert.NotEmpty(json);
+
+            var jsonDocument = JsonDocument.Parse(json);
+            Assert.NotNull(jsonDocument);
+
+            var root = jsonDocument.RootElement;
+            Assert.True(root.TryGetProperty("WorkersDirPath", out var workersDirPathProperty));
+            Assert.Equal("/test/workers", workersDirPathProperty.GetString());
+        }
+
+        [Fact]
+        public void Format_WithNullProperties_SerializesSuccessfully()
+        {
+            var options = new WorkerConfigurationResolverOptions
+            {
+                WorkersDirPath = null
+            };
+
+            string json = options.Format();
+
+            Assert.NotNull(json);
+            Assert.NotEmpty(json);
+
+            var jsonDocument = JsonDocument.Parse(json);
+            Assert.NotNull(jsonDocument);
+
+            var root = jsonDocument.RootElement;
+            Assert.True(root.TryGetProperty("WorkersDirPath", out var workersDirPathProperty));
+            Assert.Equal(null, workersDirPathProperty.GetString());
         }
     }
 }
