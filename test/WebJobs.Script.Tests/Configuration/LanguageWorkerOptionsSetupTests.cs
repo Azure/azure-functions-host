@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, optionsMonitor);
 
-            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
+            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
             var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
