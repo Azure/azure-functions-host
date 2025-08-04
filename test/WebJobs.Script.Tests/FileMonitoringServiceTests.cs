@@ -1,16 +1,17 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System;
+using System.Drawing;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using WebJobs.Script.Tests;
 using Xunit;
 
@@ -93,8 +94,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var watchedFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "my_watched_file.txt");
                 FileEvent watchedFileEvent = new FileEvent("ScriptFiles", watchedFileEventArgs);
 
-                string expectedReason = $"File change of type 'Created' detected for '{Path.Combine(tempDir, "my_watched_file.txt")}'";
-                string notExpectedReason = $"File change of type 'Created' detected for '{Path.Combine(tempDir, "my_ignored_file.txt")}'";
+                var expectedReason = $"File change of type 'Created' detected for '{Path.Combine(tempDir, "my_watched_file.txt")}'";
+                var notExpectedReason = $"File change of type 'Created' detected for '{Path.Combine(tempDir, "my_ignored_file.txt")}'";
 
                 // Test
                 mockEventManager.Publish(ignoredFileEvent);
@@ -159,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     e2.Set();
                 });
 
-                string restartReason = "Running restart requested while in a restart suspension scope.";
+                var restartReason = "Running restart requested while in a restart suspension scope.";
                 mockScriptHostManager.Verify(m => m.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Never);
                 e1.WaitOne(5000);
                 mockScriptHostManager.Verify(m => m.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Never);
@@ -202,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var randomFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "host.json");
                 FileEvent randomFileEvent = new FileEvent("ScriptFiles", randomFileEventArgs);
 
-                string expectedReason = $"Running restart requested while in a restart suspension scope.";
+                var expectedReason = $"Running restart requested while in a restart suspension scope.";
                 using (fileMonitoringService.SuspendRestart(true))
                 {
                     using (fileMonitoringService.SuspendRestart(true))
@@ -348,7 +349,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Never);
                 }
 
-                string expectedReason = $"File change of type 'Created' detected for '{Path.Combine(tempDir, fileName)}'";
+                var expectedReason = $"File change of type 'Created' detected for '{Path.Combine(tempDir, fileName)}'";
                 if (expectRestart)
                 {
                     await restart.Task.WaitAsync(TimeSpan.FromSeconds(5));
