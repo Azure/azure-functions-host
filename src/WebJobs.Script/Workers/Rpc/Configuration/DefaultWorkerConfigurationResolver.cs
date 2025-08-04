@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         public List<string> GetWorkerConfigPaths()
         {
             var workersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
-            _logger.LogDefaultWorkersDirectoryPath(workersDirPath);
+            _logger.DefaultWorkersDirectoryPath(workersDirPath);
 
             List<string> workerConfigs = new();
 
@@ -42,9 +42,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workerConfigs;
         }
 
-        public WorkerConfigurationResolverOptions GetWorkerConfigurationResolverOptions()
+        public IOptionsMonitor<WorkerConfigurationResolverOptions> GetWorkerConfigurationResolverOptions()
         {
-            return _workerConfigurationResolverOptions.CurrentValue;
+            return _workerConfigurationResolverOptions;
         }
     }
 }

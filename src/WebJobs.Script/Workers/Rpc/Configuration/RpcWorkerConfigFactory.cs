@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -28,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
-        private readonly WorkerConfigurationResolverOptions _workerConfigurationResolverOptions;
+        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -54,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
             _workerConfigurationResolverOptions = workerConfigurationResolver.GetWorkerConfigurationResolverOptions();
 
-            WorkersDirPath = _workerConfigurationResolverOptions.WorkersDirPath;
+            WorkersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
         }
 
         public string WorkersDirPath { get; }

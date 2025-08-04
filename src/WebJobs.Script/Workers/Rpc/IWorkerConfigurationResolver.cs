@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -13,6 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         List<string> GetWorkerConfigPaths();
 
-        WorkerConfigurationResolverOptions GetWorkerConfigurationResolverOptions();
+        IOptionsMonitor<WorkerConfigurationResolverOptions> GetWorkerConfigurationResolverOptions();
     }
 }
