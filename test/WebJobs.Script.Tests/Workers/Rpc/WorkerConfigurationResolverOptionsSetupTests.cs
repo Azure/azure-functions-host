@@ -15,23 +15,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
     public class WorkerConfigurationResolverOptionsSetupTests
     {
         [Fact]
-        public void Configure_WithRealEnvironmentValues_SetsCorrectValues()
+        public void Configure_WithEnvironmentValues_SetsCorrectValues()
         {
             var testEnvironment = new TestEnvironment();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
-            var configBuilder = new ConfigurationBuilder()
+            var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
                     [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = "/default/workers",
-                });
-            var configuration = configBuilder.Build();
+                }).Build();
 
             var setup = new WorkerConfigurationResolverOptionsSetup(configuration, mockScriptHostManager.Object);
             var options = new WorkerConfigurationResolverOptions();
-
             setup.Configure(options);
 
             Assert.Equal("/default/workers", options.WorkersDirPath);
+        }
+
+        [Fact]
+        public void Configure_WithNullConfigValues_SetsCorrectValues()
+        {
+            var testEnvironment = new TestEnvironment();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = null,
+                }).Build();
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, mockScriptHostManager.Object);
+            var options = new WorkerConfigurationResolverOptions();
+            setup.Configure(options);
+
+            Assert.NotNull(options.WorkersDirPath);
+            Assert.Contains("workers", options.WorkersDirPath);
+        }
+
+        [Fact]
+        public void Configure_WorkerConfigurationResolverOptions()
+        {
+            var testEnvironment = new TestEnvironment();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+            var configuration = new ConfigurationBuilder().Build();
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, mockScriptHostManager.Object);
+            var options = new WorkerConfigurationResolverOptions();
+            setup.Configure(options);
+
+            Assert.NotNull(options.WorkersDirPath);
+            Assert.Contains("workers", options.WorkersDirPath);
         }
 
         [Fact]
