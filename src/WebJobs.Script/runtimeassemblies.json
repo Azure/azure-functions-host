@@ -20,10 +20,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "Azure.Monitor.OpenTelemetry.AspNetCore",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Azure.Monitor.OpenTelemetry.Exporter",
       "resolutionPolicy": "private"
     },
