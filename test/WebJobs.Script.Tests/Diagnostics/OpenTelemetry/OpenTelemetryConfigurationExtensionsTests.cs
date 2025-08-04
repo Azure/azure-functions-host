@@ -263,12 +263,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             var resolvedClient = ExtractTraceManagedIdentityCredential(tracerProviderDescriptors);
 
             // Extract the clientId from the client object
-            var clientIdValue = resolvedClient?.GetType().GetProperty("ClientId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(resolvedClient)?.ToString();
+            var managedIdentityId = resolvedClient?.GetType().GetProperty("ManagedIdentityId", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(resolvedClient);
+            string resolvedIdType = managedIdentityId?.GetType().InvokeMember("_idType", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetField, null, managedIdentityId, []).ToString();
+            string resolvedUserAssignedIdValue = managedIdentityId?.GetType().InvokeMember("_userAssignedId", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.GetField, null, managedIdentityId, []).ToString();
 
             // Assert
             serviceCollection.Should().NotBeNullOrEmpty();
-            clientIdValue.Should().Be(clientId.ToString());
             resolvedClient.GetType().Name.Should().Be("ManagedIdentityClient");
+            resolvedIdType.Should().Be("ClientId");
+            resolvedUserAssignedIdValue.Should().Be(clientId.ToString());
         }
 
         [Fact]
