@@ -22,7 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigResolverOptions;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
@@ -31,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                           IMetricsLogger metricsLogger,
                                           IWorkerProfileManager workerProfileManager,
                                           IScriptHostManager scriptHostManager,
-                                          IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigResolverOptions,
                                           IWorkerConfigurationResolver workerConfigurationResolver)
         {
             if (loggerFactory is null)
@@ -44,7 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _workerConfigResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
@@ -79,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver, _workerConfigResolverOptions);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }

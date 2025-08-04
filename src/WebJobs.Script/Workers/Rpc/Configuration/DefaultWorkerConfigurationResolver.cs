@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -17,15 +18,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public DefaultWorkerConfigurationResolver(ILoggerFactory loggerFactory, IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
-            _logger = loggerFactory is not null ? loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig) : throw new ArgumentNullException(nameof(loggerFactory));
+            ArgumentNullException.ThrowIfNull(loggerFactory);
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
         }
 
         public List<string> GetWorkerConfigPaths()
         {
             var workersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
-
-            _logger.LogDebug("Workers Directory set to: {workersDirPath}", workersDirPath);
+            _logger.LogDefaultWorkersDirectoryPath(workersDirPath);
 
             List<string> workerConfigs = new();
 
@@ -38,8 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     workerConfigs.Add(workerDir);
                 }
             }
-
             return workerConfigs;
+        }
+
+        public WorkerConfigurationResolverOptions GetWorkerConfigurationResolverOptions()
+        {
+            return _workerConfigurationResolverOptions.CurrentValue;
         }
     }
 }

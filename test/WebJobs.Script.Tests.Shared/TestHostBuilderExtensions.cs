@@ -77,6 +77,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IDiagnosticEventRepository, TestDiagnosticEventRepository>();
             services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
             services.AddSingleton<ISecretManagerProvider, TestSecretManagerProvider>();
+            services.AddSingleton<IWorkerConfigurationResolver, DefaultWorkerConfigurationResolver>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddWebJobsScriptHostRouting();
@@ -86,6 +87,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddConfiguration();
             services.ConfigureOptions<WorkerConfigurationResolverOptionsSetup>();
             services.AddSingleton<IWorkerConfigurationResolver, DefaultWorkerConfigurationResolver>();
+            services.ConfigureOptions<WorkerConfigurationResolverOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
 
             configureRootServices?.Invoke(services);

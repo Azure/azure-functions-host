@@ -312,6 +312,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return version;
         }
 
+        public WorkerConfigurationResolverOptions GetWorkerConfigurationResolverOptions()
+        {
+            return _workerConfigurationResolverOptions.CurrentValue;
+        }
+
         private class DescendingVersionComparer : IComparer<Version>
         {
             public int Compare(Version x, Version y)

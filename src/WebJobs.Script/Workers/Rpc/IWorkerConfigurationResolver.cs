@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -11,5 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     internal interface IWorkerConfigurationResolver
     {
         List<string> GetWorkerConfigPaths();
+
+        WorkerConfigurationResolverOptions GetWorkerConfigurationResolverOptions();
     }
 }

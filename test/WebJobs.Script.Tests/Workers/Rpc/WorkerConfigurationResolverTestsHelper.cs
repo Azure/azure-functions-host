@@ -27,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 functionsHostingConfigOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
             }
 
-            var resolverOptionssetup = new WorkerConfigurationResolverOptionsSetup(configuration, environment, scriptHostManager, functionsHostingConfigOptions);
+            var resolverOptionsSetup = new WorkerConfigurationResolverOptionsSetup(configuration, environment, scriptHostManager, functionsHostingConfigOptions);
             var resolverOptions = new WorkerConfigurationResolverOptions();
-            resolverOptionssetup.Configure(resolverOptions);
+            resolverOptionsSetup.Configure(resolverOptions);
 
             var factory = new TestOptionsFactory<WorkerConfigurationResolverOptions>(resolverOptions);
             var source = new TestChangeTokenSource<WorkerConfigurationResolverOptions>();

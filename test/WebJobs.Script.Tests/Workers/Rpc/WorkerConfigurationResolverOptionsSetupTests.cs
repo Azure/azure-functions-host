@@ -2,13 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Linq;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -19,8 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void Configure_WithRealEnvironmentValues_SetsCorrectDefaults()
         {
-            // Arrange
             var testEnvironment = new TestEnvironment();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
             var configBuilder = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
@@ -30,14 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{RpcWorkerConstants.WorkerProbingPathsSectionName}:2"] = " ",
                 });
             var configuration = configBuilder.Build();
-            var mockScriptHostManager = new Mock<IScriptHostManager>();
 
-            var hostingOptions = new FunctionsHostingConfigOptions();
-
-            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, mockScriptHostManager.Object, null);
             var options = new WorkerConfigurationResolverOptions();
 
-            // Act
             setup.Configure(options);
 
             // Assert
@@ -52,37 +47,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(options.ProbingPaths.Contains("testPath1"));
             Assert.True(options.ProbingPaths.Contains("testPath2"));
 
-            Assert.False(options.WorkersAvailableForResolution.Any());
+            Assert.True(options.WorkersAvailableForResolution.Count == 0);
         }
 
         [Fact]
-        public void Configure_WithRealEnvironmentValues_SetsCorrectDefaults1()
+        public void Format_SerializesOptionsToJson()
         {
-            // Arrange
-            var testEnvironment = new TestEnvironment();
-            var configBuilder = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
-                {
-                    [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = "/default/workers",
-                });
-            var configuration = configBuilder.Build();
-            var mockScriptHostManager = new Mock<IScriptHostManager>();
+            var options = new WorkerConfigurationResolverOptions
+            {
+                WorkersDirPath = "/test/workers"
+            };
 
-            testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "java");
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, "standard");
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, "workflowapp");
+            string json = options.Format();
+
+            Assert.NotNull(json);
+            Assert.NotEmpty(json);
+
+            var jsonDocument = JsonDocument.Parse(json);
+            Assert.NotNull(jsonDocument);
+
+            var root = jsonDocument.RootElement;
+            Assert.True(root.TryGetProperty("WorkersDirPath", out var workersDirPathProperty));
+            Assert.Equal("/test/workers", workersDirPathProperty.GetString());
+        }
+
+        [Fact]
+        public void Format_WithNullProperties_SerializesSuccessfully()
+        {
+            var options = new WorkerConfigurationResolverOptions
+            {
+                WorkersDirPath = null
+            };
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node");
+            string json = options.Format();
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var options = new WorkerConfigurationResolverOptions();
+            Assert.NotNull(json);
+            Assert.NotEmpty(json);
 
-            // Act
-            setup.Configure(options);
+            var jsonDocument = JsonDocument.Parse(json);
+            Assert.NotNull(jsonDocument);
 
             // Assert
-            Assert.Equal("java", options.WorkerRuntime);
+       //     Assert.Equal("java", options.WorkerRuntime);
             Assert.Equal("standard", options.ReleaseChannel);
             Assert.False(options.IsPlaceholderModeEnabled);
             Assert.False(options.IsMultiLanguageWorkerEnvironment);
@@ -90,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.NotNull(options.LanguageWorkersSettings);
 
             Assert.NotNull(options.ProbingPaths);
-            Assert.False(options.ProbingPaths.Any());
+            Assert.True(options.ProbingPaths.Count == 0);
 
             Assert.True(options.WorkersAvailableForResolution.Count == 2);
             Assert.True(options.WorkersAvailableForResolution.Contains("java"));

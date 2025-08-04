@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, optionsMonitor);
 
-            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
+            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
             var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -162,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -203,7 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, optionsMonitor);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -241,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, null);
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, optionsMonitor);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -279,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, optionsMonitor, resolver);
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);
