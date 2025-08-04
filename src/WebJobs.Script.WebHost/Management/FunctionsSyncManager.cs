@@ -729,7 +729,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         // This function will call POST https://{app}.azurewebsites.net/operation/settriggers with the content
-        // of triggers. It'll verify app ownership using a SWT token valid for 5 minutes. It should be plenty.
+        // of triggers. It'll verify app ownership using a site token valid for 5 minutes. It should be plenty.
         private async Task<(bool Success, string ErrorMessage)> SetTriggersAsync(string content)
         {
             // sanitize the content before logging
@@ -746,12 +746,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, requestId);
                 request.Headers.Add("User-Agent", ScriptConstants.FunctionsUserAgent);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
-
-                if (_hostingConfigOptions.Value.SwtIssuerEnabled)
-                {
-                    string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
-                    request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-                }
 
                 string jwtToken = JwtTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
                 request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);

@@ -7,7 +7,10 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,10 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionAppValidationServiceTests
     {
-        private readonly ILogger<FunctionAppValidationService> _testLogger;
+        private readonly ILogger _testLogger;
         private readonly Mock<IOptions<ScriptJobHostOptions>> _scriptOptionsMock;
         private readonly ScriptJobHostOptions _scriptJobHostOptions;
         private readonly TestLoggerProvider _testLoggerProvider;
+        private readonly ILoggerFactory _loggerFactory;
 
         public FunctionAppValidationServiceTests()
         {
@@ -36,9 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _scriptOptionsMock.Setup(o => o.Value).Returns(_scriptJobHostOptions);
 
             _testLoggerProvider = new TestLoggerProvider();
-            var factory = new LoggerFactory();
-            factory.AddProvider(_testLoggerProvider);
-            _testLogger = factory.CreateLogger<FunctionAppValidationService>();
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddProvider(_testLoggerProvider);
+            _testLogger = _loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
         }
 
         [Fact]
@@ -46,17 +50,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _testLoggerProvider.ClearAllLogMessages();
 
+            var mockValidator = new Mock<IFunctionAppValidator>();
+            // No-op validator
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _loggerFactory,
                 _scriptOptionsMock.Object,
-                new TestEnvironment());
+                new TestEnvironment(),
+                [mockValidator.Object]);
 
             // Act
             await service.StartAsync(CancellationToken.None);
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
+            var traceMessage = traces.FirstOrDefault(val => string.Equals(val.EventId.Name, "MissingAzureFunctionsFolder"));
 
             Assert.Null(traceMessage);
         }
@@ -69,17 +76,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
+            var mockValidator = new Mock<IFunctionAppValidator>();
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _loggerFactory,
                 _scriptOptionsMock.Object,
-                environment);
+                environment,
+                [mockValidator.Object]);
 
             // Act
             await service.StartAsync(CancellationToken.None);
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
+            var traceMessage = traces.FirstOrDefault(val => string.Equals(val.EventId.Name, "MissingAzureFunctionsFolder"));
 
             Assert.Null(traceMessage);
         }
@@ -102,17 +111,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             scriptOptionsMock.Setup(o => o.Value).Returns(scriptJobHostOptions);
 
+            var mockValidator = new Mock<IFunctionAppValidator>();
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _loggerFactory,
                 scriptOptionsMock.Object,
-                environment);
+                environment,
+                [mockValidator.Object]);
 
             // Act
             await service.StartAsync(CancellationToken.None);
 
             //Assert
             var traces = _testLoggerProvider.GetAllLogMessages();
-            var traceMessage = traces.FirstOrDefault(val => val.EventId.Name.Equals("MissingAzureFunctionsFolder"));
+            var traceMessage = traces.FirstOrDefault(val => string.Equals(val.EventId.Name, "MissingAzureFunctionsFolder"));
 
             Assert.Null(traceMessage);
         }
@@ -133,10 +144,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
 
+            // Use the real validator for folder check
+            var folderValidator = new MissingAzureFunctionsFolderValidator();
             var service = new FunctionAppValidationService(
-                _testLogger,
+                _loggerFactory,
                 _scriptOptionsMock.Object,
-                environment);
+                environment,
+                [folderValidator]);
 
             // Act
             await service.StartAsync(CancellationToken.None);
@@ -146,6 +160,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 int completed = _testLoggerProvider.GetAllLogMessages().Count(p => p.FormattedMessage.Contains("Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app."));
                 return completed > 0;
             });
+        }
+
+        [Theory]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle", "3.36.0", true)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle", "2.25.0", true)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle", "4.22.0", false)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle.Preview", "4.29.0", false)]
+        [InlineData("Microsoft.Azure.Functions.ExtensionBundle.Preview", "3.2.0", false)]
+        [InlineData(null, null, false)]
+        [InlineData("", "", false)]
+        public void GetOutdatedBundleWarningMessage_LogsWarning(string bundleId, string bundleVersion, bool shouldLogEvent)
+        {
+            // Arrange
+            _testLoggerProvider.ClearAllLogMessages();
+
+            var options = new ExtensionBundleOptions { Id = bundleId };
+            var env = new TestEnvironment();
+            var config = new FunctionsHostingConfigOptions();
+            var manager = new ExtensionBundleManager(options, env, _loggerFactory, config);
+
+            // Set the private _extensionBundleVersion field using reflection
+            typeof(ExtensionBundleManager)
+                .GetField("_extensionBundleVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .SetValue(manager, bundleVersion);
+
+            var validator = new ExtensionBundleManagerValidator(manager);
+            var service = new FunctionAppValidationService(
+                _loggerFactory,
+                _scriptOptionsMock.Object,
+                env,
+                [validator]);
+
+            // Act
+            validator.Validate(_scriptJobHostOptions, env, _testLogger);
+
+            // Assert
+            var logMessages = _testLoggerProvider.GetAllLogMessages();
+
+            // Check for both possible resource strings (future and past deprecation)
+            bool hasFutureWarning = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion)
+                && m.FormattedMessage.Contains("will reach end of support on Aug 4, 2026.")
+                && m.Level == LogLevel.Warning);
+            bool hasPastWarning = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion)
+                && m.FormattedMessage.Contains("has reached end of support on Aug 4, 2026.")
+                && m.Level == LogLevel.Warning);
+            bool hasOutdatedBundleLog = hasFutureWarning || hasPastWarning;
+
+            Assert.Equal(shouldLogEvent, hasOutdatedBundleLog);
         }
     }
 }

@@ -584,7 +584,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             string json = JsonConvert.SerializeObject(context);
             var encryptionKey = Convert.FromBase64String(TestHelpers.EncryptionKey);
-            string encryptedJson = SimpleWebTokenHelper.Encrypt(json, encryptionKey);
+            string encryptedJson = EncryptionHelper.Encrypt(json, encryptionKey);
 
             File.WriteAllText(path, encryptedJson);
 

@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Secrets = _secrets
             };
             string json = JsonConvert.SerializeObject(context);
-            string encrypted = SimpleWebTokenHelper.Encrypt(json, environment: _environment);
+            string encrypted = EncryptionHelper.Encrypt(json, environment: _environment);
             var encryptedContext = new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
 
             var result = _startupContextProvider.SetContext(encryptedContext);
@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 IsWarmupRequest = true
             };
             string json = JsonConvert.SerializeObject(context);
-            string encrypted = SimpleWebTokenHelper.Encrypt(json, environment: _environment);
+            string encrypted = EncryptionHelper.Encrypt(json, environment: _environment);
             var encryptedContext = new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
 
             var result = _startupContextProvider.SetContext(encryptedContext);
@@ -237,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 context = JsonConvert.SerializeObject(content);
             }
 
-            var encrypted = SimpleWebTokenHelper.Encrypt(context, environment: _environment);
+            var encrypted = EncryptionHelper.Encrypt(context, environment: _environment);
 
             File.WriteAllText(path, encrypted);
 

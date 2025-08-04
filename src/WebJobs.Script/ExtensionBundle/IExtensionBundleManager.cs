@@ -20,5 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         bool IsLegacyExtensionBundle();
 
         Task<ExtensionBundleDetails> GetExtensionBundleDetails();
+
+        string GetOutdatedBundleVersion();
     }
 }

@@ -66,32 +66,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task HostAdminApis_IgnoresSwtTokens()
-        {
-            // expect unauthorized if an swt is passed
-            string uri = "admin/host/status";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            string swtToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(1));
-            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-            // expect success when both a jwt and an swt are sent
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            var jwtToken = _fixture.Host.GenerateAdminJwtToken();
-            request.Headers.Add(ScriptConstants.SiteRestrictedTokenHeaderName, swtToken);
-            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-            // expect success when only a jwt is sent
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Add(ScriptConstants.SiteTokenHeaderName, jwtToken);
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
-
-        [Fact]
         public async Task InvokeAdminLevelFunction_WithoutMasterKey_ReturnsUnauthorized()
         {
             // no key presented

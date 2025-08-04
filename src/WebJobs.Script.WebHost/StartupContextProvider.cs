@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // Dont' want to block on this file operation, so we kick it off in the background.
                     Task.Run(() => File.Delete(contextPath));
 
-                    string decryptedContent = SimpleWebTokenHelper.Decrypt(content, environment: _environment);
+                    string decryptedContent = EncryptionHelper.Decrypt(content, environment: _environment);
                     var context = JsonConvert.DeserializeObject<StartupContext>(decryptedContent);
 
                     return context;
@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// <returns>The decrypted assignment context</returns>
         public virtual HostAssignmentContext SetContext(EncryptedHostAssignmentContext encryptedContext)
         {
-            string decryptedContext = SimpleWebTokenHelper.Decrypt(encryptedContext.EncryptedContext, environment: _environment);
+            string decryptedContext = EncryptionHelper.Decrypt(encryptedContext.EncryptedContext, environment: _environment);
             var hostAssignmentContext = JsonConvert.DeserializeObject<HostAssignmentContext>(decryptedContext);
 
             // Don't update StartupContext for warmup requests

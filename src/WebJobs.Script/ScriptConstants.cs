@@ -108,7 +108,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresLogIdHeaderName = "X-ARR-LOG-ID";
         public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";
         public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
-        public const string SiteRestrictedTokenHeaderName = "x-ms-site-restricted-token";
         public const string SiteTokenHeaderName = "x-ms-site-token";
         public const string EasyAuthIdentityHeader = "x-ms-client-principal";
         public const string AntaresPlatformInternal = "x-ms-platform-internal";
@@ -145,7 +144,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
         public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";
-        public const string HostingConfigSwtIssuerEnabled = "SwtIssuerEnabled";
         public const string HostingConfigInternalAuthApisAllowList = "InternalAuthApisAllowList";
         public const string HostingConfigDotNetInProcDisabled = "DotNetInProcDisabled";
 
@@ -269,5 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string CancellationTokenRegistration = "CancellationTokenRegistration";
 
         internal const string MasterKeyName = "_master";
+
+        public static readonly ImmutableHashSet<string> SensitiveMetadataBindingPropertyNames = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "connection");
     }
 }
