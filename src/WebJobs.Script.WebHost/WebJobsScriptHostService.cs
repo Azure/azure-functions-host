@@ -818,7 +818,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 // This periodic check allows us to break out of the host run
                 // loop. The health check performed in OnHostInitializing will then
-                // fail, and we'll enter a restart loop (exponentially backing off)
+                // fail and we'll enter a restart loop (exponentially backing off)
                 // until the host is healthy again and we can resume host processing.
                 _logger.UnhealthyRestart();
                 var tIgnore = RestartHostAsync("Host health check detected an unhealthy host.", CancellationToken.None);
