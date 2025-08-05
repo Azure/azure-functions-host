@@ -60,17 +60,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // Use the latest configuration from the ScriptHostManager if available.
             // After specialization, the ScriptHostManager will have the latest IConfiguration reflecting additional configuration entries added during specialization.
             var configuration = _configuration;
-            if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
-            {
-                var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
-                if (latestConfiguration is not null)
-                {
-                    configuration = new ConfigurationBuilder()
-                        .AddConfiguration(_configuration)
-                        .AddConfiguration(latestConfiguration)
-                        .Build();
-                }
-            }
+            //if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
+            //{
+            //    var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
+            //    if (latestConfiguration is not null)
+            //    {
+            //        configuration = new ConfigurationBuilder()
+            //            .AddConfiguration(_configuration)
+            //            .AddConfiguration(latestConfiguration)
+            //            .Build();
+            //    }
+            //}
 
             var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager);
             options.WorkerConfigs = configFactory.GetConfigs();
