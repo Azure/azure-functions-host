@@ -11,10 +11,8 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -29,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
-        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -53,12 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
-            _workerConfigurationResolverOptions = workerConfigurationResolver.GetWorkerConfigurationResolverOptions();
-
-            WorkersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
         }
-
-        public string WorkersDirPath { get; }
 
         public IList<RpcWorkerConfig> GetConfigs()
         {
@@ -105,13 +97,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 try
                 {
+                    string workersDirPath = _workerConfigurationResolver.GetWorkerConfigurationResolutionInfo().WorkersDirPath;
+
                     // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
                     if (!string.IsNullOrWhiteSpace(_workerRuntime) && !_environment.IsPlaceholderModeEnabled() && !_environment.IsMultiLanguageRuntimeEnvironment())
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
                         // Do not skip non-worker directories like the function app payload directory
-                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(WorkersDirPath))
+                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(workersDirPath))
                         {
                             return;
                         }

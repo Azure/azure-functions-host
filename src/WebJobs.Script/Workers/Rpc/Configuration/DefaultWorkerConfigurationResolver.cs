@@ -42,9 +42,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workerConfigs;
         }
 
-        public IOptionsMonitor<WorkerConfigurationResolverOptions> GetWorkerConfigurationResolverOptions()
+        public WorkerConfigurationResolutionInfo GetWorkerConfigurationResolutionInfo()
         {
-            return _workerConfigurationResolverOptions;
+            return new WorkerConfigurationResolutionInfo
+            {
+                WorkersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath
+            };
         }
     }
 }

@@ -14,6 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         List<string> GetWorkerConfigPaths();
 
-        IOptionsMonitor<WorkerConfigurationResolverOptions> GetWorkerConfigurationResolverOptions();
+        WorkerConfigurationResolutionInfo GetWorkerConfigurationResolutionInfo();
     }
 }

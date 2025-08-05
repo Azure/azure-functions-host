@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
 
-            Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
+            Assert.Equal(expectedWorkersDir, workerConfigurationResolver.GetWorkerConfigurationResolutionInfo().WorkersDirPath);
         }
 
         [Fact]
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
 
-            Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
+            Assert.Equal(expectedWorkersDir, optionsMonitor.CurrentValue.WorkersDirPath);
         }
 
         [Fact]
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
 
-            Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
+            Assert.Equal(expectedWorkersDir, workerConfigurationResolver.GetWorkerConfigurationResolutionInfo().WorkersDirPath);
         }
 
         [Fact]
