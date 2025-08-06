@@ -1604,6 +1604,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null, "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)] // if FUNCTIONS_WORKER_RUNTIME is missing, assume dotnet
         public async Task Initialize_MissingWorkerRuntime_SetsCorrectRuntimeFromFunctionMetadata(string functionsWorkerRuntime, string scriptFile, string expectedMetricLanguage, string expectedMetadataLanguage)
         {
+            string workersDirPath = Path.Combine(AppContext.BaseDirectory, RpcWorkerConstants.DefaultWorkersDirectoryName);
+
             IFileSystem CreateFileSystem(string rootPath)
             {
                 var fullFileSystem = new FileSystem();
@@ -1629,6 +1631,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     {
                         Path.Combine(rootPath, "function1"),
                     });
+
+                dirBase.Setup(d => d.Exists(workersDirPath)).Returns(true);
+
+                if (functionsWorkerRuntime is not null)
+                {
+                    dirBase.Setup(d => d.EnumerateDirectories(workersDirPath))
+                    .Returns(new[]
+                    {
+                        Path.Combine(workersDirPath, functionsWorkerRuntime),
+                    });
+
+                    fileBase.Setup(f => f.Exists(Path.Combine(workersDirPath, functionsWorkerRuntime, RpcWorkerConstants.WorkerConfigFileName))).Returns(true);
+                }
 
                 var function1 = $$"""
                     {
