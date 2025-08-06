@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.Metrics;
+using System.IO.Abstractions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -77,6 +78,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IDiagnosticEventRepository, TestDiagnosticEventRepository>();
             services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
             services.AddSingleton<ISecretManagerProvider, TestSecretManagerProvider>();
+            services.AddSingleton<IFileSystem>(FileUtility.Instance);
             services.AddSingleton<IWorkerConfigurationResolver, DefaultWorkerConfigurationResolver>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
