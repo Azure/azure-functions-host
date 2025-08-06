@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,39 +16,37 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     {
         private readonly ILogger _logger;
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
+        private readonly IFileSystem _fileSystem;
 
-        public DefaultWorkerConfigurationResolver(ILoggerFactory loggerFactory, IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
+        public DefaultWorkerConfigurationResolver(ILoggerFactory loggerFactory,
+                                                    IFileSystem fileSystem,
+                                                    IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
+            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         }
 
-        public List<string> GetWorkerConfigPaths()
+        public IEnumerable<string> GetWorkerConfigPaths()
         {
             var workersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
             _logger.DefaultWorkersDirectoryPath(workersDirPath);
 
-            List<string> workerConfigs = new();
-
-            foreach (var workerDir in Directory.EnumerateDirectories(workersDirPath))
+            foreach (var workerDir in _fileSystem.Directory.EnumerateDirectories(workersDirPath))
             {
-                string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
+                string workerConfigPath = _fileSystem.Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
 
-                if (File.Exists(workerConfigPath))
+                if (_fileSystem.File.Exists(workerConfigPath))
                 {
-                    workerConfigs.Add(workerDir);
+                    yield return workerDir;
                 }
             }
-            return workerConfigs;
         }
 
         public WorkerConfigurationResolutionInfo GetWorkerConfigurationResolutionInfo()
         {
-            return new WorkerConfigurationResolutionInfo
-            {
-                WorkersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath
-            };
+            return new WorkerConfigurationResolutionInfo(_workerConfigurationResolverOptions.CurrentValue.WorkersDirPath);
         }
     }
 }

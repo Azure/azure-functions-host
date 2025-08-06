@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = "/default/workers",
                 }).Build();
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, mockScriptHostManager.Object);
+            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, mockScriptHostManager.Object, FileUtility.Instance);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = null,
                 }).Build();
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, mockScriptHostManager.Object);
+            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, mockScriptHostManager.Object, FileUtility.Instance);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var mockScriptHostManager = new Mock<IScriptHostManager>();
             var configuration = new ConfigurationBuilder().Build();
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, mockScriptHostManager.Object);
+            var setup = new WorkerConfigurationResolverOptionsSetup(configuration, mockScriptHostManager.Object, FileUtility.Instance);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 

@@ -3,8 +3,8 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal sealed class WorkerConfigurationResolutionInfo
+    internal record struct WorkerConfigurationResolutionInfo(string WorkersDirectoryPath)
     {
-        public required string WorkersDirPath { get; init; }
+        public readonly string WorkersDirPath => WorkersDirectoryPath;
     }
 }

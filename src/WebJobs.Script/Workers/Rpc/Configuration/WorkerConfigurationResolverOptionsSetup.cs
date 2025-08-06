@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.IO.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -13,11 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     {
         private readonly IConfiguration _configuration;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IFileSystem _fileSystem;
 
-        public WorkerConfigurationResolverOptionsSetup(IConfiguration configuration, IScriptHostManager scriptHostManager)
+        public WorkerConfigurationResolverOptionsSetup(IConfiguration configuration, IScriptHostManager scriptHostManager, IFileSystem fileSystem)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
+            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         }
 
         public void Configure(WorkerConfigurationResolverOptions options)
@@ -38,21 +41,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             options.WorkersDirPath = GetWorkersDirPath(configuration);
         }
 
-        internal static string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
+        internal string GetDefaultWorkersDirectory()
         {
             var assemblyDir = AppContext.BaseDirectory;
             string workersDirPath = Path.Combine(assemblyDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
 
-            if (!directoryExists(workersDirPath))
+            if (!_fileSystem.Directory.Exists(workersDirPath))
             {
                 // Site Extension Path. Default to parent directory.
-                var parentDir = Directory.GetParent(assemblyDir.TrimEnd(Path.DirectorySeparatorChar)).FullName;
-                workersDirPath = Path.Combine(parentDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
+                var parentDir = _fileSystem.Directory.GetParent(assemblyDir.TrimEnd(Path.DirectorySeparatorChar)).FullName;
+                workersDirPath = _fileSystem.Path.Combine(parentDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
             }
             return workersDirPath;
         }
 
-        internal static string GetWorkersDirPath(IConfiguration configuration)
+        internal string GetWorkersDirPath(IConfiguration configuration)
         {
             var workersDirectorySection = configuration?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
 
@@ -61,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return workersDirectorySection.Value;
             }
 
-            return GetDefaultWorkersDirectory(Directory.Exists);
+            return GetDefaultWorkersDirectory();
         }
     }
 }
