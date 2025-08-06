@@ -65,8 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Setup
                 string tempDir = directory.Path;
                 Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
-                File.Create(Path.Combine(tempDir, "my_watched_file.txt")).Dispose();
-                File.Create(Path.Combine(tempDir, "my_ignored_file.txt")).Dispose();
+                File.Create(Path.Combine(tempDir, "my_watched_file.txt"));
+                File.Create(Path.Combine(tempDir, "my_ignored_file.txt"));
 
                 var jobHostOptions = new ScriptJobHostOptions
                 {
