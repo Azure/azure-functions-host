@@ -23,7 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 functionsHostingConfigOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions);
             }
 
-            var resolverOptionsSetup = new WorkerConfigurationResolverOptionsSetup(configuration, scriptHostManager, FileUtility.Instance);
+            var testLoggerFactory = GetTestLoggerFactory();
+            var resolverOptionsSetup = new WorkerConfigurationResolverOptionsSetup(testLoggerFactory, configuration, scriptHostManager, FileUtility.Instance);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionsSetup.Configure(resolverOptions);
 

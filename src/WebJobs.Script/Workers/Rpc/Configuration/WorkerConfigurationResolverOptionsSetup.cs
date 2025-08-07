@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
@@ -15,9 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly IConfiguration _configuration;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFileSystem _fileSystem;
+        private readonly ILogger _logger;
 
-        public WorkerConfigurationResolverOptionsSetup(IConfiguration configuration, IScriptHostManager scriptHostManager, IFileSystem fileSystem)
+        public WorkerConfigurationResolverOptionsSetup(ILoggerFactory loggerFactory, IConfiguration configuration, IScriptHostManager scriptHostManager, IFileSystem fileSystem)
         {
+            ArgumentNullException.ThrowIfNull(loggerFactory);
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
@@ -25,19 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public void Configure(WorkerConfigurationResolverOptions options)
         {
-            var configuration = _configuration;
-            if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
-            {
-                var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
-                if (latestConfiguration is not null)
-                {
-                    configuration = new ConfigurationBuilder()
-                        .AddConfiguration(_configuration)
-                        .AddConfiguration(latestConfiguration)
-                        .Build();
-                }
-            }
-
+            var configuration = GetRequiredConfiguration();
             options.WorkersDirPath = GetWorkersDirPath(configuration);
         }
 
@@ -55,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workersDirPath;
         }
 
-        internal string GetWorkersDirPath(IConfiguration configuration)
+        private string GetWorkersDirPath(IConfiguration configuration)
         {
             var workersDirectorySection = configuration?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
 
@@ -65,6 +58,44 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             return GetDefaultWorkersDirectory();
+        }
+
+        private IConfiguration GetRequiredConfiguration()
+        {
+            var configuration = _configuration;
+            string requiredSection = $"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}";
+            _ = GetConfigurationSectionValue(_configuration, nameof(_configuration), requiredSection);
+
+            if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
+            {
+                var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
+
+                string value = GetConfigurationSectionValue(latestConfiguration, nameof(latestConfiguration), requiredSection);
+
+                if (!string.IsNullOrEmpty(value))
+                {
+                    var inMemoryCollection = new Dictionary<string, string> { { requiredSection, value } };
+                    configuration = new ConfigurationBuilder()
+                                            .AddConfiguration(_configuration)
+                                            .AddInMemoryCollection(inMemoryCollection)
+                                            .Build();
+                }
+            }
+
+            return configuration;
+        }
+
+        private string GetConfigurationSectionValue(IConfiguration configuration, string configurationSource, string requiredSection)
+        {
+            var section = configuration?.GetSection(requiredSection);
+
+            if (!string.IsNullOrEmpty(section?.Value))
+            {
+                _logger.LogTrace("Found configuration section '{requiredSection}' in '{configurationSource}'", requiredSection, configurationSource);
+                return section.Value;
+            }
+
+            return null;
         }
     }
 }
