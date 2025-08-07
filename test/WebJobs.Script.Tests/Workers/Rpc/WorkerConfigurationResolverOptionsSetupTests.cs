@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var logs = loggerProvider.GetAllLogMessages();
 
             Assert.Equal("/default/workers", options.WorkersDirPath);
-            Assert.Single(logs.Where(l => l.FormattedMessage == "Found configuration section 'languageWorkers:workersDirectory' in 'configuration'"));
+            Assert.Single(logs.Where(l => l.FormattedMessage == "Found configuration section 'languageWorkers:workersDirectory' in '_configuration'"));
         }
 
         [Fact]
