@@ -22,7 +22,7 @@ namespace Microsoft.Extensions.Logging
 
         public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder, bool restrictHostLogs = false)
         {
-            SetSystemLogCategoryPrefixes(restrictHostLogs);
+          //  SetSystemLogCategoryPrefixes(restrictHostLogs);
 
             builder.SetMinimumLevel(LogLevel.None);
             builder.AddFilter((c, l) => Filter(c, l, LogLevel.Information));
@@ -31,7 +31,7 @@ namespace Microsoft.Extensions.Logging
 
         public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level, bool restrictHostLogs = false) where T : ILoggerProvider
         {
-            SetSystemLogCategoryPrefixes(restrictHostLogs);
+           // SetSystemLogCategoryPrefixes(restrictHostLogs);
 
             builder.AddFilter<T>(null, LogLevel.None);
             builder.AddFilter<T>((c, l) => Filter(c, l, level));
@@ -45,7 +45,8 @@ namespace Microsoft.Extensions.Logging
 
         private static bool IsFiltered(string category)
         {
-            return _filteredCategoryCache.GetOrAdd(category, c => _allowedLogCategoryPrefixes.Any(p => c.StartsWith(p)));
+            return _filteredCategoryCache.GetOrAdd(category, c => ScriptConstants.SystemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any());
+//            return _filteredCategoryCache.GetOrAdd(category, c => _allowedLogCategoryPrefixes.Any(p => c.StartsWith(p)));
         }
 
         private static void SetSystemLogCategoryPrefixes(bool restrictHostLogs)

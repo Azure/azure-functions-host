@@ -44,6 +44,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 // The SystemLogger is not used for user logs.
                 return NullLogger.Instance;
             }
+            if (!categoryName.StartsWith("Host.Startup"))
+            {
+                // The SystemLogger is not used for user logs.
+                return NullLogger.Instance;
+            }
             return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider, _eventManager, _scopeProvider, _appServiceOptions);
         }
 

@@ -13,7 +13,7 @@ namespace Microsoft.Extensions.Logging
             builder.Services.AddSingleton<ILoggerProvider, T>();
 
             // Log all logs to SystemLogger
-            builder.AddDefaultWebJobsFilters<T>(LogLevel.Trace, restrictHostLogs);
+            builder.AddDefaultWebJobsFilters<T>(LogLevel.Trace);
         }
     }
 }
