@@ -141,15 +141,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
 
             // defaults to false
-            Assert.False(options.RestrictHostLogs);
+            Assert.False(options.EnableHostLogs);
 
             // returns true when explicitly enabled
-            options.Features[ScriptConstants.HostingConfigRestrictHostLogs] = "1";
-            Assert.True(options.RestrictHostLogs);
+            options.Features[ScriptConstants.HostingConfigEnableHostLogs] = "1";
+            Assert.True(options.EnableHostLogs);
 
             // returns false when disabled
-            options.Features[ScriptConstants.HostingConfigRestrictHostLogs] = "0";
-            Assert.False(options.RestrictHostLogs);
+            options.Features[ScriptConstants.HostingConfigEnableHostLogs] = "0";
+            Assert.False(options.EnableHostLogs);
         }
 
         internal static IHostBuilder GetScriptHostBuilder(string fileName, string fileContent, IEnvironment environment = null)

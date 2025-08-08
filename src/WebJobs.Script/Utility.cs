@@ -737,16 +737,19 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static ImmutableArray<string> GetAllowedLogCategoryPrefixes(IEnvironment environment, IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
-            // Feature flag should take precedence over the host configuration
-            bool restrictHostLogs = !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs)
-                                    && hostingConfigOptions.CurrentValue.RestrictHostLogs
-                                    && !environment.IsLogicApp();
+            if (environment.IsLogicApp())
+            {
+                return ScriptConstants.SystemLogCategoryPrefixes;
+            }
 
-            ImmutableArray<string> systemLogCategoryPrefixes = restrictHostLogs
-                                                        ? ScriptConstants.SystemLogCategoryPrefixes
-                                                        : ScriptConstants.RestrictedSystemLogCategoryPrefixes;
+            bool enableHostLogs = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs, environment)
+                                    || hostingConfigOptions.CurrentValue.EnableHostLogs;
 
-            return systemLogCategoryPrefixes;
+            ImmutableArray<string> allowedLogCategoryPrefixes = enableHostLogs
+                                                                    ? ScriptConstants.SystemLogCategoryPrefixes
+                                                                    : ScriptConstants.RestrictedSystemLogCategoryPrefixes;
+
+            return allowedLogCategoryPrefixes;
         }
 
         public static bool CheckAppOffline(string scriptPath)

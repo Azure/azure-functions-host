@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -869,6 +870,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("python", "none", workerIndexingConfigProperty) };
             bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
             Assert.Equal(expected, workerShouldIndex);
+        }
+
+        [Theory]
+        [InlineData(false, false, false)]
+        [InlineData(false, true, true)]
+        [InlineData(true, true, true)]
+        [InlineData(true, false, true)]
+        public void GetAllowedLogCategoryPrefixes_Returns_Expected(bool enableHostLogs, bool enableHostingConfig, bool logCategoryPrefixes)
+        {
+            var environment = new TestEnvironment();
+            if (enableHostLogs)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableHostLogs);
+            }
+
+            var hostingConfigOptions = new FunctionsHostingConfigOptions();
+
+            if (enableHostingConfig)
+            {
+                hostingConfigOptions = new FunctionsHostingConfigOptions
+                {
+                    EnableHostLogs = enableHostingConfig
+                };
+            }
+
+            var factory = new TestOptionsFactory<FunctionsHostingConfigOptions>(hostingConfigOptions);
+            var source = new TestChangeTokenSource<FunctionsHostingConfigOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<FunctionsHostingConfigOptions>(factory, changeTokens, factory);
+
+            var actualLogCategoryPrefixes = Utility.GetAllowedLogCategoryPrefixes(environment, optionsMonitor);
+
+            if (logCategoryPrefixes)
+            {
+                Assert.Equal(actualLogCategoryPrefixes, ScriptConstants.SystemLogCategoryPrefixes);
+            }
+            else
+            {
+                Assert.Equal(actualLogCategoryPrefixes, ScriptConstants.RestrictedSystemLogCategoryPrefixes);
+            }
         }
 
         [Theory]

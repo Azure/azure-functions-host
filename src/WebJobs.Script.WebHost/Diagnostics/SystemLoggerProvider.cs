@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -50,11 +49,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return NullLogger.Instance;
             }
 
-            var x = Utility.GetAllowedLogCategoryPrefixes(_environment, _hostingConfigOptions);
+            var allowedLogCategoryPrefixes = Utility.GetAllowedLogCategoryPrefixes(_environment, _hostingConfigOptions);
 
-            if (x.Any(p => categoryName.StartsWith(p)))
+            if (!allowedLogCategoryPrefixes.Any(p => categoryName.StartsWith(p)))
             {
-                // The SystemLogger is not used for user logs.
                 return NullLogger.Instance;
             }
 
