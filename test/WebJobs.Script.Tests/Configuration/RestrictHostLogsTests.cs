@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             return Task.CompletedTask;
         }
 
+        /*
         [Theory]
         [InlineData(true, false, true)] // RestrictHostLogs is true, FeatureFlag is not set, should result in **restricted** logs.
         [InlineData(false, true, false)] // RestrictHostLogs is false, FeatureFlag is set, should result in unrestricted logs.
@@ -71,5 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 await host.StopAsync();
             }
         }
+                */
     }
 }

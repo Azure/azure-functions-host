@@ -15,24 +15,16 @@ namespace Microsoft.Extensions.Logging
     public static class ScriptLoggingBuilderExtensions
     {
         private static ConcurrentDictionary<string, bool> _filteredCategoryCache = new ();
-        private static ImmutableArray<string> _allowedLogCategoryPrefixes = ImmutableArray<string>.Empty;
 
-        // For testing only
-        internal static ImmutableArray<string> AllowedSystemLogPrefixes => _allowedLogCategoryPrefixes;
-
-        public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder, bool restrictHostLogs = false)
+        public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder)
         {
-          //  SetSystemLogCategoryPrefixes(restrictHostLogs);
-
             builder.SetMinimumLevel(LogLevel.None);
             builder.AddFilter((c, l) => Filter(c, l, LogLevel.Information));
             return builder;
         }
 
-        public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level, bool restrictHostLogs = false) where T : ILoggerProvider
+        public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
         {
-           // SetSystemLogCategoryPrefixes(restrictHostLogs);
-
             builder.AddFilter<T>(null, LogLevel.None);
             builder.AddFilter<T>((c, l) => Filter(c, l, level));
             return builder;
@@ -46,18 +38,6 @@ namespace Microsoft.Extensions.Logging
         private static bool IsFiltered(string category)
         {
             return _filteredCategoryCache.GetOrAdd(category, c => ScriptConstants.SystemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any());
-//            return _filteredCategoryCache.GetOrAdd(category, c => _allowedLogCategoryPrefixes.Any(p => c.StartsWith(p)));
-        }
-
-        private static void SetSystemLogCategoryPrefixes(bool restrictHostLogs)
-        {
-            var previous = _allowedLogCategoryPrefixes;
-            _allowedLogCategoryPrefixes = restrictHostLogs ? ScriptConstants.RestrictedSystemLogCategoryPrefixes : ScriptConstants.SystemLogCategoryPrefixes;
-
-            if (!previous.IsDefault && !previous.SequenceEqual(_allowedLogCategoryPrefixes))
-            {
-                _filteredCategoryCache.Clear();
-            }
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)
