@@ -34,9 +34,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
             debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
 
-            var functionsHostingConfigOptions = new Mock<OptionsMonitor<FunctionsHostingConfigOptions>>();
+            var hostingConfigOptions = new FunctionsHostingConfigOptions();
+
+            hostingConfigOptions = new FunctionsHostingConfigOptions
+            {
+                EnableHostLogs = true
+            };
+
+            var factory = new TestOptionsFactory<FunctionsHostingConfigOptions>(hostingConfigOptions);
+            var source = new TestChangeTokenSource<FunctionsHostingConfigOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<FunctionsHostingConfigOptions>(factory, changeTokens, factory);
+
             var appServiceOptions = new TestOptionsMonitor<AppServiceOptions>(new AppServiceOptions());
-            _provider = new SystemLoggerProvider(_options, null, _environment, debugStateProvider.Object, null, appServiceOptions, functionsHostingConfigOptions.Object);
+            _provider = new SystemLoggerProvider(_options, null, _environment, debugStateProvider.Object, null, appServiceOptions, optionsMonitor);
         }
 
         [Fact]
@@ -44,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Assert.IsType<SystemLogger>(_provider.CreateLogger(LogCategories.CreateFunctionCategory("TestFunction")));
             Assert.IsType<SystemLogger>(_provider.CreateLogger(ScriptConstants.LogCategoryHostGeneral));
-            Assert.IsType<SystemLogger>(_provider.CreateLogger("NotAFunction.TestFunction.User"));
+            Assert.IsType<NullLogger>(_provider.CreateLogger("NotAFunction.TestFunction.User"));
         }
 
         [Fact]
