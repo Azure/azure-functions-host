@@ -61,7 +61,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.34-11957" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="4.0.5-10880" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.4-preview" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.0-preview" />
     <PackageReference Include="Microsoft.Build" Version="15.8.166" />    
     <PackageReference Include="Microsoft.CodeAnalysis" Version="3.3.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="3.3.1" />
@@ -76,7 +76,7 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.PlatformAbstractions" Version="1.1.0" />
     <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="NuGet.Frameworks" Version="4.7.0" />
     <PackageReference Include="NuGet.LibraryModel" Version="4.7.0" />
     <PackageReference Include="NuGet.ProjectModel" Version="4.7.0" />
