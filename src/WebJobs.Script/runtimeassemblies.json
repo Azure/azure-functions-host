@@ -922,11 +922,7 @@
     {
       "name": "OpenTelemetry.Api.ProviderBuilderExtensions",
       "resolutionPolicy": "private"
-    },
-    {
-      "name": "OpenTelemetry.Exporter.Console",
-      "resolutionPolicy": "private"
-    },
+    },   
     {
       "name": "OpenTelemetry.Exporter.OpenTelemetryProtocol",
       "resolutionPolicy": "private"
