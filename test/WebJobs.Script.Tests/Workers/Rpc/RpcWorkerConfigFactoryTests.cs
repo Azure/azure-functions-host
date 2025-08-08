@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -54,22 +55,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(expectedWorkersDir, workerConfigurationResolver.GetWorkerConfigurationResolutionInfo().WorkersDirPath);
         }
 
-        [Fact]
-        public void GetDefaultWorkersDirectory_Returns_Expected()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void GetDefaultWorkersDirectory_Returns_Expected(bool expectedValue)
         {
             string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.Location).LocalPath);
             string defaultWorkersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
-            Func<string, bool> testDirectoryExists = path =>
-            {
-                return false;
-            };
+            var fileSystemMock = new Mock<IFileSystem>();
             var expectedWorkersDirIsCurrentDir = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
             var expectedWorkersDirIsParentDir = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
-            var testLogger = new TestLogger("test");
+            var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var trimmedAssemblyDir = assemblyLocalPath.TrimEnd(Path.DirectorySeparatorChar);
 
-       //     Assert.Equal(expectedWorkersDirIsCurrentDir, WorkerConfigurationResolverOptionsSetup.GetDefaultWorkersDirectory(FileUtility.Instance));
-      //      Assert.Equal(expectedWorkersDirIsParentDir, WorkerConfigurationResolverOptionsSetup.GetDefaultWorkersDirectory(FileUtility.Instance));
+            var parentDirInfoMock = new Mock<DirectoryInfoBase>();
+            parentDirInfoMock.Setup(d => d.FullName).Returns(Directory.GetParent(assemblyLocalPath).FullName);
+
+            var parentDirInfoMock2 = new Mock<DirectoryInfoBase>();
+            parentDirInfoMock2.Setup(d => d.FullName).Returns(Directory.GetParent(trimmedAssemblyDir).FullName);
+
+            fileSystemMock.Setup(f => f.Directory.Exists(defaultWorkersDirPath)).Returns(expectedValue);
+            fileSystemMock.Setup(f => f.Directory.GetParent(trimmedAssemblyDir)).Returns(parentDirInfoMock2.Object);
+            fileSystemMock.Setup(f => f.Directory.GetParent(defaultWorkersDirPath)).Returns(parentDirInfoMock.Object);
+            fileSystemMock.Setup(f => f.Path.Combine(It.IsAny<string>(), RpcWorkerConstants.DefaultWorkersDirectoryName))
+                .Returns((string dir, string workersDirName) => Path.Combine(dir, workersDirName));
+
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+            var optionsSetup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, config, mockScriptHostManager.Object, fileSystemMock.Object);
+
+            if (expectedValue)
+            {
+                Assert.Equal(expectedWorkersDirIsCurrentDir, optionsSetup.GetDefaultWorkersDirectory());
+            }
+            else
+            {
+                Assert.Equal(expectedWorkersDirIsParentDir, optionsSetup.GetDefaultWorkersDirectory());
+            }
         }
 
         [Fact]
