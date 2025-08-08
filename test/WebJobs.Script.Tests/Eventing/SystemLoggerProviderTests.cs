@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 RootLogPath = Path.GetTempPath()
             };
 
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableHostLogs");
             _options = new OptionsWrapper<ScriptJobHostOptions>(scriptOptions);
 
             var debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
