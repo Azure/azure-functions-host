@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return NullLogger.Instance;
             }
 
-            if (_environment.IsLogicApp())
+            if (!_environment.IsLogicApp())
             {
                 var allowedLogCategoryPrefixes = Utility.GetAllowedLogCategoryPrefixes(_environment, _hostingConfigOptions);
 

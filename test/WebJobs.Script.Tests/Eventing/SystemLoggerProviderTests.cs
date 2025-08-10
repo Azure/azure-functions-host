@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void CreateLogger_LogicApps_ReturnsSystemLogger_ForNonUserCategories()
         {
             var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, "workerflowapp");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, ScriptConstants.WorkFlowAppKind);
             var provider = new SystemLoggerProvider(_options, null, environment, _debugStateProvider.Object, null, _appServiceOptions, _optionsMonitor);
             Assert.IsType<SystemLogger>(provider.CreateLogger(LogCategories.CreateFunctionCategory("TestFunction")));
             Assert.IsType<SystemLogger>(provider.CreateLogger(ScriptConstants.LogCategoryHostGeneral));
