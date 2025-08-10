@@ -873,11 +873,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(false, false, false)]
-        [InlineData(false, true, true)]
-        [InlineData(true, true, true)]
-        [InlineData(true, false, true)]
-        public void GetAllowedLogCategoryPrefixes_Returns_Expected(bool enableHostLogs, bool enableHostingConfig, bool logCategoryPrefixes)
+        [InlineData(false, false, false)] // EnableHostLogs is false, FeatureFlag is not set, should result in **restricted** logs. This is the default behaviour of the host.
+        [InlineData(false, true, true)] // EnableHostLogs is false, FeatureFlag is set, should result in unrestricted logs.
+        [InlineData(true, true, true)] // EnableHostLogs is true, FeatureFlag is set, should result in unrestricted logs.
+        [InlineData(true, false, true)] // EnableHostLogs is true, FeatureFlag is not set, should result in unrestricted logs.
+        public void GetAllowedLogCategoryPrefixes_Returns_Expected(bool enableHostLogs, bool enableHostingConfig, bool systemLogCategoryPrefixes)
         {
             var environment = new TestEnvironment();
             if (enableHostLogs)
@@ -886,23 +886,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             var hostingConfigOptions = new FunctionsHostingConfigOptions();
-
             if (enableHostingConfig)
             {
-                hostingConfigOptions = new FunctionsHostingConfigOptions
-                {
-                    EnableHostLogs = enableHostingConfig
-                };
+                hostingConfigOptions = new FunctionsHostingConfigOptions { EnableHostLogs = enableHostingConfig };
             }
 
             var factory = new TestOptionsFactory<FunctionsHostingConfigOptions>(hostingConfigOptions);
             var source = new TestChangeTokenSource<FunctionsHostingConfigOptions>();
-            var changeTokens = new[] { source };
-            var optionsMonitor = new OptionsMonitor<FunctionsHostingConfigOptions>(factory, changeTokens, factory);
+            var optionsMonitor = new OptionsMonitor<FunctionsHostingConfigOptions>(factory, new[] { source }, factory);
 
             var actualLogCategoryPrefixes = Utility.GetAllowedLogCategoryPrefixes(environment, optionsMonitor);
 
-            if (logCategoryPrefixes)
+            if (systemLogCategoryPrefixes)
             {
                 Assert.Equal(actualLogCategoryPrefixes, ScriptConstants.SystemLogCategoryPrefixes);
             }

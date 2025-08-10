@@ -49,11 +49,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return NullLogger.Instance;
             }
 
-            var allowedLogCategoryPrefixes = Utility.GetAllowedLogCategoryPrefixes(_environment, _hostingConfigOptions);
-
-            if (!allowedLogCategoryPrefixes.Any(p => categoryName.StartsWith(p)))
+            if (_environment.IsLogicApp())
             {
-                return NullLogger.Instance;
+                var allowedLogCategoryPrefixes = Utility.GetAllowedLogCategoryPrefixes(_environment, _hostingConfigOptions);
+
+                if (!allowedLogCategoryPrefixes.Any(p => categoryName.StartsWith(p)))
+                {
+                    return NullLogger.Instance;
+                }
             }
 
             return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider, _eventManager, _scopeProvider, _appServiceOptions);
