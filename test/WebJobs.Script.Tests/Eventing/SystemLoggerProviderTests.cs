@@ -19,6 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly IOptions<ScriptJobHostOptions> _options;
         private readonly IEnvironment _environment = new TestEnvironment();
         private readonly SystemLoggerProvider _provider;
+        private readonly OptionsMonitor<FunctionsHostingConfigOptions> _optionsMonitor;
+        private readonly Mock<IDebugStateProvider> _debugStateProvider;
+        private readonly IOptionsMonitor<AppServiceOptions> _appServiceOptions;
         private bool _inDiagnosticMode;
 
         public SystemLoggerProviderTests()
@@ -31,16 +34,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableHostLogs");
             _options = new OptionsWrapper<ScriptJobHostOptions>(scriptOptions);
 
-            var debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
-            debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
+            _debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
+            _debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
 
             var hostingConfigOptions = new FunctionsHostingConfigOptions { EnableHostLogs = true };
             var factory = new TestOptionsFactory<FunctionsHostingConfigOptions>(hostingConfigOptions);
             var source = new TestChangeTokenSource<FunctionsHostingConfigOptions>();
-            var optionsMonitor = new OptionsMonitor<FunctionsHostingConfigOptions>(factory, new[] { source }, factory);
+            _optionsMonitor = new OptionsMonitor<FunctionsHostingConfigOptions>(factory, new[] { source }, factory);
 
-            var appServiceOptions = new TestOptionsMonitor<AppServiceOptions>(new AppServiceOptions());
-            _provider = new SystemLoggerProvider(_options, null, _environment, debugStateProvider.Object, null, appServiceOptions, optionsMonitor);
+            _appServiceOptions = new TestOptionsMonitor<AppServiceOptions>(new AppServiceOptions());
+            _provider = new SystemLoggerProvider(_options, null, _environment, _debugStateProvider.Object, null, _appServiceOptions, _optionsMonitor);
         }
 
         [Fact]
@@ -49,6 +52,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.IsType<SystemLogger>(_provider.CreateLogger(LogCategories.CreateFunctionCategory("TestFunction")));
             Assert.IsType<SystemLogger>(_provider.CreateLogger(ScriptConstants.LogCategoryHostGeneral));
             Assert.IsType<NullLogger>(_provider.CreateLogger("NotAFunction.TestFunction.User"));
+        }
+
+        [Fact]
+        public void CreateLogger_LogicApps_ReturnsSystemLogger_ForNonUserCategories()
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, "workerflowapp");
+            var provider = new SystemLoggerProvider(_options, null, environment, _debugStateProvider.Object, null, _appServiceOptions, _optionsMonitor);
+            Assert.IsType<SystemLogger>(provider.CreateLogger(LogCategories.CreateFunctionCategory("TestFunction")));
+            Assert.IsType<SystemLogger>(provider.CreateLogger(ScriptConstants.LogCategoryHostGeneral));
+            Assert.IsType<SystemLogger>(provider.CreateLogger("NotAFunction.TestFunction.User"));
         }
 
         [Fact]
