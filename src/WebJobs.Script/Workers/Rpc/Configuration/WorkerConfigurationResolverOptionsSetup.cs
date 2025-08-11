@@ -50,11 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private string GetWorkersDirPath(IConfiguration configuration)
         {
-            var workersDirectorySection = configuration?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
-
-            if (!string.IsNullOrEmpty(workersDirectorySection?.Value))
+            if (configuration is not null)
             {
-                return workersDirectorySection.Value;
+                var workersDirectorySection = configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
+
+                if (!string.IsNullOrEmpty(workersDirectorySection?.Value))
+                {
+                    return workersDirectorySection.Value;
+                }
             }
 
             return GetDefaultWorkersDirectory();
@@ -62,27 +65,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private IConfiguration GetRequiredConfiguration()
         {
-            var configuration = _configuration;
             string requiredSection = $"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}";
-            _ = GetConfigurationSectionValue(_configuration, nameof(_configuration), requiredSection);
 
             if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
             {
                 var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
+                var latestConfigValue = GetConfigurationSectionValue(latestConfiguration, nameof(latestConfiguration), requiredSection);
 
-                string value = GetConfigurationSectionValue(latestConfiguration, nameof(latestConfiguration), requiredSection);
-
-                if (!string.IsNullOrEmpty(value))
+                if (!string.IsNullOrEmpty(latestConfigValue))
                 {
-                    var inMemoryCollection = new Dictionary<string, string> { { requiredSection, value } };
-                    configuration = new ConfigurationBuilder()
-                                            .AddConfiguration(_configuration)
-                                            .AddInMemoryCollection(inMemoryCollection)
-                                            .Build();
+                    return latestConfiguration;
                 }
             }
 
-            return configuration;
+            string configSectionValue = GetConfigurationSectionValue(_configuration, nameof(_configuration), requiredSection);
+            if (!string.IsNullOrEmpty(configSectionValue))
+            {
+                return _configuration;
+            }
+
+            return null;
         }
 
         private string GetConfigurationSectionValue(IConfiguration configuration, string configurationSource, string requiredSection)
@@ -91,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (!string.IsNullOrEmpty(section?.Value))
             {
-                _logger.LogTrace("Found configuration section '{requiredSection}' in '{configurationSource}'", requiredSection, configurationSource);
+                _logger.LogTrace("Found configuration section '{requiredSection}' in '{configurationSource}'.", requiredSection, configurationSource);
                 return section.Value;
             }
 

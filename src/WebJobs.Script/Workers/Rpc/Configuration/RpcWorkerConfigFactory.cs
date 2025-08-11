@@ -71,6 +71,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             IEnumerable<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigPaths();
 
+            if (workerConfigs is null || !workerConfigs.Any())
+            {
+                _logger.LogTrace("No worker configs found.");
+                return;
+            }
+
             foreach (var workerConfig in workerConfigs)
             {
                 AddProvider(workerConfig);
