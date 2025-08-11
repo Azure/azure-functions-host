@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 using (System.Threading.ExecutionContext.SuppressFlow())
                 {
                     _typedLogger.LogDebug("Resuming scheduled restart.");
-                    Task.Run(async () => await ScheduleRestartAsync("Running restart requested while in a restart suspension scope."));
+                    Task.Run(async () => await ScheduleRestartAsync("Resuming scheduled restart."));
                 }
             }
         }
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (Interlocked.Read(ref _suspensionRequestsCount) > 0)
             {
-                _logger.LogDebug($"Restart requested due to '{reason}' while currently suspended. Ignoring request.");
+                _logger.LogDebug("Restart requested while currently suspended. Reason: '{Reason}'. Ignoring request.", reason);
             }
             else
             {

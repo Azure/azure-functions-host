@@ -562,6 +562,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task RestartHostAsync(string reason, CancellationToken cancellationToken)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+
             if (ShutdownRequested)
             {
                 return;
