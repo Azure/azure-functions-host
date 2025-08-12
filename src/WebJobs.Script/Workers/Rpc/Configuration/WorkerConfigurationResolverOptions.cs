@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Gets or sets the workers directory path within the Host or defined by IConfiguration.
         /// </summary>
-        public string WorkersDirPath { get; set; }
+        public string WorkersRootDirPath { get; set; }
 
         /// <inheritdoc>
         /// Implements the Format method from IOptionsFormatter interface.

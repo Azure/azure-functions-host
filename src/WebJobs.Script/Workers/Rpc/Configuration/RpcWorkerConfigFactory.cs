@@ -76,11 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             WorkersDirPath = workerConfigurationInfo.DefaultWorkersRootDir;
             var workerConfigs = workerConfigurationInfo.WorkerConfigPaths;
 
-            if (workerConfigs is null || !workerConfigs.Any())
-            {
-                throw new ArgumentNullException(nameof(workerConfigs));
-            }
-
             foreach (var workerConfig in workerConfigs)
             {
                 AddProvider(workerConfig);

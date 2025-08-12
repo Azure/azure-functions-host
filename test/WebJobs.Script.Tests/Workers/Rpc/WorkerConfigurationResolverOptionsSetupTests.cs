@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
-            Assert.Equal("/default/workers", options.WorkersDirPath);
+            Assert.Equal("/default/workers", options.WorkersRootDirPath);
         }
 
         [Fact]
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var logs = loggerProvider.GetAllLogMessages();
 
-            Assert.Equal("/default/workers", options.WorkersDirPath);
+            Assert.Equal("/default/workers", options.WorkersRootDirPath);
             Assert.Single(logs.Where(l => l.FormattedMessage == "Found configuration section 'languageWorkers:workersDirectory' in 'latestConfiguration'."));
         }
 
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var logs = loggerProvider.GetAllLogMessages();
 
-            Assert.Equal("/default/workers", options.WorkersDirPath);
+            Assert.Equal("/default/workers", options.WorkersRootDirPath);
             Assert.Single(logs.Where(l => l.FormattedMessage == "Found configuration section 'languageWorkers:workersDirectory' in '_configuration'."));
         }
 
@@ -120,8 +120,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
-            Assert.NotNull(options.WorkersDirPath);
-            Assert.Contains("workers", options.WorkersDirPath);
+            Assert.NotNull(options.WorkersRootDirPath);
+            Assert.Contains("workers", options.WorkersRootDirPath);
         }
 
         [Fact]
@@ -136,8 +136,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
-            Assert.NotNull(options.WorkersDirPath);
-            Assert.Contains("workers", options.WorkersDirPath);
+            Assert.NotNull(options.WorkersRootDirPath);
+            Assert.Contains("workers", options.WorkersRootDirPath);
         }
 
         [Fact]
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var options = new WorkerConfigurationResolverOptions
             {
-                WorkersDirPath = "/test/workers"
+                WorkersRootDirPath = "/test/workers"
             };
 
             string json = options.Format();
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.NotNull(jsonDocument);
 
             var root = jsonDocument.RootElement;
-            Assert.True(root.TryGetProperty("WorkersDirPath", out var workersDirPathProperty));
+            Assert.True(root.TryGetProperty("WorkersRootDirPath", out var workersDirPathProperty));
             Assert.Equal("/test/workers", workersDirPathProperty.GetString());
         }
 
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var options = new WorkerConfigurationResolverOptions
             {
-                WorkersDirPath = null
+                WorkersRootDirPath = null
             };
 
             string json = options.Format();
@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.NotNull(jsonDocument);
 
             var root = jsonDocument.RootElement;
-            Assert.True(root.TryGetProperty("WorkersDirPath", out var workersDirPathProperty));
+            Assert.True(root.TryGetProperty("WorkersRootDirPath", out var workersDirPathProperty));
             Assert.Equal(null, workersDirPathProperty.GetString());
         }
     }

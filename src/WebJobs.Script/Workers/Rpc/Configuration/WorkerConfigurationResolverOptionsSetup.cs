@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         public void Configure(WorkerConfigurationResolverOptions options)
         {
             var configuration = GetRequiredConfiguration();
-            options.WorkersDirPath = GetWorkersDirPath(configuration);
+            options.WorkersRootDirPath = GetWorkersRootDirPath(configuration);
         }
 
         internal string GetDefaultWorkersDirectory()
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workersDirPath;
         }
 
-        private string GetWorkersDirPath(IConfiguration configuration)
+        private string GetWorkersRootDirPath(IConfiguration configuration)
         {
             if (configuration is not null)
             {
