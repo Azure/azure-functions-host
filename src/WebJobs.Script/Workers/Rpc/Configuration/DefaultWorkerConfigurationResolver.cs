@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         }
 
-        public WorkerConfigurationResolutionInfo GetWorkerConfigPaths()
+        public WorkerConfigurationInfo GetWorkerConfigPaths()
         {
             var workersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
             _logger.DefaultWorkersDirectoryPath(workersDirPath);
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            return new WorkerConfigurationResolutionInfo(_workerConfigurationResolverOptions.CurrentValue.WorkersDirPath, workerConfigPaths);
+            return new WorkerConfigurationInfo(_workerConfigurationResolverOptions.CurrentValue.WorkersDirPath, workerConfigPaths);
         }
     }
 }

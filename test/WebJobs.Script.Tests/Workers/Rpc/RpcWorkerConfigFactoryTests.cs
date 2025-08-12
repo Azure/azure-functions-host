@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLoggerFactory, FileUtility.Instance, optionsMonitor);
 
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-            string workersDirPath = workerConfigurationResolver.GetWorkerConfigPaths().WorkersDirPath;
+            string workersDirPath = workerConfigurationResolver.GetWorkerConfigPaths().DefaultWorkersRootDir;
 
             Assert.Equal(expectedWorkersDir, workersDirPath);
         }
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLoggerFactory, FileUtility.Instance, optionsMonitor);
 
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-            var workersDirPath = workerConfigurationResolver.GetWorkerConfigPaths().WorkersDirPath;
+            var workersDirPath = workerConfigurationResolver.GetWorkerConfigPaths().DefaultWorkersRootDir;
 
             Assert.Equal(expectedWorkersDir, workersDirPath);
         }

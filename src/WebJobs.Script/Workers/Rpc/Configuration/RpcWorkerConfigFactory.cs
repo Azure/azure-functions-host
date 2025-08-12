@@ -34,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         };
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
-        private WorkerConfigurationResolutionInfo _workerConfigurationResolutionInfo;
 
         public RpcWorkerConfigFactory(IConfiguration config,
                                         ILogger logger,
@@ -54,6 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
         }
 
+        public string WorkersDirPath { get; private set; }
+
         public IList<RpcWorkerConfig> GetConfigs()
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.GetConfigs))
@@ -71,13 +72,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            _workerConfigurationResolutionInfo = _workerConfigurationResolver.GetWorkerConfigPaths();
-            var workerConfigs = _workerConfigurationResolutionInfo.WorkerConfigPaths;
+            var workerConfigurationInfo = _workerConfigurationResolver.GetWorkerConfigPaths();
+            WorkersDirPath = workerConfigurationInfo.DefaultWorkersRootDir;
+            var workerConfigs = workerConfigurationInfo.WorkerConfigPaths;
 
             if (workerConfigs is null || !workerConfigs.Any())
             {
-                _logger.LogTrace("No worker configs found.");
-                return;
+                throw new ArgumentNullException(nameof(workerConfigs));
             }
 
             foreach (var workerConfig in workerConfigs)
@@ -106,15 +107,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 try
                 {
-                    string workersDirPath = _workerConfigurationResolutionInfo.WorkersDirPath;
-
                     // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
                     if (!string.IsNullOrWhiteSpace(_workerRuntime) && !_environment.IsPlaceholderModeEnabled() && !_environment.IsMultiLanguageRuntimeEnvironment())
                     {
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
                         // Do not skip non-worker directories like the function app payload directory
-                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(workersDirPath))
+                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(WorkersDirPath))
                         {
                             return;
                         }

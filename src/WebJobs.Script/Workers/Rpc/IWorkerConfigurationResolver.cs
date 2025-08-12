@@ -12,6 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     /// </summary>
     internal interface IWorkerConfigurationResolver
     {
-        WorkerConfigurationResolutionInfo GetWorkerConfigPaths();
+        WorkerConfigurationInfo GetWorkerConfigPaths();
     }
 }
