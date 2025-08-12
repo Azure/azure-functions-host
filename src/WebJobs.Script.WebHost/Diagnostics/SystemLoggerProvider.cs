@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -24,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IOptionsMonitor<AppServiceOptions> _appServiceOptions;
         private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private IExternalScopeProvider _scopeProvider;
+        private ImmutableArray<string> _allowedLogCategoryPrefixes;
 
         public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IOptionsMonitor<AppServiceOptions> appServiceOptions, IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptions)
             : this(scriptOptions.Value.InstanceId, eventGenerator, environment, debugStateProvider, eventManager, appServiceOptions, hostingConfigOptions)
@@ -39,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _eventManager = eventManager;
             _appServiceOptions = appServiceOptions;
             _hostingConfigOptions = hostingConfigOptions;
+            _allowedLogCategoryPrefixes = Utility.GetAllowedLogCategoryPrefixes(_environment, _hostingConfigOptions);
         }
 
         public ILogger CreateLogger(string categoryName)
@@ -49,14 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return NullLogger.Instance;
             }
 
-            if (!_environment.IsLogicApp())
+            if (ShouldDisableLogs(categoryName))
             {
-                var allowedLogCategoryPrefixes = Utility.GetAllowedLogCategoryPrefixes(_environment, _hostingConfigOptions);
-
-                if (!allowedLogCategoryPrefixes.Any(p => categoryName.StartsWith(p)))
-                {
-                    return NullLogger.Instance;
-                }
+                return NullLogger.Instance;
             }
 
             return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider, _eventManager, _scopeProvider, _appServiceOptions);
@@ -65,6 +63,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private bool IsUserLogCategory(string categoryName)
         {
             return LogCategories.IsFunctionUserCategory(categoryName) || categoryName.Equals(WorkerConstants.FunctionConsoleLogCategoryName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool ShouldDisableLogs(string categoryName)
+        {
+            if (!_environment.IsLogicApp())
+            {
+                if (!_allowedLogCategoryPrefixes.Any(p => categoryName.StartsWith(p)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public void Dispose()
