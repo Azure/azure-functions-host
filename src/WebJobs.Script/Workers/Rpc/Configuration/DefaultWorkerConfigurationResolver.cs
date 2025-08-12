@@ -27,10 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         }
 
-        public IEnumerable<string> GetWorkerConfigPaths()
+        public WorkerConfigurationResolutionInfo GetWorkerConfigPaths()
         {
             var workersDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
             _logger.DefaultWorkersDirectoryPath(workersDirPath);
+
+            var workerConfigPaths = new List<string>();
 
             foreach (var workerDir in _fileSystem.Directory.EnumerateDirectories(workersDirPath))
             {
@@ -38,14 +40,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                 if (_fileSystem.File.Exists(workerConfigPath))
                 {
-                    yield return workerDir;
+                    workerConfigPaths.Add(workerDir);
                 }
             }
-        }
 
-        public WorkerConfigurationResolutionInfo GetWorkerConfigurationResolutionInfo()
-        {
-            return new WorkerConfigurationResolutionInfo(_workerConfigurationResolverOptions.CurrentValue.WorkersDirPath);
+            return new WorkerConfigurationResolutionInfo(_workerConfigurationResolverOptions.CurrentValue.WorkersDirPath, workerConfigPaths);
         }
     }
 }

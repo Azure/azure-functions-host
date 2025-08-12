@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -33,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         };
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
+        private WorkerConfigurationResolutionInfo _workerConfigurationResolutionInfo;
 
         public RpcWorkerConfigFactory(IConfiguration config,
                                         ILogger logger,
@@ -69,7 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            IEnumerable<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigPaths();
+            _workerConfigurationResolutionInfo = _workerConfigurationResolver.GetWorkerConfigPaths();
+            var workerConfigs = _workerConfigurationResolutionInfo.WorkerConfigPaths;
 
             if (workerConfigs is null || !workerConfigs.Any())
             {
@@ -103,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 try
                 {
-                    string workersDirPath = _workerConfigurationResolver.GetWorkerConfigurationResolutionInfo().WorkersDirPath;
+                    string workersDirPath = _workerConfigurationResolutionInfo.WorkersDirPath;
 
                     // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
                     if (!string.IsNullOrWhiteSpace(_workerRuntime) && !_environment.IsPlaceholderModeEnabled() && !_environment.IsMultiLanguageRuntimeEnvironment())

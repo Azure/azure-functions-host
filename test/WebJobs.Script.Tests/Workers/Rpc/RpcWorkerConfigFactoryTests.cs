@@ -46,13 +46,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
 
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            var mockLogger = new Mock<ILoggerFactory>();
+            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(mockLogger.Object, FileUtility.Instance, optionsMonitor);
+            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLoggerFactory, FileUtility.Instance, optionsMonitor);
 
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
+            string workersDirPath = workerConfigurationResolver.GetWorkerConfigPaths().WorkersDirPath;
 
-            Assert.Equal(expectedWorkersDir, workerConfigurationResolver.GetWorkerConfigurationResolutionInfo().WorkersDirPath);
+            Assert.Equal(expectedWorkersDir, workersDirPath);
         }
 
         [Theory]
@@ -127,15 +128,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-
+            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            var mockLogger = new Mock<ILoggerFactory>();
+
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(mockLogger.Object, FileUtility.Instance, optionsMonitor);
+            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLoggerFactory, FileUtility.Instance, optionsMonitor);
 
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
+            var workersDirPath = workerConfigurationResolver.GetWorkerConfigPaths().WorkersDirPath;
 
-            Assert.Equal(expectedWorkersDir, workerConfigurationResolver.GetWorkerConfigurationResolutionInfo().WorkersDirPath);
+            Assert.Equal(expectedWorkersDir, workersDirPath);
         }
 
         [Fact]
@@ -157,6 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
+            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
             _testEnvironment.SetEnvironmentVariable("ENV_VAR_BAR", "True");
 
             var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
