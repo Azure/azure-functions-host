@@ -72,9 +72,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProviders()
         {
-            var workerConfigurationInfo = _workerConfigurationResolver.GetWorkerConfigPaths();
-            WorkersDirPath = workerConfigurationInfo.WorkersRootDirPath;
+            var workerConfigurationInfo = _workerConfigurationResolver.GetConfigurationInfo();
             var workerConfigs = workerConfigurationInfo.WorkerConfigPaths;
+            WorkersDirPath = workerConfigurationInfo.WorkersRootDirPath;
 
             foreach (var workerConfig in workerConfigs)
             {

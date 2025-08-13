@@ -27,14 +27,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         }
 
-        public WorkerConfigurationInfo GetWorkerConfigPaths()
+        public WorkerConfigurationInfo GetConfigurationInfo()
         {
-            var workersRootDir = _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath;
-            _logger.DefaultWorkersDirectoryPath(workersRootDir);
+            var workersRootDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath;
+            _logger.DefaultWorkersDirectoryPath(workersRootDirPath);
 
             var workerConfigPaths = new List<string>();
 
-            foreach (var workerDir in _fileSystem.Directory.EnumerateDirectories(workersRootDir))
+            foreach (var workerDir in _fileSystem.Directory.EnumerateDirectories(workersRootDirPath))
             {
                 string workerConfigPath = _fileSystem.Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
 
