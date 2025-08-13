@@ -5,5 +5,5 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal record WorkerConfigurationInfo(string DefaultWorkersRootDir, IReadOnlyList<string> WorkerConfigPaths);
+    internal record WorkerConfigurationInfo(string WorkersRootDirPath, IReadOnlyList<string> WorkerConfigPaths);
 }
