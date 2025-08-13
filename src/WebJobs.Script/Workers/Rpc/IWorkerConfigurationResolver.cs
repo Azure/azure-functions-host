@@ -8,10 +8,13 @@ using Microsoft.Extensions.Options;
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     /// <summary>
-    /// Interface to resolve the Worker Configs.
+    /// Provides an abstraction for retrieving worker configuration resolution details.
     /// </summary>
     internal interface IWorkerConfigurationResolver
     {
+        /// <summary>
+        /// Retrieves the worker configuration resolution information which includes the root directory path of workers and worker configuration paths.
+        /// </summary>
         WorkerConfigurationInfo GetConfigurationInfo();
     }
 }
