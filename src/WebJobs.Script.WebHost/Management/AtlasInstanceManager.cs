@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -301,13 +301,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else
             {
+                bool succeeded = true;
                 if (pkgContext.IsRunFromPackage(options, _logger))
                 {
-                    await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath, false);
+                    succeeded = await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath, false);
                 }
                 else if (assignmentContext.IsAzureFilesContentShareConfigured(_logger))
                 {
-                    await _runFromPackageHandler.MountAzureFileShare(assignmentContext);
+                    succeeded = await _runFromPackageHandler.MountAzureFileShare(assignmentContext);
+                }
+
+                if (!succeeded)
+                {
+                    await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
+                        "Failed to apply Run-From-Package context or mount Azure File Share");
+
+                    throw new Exception("Failed to apply Run-From-Package context or mount Azure File Share");
                 }
             }
 
