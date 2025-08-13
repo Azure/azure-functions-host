@@ -6,4 +6,4 @@
 - Add JitTrace Files for v4.1042
 - Updating OTel related nuget packages (#11216)
 - Moving to version 1.5.7 of Microsoft.Azure.AppService.Middleware.Functions (https://github.com/Azure/azure-functions-host/pull/11231)
-
+- Mark Failed Container Specialization as Fatal (https://github.com/Azure/azure-functions-host/pull/11250)
