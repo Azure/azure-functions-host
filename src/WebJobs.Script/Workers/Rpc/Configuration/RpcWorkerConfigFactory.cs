@@ -53,8 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
         }
 
-        public string WorkersDirPath { get; private set; }
-
         public IList<RpcWorkerConfig> GetConfigs()
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.GetConfigs))
@@ -66,23 +64,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void BuildWorkerProviderDictionary()
         {
-            AddProviders();
-            AddProvidersFromAppSettings();
+            var workerConfigurationInfo = _workerConfigurationResolver.GetConfigurationInfo();
+
+            AddProviders(workerConfigurationInfo);
+            AddProvidersFromAppSettings(workerConfigurationInfo);
         }
 
-        internal void AddProviders()
+        internal void AddProviders(WorkerConfigurationInfo workerConfigurationInfo)
         {
-            var workerConfigurationInfo = _workerConfigurationResolver.GetConfigurationInfo();
             var workerConfigs = workerConfigurationInfo.WorkerConfigPaths;
-            WorkersDirPath = workerConfigurationInfo.WorkersRootDirPath;
 
             foreach (var workerConfig in workerConfigs)
             {
-                AddProvider(workerConfig);
+                AddProvider(workerConfig, workerConfigurationInfo);
             }
         }
 
-        internal void AddProvidersFromAppSettings()
+        internal void AddProvidersFromAppSettings(WorkerConfigurationInfo workerConfigurationInfo)
         {
             var languagesSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}");
             foreach (var languageSection in languagesSection.GetChildren())
@@ -91,12 +89,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (workerDirectorySection.Value != null)
                 {
                     _workerDescriptionDictionary.Remove(languageSection.Key);
-                    AddProvider(workerDirectorySection.Value);
+                    AddProvider(workerDirectorySection.Value, workerConfigurationInfo);
                 }
             }
         }
 
-        internal void AddProvider(string workerDir)
+        internal void AddProvider(string workerDir, WorkerConfigurationInfo workerConfigurationInfo)
         {
             using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDir)))
             {
@@ -108,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
                         // Do not skip non-worker directories like the function app payload directory
-                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(WorkersDirPath))
+                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(workerConfigurationInfo.WorkersRootDirPath))
                         {
                             return;
                         }
