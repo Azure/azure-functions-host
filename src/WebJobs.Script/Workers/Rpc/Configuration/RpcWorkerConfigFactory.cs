@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             foreach (var workerConfig in workerConfigs)
             {
-                AddProvider(workerConfig, workerConfigurationInfo);
+                AddProvider(workerConfig, workerConfigurationInfo.WorkersRootDirPath);
             }
         }
 
@@ -89,12 +89,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (workerDirectorySection.Value != null)
                 {
                     _workerDescriptionDictionary.Remove(languageSection.Key);
-                    AddProvider(workerDirectorySection.Value, workerConfigurationInfo);
+                    AddProvider(workerDirectorySection.Value, workerConfigurationInfo.WorkersRootDirPath);
                 }
             }
         }
 
-        internal void AddProvider(string workerDir, WorkerConfigurationInfo workerConfigurationInfo)
+        internal void AddProvider(string workerDir, string workersRootDirPath)
         {
             using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDir)))
             {
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
                         // Do not skip non-worker directories like the function app payload directory
-                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(workerConfigurationInfo.WorkersRootDirPath))
+                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(workersRootDirPath))
                         {
                             return;
                         }
