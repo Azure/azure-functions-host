@@ -54,6 +54,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public List<string> SupportedRuntimeVersions { get; set; }
 
         /// <summary>
+        /// Gets the minimum supported versions for this runtime.
+        /// </summary>
+        [JsonProperty(PropertyName = "minimumSupportedRuntimeVersion")]
+        public List<string> MinimumSupportedRuntimeVersion { get; }
+
+        /// <summary>
         /// Gets or sets the regex used for sanitizing the runtime version string.
         /// </summary>
         [JsonProperty(PropertyName = "sanitizeRuntimeVersionRegex")]
@@ -200,6 +206,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (!string.IsNullOrEmpty(workerRuntime) && workerRuntime.Equals(Language, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(version))
             {
                 DefaultRuntimeVersion = GetSanitizedRuntimeVersion(version);
+            }
+
+            if (!string.IsNullOrEmpty(MinimumSupportedRuntimeVersion) && !string.IsNullOrEmpty(DefaultRuntimeVersion))
+            {
+                if (Version.TryParse(DefaultRuntimeVersion, out var currentVersion) &&
+                    Version.TryParse(MinimumSupportedRuntimeVersion, out var minVersion))
+                {
+                    if (currentVersion < minVersion)
+                    {
+                        logger.LogWarning($"The configured runtime version '{DefaultRuntimeVersion}' for language '{Language}' is lower than the minimum supported version '{MinimumSupportedRuntimeVersion}'. Please update to a supported version. Visit aka.ms/supported-language-versions for more information.");
+                    }
+                }
+                else
+                {
+                    logger.LogWarning($"Could not parse runtime version(s): '{DefaultRuntimeVersion}' or '{MinimumSupportedRuntimeVersion}' for language '{Language}'.");
+                }
             }
 
             ValidateDefaultWorkerPathFormatters(systemRuntimeInformation);
