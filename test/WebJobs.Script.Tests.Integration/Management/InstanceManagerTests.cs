@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -1189,6 +1189,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             runFromPackageHandler
                 .Setup(r => r.ApplyRunFromPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), false,
                     false)).ReturnsAsync(false); // return false to trigger failure
+
+            // setup notifyhealth method
+            _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal,
+                It.IsAny<Type>(), It.IsAny<string>())).Returns(Task.CompletedTask);
 
             // There will be no 2nd attempt since azure files mounting failed.
 

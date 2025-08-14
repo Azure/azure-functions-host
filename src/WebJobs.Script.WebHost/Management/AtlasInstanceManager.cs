@@ -276,6 +276,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         _logger.LogWarning($"Failed to {nameof(_runFromPackageHandler.ApplyRunFromPackageContext)}. Attempting to use local disk instead");
                         await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath, false);
                     }
+                    else if (!blobContextApplied && !azureFilesMounted)
+                    {
+                        await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
+                            $"Failed to mount Azure File Share and failed to {nameof(_runFromPackageHandler.ApplyRunFromPackageContext)}");
+                    }
                 }
                 else if (pkgContext.IsRunFromLocalPackage())
                 {
@@ -301,22 +306,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else
             {
-                bool succeeded = true;
                 if (pkgContext.IsRunFromPackage(options, _logger))
                 {
-                    succeeded = await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath, false);
+                    await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath, false);
                 }
                 else if (assignmentContext.IsAzureFilesContentShareConfigured(_logger))
                 {
-                    succeeded = await _runFromPackageHandler.MountAzureFileShare(assignmentContext);
-                }
-
-                if (!succeeded)
-                {
-                    await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
-                        "Failed to apply Run-From-Package context or mount Azure File Share");
-
-                    throw new Exception("Failed to apply Run-From-Package context or mount Azure File Share");
+                    await _runFromPackageHandler.MountAzureFileShare(assignmentContext);
                 }
             }
 
