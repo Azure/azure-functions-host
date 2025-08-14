@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         /// Gets the minimum supported versions for this runtime.
         /// </summary>
         [JsonProperty(PropertyName = "minimumSupportedRuntimeVersion")]
-        public List<string> MinimumSupportedRuntimeVersion { get; }
+        public string MinimumSupportedRuntimeVersion { get; }
 
         /// <summary>
         /// Gets or sets the regex used for sanitizing the runtime version string.
