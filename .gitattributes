@@ -49,3 +49,7 @@
 *.fsproj text=auto
 *.dbproj text=auto
 *.sln text=auto eol=crlf
+
+# Use union on release notes to keep both local and remote changes
+# and avoid merge conflicts.
+release_notes.md merge=union
