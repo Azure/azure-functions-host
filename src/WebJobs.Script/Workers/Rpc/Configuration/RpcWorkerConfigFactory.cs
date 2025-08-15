@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
-        private readonly WorkerConfigurationResolverOptions _workerConfigurationResolverOptions;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -51,12 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
-            _workerConfigurationResolverOptions = workerConfigurationResolver.GetWorkerConfigurationResolverOptions();
-
-            WorkersDirPath = _workerConfigurationResolverOptions.WorkersDirPath;
         }
-
-        public string WorkersDirPath { get; }
 
         public IList<RpcWorkerConfig> GetConfigs()
         {
@@ -69,21 +63,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void BuildWorkerProviderDictionary()
         {
-            AddProviders();
-            AddProvidersFromAppSettings();
+            var workerConfigurationInfo = _workerConfigurationResolver.GetConfigurationInfo();
+
+            AddProviders(workerConfigurationInfo);
+            AddProvidersFromAppSettings(workerConfigurationInfo);
         }
 
-        internal void AddProviders()
+        internal void AddProviders(WorkerConfigurationInfo workerConfigurationInfo)
         {
-            List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigPaths();
+            var workerConfigs = workerConfigurationInfo.WorkerConfigPaths;
 
             foreach (var workerConfig in workerConfigs)
             {
-                AddProvider(workerConfig);
+                AddProvider(workerConfig, workerConfigurationInfo.WorkersRootDirPath);
             }
         }
 
-        internal void AddProvidersFromAppSettings()
+        internal void AddProvidersFromAppSettings(WorkerConfigurationInfo workerConfigurationInfo)
         {
             var languagesSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}");
             foreach (var languageSection in languagesSection.GetChildren())
@@ -92,12 +88,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (workerDirectorySection.Value != null)
                 {
                     _workerDescriptionDictionary.Remove(languageSection.Key);
-                    AddProvider(workerDirectorySection.Value);
+                    AddProvider(workerDirectorySection.Value, workerConfigurationInfo.WorkersRootDirPath);
                 }
             }
         }
 
-        internal void AddProvider(string workerDir)
+        internal void AddProvider(string workerDir, string workersRootDirPath)
         {
             using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDir)))
             {
@@ -109,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
                         // Do not skip non-worker directories like the function app payload directory
-                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(WorkersDirPath))
+                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(workersRootDirPath))
                         {
                             return;
                         }

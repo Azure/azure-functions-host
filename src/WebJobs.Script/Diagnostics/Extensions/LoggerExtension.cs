@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         private static readonly Action<ILogger, string, Exception> _defaultWorkersDirectoryPath =
            LoggerMessage.Define<string>(LogLevel.Debug,
-           new EventId(343, nameof(LogDefaultWorkersDirectoryPath)),
+           new EventId(343, nameof(DefaultWorkersDirectoryPath)),
            "Workers Directory set to: {workersDirPath}");
 
         public static void PublishingMetrics(this ILogger logger, string metrics)
@@ -423,7 +423,7 @@ Lock file hash: {currentLockFileHash}";
             _incorrectAzureFunctionsFolderPath(logger, path, EnvironmentSettingNames.FunctionWorkerRuntime, null);
         }
 
-        public static void LogDefaultWorkersDirectoryPath(this ILogger logger, string workersDirPath)
+        public static void DefaultWorkersDirectoryPath(this ILogger logger, string workersDirPath)
         {
             _defaultWorkersDirectoryPath(logger, workersDirPath, null);
         }

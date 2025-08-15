@@ -33,15 +33,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         // Gets or sets the dictionary containing language workers related settings in configuration.
         public Dictionary<string, string> LanguageWorkersSettings { get; set; }
+        /// <summary>
+        /// Gets or sets the workers directory path within the Host or defined by IConfiguration.
+        /// </summary>
+        public string WorkersRootDirPath { get; set; }
 
-        // Implements the Format method from IOptionsFormatter interface.
+        /// <inheritdoc>
+        /// Implements the Format method from IOptionsFormatter interface.
+        /// </inheritdoc>
         public string Format()
         {
             return JsonSerializer.Serialize(this, typeof(WorkerConfigurationResolverOptions), ConfigResolverOptionsJsonSerializerContext.Default);
         }
     }
 
-    [JsonSourceGenerationOptions(WriteIndented = true)]
+    [JsonSourceGenerationOptions(WriteIndented = true, GenerationMode = JsonSourceGenerationMode.Serialization)]
     [JsonSerializable(typeof(WorkerConfigurationResolverOptions))]
     internal partial class ConfigResolverOptionsJsonSerializerContext : JsonSerializerContext;
 }
