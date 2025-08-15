@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
+        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -40,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IEnvironment environment,
                                         IMetricsLogger metricsLogger,
                                         IWorkerProfileManager workerProfileManager,
-                                        IWorkerConfigurationResolver workerConfigurationResolver)
+                                        IWorkerConfigurationResolver workerConfigurationResolver,
+                                        IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -50,7 +53,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
+            _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
+
+            WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(config);
         }
+
+        public string WorkersDirPath { get; }
 
         public IList<RpcWorkerConfig> GetConfigs()
         {
@@ -63,23 +71,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void BuildWorkerProviderDictionary()
         {
-            var workerConfigurationInfo = _workerConfigurationResolver.GetConfigurationInfo();
-
-            AddProviders(workerConfigurationInfo);
-            AddProvidersFromAppSettings(workerConfigurationInfo);
+            AddProviders();
+            AddProvidersFromAppSettings();
         }
 
-        internal void AddProviders(WorkerConfigurationInfo workerConfigurationInfo)
+        internal void AddProviders()
         {
-            var workerConfigs = workerConfigurationInfo.WorkerConfigPaths;
+            List<string> workerConfigs = _workerConfigurationResolver.GetWorkerConfigPaths();
 
             foreach (var workerConfig in workerConfigs)
             {
-                AddProvider(workerConfig, workerConfigurationInfo.WorkersRootDirPath);
+                AddProvider(workerConfig);
             }
         }
 
-        internal void AddProvidersFromAppSettings(WorkerConfigurationInfo workerConfigurationInfo)
+        internal void AddProvidersFromAppSettings()
         {
             var languagesSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}");
             foreach (var languageSection in languagesSection.GetChildren())
@@ -88,12 +94,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (workerDirectorySection.Value != null)
                 {
                     _workerDescriptionDictionary.Remove(languageSection.Key);
-                    AddProvider(workerDirectorySection.Value, workerConfigurationInfo.WorkersRootDirPath);
+                    AddProvider(workerDirectorySection.Value);
                 }
             }
         }
 
-        internal void AddProvider(string workerDir, string workersRootDirPath)
+        internal void AddProvider(string workerDir)
         {
             using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDir)))
             {
@@ -105,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         string workerRuntime = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
                         // Do not skip non-worker directories like the function app payload directory
-                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(workersRootDirPath))
+                        if (!workerRuntime.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(WorkersDirPath))
                         {
                             return;
                         }
@@ -123,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     var workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
 
-                    RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(workerConfig, _jsonSerializerOptions, workerDir, _profileManager, _workerConfigurationResolverOptions.LanguageWorkersSettings, _logger);
+                    RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(workerConfig, _jsonSerializerOptions, workerDir, _profileManager, _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings, _logger);
 
                     if (workerDescription.IsDisabled == true)
                     {

@@ -1,13 +1,14 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Abstractions;
+using System.Linq;
+using System.Reflection;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
@@ -17,103 +18,111 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly IFileSystem _fileSystem;
-        private readonly ILogger _logger;
+        private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
 
-        public WorkerConfigurationResolverOptionsSetup(ILoggerFactory loggerFactory, IConfiguration configuration, IScriptHostManager scriptHostManager, IFileSystem fileSystem)
+        public WorkerConfigurationResolverOptionsSetup(IConfiguration configuration,
+                                                        IEnvironment environment,
+                                                        IScriptHostManager scriptHostManager,
+                                                        IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
         {
-            ArgumentNullException.ThrowIfNull(loggerFactory);
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
-            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+            _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
         }
 
         public void Configure(WorkerConfigurationResolverOptions options)
         {
-            var configuration = GetRequiredConfiguration();
-            options.WorkersRootDirPath = GetWorkersRootDirPath(configuration);
-        }
+            var configuration = _configuration;
+            if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
+            {
+                var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
+                if (latestConfiguration is not null)
+                {
+                    configuration = new ConfigurationBuilder()
+                        .AddConfiguration(_configuration)
+                        .AddConfiguration(latestConfiguration)
+                        .Build();
+                }
             }
 
             options.WorkerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             options.ReleaseChannel = EnvironmentExtensions.GetPlatformReleaseChannel(_environment);
             options.IsPlaceholderModeEnabled = _environment.IsPlaceholderModeEnabled();
             options.IsMultiLanguageWorkerEnvironment = _environment.IsMultiLanguageRuntimeEnvironment();
-            options.WorkersDirPath = GetWorkersDirPath(configuration);
+            options.WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(configuration);
             options.ProbingPaths = GetWorkerProbingPaths();
             options.WorkersAvailableForResolution = GetWorkersAvailableForResolutionViaHostingConfig(_functionsHostingConfigOptions);
             options.LanguageWorkersSettings = GetLanguageWorkersSettings(configuration);
         }
 
         internal List<string> GetWorkerProbingPaths()
-        internal string GetDefaultWorkersDirectory()
         {
-            var assemblyDir = AppContext.BaseDirectory;
-            string workersDirPath = Path.Combine(assemblyDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            // If Configuration section is set, read probing paths from configuration.
+            IConfigurationSection probingPathsSection = _configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
 
-            if (!_fileSystem.Directory.Exists(workersDirPath))
+            var probingPathsList = probingPathsSection?.AsEnumerable();
+
+            List<string> probingPaths = new List<string>();
+
+            if (probingPathsList is not null)
             {
-                // Site Extension Path. Default to parent directory.
-                var parentDir = _fileSystem.Directory.GetParent(assemblyDir.TrimEnd(Path.DirectorySeparatorChar)).FullName;
-                workersDirPath = _fileSystem.Path.Combine(parentDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
-            }
-            return workersDirPath;
-        }
-
-        private string GetWorkersRootDirPath(IConfiguration configuration)
-        {
-            if (configuration is not null)
-            {
-                var workersDirectorySection = configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
-
-                if (!string.IsNullOrEmpty(workersDirectorySection?.Value))
+                for (int i = 0; i < probingPathsList.Count(); i++)
                 {
-                    return workersDirectorySection.Value;
+                    var path = probingPathsSection.GetSection($"{i}").Value;
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        probingPaths.Add(path);
+                    }
+                }
+            }
+            else
+            {
+                if (_environment.IsHostedWindowsEnvironment())
+                {
+                    // Harcoded site extensions path for Windows until Antares sets it as an Environment variable.
+                    // Example probing path for Windows: "c:\\home\\SiteExtensions\\workers"
+                    string windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
+
+                    if (!string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
+                    {
+                        var windowsWorkerFullProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
+                        probingPaths.Add(windowsWorkerFullProbingPath);
+                    }
                 }
             }
 
-            return GetDefaultWorkersDirectory();
+            return probingPaths;
         }
 
-        private IConfiguration GetRequiredConfiguration()
+        internal static HashSet<string> GetWorkersAvailableForResolutionViaHostingConfig(IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions) =>
+            (functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
+            .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        internal static string GetWindowsSiteExtensionsPath()
         {
-            string requiredSection = $"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}";
+            var assemblyPath = Assembly.GetExecutingAssembly().Location;
+            var assemblyDir = Path.GetDirectoryName(assemblyPath);
 
-            if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
+            //Move 2 directories up to get to the SiteExtensions directory
+            return Directory.GetParent(assemblyDir)?.Parent?.FullName;
+        }
+
+        internal Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
+        {
+            // Convert the required configuration sections to Dictionary
+            var languageWorkersSettings = new Dictionary<string, string>();
+
+            foreach (var kvp in configuration.AsEnumerable())
             {
-                var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
-                var latestConfigValue = GetConfigurationSectionValue(latestConfiguration, nameof(latestConfiguration), requiredSection);
-
-                if (!string.IsNullOrEmpty(latestConfigValue))
+                if (kvp.Key.StartsWith(RpcWorkerConstants.LanguageWorkersSectionName))
                 {
-                    return latestConfiguration;
+                    languageWorkersSettings[kvp.Key] = kvp.Value;
                 }
+            }
 
             return languageWorkersSettings;
-            }
-
-            string configSectionValue = GetConfigurationSectionValue(_configuration, nameof(_configuration), requiredSection);
-            if (!string.IsNullOrEmpty(configSectionValue))
-            {
-                return _configuration;
-            }
-
-            return null;
-        }
-
-        private string GetConfigurationSectionValue(IConfiguration configuration, string configurationSource, string requiredSection)
-        {
-            var section = configuration?.GetSection(requiredSection);
-
-            if (!string.IsNullOrEmpty(section?.Value))
-            {
-                _logger.LogTrace("Found configuration section '{requiredSection}' in '{configurationSource}'.", requiredSection, configurationSource);
-                return section.Value;
-            }
-
-            return null;
         }
     }
 }
