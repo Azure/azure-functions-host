@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            return new WorkerConfigurationInfo(_workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath, workerConfigPaths);
+            return new WorkerConfigurationInfo(_workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath, workerConfigPaths, null);
         }
     }
 }

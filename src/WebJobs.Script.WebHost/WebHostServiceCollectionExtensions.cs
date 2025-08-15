@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -234,7 +234,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptionsWithChangeTokenSource<WorkerConfigurationResolverOptions, WorkerConfigurationResolverOptionsSetup, HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, HostBuiltChangeTokenSource<LanguageWorkerOptions>>();
 
-            services.AddSingleton<IWorkerConfigurationResolver, DefaultWorkerConfigurationResolver>();
+            services.AddSingleton<IWorkerConfigurationResolver>(p =>
+            {
+                var environment = p.GetService<IEnvironment>();
+                var workerConfigurationResolverOptions = p.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
+                var workerProfileManager = p.GetService<IWorkerProfileManager>();
+                var loggerFactory = p.GetService<ILoggerFactory>();
+
+                return Utility.IsDynamicWorkerResolutionEnabled(environment, workerConfigurationResolverOptions) ?
+                            new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, workerProfileManager, workerConfigurationResolverOptions) :
+                            new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, workerConfigurationResolverOptions);
+            });
+
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
 

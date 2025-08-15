@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -23,6 +23,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -1063,6 +1064,28 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return workerIndexingEnabled && workerIndexingAvailable;
+        }
+
+        // Users can disable dynamic worker resolution via setting the appropriate feature flag.
+        // Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
+        // Feature flag takes precedence over hosting config options.
+        public static bool IsDynamicWorkerResolutionEnabled(IEnvironment environment, IOptionsMonitor<WorkerConfigurationResolverOptions> options)
+        {
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, environment) || options.CurrentValue.WorkersAvailableForResolution is null)
+            {
+                return false;
+            }
+
+            string workerRuntime = options.CurrentValue.WorkerRuntime;
+
+            if (!options.CurrentValue.IsMultiLanguageWorkerEnvironment &&
+                !string.IsNullOrWhiteSpace(workerRuntime) &&
+                !options.CurrentValue.IsPlaceholderModeEnabled)
+            {
+                return options.CurrentValue.WorkersAvailableForResolution.Contains(workerRuntime);
+            }
+
+            return options.CurrentValue.WorkersAvailableForResolution.Any();
         }
 
         public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)

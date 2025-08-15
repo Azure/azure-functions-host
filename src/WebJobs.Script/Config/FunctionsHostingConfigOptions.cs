@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -88,6 +88,17 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             get
             {
                 return GetFeature(RpcWorkerConstants.WorkerIndexingDisabledApps) ?? string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Gets a string delimited by '|' that contains the names of the language workers available through probing paths outside of the Host.
+        /// </summary>
+        internal string WorkersAvailableForDynamicResolution
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.WorkersAvailableForDynamicResolution) ?? string.Empty;
             }
         }
 

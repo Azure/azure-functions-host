@@ -1,6 +1,10 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -24,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             var testLoggerFactory = GetTestLoggerFactory();
-            var resolverOptionsSetup = new WorkerConfigurationResolverOptionsSetup(testLoggerFactory, configuration, scriptHostManager, FileUtility.Instance);
+            var resolverOptionsSetup = new WorkerConfigurationResolverOptionsSetup(testLoggerFactory, configuration, environment, FileUtility.Instance, scriptHostManager, functionsHostingConfigOptions);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionsSetup.Configure(resolverOptions);
 
@@ -43,6 +47,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             loggerFactory.AddProvider(loggerProvider);
 
             return loggerFactory;
+        }
+
+        internal static IConfiguration GetConfigurationWithProbingPaths(List<string> probingPaths)
+        {
+            var jsonObj = new
+            {
+                languageWorkers = new
+                {
+                    probingPaths
+                }
+            };
+
+            var jsonString = JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
+            var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
+
+            var configurationBuilder = new ConfigurationBuilder()
+                .Add(new ScriptEnvironmentVariablesConfigurationSource())
+                .AddJsonStream(jsonStream);
+
+            return configurationBuilder.Build();
         }
     }
 }

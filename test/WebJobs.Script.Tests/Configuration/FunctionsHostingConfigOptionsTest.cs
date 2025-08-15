@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -67,6 +67,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=True", true];
                 yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=1", true];
                 yield return [nameof(FunctionsHostingConfigOptions.IsDotNetInProcDisabled), "DotNetInProcDisabled=0", false];
+
+                yield return [nameof(FunctionsHostingConfigOptions.WorkersAvailableForDynamicResolution), "WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION=java|node", "java|node"];
+                yield return [nameof(FunctionsHostingConfigOptions.WorkersAvailableForDynamicResolution), "WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION=java", "java"];
+                yield return [nameof(FunctionsHostingConfigOptions.WorkersAvailableForDynamicResolution), "WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION=java|dotnet-isolated|node", "java|dotnet-isolated|node"];
 
                 yield return [nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true];
 

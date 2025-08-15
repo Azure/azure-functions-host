@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsAgent = "APPLICATIONINSIGHTS_ENABLE_AGENT";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
         public const string FunctionWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME";
+        public const string WorkerProbingPaths = "WORKER_PROBING_PATHS";
         public const string ContainerName = "CONTAINER_NAME";
         public const string WebsitePodName = "WEBSITE_POD_NAME";
         public const string LegionServiceHost = "LEGION_SERVICE_HOST";
