@@ -1,0 +1,14 @@
+{
+    "description": {
+        "language": "node",
+        "extensions": [".js", ".mjs", ".cjs"],
+        "defaultExecutablePath": "node",
+        "defaultWorkerPath": "worker.config.json",
+        "workerIndexing": "true"
+    },
+    "hostRequirements": [],
+    "processOptions": {
+        "initializationTimeout": "00:02:00",
+        "environmentReloadTimeout": "00:02:00"
+    }
+}

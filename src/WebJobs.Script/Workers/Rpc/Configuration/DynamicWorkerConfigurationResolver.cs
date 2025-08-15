@@ -8,7 +8,6 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -37,6 +36,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _workerConfigurationResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
             _workerProbingPaths = workerConfigResolverOptions.CurrentValue.ProbingPaths;
             _workersAvailableForResolutionViaHostingConfig = workerConfigResolverOptions.CurrentValue.WorkersAvailableForResolution ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        public WorkerConfigurationInfo GetConfigurationInfo()
+        {
+            return new WorkerConfigurationInfo(
+                WorkersRootDirPath: _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath,
+                WorkerConfigPaths: GetWorkerConfigPaths(),
+                LanguageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings);
         }
 
         public List<string> GetWorkerConfigPaths()
@@ -310,11 +317,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             return version;
-        }
-
-        public WorkerConfigurationInfo GetConfigurationInfo()
-        {
-            throw new NotImplementedException();
         }
 
         private class DescendingVersionComparer : IComparer<Version>

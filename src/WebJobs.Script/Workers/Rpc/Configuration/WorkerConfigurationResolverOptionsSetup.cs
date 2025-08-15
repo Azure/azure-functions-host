@@ -42,7 +42,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public void Configure(WorkerConfigurationResolverOptions options)
         {
-            var configuration = GetRequiredConfiguration();
+            var configuration = _configuration;
+            if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
+            {
+                var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
+                if (latestConfiguration is not null)
+                {
+                    configuration = new ConfigurationBuilder()
+                        .AddConfiguration(_configuration)
+                        .AddConfiguration(latestConfiguration)
+                        .Build();
+                }
+            }
+
+//            var configuration = GetRequiredConfiguration();
             options.WorkersRootDirPath = GetWorkersRootDirPath(configuration);
             options.WorkerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             options.ReleaseChannel = EnvironmentExtensions.GetPlatformReleaseChannel(_environment);

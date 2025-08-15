@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            return new WorkerConfigurationInfo(_workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath, workerConfigPaths, null);
+            return new WorkerConfigurationInfo(_workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath, workerConfigPaths, _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings);
         }
     }
 }
