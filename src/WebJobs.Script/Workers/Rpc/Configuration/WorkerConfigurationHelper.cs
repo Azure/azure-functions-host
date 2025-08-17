@@ -149,19 +149,5 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
             return workersDirPath;
         }
-
-        internal static string GetWorkersDirPath(IConfiguration configuration)
-        {
-            var workersDirectorySection = configuration?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
-
-            string workersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
-
-            if (!string.IsNullOrEmpty(workersDirectorySection?.Value))
-            {
-                workersDirPath = workersDirectorySection.Value;
-            }
-
-            return workersDirPath;
-        }
     }
 }

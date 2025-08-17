@@ -10,29 +10,45 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
     public sealed class WorkerConfigurationResolverOptions : IOptionsFormatter
     {
-        // Gets or sets the value of platform release channel.
+        /// <summary>
+        /// Gets or sets the value of platform release channel.
+        /// </summary>
         public string ReleaseChannel { get; set; }
 
-        // Gets or sets the value of worker runtime.
+        /// <summary>
+        /// Gets or sets the value of worker runtime.
+        /// </summary>
         public string WorkerRuntime { get; set; }
 
-        // Gets or sets a value indicating whether placeholder mode is enabled.
+        /// <summary>
+        /// Gets or sets a value indicating whether placeholder mode is enabled.
+        /// </summary>
         public bool IsPlaceholderModeEnabled { get; set; }
 
-        // Gets or sets a value indicating whether it is a multi-language worker environment.
+        /// <summary>
+        /// Gets or sets a value indicating whether it is a multi-language worker environment.
+        /// </summary>
         public bool IsMultiLanguageWorkerEnvironment { get; set; }
 
-        // Gets or sets the workers directory path within the Host.
-        public string WorkersDirPath { get; set; }
-
-        // Gets or sets the list of probing paths for worker resolution.
+        /// <summary>
+        /// Gets or sets the list of probing paths for worker resolution.
+        /// </summary>
         public List<string> ProbingPaths { get; set; }
 
-        // Gets or sets the worker runtimes available for resolution via Hosting configuration.
+        /// <summary>
+        /// Gets or sets the worker runtimes available for resolution via Hosting configuration.
+        /// </summary>
         public HashSet<string> WorkersAvailableForResolution { get; set; }
 
-        // Gets or sets the dictionary containing language workers related settings in configuration.
+        /// <summary>
+        /// Gets or sets the dictionary containing language workers related settings in configuration.
+        /// </summary>
         public Dictionary<string, string> LanguageWorkersSettings { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether dynamic worker resolution is enabled.
+        /// </summary>
+        public bool IsDynamicWorkerResolutionEnabled { get; set; }
 
         /// <summary>
         /// Gets or sets the workers directory path within the Host or defined by IConfiguration.

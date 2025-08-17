@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         public WorkerConfigurationInfo GetConfigurationInfo()
         {
             return new WorkerConfigurationInfo(
-                WorkersRootDirPath: _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath,
+                WorkersRootDirPath: _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath,
                 WorkerConfigPaths: GetWorkerConfigPaths(),
                 LanguageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings);
         }
@@ -162,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private void ResolveWorkerConfigsFromWithinHost(string workerRuntime, Dictionary<string, string> outputDict)
         {
-            var fallbackPath = _workerConfigurationResolverOptions.CurrentValue.WorkersDirPath;
+            var fallbackPath = _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath;
 
             _logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", fallbackPath);
 

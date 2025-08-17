@@ -1069,8 +1069,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlagValue);
 
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-
-            bool result = Utility.IsDynamicWorkerResolutionEnabled(testEnvironment, optionsMonitor);
+            bool result = optionsMonitor.CurrentValue.IsDynamicWorkerResolutionEnabled;
 
             Assert.Equal(expected, result);
         }
@@ -1095,8 +1094,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
 
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-
-            bool result = Utility.IsDynamicWorkerResolutionEnabled(testEnvironment, optionsMonitor);
+            bool result = optionsMonitor.CurrentValue.IsDynamicWorkerResolutionEnabled;
 
             Assert.Equal(expected, result);
         }

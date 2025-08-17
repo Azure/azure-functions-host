@@ -18,9 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     internal sealed class WorkerConfigurationResolverOptionsSetup : IConfigureOptions<WorkerConfigurationResolverOptions>
     {
         private readonly IConfiguration _configuration;
+        private readonly IScriptHostManager _scriptHostManager;
         private readonly IEnvironment _environment;
         private readonly IFileSystem _fileSystem;
-        private readonly IScriptHostManager _scriptHostManager;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
         private readonly ILogger _logger;
 
@@ -34,37 +34,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             ArgumentNullException.ThrowIfNull(loggerFactory);
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
-            _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
         }
 
         public void Configure(WorkerConfigurationResolverOptions options)
         {
-            var configuration = _configuration;
-            if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
-            {
-                var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
-                if (latestConfiguration is not null)
-                {
-                    configuration = new ConfigurationBuilder()
-                        .AddConfiguration(_configuration)
-                        .AddConfiguration(latestConfiguration)
-                        .Build();
-                }
-            }
-
-//            var configuration = GetRequiredConfiguration();
+            var configuration = GetRequiredConfiguration();
             options.WorkersRootDirPath = GetWorkersRootDirPath(configuration);
-            options.WorkerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            options.ReleaseChannel = EnvironmentExtensions.GetPlatformReleaseChannel(_environment);
+            options.WorkerRuntime = _environment.GetFunctionsWorkerRuntime();
+            options.ReleaseChannel = _environment.GetPlatformReleaseChannel();
             options.IsPlaceholderModeEnabled = _environment.IsPlaceholderModeEnabled();
             options.IsMultiLanguageWorkerEnvironment = _environment.IsMultiLanguageRuntimeEnvironment();
-            options.WorkersDirPath = WorkerConfigurationHelper.GetWorkersDirPath(configuration);
-            options.ProbingPaths = GetWorkerProbingPaths();
-            options.WorkersAvailableForResolution = GetWorkersAvailableForResolutionViaHostingConfig(_functionsHostingConfigOptions);
+            options.ProbingPaths = GetWorkerProbingPaths(configuration);
+            options.WorkersAvailableForResolution = GetWorkersAvailableForResolution(_functionsHostingConfigOptions);
             options.LanguageWorkersSettings = GetLanguageWorkersSettings(configuration);
+            options.IsDynamicWorkerResolutionEnabled = IsDynamicWorkerResolutionEnabled(options.WorkerRuntime,
+                                                                                        options.WorkersAvailableForResolution,
+                                                                                        options.IsPlaceholderModeEnabled,
+                                                                                        options.IsMultiLanguageWorkerEnvironment);
         }
 
         internal string GetDefaultWorkersDirectory()
@@ -98,81 +88,75 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private IConfiguration GetRequiredConfiguration()
         {
-            string requiredSection = $"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}";
+            EvaluateConfiguration(_configuration, nameof(_configuration));
 
+            var configuration = _configuration;
             if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
             {
                 var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
-                var latestConfigValue = GetConfigurationSectionValue(latestConfiguration, nameof(latestConfiguration), requiredSection);
+                EvaluateConfiguration(latestConfiguration, nameof(latestConfiguration));
 
-                if (!string.IsNullOrEmpty(latestConfigValue))
+                if (latestConfiguration is not null)
                 {
-                    return latestConfiguration;
+                    configuration = new ConfigurationBuilder()
+                        .AddConfiguration(_configuration)
+                        .AddConfiguration(latestConfiguration)
+                        .Build();
                 }
             }
 
-            string configSectionValue = GetConfigurationSectionValue(_configuration, nameof(_configuration), requiredSection);
-            if (!string.IsNullOrEmpty(configSectionValue))
-            {
-                return _configuration;
-            }
-
-            return null;
+            return configuration;
         }
 
-        private string GetConfigurationSectionValue(IConfiguration configuration, string configurationSource, string requiredSection)
+        private void EvaluateConfiguration(IConfiguration configuration, string configurationSource)
         {
-            var section = configuration?.GetSection(requiredSection);
+            string configSectionToCheck = $"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}";
+            var section = configuration?.GetSection(configSectionToCheck);
 
             if (!string.IsNullOrEmpty(section?.Value))
             {
-                _logger.LogTrace("Found configuration section '{requiredSection}' in '{configurationSource}'.", requiredSection, configurationSource);
-                return section.Value;
+                _logger.LogTrace("Found configuration section '{requiredSection}' in '{configurationSource}'.", configSectionToCheck, configurationSource);
             }
-
-            return null;
         }
 
-        internal List<string> GetWorkerProbingPaths()
+        internal List<string> GetWorkerProbingPaths(IConfiguration configuration)
         {
             // If Configuration section is set, read probing paths from configuration.
-            IConfigurationSection probingPathsSection = _configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
-
+            IConfigurationSection probingPathsSection = configuration?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
             var probingPathsList = probingPathsSection?.AsEnumerable();
+            var probingPaths = new List<string>();
 
-            List<string> probingPaths = new List<string>();
-
-            if (probingPathsList is not null)
-            {
-                for (int i = 0; i < probingPathsList.Count(); i++)
-                {
-                    var path = probingPathsSection.GetSection($"{i}").Value;
-                    if (!string.IsNullOrWhiteSpace(path))
-                    {
-                        probingPaths.Add(path);
-                    }
-                }
-            }
-            else
+            if (probingPathsList is null)
             {
                 if (_environment.IsHostedWindowsEnvironment())
                 {
                     // Harcoded site extensions path for Windows until Antares sets it as an Environment variable.
-                    // Example probing path for Windows: "c:\\home\\SiteExtensions\\workers"
                     string windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
 
                     if (!string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
                     {
-                        var windowsWorkerFullProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
-                        probingPaths.Add(windowsWorkerFullProbingPath);
+                        // Example probing path for Windows: "c:\\home\\SiteExtensions\\workers"
+                        var windowsWorkerProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
+                        probingPaths.Add(windowsWorkerProbingPath);
                     }
+
+                    return probingPaths;
+                }
+            }
+
+            for (int i = 0; i < probingPathsList.Count(); i++)
+            {
+                var path = probingPathsSection.GetSection($"{i}").Value;
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    probingPaths.Add(path);
                 }
             }
 
             return probingPaths;
         }
 
-        internal static HashSet<string> GetWorkersAvailableForResolutionViaHostingConfig(IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions) =>
+        internal static HashSet<string> GetWorkersAvailableForResolution(IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions) =>
             (functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -200,6 +184,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             return languageWorkersSettings;
+        }
+
+        // Users can disable dynamic worker resolution via setting the appropriate feature flag.
+        // Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
+        // Feature flag takes precedence over hosting config options.
+        internal bool IsDynamicWorkerResolutionEnabled(string workerRuntime, HashSet<string> workersAvailableForResolution, bool isPlaceholderModeEnabled, bool isMultiLanguageEnv)
+        {
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, _environment) || workersAvailableForResolution is null)
+            {
+                return false;
+            }
+
+            if (!isMultiLanguageEnv &&
+                !string.IsNullOrWhiteSpace(workerRuntime) &&
+                !isPlaceholderModeEnabled)
+            {
+                return workersAvailableForResolution.Contains(workerRuntime);
+            }
+
+            return workersAvailableForResolution.Any();
         }
     }
 }

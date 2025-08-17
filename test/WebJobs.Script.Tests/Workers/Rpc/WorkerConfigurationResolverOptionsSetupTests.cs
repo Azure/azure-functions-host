@@ -214,11 +214,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             setup.Configure(options);
 
             // Assert
-            Assert.Null(options.WorkerRuntime);
+            Assert.Empty(options.WorkerRuntime);
             Assert.Equal(ScriptConstants.LatestPlatformChannelNameUpper, options.ReleaseChannel);
             Assert.False(options.IsPlaceholderModeEnabled);
             Assert.False(options.IsMultiLanguageWorkerEnvironment);
-            Assert.Equal("/default/workers", options.WorkersDirPath);
+            Assert.Equal("/default/workers", options.WorkersRootDirPath);
             Assert.NotNull(options.LanguageWorkersSettings);
 
             Assert.Equal(2, options.ProbingPaths.Count);
@@ -260,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal("standard", options.ReleaseChannel);
             Assert.False(options.IsPlaceholderModeEnabled);
             Assert.False(options.IsMultiLanguageWorkerEnvironment);
-            Assert.Equal("/default/workers", options.WorkersDirPath);
+            Assert.Equal("/default/workers", options.WorkersRootDirPath);
             Assert.NotNull(options.LanguageWorkersSettings);
 
             Assert.NotNull(options.ProbingPaths);
