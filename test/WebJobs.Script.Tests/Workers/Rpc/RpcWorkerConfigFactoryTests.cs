@@ -62,8 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData(false)]
         public void GetDefaultWorkersDirectory_Returns_Expected(bool expectedValue)
         {
-            var env = new Mock<IEnvironment>();
-
             string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.Location).LocalPath);
             string defaultWorkersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
             var fileSystemMock = new Mock<IFileSystem>();
@@ -86,8 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 .Returns((string dir, string workersDirName) => Path.Combine(dir, workersDirName));
 
             var mockScriptHostManager = new Mock<IScriptHostManager>();
-            var hostingConfigOptions = new FunctionsHostingConfigOptions();
-            var optionsSetup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, config, env.Object, fileSystemMock.Object, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingConfigOptions));
+            var env = new Mock<IEnvironment>();
+            var optionsSetup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, config, env.Object, fileSystemMock.Object, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(null));
 
             if (expectedValue)
             {
