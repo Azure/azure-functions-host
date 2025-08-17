@@ -139,9 +139,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         var windowsWorkerProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
                         probingPaths.Add(windowsWorkerProbingPath);
                     }
-
-                    return probingPaths;
                 }
+
+                return probingPaths;
             }
 
             for (int i = 0; i < probingPathsList.Count(); i++)
