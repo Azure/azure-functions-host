@@ -7,7 +7,6 @@ using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
@@ -134,20 +133,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsValue, @"\s+"));
             }
-        }
-
-        internal static string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
-        {
-#pragma warning disable SYSLIB0012 // Type or member is obsolete
-            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
-#pragma warning restore SYSLIB0012 // Type or member is obsolete
-            string workersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
-            if (!directoryExists(workersDirPath))
-            {
-                // Site Extension. Default to parent directory
-                workersDirPath = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
-            }
-            return workersDirPath;
         }
     }
 }
