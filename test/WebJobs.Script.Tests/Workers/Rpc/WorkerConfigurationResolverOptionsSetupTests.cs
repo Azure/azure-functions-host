@@ -229,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void Configure_WithRealEnvironmentValues_SetsCorrectDefaults1()
+        public void Configure_WithEnvironmentValues_SetsValues()
         {
             // Arrange
             var testEnvironment = new TestEnvironment();
@@ -259,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal("java", options.WorkerRuntime);
             Assert.Equal("standard", options.ReleaseChannel);
             Assert.False(options.IsPlaceholderModeEnabled);
-            Assert.False(options.IsMultiLanguageWorkerEnvironment);
+            Assert.True(options.IsMultiLanguageWorkerEnvironment);
             Assert.Equal("/default/workers", options.WorkersRootDirPath);
             Assert.NotNull(options.LanguageWorkersSettings);
 

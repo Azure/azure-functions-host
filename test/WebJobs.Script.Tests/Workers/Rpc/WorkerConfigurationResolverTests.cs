@@ -116,5 +116,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "python"))));
         }
 
+        [Theory]
+        [InlineData(null, "LATEST", "java")]
+        [InlineData(null, "STANDARD", "java")]
+        [InlineData("Empty", "LATEST", "java")]
+        [InlineData("Empty", "STANDARD", "java")]
+        [InlineData(null, "STANDARD", "node")]
+        [InlineData("Empty", "LATEST", "node")]
+        [InlineData(null, "STANDARD", "powershell")]
+        [InlineData("Empty", "LATEST", "powershell")]
+        [InlineData(null, "LATEST", "dotnet-isolated")]
+        [InlineData(null, "STANDARD", "dotnet-isolated")]
+        [InlineData("Empty", "LATEST", "dotnet-isolated")]
+        [InlineData("Empty", "STANDARD", "dotnet-isolated")]
+        public void GetWorkerConfigs_NullOREmptyProbingPath_ReturnsExpectedConfigs(string probingPathValue, string releaseChannel, string languageWorker)
+        {
+            // Arrange
+            var mockEnv = new Mock<IEnvironment>();
+            mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(languageWorker);
+            mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
+
+            List<string> probingPaths = null;
+
+            if (probingPathValue == "Empty")
+            {
+                probingPaths = new List<string>();
+            }
+
+            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
+
+            var mockProfileManager = new Mock<IWorkerProfileManager>();
+            var mockConfig = new Mock<IConfiguration>();
+
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+
+            // Act
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, mockProfileManager.Object, optionsMonitor);
+
+            var result = workerConfigurationResolver.GetWorkerConfigPaths();
+
+            // Assert
+            Assert.Equal(result.Count, 1);
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, languageWorker))));
+        }
+
     }
 }

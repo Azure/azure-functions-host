@@ -19,8 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private static bool? isApplicationInsightsAgentEnabled;
 
-        private static bool? isMultiLanguageEnabled;
-
         internal static string BaseDirectory { get; set; }
 
         public static string GetEnvironmentVariableOrDefault(this IEnvironment environment, string name, string defaultValue)
@@ -477,11 +475,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static bool IsMultiLanguageRuntimeEnvironment(this IEnvironment environment)
         {
-            if (!isMultiLanguageEnabled.HasValue)
-            {
-                isMultiLanguageEnabled = environment.IsLogicApp();
-            }
-            return isMultiLanguageEnabled.Value;
+            return environment.IsLogicApp();
         }
 
         /// <summary>
@@ -724,7 +718,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static void ClearCache()
         {
-            isMultiLanguageEnabled = null;
             isApplicationInsightsAgentEnabled = null;
         }
 
