@@ -123,11 +123,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal List<string> GetWorkerProbingPaths(IConfiguration configuration)
         {
             // If Configuration section is set, read probing paths from configuration.
-            IConfigurationSection probingPathsSection = configuration?.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
-            var probingPathsList = probingPathsSection?.AsEnumerable();
+            IConfigurationSection probingPathsSection = configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
+            var probingPathsList = probingPathsSection.AsEnumerable();
             var probingPaths = new List<string>();
 
-            if (probingPathsList is null)
+            if (!probingPathsList.Any())
             {
                 if (_environment.IsHostedWindowsEnvironment())
                 {
@@ -157,11 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return probingPaths;
         }
 
-        internal static HashSet<string> GetWorkersAvailableForResolution(IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions) =>
-            (functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
-            .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
         internal static string GetWindowsSiteExtensionsPath()
         {
             var assemblyPath = Assembly.GetExecutingAssembly().Location;
@@ -170,6 +165,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             //Move 2 directories up to get to the SiteExtensions directory
             return Directory.GetParent(assemblyDir)?.Parent?.FullName;
         }
+
+        internal static HashSet<string> GetWorkersAvailableForResolution(IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions) =>
+            (functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
+            .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         internal Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
         {
@@ -212,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // Example value of ignoredWorkersVersions: "Worker1Name:Version1;Worker1Name:Version2;Worker2Name:Version1;Worker3Name:Version1;".
             string ignoredWorkersVersions = _functionsHostingConfigOptions.Value?.IgnoredWorkersVersions ?? string.Empty;
 
-            var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>();
+            var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>(StringComparer.OrdinalIgnoreCase);
 
             if (string.IsNullOrWhiteSpace(ignoredWorkersVersions))
             {

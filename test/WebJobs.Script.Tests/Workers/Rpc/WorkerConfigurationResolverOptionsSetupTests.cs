@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public void IsDynamicWorkerResolutionEnabled_HostingConfigAndFeatureFlags_WorksAsExpected(string featureFlagValue, string hostingConfigSetting, bool expected)
         {
-            var mockConfiguration = new Mock<IConfiguration>();
+            var config = new ConfigurationBuilder().Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
 
             var hostingOptions = new FunctionsHostingConfigOptions();
@@ -292,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlagValue);
 
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             bool result = optionsMonitor.CurrentValue.IsDynamicWorkerResolutionEnabled;
 
             Assert.Equal(expected, result);
@@ -307,7 +307,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("| ", null, "workflowapp", false)]
         public void IsDynamicWorkerResolutionEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp, bool expected)
         {
-            var mockConfiguration = new Mock<IConfiguration>();
+            var config = new ConfigurationBuilder().Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
 
             var hostingOptions = new FunctionsHostingConfigOptions();
@@ -317,7 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, multilanguageApp);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
 
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(mockConfiguration.Object, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             bool result = optionsMonitor.CurrentValue.IsDynamicWorkerResolutionEnabled;
 
             Assert.Equal(expected, result);

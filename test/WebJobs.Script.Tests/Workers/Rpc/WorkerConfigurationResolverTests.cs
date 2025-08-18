@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         [Theory]
         [InlineData("LATEST", "java\\2.18.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs1(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
+        public void GetWorkerConfigs_IgnoredVersion_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
         {
             // Arrange
             var mockEnvironment = new Mock<IEnvironment>();
@@ -180,13 +180,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
 
-            Dictionary<string, HashSet<Version>> ignoredVersions = new Dictionary<string, HashSet<Version>>
-            {
-                { "java", new HashSet<Version> { new Version("2.19.0") } }
-            };
-
             var mockProfileManager = new Mock<IWorkerProfileManager>();
-            var mockConfig = new Mock<IConfiguration>();
+
+            var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
+            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
 
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -196,7 +193,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(mockConfig.Object, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, "java:2.19.0");
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, mockProfileManager.Object, optionsMonitor);
 
