@@ -51,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             options.ProbingPaths = GetWorkerProbingPaths(configuration);
             options.WorkersAvailableForResolution = GetWorkersAvailableForResolution(_functionsHostingConfigOptions);
             options.LanguageWorkersSettings = GetLanguageWorkersSettings(configuration);
+            options.IgnoreWorkerVersions = GetIgnoredWorkerVersions();
             options.IsDynamicWorkerResolutionEnabled = IsDynamicWorkerResolutionEnabled(options.WorkerRuntime,
                                                                                         options.WorkersAvailableForResolution,
                                                                                         options.IsPlaceholderModeEnabled,
@@ -204,6 +205,60 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             return workersAvailableForResolution.Any();
+        }
+
+        internal Dictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
+        {
+            // Example value of ignoredWorkersVersions: "Worker1Name:Version1;Worker1Name:Version2;Worker2Name:Version1;Worker3Name:Version1;".
+            string ignoredWorkersVersions = _functionsHostingConfigOptions.Value?.IgnoredWorkersVersions ?? string.Empty;
+
+            var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>();
+
+            if (string.IsNullOrWhiteSpace(ignoredWorkersVersions))
+            {
+                return ignoredVersionsOut;
+            }
+
+            List<string> ignoredVersionsList = ignoredWorkersVersions
+                                                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                                .ToList();
+
+            foreach (string ignoredVersion in ignoredVersionsList)
+            {
+                string[] workerVersionParts = ignoredVersion.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                if (workerVersionParts.Length != 2)
+                {
+                    _logger.LogTrace($"Skipping '{ignoredVersion}' due to invalid format for ignored version. Expected format is 'WorkerName:Version'.");
+                    continue;
+                }
+
+                string workerName = workerVersionParts[0];
+                string version = workerVersionParts[1];
+
+                if (string.IsNullOrWhiteSpace(workerName) || string.IsNullOrWhiteSpace(version))
+                {
+                    _logger.LogTrace($"Skipping '{ignoredVersion}' due to invalid format for ignored version. Worker name and version cannot be empty.");
+                    continue;
+                }
+
+                if (!Version.TryParse(version, out Version parsedVersion))
+                {
+                    _logger.LogTrace($"Skipping '{ignoredVersion}' due to invalid version format: '{version}' for worker '{workerName}'.");
+                    continue;
+                }
+
+                if (ignoredVersionsOut.ContainsKey(workerName))
+                {
+                    ignoredVersionsOut[workerName].Add(parsedVersion);
+                }
+                else
+                {
+                    ignoredVersionsOut[workerName] = new HashSet<Version> { parsedVersion };
+                }
+            }
+
+            return ignoredVersionsOut;
         }
     }
 }

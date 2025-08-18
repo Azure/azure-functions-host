@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -44,6 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Gets or sets the dictionary containing language workers related settings in configuration.
         /// </summary>
         public Dictionary<string, string> LanguageWorkersSettings { get; set; }
+
+        /// <summary>
+        /// Gets or sets the dictionary containing language workers related settings in configuration.
+        /// </summary>
+        public Dictionary<string, HashSet<Version>> IgnoreWorkerVersions { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether dynamic worker resolution is enabled.

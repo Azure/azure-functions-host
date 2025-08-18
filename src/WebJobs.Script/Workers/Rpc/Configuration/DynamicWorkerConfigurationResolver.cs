@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly List<string> _workerProbingPaths;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
+        private readonly Dictionary<string, HashSet<Version>> _ignoredVersions;
 
         public DynamicWorkerConfigurationResolver(ILoggerFactory loggerFactory,
                                         IFileSystem fileSystem,
@@ -36,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _workerConfigurationResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
             _workerProbingPaths = workerConfigResolverOptions.CurrentValue.ProbingPaths;
             _workersAvailableForResolutionViaHostingConfig = workerConfigResolverOptions.CurrentValue.WorkersAvailableForResolution ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            _ignoredVersions = workerConfigResolverOptions.CurrentValue.IgnoreWorkerVersions ?? new Dictionary<string, HashSet<Version>>(StringComparer.OrdinalIgnoreCase);
         }
 
         public WorkerConfigurationInfo GetConfigurationInfo()
@@ -46,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 LanguageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings);
         }
 
-        public List<string> GetWorkerConfigPaths()
+        internal List<string> GetWorkerConfigPaths()
         {
             // Dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
             // Example: outputDict = {"java": "path1", "node": "path2", "dotnet-isolated": "path3"} for multilanguage worker scenario
@@ -139,6 +141,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             foreach (var versionPair in versionPathMap)
             {
+                if (_ignoredVersions.ContainsKey(languageWorkerFolder) && _ignoredVersions[languageWorkerFolder].Contains(versionPair.Key))
+                {
+                    continue;
+                }
+
                 string languageWorkerVersionPath = versionPair.Value;
 
                 if (IsWorkerCompatibleWithHost(languageWorkerVersionPath))
@@ -211,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             foreach (var workerVersionPath in workerVersionPaths)
             {
                 string versionDir = Path.GetFileName(workerVersionPath);
-                string formattedVersion = FormatVersion(versionDir);
+                string formattedVersion = Utility.FormatVersion(versionDir);
 
                 if (Version.TryParse(formattedVersion, out Version version))
                 {
@@ -307,16 +314,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir)
         {
             return workerRuntime is not null && !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
-        }
-
-        private string FormatVersion(string version)
-        {
-            if (!version.Contains('.'))
-            {
-                version = version + ".0"; // Handle versions like '1' as '1.0'
-            }
-
-            return version;
         }
 
         private class DescendingVersionComparer : IComparer<Version>

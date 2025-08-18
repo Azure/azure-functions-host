@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -1063,6 +1063,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return workerIndexingEnabled && workerIndexingAvailable;
+        }
+
+        internal static string FormatVersion(string version)
+        {
+            if (!version.Contains('.'))
+            {
+                version = version + ".0"; // Handle versions like '1' as '1.0'
+            }
+
+            return version;
         }
 
         public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)
