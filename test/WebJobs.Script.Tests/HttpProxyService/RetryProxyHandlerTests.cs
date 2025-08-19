@@ -12,7 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
+namespace Microsoft.Azure.WebJobs.Script.Tests.Http
 {
     public class RetryProxyHandlerTests
     {
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             // Verify that the task is faulted due to the ScriptInvocationResult being faulted
             Assert.True(result.IsFaulted);
-            Assert.True(result.Exception.InnerException is HttpRequestException);
+            Assert.True(result.Exception.InnerException is HttpRequestException); // TODO: Update this test if a new exception type is chosen/used.
             Assert.Contains("The function invocation tied to this HTTP request failed", result.Exception.InnerException.Message);
             Assert.Contains(scriptInvocationContext.ExecutionContext.InvocationId.ToString(), result.Exception.InnerException.Message);
 
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.Equal(RetryProxyHandler.MaxRetries, inner.Attempts);
         }
 
-        private static System.Collections.Generic.IEnumerable<Exception> GetAllInnerExceptions(Exception exception)
+        private static IEnumerable<Exception> GetAllInnerExceptions(Exception exception)
         {
             while (exception != null)
             {

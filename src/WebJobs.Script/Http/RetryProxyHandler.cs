@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                     if (resultSource is not null && resultSource.Task.IsFaulted)
                     {
                         throw resultSource.Task.Exception.InnerException ??
-                              new Exception($"The function invocation tied to this HTTP request failed. Invocation ID: {scriptInvocationContext.ExecutionContext.InvocationId}");
+                              new HttpRequestException($"The function invocation tied to this HTTP request failed. Invocation ID: {scriptInvocationContext.ExecutionContext.InvocationId}");
                     }
 
                     return await base.SendAsync(request, cancellationToken);
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                     _logger.LogDebug("Request was canceled. Stopping retries.");
                     throw new OperationCanceledException(cancellationToken);
                 }
-                catch (HttpRequestException) when (attemptCount < MaxRetries)
+                catch (HttpRequestException) when (attemptCount < MaxRetries && !resultSource.Task.IsFaulted)
                 {
                     _logger.LogWarning("Failed to proxy request to the worker. Retrying in {delay}ms. Attempt {attemptCount} of {maxRetries}.",
                         currentDelay, attemptCount, MaxRetries);
@@ -64,6 +64,11 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                     await Task.Delay(currentDelay, cancellationToken);
 
                     currentDelay = Math.Min(currentDelay * 2, MaximumDelay);
+                }
+                catch (Exception ex) when (resultSource.Task.IsFaulted)
+                {
+                    _logger.LogWarning("Request failed with an exception that is not supported for retrying. Exception: {exception}", ex);
+                    throw new HttpRequestException($"The function invocation tied to this HTTP request failed. Invocation ID: {scriptInvocationContext.ExecutionContext.InvocationId}", ex);
                 }
                 catch (Exception ex)
                 {
