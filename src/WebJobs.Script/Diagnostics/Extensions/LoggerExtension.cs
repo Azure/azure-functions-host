@@ -211,6 +211,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
            new EventId(342, nameof(OutdatedExtensionBundle)),
            "Your app is using an older version - {currentVersion} of extension bundle. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/FunctionsBundlesUpgrade");
 
+        private static readonly Action<ILogger, string, Exception> _defaultWorkersDirectoryPath =
+           LoggerMessage.Define<string>(LogLevel.Debug,
+           new EventId(343, nameof(DefaultWorkersDirectoryPath)),
+           "Workers Directory set to: {workersDirPath}");
+
         public static void PublishingMetrics(this ILogger logger, string metrics)
         {
             _publishingMetrics(logger, metrics, null);
@@ -411,6 +416,11 @@ Lock file hash: {currentLockFileHash}";
         public static void IncorrectAzureFunctionsFolderPath(this ILogger logger, string path)
         {
             _incorrectAzureFunctionsFolderPath(logger, path, EnvironmentSettingNames.FunctionWorkerRuntime, null);
+        }
+
+        public static void DefaultWorkersDirectoryPath(this ILogger logger, string workersDirPath)
+        {
+            _defaultWorkersDirectoryPath(logger, workersDirPath, null);
         }
 
         public static void OutdatedExtensionBundle(this ILogger logger, string currentVersion, int suggestedMinVersion, int suggestedMaxVersion)

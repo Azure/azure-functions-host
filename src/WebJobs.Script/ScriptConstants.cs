@@ -63,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryHost = "Host";
         public const string LogCategoryFunction = "Function";
         public const string LogCategoryWorker = "Worker";
+        public const string LogCategoryWorkerConfig = "Host.LanguageWorkerConfig";
 
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
         public const string SkipHostInitializationKey = "MS_SkipHostInitialization";
