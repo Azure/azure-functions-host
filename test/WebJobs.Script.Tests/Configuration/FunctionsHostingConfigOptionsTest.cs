@@ -72,6 +72,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 yield return [nameof(FunctionsHostingConfigOptions.WorkersAvailableForDynamicResolution), "WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION=java", "java"];
                 yield return [nameof(FunctionsHostingConfigOptions.WorkersAvailableForDynamicResolution), "WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION=java|dotnet-isolated|node", "java|dotnet-isolated|node"];
 
+                yield return [nameof(FunctionsHostingConfigOptions.IgnoredWorkersVersions), "IGNORE_WORKERS_VERSIONS=java:2.0.0;node:2.1.0", "java:2.0.0;node:2.1.0"];
+                yield return [nameof(FunctionsHostingConfigOptions.IgnoredWorkersVersions), "IGNORE_WORKERS_VERSIONS=java", "java"];
+                yield return [nameof(FunctionsHostingConfigOptions.IgnoredWorkersVersions), "IGNORE_WORKERS_VERSIONS=java:2.0.0;dotnet-isolated:2.1.0", "java:2.0.0;dotnet-isolated:2.1.0"];
+
                 yield return [nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true];
 
 #pragma warning restore SA1011 // Closing square brackets should be spaced correctly

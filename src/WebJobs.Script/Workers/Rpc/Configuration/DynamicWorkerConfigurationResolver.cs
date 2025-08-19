@@ -50,6 +50,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 LanguageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings);
         }
 
+        /// <summary>
+        /// Gets the list of worker configuration paths by searching probing paths and fallback paths.
+        /// </summary>
         internal List<string> GetWorkerConfigPaths()
         {
             // Dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
@@ -77,6 +80,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return outputDict.Values.ToList();
         }
 
+        /// <summary>
+        /// Resolves worker configuration paths from the specified probing paths.
+        /// </summary>
         private void ResolveWorkerConfigsFromProbingPaths(string workerRuntime, Dictionary<string, string> outputDict)
         {
             _logger.LogDebug("Workers probing paths set to: {probingPaths}", _workerProbingPaths is null ? null : string.Join(", ", _workerProbingPaths));
@@ -125,6 +131,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
+        /// <summary>
+        /// Resolves worker configuration paths from the version directories within a language worker directory.
+        /// </summary>
         private void ResolveWorkerConfigsFromVersionsDirs(string languageWorkerPath, string languageWorkerFolder, Dictionary<string, string> outputDict)
         {
             var workerVersionPaths = _fileSystem.Directory.EnumerateDirectories(languageWorkerPath);
@@ -170,6 +179,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
+        /// <summary>
+        /// Resolves worker configuration paths from the fallback directory within the host.
+        /// </summary>
         private void ResolveWorkerConfigsFromWithinHost(string workerRuntime, Dictionary<string, string> outputDict)
         {
             var fallbackPath = _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath;
@@ -209,6 +221,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
+        /// <summary>
+        /// Returns a sorted list of worker version directories in descending order.
+        /// </summary>
         private SortedList<Version, string> GetWorkerVersionsDescending(IEnumerable<string> workerVersionPaths)
         {
             // Map of: (parsed worker version, worker path)
@@ -237,6 +252,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return versionPathMap;
         }
 
+        /// <summary>
+        /// Determines if the worker is compatible with the host by checking if Host satisfies worker requirements and by evaluating the profile conditions.
+        /// </summary>
         private bool IsWorkerCompatibleWithHost(string workerDir)
         {
             string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
@@ -297,6 +315,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return hostRequirements;
         }
 
+        /// <summary>
+        /// Determines if the host has all required capabilities specified in the worker configuration.
+        /// </summary>
         private bool DoesHostHasRequiredCapabilities(JsonElement workerConfig)
         {
             HashSet<string> hostCapabilities = ScriptConstants.HostCapabilities;
@@ -313,11 +334,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return true;
         }
 
+        /// <summary>
+        /// Determines if the worker directory should be skipped based on the current worker runtime.
+        /// </summary>
         internal bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir)
         {
             return workerRuntime is not null && !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Comparer for sorting Version objects in descending order.
+        /// </summary>
         private class DescendingVersionComparer : IComparer<Version>
         {
             public int Compare(Version version1, Version version2)

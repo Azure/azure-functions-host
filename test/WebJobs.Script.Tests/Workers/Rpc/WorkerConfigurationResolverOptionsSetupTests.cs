@@ -229,6 +229,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void Configure_NoProbingPaths_SetsCorrectValues()
+        {
+            // Arrange
+            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var testEnvironment = new TestEnvironment();
+            var configuration = new ConfigurationBuilder().Build();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(testLoggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var options = new WorkerConfigurationResolverOptions();
+            setup.Configure(options);
+
+            Assert.Equal(0, options.ProbingPaths.Count);
+        }
+
+        [Fact]
         public void Configure_WithEnvironmentValues_SetsValues()
         {
             // Arrange

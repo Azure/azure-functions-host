@@ -58,6 +58,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                                                                         options.IsMultiLanguageWorkerEnvironment);
         }
 
+        /// <summary>
+        /// Returns the default workers directory path within the Host based on the current assembly location.
+        /// </summary>
         internal string GetDefaultWorkersDirectory()
         {
             var assemblyDir = AppContext.BaseDirectory;
@@ -72,6 +75,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workersDirPath;
         }
 
+        /// <summary>
+        /// Gets the workers root directory path from configuration, or returns the default workers directory path within the Host if not set.
+        /// </summary>
         private string GetWorkersRootDirPath(IConfiguration configuration)
         {
             if (configuration is not null)
@@ -87,6 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return GetDefaultWorkersDirectory();
         }
 
+        /// <summary>
+        /// Combines the base configuration and the latest configuration from the script host manager, if available.
+        /// </summary>
         private IConfiguration GetRequiredConfiguration()
         {
             EvaluateConfiguration(_configuration, nameof(_configuration));
@@ -109,6 +118,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return configuration;
         }
 
+        /// <summary>
+        /// Logs a trace message if the required configuration section is found.
+        /// </summary>
         private void EvaluateConfiguration(IConfiguration configuration, string configurationSource)
         {
             string configSectionToCheck = $"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}";
@@ -120,14 +132,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
+        /// <summary>
+        /// Retrieves the list of worker probing paths from configuration or uses default logic for Windows environment.
+        /// </summary>
         internal List<string> GetWorkerProbingPaths(IConfiguration configuration)
         {
             // If Configuration section is set, read probing paths from configuration.
-            IConfigurationSection probingPathsSection = configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
-            var probingPathsList = probingPathsSection.AsEnumerable();
+            IConfigurationSection probingPathsSection = _configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}")?.GetSection($"{RpcWorkerConstants.WorkerProbingPathsSectionName}");
+            var configurationSections = probingPathsSection.GetChildren();
             var probingPaths = new List<string>();
 
-            if (!probingPathsList.Any())
+            if (configurationSections.Count() == 0)
             {
                 if (_environment.IsHostedWindowsEnvironment())
                 {
@@ -145,6 +160,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return probingPaths;
             }
 
+            var probingPathsList = probingPathsSection.AsEnumerable();
+
             for (int i = 0; i < probingPathsList.Count(); i++)
             {
                 var path = probingPathsSection.GetSection($"{i}").Value;
@@ -157,6 +174,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return probingPaths;
         }
 
+        /// <summary>
+        /// Returns the default site extensions path for Windows environment.
+        /// </summary>
         internal static string GetWindowsSiteExtensionsPath()
         {
             var assemblyPath = Assembly.GetExecutingAssembly().Location;
@@ -166,11 +186,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return Directory.GetParent(assemblyDir)?.Parent?.FullName;
         }
 
+        /// <summary>
+        /// Returns a set of worker runtimes available for dynamic resolution from hosting config options.
+        /// </summary>
         internal static HashSet<string> GetWorkersAvailableForResolution(IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions) =>
             (functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// Converts language workers related configuration sections to a dictionary.
+        /// </summary>
         internal Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
         {
             // Convert the required configuration sections to Dictionary
@@ -187,9 +213,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return languageWorkersSettings;
         }
 
-        // Users can disable dynamic worker resolution via setting the appropriate feature flag.
-        // Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
-        // Feature flag takes precedence over hosting config options.
+        /// <summary>
+        /// Users can disable dynamic worker resolution via setting the appropriate feature flag.
+        /// Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
+        /// Feature flag takes precedence over hosting config options.
+        /// </summary>
         internal bool IsDynamicWorkerResolutionEnabled(string workerRuntime, HashSet<string> workersAvailableForResolution, bool isPlaceholderModeEnabled, bool isMultiLanguageEnv)
         {
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, _environment) || workersAvailableForResolution is null)
@@ -207,6 +235,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workersAvailableForResolution.Any();
         }
 
+        /// <summary>
+        /// Returns a dictionary of worker names to sets of ignored versions, parsed from hosting config options.
+        /// Output format: { worker: { hashset of versions to be ignored }}.
+        /// Sample output: {"java": {"2.19.0", "2.18.0"}, "dotnet-isolated": {"1.0.0"}}.
+        /// </summary>
         internal Dictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
         {
             // Example value of ignoredWorkersVersions: "Worker1Name:Version1;Worker1Name:Version2;Worker2Name:Version1;Worker3Name:Version1;".
