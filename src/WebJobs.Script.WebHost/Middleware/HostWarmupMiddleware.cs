@@ -117,15 +117,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             try
             {
-                using (FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
+                using var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: maxBuffer);
+                int bytesRead;
+                while ((bytesRead = fileStream.Read(chunk, 0, maxBuffer)) != 0)
                 {
-                    int bytesRead;
-                    while ((bytesRead = fileStream.Read(chunk, 0, maxBuffer)) != 0)
-                    {
-                        // Read one random byte for every 4K bytes - 4K is default OS page size. This will help avoid disk read during specialization
-                        // see for details on OS page buffering in Windows - https://docs.microsoft.com/en-us/windows/win32/fileio/file-buffering
-                        var randomByte = Convert.ToInt32(chunk[random.Next(0, bytesRead - 1)]);
-                    }
+                    // Read one random byte for every 4K bytes - 4K is default OS page size. This will help avoid disk read during specialization
+                    // see for details on OS page buffering in Windows - https://docs.microsoft.com/en-us/windows/win32/fileio/file-buffering
+                    // Avoid unnecessary conversion - just access the byte directly
+                    _ = chunk[random.Next(0, bytesRead)];
                 }
             }
             catch (Exception ex)

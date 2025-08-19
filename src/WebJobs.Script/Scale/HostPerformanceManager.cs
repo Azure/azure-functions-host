@@ -131,9 +131,14 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
 
         internal static bool PerformanceCounterThresholdsExceeded(ApplicationPerformanceCounters counters, Collection<string> exceededCounters = null, float threshold = HostHealthMonitorOptions.DefaultCounterThreshold)
         {
-            bool exceeded = false;
+            // Short-circuit if we only need to know if any threshold is exceeded
+            if (exceededCounters == null)
+            {
+                return IsAnyThresholdExceeded(counters, threshold);
+            }
 
-            // determine all counters whose limits have been exceeded
+            // Full check with counter collection
+            bool exceeded = false;
             exceeded |= ThresholdExceeded("ActiveConnections", counters.ActiveConnections, counters.ActiveConnectionLimit, threshold, exceededCounters);
             exceeded |= ThresholdExceeded("Connections", counters.Connections, counters.ConnectionLimit, threshold, exceededCounters);
             exceeded |= ThresholdExceeded("Threads", counters.Threads, counters.ThreadLimit, threshold, exceededCounters);
@@ -143,6 +148,23 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             exceeded |= ThresholdExceeded("RemoteDirMonitors", counters.RemoteDirMonitors, counters.RemoteDirMonitorLimit, threshold, exceededCounters);
 
             return exceeded;
+        }
+
+        private static bool IsAnyThresholdExceeded(ApplicationPerformanceCounters counters, float threshold)
+        {
+            // Fast path - just check if any threshold is exceeded without string allocations
+            return IsThresholdExceeded(counters.ActiveConnections, counters.ActiveConnectionLimit, threshold) ||
+                   IsThresholdExceeded(counters.Connections, counters.ConnectionLimit, threshold) ||
+                   IsThresholdExceeded(counters.Threads, counters.ThreadLimit, threshold) ||
+                   IsThresholdExceeded(counters.Processes, counters.ProcessLimit, threshold) ||
+                   IsThresholdExceeded(counters.NamedPipes, counters.NamedPipeLimit, threshold) ||
+                   IsThresholdExceeded(counters.Sections, counters.SectionLimit, threshold) ||
+                   IsThresholdExceeded(counters.RemoteDirMonitors, counters.RemoteDirMonitorLimit, threshold);
+        }
+
+        private static bool IsThresholdExceeded(long currentValue, long limit, float threshold)
+        {
+            return limit > 0 && (float)currentValue / limit > threshold;
         }
 
         internal static bool ThresholdExceeded(string name, long currentValue, long limit, float threshold, Collection<string> exceededCounters = null)
@@ -171,18 +193,21 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                 {
                     // TEMP: need to parse this specially to work around bug where
                     // sometimes an extra garbage character occurs after the terminal
-                    // brace
-                    int idx = json.LastIndexOf('}');
+                    // brace. Using ReadOnlySpan<char> to avoid string allocation during cleanup.
+                    ReadOnlySpan<char> jsonSpan = json.AsSpan();
+                    int idx = jsonSpan.LastIndexOf('}');
                     if (idx > 0)
                     {
-                        json = json.Substring(0, idx + 1);
+                        jsonSpan = jsonSpan.Slice(0, idx + 1);
+                        // Only allocate new string if we actually trimmed something
+                        json = idx < json.Length - 1 ? jsonSpan.ToString() : json;
                     }
 
                     return JsonConvert.DeserializeObject<ApplicationPerformanceCounters>(json);
                 }
                 catch (JsonReaderException ex)
                 {
-                    logger.LogError(ex, "Failed to deserialize application performance counters. JSON Content: \"{json}\"", json);
+                    logger?.LogError(ex, "Failed to deserialize application performance counters. JSON Content: \"{json}\"", json);
                 }
             }
 

@@ -38,16 +38,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             return _invoke(context);
         }
 
-        private Task InvokeClrOptimizationCheck(HttpContext context)
+        private async Task InvokeClrOptimizationCheck(HttpContext context)
         {
-            var task = _next.Invoke(context).ContinueWith(task =>
-            {
-                // We are tweaking GC behavior in ClrOptimizationMiddleware as this is one of the last call stacks that get executed during standby mode as well as function exection.
-                // We force a GC and enter no GC region in standby mode and exit no GC region after first function execution during specialization.
-                StartStopGCAsBestEffort();
-            }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnRanToCompletion);
-
-            return task;
+            await _next.Invoke(context).ConfigureAwait(false);
+            
+            // We are tweaking GC behavior in ClrOptimizationMiddleware as this is one of the last call stacks that get executed during standby mode as well as function exection.
+            // We force a GC and enter no GC region in standby mode and exit no GC region after first function execution during specialization.
+            StartStopGCAsBestEffort();
         }
 
         private void StartStopGCAsBestEffort()
