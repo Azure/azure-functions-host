@@ -242,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         internal Dictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
         {
-            // Example value of ignoredWorkersVersions: "Worker1Name:Version1;Worker1Name:Version2;Worker2Name:Version1;Worker3Name:Version1;".
+            // Example value of ignoredWorkersVersions: "Worker1Name:Version1|Worker1Name:Version2|Worker2Name:Version1|Worker3Name:Version1".
             string ignoredWorkersVersions = _functionsHostingConfigOptions.Value?.IgnoredWorkersVersions ?? string.Empty;
 
             var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>(StringComparer.OrdinalIgnoreCase);
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             List<string> ignoredVersionsList = ignoredWorkersVersions
-                                                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                                .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                                                 .ToList();
 
             foreach (string ignoredVersion in ignoredVersionsList)
