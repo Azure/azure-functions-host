@@ -202,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var randomFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "host.json");
                 FileEvent randomFileEvent = new FileEvent("ScriptFiles", randomFileEventArgs);
 
-                var expectedReason = $"Running restart requested while in a restart suspension scope.";
+                var expectedReason = $"Resuming scheduled restart.";
                 using (fileMonitoringService.SuspendRestart(true))
                 {
                     using (fileMonitoringService.SuspendRestart(true))
