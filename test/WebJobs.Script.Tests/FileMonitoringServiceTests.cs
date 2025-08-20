@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     e2.Set();
                 });
 
-                var restartReason = "Running restart requested while in a restart suspension scope.";
+                var restartReason = "Resuming scheduled restart.";
                 mockScriptHostManager.Verify(m => m.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Never);
                 e1.WaitOne(5000);
                 mockScriptHostManager.Verify(m => m.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Never);
