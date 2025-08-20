@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets a string delimited by ';' that contains the versions of language workers to be ignored during probing outside of the Host.
+        /// Gets a string delimited by '|' that contains the versions of language workers to be ignored during probing outside of the Host.
         /// Example value: "Worker1Name:Version1|Worker1Name:Version2|Worker2Name:Version1|Worker3Name:Version1".
         /// </summary>
         internal string IgnoredWorkersVersions

@@ -180,6 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var assemblyDir = AppContext.BaseDirectory;
 
             //Move 2 directories up to get to the SiteExtensions directory
+            // Example output: "c:\\home\\SiteExtensions"
             return Directory.GetParent(assemblyDir)?.Parent?.FullName;
         }
 
@@ -228,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return workersAvailableForResolution.Contains(workerRuntime);
             }
 
-            return workersAvailableForResolution.Any();
+            return workersAvailableForResolution.Count != 0;
         }
 
         /// <summary>

@@ -236,7 +236,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             services.AddSingleton<IWorkerConfigurationResolver>(p =>
             {
-                var environment = p.GetService<IEnvironment>();
                 var workerConfigurationResolverOptions = p.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
                 var workerProfileManager = p.GetService<IWorkerProfileManager>();
                 var loggerFactory = p.GetService<ILoggerFactory>();
