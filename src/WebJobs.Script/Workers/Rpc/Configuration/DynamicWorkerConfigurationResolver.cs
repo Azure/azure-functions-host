@@ -20,16 +20,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly ILogger _logger;
         private readonly IWorkerProfileManager _profileManager;
         private readonly IFileSystem _fileSystem;
-        private readonly HashSet<string> _workersAvailableForResolutionViaHostingConfig;
+        private readonly HashSet<string> _workersAvailableForResolution;
         private readonly List<string> _workerProbingPaths;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
         private readonly Dictionary<string, HashSet<Version>> _ignoredVersions;
 
         public DynamicWorkerConfigurationResolver(ILoggerFactory loggerFactory,
-                                        IFileSystem fileSystem,
-                                        IWorkerProfileManager workerProfileManager,
-                                        IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigResolverOptions)
+                                                    IFileSystem fileSystem,
+                                                    IWorkerProfileManager workerProfileManager,
+                                                    IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigResolverOptions)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _workerConfigurationResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
             ArgumentNullException.ThrowIfNull(workerConfigResolverOptions.CurrentValue);
             _workerProbingPaths = workerConfigResolverOptions.CurrentValue.ProbingPaths;
-            _workersAvailableForResolutionViaHostingConfig = workerConfigResolverOptions.CurrentValue.WorkersAvailableForResolution;
+            _workersAvailableForResolution = workerConfigResolverOptions.CurrentValue.WorkersAvailableForResolution;
             _ignoredVersions = workerConfigResolverOptions.CurrentValue.IgnoreWorkerVersions;
         }
 
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         }
 
         /// <summary>
-        /// Gets the list of worker configuration paths by searching probing paths and fallback paths.
+        /// Gets the list of worker configuration paths by searching probing paths and fallback path.
         /// </summary>
         internal List<string> GetWorkerConfigPaths()
         {
@@ -66,10 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // Search for worker configs in probing paths
             ResolveWorkerConfigsFromProbingPaths(workerRuntime, outputDict);
 
-            if (!_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
-                !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
-                !string.IsNullOrWhiteSpace(workerRuntime) &&
-                outputDict.ContainsKey(workerRuntime))
+            if (FoundWorkerConfigPath(workerRuntime, outputDict))
             {
                 return outputDict.Values.ToList();
             }
@@ -85,49 +82,56 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         private void ResolveWorkerConfigsFromProbingPaths(string workerRuntime, Dictionary<string, string> outputDict)
         {
-            _logger.LogDebug("Workers probing paths set to: {probingPaths}", _workerProbingPaths is null ? null : string.Join(", ", _workerProbingPaths));
-
-            if (_workerProbingPaths is null || _workerProbingPaths.Count == 0)
+            try
             {
-                return;
+                _logger.LogDebug("Workers probing paths set to: {probingPaths}", _workerProbingPaths is null ? null : string.Join(", ", _workerProbingPaths));
+
+                if (_workerProbingPaths is null || _workerProbingPaths.Count == 0)
+                {
+                    return;
+                }
+
+                // probing path directory structure is: <probingPath>/<workerRuntimeDir>/<workerVersion>/<worker.config.json>
+                foreach (var probingPath in _workerProbingPaths)
+                {
+                    if (string.IsNullOrWhiteSpace(probingPath))
+                    {
+                        continue;
+                    }
+
+                    if (!_fileSystem.Directory.Exists(probingPath))
+                    {
+                        _logger.LogDebug("Worker probing path directory does not exist: {probingPath}.", probingPath);
+                        continue;
+                    }
+
+                    foreach (var workerRuntimePath in _fileSystem.Directory.EnumerateDirectories(probingPath))
+                    {
+                        string workerRuntimeDir = Path.GetFileName(workerRuntimePath);
+
+                        // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
+                        if (outputDict.ContainsKey(workerRuntimeDir))
+                        {
+                            continue;
+                        }
+
+                        // Skip worker directories that don't match the current runtime or are not enabled via hosting config
+                        // Do not load all workers after the specialization is done and if it is not a multi-language runtime environment
+                        if (!_workersAvailableForResolution.Contains(workerRuntimeDir) || ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir))
+                        {
+                            continue;
+                        }
+
+                        // search for worker configs inside version directories within the language worker directory
+                        ResolveWorkerConfigsFromVersionsDirs(workerRuntimePath, workerRuntimeDir, outputDict);
+                    }
+                }
             }
-
-            // probing path directory structure is: <probingPath>/<workerRuntimeDir>/<workerVersion>/<worker.config.json>
-            foreach (var probingPath in _workerProbingPaths)
+            catch (Exception ex)
             {
-                if (string.IsNullOrWhiteSpace(probingPath))
-                {
-                    continue;
-                }
-
-                if (!_fileSystem.Directory.Exists(probingPath))
-                {
-                    _logger.LogDebug("Worker probing path directory does not exist: {probingPath}.", probingPath);
-                    continue;
-                }
-
-                foreach (var workerRuntimePath in _fileSystem.Directory.EnumerateDirectories(probingPath))
-                {
-                    string workerRuntimeDir = Path.GetFileName(workerRuntimePath);
-
-                    // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
-                    if (outputDict.ContainsKey(workerRuntimeDir))
-                    {
-                        continue;
-                    }
-
-                    // Skip worker directories that don't match the current runtime or are not enabled via hosting config
-                    // Do not load all worker directories after the specialization is done and if it is not a multi-language runtime environment
-                    if (!_workersAvailableForResolutionViaHostingConfig.Contains(workerRuntimeDir) ||
-                            (!_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
-                            !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
-                            ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir)))
-                    {
-                        continue;
-                    }
-
-                    ResolveWorkerConfigsFromVersionsDirs(workerRuntimePath, workerRuntimeDir, outputDict);
-                }
+                // Catching exceptions such as unauthorized access, IO exception, path too long, that can happen while searching for configs in probing paths.
+                // Logging the exception and continuing to search worker configs in the fallback path.
+                _logger.LogError(ex, "Failed to resolve worker configurations from probing paths.");
             }
         }
 
@@ -143,10 +147,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var versionPathMap = GetWorkerVersionsDescending(workerVersionPaths);
 
             string releaseChannel = _workerConfigurationResolverOptions.CurrentValue.ReleaseChannel;
-            bool isStandardOrExtendedChannel =
-                        !string.IsNullOrWhiteSpace(releaseChannel) &&
-                        (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase) ||
-                        releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase));
+            bool isStandardOrExtendedChannel = !string.IsNullOrWhiteSpace(releaseChannel) &&
+                                                (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase) ||
+                                                releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase));
 
             int compatibleWorkerCount = 0;
 
@@ -154,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 if (_ignoredVersions.TryGetValue(languageWorkerFolder, out HashSet<Version> value) && value.Contains(versionPair.Key))
                 {
-                    _logger.LogTrace("Ignoring {languageWorkerFolder} version {version} as per configuration.", languageWorkerFolder, versionPair.Key);
+                    _logger.LogTrace("Ignoring {languageWorkerFolder} version {version} as per hosting configuration.", languageWorkerFolder, versionPair.Key);
                     continue;
                 }
 
@@ -195,12 +198,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             foreach (var workerPath in _fileSystem.Directory.EnumerateDirectories(fallbackPath))
             {
-                string workerDir = Path.GetFileName(workerPath).ToLower();
+                string workerDir = Path.GetFileName(workerPath);
 
-                if (outputDict.ContainsKey(workerDir) ||
-                    (!_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
-                    !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
-                    ShouldSkipWorkerDirectory(workerRuntime, workerDir)))
+                if (outputDict.ContainsKey(workerDir) || ShouldSkipWorkerDirectory(workerRuntime, workerDir))
                 {
                     continue;
                 }
@@ -211,10 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     outputDict[workerDir] = workerPath;
                 }
 
-                if (!_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
-                    !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
-                    !string.IsNullOrWhiteSpace(workerRuntime) &&
-                    outputDict.ContainsKey(workerRuntime))
+                if (FoundWorkerConfigPath(workerRuntime, outputDict))
                 {
                     return;
                 }
@@ -229,11 +226,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // Map of: (parsed worker version, worker path)
             // Example: [ (1.0.0, "<rootProbingPath>/java/1.0.0"), (2.0.0, "<rootProbingPath>/java/2.0.0") ]
             var versionPathMap = new SortedList<Version, string>(new DescendingVersionComparer());
-
-            if (!workerVersionPaths.Any())
-            {
-                return versionPathMap;
-            }
 
             foreach (var workerVersionPath in workerVersionPaths)
             {
@@ -278,12 +270,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             // profiles evaluation
             RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
-                workerConfig: workerConfig,
-                jsonSerializerOptions: _jsonSerializerOptions,
-                workerDir: workerDir,
-                profileManager: _profileManager,
-                languageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
-                logger: _logger);
+                                                            workerConfig: workerConfig,
+                                                            jsonSerializerOptions: _jsonSerializerOptions,
+                                                            workerDir: workerDir,
+                                                            profileManager: _profileManager,
+                                                            languageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
+                                                            logger: _logger);
 
             if (workerDescription.IsDisabled == true)
             {
@@ -304,11 +296,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (workerConfig.TryGetProperty(RpcWorkerConstants.HostRequirementsSectionName, out JsonElement configSection))
             {
-                var requirements = configSection.EnumerateArray();
-
-                foreach (var requirement in requirements)
+                foreach (var requirement in configSection.EnumerateArray())
                 {
-                    hostRequirements.Add(requirement.GetString());
+                    string requirementName = requirement.GetString();
+
+                    if (!string.IsNullOrWhiteSpace(requirementName))
+                    {
+                        hostRequirements.Add(requirementName);
+                    }
                 }
             }
 
@@ -335,11 +330,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         }
 
         /// <summary>
-        /// Determines if the worker directory should be skipped based on the current worker runtime.
+        /// Determines if the worker directory should be skipped based on the current worker runtime and environment settings.
         /// </summary>
         internal bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir)
         {
-            return workerRuntime is not null && !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
+            return !_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
+                    !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
+                    workerRuntime is not null &&
+                    !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Determines if the required worker config path is found.
+        /// </summary>
+        internal bool FoundWorkerConfigPath(string workerRuntime, Dictionary<string, string> outputDict)
+        {
+            return !_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
+                    !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
+                    !string.IsNullOrWhiteSpace(workerRuntime) &&
+                    outputDict.ContainsKey(workerRuntime);
         }
 
         /// <summary>
