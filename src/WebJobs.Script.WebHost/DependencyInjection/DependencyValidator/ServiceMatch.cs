@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 {
                     return !expectedServices.Any(e => IsMatch(e, r))
                         && !optionalServices.Any(o => IsMatch(o, r))
-                        && !optionalExternalServices.Any(o => o.IsMatch(r.ImplementationType));
+                        && !optionalExternalServices.Any(o => o.IsMatch(r.ImplementationType, r.ImplementationFactory?.Target?.GetType()));
                 })
                 .Select(p => new InvalidServiceDescriptor(p, InvalidServiceDescriptorReason.Invalid));
 
@@ -247,18 +247,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             public string AssemblyPublicKey { get; }
 
-            public bool IsMatch(Type serviceType)
+            public bool IsMatch(Type serviceType, Type implementationFactory)
             {
-                if (serviceType == null)
+                if (serviceType == null && implementationFactory == null)
                 {
                     return false;
                 }
 
-                var serviceAssemblyName = serviceType.Assembly.GetName();
+                // If we have a service type, we can check it directly.
+                if (serviceType != null)
+                {
+                    var serviceAssemblyName = serviceType.Assembly.GetName();
 
-                return serviceType.FullName == TypeName
-                    && serviceAssemblyName.Name == AssemblyName
-                    && GetPublicKeyTokenString(serviceAssemblyName.GetPublicKeyToken()) == AssemblyPublicKey;
+                    return serviceType.FullName == TypeName
+                        && serviceAssemblyName.Name == AssemblyName
+                        && GetPublicKeyTokenString(serviceAssemblyName.GetPublicKeyToken()) == AssemblyPublicKey;
+                }
+                else
+                {
+                    var factoryAssemblyName = implementationFactory.Assembly.GetName();
+
+                    return implementationFactory.DeclaringType.FullName == TypeName
+                        && factoryAssemblyName.Name == AssemblyName
+                        && GetPublicKeyTokenString(factoryAssemblyName.GetPublicKeyToken()) == AssemblyPublicKey;
+                }
             }
 
             private static string GetPublicKeyTokenString(byte[] token)

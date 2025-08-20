@@ -156,7 +156,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
                     });
                 })
                 .ConfigureDefaultTestWebScriptHost()
-                .ConfigureLogging((ctx, lb) => lb.ConfigureTelemetry(ctx))
                 .ConfigureServices(s => sc = s);
 
             using IHost host = hostBuilder.Build();
@@ -253,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
                     });
                 })
                 .ConfigureDefaultTestWebScriptHost()
-                .ConfigureLogging((context, loggingBuilder) => loggingBuilder.ConfigureTelemetry(context))
+                //.ConfigureLogging((context, loggingBuilder) => loggingBuilder.ConfigureTelemetry(context))
                 .ConfigureServices(services => serviceCollection = services);
 
             using var host = hostBuilder.Build();
