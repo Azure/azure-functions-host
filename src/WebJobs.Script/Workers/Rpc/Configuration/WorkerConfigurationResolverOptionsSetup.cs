@@ -189,7 +189,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Returns a set of worker runtimes available for dynamic resolution from hosting config options.
         /// </summary>
         internal HashSet<string> GetWorkersAvailableForResolution() =>
-            (_functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty).ToTokenSet('|', StringComparer.OrdinalIgnoreCase);
+            (_functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
+            .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Converts language workers related configuration sections to a dictionary.
@@ -247,13 +249,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return ignoredVersionsOut;
             }
 
-            List<string> ignoredVersionsList = ignoredWorkersVersions.ToTokenList('|');
+            List<string> ignoredVersionsList = ignoredWorkersVersions
+                                                    .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                                    .ToList();
 
             foreach (string ignoredVersion in ignoredVersionsList)
             {
-                var workerVersionParts = ignoredVersion.ToTokenList(':');
+                string[] workerVersionParts = ignoredVersion.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-                if (workerVersionParts.Count != 2)
+                if (workerVersionParts.Length != 2)
                 {
                     _logger.LogTrace($"Skipping '{ignoredVersion}' due to invalid format for ignored version. Expected format is 'WorkerName:Version'.");
                     continue;
