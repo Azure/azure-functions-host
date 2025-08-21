@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
         {
             _cancellationToken = cancellationToken;
             var startContext = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerStartContext);
-
+            _logger.LogDebug($"[TEST] Custom Host");
             // Container start context is not available directly
             if (string.IsNullOrEmpty(startContext))
             {
