@@ -93,18 +93,62 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return false;
         }
 
-        private static IEnumerable<string> EnumerateTokens(
-            string source,
+        /// <summary>
+        /// Parses a delimited string into a <see cref="HashSet{String}"/> using the specified separator.
+        /// This method avoids intermediate array allocations by enumerating tokens via spans.
+        /// </summary>
+        /// <param name="source">The delimited string (e.g., "FeatureA,FeatureB"). If null or empty, returns an empty list.</param>
+        /// <param name="separator">The character used to separate tokens (e.g., ',').</param>
+        /// <param name="comparer">The string comparison type to use.</param>
+        /// <param name="trimTokens">If true, trims whitespace around tokens.</param>
+        /// <param name="removeEmptyEntries">If true, skips empty tokens.</param>
+        /// <returns>A <see cref="HashSet{String}"/> containing the parsed tokens.</returns>
+        public static HashSet<string> ToTokenSet(
+                                        this string source,
+                                        char separator,
+                                        StringComparer comparer = null,
+                                        bool trimTokens = true,
+                                        bool removeEmptyEntries = true)
+        {
+            var set = new HashSet<string>(comparer ?? StringComparer.OrdinalIgnoreCase);
+
+            foreach (var token in EnumerateTokens(source, separator, trimTokens, removeEmptyEntries))
+            {
+                set.Add(token);
+            }
+
+            return set;
+        }
+
+        /// <summary>
+        /// Parses a delimited string into a <see cref="List{String}"/> using the specified separator.
+        /// This method avoids intermediate array allocations by enumerating tokens via spans.
+        /// </summary>
+        /// <param name="source">The delimited string (e.g., "FeatureA,FeatureB"). If null or empty, returns an empty list.</param>
+        /// <param name="separator">The character used to separate tokens (e.g., ',').</param>
+        /// <param name="trimTokens">If true, trims whitespace around tokens.</param>
+        /// <param name="removeEmptyEntries">If true, skips empty tokens.</param>
+        /// <returns>A <see cref="List{String}"/> containing the parsed tokens.</returns>
+        public static List<string> ToTokenList(
+            this string source,
             char separator,
-            bool trimTokens,
-            bool removeEmptyEntries)
+            bool trimTokens = true,
+            bool removeEmptyEntries = true)
+        {
+            return EnumerateTokens(source, separator, trimTokens, removeEmptyEntries).ToList();
+        }
+
+        private static IEnumerable<string> EnumerateTokens(
+                                                string source,
+                                                char separator,
+                                                bool trimTokens,
+                                                bool removeEmptyEntries)
         {
             if (string.IsNullOrEmpty(source))
             {
                 yield break;
             }
 
-            // Rewritten to avoid ReadOnlySpan<char> across a yield boundary (CS4007).
             int pos = 0;
             int length = source.Length;
 
@@ -139,49 +183,11 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
                 if (sepIndex < 0)
                 {
-                    // No more separators; we're done.
                     break;
                 }
 
                 pos = sepIndex + 1;
             }
-        }
-
-        public static HashSet<string> ToTokenSet(
-                                        this string source,
-                                        char separator,
-                                        StringComparer comparer = null,
-                                        bool trimTokens = true,
-                                        bool removeEmptyEntries = true)
-        {
-            var set = new HashSet<string>(comparer ?? StringComparer.OrdinalIgnoreCase);
-
-            foreach (var token in EnumerateTokens(source, separator, trimTokens, removeEmptyEntries))
-            {
-                set.Add(token);
-            }
-
-            return set;
-        }
-
-        /// <summary>
-        /// Parses a delimited string into a <see cref="List{String}"/> using the specified separator.
-        /// This method avoids intermediate array allocations by enumerating tokens via spans.
-        /// </summary>
-        /// <param name="source">The delimited string (e.g., "FeatureA,FeatureB"). If null or empty, returns an empty list.</param>
-        /// <param name="separator">The character used to separate tokens (e.g., ',').</param>
-        /// <param name="comparer">Unused. Present for API symmetry with ToTokenSet.</param>
-        /// <param name="trimTokens">If true, trims whitespace around tokens.</param>
-        /// <param name="removeEmptyEntries">If true, skips empty tokens.</param>
-        /// <returns>A <see cref="List{String}"/> containing the parsed tokens.</returns>
-        public static List<string> ToTokenList(
-            this string source,
-            char separator,
-            StringComparer comparer = null,
-            bool trimTokens = true,
-            bool removeEmptyEntries = true)
-        {
-            return EnumerateTokens(source, separator, trimTokens, removeEmptyEntries).ToList();
         }
     }
 }
