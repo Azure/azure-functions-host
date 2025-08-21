@@ -873,11 +873,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(false, false, false)] // EnableHostLogs is false, FeatureFlag is not set, should result in **restricted** logs. This is the default behaviour of the host.
-        [InlineData(false, true, true)] // EnableHostLogs is false, FeatureFlag is set, should result in unrestricted logs.
-        [InlineData(true, true, true)] // EnableHostLogs is true, FeatureFlag is set, should result in unrestricted logs.
-        [InlineData(true, false, true)] // EnableHostLogs is true, FeatureFlag is not set, should result in unrestricted logs.
-        public void GetAllowedLogCategoryPrefixes_Returns_Expected(bool enableHostLogs, bool enableHostingConfig, bool systemLogCategoryPrefixes)
+        [InlineData(false, false, true)] // RestrictHostLogs is false, FeatureFlag is not set, should result in unrestricted logs. This is the default behaviour of the host.
+        [InlineData(false, true, true)] // RestrictHostLogs is false, FeatureFlag is set, should result in unrestricted logs.
+        [InlineData(true, true, true)] // RestrictHostLogs is true, FeatureFlag is set, should result in unrestricted logs.
+        [InlineData(true, false, false)] // RestrictHostLogs is true, FeatureFlag is not set, should result in **restricted** logs.
+        public void GetAllowedLogCategoryPrefixes_Returns_Expected(bool enableHostingConfig, bool enableHostLogs, bool systemLogCategoryPrefixes)
         {
             var environment = new TestEnvironment();
             if (enableHostLogs)
@@ -888,7 +888,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var hostingConfigOptions = new FunctionsHostingConfigOptions();
             if (enableHostingConfig)
             {
-                hostingConfigOptions = new FunctionsHostingConfigOptions { EnableHostLogs = enableHostingConfig };
+                hostingConfigOptions = new FunctionsHostingConfigOptions { RestrictHostLogs = enableHostingConfig };
             }
 
             var factory = new TestOptionsFactory<FunctionsHostingConfigOptions>(hostingConfigOptions);

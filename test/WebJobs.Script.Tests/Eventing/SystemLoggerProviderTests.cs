@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
             _debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
 
-            var hostingConfigOptions = new FunctionsHostingConfigOptions { EnableHostLogs = true };
+            var hostingConfigOptions = new FunctionsHostingConfigOptions { RestrictHostLogs = false };
             var factory = new TestOptionsFactory<FunctionsHostingConfigOptions>(hostingConfigOptions);
             var source = new TestChangeTokenSource<FunctionsHostingConfigOptions>();
             _optionsMonitor = new OptionsMonitor<FunctionsHostingConfigOptions>(factory, new[] { source }, factory);
