@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -101,6 +101,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 _httpProxyService.StartForwarding(scriptInvocationContext, _destinationPrefix);
 
                 await _httpProxyService.EnsureSuccessfulForwardingAsync(scriptInvocationContext); // this will throw if forwarding is unsuccessful
+
+                // this needs to be removed to avoid downstream errors since the HttpResponse is already returned by proxying
+                if (scriptInvocationContext.BindingData.Any(p => string.Equals(ScriptConstants.SystemReturnParameterBindingName, p.Key, StringComparison.OrdinalIgnoreCase)))
+                {
+                    scriptInvocationContext.BindingData[ScriptConstants.SystemReturnParameterBindingName] = null;
+                }
+
                 scriptInvocationContext.ResultSource.SetResult(ScriptInvocationResult.Success);
             }
             catch (Exception exc)
