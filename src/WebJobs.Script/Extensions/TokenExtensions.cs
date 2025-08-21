@@ -93,6 +93,60 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return false;
         }
 
+        private static IEnumerable<string> EnumerateTokens(
+            string source,
+            char separator,
+            bool trimTokens,
+            bool removeEmptyEntries)
+        {
+            if (string.IsNullOrEmpty(source))
+            {
+                yield break;
+            }
+
+            // Rewritten to avoid ReadOnlySpan<char> across a yield boundary (CS4007).
+            int pos = 0;
+            int length = source.Length;
+
+            while (pos < length)
+            {
+                int sepIndex = source.IndexOf(separator, pos);
+                int endExclusive = sepIndex >= 0 ? sepIndex : length;
+
+                int tokenStart = pos;
+                int tokenEnd = endExclusive - 1;
+
+                if (trimTokens && tokenStart <= tokenEnd)
+                {
+                    while (tokenStart <= tokenEnd && char.IsWhiteSpace(source[tokenStart]))
+                    {
+                        tokenStart++;
+                    }
+
+                    while (tokenEnd >= tokenStart && char.IsWhiteSpace(source[tokenEnd]))
+                    {
+                        tokenEnd--;
+                    }
+                }
+
+                int tokenLength = tokenStart <= tokenEnd ? (tokenEnd - tokenStart + 1) : 0;
+
+                if (!(removeEmptyEntries && tokenLength == 0))
+                {
+                    string currentToken = tokenLength == 0 ? string.Empty : source.Substring(tokenStart, tokenLength);
+                    yield return currentToken;
+                }
+
+                if (sepIndex < 0)
+                {
+                    // No more separators; we're done.
+                    break;
+                }
+
+                pos = sepIndex + 1;
+            }
+        }
+
         public static HashSet<string> ToTokenSet(
                                         this string source,
                                         char separator,
@@ -102,68 +156,24 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         {
             var set = new HashSet<string>(comparer ?? StringComparer.OrdinalIgnoreCase);
 
-            if (string.IsNullOrEmpty(source))
+            foreach (var token in EnumerateTokens(source, separator, trimTokens, removeEmptyEntries))
             {
-                return set;
-            }
-
-            ReadOnlySpan<char> remaining = source.AsSpan();
-
-            while (!remaining.IsEmpty)
-            {
-                int sepIndex = remaining.IndexOf(separator);
-                ReadOnlySpan<char> currentToken;
-
-                if (sepIndex >= 0)
-                {
-                    currentToken = remaining.Slice(0, sepIndex);
-                    remaining = remaining.Slice(sepIndex + 1);
-                }
-                else
-                {
-                    currentToken = remaining;
-                    remaining = default;
-                }
-
-                if (trimTokens && !currentToken.IsEmpty)
-                {
-                    int start = 0;
-                    int end = currentToken.Length - 1;
-
-                    while (start <= end && char.IsWhiteSpace(currentToken[start]))
-                    {
-                        start++;
-                    }
-
-                    while (end >= start && char.IsWhiteSpace(currentToken[end]))
-                    {
-                        end--;
-                    }
-
-                    currentToken = start <= end ? currentToken.Slice(start, end - start + 1) : ReadOnlySpan<char>.Empty;
-                }
-
-                if (removeEmptyEntries && currentToken.IsEmpty)
-                {
-                    continue;
-                }
-
-                set.Add(currentToken.ToString());
+                set.Add(token);
             }
 
             return set;
         }
 
         /// <summary>
-        /// Parses a delimited string into a <see cref="HashSet{String}"/> using the specified separator and comparer.
+        /// Parses a delimited string into a <see cref="List{String}"/> using the specified separator.
         /// This method avoids intermediate array allocations by enumerating tokens via spans.
         /// </summary>
-        /// <param name="source">The delimited string (e.g., "FeatureA,FeatureB"). If null or empty, returns an empty set.</param>
+        /// <param name="source">The delimited string (e.g., "FeatureA,FeatureB"). If null or empty, returns an empty list.</param>
         /// <param name="separator">The character used to separate tokens (e.g., ',').</param>
-        /// <param name="comparer">The string comparer to use for the set. Defaults to <see cref="StringComparer.OrdinalIgnoreCase"/>.</param>
+        /// <param name="comparer">Unused. Present for API symmetry with ToTokenSet.</param>
         /// <param name="trimTokens">If true, trims whitespace around tokens.</param>
         /// <param name="removeEmptyEntries">If true, skips empty tokens.</param>
-        /// <returns>A <see cref="HashSet{String}"/> containing the parsed tokens.</returns>
+        /// <returns>A <see cref="List{String}"/> containing the parsed tokens.</returns>
         public static List<string> ToTokenList(
             this string source,
             char separator,
@@ -171,58 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             bool trimTokens = true,
             bool removeEmptyEntries = true)
         {
-            var set = new List<string>(); // (comparer ?? StringComparer.OrdinalIgnoreCase);
-
-            if (string.IsNullOrEmpty(source))
-            {
-                return set;
-            }
-
-            ReadOnlySpan<char> remaining = source.AsSpan();
-
-            while (!remaining.IsEmpty)
-            {
-                int sepIndex = remaining.IndexOf(separator);
-                ReadOnlySpan<char> currentToken;
-
-                if (sepIndex >= 0)
-                {
-                    currentToken = remaining.Slice(0, sepIndex);
-                    remaining = remaining.Slice(sepIndex + 1);
-                }
-                else
-                {
-                    currentToken = remaining;
-                    remaining = default;
-                }
-
-                if (trimTokens && !currentToken.IsEmpty)
-                {
-                    int start = 0;
-                    int end = currentToken.Length - 1;
-
-                    while (start <= end && char.IsWhiteSpace(currentToken[start]))
-                    {
-                        start++;
-                    }
-
-                    while (end >= start && char.IsWhiteSpace(currentToken[end]))
-                    {
-                        end--;
-                    }
-
-                    currentToken = start <= end ? currentToken.Slice(start, end - start + 1) : ReadOnlySpan<char>.Empty;
-                }
-
-                if (removeEmptyEntries && currentToken.IsEmpty)
-                {
-                    continue;
-                }
-
-                set.Add(currentToken.ToString());
-            }
-
-            return set;
+            return EnumerateTokens(source, separator, trimTokens, removeEmptyEntries).ToList();
         }
     }
 }
