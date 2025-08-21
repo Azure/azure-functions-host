@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -188,9 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Returns a set of worker runtimes available for dynamic resolution from hosting config options.
         /// </summary>
         internal HashSet<string> GetWorkersAvailableForResolution() =>
-            (_functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
-            .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            (_functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty).ToTokenSet('|', StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Converts language workers related configuration sections to a dictionary.
@@ -248,15 +247,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return ignoredVersionsOut;
             }
 
-            List<string> ignoredVersionsList = ignoredWorkersVersions
-                                                .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                                .ToList();
+            List<string> ignoredVersionsList = ignoredWorkersVersions.ToTokenList('|');
 
             foreach (string ignoredVersion in ignoredVersionsList)
             {
-                string[] workerVersionParts = ignoredVersion.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var workerVersionParts = ignoredVersion.ToTokenList(':');
 
-                if (workerVersionParts.Length != 2)
+                if (workerVersionParts.Count != 2)
                 {
                     _logger.LogTrace($"Skipping '{ignoredVersion}' due to invalid format for ignored version. Expected format is 'WorkerName:Version'.");
                     continue;
