@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
                 .Where(msg => _workerConfig.Description.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
-                .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
+                .Subscribe(msg => _eventManager.Publish(new HostRestartEvent($"Worker monitored file changed: '{msg.FileChangeArguments.Name}'."))));
 
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
 
