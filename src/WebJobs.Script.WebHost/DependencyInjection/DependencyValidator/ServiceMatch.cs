@@ -255,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 }
 
                 // If we have a service type, we can check it directly.
-                if (serviceType != null)
+                if (serviceType is not null)
                 {
                     var serviceAssemblyName = serviceType.Assembly.GetName();
 
