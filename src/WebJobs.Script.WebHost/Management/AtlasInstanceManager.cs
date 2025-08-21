@@ -243,6 +243,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         protected override async Task ApplyContextAsync(HostAssignmentContext assignmentContext)
         {
+            _logger.LogWarning("[TEST] ApplyContextAsync debug logs");
+
             // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
@@ -250,9 +252,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (_environment.SupportsAzureFileShareMount() || pkgContext.IsRunFromLocalPackage())
             {
+                _logger.LogWarning("[TEST] ApplyContextAsync supports azure file share");
                 var azureFilesMounted = false;
                 if (assignmentContext.IsAzureFilesContentShareConfigured(_logger))
                 {
+                    _logger.LogWarning("[TEST] ApplyContextAsync attempting to mount Azure File Share");
                     azureFilesMounted = await _runFromPackageHandler.MountAzureFileShare(assignmentContext);
                 }
                 else
@@ -263,6 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (pkgContext.IsRunFromPackage(options, _logger))
                 {
+                    _logger.LogWarning("[TEST] ApplyContextAsync running in Run-From-Package mode");
                     if (azureFilesMounted)
                     {
                         _logger.LogWarning("App is configured to use both Run-From-Package and AzureFiles. Run-From-Package will take precedence");
@@ -270,6 +275,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     var blobContextApplied =
                         await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath,
                             azureFilesMounted, false);
+
+                    _logger.LogWarning($"Run-From-Package context applied: {blobContextApplied} azureFilesMounted: {azureFilesMounted}");
 
                     if (!blobContextApplied && azureFilesMounted)
                     {
