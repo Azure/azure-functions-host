@@ -250,10 +250,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
             RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
 
+            var azureFilesMounted = false;
+            var blobContextApplied = false;
+
             if (_environment.SupportsAzureFileShareMount() || pkgContext.IsRunFromLocalPackage())
             {
                 _logger.LogWarning("[TEST] ApplyContextAsync supports azure file share");
-                var azureFilesMounted = false;
                 if (assignmentContext.IsAzureFilesContentShareConfigured(_logger))
                 {
                     _logger.LogWarning("[TEST] ApplyContextAsync attempting to mount Azure File Share");
@@ -272,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     {
                         _logger.LogWarning("App is configured to use both Run-From-Package and AzureFiles. Run-From-Package will take precedence");
                     }
-                    var blobContextApplied =
+                    blobContextApplied =
                         await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath,
                             azureFilesMounted, false);
 
@@ -282,11 +284,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     {
                         _logger.LogWarning($"Failed to {nameof(_runFromPackageHandler.ApplyRunFromPackageContext)}. Attempting to use local disk instead");
                         await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath, false);
-                    }
-                    else if (!blobContextApplied && !azureFilesMounted)
-                    {
-                        await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
-                            $"Failed to mount Azure File Share and failed to {nameof(_runFromPackageHandler.ApplyRunFromPackageContext)}");
                     }
                 }
                 else if (pkgContext.IsRunFromLocalPackage())
@@ -298,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         throw new Exception(mountErrorMessage);
                     }
 
-                    var blobContextApplied =
+                    blobContextApplied =
                         await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath, azureFilesMounted);
 
                     if (!blobContextApplied)
@@ -313,13 +310,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else
             {
+                _logger.LogWarning("[TEST] azure file share mount not supported");
                 if (pkgContext.IsRunFromPackage(options, _logger))
                 {
-                    await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath, false);
+                    _logger.LogWarning("[TEST] ApplyContextAsync running in Run-From-Package mode without Azure File Share");
+                    blobContextApplied = await _runFromPackageHandler.ApplyRunFromPackageContext(pkgContext, options.ScriptPath, false);
                 }
                 else if (assignmentContext.IsAzureFilesContentShareConfigured(_logger))
                 {
-                    await _runFromPackageHandler.MountAzureFileShare(assignmentContext);
+                    // this is where the app was failing
+                    // should still allow the app to fallback to byos
+                    _logger.LogWarning("[TEST] ApplyContextAsync attempting to mount Azure File Share without Run-From-Package");
+                    azureFilesMounted = await _runFromPackageHandler.MountAzureFileShare(assignmentContext);
                 }
             }
 
@@ -342,6 +344,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     _logger.LogInformation(
                         $"Successfully mounted {storageVolumes.Count} BYOS storage accounts");
+                }
+            }
+            else
+            {
+                if (!blobContextApplied && !azureFilesMounted)
+                {
+                    _logger.LogError("Failed to specialize container");
+                    await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
+                        $"Failed to mount Azure File Share and failed to {nameof(_runFromPackageHandler.ApplyRunFromPackageContext)}");
                 }
             }
         }
