@@ -335,6 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (storageVolumes.Any())
             {
+                _logger.LogWarning("[TEST] storagevolumes");
                 if (mountedVolumes.Count != storageVolumes.Count)
                 {
                     _logger.LogWarning(
@@ -348,6 +349,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else
             {
+                _logger.LogWarning("[TEST] no byos storage volumes");
                 if (!blobContextApplied && !azureFilesMounted)
                 {
                     _logger.LogError("Failed to specialize container");
