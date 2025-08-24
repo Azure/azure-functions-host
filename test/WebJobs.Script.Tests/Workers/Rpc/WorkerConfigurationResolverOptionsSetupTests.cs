@@ -250,6 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void Configure_WithEnvironmentValues_SetsValues()
         {
             // Arrange
+            EnvironmentExtensions.ClearCache();
             var testEnvironment = new TestEnvironment();
             var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
             var configBuilder = new ConfigurationBuilder()

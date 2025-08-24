@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
         {
             // Arrange
+            EnvironmentExtensions.ClearCache();
             var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
             var fileSystem = new FileSystem();
 
@@ -78,6 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void GetWorkerConfigs_MultiLanguageWorker_NullOREmptyProbingPath_ReturnsExpectedConfigs(string probingPathValue, string releaseChannel)
         {
             // Arrange
+            EnvironmentExtensions.ClearCache();
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
@@ -134,6 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void GetWorkerConfigs_NullOREmptyProbingPath_ReturnsExpectedConfigs(string probingPathValue, string releaseChannel, string languageWorker)
         {
             // Arrange
+            EnvironmentExtensions.ClearCache();
             var mockEnv = new Mock<IEnvironment>();
             mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(languageWorker);
             mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
