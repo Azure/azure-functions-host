@@ -992,6 +992,92 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void Specialization_DynamicResolution_Logs()
+        {
+            var loggerProvider = new TestLoggerProvider();
+
+            Guid guid = Guid.NewGuid();
+            string path = "test-path" + guid.ToString();
+
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            Guid guid2 = Guid.NewGuid();
+            string workerPath = "worker-path" + guid2.ToString();
+
+            if (!Directory.Exists(workerPath))
+            {
+                Directory.CreateDirectory(workerPath);
+            }
+
+            string subdir = Path.Combine(workerPath, "decoupledWorkers", "node", "1.0.0");
+
+            if (!Directory.Exists(subdir))
+            {
+                Directory.CreateDirectory(subdir);
+                string workerJson = @"{
+                            ""description"": {
+                                ""language"": ""node"",
+                                ""extensions"": ["".js"", "".mjs"", "".cjs""],
+                                ""defaultExecutablePath"": ""node"",
+                                ""defaultWorkerPath"": ""worker.config.json"",
+                                ""workerIndexing"": ""true""
+                            },
+                            ""hostRequirements"": []
+                        }";
+
+                File.WriteAllText(Path.Combine(subdir, "worker.config.json"), workerJson);
+            }
+
+            string json = "{\r\n  \"version\": \"2.0\",\r\n  \"isDefaultHostConfig\": false\r\n}";
+            File.WriteAllText(Path.Combine(path, "host.json"), json);
+
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(path, loggerProvider);
+
+            string fallbackPath = Path.Combine(Directory.GetCurrentDirectory(), "workers");
+
+            var inMemorySettings = new Dictionary<string, string>();
+            inMemorySettings["languageWorkers:probingPaths:0"] = Path.Combine(workerPath, "decoupledWorkers");
+
+            builder.ConfigureServices(services =>
+            {
+                services.Configure<FunctionsHostingConfigOptions>(o => o.Features["WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION"] = "node");
+            });
+
+            builder.ConfigureAppConfiguration(c =>
+            {
+                c.AddInMemoryCollection(inMemorySettings);
+            });
+
+            using var testServer = new TestServer(builder);
+
+            var standbyManager = testServer.Services.GetService<IStandbyManager>();
+            Assert.NotNull(standbyManager);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            var logs = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage);
+
+            Assert.Contains("Placeholder mode is enabled: True", logs);
+
+            var nodeLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:") && p.Contains("decoupledWorkers\\node"));
+            Assert.True(nodeLog.Any());
+
+            var javaLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("workers\\java"));
+            Assert.True(javaLog.Any());
+
+            var probingLog = logs.FirstOrDefault(p => p.Contains("Workers probing paths set to:"));
+            Assert.True(probingLog.Any());
+
+            var fallbackLog = logs.FirstOrDefault(p => p.Contains("Searching for worker configs in the fallback directory:"));
+            Assert.True(fallbackLog.Any());
+        }
+
+        [Fact]
         public async Task DotNetIsolated_PlaceholderHit_WithProxies()
         {
             // This test ensures that capabilities are correctly applied in EnvironmentReload during

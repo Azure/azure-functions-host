@@ -340,5 +340,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.Equal(expected, result);
         }
+
+        [Theory]
+        [InlineData("| ", 0)]
+        [InlineData("", 0)]
+        [InlineData("java:1.0.0|python:2.0.0|java:1.1.1||node:", 2)]
+        public void IsDynamicWorkerResolutionEnabled_IgnoredWorkerVersions_WorksAsExpected(string hostingConfigSetting, int expected)
+        {
+            var config = new ConfigurationBuilder().Build();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, hostingConfigSetting);
+
+            var testEnvironment = new TestEnvironment();
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var ignoreWorkerVersions = optionsMonitor.CurrentValue.IgnoreWorkerVersions;
+            Assert.NotNull(ignoreWorkerVersions);
+            Assert.Equal(ignoreWorkerVersions.Count, expected);
+
+            if (expected != 0)
+            {
+                ignoreWorkerVersions.TryGetValue("java", out HashSet<Version> javaValue);
+                Assert.NotNull(javaValue);
+                Assert.Equal(javaValue.Count, 2);
+
+                ignoreWorkerVersions.TryGetValue("python", out HashSet<Version> pyValue);
+                Assert.NotNull(pyValue);
+                Assert.Equal(pyValue.Count, 1);
+            }
+        }
     }
 }
