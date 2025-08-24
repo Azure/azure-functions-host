@@ -240,18 +240,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         internal Dictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
         {
-            // Example value of ignoredWorkersVersions: "Worker1Name:Version1|Worker1Name:Version2|Worker2Name:Version1|Worker3Name:Version1".
-            string ignoredWorkersVersions = _functionsHostingConfigOptions.Value?.IgnoredWorkersVersions ?? string.Empty;
-            var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>(StringComparer.OrdinalIgnoreCase);
+            // Example value of ignoredWorkerVersions: "Worker1Name:Version1|Worker1Name:Version2|Worker2Name:Version1|Worker3Name:Version1".
+            string ignoredWorkerVersions = _functionsHostingConfigOptions.Value?.IgnoredWorkerVersions ?? string.Empty;
 
-            if (string.IsNullOrWhiteSpace(ignoredWorkersVersions))
+            if (string.IsNullOrWhiteSpace(ignoredWorkerVersions))
             {
-                return ignoredVersionsOut;
+                return new(StringComparer.OrdinalIgnoreCase);
             }
 
-            List<string> ignoredVersionsList = ignoredWorkersVersions
-                                                    .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                                    .ToList();
+            var ignoredVersionsList = ignoredWorkerVersions.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>(StringComparer.OrdinalIgnoreCase);
 
             foreach (string ignoredVersion in ignoredVersionsList)
             {
@@ -259,7 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                 if (workerVersionParts.Length != 2)
                 {
-                    _logger.LogTrace($"Skipping '{ignoredVersion}' due to invalid format for ignored version. Expected format is 'WorkerName:Version'.");
+                    _logger.LogTrace("Skipping '{ignoredVersion}' due to invalid format for ignored version. Expected format is 'WorkerName:Version'.", ignoredVersion);
                     continue;
                 }
 
@@ -268,13 +266,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                 if (string.IsNullOrWhiteSpace(workerName) || string.IsNullOrWhiteSpace(version))
                 {
-                    _logger.LogTrace($"Skipping '{ignoredVersion}' due to invalid format for ignored worker version. Worker name and version cannot be empty.");
+                    _logger.LogTrace("Skipping '{ignoredVersion}' due to invalid format for ignored worker version. Worker name and version cannot be empty.", ignoredVersion);
                     continue;
                 }
 
                 if (!Version.TryParse(version, out Version parsedVersion))
                 {
-                    _logger.LogTrace($"Skipping '{ignoredVersion}' due to invalid version format: '{version}' for worker '{workerName}'.");
+                    _logger.LogTrace("Skipping '{ignoredVersion}' due to invalid version format: '{version}' for worker '{workerName}'.", ignoredVersion, version, workerName);
                     continue;
                 }
 

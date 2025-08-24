@@ -123,7 +123,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         }
 
                         // search for worker configs inside version directories within the language worker directory
-                        ResolveWorkerConfigsFromVersionsDirs(workerRuntimePath, workerRuntimeDir, outputDict);
+                        var workerVersionPath = ResolveWorkerConfigFromVersionsDirs(workerRuntimePath, workerRuntimeDir);
+                        if (!string.IsNullOrEmpty(workerVersionPath))
+                        {
+                            outputDict[workerRuntimeDir] = workerVersionPath;
+                        }
                     }
                 }
             }
@@ -138,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Resolves worker configuration paths from the version directories within a language worker directory.
         /// </summary>
-        private void ResolveWorkerConfigsFromVersionsDirs(string languageWorkerPath, string languageWorkerFolder, Dictionary<string, string> outputDict)
+        private string ResolveWorkerConfigFromVersionsDirs(string languageWorkerPath, string languageWorkerFolder)
         {
             var workerVersionPaths = _fileSystem.Directory.EnumerateDirectories(languageWorkerPath);
 
@@ -152,6 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                                 releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase));
 
             int compatibleWorkerCount = 0;
+            string outputWorkerVersionPath = null;
 
             foreach (var versionPair in versionPathMap)
             {
@@ -166,20 +171,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 if (IsWorkerCompatibleWithHost(languageWorkerVersionPath))
                 {
                     compatibleWorkerCount++;
-                    outputDict[languageWorkerFolder] = languageWorkerVersionPath;
+                    outputWorkerVersionPath = languageWorkerVersionPath;
 
                     if (string.IsNullOrEmpty(releaseChannel) || !isStandardOrExtendedChannel)
                     {
-                        return; // latest version is the default
+                        return outputWorkerVersionPath; // latest version is the default
                     }
 
                     if (compatibleWorkerCount > 1)
                     {
-                        outputDict[languageWorkerFolder] = languageWorkerVersionPath;
-                        return;
+                        return languageWorkerVersionPath;
                     }
                 }
             }
+
+            return outputWorkerVersionPath;
         }
 
         /// <summary>
@@ -247,32 +253,32 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Determines if the worker is compatible with the host by checking if Host satisfies worker requirements and by evaluating the profile conditions.
         /// </summary>
-        private bool IsWorkerCompatibleWithHost(string workerDir)
+        private bool IsWorkerCompatibleWithHost(string workerDirPath)
         {
-            string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
+            string workerConfigPath = Path.Combine(workerDirPath, RpcWorkerConstants.WorkerConfigFileName);
             if (!File.Exists(workerConfigPath))
             {
                 return false;
             }
 
-            JsonElement workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
+            JsonElement workerConfigJson = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
 
-            if (workerConfig.ValueKind == JsonValueKind.Undefined)
+            if (workerConfigJson.ValueKind == JsonValueKind.Undefined)
             {
                 return false;
             }
 
             // static capability resolution
-            if (!DoesHostHasRequiredCapabilities(workerConfig))
+            if (!DoesHostHasRequiredCapabilities(workerConfigJson, workerConfigPath))
             {
                 return false;
             }
 
             // profiles evaluation
             RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
-                                                            workerConfig: workerConfig,
+                                                            workerConfig: workerConfigJson,
                                                             jsonSerializerOptions: _jsonSerializerOptions,
-                                                            workerDir: workerDir,
+                                                            workerDir: workerDirPath,
                                                             profileManager: _profileManager,
                                                             languageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
                                                             logger: _logger);
@@ -292,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <returns> HashSet { "test-capability1", "test-capability2" }. </returns>
         private HashSet<string> GetHostRequirementsFromWorker(JsonElement workerConfig)
         {
-            HashSet<string> hostRequirements = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var hostRequirements = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             if (workerConfig.TryGetProperty(RpcWorkerConstants.HostRequirementsSectionName, out JsonElement configSection))
             {
@@ -313,20 +319,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Determines if the host has all required capabilities specified in the worker configuration.
         /// </summary>
-        private bool DoesHostHasRequiredCapabilities(JsonElement workerConfig)
+        private bool DoesHostHasRequiredCapabilities(JsonElement workerConfig, string workerConfigPath)
         {
-            HashSet<string> hostCapabilities = ScriptConstants.HostCapabilities;
-            HashSet<string> hostRequirements = GetHostRequirementsFromWorker(workerConfig);
+            var hostCapabilities = ScriptConstants.HostCapabilities;
+            var hostRequirements = GetHostRequirementsFromWorker(workerConfig);
 
-            foreach (var hostRequirement in hostRequirements)
-            {
-                if (!hostCapabilities.Contains(hostRequirement))
-                {
-                    return false;
-                }
-            }
+            _logger.LogTrace("Worker configuration at '{workerConfigPath}' specifies host requirements [{requirements}].", workerConfigPath, string.Join(", ", hostRequirements));
 
-            return true;
+            return hostRequirements.IsSubsetOf(hostCapabilities);
         }
 
         /// <summary>

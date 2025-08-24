@@ -691,6 +691,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.IsNullOrEmpty(workerRuntime) || string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Returns the Antares platform release channel specified by the environment variable.
+        /// Value of this variable could be "LATEST", "STANDARD" or "EXTENDED".
+        /// If the environment variable is not set, the method returns the default value "LATEST".
+        /// </summary>
         public static string GetPlatformReleaseChannel(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariable(AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
