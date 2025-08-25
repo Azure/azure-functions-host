@@ -19,12 +19,12 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class WorkerConfigurationResolverTests
+    public class DynamicWorkerConfigurationResolverTests
     {
         private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\");
         private readonly string _fallbackPath = Path.GetFullPath("workers");
 
-        public WorkerConfigurationResolverTests()
+        public DynamicWorkerConfigurationResolverTests()
         {
             EnvironmentExtensions.ClearCache();
         }
@@ -58,7 +58,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node");
-
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
@@ -73,6 +72,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, powershell))));
             Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
             Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, python))));
+
+            var logs = loggerProvider.GetAllLogMessages();
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker configuration at ") && l.FormattedMessage.Contains("\\ProbingPaths\\functionsworkers\\java\\2.19.0\\worker.config.json' specifies host requirements [].")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker configuration at ") && l.FormattedMessage.Contains("\\ProbingPaths\\functionsworkers\\node\\3.10.1\\worker.config.json' specifies host requirements [].")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing path directory does not exist: path-not-exists.")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
+        }
+
+        [Theory]
+        [InlineData("LATEST", "java", "node", "powershell", "dotnet-isolated", "python")]
+        [InlineData("STANDARD", "java", "node", "powershell", "dotnet-isolated", "python")]
+        public void GetWorkerConfigs_MultiLanguageWorker_MalformedProbingPath_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
+        {
+            // Arrange
+            var probingPaths = new List<string>() { _fallbackPath };
+            var fileSystem = new FileSystem();
+
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
+            var mockEnvironment = new Mock<IEnvironment>();
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+
+            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
+
+            var mockProfileManager = new Mock<IWorkerProfileManager>();
+            var testScriptHostManager = new Mock<IScriptHostManager>();
+
+            var hostingOptions = new FunctionsHostingConfigOptions();
+            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node");
+            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+
+            // Act
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, fileSystem, mockProfileManager.Object, optionsMonitor);
+
+            var result = workerConfigurationResolver.GetWorkerConfigPaths();
+
+            // Assert
+            Assert.Equal(result.Count, 5);
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, java))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, node))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, powershell))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
+            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, python))));
+
+            var logs = loggerProvider.GetAllLogMessages();
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Failed to parse worker version")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
         }
 
         [Theory]
@@ -176,8 +228,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("LATEST", "java\\2.18.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        public void GetWorkerConfigs_IgnoredVersion_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
+        [InlineData("LATEST", "java:2.19.0", "java\\2.18.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
+        [InlineData("LATEST", "java:2.19.0|python:4.1.0", "java\\2.18.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
+        [InlineData("LATEST", "java:xyz|node:a.b.c", "java\\2.19.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
+        public void GetWorkerConfigs_IgnoredVersion_ReturnsExpectedConfigs(string releaseChannel, string setting, string java, string node, string powershell, string dotnetIsolated, string python)
         {
             // Arrange
             var mockEnvironment = new Mock<IEnvironment>();
@@ -198,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
-            hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, "java:2.19.0");
+            hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, setting);
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, mockProfileManager.Object, optionsMonitor);

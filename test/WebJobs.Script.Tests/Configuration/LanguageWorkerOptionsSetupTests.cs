@@ -100,7 +100,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("node", "java|node", "STANDARD", "3.10.1")]
         [InlineData("java", "java", "EXTENDED", "2.18.0")]
         [InlineData("node", "java|node", "EXTENDED", "3.10.1")]
-        public void LanguageWorkerOptions_EnabledWorkerResolution_Expected_ListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel, string expectedVersion)
+        [InlineData("java", "java", " ", "2.19.0")]
+        [InlineData("java", "java", null, "2.19.0")]
+        public void LanguageWorkerOptions_EnabledWorkerResolution_ReturnsListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel, string expectedVersion)
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -124,8 +126,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
-            LanguageWorkerOptions options = new LanguageWorkerOptions();
+            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
+            var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
 
@@ -138,6 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with worker path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
+            Assert.False(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
         }
 
         [Theory]
@@ -145,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("java", "java", "STANDARD")]
         [InlineData("node", "node", "LATEST")]
         [InlineData("node", "java|node", "STANDARD")]
-        public void LanguageWorkerOptions_FallbackPath_Expected_ListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel)
+        public void LanguageWorkerOptions_DynamicResolver_NoProbingPaths_ReturnsListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel)
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -166,8 +169,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
-            LanguageWorkerOptions options = new LanguageWorkerOptions();
+            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
+            var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
 
@@ -186,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("java", null, "LATEST")]
         [InlineData("java", "", "STANDARD")]
         [InlineData("node", "  ", "LATEST")]
-        public void LanguageWorkerOptions_NullHostingConfig_FeatureDisabled_ListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel)
+        public void LanguageWorkerOptions_DefaultResolver_ListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel)
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -223,47 +226,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData("java", "LATEST")]
-        [InlineData("java", "STANDARD")]
-        [InlineData("node", "LATEST")]
-        [InlineData("node", "STANDARD")]
-        public void LanguageWorkerOptions_DisabledWorkerResolution_Expected_ListOfConfigs(string workerRuntime, string releaseChannel)
-        {
-            var loggerProvider = new TestLoggerProvider();
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(loggerProvider);
-
-            var testEnvironment = new TestEnvironment();
-            var testMetricLogger = new TestMetricsLogger();
-            var configuration = new ConfigurationBuilder().Add(new ScriptEnvironmentVariablesConfigurationSource()).Build();
-            var testProfileManager = new Mock<IWorkerProfileManager>();
-            var testScriptHostManager = new Mock<IScriptHostManager>();
-
-            testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
-
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, null);
-            var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, optionsMonitor);
-
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
-            LanguageWorkerOptions options = new LanguageWorkerOptions();
-
-            setup.Configure(options);
-
-            Assert.Equal(1, options.WorkerConfigs.Count);
-
-            var logs = loggerProvider.GetAllLogMessages();
-
-            string path = Path.Combine(_fallbackPath, workerRuntime);
-            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with worker path: {path}";
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers Directory set to:")));
-        }
-
-        [Theory]
         [InlineData("java")]
         [InlineData("node")]
-        public void LanguageWorkerOptions_FallbackPath_NullHostingConfig(string workerRuntime)
+        public void LanguageWorkerOptions_DynamicResolver_FallbackPath_NullHostingConfig(string workerRuntime)
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
