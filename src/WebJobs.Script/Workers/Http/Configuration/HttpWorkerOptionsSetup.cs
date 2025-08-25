@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 ConfigureWorkerDescription(options, customHandlerSection);
                 if (options.Type == CustomHandlerType.None)
                 {
-                    // CustomHandlerType.None is only for maintaining backward compatability with httpWorker section.
+                    // CustomHandlerType.None is only for maintaining backward compatibility with httpWorker section.
                     _logger.LogWarning($"CustomHandlerType {CustomHandlerType.None} is not supported. Defaulting to {CustomHandlerType.Http}.");
                     options.Type = CustomHandlerType.Http;
                 }

@@ -235,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     await using var stream = File.OpenRead(metadataFilePath);
                     var extensionReferences = await JsonSerializer.DeserializeAsync(stream, ExtensionReferencesJsonContext.Default.ExtensionReferences);
 
-                    if (extensionReferences?.Extensions == null || extensionReferences.Extensions.Length == 0)
+                    if (extensionReferences?.Extensions == null)
                     {
                         _logger.ScriptStartUpUnableParseMetadataMissingProperty(metadataFilePath);
                         return [];

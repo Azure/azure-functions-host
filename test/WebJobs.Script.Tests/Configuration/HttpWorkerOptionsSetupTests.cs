@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -372,6 +373,87 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 tcpListener?.Stop();
             }
+        }
+
+        [Fact]
+        public void Format_SerializesOptionsToJson()
+        {
+            var options = new HttpWorkerOptions
+            {
+                Type = CustomHandlerType.Http,
+                Port = 8080,
+                EnableForwardingHttpRequest = true,
+                EnableProxyingHttpRequest = false,
+                InitializationTimeout = TimeSpan.FromSeconds(45),
+                Description = new HttpWorkerDescription
+                {
+                    DefaultExecutablePath = "node",
+                    DefaultWorkerPath = "server.js",
+                    WorkingDirectory = "/app"
+                },
+                Arguments = new WorkerProcessArguments
+                {
+                    ExecutablePath = "node",
+                    WorkerPath = "server.js"
+                }
+            };
+
+            string json = options.Format();
+
+            Assert.NotNull(json);
+            Assert.NotEmpty(json);
+
+            var jsonDocument = JsonDocument.Parse(json);
+            Assert.NotNull(jsonDocument);
+
+            var root = jsonDocument.RootElement;
+            Assert.True(root.TryGetProperty("Type", out var typeProperty));
+            Assert.Equal(0, typeProperty.GetInt32()); // CustomHandlerType.Http = 0
+
+            Assert.True(root.TryGetProperty("Port", out var portProperty));
+            Assert.Equal(8080, portProperty.GetInt32());
+
+            Assert.True(root.TryGetProperty("EnableForwardingHttpRequest", out var forwardingProperty));
+            Assert.True(forwardingProperty.GetBoolean());
+
+            Assert.True(root.TryGetProperty("EnableProxyingHttpRequest", out var proxyingProperty));
+            Assert.False(proxyingProperty.GetBoolean());
+
+            Assert.True(root.TryGetProperty("InitializationTimeout", out var timeoutProperty));
+            Assert.Equal("00:00:45", timeoutProperty.GetString());
+
+            Assert.True(root.TryGetProperty("Description", out var descriptionProperty));
+            Assert.Equal(JsonValueKind.Object, descriptionProperty.ValueKind);
+
+            Assert.True(root.TryGetProperty("Arguments", out var argumentsProperty));
+            Assert.Equal(JsonValueKind.Object, argumentsProperty.ValueKind);
+        }
+
+        [Fact]
+        public void Format_WithNullProperties_SerializesSuccessfully()
+        {
+            var options = new HttpWorkerOptions
+            {
+                Type = CustomHandlerType.None,
+                Port = 0,
+                Description = null,
+                Arguments = null
+            };
+
+            string json = options.Format();
+
+            Assert.NotNull(json);
+            Assert.NotEmpty(json);
+
+            var jsonDocument = JsonDocument.Parse(json);
+            Assert.NotNull(jsonDocument);
+
+            var root = jsonDocument.RootElement;
+            Assert.True(root.TryGetProperty("Type", out var typeProperty));
+            Assert.Equal(1, typeProperty.GetInt32()); // CustomHandlerType.None = 1
+
+            Assert.True(root.TryGetProperty("Port", out var portProperty));
+            Assert.Equal(0, portProperty.GetInt32());
         }
 
         private IConfiguration BuildHostJsonConfiguration(IEnvironment environment = null)

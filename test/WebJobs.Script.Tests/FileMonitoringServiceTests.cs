@@ -93,14 +93,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var watchedFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "my_watched_file.txt");
                 FileEvent watchedFileEvent = new FileEvent("ScriptFiles", watchedFileEventArgs);
 
+                var expectedReason = $"File change of type 'Created' detected for '{Path.Combine(tempDir, "my_watched_file.txt")}'";
+                var notExpectedReason = $"File change of type 'Created' detected for '{Path.Combine(tempDir, "my_ignored_file.txt")}'";
+
                 // Test
                 mockEventManager.Publish(ignoredFileEvent);
                 await Task.Delay(TimeSpan.FromSeconds(3));
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(notExpectedReason, default), Times.Never);
 
                 mockEventManager.Publish(watchedFileEvent);
                 await Task.Delay(TimeSpan.FromSeconds(3));
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default));
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(expectedReason, default), Times.Once);
             }
         }
 
@@ -156,14 +159,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     e2.Set();
                 });
 
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                var restartReason = "Resuming scheduled restart.";
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Never);
                 e1.WaitOne(5000);
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Never);
                 e2.WaitOne(5000);
 
                 // wait for restart
                 await Task.Delay(1000);
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Once);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Once);
                 await fileMonitoringService.StopAsync(CancellationToken.None);
             }
         }
@@ -198,17 +202,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var randomFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "host.json");
                 FileEvent randomFileEvent = new FileEvent("ScriptFiles", randomFileEventArgs);
 
+                var expectedReason = $"Resuming scheduled restart.";
                 using (fileMonitoringService.SuspendRestart(true))
                 {
                     using (fileMonitoringService.SuspendRestart(true))
                     {
                     }
                     await Task.Delay(1000);
-                    mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                    mockScriptHostManager.Verify(m => m.RestartHostAsync(expectedReason, default), Times.Never);
                     mockEventManager.Publish(randomFileEvent);
                 }
                 await Task.Delay(1000);
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Once);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(expectedReason, default), Times.Once);
                 await fileMonitoringService.StopAsync(CancellationToken.None);
             }
         }
@@ -307,7 +312,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 TaskCompletionSource restart = new TaskCompletionSource();
                 var mockScriptHostManager = new Mock<IScriptHostManager>();
-                mockScriptHostManager.Setup(m => m.RestartHostAsync(default)).Callback(() => restart.TrySetResult());
+                mockScriptHostManager.Setup(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .Callback<string, CancellationToken>((reason, ct) =>
+                    {
+                        restart.TrySetResult();
+                    })
+                    .Returns(Task.CompletedTask);
 
                 var mockEventManager = new ScriptEventManager();
                 var environment = new TestEnvironment();
@@ -338,14 +348,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Never);
                 }
 
+                var expectedReason = $"File change of type 'Created' detected for '{Path.Combine(tempDir, fileName)}'";
                 if (expectRestart)
                 {
                     await restart.Task.WaitAsync(TimeSpan.FromSeconds(5));
-                    mockScriptHostManager.Verify(m => m.RestartHostAsync(default));
+                    mockScriptHostManager.Verify(m => m.RestartHostAsync(expectedReason, default));
                 }
                 else
                 {
-                    mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                    mockScriptHostManager.Verify(m => m.RestartHostAsync(expectedReason, default), Times.Never);
                 }
             }
         }

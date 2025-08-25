@@ -11,14 +11,6 @@
   <Import Project="$(WorkersProps)" />
 
   <ItemGroup>
-    <Compile Remove="ScriptHostEndToEnd\ListenerFailureTests.cs" />
-    <Compile Remove="ServiceBus\ServiceBusEndToEndTestBase.cs" />
-    <Compile Remove="ServiceBus\ServiceBusTriggerCSharpEndToEndTests.cs" />
-    <Compile Remove="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
-    <Compile Remove="Twilio\TwilioEndToEndTestsBase.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
     <PackageReference Include="Azure.Data.Tables" Version="12.8.3" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
@@ -36,28 +28,18 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="Moq" Version="4.18.4" />
     <PackageReference Include="xunit" Version="2.4.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
-    <ProjectReference Include="..\..\src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
-    <ProjectReference Include="..\TestFunctions\TestFunctions.csproj" Private="true" />
-    <ProjectReference Include="..\CSharpPrecompiledTestProjects\**\*.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\DotNetIsolated*\*.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" />
+    <ProjectReference Include="../../src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj" />
+    <ProjectReference Include="../Resources/TestProjects/**/*.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Update="../Resources/TestProjects/TestFunctions/TestFunctions.csproj" Private="true" ReferenceOutputAssembly="true" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="TestScripts\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Properties\Resources.Designer.cs">
+    <Compile Update="Properties/Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
@@ -65,35 +47,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
+    <EmbeddedResource Update="Properties/Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="appsettings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="xunit.runner.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <None Include="../Resources/TestScripts/**" CopyToOutputDirectory="PreserveNewest" LinkBase="TestScripts" />
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Management/Payload/DurableMsSQLProviderPayload.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="ScriptHostEndToEnd\ListenerFailureTests.cs" />
-    <None Include="ServiceBus\ServiceBusEndToEndTestBase.cs" />
-    <None Include="ServiceBus\ServiceBusTriggerCSharpEndToEndTests.cs" />
-    <None Include="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
-    <None Include="Twilio\TwilioEndToEndTestsBase.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Update="Management\Payload\DurableMsSQLProviderPayload.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
+  <Import Project="../WebJobs.Script.Tests.Shared/WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
 </Project>

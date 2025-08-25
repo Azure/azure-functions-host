@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (t.IsFaulted)
                 {
                     // if we fail during specialization for whatever reason
-                    // this is fatal, so we shutdown
+                    // this is fatal, so we stop the application.
                     _logger.LogError(t.Exception, "Specialization failed. Shutting down.");
                     _applicationLifetime.StopApplication();
                 }
@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationRestartHost))
             {
-                await _scriptHostManager.RestartHostAsync();
+                await _scriptHostManager.RestartHostAsync("Host specialization.");
             }
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationDelayUntilHostReady))

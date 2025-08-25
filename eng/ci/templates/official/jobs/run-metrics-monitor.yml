@@ -46,7 +46,7 @@ jobs:
   - task: CopyFiles@2
     displayName: Copy benchmark apps to temp location
     inputs:
-      SourceFolder: '$(Build.SourcesDirectory)/test/Performance/Apps'
+      SourceFolder: '$(Build.SourcesDirectory)/perf/Apps'
       Contents: '**/*'
       TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
       CleanTargetFolder: true

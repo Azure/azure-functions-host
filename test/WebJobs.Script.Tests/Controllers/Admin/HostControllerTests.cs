@@ -349,7 +349,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (StatusCodeResult)await _hostController.Resume(scriptHostManagerMock.Object, default);
             Assert.Equal(expectedCode, result.StatusCode);
-            scriptHostManagerMock.Verify(p => p.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Never());
+            scriptHostManagerMock.Verify(p => p.RestartHostAsync("test", It.IsAny<CancellationToken>()), Times.Never());
         }
 
         [Fact]
@@ -358,10 +358,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
             var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            var restartReason = "Resuming from drain mode.";
 
             serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
             scriptHostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
-            scriptHostManagerMock.Setup(p => p.RestartHostAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            scriptHostManagerMock.Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(true);
 
             var expectedBody = new ResumeStatus { State = ScriptHostState.Running };
@@ -369,7 +370,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(StatusCodes.Status200OK, result.StatusCode);
             Assert.Equal(expectedBody.State, (result.Value as ResumeStatus).State);
-            scriptHostManagerMock.Verify(p => p.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Once());
+            scriptHostManagerMock.Verify(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Once());
         }
 
         [Fact]
@@ -388,7 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(StatusCodes.Status200OK, result.StatusCode);
             Assert.Equal(expectedBody.State, (result.Value as ResumeStatus).State);
-            scriptHostManagerMock.Verify(p => p.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Never());
+            scriptHostManagerMock.Verify(p => p.RestartHostAsync("test", It.IsAny<CancellationToken>()), Times.Never());
         }
 
         [Fact]
@@ -398,7 +399,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using var cts = new CancellationTokenSource();
             cts.Cancel();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _hostController.Resume(scriptHostManagerMock.Object, cts.Token));
-            scriptHostManagerMock.Verify(p => p.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Never());
+            scriptHostManagerMock.Verify(p => p.RestartHostAsync("test", It.IsAny<CancellationToken>()), Times.Never());
         }
     }
 }

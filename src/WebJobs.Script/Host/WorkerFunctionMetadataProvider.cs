@@ -29,7 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly JsonSerializerSettings _dateTimeSerializerSettings;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
         private IHost _currentJobHost = null;
@@ -47,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _channelManager = webHostRpcWorkerChannelManager;
             _scriptHostManager = scriptHostManager;
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            _dateTimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
             _scriptHostManager.ActiveHostChanged += OnHostChanged;
         }
@@ -95,8 +93,10 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                     else
                     {
+                        // During the restart flow, GetFunctionMetadataAsync gets invoked
+                        // again through a new script host initialization flow.
                         _logger.LogDebug("JobHost has started and has state '{State}' without any worker channels. Restarting host to reinitialize.", _scriptHostManager.State);
-                        await _scriptHostManager.RestartHostAsync();
+                        await _scriptHostManager.RestartHostAsync("No initialized worker channels available.");
                     }
 
                     channels = _channelManager.GetChannels(_workerRuntime);
@@ -289,8 +289,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (string binding in rawBindings)
             {
-                var deserializedObj = JsonConvert.DeserializeObject<JObject>(binding, _dateTimeSerializerSettings);
-                var functionBinding = BindingMetadata.Create(deserializedObj);
+                var sanitizedBinding = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames, DateParseHandling.None);
+                var functionBinding = BindingMetadata.Create(sanitizedBinding);
 
                 Utility.ValidateBinding(functionBinding);
 

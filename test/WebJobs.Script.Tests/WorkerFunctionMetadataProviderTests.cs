@@ -291,5 +291,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertFunction(function1);
             AssertFunction(function2);
         }
+
+        [Fact]
+        public void ValidateBindings_MasksSensitiveDataInBindings()
+        {
+            var functionMetadata = new FunctionMetadata();
+            List<string> rawBindings =
+            [
+                """{"type": "queueTrigger","name": "myQueueItem","direction": "in","queueName": "test-input-node","connection": "DefaultEndpointsProtocol=https;AccountName=a;AccountKey=b/c==;EndpointSuffix=core.windows.net"}""",
+                """{"type": "queue","name": "$return","direction": "out","queueName": "test-output-node","connection": "MyConnection"}""",
+            ];
+
+            var function = _workerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+            Assert.NotNull(function);
+            Assert.NotNull(function.Bindings);
+            Assert.Equal(2, function.Bindings.Count);
+
+            // The first binding should have its connection string replaced with "[Hidden Credential]"
+            var binding1 = function.Bindings[0];
+            Assert.NotNull(binding1);
+            Assert.Equal("[Hidden Credential]", binding1.Connection);
+            Assert.Equal("[Hidden Credential]", binding1.Raw["connection"]!.ToString());
+
+            // The second binding should remain unchanged (named connection)
+            var binding2 = function.Bindings[1];
+            Assert.Equal("MyConnection", binding2.Connection);
+            Assert.Equal("MyConnection", binding2.Raw["connection"]!.ToString());
+        }
     }
 }
