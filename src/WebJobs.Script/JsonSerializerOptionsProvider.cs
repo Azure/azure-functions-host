@@ -12,7 +12,10 @@ namespace Microsoft.Azure.WebJobs.Script
     public static class JsonSerializerOptionsProvider
     {
         /// <summary>
-        /// Gets the default JSON serializer options used across the functions host.
+        /// Shared Json serializer with the following settings:
+        /// - AllowTrailingCommas: true
+        /// - PropertyNamingPolicy: CamelCase
+        /// - DefaultIgnoreCondition: WhenWritingNull.
         /// </summary>
         public static readonly JsonSerializerOptions Options = CreateJsonOptions();
 

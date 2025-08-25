@@ -4,11 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using FluentAssertions;
-using HealthChecks.UI.Client;
 using HealthChecks.UI.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks;
