@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class WorkerConfigurationResolverTests
     {
-        private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\workers\\");
+        private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\");
         private readonly string _fallbackPath = Path.GetFullPath("workers");
 
         [Theory]

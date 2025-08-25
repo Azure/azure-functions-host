@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void Configure_WithEnvironmentValues_UpdatedConfiguration_SetsCorrectValues()
+        public void Configure_UpdatedConfiguration_SetsCorrectValues()
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void Configure_WithEnvironmentValues_WithConfiguration_SetsCorrectValues()
+        public void Configure_WithConfiguration_SetsCorrectValues()
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -192,6 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void Configure_WithRealEnvironmentValues_SetsCorrectDefaults()
         {
             // Arrange
+            EnvironmentExtensions.ClearCache();
             var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
             var testEnvironment = new TestEnvironment();
             var configBuilder = new ConfigurationBuilder()
@@ -326,6 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("| ", null, "workflowapp", false)]
         public void IsDynamicWorkerResolutionEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp, bool expected)
         {
+            EnvironmentExtensions.ClearCache();
             var config = new ConfigurationBuilder().Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
 

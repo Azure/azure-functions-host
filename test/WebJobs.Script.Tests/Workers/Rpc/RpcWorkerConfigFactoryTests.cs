@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData(false)]
         public void GetDefaultWorkersDirectory_Returns_Expected(bool expectedValue)
         {
+            EnvironmentExtensions.ClearCache();
             string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.Location).LocalPath);
             string defaultWorkersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
             var fileSystemMock = new Mock<IFileSystem>();
@@ -85,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var mockScriptHostManager = new Mock<IScriptHostManager>();
             var env = new Mock<IEnvironment>();
-            var optionsSetup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, config, env.Object, fileSystemMock.Object, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(null));
+            var optionsSetup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, config, env.Object, fileSystemMock.Object, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
 
             if (expectedValue)
             {
@@ -280,6 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("python", null, true, true)]
         public void ShouldAddProvider_Returns_Expected(string workerLanguage, string workerRuntime, bool placeholderMode, bool expectedResult)
         {
+            EnvironmentExtensions.ClearCache();
             if (placeholderMode)
             {
                 _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");

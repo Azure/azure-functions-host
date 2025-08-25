@@ -7,7 +7,6 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -38,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
+            ArgumentNullException.ThrowIfNull(_functionsHostingConfigOptions.Value);
         }
 
         public void Configure(WorkerConfigurationResolverOptions options)
@@ -99,8 +99,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private IConfiguration GetRequiredConfiguration()
         {
             InspectConfiguration(_configuration, nameof(_configuration));
-
             var configuration = _configuration;
+
+            // Use the latest configuration from the ScriptHostManager if available.
+            // After specialization, the ScriptHostManager will have the latest IConfiguration reflecting additional configuration entries added during specialization.
             if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
             {
                 var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
@@ -134,26 +136,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         }
 
         /// <summary>
-        /// Retrieves the list of worker probing paths from configuration or uses default logic for Windows environment.
+        /// Retrieves the list of worker probing paths from configuration or uses the default path for Windows environment.
         /// </summary>
         internal List<string> GetWorkerProbingPaths(IConfiguration configuration)
         {
             // If Configuration section is set, read probing paths from configuration.
             var probingPathsSection = configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{RpcWorkerConstants.WorkerProbingPathsSectionName}");
-            var configurationSections = probingPathsSection.GetChildren();
+            var subSectionsCount = probingPathsSection.GetChildren().Count();
             var probingPaths = new List<string>();
 
-            if (!configurationSections.Any())
+            if (subSectionsCount == 0)
             {
                 if (_environment.IsHostedWindowsEnvironment())
                 {
-                    // Hardcoded site extensions path for Windows until Antares sets it as an Environment variable.
+                    // Default worker probing path for Windows
                     string windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
 
                     if (!string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
                     {
-                        // Example probing path for Windows: "c:\\home\\SiteExtensions\\workers"
-                        var windowsWorkerProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
+                        // Example probing path for Windows: "c:\\home\\SiteExtensions\\functionsworkers"
+                        var windowsWorkerProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.FunctionsWorkersDirectoryName);
                         probingPaths.Add(windowsWorkerProbingPath);
                     }
                 }
@@ -161,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return probingPaths;
             }
 
-            for (int i = 0; i < configurationSections.Count(); i++)
+            for (int i = 0; i < subSectionsCount; i++)
             {
                 var path = probingPathsSection.GetSection($"{i}").Value;
                 if (!string.IsNullOrWhiteSpace(path))
@@ -176,27 +178,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Returns the default site extensions path for Windows environment.
         /// </summary>
-        internal static string GetWindowsSiteExtensionsPath()
+        private static string GetWindowsSiteExtensionsPath()
         {
             var assemblyDir = AppContext.BaseDirectory;
 
-            //Move 2 directories up to get to the SiteExtensions directory
-            // Example output: "c:\\home\\SiteExtensions"
+            //Move 2 directories up to get to the SiteExtensions directory. Example output: "c:\\home\\SiteExtensions"
             return Directory.GetParent(assemblyDir)?.Parent?.FullName;
         }
 
         /// <summary>
-        /// Returns a set of worker runtimes available for dynamic resolution from hosting config options.
+        /// Returns a set of worker runtimes available for dynamic resolution from hosting config.
         /// </summary>
         internal HashSet<string> GetWorkersAvailableForResolution() =>
-            (_functionsHostingConfigOptions.Value?.WorkersAvailableForDynamicResolution ?? string.Empty)
+            (_functionsHostingConfigOptions.Value.WorkersAvailableForDynamicResolution ?? string.Empty)
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Converts language workers related configuration sections to a dictionary.
         /// </summary>
-        internal Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
+        internal static Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
         {
             var languageWorkersSettings = new Dictionary<string, string>();
 
@@ -212,25 +213,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         }
 
         /// <summary>
+        /// Gets a value indicating whether dynamic worker resolution is enabled.
         /// Users can disable dynamic worker resolution via setting the appropriate feature flag.
         /// Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
         /// Feature flag takes precedence over hosting config options.
         /// </summary>
         internal bool IsDynamicWorkerResolutionEnabled(string workerRuntime, HashSet<string> workersAvailableForResolution, bool isPlaceholderModeEnabled, bool isMultiLanguageEnv)
         {
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, _environment) || workersAvailableForResolution is null)
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, _environment) || workersAvailableForResolution.Count == 0)
             {
                 return false;
             }
 
-            if (!isMultiLanguageEnv &&
-                !string.IsNullOrWhiteSpace(workerRuntime) &&
-                !isPlaceholderModeEnabled)
+            if (!isPlaceholderModeEnabled && !isMultiLanguageEnv && !string.IsNullOrWhiteSpace(workerRuntime))
             {
                 return workersAvailableForResolution.Contains(workerRuntime);
             }
 
-            return workersAvailableForResolution.Count != 0;
+            return true;
         }
 
         /// <summary>
@@ -241,34 +241,28 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal Dictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
         {
             // Example value of ignoredWorkerVersions: "Worker1Name:Version1|Worker1Name:Version2|Worker2Name:Version1|Worker3Name:Version1".
-            string ignoredWorkerVersions = _functionsHostingConfigOptions.Value?.IgnoredWorkerVersions ?? string.Empty;
+            string ignoredWorkerVersions = _functionsHostingConfigOptions.Value.IgnoredWorkerVersions;
 
             if (string.IsNullOrWhiteSpace(ignoredWorkerVersions))
             {
                 return new(StringComparer.OrdinalIgnoreCase);
             }
 
-            var ignoredVersionsList = ignoredWorkerVersions.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var ignoredVersions = ignoredWorkerVersions.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (string ignoredVersion in ignoredVersionsList)
+            foreach (string ignoredVersion in ignoredVersions)
             {
                 string[] workerVersionParts = ignoredVersion.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
                 if (workerVersionParts.Length != 2)
                 {
-                    _logger.LogTrace("Skipping '{ignoredVersion}' due to invalid format for ignored version. Expected format is 'WorkerName:Version'.", ignoredVersion);
+                    _logger.LogTrace("Skipping '{ignoredVersion}' due to invalid format for ignored worker version. Expected format is 'WorkerName:Version'.", ignoredVersion);
                     continue;
                 }
 
                 string workerName = workerVersionParts[0];
                 string version = workerVersionParts[1];
-
-                if (string.IsNullOrWhiteSpace(workerName) || string.IsNullOrWhiteSpace(version))
-                {
-                    _logger.LogTrace("Skipping '{ignoredVersion}' due to invalid format for ignored worker version. Worker name and version cannot be empty.", ignoredVersion);
-                    continue;
-                }
 
                 if (!Version.TryParse(version, out Version parsedVersion))
                 {
@@ -276,13 +270,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     continue;
                 }
 
-                if (ignoredVersionsOut.ContainsKey(workerName))
+                if (ignoredVersionsOut.TryGetValue(workerName, out HashSet<Version> value))
                 {
-                    ignoredVersionsOut[workerName].Add(parsedVersion);
+                    value.Add(parsedVersion);
+                    ignoredVersionsOut[workerName] = value;
                 }
                 else
                 {
-                    ignoredVersionsOut[workerName] = new HashSet<Version> { parsedVersion };
+                    ignoredVersionsOut[workerName] = [parsedVersion];
                 }
             }
 

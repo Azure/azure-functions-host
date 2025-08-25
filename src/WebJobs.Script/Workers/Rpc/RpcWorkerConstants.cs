@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string PythonLanguageWorkerName = "python";
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
+        public const string FunctionsWorkersDirectoryName = "functionsworkers";
 
         // Section names in host.json or AppSettings
         public const string LanguageWorkersSectionName = "languageWorkers";
