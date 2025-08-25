@@ -371,7 +371,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var logs = loggerProvider.GetAllLogMessages();
 
-            var ignoreWorkerVersions = options.IgnoreWorkerVersions;
+            var ignoreWorkerVersions = options.IgnoredWorkerVersions;
             Assert.NotNull(ignoreWorkerVersions);
             Assert.Equal(ignoreWorkerVersions.Count, expected);
 

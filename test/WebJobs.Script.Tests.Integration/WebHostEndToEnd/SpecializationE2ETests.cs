@@ -958,7 +958,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var javaLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("workers\\java"));
             Assert.True(javaLog.Any());
 
-            var probingLog = logs.FirstOrDefault(p => p.Contains("Workers probing paths set to:"));
+            var probingLog = logs.FirstOrDefault(p => p.Contains("Worker probing paths set to:"));
             Assert.True(probingLog.Any());
 
             var fallbackLog = logs.FirstOrDefault(p => p.Contains("Searching for worker configs in the fallback directory:"));
@@ -983,7 +983,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var newJavaLog = newLogs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:"));
             Assert.Null(newJavaLog);
 
-            probingLog = logs.FirstOrDefault(p => p.Contains("Workers probing paths set to:"));
+            probingLog = logs.FirstOrDefault(p => p.Contains("Worker probing paths set to:"));
             Assert.True(probingLog.Any());
 
             fallbackLog = logs.FirstOrDefault(p => p.Contains("Searching for worker configs in the fallback directory:"));
@@ -1070,7 +1070,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var javaLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("workers\\java"));
             Assert.True(javaLog.Any());
 
-            var probingLog = logs.FirstOrDefault(p => p.Contains("Workers probing paths set to:"));
+            var probingLog = logs.FirstOrDefault(p => p.Contains("Worker probing paths set to:"));
             Assert.True(probingLog.Any());
 
             var fallbackLog = logs.FirstOrDefault(p => p.Contains("Searching for worker configs in the fallback directory:"));

@@ -24,6 +24,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\");
         private readonly string _fallbackPath = Path.GetFullPath("workers");
 
+        public LanguageWorkerOptionsSetupTests()
+        {
+            EnvironmentExtensions.ClearCache();
+        }
+
         [Theory]
         [InlineData("DotNet")]
         [InlineData("dotnet")]
@@ -31,7 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("node")]
         public void LanguageWorkerOptions_Expected_ListOfConfigs(string workerRuntime)
         {
-            EnvironmentExtensions.ClearCache();
             var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
             var testEnvironment = new TestEnvironment();
             var testMetricLogger = new TestMetricsLogger();
@@ -98,7 +102,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("node", "java|node", "EXTENDED", "3.10.1")]
         public void LanguageWorkerOptions_EnabledWorkerResolution_Expected_ListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel, string expectedVersion)
         {
-            EnvironmentExtensions.ClearCache();
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
@@ -134,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string path = Path.Combine(_probingPath1, workerRuntime, expectedVersion);
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with worker path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
         }
 
         [Theory]
@@ -144,7 +147,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("node", "java|node", "STANDARD")]
         public void LanguageWorkerOptions_FallbackPath_Expected_ListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel)
         {
-            EnvironmentExtensions.ClearCache();
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
@@ -176,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string path = Path.Combine(_fallbackPath, workerRuntime);
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with worker path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
         }
 
@@ -186,7 +188,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("node", "  ", "LATEST")]
         public void LanguageWorkerOptions_NullHostingConfig_FeatureDisabled_ListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel)
         {
-            EnvironmentExtensions.ClearCache();
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
@@ -228,7 +229,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("node", "STANDARD")]
         public void LanguageWorkerOptions_DisabledWorkerResolution_Expected_ListOfConfigs(string workerRuntime, string releaseChannel)
         {
-            EnvironmentExtensions.ClearCache();
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
@@ -265,7 +265,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("node")]
         public void LanguageWorkerOptions_FallbackPath_NullHostingConfig(string workerRuntime)
         {
-            EnvironmentExtensions.ClearCache();
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
@@ -296,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string path = Path.Combine(_fallbackPath, workerRuntime);
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with worker path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers probing paths set to:")));
+            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
         }
     }

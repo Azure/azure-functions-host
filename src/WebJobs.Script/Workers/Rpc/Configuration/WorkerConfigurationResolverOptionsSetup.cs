@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             options.ProbingPaths = GetWorkerProbingPaths(configuration);
             options.WorkersAvailableForResolution = GetWorkersAvailableForResolution();
             options.LanguageWorkersSettings = GetLanguageWorkersSettings(configuration);
-            options.IgnoreWorkerVersions = GetIgnoredWorkerVersions();
+            options.IgnoredWorkerVersions = GetIgnoredWorkerVersions();
             options.IsDynamicWorkerResolutionEnabled = IsDynamicWorkerResolutionEnabled(options.WorkerRuntime,
                                                                                         options.WorkersAvailableForResolution,
                                                                                         options.IsPlaceholderModeEnabled,
