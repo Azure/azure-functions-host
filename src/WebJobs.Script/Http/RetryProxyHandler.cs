@@ -55,12 +55,12 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                     _logger.LogDebug("Request was canceled. Stopping retries.");
                     throw new OperationCanceledException(cancellationToken);
                 }
-                catch (HttpRequestException exception) when (attemptCount < MaxRetries)
+                catch (HttpRequestException) when (attemptCount < MaxRetries)
                 {
                     if (resultSource is not null && (resultSource.Task.IsFaulted || resultSource.Task.IsCanceled))
                     {
                         _logger.LogWarning("HTTP requests will not be retried. The associated function invocation has failed.");
-                        ExceptionDispatchInfo.Capture(exception).Throw();
+                        throw;
                     }
 
                     _logger.LogWarning("Failed to proxy request to the worker. Retrying in {delay}ms. Attempt {attemptCount} of {maxRetries}.",
