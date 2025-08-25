@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Http
         private readonly HttpMessageInvoker _messageInvoker;
         private readonly ForwarderRequestConfig _forwarderRequestConfig;
         private readonly ILogger<DefaultHttpProxyService> _logger;
-        private readonly HttpTransformer _httpTransformer;
+        private readonly HttpTransformer _httpTransformer = ScriptInvocationRequestTransformer.Instance;
 
         public DefaultHttpProxyService(IHttpForwarder httpForwarder, ILogger<DefaultHttpProxyService> logger)
         {
@@ -40,8 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Http
             {
                 ActivityTimeout = TimeSpan.FromSeconds(240)
             };
-
-            _httpTransformer = new ScriptInvocationRequestTransformer();
         }
 
         public void Dispose()

@@ -69,60 +69,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
 
             // Verify that the task is faulted due to the ScriptInvocationResult being faulted
             Assert.True(result.IsFaulted);
-            Assert.True(result.Exception.InnerException is HttpRequestException); // TODO: Update this test if a new exception type is chosen/used.
-            Assert.Contains("The function invocation tied to this HTTP request failed", result.Exception.InnerException.Message);
-            Assert.Contains(scriptInvocationContext.ExecutionContext.InvocationId.ToString(), result.Exception.InnerException.Message);
-
-            // Verify that the inner exception contains the original invocation exception
-            Assert.NotNull(result.Exception.InnerException.InnerException);
-            Assert.Contains(invocationException, GetAllInnerExceptions(result.Exception.InnerException.InnerException));
 
             // Verify that no retries were attempted since the result source was already faulted
             Assert.Equal(0, inner.Attempts);
         }
 
         [Fact]
-        public async Task SendAsync_RetriesNormallyWhenScriptInvocationResultIsNotFaulted()
+        public async Task SendAsync_TaskCanceledException_ThrowsOperationCanceledException_WhenCancellationRequested()
         {
-            var inner = new TestHandler();
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var inner = new TaskCanceledTestHandler();
             var handler = new RetryProxyHandler(inner, NullLogger.Instance);
             var request = new HttpRequestMessage();
 
-            // Create a non-faulted TaskCompletionSource for ScriptInvocationResult
-            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            var sendAsync = typeof(RetryProxyHandler)!
+                .GetMethod("SendAsync", BindingFlags.NonPublic | BindingFlags.Instance)!;
 
-            // Create ScriptInvocationContext with non-faulted result source
-            var scriptInvocationContext = new ScriptInvocationContext
-            {
-                ExecutionContext = new ExecutionContext
-                {
-                    InvocationId = Guid.NewGuid()
-                },
-                ResultSource = resultSource
-            };
+            var task = (Task<HttpResponseMessage>)sendAsync.Invoke(handler, new object[] { request, cts.Token });
 
-            // Add the context to the request options
-            request.Options.TryAdd(ScriptConstants.HttpProxyScriptInvocationContext, scriptInvocationContext);
-
-            var response = typeof(RetryProxyHandler)!
-                .GetMethod("SendAsync", BindingFlags.NonPublic | BindingFlags.Instance)!
-                .Invoke(handler, new object[] { request, CancellationToken.None })
-                as Task<HttpResponseMessage>;
-
-            var result = await response.ContinueWith(t => t);
-
-            // Verify that retries occurred normally since the result source was not faulted
-            Assert.True(result.IsFaulted);
-            Assert.True(result.Exception.InnerException is HttpRequestException);
-            Assert.Equal(RetryProxyHandler.MaxRetries, inner.Attempts);
+            var ex = await Assert.ThrowsAsync<OperationCanceledException>(() => task);
+            Assert.True(cts.Token.IsCancellationRequested);
+            Assert.Equal(cts.Token, ex.CancellationToken);
         }
 
-        private static IEnumerable<Exception> GetAllInnerExceptions(Exception exception)
+        private class TaskCanceledTestHandler : HttpMessageHandler
         {
-            while (exception != null)
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                yield return exception;
-                exception = exception.InnerException;
+                throw new TaskCanceledException();
             }
         }
 

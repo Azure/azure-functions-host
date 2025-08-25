@@ -13,6 +13,10 @@ namespace Microsoft.Azure.WebJobs.Script.Http
 {
     internal sealed class ScriptInvocationRequestTransformer : HttpTransformer
     {
+        public static readonly ScriptInvocationRequestTransformer Instance = new ScriptInvocationRequestTransformer();
+
+        private ScriptInvocationRequestTransformer() { }
+
         public override async ValueTask TransformRequestAsync(HttpContext httpContext, HttpRequestMessage proxyRequest, string destinationPrefix, CancellationToken cancellationToken)
         {
             // this preserves previous behavior (which called the default transformer) - base method is also called inside of here

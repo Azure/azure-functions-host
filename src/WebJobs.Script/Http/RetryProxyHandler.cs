@@ -3,10 +3,10 @@
 
 using System;
 using System.Net.Http;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Http
@@ -43,10 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Http
             {
                 try
                 {
-                    if (resultSource is not null && resultSource.Task.IsFaulted)
+                    if (resultSource is not null && (resultSource.Task.IsFaulted || resultSource.Task.IsCanceled))
                     {
-                        throw resultSource.Task.Exception.InnerException ??
-                              new HttpRequestException($"The function invocation tied to this HTTP request failed. Invocation ID: {scriptInvocationContext.ExecutionContext.InvocationId}");
+                        ExceptionDispatchInfo.Capture(resultSource.Task.Exception).Throw();
                     }
 
                     return await base.SendAsync(request, cancellationToken);
@@ -56,13 +55,14 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                     _logger.LogDebug("Request was canceled. Stopping retries.");
                     throw new OperationCanceledException(cancellationToken);
                 }
-                catch (Exception ex) when (resultSource is not null && resultSource.Task.IsFaulted)
+                catch (HttpRequestException exception) when (attemptCount < MaxRetries)
                 {
-                    _logger.LogWarning("Request failed with an exception that is not supported for retrying. Exception: {exception}", ex);
-                    throw new HttpRequestException($"The function invocation tied to this HTTP request failed. Invocation ID: {scriptInvocationContext.ExecutionContext.InvocationId}", ex);
-                }
-                catch (HttpRequestException) when (attemptCount < MaxRetries)
-                {
+                    if (resultSource is not null && (resultSource.Task.IsFaulted || resultSource.Task.IsCanceled))
+                    {
+                        _logger.LogWarning("HTTP requests will not be retried. The associated function invocation has failed.");
+                        ExceptionDispatchInfo.Capture(exception).Throw();
+                    }
+
                     _logger.LogWarning("Failed to proxy request to the worker. Retrying in {delay}ms. Attempt {attemptCount} of {maxRetries}.",
                         currentDelay, attemptCount, MaxRetries);
 
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                 {
                     var message = attemptCount == MaxRetries
                         ? "Reached the maximum retry count for worker request proxying. Error: {exception}"
-                        : $"Unsupported exception type in {nameof(RetryProxyHandler)}. Request will not be retried. Exception: {{exception}}";
+                        : $"HTTP requests will not be retried. Excpetion in {nameof(RetryProxyHandler)}: {{exception}}.";
 
                     _logger.LogWarning(message, ex);
 

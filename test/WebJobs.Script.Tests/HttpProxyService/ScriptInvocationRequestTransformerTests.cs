@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Http
 
         public ScriptInvocationRequestTransformerTests()
         {
-            _transformer = new ScriptInvocationRequestTransformer();
+            _transformer = ScriptInvocationRequestTransformer.Instance;
         }
 
         [Theory]
