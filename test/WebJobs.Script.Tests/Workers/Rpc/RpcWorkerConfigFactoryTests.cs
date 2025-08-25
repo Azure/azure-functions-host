@@ -205,12 +205,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Contains(@"/bin/java", javaPath);
         }
 
-        [Fact]
-        public void DefaultWorkerConfigs_Overrides_DefaultWorkerRuntimeVersion_AppSetting()
+        [Theory]
+        [InlineData("3.8", "3.8")]
+        [InlineData(null, "3.12")]
+        public void DefaultWorkerConfigs_Overrides_DefaultWorkerRuntimeVersion_AppSetting(string setting, string output)
         {
             var testEnvVariables = new Dictionary<string, string>
             {
-                { "languageWorkers:python:defaultRuntimeVersion", "3.8" }
+                { "languageWorkers:python:defaultRuntimeVersion", setting }
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                 .AddInMemoryCollection(testEnvVariables);
@@ -237,15 +239,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(5, workerConfigs.Count);
             Assert.NotNull(pythonWorkerConfig);
             Assert.NotNull(powershellWorkerConfig);
-            Assert.Equal("3.8", pythonWorkerConfig.Description.DefaultRuntimeVersion);
+            Assert.Equal(output, pythonWorkerConfig.Description.DefaultRuntimeVersion);
             Assert.Equal("7.4", powershellWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
-        [Fact]
-        public void DefaultWorkerConfigs_Overrides_VersionAppSetting()
+        [Theory]
+        [InlineData("7.4", "7.4")]
+        [InlineData("7.2", "7.2")]
+        [InlineData(null, "7.4")]
+        public void DefaultWorkerConfigs_Overrides_VersionAppSetting(string setting, string output)
         {
             var testEnvironment = new TestEnvironment();
-            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "7.4");
+            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", setting);
             testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "powerShell");
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
             var config = configBuilder.Build();
@@ -263,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var powershellWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase));
             Assert.Equal(1, workerConfigs.Count);
             Assert.NotNull(powershellWorkerConfig);
-            Assert.Equal("7.4", powershellWorkerConfig.Description.DefaultRuntimeVersion);
+            Assert.Equal(output, powershellWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
         [Theory]

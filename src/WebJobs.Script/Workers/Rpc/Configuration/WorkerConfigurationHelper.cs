@@ -116,12 +116,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, Dictionary<string, string> languageWorkersSettings)
         {
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultExecutablePath}", out string defaultExecutablePathSetting))
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultExecutablePath}", out string defaultExecutablePathSetting) && defaultExecutablePathSetting is not null)
             {
                 workerDescription.DefaultExecutablePath = defaultExecutablePathSetting;
             }
 
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}", out string defaultRuntimeVersionAppSetting))
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}", out string defaultRuntimeVersionAppSetting) && defaultRuntimeVersionAppSetting is not null)
             {
                 workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting;
             }
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, Dictionary<string, string> languageWorkersSettings)
         {
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionArguments}", out string argumentsValue))
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionArguments}", out string argumentsValue) && argumentsValue is not null)
             {
                 ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsValue, @"\s+"));
             }
