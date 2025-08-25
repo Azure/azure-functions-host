@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -21,13 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _workerProfileManager;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
                                           IEnvironment environment,
                                           IMetricsLogger metricsLogger,
                                           IWorkerProfileManager workerProfileManager,
-                                          IScriptHostManager scriptHostManager)
+                                          IScriptHostManager scriptHostManager,
+                                          IWorkerConfigurationResolver workerConfigurationResolver)
         {
             if (loggerFactory is null)
             {
@@ -39,8 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
+            _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
 
-            _logger = loggerFactory.CreateLogger("Host.LanguageWorkerConfig");
+            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
         }
 
         public void Configure(LanguageWorkerOptions options)
@@ -72,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager);
+            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }

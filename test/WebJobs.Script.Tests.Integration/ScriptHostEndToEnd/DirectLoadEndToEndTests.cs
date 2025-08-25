@@ -20,11 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [Trait(TestTraits.Group, nameof(DirectLoadEndToEndTests))]
     public class DirectLoadEndToEndTests : IClassFixture<DirectLoadEndToEndTests.TestFixture>
     {
-        TestFixture Fixture;
+        private readonly TestFixture _fixture;
 
         public DirectLoadEndToEndTests(TestFixture fixture)
         {
-            Fixture = fixture;
+            _fixture = fixture;
         }
 
         [Fact]
@@ -44,13 +44,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             request.Headers.Append("Accept", new StringValues("text/plain"));
 
-            await Fixture.JobHost.CallAsync("Function1", arguments);
+            await _fixture.JobHost.CallAsync("Function1", arguments);
 
             var response = (OkObjectResult)request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
             Assert.Equal("Hello, Mathew!", (string)response.Value);
 
-            var log = Fixture.LoggerProvider.GetAllLogMessages().SingleOrDefault(p => p.FormattedMessage == "C# HTTP trigger function processed a request.");
+            var log = _fixture.LoggerProvider.GetAllLogMessages().SingleOrDefault(p => p.FormattedMessage == "C# HTTP trigger function processed a request.");
             Assert.NotNull(log);
             Assert.Equal(LogLevel.Information, log.Level);
             Assert.Equal("Function1", log.Scope[ScopeKeys.FunctionName]);
@@ -76,12 +76,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = await Assert.ThrowsAsync<FunctionInvocationException>(async () =>
             {
-                await Fixture.JobHost.CallAsync("Function1", arguments);
+                await _fixture.JobHost.CallAsync("Function1", arguments);
             });
 
             var response = request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey];
 
-            var errorLogs = Fixture.LoggerProvider.GetAllLogMessages().Where(p => p.Level == LogLevel.Error).ToArray();
+            var errorLogs = _fixture.LoggerProvider.GetAllLogMessages().Where(p => p.Level == LogLevel.Error).ToArray();
             Assert.Equal(2, errorLogs.Length);
 
             // first log is the result
@@ -97,10 +97,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {
-            static TestFixture()
-            {
-            }
-
             public TestFixture() : base(@"TestScripts\DirectLoad\", "dotnet", RpcWorkerConstants.DotNetLanguageWorkerName)
             {
             }
