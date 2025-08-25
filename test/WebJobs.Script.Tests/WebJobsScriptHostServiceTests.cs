@@ -442,7 +442,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var hostLogger = host.Object.GetTestLoggerProvider();
 
             await _hostService.StartAsync(CancellationToken.None);
-            await _hostService.RestartHostAsync(CancellationToken.None);
+            await _hostService.RestartHostAsync("test", CancellationToken.None);
 
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
 
@@ -479,7 +479,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Simulate a call to specialize coming from the PlaceholderSpecializationMiddleware. This
             // can happen before we ever start the service, which could create invalid state.
-            Task restartTask = _hostService.RestartHostAsync(CancellationToken.None);
+            Task restartTask = _hostService.RestartHostAsync("test", CancellationToken.None);
 
             await _hostService.StartAsync(CancellationToken.None);
             await restartTask;
@@ -584,7 +584,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void RestartHost()
         {
-            _hostService.RestartHostAsync(CancellationToken.None).Wait();
+            _hostService.RestartHostAsync("test", CancellationToken.None).Wait();
         }
 
         public void SpecializeHost()
