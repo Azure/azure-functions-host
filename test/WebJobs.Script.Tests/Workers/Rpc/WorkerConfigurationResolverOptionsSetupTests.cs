@@ -319,13 +319,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("node", "node", null, true)]
-        [InlineData("node", "java", null, false)]
-        [InlineData("java|node", null, null, true)]
-        [InlineData("node", "node", "workflowapp", true)]
-        [InlineData("java|node", null, "workflowapp", true)]
-        [InlineData("| ", null, "workflowapp", false)]
-        public void IsDynamicWorkerResolutionEnabled_WorkerRuntimeAndMultiLanguage_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp, bool expected)
+        [InlineData("node", "node", null, "0", true)]
+        [InlineData("node", "java", null, "0", false)]
+        [InlineData("java|node", null, null, "0", true)]
+        [InlineData("node", "node", "workflowapp", "0", true)]
+        [InlineData("java|node", null, "workflowapp", "0", true)]
+        [InlineData("| ", null, "workflowapp", "0", false)]
+        [InlineData("java|node", null, null, "1", true)]
+        [InlineData("node", "java", null, "1", true)]
+        public void IsDynamicWorkerResolutionEnabled_WorksAsExpected(string hostingConfigSetting, string workerRuntime, string multilanguageApp, string placeholdermode, bool expected)
         {
             EnvironmentExtensions.ClearCache();
             var config = new ConfigurationBuilder().Build();
@@ -337,6 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, multilanguageApp);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, placeholdermode);
 
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             bool result = optionsMonitor.CurrentValue.IsDynamicWorkerResolutionEnabled;
@@ -347,18 +350,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Theory]
         [InlineData("| ", 0)]
         [InlineData("", 0)]
-        [InlineData("java:1.0.0|python:2.0.0|java:1.1.1||node:", 2)]
-        public void IsDynamicWorkerResolutionEnabled_IgnoredWorkerVersions_WorksAsExpected(string hostingConfigSetting, int expected)
+        [InlineData(null, 0)]
+        [InlineData("java:1.0.0|python:2.0.0|java:1.1.1||node:|dotnet-isolated:abc", 2)]
+        public void IgnoredWorkerVersions_WorksAsExpected(string hostingConfigSetting, int expected)
         {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
             var config = new ConfigurationBuilder().Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
+            var testEnvironment = new TestEnvironment();
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, hostingConfigSetting);
 
-            var testEnvironment = new TestEnvironment();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var ignoreWorkerVersions = optionsMonitor.CurrentValue.IgnoreWorkerVersions;
+            var setup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, config, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var options = new WorkerConfigurationResolverOptions();
+            setup.Configure(options);
+
+            var logs = loggerProvider.GetAllLogMessages();
+
+            var ignoreWorkerVersions = options.IgnoreWorkerVersions;
             Assert.NotNull(ignoreWorkerVersions);
             Assert.Equal(ignoreWorkerVersions.Count, expected);
 
@@ -367,10 +380,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 ignoreWorkerVersions.TryGetValue("java", out HashSet<Version> javaValue);
                 Assert.NotNull(javaValue);
                 Assert.Equal(javaValue.Count, 2);
+                Assert.Contains(new Version("1.0.0"), javaValue);
+                Assert.Contains(new Version("1.1.1"), javaValue);
 
                 ignoreWorkerVersions.TryGetValue("python", out HashSet<Version> pyValue);
                 Assert.NotNull(pyValue);
                 Assert.Equal(pyValue.Count, 1);
+                Assert.Contains(new Version("2.0.0"), pyValue);
+
+                Assert.Single(logs.Where(l => l.FormattedMessage == "Skipping 'node:' due to invalid format for ignored worker version. Expected format is 'WorkerName:Version'."));
+                Assert.Single(logs.Where(l => l.FormattedMessage == "Skipping 'dotnet-isolated:abc' due to invalid version format: 'abc' for worker 'dotnet-isolated'."));
             }
         }
     }

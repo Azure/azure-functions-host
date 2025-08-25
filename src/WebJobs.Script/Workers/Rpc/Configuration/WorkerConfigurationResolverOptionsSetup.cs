@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         private IConfiguration GetRequiredConfiguration()
         {
-            InspectConfiguration(_configuration, nameof(_configuration));
+            LogWorkersDirSectionPresence(_configuration, nameof(_configuration));
             var configuration = _configuration;
 
             // Use the latest configuration from the ScriptHostManager if available.
@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                 if (latestConfiguration is not null)
                 {
-                    InspectConfiguration(latestConfiguration, nameof(latestConfiguration));
+                    LogWorkersDirSectionPresence(latestConfiguration, nameof(latestConfiguration));
 
                     configuration = new ConfigurationBuilder()
                         .AddConfiguration(_configuration)
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Logs a trace message if the required configuration section is found.
         /// </summary>
-        private void InspectConfiguration(IConfiguration configuration, string configurationSource)
+        private void LogWorkersDirSectionPresence(IConfiguration configuration, string configurationSource)
         {
             string configSectionToCheck = $"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}";
             var section = configuration.GetSection(configSectionToCheck);
@@ -249,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             var ignoredVersions = ignoredWorkerVersions.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>(StringComparer.OrdinalIgnoreCase);
+            var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>(capacity: ignoredVersions.Length, comparer: StringComparer.OrdinalIgnoreCase);
 
             foreach (string ignoredVersion in ignoredVersions)
             {
