@@ -10,3 +10,4 @@
 - Update Node.js Worker Version to [3.11.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.11.0)
 - Adding restart reason to the logs (#11191)
 - Fix custom handler streaming bug where `$return` output binding scenarios result in error logs (#11262)
+- Implementing a resolver that resolves worker configurations from specified probing paths (#11258)

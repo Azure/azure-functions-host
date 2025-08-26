@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment = new TestEnvironment();
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
             _testWorkerProfileManager = new WorkerProfileManager(workerProfileLogger, _testEnvironment);
+            EnvironmentExtensions.ClearCache();
         }
 
         public void Dispose()
@@ -62,7 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData(false)]
         public void GetDefaultWorkersDirectory_Returns_Expected(bool expectedValue)
         {
-            EnvironmentExtensions.ClearCache();
             string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.Location).LocalPath);
             string defaultWorkersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
             var fileSystemMock = new Mock<IFileSystem>();
@@ -281,7 +281,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("python", null, true, true)]
         public void ShouldAddProvider_Returns_Expected(string workerLanguage, string workerRuntime, bool placeholderMode, bool expectedResult)
         {
-            EnvironmentExtensions.ClearCache();
             if (placeholderMode)
             {
                 _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
