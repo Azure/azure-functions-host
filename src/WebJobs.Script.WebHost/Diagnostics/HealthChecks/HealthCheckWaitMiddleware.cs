@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
 {
     public sealed class HealthCheckWaitMiddleware(RequestDelegate next, IScriptHostManager manager)
     {
+        private const int MaxWaitSeconds = 60;
         private readonly RequestDelegate _next = next ?? throw new ArgumentNullException(nameof(next));
         private readonly IScriptHostManager _manager = manager ?? throw new ArgumentNullException(nameof(manager));
 
@@ -31,7 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
                     return;
                 }
 
-                await _manager.DelayUntilHostReadyAsync(waitSeconds);
+                waitSeconds = Math.Min(waitSeconds, MaxWaitSeconds);
+                await _manager.DelayUntilHostReadyAsync(waitSeconds).WaitAsync(context.RequestAborted);
             }
 
             await _next(context);
