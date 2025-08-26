@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 if (_ignoredVersions.TryGetValue(languageWorkerFolder, out HashSet<Version> value) && value.Contains(versionPair.Key))
                 {
-                    _logger.LogTrace("Ignoring {languageWorkerFolder} version {version} as per configuration.", languageWorkerFolder, versionPair.Key);
+                    _logger.LogDebug("Ignoring {languageWorkerFolder} version {version} as per configuration.", languageWorkerFolder, versionPair.Key);
                     continue;
                 }
 
@@ -229,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
                 else
                 {
-                    _logger.LogTrace("Failed to parse worker version '{versionDir}' as a valid version.", versionDir);
+                    _logger.LogDebug("Failed to parse worker version '{versionDir}' as a valid version.", versionDir);
                 }
             }
 
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var hostCapabilities = ScriptConstants.HostCapabilities;
             var hostRequirements = GetHostRequirementsFromWorker(workerConfig);
 
-            _logger.LogTrace("Worker configuration at '{workerConfigPath}' specifies host requirements [{requirements}].", workerConfigPath, string.Join(", ", hostRequirements));
+            _logger.LogDebug("Worker configuration at '{workerConfigPath}' specifies host requirements [{requirements}].", workerConfigPath, string.Join(", ", hostRequirements));
 
             return hostRequirements.IsSubsetOf(hostCapabilities);
         }
