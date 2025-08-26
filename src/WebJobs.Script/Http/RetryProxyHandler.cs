@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                 {
                     if (resultSource is not null && (resultSource.Task.IsFaulted || resultSource.Task.IsCanceled))
                     {
-                        _logger.LogWarning("HTTP requests will not be retried. The associated function invocation has failed.");
+                        _logger.LogWarning("HTTP request will not be retried. The associated function invocation has failed.");
                         throw;
                     }
 
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                 {
                     var message = attemptCount == MaxRetries
                         ? "Reached the maximum retry count for worker request proxying. Error: {exception}"
-                        : $"HTTP requests will not be retried. Excpetion in {nameof(RetryProxyHandler)}: {{exception}}.";
+                        : $"HTTP request will not be retried. Exception in {nameof(RetryProxyHandler)}: {{exception}}.";
 
                     _logger.LogWarning(message, ex);
 
