@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundle =
            LoggerMessage.Define<string, int, int>(LogLevel.Warning,
            new EventId(342, nameof(OutdatedExtensionBundle)),
-           "Your app is using an older version - {currentVersion} of extension bundles. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/FunctionsBundlesUpgrade");
+           "Your app is using a deprecated version - {currentVersion} of extension bundles. Upgrade to a supported version: https://aka.ms/FunctionsBundlesUpgrade");
 
         private static readonly Action<ILogger, string, Exception> _defaultWorkersDirectoryPath =
            LoggerMessage.Define<string>(LogLevel.Debug,
