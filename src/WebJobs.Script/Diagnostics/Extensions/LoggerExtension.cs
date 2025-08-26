@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -206,8 +206,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
 
-        private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundle =
-           LoggerMessage.Define<string, int, int>(LogLevel.Warning,
+        private static readonly Action<ILogger, string, Exception> _outdatedExtensionBundle =
+           LoggerMessage.Define<string>(LogLevel.Warning,
            new EventId(342, nameof(OutdatedExtensionBundle)),
            "Your app is using a deprecated version - {currentVersion} of extension bundles. Upgrade to a supported version: https://aka.ms/FunctionsBundlesUpgrade");
 
@@ -423,9 +423,9 @@ Lock file hash: {currentLockFileHash}";
             _defaultWorkersDirectoryPath(logger, workersDirPath, null);
         }
 
-        public static void OutdatedExtensionBundle(this ILogger logger, string currentVersion, int suggestedMinVersion, int suggestedMaxVersion)
+        public static void OutdatedExtensionBundle(this ILogger logger, string currentVersion)
         {
-            _outdatedExtensionBundle(logger, currentVersion, suggestedMinVersion, suggestedMaxVersion, null);
+            _outdatedExtensionBundle(logger, currentVersion, null);
         }
     }
 }

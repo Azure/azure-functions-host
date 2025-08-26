@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var logMessages = _testLoggerProvider.GetAllLogMessages();
 
             bool hasOutdatedBundleLog = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion)
-                && m.FormattedMessage.Contains("older version")
+                && m.FormattedMessage.Contains("deprecated version")
                 && m.Level == LogLevel.Warning);
 
             Assert.Equal(shouldLogEvent, hasOutdatedBundleLog);
