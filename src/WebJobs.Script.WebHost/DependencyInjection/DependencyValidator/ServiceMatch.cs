@@ -265,10 +265,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                         && factoryAssemblyName.Name == AssemblyName
                         && GetPublicKeyTokenString(factoryAssemblyName.GetPublicKeyToken()) == AssemblyPublicKey;
                 }
-                else
-                {
-                    return false;
-                }
+
+                return false;
             }
 
             private static string GetPublicKeyTokenString(byte[] token)
