@@ -26,8 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Host
             string outdatedBundleVersion = _extensionBundleManager.GetOutdatedBundleVersion();
             if (!string.IsNullOrEmpty(outdatedBundleVersion))
             {
-                int latestMajorVersion = ScriptConstants.ExtensionBundleV4MajorVersion;
-                logger.OutdatedExtensionBundle(outdatedBundleVersion, latestMajorVersion, latestMajorVersion + 1);
+                logger.OutdatedExtensionBundle(outdatedBundleVersion);
             }
         }
     }
