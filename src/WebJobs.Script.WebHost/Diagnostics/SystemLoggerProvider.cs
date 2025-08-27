@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _debugStateProvider = debugStateProvider;
             _eventManager = eventManager;
             _appServiceOptions = appServiceOptions;
-            _hostingConfigOptions = hostingConfigOptions;
+            _hostingConfigOptions = hostingConfigOptions ?? throw new ArgumentNullException(nameof(hostingConfigOptions));
             _allowedLogCategoryPrefixes = Utility.GetAllowedLogCategoryPrefixes(_environment, _hostingConfigOptions);
         }
 
