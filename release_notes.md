@@ -11,3 +11,4 @@
 - Adding restart reason to the logs (#11191)
 - Fix custom handler streaming bug where `$return` output binding scenarios result in error logs (#11262)
 - Update outdated bundle message to align as per the policy (#11230)
+- Update Python Worker Version to [4.39.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.39.0)
