@@ -80,14 +80,14 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             return builder.WithMetrics(builder =>
             {
                 builder.AddAspNetCoreInstrumentation()
-                .AddRuntimeInstrumentation()
-                .AddProcessInstrumentation()
-                .AddMeter(HostMetrics.FaasMeterName)
-                .AddView(HostMetrics.FaasInvokeDuration, new ExplicitBucketHistogramConfiguration
-                {
-                    Boundaries = new double[] { 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10 },
-                    RecordMinMax = true
-                });
+                    .AddRuntimeInstrumentation()
+                    .AddProcessInstrumentation()
+                    .AddMeter(HostMetrics.FaasMeterName)
+                    .AddView(HostMetrics.FaasInvokeDuration, new ExplicitBucketHistogramConfiguration
+                    {
+                        Boundaries = new double[] { 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10 },
+                        RecordMinMax = true
+                    });
             });
         }
 
@@ -96,35 +96,35 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             return builder.WithTracing(builder =>
             {
                 builder
-                .AddSource("Azure.Messaging.ServiceBus.ServiceBusProcessor")
-                .AddSource("Azure.Messaging.EventHubs.EventProcessor")
-                .AddSource("Azure.Functions.Extensions.Mcp")
-                .AddSource("Microsoft.Azure.WebJobs.Extensions.*")
-                .AddSource("Microsoft.Azure.WebJobs")
-                .AddSource("WebJobs.Extensions.DurableTask")
-                .AddSource("DurableTask.*")
-                .AddAspNetCoreInstrumentation(o =>
-                {
-                    o.EnrichWithHttpResponse = (activity, httpResponse) =>
+                    .AddSource("Azure.Messaging.ServiceBus.ServiceBusProcessor")
+                    .AddSource("Azure.Messaging.EventHubs.EventProcessor")
+                    .AddSource("Azure.Functions.Extensions.Mcp")
+                    .AddSource("Microsoft.Azure.WebJobs.Extensions.*")
+                    .AddSource("Microsoft.Azure.WebJobs")
+                    .AddSource("WebJobs.Extensions.DurableTask")
+                    .AddSource("DurableTask.*")
+                    .AddAspNetCoreInstrumentation(o =>
                     {
-                        if (Activity.Current is not null)
+                        o.EnrichWithHttpResponse = (activity, httpResponse) =>
                         {
-                            Activity.Current.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.HttpTriggerType);
-
-                            var routingFeature = httpResponse.HttpContext.Features.Get<IRoutingFeature>();
-                            if (routingFeature is null)
+                            if (Activity.Current is not null)
                             {
-                                return;
-                            }
+                                Activity.Current.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.HttpTriggerType);
 
-                            var template = routingFeature.RouteData.Routers.FirstOrDefault(r => r is Route) as Route;
-                            Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {template?.RouteTemplate}";
-                            Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, template?.RouteTemplate);
-                        }
-                    };
-                    o.Filter = context => !context.Request.Host.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase);
-                })
-                .AddProcessor(ActivitySanitizingProcessor.Instance);
+                                var routingFeature = httpResponse.HttpContext.Features.Get<IRoutingFeature>();
+                                if (routingFeature is null)
+                                {
+                                    return;
+                                }
+
+                                var template = routingFeature.RouteData.Routers.FirstOrDefault(r => r is Route) as Route;
+                                Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {template?.RouteTemplate}";
+                                Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, template?.RouteTemplate);
+                            }
+                        };
+                        o.Filter = context => !context.Request.Host.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase);
+                    })
+                    .AddProcessor(ActivitySanitizingProcessor.Instance);
             });
         }
 

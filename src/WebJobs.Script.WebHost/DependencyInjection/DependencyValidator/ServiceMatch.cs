@@ -249,16 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             public bool IsMatch(ServiceDescriptor descriptor)
             {
-                var serviceType = descriptor.ImplementationType;
-                var implementationFactory = descriptor.ImplementationFactory?.Target?.GetType();
-
-                if (serviceType == null && implementationFactory == null)
-                {
-                    return false;
-                }
-
-                // If we have a service type, we can check it directly.
-                if (serviceType is not null)
+                if (descriptor.ImplementationType is { } serviceType)
                 {
                     var serviceAssemblyName = serviceType.Assembly.GetName();
 
@@ -266,13 +257,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                         && serviceAssemblyName.Name == AssemblyName
                         && GetPublicKeyTokenString(serviceAssemblyName.GetPublicKeyToken()) == AssemblyPublicKey;
                 }
-                else
+                else if (descriptor.ImplementationFactory?.Target?.GetType() is { } implementationFactory)
                 {
                     var factoryAssemblyName = implementationFactory.Assembly.GetName();
 
                     return implementationFactory.DeclaringType.FullName == TypeName
                         && factoryAssemblyName.Name == AssemblyName
                         && GetPublicKeyTokenString(factoryAssemblyName.GetPublicKeyToken()) == AssemblyPublicKey;
+                }
+                else
+                {
+                    return false;
                 }
             }
 
