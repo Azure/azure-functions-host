@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 {
                     return !expectedServices.Any(e => IsMatch(e, r))
                         && !optionalServices.Any(o => IsMatch(o, r))
-                        && !optionalExternalServices.Any(o => o.IsMatch(r.ImplementationType, r.ImplementationFactory?.Target?.GetType()));
+                        && !optionalExternalServices.Any(o => o.IsMatch(r));
                 })
                 .Select(p => new InvalidServiceDescriptor(p, InvalidServiceDescriptorReason.Invalid));
 
@@ -247,8 +247,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             public string AssemblyPublicKey { get; }
 
-            public bool IsMatch(Type serviceType, Type implementationFactory)
+            public bool IsMatch(ServiceDescriptor descriptor)
             {
+                var serviceType = descriptor.ImplementationType;
+                var implementationFactory = descriptor.ImplementationFactory?.Target?.GetType();
+
                 if (serviceType == null && implementationFactory == null)
                 {
                     return false;

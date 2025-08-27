@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -99,7 +99,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 .AddSource("Azure.Messaging.ServiceBus.ServiceBusProcessor")
                 .AddSource("Azure.Messaging.EventHubs.EventProcessor")
                 .AddSource("Azure.Functions.Extensions.Mcp")
-                .AddSource("Microsoft.Azure.Webjobs.Extensions.*")
+                .AddSource("Microsoft.Azure.WebJobs.Extensions.*")
+                .AddSource("Microsoft.Azure.WebJobs")
                 .AddSource("WebJobs.Extensions.DurableTask")
                 .AddSource("DurableTask.*")
                 .AddAspNetCoreInstrumentation(o =>
