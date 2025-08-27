@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return NullLogger.Instance;
             }
 
-            if (ShouldDisableLogs(categoryName))
+            if (ShouldRestrictLogCategories(categoryName))
             {
                 return NullLogger.Instance;
             }
@@ -65,14 +65,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             return LogCategories.IsFunctionUserCategory(categoryName) || categoryName.Equals(WorkerConstants.FunctionConsoleLogCategoryName, StringComparison.OrdinalIgnoreCase);
         }
 
-        private bool ShouldDisableLogs(string categoryName)
+        private bool ShouldRestrictLogCategories(string categoryName)
         {
-            if (!_environment.IsLogicApp())
+            if (_environment.IsLogicApp())
             {
-                if (!_allowedLogCategoryPrefixes.Any(p => categoryName.StartsWith(p)))
-                {
-                    return true;
-                }
+                return false;
+            }
+
+            if (!_allowedLogCategoryPrefixes.Any(p => categoryName.StartsWith(p)))
+            {
+                return true;
             }
 
             return false;
