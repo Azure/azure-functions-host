@@ -68,6 +68,14 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "HealthChecks.UI.Client",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "HealthChecks.UI.Core",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.AI.DependencyCollector",
       "resolutionPolicy": "private"
     },
