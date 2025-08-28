@@ -145,19 +145,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var subSectionsCount = probingPathsSection.GetChildren().Count();
             var probingPaths = new List<string>();
 
-            if (subSectionsCount == 0)
+            if (subSectionsCount == 0 && _environment.IsHostedWindowsEnvironment())
             {
-                if (_environment.IsHostedWindowsEnvironment())
-                {
-                    // Default worker probing path for Windows
-                    string windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
+                // Default worker probing path for Windows
+                string windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
 
-                    if (!string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
-                    {
-                        // Example probing path for Windows: "c:\\home\\SiteExtensions\\functionsworkers"
-                        var windowsWorkerProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.FunctionsWorkersDirectoryName);
-                        probingPaths.Add(windowsWorkerProbingPath);
-                    }
+                if (!string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
+                {
+                    // Example probing path for Windows: "c:\\home\\SiteExtensions\\functionsworkers"
+                    var windowsWorkerProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.FunctionsWorkersDirectoryName);
+                    probingPaths.Add(windowsWorkerProbingPath);
                 }
 
                 return probingPaths;
