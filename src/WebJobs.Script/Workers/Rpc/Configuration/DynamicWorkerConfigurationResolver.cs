@@ -249,6 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (workerConfigJson.ValueKind == JsonValueKind.Undefined)
             {
+                _logger.LogDebug("Skipping worker at '{workerConfigPath}' due to undefined JsonElement.", workerConfigPath);
                 return false;
             }
 
@@ -335,6 +336,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     runtimeToConfigPathMap.ContainsKey(workerRuntime);
         }
 
+        /// <summary>
+        /// Determines if the current release channel is either the standard or extended platform channel.
+        /// </summary>
         private bool IsStandardOrExtendedChannel()
         {
             string releaseChannel = _workerConfigurationResolverOptions.CurrentValue.ReleaseChannel;
