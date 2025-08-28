@@ -11,3 +11,9 @@
 - Adding restart reason to the logs (#11191)
 - Fix custom handler streaming bug where `$return` output binding scenarios result in error logs (#11262)
 - Implementing a resolver that resolves worker configurations from specified probing paths (#11258)
+### Release notes
+
+<!-- Please add your release notes in the following format:
+- My change description (#PR)
+-->
+- Rev `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` to `1.0.13` (#11269)
