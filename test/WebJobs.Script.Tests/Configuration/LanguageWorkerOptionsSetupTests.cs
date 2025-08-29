@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class LanguageWorkerOptionsSetupTests
     {
-        private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\");
+        private readonly string _probingPath1 = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "test", "TestWorkers", "ProbingPaths", "functionsworkers"));
         private readonly string _fallbackPath = Path.GetFullPath("workers");
 
         public LanguageWorkerOptionsSetupTests()

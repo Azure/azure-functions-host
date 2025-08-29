@@ -13,8 +13,10 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    // This class resolves worker configurations dynamically based on the current environment and configuration settings.
-    // It searches for worker configs in specified probing paths and the fallback path, and returns a list of worker configuration paths.
+    /// <summary>
+    /// This class resolves worker configurations dynamically based on the current environment and configuration settings.
+    /// It searches for worker configs in specified probing paths and the fallback path, and returns a list of worker configuration paths.
+    /// </summary>
     internal sealed class DynamicWorkerConfigurationResolver : IWorkerConfigurationResolver
     {
         private readonly ILogger _logger;
@@ -100,6 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
                         if (runtimeToConfigPathMap.ContainsKey(workerRuntimeDir))
                         {
+                            _logger.LogDebug("Skipping duplicate worker runtime directory '{workerRuntimeDir}' in probing path '{probingPath}'.", workerRuntimeDir, probingPath);
                             continue;
                         }
 
@@ -245,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return false;
             }
 
-            JsonElement workerConfigJson = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
+            var workerConfigJson = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
 
             if (workerConfigJson.ValueKind == JsonValueKind.Undefined)
             {
@@ -253,8 +256,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return false;
             }
 
+            var hostRequirements = GetHostRequirementsFromWorker(workerConfigJson);
+
             // static capability resolution
-            if (!DoesHostHasRequiredCapabilities(workerConfigJson, workerConfigPath))
+            if (!HostHasRequiredCapabilities(hostRequirements, workerConfigPath))
             {
                 return false;
             }
@@ -304,10 +309,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Determines if the host has all required capabilities specified in the worker configuration.
         /// </summary>
-        private bool DoesHostHasRequiredCapabilities(JsonElement workerConfig, string workerConfigPath)
+        private bool HostHasRequiredCapabilities(HashSet<string> hostRequirements, string workerConfigPath)
         {
             var hostCapabilities = ScriptConstants.HostCapabilities;
-            var hostRequirements = GetHostRequirementsFromWorker(workerConfig);
 
             _logger.LogDebug("Worker configuration at '{workerConfigPath}' specifies host requirements [{requirements}].", workerConfigPath, string.Join(", ", hostRequirements));
 

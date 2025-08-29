@@ -16,6 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
     internal sealed class WorkerConfigurationResolverOptionsSetup : IConfigureOptions<WorkerConfigurationResolverOptions>
     {
+        private const string WebHostConfigurationSource = "WebHost";
+        private const string JobHostConfigurationSource = "JobHost";
         private readonly IConfiguration _configuration;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IEnvironment _environment;
@@ -45,17 +47,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var configuration = GetRequiredConfiguration();
             options.WorkersRootDirPath = GetWorkersRootDirPath(configuration);
             options.WorkerRuntime = _environment.GetFunctionsWorkerRuntime();
-            options.ReleaseChannel = _environment.GetPlatformReleaseChannel();
+            options.WorkersAvailableForResolution = GetWorkersAvailableForResolution();
             options.IsPlaceholderModeEnabled = _environment.IsPlaceholderModeEnabled();
             options.IsMultiLanguageWorkerEnvironment = _environment.IsMultiLanguageRuntimeEnvironment();
-            options.ProbingPaths = GetWorkerProbingPaths(configuration);
-            options.WorkersAvailableForResolution = GetWorkersAvailableForResolution();
             options.LanguageWorkersSettings = GetLanguageWorkersSettings(configuration);
-            options.IgnoredWorkerVersions = GetIgnoredWorkerVersions();
-            options.IsDynamicWorkerResolutionEnabled = IsDynamicWorkerResolutionEnabled(options.WorkerRuntime,
-                                                                                        options.WorkersAvailableForResolution,
-                                                                                        options.IsPlaceholderModeEnabled,
-                                                                                        options.IsMultiLanguageWorkerEnvironment);
+            options.IsDynamicWorkerResolutionEnabled = IsDynamicWorkerResolutionEnabled(options.WorkerRuntime, options.WorkersAvailableForResolution, options.IsPlaceholderModeEnabled, options.IsMultiLanguageWorkerEnvironment);
+
+            if (options.IsDynamicWorkerResolutionEnabled)
+            {
+                options.ReleaseChannel = _environment.GetPlatformReleaseChannel();
+                options.ProbingPaths = GetWorkerProbingPaths(configuration);
+                options.IgnoredWorkerVersions = GetIgnoredWorkerVersions();
+            }
         }
 
         /// <summary>
@@ -98,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         private IConfiguration GetRequiredConfiguration()
         {
-            LogWorkersDirSectionPresence(_configuration, nameof(_configuration));
+            LogWorkersDirSectionPresence(_configuration, WebHostConfigurationSource);
             var configuration = _configuration;
 
             // Use the latest configuration from the ScriptHostManager if available.
@@ -109,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                 if (latestConfiguration is not null)
                 {
-                    LogWorkersDirSectionPresence(latestConfiguration, nameof(latestConfiguration));
+                    LogWorkersDirSectionPresence(latestConfiguration, JobHostConfigurationSource);
 
                     configuration = new ConfigurationBuilder()
                         .AddConfiguration(_configuration)
@@ -122,16 +125,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         }
 
         /// <summary>
-        /// Logs a trace message if the required configuration section is found.
+        /// Logs a message if the required configuration section is found.
         /// </summary>
         private void LogWorkersDirSectionPresence(IConfiguration configuration, string configurationSource)
         {
-            string configSectionToCheck = $"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}";
+            string configSectionToCheck = ConfigurationPath.Combine(RpcWorkerConstants.LanguageWorkersSectionName, WorkerConstants.WorkersDirectorySectionName);
             var section = configuration.GetSection(configSectionToCheck);
 
             if (!string.IsNullOrEmpty(section.Value))
             {
-                _logger.LogTrace("Found configuration section '{requiredSection}' in '{configurationSource}'.", configSectionToCheck, configurationSource);
+                _logger.LogDebug("Found configuration section '{requiredSection}' in {configurationSource}.", configSectionToCheck, configurationSource);
             }
         }
 
@@ -141,31 +144,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal List<string> GetWorkerProbingPaths(IConfiguration configuration)
         {
             // If Configuration section is set, read probing paths from configuration.
-            var probingPathsSection = configuration.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{RpcWorkerConstants.WorkerProbingPathsSectionName}");
-            var subSectionsCount = probingPathsSection.GetChildren().Count();
-            var probingPaths = new List<string>();
+            var probingPathsSection = configuration.GetSection(ConfigurationPath.Combine(RpcWorkerConstants.LanguageWorkersSectionName, RpcWorkerConstants.WorkerProbingPathsSectionName));
+            var probingPaths = probingPathsSection.Get<List<string>>();
 
-            if (subSectionsCount == 0 && _environment.IsHostedWindowsEnvironment())
+            if (probingPaths is null || probingPaths.Count == 0)
             {
-                // Default worker probing path for Windows
-                string windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
+                probingPaths = probingPaths ?? [];
 
-                if (!string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
+                if (_environment.IsHostedWindowsEnvironment())
                 {
-                    // Example probing path for Windows: "c:\\home\\SiteExtensions\\functionsworkers"
-                    var windowsWorkerProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.FunctionsWorkersDirectoryName);
-                    probingPaths.Add(windowsWorkerProbingPath);
-                }
+                    // Default worker probing path for Windows
+                    string windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
 
-                return probingPaths;
-            }
-
-            for (int i = 0; i < subSectionsCount; i++)
-            {
-                var path = probingPathsSection.GetSection($"{i}").Value;
-                if (!string.IsNullOrWhiteSpace(path))
-                {
-                    probingPaths.Add(path);
+                    if (!string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
+                    {
+                        // Example probing path for Windows: "c:\\home\\SiteExtensions\\functionsworkers"
+                        var windowsWorkerProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.FunctionsWorkersDirectoryName);
+                        probingPaths.Add(windowsWorkerProbingPath);
+                    }
                 }
             }
 
@@ -254,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                 if (workerVersionParts.Length != 2)
                 {
-                    _logger.LogTrace("Skipping '{ignoredVersion}' due to invalid format for ignored worker version. Expected format is 'WorkerName:Version'.", ignoredVersion);
+                    _logger.LogDebug("Skipping '{ignoredVersion}' due to invalid format for ignored worker version. Expected format is 'WorkerName:Version'.", ignoredVersion);
                     continue;
                 }
 
@@ -263,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                 if (!Version.TryParse(version, out Version parsedVersion))
                 {
-                    _logger.LogTrace("Skipping '{ignoredVersion}' due to invalid version format: '{version}' for worker '{workerName}'.", ignoredVersion, version, workerName);
+                    _logger.LogDebug("Skipping '{ignoredVersion}' due to invalid version format: '{version}' for worker '{workerName}'.", ignoredVersion, version, workerName);
                     continue;
                 }
 
