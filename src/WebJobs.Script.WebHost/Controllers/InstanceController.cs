@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
@@ -41,6 +41,43 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
 
+            return await AssignInternal(assignmentContext);
+        }
+
+        [HttpPost]
+        [Route("admin/instance/assign2")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public async Task<IActionResult> Assign2([FromBody] FunctionsWorkerContainerAssignmentContext workerAssignmentContext)
+        {
+            if (workerAssignmentContext?.AssignmentContext == null || workerAssignmentContext.AssignmentContext == null)
+            {
+                return BadRequest("Assignment context is missing.");
+            }
+
+            _logger.LogDebug($"Starting container assignment for host : {Request?.Host}");
+            var assignmentContext = _startupContextProvider.SetContext(workerAssignmentContext.AssignmentContext);
+
+            return await AssignInternal(assignmentContext);
+        }
+
+        [HttpGet]
+        [Route("admin/instance/info")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public IActionResult GetInstanceInfo()
+        {
+            return Ok(_instanceManager.GetInstanceInfo());
+        }
+
+        [HttpGet]
+        [Route("admin/instance/http-health")]
+        public IActionResult GetHttpHealthStatus()
+        {
+            // Reaching here implies that http health of the container is ok.
+            return Ok();
+        }
+
+        private async Task<IActionResult> AssignInternal(HostAssignmentContext assignmentContext)
+        {
             // before starting the assignment we want to perform as much
             // up front validation on the context as possible
             string error = await _instanceManager.ValidateContext(assignmentContext);
@@ -62,22 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return succeeded
                 ? Accepted()
                 : StatusCode(StatusCodes.Status409Conflict, "Instance already assigned");
-        }
-
-        [HttpGet]
-        [Route("admin/instance/info")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public IActionResult GetInstanceInfo()
-        {
-            return Ok(_instanceManager.GetInstanceInfo());
-        }
-
-        [HttpGet]
-        [Route("admin/instance/http-health")]
-        public IActionResult GetHttpHealthStatus()
-        {
-            // Reaching here implies that http health of the container is ok.
-            return Ok();
         }
     }
 }
