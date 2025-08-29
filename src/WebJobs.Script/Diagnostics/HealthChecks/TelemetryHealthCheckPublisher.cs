@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         {
             ArgumentNullException.ThrowIfNull(report);
 
-            if (_options.Tag is string tag)
+            if (_options.Tag is { Length: > 0 } tag)
             {
                 report = report.Filter(FilterForTag);
             }
