@@ -48,6 +48,6 @@ jobs:
     displayName: Copy deps.json
     condition: failed()
     inputs:
-      SourceFolder: out/bin/WebJobs.Script.WebHost/debug
+      SourceFolder: out/bin/WebJobs.Script.WebHost/release
       Contents: '**/Microsoft.Azure.WebJobs.Script.WebHost.deps.json'
       TargetFolder: $(Build.ArtifactStagingDirectory)
