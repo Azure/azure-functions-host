@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 {
     internal static class HealthCheckTags
     {
-        private const string Prefix = "az.functions";
+        private const string Prefix = "azure.functions";
 
         public const string Liveness = Prefix + ".liveness";
 

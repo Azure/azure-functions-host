@@ -41,10 +41,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
         public static class Constants
         {
-            public const string ReportMetricName = "az.functions.health_check.reports";
-            public const string UnhealthyMetricName = "az.functions.health_check.unhealthy_checks";
-            public const string HealthCheckTagTag = "az.functions.health_check.tag"; // Yes, tag tag. A metric tag with 'tag' in the name.
-            public const string HealthCheckNameTag = "az.functions.health_check.name";
+            private const string Prefix = "azure.functions.";
+            public const string ReportMetricName = Prefix + "health_check.reports";
+            public const string UnhealthyMetricName = Prefix + "health_check.unhealthy_checks";
+            public const string HealthCheckTagTag = Prefix + "health_check.tag"; // Yes, tag tag. A metric tag with 'tag' in the name.
+            public const string HealthCheckNameTag = Prefix + "health_check.name";
         }
     }
 }
