@@ -39,6 +39,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return "Test";
         }
 
+        [HttpGet]
+        [Route("info2")]
+        public string Info2()
+        {
+            return "Test";
+        }
+
         [HttpPost] 
         [Route("admin/instance/assign2")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
