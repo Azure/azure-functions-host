@@ -5,5 +5,5 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal record WorkerConfigurationInfo(string WorkersRootDirPath, IReadOnlyList<string> WorkerConfigPaths, Dictionary<string, string> LanguageWorkersSettings);
+    internal record WorkerConfigurationInfo(string WorkersRootDirPath, IReadOnlyList<string> WorkerConfigPaths, Dictionary<string, RpcWorkerDescription> LanguageWorkersSettings);
 }

@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Gets or sets the dictionary containing language workers related settings in configuration.
         /// </summary>
-        public Dictionary<string, string> LanguageWorkersSettings { get; set; }
+        public Dictionary<string, RpcWorkerDescription> LanguageWorkersSettings { get; set; }
 
         /// <summary>
         /// Gets or sets the dictionary that contains the versions of language workers to be ignored during probing outside of the Host.

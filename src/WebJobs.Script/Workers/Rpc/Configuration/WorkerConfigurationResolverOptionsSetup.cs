@@ -190,19 +190,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Converts language workers related configuration sections to a dictionary.
         /// </summary>
-        internal static Dictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
+        internal static Dictionary<string, RpcWorkerDescription> GetLanguageWorkersSettings(IConfiguration configuration)
         {
-            var languageWorkersSettings = new Dictionary<string, string>();
-
-            foreach (var kvp in configuration.AsEnumerable())
-            {
-                if (kvp.Key.StartsWith(RpcWorkerConstants.LanguageWorkersSectionName))
-                {
-                    languageWorkersSettings[kvp.Key] = kvp.Value;
-                }
-            }
-
-            return languageWorkersSettings;
+            return configuration.GetSection(RpcWorkerConstants.LanguageWorkersSectionName).Get<Dictionary<string, RpcWorkerDescription>>();
         }
 
         /// <summary>
