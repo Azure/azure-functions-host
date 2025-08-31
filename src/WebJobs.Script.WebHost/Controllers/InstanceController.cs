@@ -32,6 +32,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _startupContextProvider = startupContextProvider;
         }
 
+        [HttpGet]
+        [Route("admin/instance/info2")]
+        public string Info()
+        {
+            return "Test";
+        }
+
         [HttpPost] 
         [Route("admin/instance/assign2")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
