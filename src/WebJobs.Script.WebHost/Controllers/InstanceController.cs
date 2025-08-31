@@ -32,15 +32,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _startupContextProvider = startupContextProvider;
         }
 
+        [HttpPost] 
+        [Route("admin/instance/assign2")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public Task<IActionResult> Assign([FromBody] FunctionsWorkerContainerAssignmentContext assignmentContextParent)
+        {
+            if (assignmentContextParent?.AssignmentContext == null || assignmentContextParent.AssignmentContext == null)
+            {
+                return Task.FromResult<IActionResult>(BadRequest("Assignment context is missing."));
+            }
+
+            _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. AppName = {assignmentContextParent.AssignmentContext.SiteName}");
+            var assignmentContext = _startupContextProvider.SetContext(assignmentContextParent.AssignmentContext);
+            return Assign(assignmentContext);
+        }
+
         [HttpPost]
         [Route("admin/instance/assign")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
+        public Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
         {
             _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. ContextLength is: {encryptedAssignmentContext.EncryptedContext?.Length}");
 
             var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
+            return Assign(assignmentContext);
+        }
 
+        private async Task<IActionResult> Assign(HostAssignmentContext assignmentContext)
+        {
             // before starting the assignment we want to perform as much
             // up front validation on the context as possible
             string error = await _instanceManager.ValidateContext(assignmentContext);
