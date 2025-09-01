@@ -28,11 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
-        private readonly JsonSerializerOptions _jsonSerializerOptions = new()
-        {
-            PropertyNameCaseInsensitive = true
-        };
-
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
         public RpcWorkerConfigFactory(IConfiguration config,
@@ -124,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                     var workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
 
-                    RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(workerConfig, _jsonSerializerOptions, workerDir, _profileManager, workerConfigurationInfo.LanguageWorkersSettings, _logger);
+                    RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(workerConfig, workerDir, _profileManager, workerConfigurationInfo.LanguageWorkersSettings, _logger);
 
                     if (workerDescription.IsDisabled == true)
                     {
@@ -176,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (workerConfig.TryGetProperty(WorkerConstants.ProcessCount, out var processCountElement))
             {
-                workerProcessCount = processCountElement.Deserialize<WorkerProcessCountOptions>(_jsonSerializerOptions);
+                workerProcessCount = processCountElement.Deserialize<WorkerProcessCountOptions>(ScriptConstants.JsonSerializerOptions);
             }
 
             workerProcessCount ??= new WorkerProcessCountOptions();

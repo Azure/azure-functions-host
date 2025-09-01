@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -151,7 +152,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var options = new WorkerConfigurationResolverOptions
             {
-                WorkersRootDirPath = "/test/workers"
+                WorkersRootDirPath = "/test/workers",
+                ReleaseChannel = "standard",
+                WorkerRuntime = "node",
+                IsPlaceholderModeEnabled = false,
+                IsMultiLanguageWorkerEnvironment = true,
+                ProbingPaths = new List<string> { "path1", "path2" },
+                WorkersAvailableForResolution = new HashSet<string> { "node", "python" }.ToImmutableHashSet(),
+                LanguageWorkersSettings = ImmutableDictionary<string, RpcWorkerDescription>.Empty
+                    .Add("node", new RpcWorkerDescription { DefaultExecutablePath = "node" })
+                    .Add("python", new RpcWorkerDescription { DefaultExecutablePath = "python" }),
+                IgnoredWorkerVersions = new Dictionary<string, HashSet<Version>>
+                {
+                    { "node", new HashSet<Version> { new Version("14.0.0"), new Version("16.0.0") } },
+                    { "python", new HashSet<Version> { new Version("3.6"), new Version("3.7") } }
+                }.ToImmutableDictionary(),
+                IsDynamicWorkerResolutionEnabled = true
             };
 
             string json = options.Format();
@@ -165,6 +181,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var root = jsonDocument.RootElement;
             Assert.True(root.TryGetProperty("WorkersRootDirPath", out var workersDirPathProperty));
             Assert.Equal("/test/workers", workersDirPathProperty.GetString());
+            Assert.True(root.TryGetProperty("ReleaseChannel", out var releaseChannelProperty));
+            Assert.Equal("standard", releaseChannelProperty.GetString());
+            Assert.True(root.TryGetProperty("WorkerRuntime", out var workerRuntimeProperty));
+            Assert.Equal("node", workerRuntimeProperty.GetString());
+            Assert.True(root.TryGetProperty("IsPlaceholderModeEnabled", out var placeholderModeProperty));
+            Assert.False(placeholderModeProperty.GetBoolean());
+            Assert.True(root.TryGetProperty("IsMultiLanguageWorkerEnvironment", out var multiLangEnvProperty));
+            Assert.True(multiLangEnvProperty.GetBoolean());
+            Assert.True(root.TryGetProperty("ProbingPaths", out var probingPathsProperty));
+            Assert.Equal(2, probingPathsProperty.GetArrayLength());
+            Assert.True(root.TryGetProperty("WorkersAvailableForResolution", out var workersAvailableProperty));
+            Assert.Equal(2, workersAvailableProperty.GetArrayLength());
+            Assert.True(root.TryGetProperty("LanguageWorkersSettings", out var languageWorkersSettingsProperty));
+            Assert.NotNull(languageWorkersSettingsProperty);
+            Assert.True(root.TryGetProperty("IgnoredWorkerVersions", out var ignoredWorkerVersionsProperty));
+            Assert.NotNull(ignoredWorkerVersionsProperty);
+            Assert.True(root.TryGetProperty("IsDynamicWorkerResolutionEnabled", out var dynamicWorkerResolutionProperty));
+            Assert.True(dynamicWorkerResolutionProperty.GetBoolean());
         }
 
         [Fact]
@@ -192,8 +226,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void Configure_WithRealEnvironmentValues_SetsCorrectDefaults()
         {
             // Arrange
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
             EnvironmentExtensions.ClearCache();
-            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
             var testEnvironment = new TestEnvironment();
             var configBuilder = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
@@ -210,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(testLoggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var setup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var options = new WorkerConfigurationResolverOptions();
 
             // Act
@@ -228,6 +265,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(options.ProbingPaths.Contains("testPath2"));
 
             Assert.True(options.WorkersAvailableForResolution.Any());
+
+            var logs = loggerProvider.GetAllLogMessages();
+            Assert.Single(logs.Where(l => l.FormattedMessage == "Worker probing paths specified via configuration: testPath1, testPath2."));
         }
 
         [Fact]

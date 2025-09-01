@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Text.Json;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -73,13 +74,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Resolves worker configuration paths from the specified probing paths.
         /// </summary>
-        private Dictionary<string, string> ResolveWorkerConfigsFromProbingPaths(List<string> workerProbingPaths, string workerRuntime)
+        private Dictionary<string, string> ResolveWorkerConfigsFromProbingPaths(IReadOnlyList<string> workerProbingPaths, string workerRuntime)
         {
             var runtimeToConfigPathMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
-                _logger.LogDebug("Worker probing paths set to: {probingPaths}", string.Join(", ", workerProbingPaths));
+                _logger.WorkerProbingPaths(string.Join(", ", workerProbingPaths));
 
                 // Probing path directory structure is: <probingPath>/<workerRuntimeDir>/<workerVersion>/<worker.config.json>
                 foreach (var probingPath in workerProbingPaths)
@@ -267,7 +268,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // profiles evaluation
             RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(
                                                             workerConfig: workerConfigJson,
-                                                            jsonSerializerOptions: _jsonSerializerOptions,
                                                             workerDir: workerDirPath,
                                                             profileManager: _profileManager,
                                                             languageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,

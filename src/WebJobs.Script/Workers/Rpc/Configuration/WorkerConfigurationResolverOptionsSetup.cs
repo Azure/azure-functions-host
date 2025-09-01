@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -146,6 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // If Configuration section is set, read probing paths from configuration.
             var probingPathsSection = configuration.GetSection(ConfigurationPath.Combine(RpcWorkerConstants.LanguageWorkersSectionName, RpcWorkerConstants.WorkerProbingPathsSectionName));
             var probingPaths = probingPathsSection.Get<List<string>>();
+            _logger.LogDebug("Worker probing paths specified via configuration: {probingPaths}.", probingPaths);
 
             if (probingPaths is null || probingPaths.Count == 0)
             {
@@ -161,6 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         // Example probing path for Windows: "c:\\home\\SiteExtensions\\functionsworkers"
                         var windowsWorkerProbingPath = Path.Combine(windowsSiteExtensionsPath, RpcWorkerConstants.FunctionsWorkersDirectoryName);
                         probingPaths.Add(windowsWorkerProbingPath);
+                        _logger.LogDebug("Default worker probing path for Windows: {windowsWorkerProbingPath}.", windowsWorkerProbingPath);
                     }
                 }
             }
@@ -182,17 +185,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Returns a set of worker runtimes available for dynamic resolution from hosting config.
         /// </summary>
-        internal HashSet<string> GetWorkersAvailableForResolution() =>
+        internal ImmutableHashSet<string> GetWorkersAvailableForResolution() =>
             (_functionsHostingConfigOptions.Value.WorkersAvailableForDynamicResolution ?? string.Empty)
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Converts language workers related configuration sections to a dictionary.
         /// </summary>
-        internal static Dictionary<string, RpcWorkerDescription> GetLanguageWorkersSettings(IConfiguration configuration)
+        internal static ImmutableDictionary<string, RpcWorkerDescription> GetLanguageWorkersSettings(IConfiguration configuration)
         {
-            return configuration.GetSection(RpcWorkerConstants.LanguageWorkersSectionName).Get<Dictionary<string, RpcWorkerDescription>>();
+            return configuration.GetSection(RpcWorkerConstants.LanguageWorkersSectionName).Get<Dictionary<string, RpcWorkerDescription>>()?.ToImmutableDictionary();
         }
 
         /// <summary>
@@ -201,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
         /// Feature flag takes precedence over hosting config options.
         /// </summary>
-        internal bool IsDynamicWorkerResolutionEnabled(string workerRuntime, HashSet<string> workersAvailableForResolution, bool isPlaceholderModeEnabled, bool isMultiLanguageEnv)
+        internal bool IsDynamicWorkerResolutionEnabled(string workerRuntime, ImmutableHashSet<string> workersAvailableForResolution, bool isPlaceholderModeEnabled, bool isMultiLanguageEnv)
         {
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, _environment) || workersAvailableForResolution.Count == 0)
             {
@@ -221,14 +224,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Output format: { worker: { hashset of versions to be ignored }}.
         /// Sample output: {"java": {"2.19.0", "2.18.0"}, "dotnet-isolated": {"1.0.0"}}.
         /// </summary>
-        internal Dictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
+        internal ImmutableDictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
         {
             // Example value of ignoredWorkerVersions: "Worker1Name:Version1|Worker1Name:Version2|Worker2Name:Version1|Worker3Name:Version1".
             string ignoredWorkerVersions = _functionsHostingConfigOptions.Value.IgnoredWorkerVersions;
 
             if (string.IsNullOrWhiteSpace(ignoredWorkerVersions))
             {
-                return new(StringComparer.OrdinalIgnoreCase);
+                return ImmutableDictionary<string, HashSet<Version>>.Empty;
             }
 
             var ignoredVersions = ignoredWorkerVersions.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -264,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            return ignoredVersionsOut;
+            return ignoredVersionsOut.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase);
         }
     }
 }

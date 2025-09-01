@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -15,12 +16,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     {
         internal static RpcWorkerDescription GetWorkerDescription(
             JsonElement workerConfig,
-            JsonSerializerOptions jsonSerializerOptions,
             string workerDir,
             IWorkerProfileManager profileManager,
-            Dictionary<string, RpcWorkerDescription> languageWorkersSettings,
+            ImmutableDictionary<string, RpcWorkerDescription> languageWorkersSettings,
             ILogger logger)
         {
+            var jsonSerializerOptions = ScriptConstants.JsonSerializerOptions;
             var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
             var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
             workerDescription.WorkerDirectory = workerDir;
@@ -114,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return descriptionProfiles;
         }
 
-        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, Dictionary<string, RpcWorkerDescription> languageWorkersSettings)
+        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> languageWorkersSettings)
         {
             if (languageWorkersSettings.TryGetValue(workerDescription.Language, out var rpcWorkerDescription))
             {
@@ -123,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
-        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, Dictionary<string, RpcWorkerDescription> languageWorkersSettings)
+        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> languageWorkersSettings)
         {
             if (languageWorkersSettings.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription.Arguments is List<string> args && args.Count > 0)
             {

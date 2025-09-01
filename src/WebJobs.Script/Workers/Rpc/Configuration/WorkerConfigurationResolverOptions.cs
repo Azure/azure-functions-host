@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -34,23 +35,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Gets or sets the list of probing paths for worker resolution.
         /// </summary>
-        public List<string> ProbingPaths { get; set; }
+        public IReadOnlyList<string> ProbingPaths { get; set; }
 
         /// <summary>
         /// Gets or sets the worker runtimes available for resolution via Hosting configuration.
         /// </summary>
-        public HashSet<string> WorkersAvailableForResolution { get; set; }
+        public ImmutableHashSet<string> WorkersAvailableForResolution { get; set; }
 
         /// <summary>
         /// Gets or sets the dictionary containing language workers related settings in configuration.
         /// </summary>
-        public Dictionary<string, RpcWorkerDescription> LanguageWorkersSettings { get; set; }
+        public ImmutableDictionary<string, RpcWorkerDescription> LanguageWorkersSettings { get; set; }
 
         /// <summary>
         /// Gets or sets the dictionary that contains the versions of language workers to be ignored during probing outside of the Host.
         /// Key: worker name (e.g. "node", "python"). Value: set of versions to exclude from consideration.
         /// </summary>
-        public Dictionary<string, HashSet<Version>> IgnoredWorkerVersions { get; set; }
+        public ImmutableDictionary<string, HashSet<Version>> IgnoredWorkerVersions { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether dynamic worker resolution is enabled.
