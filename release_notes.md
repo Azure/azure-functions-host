@@ -3,4 +3,4 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Add JitTrace files for v4.43
+- Add JitTrace files for v4.43 (#11277)
