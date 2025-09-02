@@ -6,5 +6,5 @@ using System.Collections.Immutable;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal record WorkerConfigurationInfo(string WorkersRootDirPath, IReadOnlyList<string> WorkerConfigPaths, ImmutableDictionary<string, RpcWorkerDescription> LanguageWorkersSettings);
+    internal record WorkerConfigurationInfo(string WorkersRootDirPath, IReadOnlyList<string> WorkerConfigPaths, ImmutableDictionary<string, string> LanguageWorkersSettings);
 }

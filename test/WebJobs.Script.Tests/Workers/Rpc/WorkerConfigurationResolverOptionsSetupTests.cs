@@ -159,9 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 IsMultiLanguageWorkerEnvironment = true,
                 ProbingPaths = new List<string> { "path1", "path2" },
                 WorkersAvailableForResolution = new HashSet<string> { "node", "python" }.ToImmutableHashSet(),
-                LanguageWorkersSettings = ImmutableDictionary<string, RpcWorkerDescription>.Empty
-                    .Add("node", new RpcWorkerDescription { DefaultExecutablePath = "node" })
-                    .Add("python", new RpcWorkerDescription { DefaultExecutablePath = "python" }),
+                LanguageWorkersSettings = ImmutableDictionary<string, string>.Empty.Add("node", "node"),
                 IgnoredWorkerVersions = new Dictionary<string, HashSet<Version>>
                 {
                     { "node", new HashSet<Version> { new Version("14.0.0"), new Version("16.0.0") } },
