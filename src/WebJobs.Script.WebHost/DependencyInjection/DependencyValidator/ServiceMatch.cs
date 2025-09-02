@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 {
                     return !expectedServices.Any(e => IsMatch(e, r))
                         && !optionalServices.Any(o => IsMatch(o, r))
-                        && !optionalExternalServices.Any(o => o.IsMatch(r.ImplementationType));
+                        && !optionalExternalServices.Any(o => o.IsMatch(r));
                 })
                 .Select(p => new InvalidServiceDescriptor(p, InvalidServiceDescriptorReason.Invalid));
 
@@ -247,18 +247,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             public string AssemblyPublicKey { get; }
 
-            public bool IsMatch(Type serviceType)
+            public bool IsMatch(ServiceDescriptor descriptor)
             {
-                if (serviceType == null)
+                if (descriptor.ImplementationType is { } serviceType)
                 {
-                    return false;
+                    var serviceAssemblyName = serviceType.Assembly.GetName();
+
+                    return serviceType.FullName == TypeName
+                        && serviceAssemblyName.Name == AssemblyName
+                        && GetPublicKeyTokenString(serviceAssemblyName.GetPublicKeyToken()) == AssemblyPublicKey;
+                }
+                else if (descriptor.ImplementationFactory?.Target?.GetType() is { } implementationFactory)
+                {
+                    var factoryAssemblyName = implementationFactory.Assembly.GetName();
+
+                    return implementationFactory.DeclaringType.FullName == TypeName
+                        && factoryAssemblyName.Name == AssemblyName
+                        && GetPublicKeyTokenString(factoryAssemblyName.GetPublicKeyToken()) == AssemblyPublicKey;
                 }
 
-                var serviceAssemblyName = serviceType.Assembly.GetName();
-
-                return serviceType.FullName == TypeName
-                    && serviceAssemblyName.Name == AssemblyName
-                    && GetPublicKeyTokenString(serviceAssemblyName.GetPublicKeyToken()) == AssemblyPublicKey;
+                return false;
             }
 
             private static string GetPublicKeyTokenString(byte[] token)
