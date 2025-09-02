@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 throw new NotImplementedException();
             }
 
-            public Task RestartHostAsync(CancellationToken cancellationToken = default)
+            public Task RestartHostAsync(string reason, CancellationToken cancellationToken = default)
             {
                 throw new NotImplementedException();
             }
