@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly ILogger _logger;
         private readonly IWorkerProfileManager _profileManager;
         private readonly IFileSystem _fileSystem;
-        private readonly JsonSerializerOptions _jsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
 
         public DynamicWorkerConfigurationResolver(ILoggerFactory loggerFactory,
@@ -148,6 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             int compatibleWorkerCount = 0;
             string outputWorkerVersionPath = null;
             var ignoredVersions = _workerConfigurationResolverOptions.CurrentValue.IgnoredWorkerVersions;
+            bool standardOrExtendedChannel = IsStandardOrExtendedChannel();
 
             foreach (var versionPair in versionPathMap)
             {
@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     compatibleWorkerCount++;
                     outputWorkerVersionPath = languageWorkerVersionPath;
 
-                    if (!IsStandardOrExtendedChannel())
+                    if (!standardOrExtendedChannel)
                     {
                         return outputWorkerVersionPath; // latest version is the default
                     }
@@ -260,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // static capability resolution
             if (workerConfigJson.TryGetProperty(RpcWorkerConstants.HostRequirementsSectionName, out JsonElement configSection))
             {
-                var hostRequirements = configSection.Deserialize<HashSet<string>>(ScriptConstants.JsonSerializerOptions);
+                var hostRequirements = configSection.Deserialize<HashSet<string>>(JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions);
                 if (!HostHasRequiredCapabilities(hostRequirements, workerConfigPath))
                 {
                     return false;
@@ -288,9 +288,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         private bool HostHasRequiredCapabilities(HashSet<string> hostRequirements, string workerConfigPath)
         {
-            var hostCapabilities = ScriptConstants.HostCapabilities;
-
             _logger.LogDebug("Worker configuration at '{workerConfigPath}' specifies host requirements [{requirements}].", workerConfigPath, string.Join(", ", hostRequirements));
+
+            if (hostRequirements is null || hostRequirements.Count == 0)
+            {
+                return true;
+            }
+
+            var hostCapabilities = ScriptConstants.HostCapabilities;
 
             return hostRequirements.IsSubsetOf(hostCapabilities);
         }

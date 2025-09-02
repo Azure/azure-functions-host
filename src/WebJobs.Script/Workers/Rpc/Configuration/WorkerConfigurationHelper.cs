@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             ImmutableDictionary<string, string> languageWorkersSettings,
             ILogger logger)
         {
-            var jsonSerializerOptions = ScriptConstants.JsonSerializerOptions;
+            var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
             var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
             var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
             workerDescription.WorkerDirectory = workerDir;

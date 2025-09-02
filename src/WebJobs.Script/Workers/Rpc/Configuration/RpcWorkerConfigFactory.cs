@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (workerConfig.TryGetProperty(WorkerConstants.ProcessCount, out var processCountElement))
             {
-                workerProcessCount = processCountElement.Deserialize<WorkerProcessCountOptions>(ScriptConstants.JsonSerializerOptions);
+                workerProcessCount = processCountElement.Deserialize<WorkerProcessCountOptions>(JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions);
             }
 
             workerProcessCount ??= new WorkerProcessCountOptions();

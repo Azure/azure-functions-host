@@ -251,7 +251,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static readonly ImmutableArray<string> SystemLogCategoryPrefixes = ImmutableArray.Create("Microsoft.Azure.WebJobs.", "Function.", "Worker.", "Host.");
         public static readonly ImmutableHashSet<string> HostCapabilities = ImmutableHashSet.Create<string>(StringComparer.OrdinalIgnoreCase);
-        public static readonly JsonSerializerOptions JsonSerializerOptions = new() { PropertyNameCaseInsensitive = true };
 
         public static readonly string FunctionMetadataDirectTypeKey = "DirectType";
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
