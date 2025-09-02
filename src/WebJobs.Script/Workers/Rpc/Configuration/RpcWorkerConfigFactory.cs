@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             foreach (var workerConfig in workerConfigs)
             {
-                AddProvider(workerConfig, workerConfigurationInfo);
+                AddProvider(workerConfig.WorkerConfigPath, workerConfig.WorkerConfig, workerConfig.RpcWorkerDescription, workerConfigurationInfo);
             }
         }
 
@@ -84,12 +84,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (workerDirectorySection.Value != null)
                 {
                     _workerDescriptionDictionary.Remove(languageSection.Key);
-                    AddProvider(workerDirectorySection.Value, workerConfigurationInfo);
+
+                    (JsonElement workerConfig, RpcWorkerDescription workerDescription) = WorkerConfigurationHelper.GetWorkerDescription(workerDirectorySection.Value, _profileManager, workerConfigurationInfo.LanguageWorkersSettings, _logger);
+
+                    if (workerDescription is not null)
+                    {
+                        if (!WorkerConfigurationHelper.ShouldSkipWorkerDescription(workerDescription, _logger))
+                        {
+                            AddProvider(workerDirectorySection.Value, workerConfig, workerDescription, workerConfigurationInfo);
+                        }
+                    }
                 }
             }
         }
 
-        internal void AddProvider(string workerDir, WorkerConfigurationInfo workerConfigurationInfo)
+        internal void AddProvider(string workerDir, JsonElement workerConfig, RpcWorkerDescription workerDescription, WorkerConfigurationInfo workerConfigurationInfo)
         {
             using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDir)))
             {
@@ -105,26 +114,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         {
                             return;
                         }
-                    }
-
-                    string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
-
-                    if (!File.Exists(workerConfigPath))
-                    {
-                        _logger.LogDebug("Did not find worker config file at: {workerConfigPath}", workerConfigPath);
-                        return;
-                    }
-
-                    _logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
-
-                    var workerConfig = WorkerConfigurationHelper.GetWorkerConfigJsonElement(workerConfigPath);
-
-                    RpcWorkerDescription workerDescription = WorkerConfigurationHelper.GetWorkerDescription(workerConfig, workerDir, _profileManager, workerConfigurationInfo.LanguageWorkersSettings, _logger);
-
-                    if (workerDescription.IsDisabled == true)
-                    {
-                        _logger.LogInformation("Skipping WorkerConfig for stack: {language} since it is disabled.", workerDescription.Language);
-                        return;
                     }
 
                     if (ShouldAddWorkerConfig(workerDescription.Language))

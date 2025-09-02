@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO.Abstractions;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,16 +17,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     {
         private readonly ILogger _logger;
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
+        private readonly IWorkerProfileManager _profileManager;
         private readonly IFileSystem _fileSystem;
 
         public DefaultWorkerConfigurationResolver(ILoggerFactory loggerFactory,
                                                     IFileSystem fileSystem,
+                                                    IWorkerProfileManager workerProfileManager,
                                                     IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+            _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
         }
 
         public WorkerConfigurationInfo GetConfigurationInfo()
@@ -32,15 +37,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var workersRootDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath;
             _logger.DefaultWorkersDirectoryPath(workersRootDirPath);
 
-            var workerConfigPaths = new List<string>();
+            var workerConfigPaths = new List<WorkerConfigFileInfo>();
 
             foreach (var workerDir in _fileSystem.Directory.EnumerateDirectories(workersRootDirPath))
             {
-                string workerConfigPath = _fileSystem.Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
+                (JsonElement workerConfig, RpcWorkerDescription workerDescription) = WorkerConfigurationHelper.GetWorkerDescription(workerDir, _profileManager, _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings, _logger);
 
-                if (_fileSystem.File.Exists(workerConfigPath))
+                if (workerDescription is not null)
                 {
-                    workerConfigPaths.Add(workerDir);
+                    if (!WorkerConfigurationHelper.ShouldSkipWorkerDescription(workerDescription, _logger))
+                    {
+                        workerConfigPaths.Add(new WorkerConfigFileInfo(workerDir, workerConfig, workerDescription));
+                    }
                 }
             }
 

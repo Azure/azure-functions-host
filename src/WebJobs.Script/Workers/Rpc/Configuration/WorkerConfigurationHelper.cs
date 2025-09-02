@@ -14,42 +14,62 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
     internal static class WorkerConfigurationHelper
     {
-        internal static RpcWorkerDescription GetWorkerDescription(
-            JsonElement workerConfig,
+        internal static (JsonElement WorkerConfig, RpcWorkerDescription RpcWorkerDescription) GetWorkerDescription(
             string workerDir,
             IWorkerProfileManager profileManager,
             ImmutableDictionary<string, string> languageWorkersSettings,
             ILogger logger)
         {
-            var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
-            var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
-            var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
-            workerDescription.WorkerDirectory = workerDir;
+            string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
 
-            // Read the profiles from worker description and load the profile for which the conditions match
-            if (workerConfig.TryGetProperty(WorkerConstants.WorkerDescriptionProfiles, out var profiles))
+            if (!File.Exists(workerConfigPath))
             {
-                List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles, jsonSerializerOptions, profileManager, logger);
-                if (workerDescriptionProfiles.Count > 0)
+                logger.LogDebug("Did not find worker config file at: {workerConfigPath}", workerConfigPath);
+                return (default, null);
+            }
+
+            logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
+
+            var workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
+
+            try
+            {
+                var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
+                var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
+                var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
+                workerDescription.WorkerDirectory = workerDir;
+
+                // Read the profiles from worker description and load the profile for which the conditions match
+                if (workerConfig.TryGetProperty(WorkerConstants.WorkerDescriptionProfiles, out var profiles))
                 {
-                    profileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
-                    profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
+                    List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles, jsonSerializerOptions, profileManager, logger);
+                    if (workerDescriptionProfiles.Count > 0)
+                    {
+                        profileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
+                        profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
+                    }
                 }
+
+                workerDescription.Arguments ??= new List<string>();
+
+                if (languageWorkersSettings is not null)
+                {
+                    // Check if any app settings are provided for that language
+                    GetWorkerDescriptionFromAppSettings(workerDescription, languageWorkersSettings);
+                    AddArgumentsFromAppSettings(workerDescription, languageWorkersSettings);
+                }
+
+                // Validate workerDescription
+                workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger);
+
+                return (workerConfig, workerDescription);
             }
-
-            workerDescription.Arguments ??= new List<string>();
-
-            if (languageWorkersSettings is not null)
+            catch (Exception ex) when (!ex.IsFatal())
             {
-                // Check if any app settings are provided for that language
-                GetWorkerDescriptionFromAppSettings(workerDescription, languageWorkersSettings);
-                AddArgumentsFromAppSettings(workerDescription, languageWorkersSettings);
+                logger.LogError(ex, "Failed to initialize worker provider for: {workerDir}", workerDir);
             }
 
-            // Validate workerDescription
-            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger);
-
-            return workerDescription;
+            return (workerConfig, null);
         }
 
         internal static JsonElement GetWorkerConfigJsonElement(string workerConfigPath)
@@ -117,12 +137,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, string> languageWorkersSettings)
         {
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultExecutablePath}", out string defaultExecutablePathSetting) && defaultExecutablePathSetting is not null)
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultExecutablePath}", out string defaultExecutablePathSetting) && (!string.IsNullOrWhiteSpace(defaultExecutablePathSetting)))
             {
                 workerDescription.DefaultExecutablePath = defaultExecutablePathSetting;
             }
 
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}", out string defaultRuntimeVersionAppSetting) && defaultRuntimeVersionAppSetting is not null)
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}", out string defaultRuntimeVersionAppSetting) && (!string.IsNullOrWhiteSpace(defaultRuntimeVersionAppSetting)))
             {
                 workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting;
             }
@@ -134,6 +154,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsValue, @"\s+"));
             }
+        }
+
+        internal static bool ShouldSkipWorkerDescription(RpcWorkerDescription workerDescription, ILogger logger)
+        {
+            if (workerDescription.IsDisabled == true)
+            {
+                logger.LogInformation("Skipping WorkerConfig for stack: {language} since it is disabled.", workerDescription.Language);
+                return true;
+            }
+            return false;
         }
     }
 }

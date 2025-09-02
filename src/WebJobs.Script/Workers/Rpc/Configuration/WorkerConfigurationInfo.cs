@@ -1,10 +1,11 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal record WorkerConfigurationInfo(string WorkersRootDirPath, IReadOnlyList<string> WorkerConfigPaths, ImmutableDictionary<string, string> LanguageWorkersSettings);
+    internal record WorkerConfigurationInfo(string WorkersRootDirPath, IReadOnlyList<WorkerConfigFileInfo> WorkerConfigPaths, ImmutableDictionary<string, string> LanguageWorkersSettings);
 }

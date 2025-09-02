@@ -1,12 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
@@ -50,10 +50,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
+
+            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
+            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
 
             var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
-
-            var mockProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
             var hostingOptions = new FunctionsHostingConfigOptions();
@@ -61,17 +64,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, fileSystem, mockProfileManager.Object, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, fileSystem, workerProfileManager, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
             // Assert
             Assert.Equal(result.Count, 5);
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, java))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, node))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, powershell))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, python))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_probingPath1, java))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_probingPath1, node))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, powershell))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, python))));
 
             var logs = loggerProvider.GetAllLogMessages();
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
@@ -98,6 +101,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
+
+            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
+            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
 
             var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
 
@@ -109,17 +117,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, fileSystem, mockProfileManager.Object, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, fileSystem, workerProfileManager, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
             // Assert
             Assert.Equal(result.Count, 5);
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, java))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, node))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, powershell))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, python))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, java))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, node))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, powershell))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, python))));
 
             var logs = loggerProvider.GetAllLogMessages();
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
@@ -143,6 +151,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
+
+            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
+            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
 
             List<string> probingPaths = null;
 
@@ -162,17 +175,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, fileSystem, mockProfileManager.Object, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, fileSystem, workerProfileManager, optionsMonitor);
 
             var result = workerConfigurationResolver.GetConfigurationInfo().WorkerConfigPaths;
 
             // Assert
             Assert.Equal(result.Count, 5);
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "java"))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "node"))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "powershell"))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "dotnet-isolated"))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, "python"))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, "java"))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, "node"))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, "powershell"))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, "dotnet-isolated"))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, "python"))));
         }
 
         [Theory]
@@ -184,16 +197,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("Empty", "LATEST", "node")]
         [InlineData(null, "STANDARD", "powershell")]
         [InlineData("Empty", "LATEST", "powershell")]
-        [InlineData(null, "LATEST", "dotnet-isolated")]
-        [InlineData(null, "STANDARD", "dotnet-isolated")]
-        [InlineData("Empty", "LATEST", "dotnet-isolated")]
-        [InlineData("Empty", "STANDARD", "dotnet-isolated")]
         public void GetWorkerConfigs_NullOREmptyProbingPath_ReturnsExpectedConfigs(string probingPathValue, string releaseChannel, string languageWorker)
         {
             // Arrange
             var mockEnv = new Mock<IEnvironment>();
             mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(languageWorker);
             mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
+            mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
+
+            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
+            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnv.Object);
 
             List<string> probingPaths = null;
 
@@ -218,13 +231,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, mockProfileManager.Object, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, workerProfileManager, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
             // Assert
             Assert.Equal(result.Count, 1);
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, languageWorker))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, languageWorker))));
         }
 
         [Theory]
@@ -238,8 +251,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
 
-            var mockProfileManager = new Mock<IWorkerProfileManager>();
+            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
+            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
 
             var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
             var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
@@ -255,29 +271,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, setting);
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, mockProfileManager.Object, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, workerProfileManager, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
             // Assert
             Assert.Equal(result.Count, 5);
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, java))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_probingPath1, node))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, powershell))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, python))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_probingPath1, java))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_probingPath1, node))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, powershell))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, python))));
         }
 
         [Theory]
-        [InlineData("dotnet-isolated:1.0.0", "dotnet-isolated")]
         [InlineData("java:2.18.0|java:2.19.0", "java")]
         public void GetWorkerConfigs_IgnoredVersion_ReturnsExpectedConfigs(string setting, string workerRuntime)
         {
             // Arrange
             var mockEnvironment = new Mock<IEnvironment>();
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(workerRuntime);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
 
-            var mockProfileManager = new Mock<IWorkerProfileManager>();
+            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
+            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
 
             var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
             var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
@@ -293,13 +310,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, setting);
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, mockProfileManager.Object, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, workerProfileManager, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 
             // Assert
             Assert.Equal(result.Count, 1);
-            Assert.True(result.Any(r => r.Contains(Path.Combine(_fallbackPath, workerRuntime))));
+            Assert.True(result.Any(r => r.WorkerConfigPath.Contains(Path.Combine(_fallbackPath, workerRuntime))));
         }
     }
 }
