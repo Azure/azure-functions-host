@@ -1,10 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
-using Microsoft.Extensions.Logging;
-using NuGet.Common;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -13,6 +9,9 @@ using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
@@ -342,6 +341,28 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsValue, @"\s+"));
             }
+        }
+
+        /// <summary>
+        /// Determines if the worker directory should be skipped based on the current worker runtime and environment settings.
+        /// </summary>
+        internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir, bool isMultiLanguageWorkerEnvironment, bool isPlaceholderModeEnabled)
+        {
+            return !isMultiLanguageWorkerEnvironment &&
+                    !isPlaceholderModeEnabled &&
+                    workerRuntime is not null &&
+                    !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Determines if the required worker config path is found.
+        /// </summary>
+        internal static bool FoundWorkerConfigPath(string workerRuntime, Dictionary<string, RpcWorkerConfig> runtimeToConfigPathMap, bool isMultiLanguageWorkerEnvironment, bool isPlaceholderModeEnabled)
+        {
+            return !isMultiLanguageWorkerEnvironment &&
+                    !isPlaceholderModeEnabled &&
+                    !string.IsNullOrWhiteSpace(workerRuntime) &&
+                    runtimeToConfigPathMap.ContainsKey(workerRuntime);
         }
     }
 }

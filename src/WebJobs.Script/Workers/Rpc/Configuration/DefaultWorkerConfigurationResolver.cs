@@ -3,10 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -38,38 +38,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public WorkerConfigurationInfo GetConfigurationInfo()
         {
-            var workersRootDirPath = _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath;
-            _logger.DefaultWorkersDirectoryPath(workersRootDirPath);
+            var output = new Dictionary<string, RpcWorkerConfig>();
 
-            var workerConfigPaths = new Dictionary<string, RpcWorkerConfig>();
-
-            foreach (var workerDir in _fileSystem.Directory.EnumerateDirectories(workersRootDirPath))
-            {
-                string workerConfigPath = _fileSystem.Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
-
-                if (_fileSystem.File.Exists(workerConfigPath))
-                {
-                    var config = WorkerConfigurationHelper.AddProvider(workerDir,
-                                                        _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath,
-                                                        _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
-                                                        _metricsLogger,
-                                                        workerDir,
-                                                        _workerConfigurationResolverOptions.CurrentValue.FunctionWorkerRuntimeVersionSettingName,
-                                                        _workerConfigurationResolverOptions.CurrentValue.FunctionsWorkerProcessCountSettingName,
-                                                        _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled,
-                                                        _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment,
-                                                        _workerConfigurationResolverOptions.CurrentValue.EffectiveCoresCount,
-                                                        _logger,
-                                                        SystemRuntimeInformation.Instance,
-                                                        _profileManager);
-
-                    workerConfigPaths[workerDir] = config;
-                }
-            }
+            var config = ResolveWorkerConfigsFromWithinHost(_workerConfigurationResolverOptions.CurrentValue.WorkerRuntime,
+                                                            output,
+                                                            _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath,
+                                                            _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
+                                                            _logger,
+                                                            _fileSystem,
+                                                            _metricsLogger,
+                                                            _workerConfigurationResolverOptions.CurrentValue.FunctionWorkerRuntimeVersionSettingName,
+                                                            _workerConfigurationResolverOptions.CurrentValue.FunctionsWorkerProcessCountSettingName,
+                                                            _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled,
+                                                            _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment,
+                                                            _workerConfigurationResolverOptions.CurrentValue.EffectiveCoresCount,
+                                                            SystemRuntimeInformation.Instance,
+                                                            _profileManager);
 
             return new WorkerConfigurationInfo(
                 WorkersRootDirPath: _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath,
-                WorkerConfigPaths: workerConfigPaths,
+                WorkerConfigPaths: output,
                 LanguageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
                 CoreCount: _workerConfigurationResolverOptions.CurrentValue.EffectiveCoresCount,
                 FWRSetting: _workerConfigurationResolverOptions.CurrentValue.FunctionWorkerRuntimeVersionSettingName,
@@ -77,6 +65,63 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 WorkerRuntime: _workerConfigurationResolverOptions.CurrentValue.WorkerRuntime,
                 Placeholder: _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled,
                 Multilanfg: _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment);
+        }
+
+        internal static Dictionary<string, RpcWorkerConfig> ResolveWorkerConfigsFromWithinHost(string workerRuntime,
+                                                                                    Dictionary<string, RpcWorkerConfig> runtimeToConfigPathMap,
+                                                                                    string path,
+                                                                                    ImmutableDictionary<string, string> languageWorkersSettings,
+                                                                                    ILogger logger,
+                                                                                    IFileSystem fileSystem,
+                                                                                    IMetricsLogger metricsLogger,
+                                                                                    string functionWorkerRuntimeVersionSettingName,
+                                                                                    string functionsWorkerProcessCountSettingName,
+                                                                                    bool placeholderModeEnabled,
+                                                                                    bool multiLanguageWorkerEnvironment,
+                                                                                    int coreCount,
+                                                                                    ISystemRuntimeInformation systemRuntimeInformation,
+                                                                                    IWorkerProfileManager profileManager)
+        {
+            var fallbackPath = path;
+
+            logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", fallbackPath);
+
+            foreach (var workerPath in fileSystem.Directory.EnumerateDirectories(fallbackPath))
+            {
+                string workerDir = Path.GetFileName(workerPath);
+
+                if (runtimeToConfigPathMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(workerRuntime, workerDir, placeholderModeEnabled, multiLanguageWorkerEnvironment))
+                {
+                    continue;
+                }
+
+                string workerConfigPath = Path.Combine(workerPath, RpcWorkerConstants.WorkerConfigFileName);
+                if (File.Exists(workerConfigPath))
+                {
+                    var config = WorkerConfigurationHelper.AddProvider(workerPath,
+                                                                            path,
+                                                                            languageWorkersSettings,
+                                                                            metricsLogger,
+                                                                            workerDir,
+                                                                            functionWorkerRuntimeVersionSettingName,
+                                                                            functionsWorkerProcessCountSettingName,
+                                                                            placeholderModeEnabled,
+                                                                            multiLanguageWorkerEnvironment,
+                                                                            coreCount,
+                                                                            logger,
+                                                                            systemRuntimeInformation,
+                                                                            profileManager);
+
+                    runtimeToConfigPathMap[workerDir] = config;
+                }
+
+                if (WorkerConfigurationHelper.FoundWorkerConfigPath(workerRuntime, runtimeToConfigPathMap, placeholderModeEnabled, multiLanguageWorkerEnvironment))
+                {
+                    return runtimeToConfigPathMap;
+                }
+            }
+
+            return runtimeToConfigPathMap;
         }
     }
 }
