@@ -257,12 +257,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return false;
             }
 
-            var hostRequirements = GetHostRequirementsFromWorker(workerConfigJson);
-
             // static capability resolution
-            if (!HostHasRequiredCapabilities(hostRequirements, workerConfigPath))
+            if (workerConfigJson.TryGetProperty(RpcWorkerConstants.HostRequirementsSectionName, out JsonElement configSection))
             {
-                return false;
+                var hostRequirements = configSection.Deserialize<HashSet<string>>(ScriptConstants.JsonSerializerOptions);
+                if (!HostHasRequiredCapabilities(hostRequirements, workerConfigPath))
+                {
+                    return false;
+                }
             }
 
             // profiles evaluation
@@ -279,31 +281,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// Extracts host requirements from the worker configuration JSON element.
-        /// </summary>
-        /// <param name="workerConfig"> Worker config: { "hostRequirements": [ "test-capability1", "test-capability2" ] }. </param>
-        /// <returns> HashSet { "test-capability1", "test-capability2" }. </returns>
-        private HashSet<string> GetHostRequirementsFromWorker(JsonElement workerConfig)
-        {
-            var hostRequirements = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            if (workerConfig.TryGetProperty(RpcWorkerConstants.HostRequirementsSectionName, out JsonElement configSection))
-            {
-                foreach (var requirement in configSection.EnumerateArray())
-                {
-                    string requirementName = requirement.GetString();
-
-                    if (!string.IsNullOrWhiteSpace(requirementName))
-                    {
-                        hostRequirements.Add(requirementName);
-                    }
-                }
-            }
-
-            return hostRequirements;
         }
 
         /// <summary>
