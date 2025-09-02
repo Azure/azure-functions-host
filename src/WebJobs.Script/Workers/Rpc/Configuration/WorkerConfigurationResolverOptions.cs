@@ -63,6 +63,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         public string WorkersRootDirPath { get; set; }
 
+        /// <summary>
+        /// Gets or sets the value of platform release channel.
+        /// </summary>
+        public int EffectiveCoresCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the value of platform release channel.
+        /// </summary>
+        public string FunctionsWorkerProcessCountSettingName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the value of platform release channel.
+        /// </summary>
+        public string FunctionWorkerRuntimeVersionSettingName { get; set; }
+
         /// <inheritdoc>
         /// Implements the Format method from IOptionsFormatter interface.
         /// </inheritdoc>

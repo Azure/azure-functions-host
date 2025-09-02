@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
+            var testMetricLogger = new TestMetricsLogger();
 
             var mockEnvironment = new Mock<IEnvironment>();
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
@@ -61,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, fileSystem, mockProfileManager.Object, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, testMetricLogger, fileSystem, mockProfileManager.Object, optionsMonitor);
 
             var result = workerConfigurationResolver.GetWorkerConfigPaths();
 

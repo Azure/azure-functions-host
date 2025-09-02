@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -684,10 +684,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
                 var workerProfileManager = new Mock<IWorkerProfileManager>();
+                var testMetricLogger = new TestMetricsLogger();
                 var testScriptHostManager = new Mock<IScriptHostManager>();
                 var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
                 var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-                var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, optionsMonitor);
+                var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, optionsMonitor);
 
                 var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver);
 

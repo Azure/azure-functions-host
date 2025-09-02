@@ -6,5 +6,13 @@ using System.Collections.Immutable;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    internal record WorkerConfigurationInfo(string WorkersRootDirPath, IReadOnlyList<string> WorkerConfigPaths, ImmutableDictionary<string, string> LanguageWorkersSettings);
+    internal record WorkerConfigurationInfo(string WorkersRootDirPath,
+                                            Dictionary<string, RpcWorkerConfig> WorkerConfigPaths,
+                                            ImmutableDictionary<string, string> LanguageWorkersSettings,
+                                            int CoreCount,
+                                            string FWRSetting,
+                                            string FunctionsWorkerProcessCountSettingName,
+                                            string WorkerRuntime,
+                                            bool Placeholder,
+                                            bool Multilanfg);
 }
