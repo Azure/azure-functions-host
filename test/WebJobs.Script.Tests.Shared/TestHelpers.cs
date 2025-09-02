@@ -46,10 +46,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static Action Act(Action act) => act;
 
         /// <summary>
-        /// Helper method to inline an action delegate.
+        /// Helper method to inline an func delegate.
         /// </summary>
-        /// <param name="act">The action.</param>
-        /// <returns>The provided action.</returns>
+        /// <param name="act">The function.</param>
+        /// <returns>The provided function.</returns>
         /// <remarks>
         /// This is intended to be used with a fluent assertion.
         /// <c>Act(() => { }).Should().Something();</c>.
