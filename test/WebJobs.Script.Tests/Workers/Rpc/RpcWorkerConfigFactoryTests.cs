@@ -316,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
 
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            Assert.Equal(expectedResult, WorkerConfigurationHelper.ShouldAddWorkerConfig(workerLanguage));
+            Assert.Equal(expectedResult, WorkerConfigurationHelper.ShouldAddWorkerConfig(workerLanguage, placeholderMode, false, testLogger, workerRuntime));
         }
 
         [Theory]
@@ -366,7 +366,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(mockLogger.Object, testMetricLogger, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
             var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-            var result = WorkerConfigurationHelper.GetWorkerProcessCount(workerConfig);
+            var result = WorkerConfigurationHelper.GetWorkerProcessCount(workerConfig, _testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName), _testEnvironment.GetEffectiveCoresCount());
 
             if (defaultWorkerConfig)
             {
@@ -415,15 +415,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(mockLogger.Object, testMetricLogger, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
             var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
 
-            var resultEx1 = Assert.Throws<ArgumentOutOfRangeException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            var resultEx1 = Assert.Throws<ArgumentOutOfRangeException>(() => WorkerConfigurationHelper.GetWorkerProcessCount(workerConfig, _testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName), _testEnvironment.GetEffectiveCoresCount()));
             Assert.Contains("ProcessCount must be greater than 0", resultEx1.Message);
 
             workerConfig = CreateWorkerConfig(40, 10, "00:10:00", false);
-            var resultEx2 = Assert.Throws<ArgumentException>(() => WorkerConfigurationHelper.GetWorkerProcessCount(workerConfig));
+            var resultEx2 = Assert.Throws<ArgumentException>(() => WorkerConfigurationHelper.GetWorkerProcessCount(workerConfig, _testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName), _testEnvironment.GetEffectiveCoresCount()));
             Assert.Contains("ProcessCount must not be greater than MaxProcessCount", resultEx2.Message);
 
             workerConfig = CreateWorkerConfig(10, 10, "-800", false);
-            var resultEx3 = Assert.Throws<JsonException>(() => WorkerConfigurationHelper.GetWorkerProcessCount(workerConfig));
+            var resultEx3 = Assert.Throws<JsonException>(() => WorkerConfigurationHelper.GetWorkerProcessCount(workerConfig, _testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName), _testEnvironment.GetEffectiveCoresCount()));
             Assert.Contains("value could not be converted to System.TimeSpan", resultEx3.Message);
         }
 

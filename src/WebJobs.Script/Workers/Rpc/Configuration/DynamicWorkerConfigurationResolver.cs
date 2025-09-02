@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                         // Skip worker directories that don't match the current runtime or are not enabled via hosting config
                         // Do not load all workers after the specialization is done and if it is not a multi-language runtime environment
-                        if (!_workerConfigurationResolverOptions.CurrentValue.WorkersAvailableForResolution.Contains(workerRuntimeDir) || 
+                        if (!_workerConfigurationResolverOptions.CurrentValue.WorkersAvailableForResolution.Contains(workerRuntimeDir) ||
                             WorkerConfigurationHelper.ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir, _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled, _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment))
                         {
                             continue;
