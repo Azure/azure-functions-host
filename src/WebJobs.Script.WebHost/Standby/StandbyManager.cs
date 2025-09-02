@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationDelayUntilHostReady))
             {
-                await _scriptHostManager.DelayUntilHostReady();
+                await _scriptHostManager.DelayUntilHostReadyAsync();
             }
         }
 
