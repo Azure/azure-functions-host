@@ -4,12 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
+        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
         public RpcWorkerConfigFactory(IConfiguration config,
@@ -32,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IEnvironment environment,
                                         IMetricsLogger metricsLogger,
                                         IWorkerProfileManager workerProfileManager,
-                                        IWorkerConfigurationResolver workerConfigurationResolver)
+                                        IWorkerConfigurationResolver workerConfigurationResolver,
+                                        IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -42,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
+            _workerConfigurationResolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
         }
 
         public IList<RpcWorkerConfig> GetConfigs()
@@ -64,22 +67,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void AddProviders(WorkerConfigurationInfo workerConfigurationInfo)
         {
             _workerDescriptionDictionary = workerConfigurationInfo.WorkerConfigPaths;
-
-            /*
-            foreach (var workerConfig in workerConfigs)
-            {
-                _workerDescriptionDictionary = WorkerConfigurationHelper.AddProvider(workerConfig,
-                                                                                    workerConfigurationInfo.WorkersRootDirPath,
-                                                                                    workerConfigurationInfo.LanguageWorkersSettings,
-                                                                                    _metricsLogger,
-                                                                                    _workerRuntime,
-                                                                                    _environment,
-                                                                                    _logger,
-                                                                                    _systemRuntimeInformation,
-                                                                                    _profileManager,
-                                                                                    _workerDescriptionDictionary);
-            }
-            */
         }
 
         internal void AddProvidersFromAppSettings(WorkerConfigurationInfo workerConfigurationInfo)
@@ -91,19 +78,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (workerDirectorySection.Value != null)
                 {
                     _workerDescriptionDictionary.Remove(languageSection.Key);
-                    var rpcWorkerConfig = WorkerConfigurationHelper.AddProvider(workerDirectorySection.Value,
-                                                                                        workerConfigurationInfo.WorkersRootDirPath,
-                                                                                        workerConfigurationInfo.LanguageWorkersSettings,
-                                                                                        _metricsLogger,
-                                                                                        _workerRuntime,
-                                                                                        workerConfigurationInfo.FWRSetting,
-                                                                                        workerConfigurationInfo.FunctionsWorkerProcessCountSettingName,
-                                                                                        workerConfigurationInfo.Placeholder,
-                                                                                        workerConfigurationInfo.Multilanfg,
-                                                                                        workerConfigurationInfo.CoreCount,
-                                                                                        _logger,
-                                                                                        _systemRuntimeInformation,
-                                                                                        _profileManager);
+                    var rpcWorkerConfig = WorkerConfigurationHelper.AddProvider(_workerConfigurationResolverOptions.CurrentValue,
+                                                                                workerDirectorySection.Value,
+                                                                                _metricsLogger,
+                                                                                _logger,
+                                                                                _systemRuntimeInformation,
+                                                                                _profileManager);
 
                     _workerDescriptionDictionary[languageSection.Key] = rpcWorkerConfig;
                 }

@@ -190,19 +190,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            return WorkerConfigurationHelper.AddProvider(outputWorkerVersionPath,
-                                                                    _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath,
-                                                                    _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
-                                                                    _metricsLogger,
-                                                                    languageWorkerFolder,
-                                                                    _workerConfigurationResolverOptions.CurrentValue.FunctionWorkerRuntimeVersionSettingName,
-                                                                    _workerConfigurationResolverOptions.CurrentValue.FunctionsWorkerProcessCountSettingName,
-                                                                    _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled,
-                                                                    _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment,
-                                                                    _workerConfigurationResolverOptions.CurrentValue.EffectiveCoresCount,
-                                                                    _logger,
-                                                                    SystemRuntimeInformation.Instance,
-                                                                    _profileManager);
+            return WorkerConfigurationHelper.AddProvider(_workerConfigurationResolverOptions.CurrentValue,
+                                                            outputWorkerVersionPath,
+                                                            _metricsLogger,
+                                                            _logger,
+                                                            SystemRuntimeInformation.Instance,
+                                                            _profileManager);
         }
 
         /// <summary>
@@ -210,20 +203,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         private Dictionary<string, RpcWorkerConfig> ResolveWorkerConfigsFromWithinHost(string workerRuntime, Dictionary<string, RpcWorkerConfig> runtimeToConfigPathMap)
         {
-            var config = DefaultWorkerConfigurationResolver.ResolveWorkerConfigsFromWithinHost(_workerConfigurationResolverOptions.CurrentValue.WorkerRuntime,
-                                                runtimeToConfigPathMap,
-                                                _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath,
-                                                _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
-                                                _logger,
-                                                _fileSystem,
-                                                _metricsLogger,
-                                                _workerConfigurationResolverOptions.CurrentValue.FunctionWorkerRuntimeVersionSettingName,
-                                                _workerConfigurationResolverOptions.CurrentValue.FunctionsWorkerProcessCountSettingName,
-                                                _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled,
-                                                _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment,
-                                                _workerConfigurationResolverOptions.CurrentValue.EffectiveCoresCount,
-                                                SystemRuntimeInformation.Instance,
-                                                _profileManager);
+            _logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath);
+
+            var config = DefaultWorkerConfigurationResolver.ResolveWorkerConfigsFromWithinHost(_workerConfigurationResolverOptions.CurrentValue,
+                                                                                                runtimeToConfigPathMap,
+                                                                                                _logger,
+                                                                                                _fileSystem,
+                                                                                                _metricsLogger,
+                                                                                                SystemRuntimeInformation.Instance,
+                                                                                                _profileManager);
 
             return runtimeToConfigPathMap;
         }

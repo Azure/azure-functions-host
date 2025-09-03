@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
-            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
+            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver, optionsMonitor);
             var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
-            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
+            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver, optionsMonitor);
             var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -169,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
-            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
+            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver, optionsMonitor);
             var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -210,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver, optionsMonitor);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -248,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DynamicWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, optionsMonitor);
 
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver, optionsMonitor);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);

@@ -17,16 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
     internal static class WorkerConfigurationHelper
     {
-        internal static RpcWorkerConfig AddProvider(string workerDir,
-                                                    string workersRootDirPath,
-                                                    ImmutableDictionary<string, string> languageWorkersSettings,
+        internal static RpcWorkerConfig AddProvider(WorkerConfigurationResolverOptions resolverOptions,
+                                                    string workerDir,
                                                     IMetricsLogger metricsLogger,
-                                                    string workerRuntime,
-                                                    string functionWorkerRuntimeSettingName,
-                                                    string functionsWorkerProcessCountSettingName,
-                                                    bool placeholderModeEnabled,
-                                                    bool multiLanguageWorkerEnvironment,
-                                                    int coreCount,
                                                     ILogger logger,
                                                     ISystemRuntimeInformation systemRuntimeInformation,
                                                     IWorkerProfileManager profileManager)
@@ -35,13 +28,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 try
                 {
+                    string workerRuntime = resolverOptions.WorkerRuntime;
                     // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
-                    if (!string.IsNullOrWhiteSpace(workerRuntime) && !placeholderModeEnabled && !multiLanguageWorkerEnvironment)
+                    if (!string.IsNullOrWhiteSpace(resolverOptions.WorkerRuntime) && !resolverOptions.IsPlaceholderModeEnabled && !resolverOptions.IsMultiLanguageWorkerEnvironment)
                     {
                         string workerName = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
                         // Do not skip non-worker directories like the function app payload directory
-                        if (!workerName.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(workersRootDirPath))
+                        if (!workerName.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(resolverOptions.WorkersRootDirPath))
                         {
                             return null;
                         }
@@ -59,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     var workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
 
-                    RpcWorkerDescription workerDescription = GetWorkerDescription(workerConfig, workerDir, profileManager, languageWorkersSettings, logger);
+                    RpcWorkerDescription workerDescription = GetWorkerDescription(workerConfig, workerDir, profileManager, resolverOptions.LanguageWorkersSettings, logger);
 
                     if (workerDescription.IsDisabled == true)
                     {
@@ -67,15 +61,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         return null;
                     }
 
-                    if (ShouldAddWorkerConfig(workerDescription.Language, placeholderModeEnabled, multiLanguageWorkerEnvironment, logger, workerRuntime))
+                    if (ShouldAddWorkerConfig(workerDescription.Language, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment, logger, workerRuntime))
                     {
-                        workerDescription.FormatWorkerPathIfNeeded(systemRuntimeInformation, workerRuntime, functionWorkerRuntimeSettingName, coreCount, logger);
+                        workerDescription.FormatWorkerPathIfNeeded(systemRuntimeInformation, workerRuntime, resolverOptions.FunctionWorkerRuntimeVersionSettingName, resolverOptions.EffectiveCoresCount, logger);
                         workerDescription.FormatWorkingDirectoryIfNeeded();
                         workerDescription.FormatArgumentsIfNeeded(logger);
                         workerDescription.ThrowIfFileNotExists(workerDescription.DefaultWorkerPath, nameof(workerDescription.DefaultWorkerPath));
                         workerDescription.ExpandEnvironmentVariables();
 
-                        WorkerProcessCountOptions workerProcessCount = GetWorkerProcessCount(workerConfig, functionsWorkerProcessCountSettingName, coreCount);
+                        WorkerProcessCountOptions workerProcessCount = GetWorkerProcessCount(workerConfig, resolverOptions.FunctionsWorkerProcessCountSettingName, resolverOptions.EffectiveCoresCount);
 
                         var arguments = new WorkerProcessArguments()
                         {
@@ -92,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                             CountOptions = workerProcessCount,
                         };
 
-                        ReadLanguageWorkerFile(arguments.WorkerPath, placeholderModeEnabled, logger, workerRuntime);
+                        ReadLanguageWorkerFile(arguments.WorkerPath, resolverOptions.IsPlaceholderModeEnabled, logger, workerRuntime);
 
                         logger.LogDebug("Added WorkerConfig for language: {language} with worker path: {path}", workerDescription.Language, workerDescription.DefaultWorkerPath);
 
