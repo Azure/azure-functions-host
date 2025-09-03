@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -15,6 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         /// <summary>
         /// Retrieves the worker configuration resolution information which includes the root directory path of workers and worker configuration paths.
         /// </summary>
-        WorkerConfigurationInfo GetConfigurationInfo();
+        Dictionary<string, RpcWorkerConfig> GetWorkerConfigs();
     }
 }

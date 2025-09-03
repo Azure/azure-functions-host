@@ -3,10 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -21,11 +21,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _profileManager;
         private readonly IFileSystem _fileSystem;
+        private readonly ISystemRuntimeInformation _systemRuntimeInformation;
 
         public DefaultWorkerConfigurationResolver(ILoggerFactory loggerFactory,
                                                     IMetricsLogger metricsLogger,
                                                     IFileSystem fileSystem,
                                                     IWorkerProfileManager workerProfileManager,
+                                                    ISystemRuntimeInformation systemRuntimeInformation,
                                                     IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
@@ -34,47 +36,37 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
+            _systemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
         }
 
-        public WorkerConfigurationInfo GetConfigurationInfo()
+        public Dictionary<string, RpcWorkerConfig> GetWorkerConfigs()
         {
-            var output = new Dictionary<string, RpcWorkerConfig>();
+            _logger.DefaultWorkersDirectoryPath(_workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath);
 
-            var config = ResolveWorkerConfigsFromWithinHost(_workerConfigurationResolverOptions.CurrentValue,
-                                                            output,
+            return ResolveWorkerConfigsFromWithinHost(_workerConfigurationResolverOptions.CurrentValue,
                                                             _logger,
                                                             _fileSystem,
                                                             _metricsLogger,
-                                                            SystemRuntimeInformation.Instance,
+                                                            _systemRuntimeInformation,
                                                             _profileManager);
-
-            return new WorkerConfigurationInfo(
-                WorkersRootDirPath: _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath,
-                WorkerConfigPaths: output,
-                LanguageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
-                CoreCount: _workerConfigurationResolverOptions.CurrentValue.EffectiveCoresCount,
-                FWRSetting: _workerConfigurationResolverOptions.CurrentValue.FunctionWorkerRuntimeVersionSettingName,
-                FunctionsWorkerProcessCountSettingName: _workerConfigurationResolverOptions.CurrentValue.FunctionsWorkerProcessCountSettingName,
-                WorkerRuntime: _workerConfigurationResolverOptions.CurrentValue.WorkerRuntime,
-                Placeholder: _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled,
-                Multilanfg: _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment);
         }
 
         internal static Dictionary<string, RpcWorkerConfig> ResolveWorkerConfigsFromWithinHost(WorkerConfigurationResolverOptions resolverOptions,
-                                                                                    Dictionary<string, RpcWorkerConfig> runtimeToConfigPathMap,
                                                                                     ILogger logger,
                                                                                     IFileSystem fileSystem,
                                                                                     IMetricsLogger metricsLogger,
                                                                                     ISystemRuntimeInformation systemRuntimeInformation,
-                                                                                    IWorkerProfileManager profileManager)
+                                                                                    IWorkerProfileManager profileManager,
+                                                                                    Dictionary<string, RpcWorkerConfig> runtimeToConfigMap = null)
         {
+            runtimeToConfigMap = runtimeToConfigMap ?? new Dictionary<string, RpcWorkerConfig>();
             var fallbackPath = resolverOptions.WorkersRootDirPath;
 
             foreach (var workerPath in fileSystem.Directory.EnumerateDirectories(fallbackPath))
             {
                 string workerDir = Path.GetFileName(workerPath);
 
-                if (runtimeToConfigPathMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(resolverOptions.WorkerRuntime, workerDir, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment))
+                if (runtimeToConfigMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(resolverOptions.WorkerRuntime, workerDir, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment))
                 {
                     continue;
                 }
@@ -89,16 +81,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                                                         systemRuntimeInformation,
                                                                         profileManager);
 
-                    runtimeToConfigPathMap[workerDir] = config;
+                    runtimeToConfigMap[workerDir] = config;
                 }
 
-                if (WorkerConfigurationHelper.FoundWorkerConfigPath(resolverOptions.WorkerRuntime, runtimeToConfigPathMap, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment))
+                if (WorkerConfigurationHelper.FoundWorkerConfigPath(resolverOptions.WorkerRuntime, runtimeToConfigMap, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment))
                 {
-                    return runtimeToConfigPathMap;
+                    return runtimeToConfigMap;
                 }
             }
 
-            return runtimeToConfigPathMap;
+            return runtimeToConfigMap;
         }
     }
 }

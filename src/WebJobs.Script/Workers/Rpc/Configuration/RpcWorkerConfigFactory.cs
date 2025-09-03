@@ -58,18 +58,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void BuildWorkerProviderDictionary()
         {
-            var workerConfigurationInfo = _workerConfigurationResolver.GetConfigurationInfo();
-
-            AddProviders(workerConfigurationInfo);
-            AddProvidersFromAppSettings(workerConfigurationInfo);
+            _workerDescriptionDictionary = _workerConfigurationResolver.GetWorkerConfigs();
+            AddProvidersFromAppSettings();
         }
 
-        internal void AddProviders(WorkerConfigurationInfo workerConfigurationInfo)
-        {
-            _workerDescriptionDictionary = workerConfigurationInfo.WorkerConfigPaths;
-        }
-
-        internal void AddProvidersFromAppSettings(WorkerConfigurationInfo workerConfigurationInfo)
+        internal void AddProvidersFromAppSettings()
         {
             var languagesSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}");
             foreach (var languageSection in languagesSection.GetChildren())
