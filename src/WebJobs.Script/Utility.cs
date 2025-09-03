@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Dynamic;
@@ -25,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -731,6 +733,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 return null;
             }
             return indexedFunctions.Where(m => functionDescriptors.Select(fd => fd.Metadata.Name).Contains(m.Name) == true);
+        }
+
+        internal static ImmutableArray<string> GetAllowedLogCategoryPrefixes(IEnvironment environment, IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptions)
+        {
+            if (hostingConfigOptions.CurrentValue is null)
+            {
+                return ScriptConstants.SystemLogCategoryPrefixes;
+            }
+
+            bool enableHostLogs = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs, environment) || !hostingConfigOptions.CurrentValue.RestrictHostLogs;
+
+            return enableHostLogs ? ScriptConstants.SystemLogCategoryPrefixes : ScriptConstants.RestrictedSystemLogCategoryPrefixes;
         }
 
         public static bool CheckAppOffline(string scriptPath)
