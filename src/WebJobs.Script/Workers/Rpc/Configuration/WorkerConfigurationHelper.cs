@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return null;
         }
 
-        internal static WorkerProcessCountOptions GetWorkerProcessCount(JsonElement workerConfig, string functionsWorkerProcessCountSettingName, int coreCount)
+        internal static WorkerProcessCountOptions GetWorkerProcessCount(JsonElement workerConfig, string functionsWorkerProcessCount, int coresCount)
         {
             WorkerProcessCountOptions workerProcessCount = null;
             var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
@@ -116,13 +116,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (workerProcessCount.SetProcessCountToNumberOfCpuCores)
             {
-                workerProcessCount.ProcessCount = coreCount;
+                workerProcessCount.ProcessCount = coresCount;
                 // set Max worker process count to Number of effective cores if MaxProcessCount is less than MinProcessCount
                 workerProcessCount.MaxProcessCount = workerProcessCount.ProcessCount > workerProcessCount.MaxProcessCount ? workerProcessCount.ProcessCount : workerProcessCount.MaxProcessCount;
             }
 
             // Env variable takes precedence over worker.config
-            string processCountEnvSetting = functionsWorkerProcessCountSettingName;
+            string processCountEnvSetting = functionsWorkerProcessCount;
             if (!string.IsNullOrEmpty(processCountEnvSetting))
             {
                 workerProcessCount.ProcessCount = int.Parse(processCountEnvSetting) > 1 ? int.Parse(processCountEnvSetting) : 1;
@@ -145,9 +145,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workerProcessCount;
         }
 
-        internal static bool ShouldAddWorkerConfig(string workerDescriptionLanguage, bool placeholderMode, bool multiLanguageWorkerEnvironment, ILogger logger, string workerRuntime)
+        internal static bool ShouldAddWorkerConfig(string workerDescriptionLanguage, bool placeholderModeEnabled, bool multiLanguageWorkerEnvironment, ILogger logger, string workerRuntime)
         {
-            if (placeholderMode)
+            if (placeholderModeEnabled)
             {
                 return true;
             }
@@ -174,9 +174,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return true;
         }
 
-        private static void ReadLanguageWorkerFile(string workerPath, bool placeHolderMode, ILogger logger, string workerRuntime)
+        private static void ReadLanguageWorkerFile(string workerPath, bool placeHolderModeEnabled, ILogger logger, string workerRuntime)
         {
-            if (!placeHolderMode
+            if (!placeHolderModeEnabled
                 || string.IsNullOrWhiteSpace(workerRuntime)
                 || !File.Exists(workerPath))
             {
@@ -318,12 +318,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, string> languageWorkersSettings)
         {
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultExecutablePath}", out string defaultExecutablePathSetting) && defaultExecutablePathSetting is not null)
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultExecutablePath}", out string defaultExecutablePathSetting) && !string.IsNullOrWhiteSpace(defaultExecutablePathSetting))
             {
                 workerDescription.DefaultExecutablePath = defaultExecutablePathSetting;
             }
 
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}", out string defaultRuntimeVersionAppSetting) && defaultRuntimeVersionAppSetting is not null)
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}", out string defaultRuntimeVersionAppSetting) && !string.IsNullOrWhiteSpace(defaultRuntimeVersionAppSetting))
             {
                 workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting;
             }
@@ -331,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, string> languageWorkersSettings)
         {
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionArguments}", out string argumentsValue) && argumentsValue is not null)
+            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionArguments}", out string argumentsValue) && !string.IsNullOrWhiteSpace(argumentsValue))
             {
                 ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsValue, @"\s+"));
             }

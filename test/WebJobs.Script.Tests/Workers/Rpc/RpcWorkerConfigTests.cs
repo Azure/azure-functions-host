@@ -590,7 +590,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
 
-            var ex = Assert.Throws<NotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, "python", null, _testEnvironment.GetEffectiveCoresCount(), testLogger));
+            var ex = Assert.Throws<NotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, "python", _testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName), _testEnvironment.GetEffectiveCoresCount(), testLogger));
             Assert.Equal(ex.Message, expectedExceptionMessage);
         }
 
