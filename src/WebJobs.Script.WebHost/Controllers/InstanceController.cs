@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return "Test";
         }
 
-        [HttpPost] 
+        [HttpPost]
         [Route("admin/instance/assign2")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public Task<IActionResult> Assign([FromBody] FunctionsWorkerContainerAssignmentContext assignmentContextParent)
