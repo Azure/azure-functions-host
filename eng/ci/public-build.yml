@@ -6,16 +6,14 @@ trigger:
     include:
     - dev
     - in-proc
-    - release/4.*
-    - release/in-proc
+    - release/*
 
 pr:
   branches:
     include:
     - dev
     - in-proc
-    - release/4.*
-    - release/in-proc
+    - release/*
 
 resources:
   repositories:
