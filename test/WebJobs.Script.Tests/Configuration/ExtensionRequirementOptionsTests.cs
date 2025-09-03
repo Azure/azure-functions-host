@@ -55,8 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         private static ExtensionRequirementOptions GetOptions(string fileName)
         {
-            string root = Path.GetDirectoryName(typeof(ExtensionRequirementOptionsTest).Assembly.Location);
-            string filePath = Path.Combine(root, "TestFixture", "ExtensionRequirementOptionsTest", fileName);
+            string root = Path.GetDirectoryName(typeof(ExtensionRequirementOptionsTests).Assembly.Location);
+            string filePath = Path.Combine(root, "TestFixture", "ExtensionRequirementOptionsTests", fileName);
             IConfiguration configuration = new ConfigurationBuilder()
                 .AddJsonFile(filePath, optional: true, reloadOnChange: false)
                 .Build();
