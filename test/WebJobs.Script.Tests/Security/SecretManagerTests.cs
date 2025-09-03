@@ -29,6 +29,7 @@ using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class SecretManagerTests
     {
         private const int TestSentinelWatcherInitializationDelayMS = 50;

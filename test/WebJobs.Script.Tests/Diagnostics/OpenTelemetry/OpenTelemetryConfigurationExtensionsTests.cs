@@ -25,6 +25,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class OpenTelemetryConfigurationExtensionsTests
     {
         private readonly string _loggingPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging");

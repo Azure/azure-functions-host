@@ -2,12 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Text;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,6 +14,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class DynamicFunctionAssemblyLoadContextTests
     {
         [Fact]

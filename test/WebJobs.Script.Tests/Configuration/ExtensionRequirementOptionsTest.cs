@@ -4,25 +4,19 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Abstractions;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.AppService.Proxy.Runtime.Configuration.Policies;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
-
-using WebJobs.Script.Tests;
 using Xunit;
-using static Microsoft.Azure.AppService.Proxy.Runtime.Trace;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class ExtensionRequirementOptionsTest
     {
         [Fact]

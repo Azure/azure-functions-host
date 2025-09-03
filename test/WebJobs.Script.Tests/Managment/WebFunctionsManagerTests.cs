@@ -26,8 +26,9 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
+namespace Microsoft.Azure.WebJobs.Script.Tests.Management
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class WebFunctionsManagerTests : IDisposable
     {
         private const string Function1MetadataJson = @"
@@ -174,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             _hostingConfigOptions.IsTestDataSuppressionEnabled = shouldSuppressTestData;
 
-            var functionMetadataResponse = new Management.Models.FunctionMetadataResponse
+            var functionMetadataResponse = new Microsoft.Azure.WebJobs.Script.Management.Models.FunctionMetadataResponse
             {
                 TestData = "foo",
                 Config = JObject.Parse(Function1MetadataJson)

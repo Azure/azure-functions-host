@@ -16,6 +16,7 @@ using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class DiagnosticListenerServiceTests
     {
         /// <summary>

@@ -14,6 +14,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class ApplicationInsightsConfigurationTests
     {
         [Fact]

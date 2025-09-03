@@ -4,13 +4,13 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Configuration;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class ActiveHostConfigurationSourceTests
     {
         private Mock<IScriptHostManager> _mockScriptHostManager;

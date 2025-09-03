@@ -20,6 +20,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class HttpRequestExtensionsTest
     {
         [Fact]

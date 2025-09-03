@@ -28,6 +28,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class ScriptStartupTypeDiscovererTests
     {
         [Fact]

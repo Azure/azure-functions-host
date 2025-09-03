@@ -32,6 +32,7 @@ using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Collection(DisableParallelizationCollection.Name)]
     public class DotNetFunctionInvokerTests : IDisposable
     {
         private IHost _host;
