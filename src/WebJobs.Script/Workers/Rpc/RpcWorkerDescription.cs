@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -184,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal void FormatWorkerPathIfNeeded(ISystemRuntimeInformation systemRuntimeInformation, string worker, string functionWorkerRuntimeSettingName, int coreCount, ILogger logger)
+        internal void FormatWorkerPathIfNeeded(ISystemRuntimeInformation systemRuntimeInformation, string workerRuntime, string functionWorkerRuntimeVersion, int effectiveCoresCount, ILogger logger)
         {
             if (string.IsNullOrEmpty(DefaultWorkerPath))
             {
@@ -193,8 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             OSPlatform os = systemRuntimeInformation.GetOSPlatform();
             Architecture architecture = systemRuntimeInformation.GetOSArchitecture();
-            string workerRuntime = worker;
-            string version = functionWorkerRuntimeSettingName;
+            string version = functionWorkerRuntimeVersion;
             logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName}: {version}");
 
             // Only over-write DefaultRuntimeVersion if workerRuntime matches language for the worker config

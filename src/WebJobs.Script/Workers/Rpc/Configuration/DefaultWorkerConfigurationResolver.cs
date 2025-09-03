@@ -59,10 +59,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                                                                     IWorkerProfileManager profileManager,
                                                                                     Dictionary<string, RpcWorkerConfig> runtimeToConfigMap = null)
         {
-            runtimeToConfigMap = runtimeToConfigMap ?? new Dictionary<string, RpcWorkerConfig>();
-            var fallbackPath = resolverOptions.WorkersRootDirPath;
+            runtimeToConfigMap = runtimeToConfigMap ?? [];
 
-            foreach (var workerPath in fileSystem.Directory.EnumerateDirectories(fallbackPath))
+            foreach (var workerPath in fileSystem.Directory.EnumerateDirectories(resolverOptions.WorkersRootDirPath))
             {
                 string workerDir = Path.GetFileName(workerPath);
 
@@ -74,19 +73,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 string workerConfigPath = Path.Combine(workerPath, RpcWorkerConstants.WorkerConfigFileName);
                 if (File.Exists(workerConfigPath))
                 {
-                    var config = WorkerConfigurationHelper.AddProvider(resolverOptions,
-                                                                        workerPath,
-                                                                        metricsLogger,
-                                                                        logger,
-                                                                        systemRuntimeInformation,
-                                                                        profileManager);
-
-                    runtimeToConfigMap[workerDir] = config;
+                    RpcWorkerConfig workerConfig = WorkerConfigurationHelper.AddProvider(resolverOptions, workerPath, metricsLogger, logger, systemRuntimeInformation, profileManager);
+                    runtimeToConfigMap[workerDir] = workerConfig;
                 }
 
                 if (WorkerConfigurationHelper.FoundWorkerConfigPath(resolverOptions.WorkerRuntime, runtimeToConfigMap, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment))
                 {
-                    return runtimeToConfigMap;
+                    break;
                 }
             }
 

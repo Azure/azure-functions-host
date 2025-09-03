@@ -63,13 +63,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     if (ShouldAddWorkerConfig(workerDescription.Language, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment, logger, workerRuntime))
                     {
-                        workerDescription.FormatWorkerPathIfNeeded(systemRuntimeInformation, workerRuntime, resolverOptions.FunctionWorkerRuntimeVersionSettingName, resolverOptions.EffectiveCoresCount, logger);
+                        workerDescription.FormatWorkerPathIfNeeded(systemRuntimeInformation, workerRuntime, resolverOptions.FunctionWorkerRuntimeVersion, resolverOptions.EffectiveCoresCount, logger);
                         workerDescription.FormatWorkingDirectoryIfNeeded();
                         workerDescription.FormatArgumentsIfNeeded(logger);
                         workerDescription.ThrowIfFileNotExists(workerDescription.DefaultWorkerPath, nameof(workerDescription.DefaultWorkerPath));
                         workerDescription.ExpandEnvironmentVariables();
 
-                        WorkerProcessCountOptions workerProcessCount = GetWorkerProcessCount(workerConfig, resolverOptions.FunctionsWorkerProcessCountSettingName, resolverOptions.EffectiveCoresCount);
+                        WorkerProcessCountOptions workerProcessCount = GetWorkerProcessCount(workerConfig, resolverOptions.FunctionsWorkerProcessCount, resolverOptions.EffectiveCoresCount);
 
                         var arguments = new WorkerProcessArguments()
                         {

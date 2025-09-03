@@ -57,17 +57,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // Search for worker configs in probing paths. Returns a dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
             // Sample runtimeToConfigPathMap: {"java": "path1", "node": "path2", "dotnet-isolated": "path3"} for multilanguage worker scenario
             // Path format: "<rootProbingPath>/<workerRuntimeDir>/<workerVersion>/". Path example: "c:\\home\\SiteExtensions\\functionsworkers\\java\\1.0.0"
-            var runtimeToConfigPathMap = ResolveWorkerConfigsFromProbingPaths(workerProbingPaths, workerRuntime);
+            var runtimeToConfigMap = ResolveWorkerConfigsFromProbingPaths(workerProbingPaths, workerRuntime);
 
-            if (WorkerConfigurationHelper.FoundWorkerConfigPath(workerRuntime, runtimeToConfigPathMap, _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled, _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment))
+            if (WorkerConfigurationHelper.FoundWorkerConfigPath(workerRuntime, runtimeToConfigMap, _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled, _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment))
             {
-                return runtimeToConfigPathMap;
+                return runtimeToConfigMap;
             }
 
             // Search in fallback path if worker cannot be found in probing paths
-            runtimeToConfigPathMap = ResolveWorkerConfigsFromWithinHost(workerRuntime, runtimeToConfigPathMap);
+            runtimeToConfigMap = ResolveWorkerConfigsFromWithinHost(workerRuntime, runtimeToConfigMap);
 
-            return runtimeToConfigPathMap;
+            return runtimeToConfigMap;
         }
 
         /// <summary>
@@ -116,10 +116,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                         // Search for worker config inside version directories within the language worker directory
                         // Example workerVersionPath: "<rootProbingPath>/java/1.0.0"
-                        var workerVersionPath = ResolveWorkerConfigFromVersionsDirs(workerRuntimePath, workerRuntimeDir);
-                        if (workerVersionPath is not null)
+                        var resolvedWorkerConfig = ResolveWorkerConfigFromVersionsDirs(workerRuntimePath, workerRuntimeDir);
+                        if (resolvedWorkerConfig is not null)
                         {
-                            runtimeToConfigPathMap[workerRuntimeDir] = workerVersionPath;
+                            runtimeToConfigPathMap[workerRuntimeDir] = resolvedWorkerConfig;
                         }
                     }
                 }
@@ -168,7 +168,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     if (!standardOrExtendedChannel)
                     {
                         break; // latest version is the default
-//                        return outputWorkerVersionPath; // latest version is the default
                     }
 
                     if (compatibleWorkerCount > 1)
