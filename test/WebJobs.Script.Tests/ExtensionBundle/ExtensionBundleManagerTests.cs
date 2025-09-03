@@ -381,24 +381,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
         [Theory]
         [InlineData("[3.*, 4.0.0)", "3.19.0", "3.19.0")]
-        [InlineData("[4.*, 5.0.0)", "4.2.0", "4.2.0")]
+        [InlineData("[4.*, 5.0.0)", "4.3.0", "4.3.0")]
+#if NET6_0
         [InlineData("[4.*, 5.0.0)", null, "4.3.0")]
-        [InlineData("[3.*, 4.0.0)", null, "3.20.0")]
+#elif NET8_0
+        [InlineData("[4.*, 5.0.0)", null, "4.23.0")]
+#endif
         public void LimitMaxVersion(string versionRange, string hostConfigVersion, string expectedVersion)
         {
             var range = VersionRange.Parse(versionRange);
             var hostingConfiguration = new FunctionsHostingConfigOptions();
             if (!string.IsNullOrEmpty(hostConfigVersion))
             {
-                if (range.MinVersion.Major == 3)
-                {
-                    hostingConfiguration.Features.Add(ScriptConstants.MaximumBundleV3Version, hostConfigVersion);
-                }
-
-                if (range.MinVersion.Major == 4)
-                {
-                    hostingConfiguration.Features.Add(ScriptConstants.MaximumBundleV4Version, hostConfigVersion);
-                }
+                int dotnetVersion = typeof(string).Assembly.GetName().Version.Major;
+                int bundleVersion = range.MinVersion.Major;
+                string hostingConfigVersionKey = $"Net{dotnetVersion}MaximumBundleV{bundleVersion}Version";
+                hostingConfiguration.Features.Add(hostingConfigVersionKey, hostConfigVersion);
             }
 
             var options = GetTestExtensionBundleOptions(BundleId, versionRange);
@@ -410,19 +408,74 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Theory]
+#if NET8_0
+        // No host-config max (full list available, no caps applied on .NET 8)
+        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.23.0")]
+        [InlineData("latest", "[4.*, 5.0.0)", null, "4.23.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.22.1")]
+        [InlineData("standard", "[4.*, 5.0.0)", null, "4.22.1")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.22.1")]
+        [InlineData("extended", "[4.*, 5.0.0)", null, "4.22.1")]
+
+        // Host-config max at 4.22.0 (caps selection to <= 4.22.0)
+        // Ordered (desc) after cap: 4.22.0, 4.3.0, 4.2.1, 4.2.0, 4.1.0, 4.0.2
+        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.22.0", "4.22.0")]
+        [InlineData("latest", "[4.*, 5.0.0)", "4.22.0", "4.22.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.22.0", "4.3.0")]
+        [InlineData("standard", "[4.*, 5.0.0)", "4.22.0", "4.3.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.22.0", "4.3.0")]
+        [InlineData("extended", "[4.*, 5.0.0)", "4.22.0", "4.3.0")]
+
+        // Host-config max at 4.2.1
+        // Ordered after cap: 4.2.1, 4.2.0, 4.1.0, 4.0.2
+        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.1", "4.2.1")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.1", "4.2.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.1", "4.2.0")]
+
+        // Host-config max at 4.2.0
+        // Ordered after cap: 4.2.0, 4.1.0, 4.0.2
         [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
-        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
-        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", "4.2.0")]
-        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.3.0", "4.2.0")]
-        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.3.0", "4.2.0")]
-        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
-        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.1.0", "4.1.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", "4.1.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", "4.1.0")]
+#elif NET6_0
+         // Existing scenarios (no host-config cap or cap at 4.3.0 -> top stays 4.3.0, standard/extended take 4.2.1)
+        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.3.0", "4.3.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.3.0", "4.2.1")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.3.0", "4.2.1")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.2.1")]
         [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.3.0")]
         [InlineData("latest", "[4.*, 5.0.0)", null, "4.3.0")]
-        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.2.0")]
-        [InlineData("standard", "[4.*, 5.0.0)", null, "4.2.0")]
-        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.2.0")]
-        [InlineData("extended", "[4.*, 5.0.0)", null, "4.2.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.2.1")]
+        [InlineData("standard", "[4.*, 5.0.0)", null, "4.2.1")]
+        [InlineData("extended", "[4.*, 5.0.0)", null, "4.2.1")]
+
+        // Additional scenarios for .NET 6 caps + various host-config maximums:
+
+        // Host-config max = 4.21.0 (after natural cap: allowed >4.2.0 && <4.22.0, then <=4.21.0)
+        // Ordered candidates: 4.21.0, 4.3.0(excluded), 4.2.1
+        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.21.0", "4.3.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.21.0", "4.2.1")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.21.0", "4.2.1")]
+        [InlineData("latest", "[4.*, 5.0.0)", "4.21.0", "4.3.0")]
+        [InlineData("standard", "[4.*, 5.0.0)", "4.21.0", "4.2.1")]
+        [InlineData("extended", "[4.*, 5.0.0)", "4.21.0", "4.2.1")]
+
+        // Host-config max = 4.2.1 (only one valid version after caps)
+        // Candidates: 4.2.1 (since >4.2.0 && <=4.2.1). Standard/Extended fall back to same (only one).
+        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.1", "4.2.1")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.1", "4.2.1")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.1", "4.2.1")]
+        [InlineData("standard", "[4.*, 5.0.0)", "4.2.1", "4.2.1")]
+        [InlineData("extended", "[4.*, 5.0.0)", "4.2.1", "4.2.1")]
+
+        // Host-config max = 4.2.0 (excluded by >4.2.0 natural min cap) -> no valid versions -> null result
+        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", null)]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", null)]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", "4.2.0", null)]
+        [InlineData("latest", "[4.*, 5.0.0)", "4.2.0", null)]
+        [InlineData("standard", "[4.*, 5.0.0)", "4.2.0", null)]
+        [InlineData("extended", "[4.*, 5.0.0)", "4.2.0", null)]
+#endif
         public void WhenPlatformReleaseChannelSet_ExpectedVersionChosen(string platformReleaseChannelName, string versionRange, string hostConfigMaxVersion, string expectedVersion)
         {
             var range = VersionRange.Parse(versionRange);
@@ -430,15 +483,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             if (!string.IsNullOrEmpty(hostConfigMaxVersion))
             {
-                if (range.MinVersion.Major == 3)
-                {
-                    hostingConfiguration.Features.Add(ScriptConstants.MaximumBundleV3Version, hostConfigMaxVersion);
-                }
-
-                if (range.MinVersion.Major == 4)
-                {
-                    hostingConfiguration.Features.Add(ScriptConstants.MaximumBundleV4Version, hostConfigMaxVersion);
-                }
+                int dotnetVersion = typeof(string).Assembly.GetName().Version.Major;
+                int bundleVersion = range.MinVersion.Major;
+                string hostingConfigVersionKey = $"Net{dotnetVersion}MaximumBundleV{bundleVersion}Version";
+                hostingConfiguration.Features.Add(hostingConfigVersionKey, hostConfigMaxVersion);
             }
 
             var options = GetTestExtensionBundleOptions(BundleId, versionRange);
@@ -450,6 +498,121 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var resolvedVersion = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, hostingConfiguration);
 
             Assert.Equal(expectedVersion, resolvedVersion);
+        }
+
+        private static readonly IList<string> V3Versions = new List<string>
+        {
+            "3.19.0",
+            "3.19.2",
+            "3.20.0"
+        };
+
+        [Fact]
+        public void FindBestVersionMatch_V3_LatestChannel_NoHostConfig_ChoosesHighest()
+        {
+            var versionRange = VersionRange.Parse("[3.*, 4.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange.OriginalString);
+            var env = GetTestAppServiceEnvironment(ScriptConstants.LatestPlatformChannelNameUpper);
+            var manager = GetExtensionBundleManager(options, env);
+
+            var resolved = manager.FindBestVersionMatch(versionRange, V3Versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Equal("3.20.0", resolved);
+        }
+
+        [Theory]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "3.19.2")]  // STANDARD uppercase
+        [InlineData("standard", "3.19.2")]                                        // lowercase
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "3.19.2")]  // EXTENDED uppercase
+        [InlineData("extended", "3.19.2")]                                        // lowercase
+        public void FindBestVersionMatch_V3_StandardOrExtended_NoHostConfig_ChoosesPrevious(string channel, string expected)
+        {
+            var versionRange = VersionRange.Parse("[3.*, 4.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange.OriginalString);
+            var env = GetTestAppServiceEnvironment(channel);
+            var manager = GetExtensionBundleManager(options, env);
+
+            var resolved = manager.FindBestVersionMatch(versionRange, V3Versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Equal(expected, resolved);
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_V3_HostConfigMax_CapsLatestAndStandardDiffers()
+        {
+            // Host-config max = 3.19.2, so candidates after cap: 3.19.2, 3.19.0
+            var versionRange = VersionRange.Parse("[3.*, 4.0.0)");
+            var hostConfig = new FunctionsHostingConfigOptions();
+            int dotnetVersion = typeof(string).Assembly.GetName().Version.Major;
+            hostConfig.Features.Add($"Net{dotnetVersion}MaximumBundleV3Version", "3.19.2");
+
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange.OriginalString);
+
+            // Latest channel
+            var latestEnv = GetTestAppServiceEnvironment(ScriptConstants.LatestPlatformChannelNameUpper);
+            var manager = GetExtensionBundleManager(options, latestEnv);
+            var resolvedLatest = manager.FindBestVersionMatch(versionRange, V3Versions, ScriptConstants.DefaultExtensionBundleId, hostConfig);
+            Assert.Equal("3.19.2", resolvedLatest);
+
+            // Standard channel picks previous (3.19.0)
+            var stdEnv = GetTestAppServiceEnvironment(ScriptConstants.StandardPlatformChannelNameUpper);
+            manager = GetExtensionBundleManager(options, stdEnv);
+            var resolvedStd = manager.FindBestVersionMatch(versionRange, V3Versions, ScriptConstants.DefaultExtensionBundleId, hostConfig);
+            Assert.Equal("3.19.0", resolvedStd);
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_V3_HostConfigMax_RemovesAllButOne_StandardFallsBackToSame()
+        {
+            // Host-config max = 3.19.0 leaves only one candidate.
+            var versionRange = VersionRange.Parse("[3.*, 4.0.0)");
+            var hostConfig = new FunctionsHostingConfigOptions();
+            int dotnetVersion = typeof(string).Assembly.GetName().Version.Major;
+            hostConfig.Features.Add($"Net{dotnetVersion}MaximumBundleV3Version", "3.19.0");
+
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange.OriginalString);
+
+            var stdEnv = GetTestAppServiceEnvironment(ScriptConstants.StandardPlatformChannelNameUpper);
+            var extEnv = GetTestAppServiceEnvironment(ScriptConstants.ExtendedPlatformChannelNameUpper);
+            var latestEnv = GetTestAppServiceEnvironment(ScriptConstants.LatestPlatformChannelNameUpper);
+
+            var manager = GetExtensionBundleManager(options, latestEnv);
+            Assert.Equal("3.19.0", manager.FindBestVersionMatch(versionRange, V3Versions, ScriptConstants.DefaultExtensionBundleId, hostConfig));
+
+            manager = GetExtensionBundleManager(options, stdEnv);
+            Assert.Equal("3.19.0", manager.FindBestVersionMatch(versionRange, V3Versions, ScriptConstants.DefaultExtensionBundleId, hostConfig));
+
+            manager = GetExtensionBundleManager(options, extEnv);
+            Assert.Equal("3.19.0", manager.FindBestVersionMatch(versionRange, V3Versions, ScriptConstants.DefaultExtensionBundleId, hostConfig));
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_V3_UnknownChannel_DefaultsToLatest()
+        {
+            var versionRange = VersionRange.Parse("[3.*, 4.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange.OriginalString);
+            var env = GetTestAppServiceEnvironment("unrecognized-channel");
+            var manager = GetExtensionBundleManager(options, env);
+
+            var resolved = manager.FindBestVersionMatch(versionRange, V3Versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Equal("3.20.0", resolved);
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_V3_IgnoresV4VersionsOutsideRange()
+        {
+            // Include some v4 versions; they must be ignored due to the version range upper bound.
+            var mixedVersions = new List<string>(V3Versions.Concat(new[] { "4.0.2", "4.1.0", "4.3.0" }));
+            var versionRange = VersionRange.Parse("[3.*, 4.0.0)");
+            var options = GetTestExtensionBundleOptions(BundleId, versionRange.OriginalString);
+            var env = GetTestAppServiceEnvironment(ScriptConstants.LatestPlatformChannelNameUpper);
+            var manager = GetExtensionBundleManager(options, env);
+
+            var resolved = manager.FindBestVersionMatch(versionRange, mixedVersions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            // Highest 3.x version remains selected; 4.x are out of range.
+            Assert.Equal("3.20.0", resolved);
         }
 
         [Theory]
@@ -477,6 +640,132 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             Assert.Equal(expected, resolvedVersion);
             mockLogger.Verify();
+        }
+
+#if NET8_0
+        [Fact]
+        public void FindBestVersionMatch_V4Range_NoMinCap_Allows_4_2_0()
+        {
+            // On .NET 8 the min/max cap logic for v4 bundles is NOT applied (only applies to .NET 6).
+            // Therefore 4.2.0 should be a valid selectable version.
+            var range = VersionRange.Parse("[4.0.0, 5.0.0)");
+            var versions = new List<string> { "4.1.0", "4.2.0" };  // 4.2.0 should be chosen (highest)
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*,5.0.0)");
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+
+            var resolved = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Equal("4.2.0", resolved);
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_V4Range_NoMaxCap_Allows_4_22_0()
+        {
+            // On .NET 8 the artificial exclusive max cap (< 4.22.0) is not enforced.
+            // If 4.22.0 is present and within the caller's range it must be selected as latest.
+            var range = VersionRange.Parse("[4.0.0, 5.0.0)");
+            var versions = new List<string> { "4.20.0", "4.21.5", "4.22.0" }; // 4.22.0 should be chosen
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*,5.0.0)");
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+
+            var resolved = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Equal("4.22.0", resolved);
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_V4Range_NoCaps_MixedSet_PicksHighest()
+        {
+            // Ensure normal highest-version selection still works with a broader mixed set including values
+            // that would have been excluded on .NET 6 (4.2.0) and a high version (4.22.0).
+            var range = VersionRange.Parse("[4.0.0, 5.0.0)");
+            var versions = new List<string> { "4.2.0", "4.3.0", "4.10.0", "4.22.0", "4.21.9" };
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*,5.0.0)");
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+
+            var resolved = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Equal("4.22.0", resolved);
+        }
+#endif
+
+#if NET6_0
+        [Fact]
+        public void FindBestVersionMatch_V4Range_MinCapApplied_ExcludesCappedMin()
+        {
+            var range = VersionRange.Parse("[4.0.0, 5.0.0)");
+            var versions = new List<string> { "4.1.0", "4.2.0", "4.3.0" };
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*,5.0.0)");
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+
+            var resolved = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            // 4.2.0 must be excluded (exclusive cap), so 4.3.0 chosen.
+            Assert.Equal("4.3.0", resolved);
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_V4Range_MaxCapApplied_ExcludesCappedMax()
+        {
+            var range = VersionRange.Parse("[4.0.0, 5.0.0)");
+            var versions = new List<string> { "4.22.0", "4.21.5", "4.21.4" };
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*,5.0.0)");
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+
+            var resolved = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            // 4.22.0 excluded (exclusive max cap), expect 4.21.5
+            Assert.Equal("4.21.5", resolved);
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_V4Range_HostConfigMaxOverrides()
+        {
+            var range = VersionRange.Parse("[4.0.0, 5.0.0)");
+            var versions = new List<string> { "4.21.1", "4.21.0", "4.20.9" };
+
+            var hostingConfig = new FunctionsHostingConfigOptions();
+            int dotnetVersion = typeof(string).Assembly.GetName().Version.Major;
+            string key = $"Net{dotnetVersion}MaximumBundleV4Version";
+            hostingConfig.Features.Add(key, "4.21.0");
+
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*,5.0.0)");
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+
+            var resolved = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, hostingConfig);
+
+            // Host config caps at 4.21.0 inclusive, so 4.21.0 selected (not 4.21.1)
+            Assert.Equal("4.21.0", resolved);
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_V4Range_AllFiltered_ReturnsNull()
+        {
+            var range = VersionRange.Parse("[4.0.0, 5.0.0)");
+            var versions = new List<string> { "4.2.0" }; // Min cap makes 4.2.0 exclusive, so nothing remains.
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*,5.0.0)");
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+
+            var resolved = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Null(resolved);
+        }
+#endif
+
+        [Fact]
+        public void FindBestVersionMatch_NonDefaultBundle_NoCappingApplied()
+        {
+            var customBundleId = "Custom.Bundle";
+            var range = VersionRange.Parse("[4.0.0, 5.0.0)");
+            var versions = new List<string> { "4.1.0", "4.2.0", "4.3.0" };
+
+            var options = GetTestExtensionBundleOptions(customBundleId, "[4.*,5.0.0)");
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+
+            var resolved = manager.FindBestVersionMatch(range, versions, customBundleId, new FunctionsHostingConfigOptions());
+
+            // No capping for non-default bundle; latest (4.3.0) returned.
+            Assert.Equal("4.3.0", resolved);
         }
 
         [Fact]
@@ -573,7 +862,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         private IList<string> GetLargeVersionsList()
         {
             return new List<string>()
-            { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0" };
+            { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "4.2.1", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0",  "4.22.0", "4.22.1", "4.23.0" };
         }
 
         private Mock<ILogger> GetVerifiableMockLogger(string stringToVerify, LogLevel logLevel)

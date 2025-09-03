@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -252,13 +253,28 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         internal string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions, string bundleId, FunctionsHostingConfigOptions configOption)
         {
+            int dotnetVersion = typeof(string).Assembly.GetName().Version.Major;
+
+            // Cap the version range for v4.x bundles on .NET 6 to be between 4.2.0 and 4.22.0
+            // Return original version range if not .NET 6 or not v4.x bundle
+            var cappedVersionRange = GetCappedVersion(dotnetVersion, versionRange, bundleId);
+
+            // Check if there is a max version configured in hosting config for the current dotnet version and bundle major version
+            var maxBundleVersion = GetMaxCappedBundleVersionFromHostingConfig(bundleId, versionRange.MinVersion.Major, dotnetVersion, configOption);
+
+            if (maxBundleVersion != null)
+            {
+                // If there is a max version configured in hosting config, use that to cap the version range
+                cappedVersionRange = new VersionRange(cappedVersionRange.MinVersion, cappedVersionRange.IsMinInclusive, maxBundleVersion, true);
+            }
+
             var bundleVersions = versions.Select(p =>
             {
                 var dirName = Path.GetFileName(p);
                 NuGetVersion.TryParse(dirName, out NuGetVersion version);
                 if (version != null)
                 {
-                    version = versionRange.Satisfies(version) ? version : null;
+                    version = cappedVersionRange.Satisfies(version) ? version : null;
                 }
                 return version;
             }).Where(v => v != null).OrderByDescending(version => version.Version).ToList();
@@ -270,27 +286,42 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 return matchingVersion?.ToString();
             }
 
-            // Check to see if there is a max bundle version set via hosting configuration, if yes then use that instead of the one
-            // available on VM or local machine. Only use MaximumBundleV3Version or MaximumBundleV4Version if the version configured
-            // by the customer resolved to version higher than the version set via hosting config.
-            if (!string.IsNullOrEmpty(configOption.MaximumBundleV3Version)
-                && matchingVersion?.Major == ScriptConstants.ExtensionBundleV3MajorVersion)
-            {
-                var maximumBundleV3Version = NuGetVersion.Parse(configOption.MaximumBundleV3Version);
-                matchingVersion = matchingVersion > maximumBundleV3Version ? maximumBundleV3Version : matchingVersion;
-                return matchingVersion?.ToString();
-            }
-
-            if (!string.IsNullOrEmpty(configOption.MaximumBundleV4Version)
-                && matchingVersion?.Major == ScriptConstants.ExtensionBundleV4MajorVersion)
-            {
-                var maximumBundleV4Version = NuGetVersion.Parse(configOption.MaximumBundleV4Version);
-                matchingVersion = matchingVersion > maximumBundleV4Version
-                                ? maximumBundleV4Version
-                                : matchingVersion;
-            }
-
             return matchingVersion?.ToString();
+        }
+
+        // Limit the bundle version range so that it is higher than 4.2.0 and lower than 4.22.0
+        private VersionRange GetCappedVersion(int dotnetVersion, VersionRange versionRange, string bundleId)
+        {
+            if (dotnetVersion == ScriptConstants.DotNetVersionSix
+                    && bundleId == ScriptConstants.DefaultExtensionBundleId
+                    && versionRange.MinVersion.Major == ScriptConstants.ExtensionBundleV4MajorVersion)
+            {
+                NuGetVersion cappedMinversion = new(ScriptConstants.CappedMinimumBundleV4VersionExclusive);
+                NuGetVersion cappedMaxVersion = new(ScriptConstants.CappedMaximumBundleV4VersionExclusive);
+
+                var minversion = versionRange.MinVersion < cappedMinversion ? cappedMinversion : versionRange.MinVersion;
+                var maxversion = versionRange.MaxVersion > cappedMaxVersion ? cappedMaxVersion : versionRange.MaxVersion;
+
+                // Use the original inclusion values if it is within the min or max cap range.
+                bool isMinInclusive = versionRange.MinVersion > cappedMinversion && versionRange.IsMinInclusive;
+                bool isMaxInclusive = versionRange.MaxVersion < cappedMaxVersion && versionRange.IsMaxInclusive;
+
+                versionRange = new VersionRange(minversion, isMinInclusive, maxversion, isMaxInclusive);
+            }
+            return versionRange;
+        }
+
+        private NuGetVersion GetMaxCappedBundleVersionFromHostingConfig(string bundleId, int bundleVersion, int dotnetVersion, FunctionsHostingConfigOptions configOption)
+        {
+            string hostingConfig = $"Net{dotnetVersion}MaximumBundleV{bundleVersion}Version";
+            string hostingConfigValue = configOption.GetFeature(hostingConfig);
+            if (bundleId == ScriptConstants.DefaultExtensionBundleId
+                && !string.IsNullOrEmpty(hostingConfigValue)
+                && NuGetVersion.TryParse(hostingConfigValue, out NuGetVersion maxVersion))
+            {
+                return maxVersion;
+            }
+            return null;
         }
 
         private NuGetVersion ResolvePlatformReleaseChannelVersion(IList<NuGetVersion> orderedByDescBundles) => _platformReleaseChannel.ToUpper() switch
