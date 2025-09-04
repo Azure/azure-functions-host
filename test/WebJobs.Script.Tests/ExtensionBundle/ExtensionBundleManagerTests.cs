@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
     {
         private const string BundleId = "Microsoft.Azure.Functions.ExtensionBundle";
         private string _downloadPath;
+        private static readonly IList<string> V3Versions = new List<string> { "3.19.0", "3.19.2", "3.20.0" };
 
         public ExtensionBundleManagerTests()
         {
@@ -500,13 +501,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             Assert.Equal(expectedVersion, resolvedVersion);
         }
 
-        private static readonly IList<string> V3Versions = new List<string>
-        {
-            "3.19.0",
-            "3.19.2",
-            "3.20.0"
-        };
-
         [Fact]
         public void FindBestVersionMatch_V3_LatestChannel_NoHostConfig_ChoosesHighest()
         {
@@ -521,10 +515,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Theory]
-        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "3.19.2")]  // STANDARD uppercase
-        [InlineData("standard", "3.19.2")]                                        // lowercase
-        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "3.19.2")]  // EXTENDED uppercase
-        [InlineData("extended", "3.19.2")]                                        // lowercase
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "3.19.2")]
+        [InlineData("standard", "3.19.2")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "3.19.2")]
+        [InlineData("extended", "3.19.2")]
         public void FindBestVersionMatch_V3_StandardOrExtended_NoHostConfig_ChoosesPrevious(string channel, string expected)
         {
             var versionRange = VersionRange.Parse("[3.*, 4.0.0)");
