@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             JsonElement workerConfig,
             string workerDir,
             IWorkerProfileManager profileManager,
-            ImmutableDictionary<string, string> languageWorkersSettings,
+            ImmutableDictionary<string, RpcWorkerDescription> languageWorkersSettings,
             ILogger logger)
         {
             var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
@@ -115,24 +115,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return descriptionProfiles;
         }
 
-        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, string> languageWorkersSettings)
+        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> languageWorkersSettings)
         {
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultExecutablePath}", out string defaultExecutablePathSetting) && defaultExecutablePathSetting is not null)
+            if (languageWorkersSettings.TryGetValue(workerDescription.Language, out var rpcWorkerDescription))
             {
-                workerDescription.DefaultExecutablePath = defaultExecutablePathSetting;
-            }
-
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}", out string defaultRuntimeVersionAppSetting) && defaultRuntimeVersionAppSetting is not null)
-            {
-                workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting;
+                workerDescription.DefaultExecutablePath = rpcWorkerDescription.DefaultExecutablePath ?? workerDescription.DefaultExecutablePath;
+                workerDescription.DefaultRuntimeVersion = rpcWorkerDescription.DefaultRuntimeVersion ?? workerDescription.DefaultRuntimeVersion;
             }
         }
 
-        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, string> languageWorkersSettings)
+        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> languageWorkersSettings)
         {
-            if (languageWorkersSettings.TryGetValue($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}:{WorkerConstants.WorkerDescriptionArguments}", out string argumentsValue) && argumentsValue is not null)
+            if (languageWorkersSettings.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription.Arguments is string[] args && args.Length > 0)
             {
-                ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsValue, @"\s+"));
+                ((List<string>)workerDescription.Arguments).AddRange(args);
             }
         }
     }

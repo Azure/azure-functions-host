@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -193,19 +194,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Converts language workers related configuration sections to a dictionary.
         /// </summary>
-        internal static ImmutableDictionary<string, string> GetLanguageWorkersSettings(IConfiguration configuration)
+        internal static ImmutableDictionary<string, RpcWorkerDescription> GetLanguageWorkersSettings(IConfiguration configuration)
         {
-            var languageWorkersSettings = new Dictionary<string, string>();
+            var workerDescriptionsMap = new Dictionary<string, RpcWorkerDescription>();
+            var langaugeWorkersSection = configuration.GetSection(RpcWorkerConstants.LanguageWorkersSectionName);
+            langaugeWorkersSection.Bind(workerDescriptionsMap);
 
-            foreach (var kvp in configuration.AsEnumerable())
+            // special handling for Arguments which takes a string but internally requires a List<string>.
+            foreach (var (language, workerDescription) in workerDescriptionsMap)
             {
-                if (kvp.Key.StartsWith(RpcWorkerConstants.LanguageWorkersSectionName))
+                string arguments = langaugeWorkersSection.GetSection(language).GetValue<string>(WorkerConstants.WorkerDescriptionArguments);
+                if (!string.IsNullOrEmpty(arguments))
                 {
-                    languageWorkersSettings[kvp.Key] = kvp.Value;
+                    workerDescription.Arguments = Regex.Split(arguments, @"\s+");
+                    workerDescriptionsMap[language] = workerDescription;
                 }
             }
 
-            return languageWorkersSettings.ToImmutableDictionary();
+            return workerDescriptionsMap.ToImmutableDictionary();
         }
 
         /// <summary>
