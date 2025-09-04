@@ -240,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to publish status to {publishPath}");
+                _logger.LogDebug(ex, $"Failed to publish status to {publishPath}");
             }
         }
 
