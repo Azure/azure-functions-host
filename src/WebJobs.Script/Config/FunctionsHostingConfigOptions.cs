@@ -164,28 +164,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets the highest version of extension bundle v3 supported.
-        /// </summary>
-        internal string MaximumBundleV3Version
-        {
-            get
-            {
-                return GetFeature(ScriptConstants.MaximumBundleV3Version);
-            }
-        }
-
-        /// <summary>
-        /// Gets the highest version of extension bundle v4 supported.
-        /// </summary>
-        internal string MaximumBundleV4Version
-        {
-            get
-            {
-                return GetFeature(ScriptConstants.MaximumBundleV4Version);
-            }
-        }
-
-        /// <summary>
         /// Gets a value indicating whether the host should revert the worker shutdown behavior in the WebHostWorkerChannelManager.
         /// </summary>
         internal bool RevertWorkerShutdownBehavior
