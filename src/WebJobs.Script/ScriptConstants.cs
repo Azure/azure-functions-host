@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Immutable;
-using System.Text.Json;
 using NuGet.Versioning;
 
 namespace Microsoft.Azure.WebJobs.Script
