@@ -77,8 +77,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                                                                 _logger,
                                                                                 _systemRuntimeInformation,
                                                                                 _profileManager);
-
-                    _workerDescriptionDictionary[languageSection.Key] = rpcWorkerConfig;
+                    if (rpcWorkerConfig is not null)
+                    {
+                        _workerDescriptionDictionary[languageSection.Key] = rpcWorkerConfig;
+                    }
                 }
             }
         }

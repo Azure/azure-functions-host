@@ -687,8 +687,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var testMetricLogger = new TestMetricsLogger();
                 var testScriptHostManager = new Mock<IScriptHostManager>();
                 var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+
+                var loggerFactoryMock = new Mock<ILoggerFactory>();
+                loggerFactoryMock
+                    .Setup(f => f.CreateLogger(It.IsAny<string>()))
+                    .Returns(testLogger);
+
                 var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-                var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
+                var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactoryMock.Object, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
 
                 var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver, optionsMonitor);
 

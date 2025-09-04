@@ -230,6 +230,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Windows");
+            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
+            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, _testEnvironment);
 
             using var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables);
 
@@ -238,12 +241,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             loggerFactory.AddProvider(loggerProvider);
             var testLogger = loggerFactory.CreateLogger("test");
             var testMetricLogger = new TestMetricsLogger();
-            var testProfileManager = new Mock<IWorkerProfileManager>();
 
             var testScriptHostManager = new Mock<IScriptHostManager>();
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
 
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
+            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
 
             var workerConfigs = configFactory.GetConfigs();
