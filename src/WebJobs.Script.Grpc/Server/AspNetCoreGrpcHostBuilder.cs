@@ -24,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 webBuilder.UseKestrel(options =>
                 {
+                    // No limit. This server is exclusively between host and worker. All clients are trusted.
+                    options.Limits.MaxRequestBodySize = null;
                     options.Listen(IPAddress.Parse(WorkerConstants.HostName), port, listenOptions =>
                     {
                         listenOptions.Protocols = HttpProtocols.Http2;
