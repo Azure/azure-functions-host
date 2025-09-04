@@ -36,19 +36,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/instance/info2")]
         public string Info()
         {
-            return "Test";
+            return "Test1";
         }
 
         [HttpGet]
         [Route("info2")]
         public string Info2()
         {
-            return "Test";
+            return "Test2";
         }
 
         [HttpPost]
         [Route("admin/instance/assign2")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        //[Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public Task<IActionResult> Assign([FromBody] FunctionsWorkerContainerAssignmentContext assignmentContextParent)
         {
             if (assignmentContextParent?.AssignmentContext == null || assignmentContextParent.AssignmentContext == null)
