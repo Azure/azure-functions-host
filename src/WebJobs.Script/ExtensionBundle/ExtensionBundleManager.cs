@@ -7,7 +7,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -284,9 +283,9 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         // Applies bundle version limits for .NET 6, using the default bundle if referencing a v4 major bundle version.
         private VersionRange GetAdjustedVersion(int dotnetVersion, VersionRange versionRange, string bundleId)
         {
-            if (!string.Equals(dotnetVersion, 6)
-                    || bundleId != ScriptConstants.DefaultExtensionBundleId
-                    || versionRange.MinVersion.Major != ScriptConstants.ExtensionBundleV4MajorVersion)
+            if (dotnetVersion != 6
+                || !string.Equals(bundleId, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
+                || versionRange.MinVersion.Major != ScriptConstants.ExtensionBundleV4MajorVersion)
             {
                 return versionRange;
             }
@@ -311,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             string hostingConfig = $"Net{dotnetVersion}MaximumBundleV{bundleVersion}Version";
             string hostingConfigValue = configOption.GetFeature(hostingConfig);
 
-            return bundleId == ScriptConstants.DefaultExtensionBundleId
+            return string.Equals(bundleId, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrEmpty(hostingConfigValue)
                 && NuGetVersion.TryParse(hostingConfigValue, out maxVersion);
         }
