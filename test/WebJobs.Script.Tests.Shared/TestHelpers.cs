@@ -32,6 +32,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public static partial class TestHelpers
     {
+#if DEBUG
+        public const string BuildConfig = "debug";
+#else
+        public const string BuildConfig = "release";
+#endif
+
         private const string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         private static readonly Random Random = new Random();
 

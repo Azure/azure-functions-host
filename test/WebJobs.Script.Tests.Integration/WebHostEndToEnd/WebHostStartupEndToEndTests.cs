@@ -59,7 +59,7 @@ public class WebHostStartupEndToEndTests
         private readonly Action _scriptHostBuildInterceptor;
 
         public WebHostStartupEndToEndTestFixture(Action scriptHostBuildInterceptor = null)
-            : base(@"..\..\DotNetIsolated60\debug", "WebHostStartupEndToEndTests", "dotnet-isolated")
+            : base(@$"..\..\DotNetIsolated60\{TestHelpers.BuildConfig}", "WebHostStartupEndToEndTests", "dotnet-isolated")
         {
             _scriptHostBuildInterceptor = scriptHostBuildInterceptor;
         }
