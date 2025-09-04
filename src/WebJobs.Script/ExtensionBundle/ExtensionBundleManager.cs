@@ -290,7 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 return versionRange;
             }
 
-            var effectiveMinVersion = new NuGetVersion(ScriptConstants.Net6MinimunV4BundleVersion);
+            var effectiveMinVersion = new NuGetVersion(ScriptConstants.Net6MinimumV4BundleVersion);
             var effectiveMaxVersion = new NuGetVersion(ScriptConstants.Net6MaximumV4BundleVersion);
 
             var minVersion = versionRange.MinVersion < effectiveMinVersion ? effectiveMinVersion : versionRange.MinVersion;
