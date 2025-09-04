@@ -4,11 +4,11 @@ jobs:
 
   pool:
     name: 1es-pool-azfunc
-    image: 1es-windows-2022 
+    image: 1es-windows-2022
     os: windows
 
   variables:
-    IntegrationProject: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
+    test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -32,12 +32,6 @@ jobs:
     inputs:
       targetType: inline
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
-
-  - task: DotNetCoreCLI@2
-    displayName: Build Integration.csproj
-    inputs:
-      command: build
-      projects: $(IntegrationProject)
 
   - task: AzurePowerShell@5
     displayName: Checkout secrets
@@ -73,12 +67,27 @@ jobs:
     displayName: 'Login to Azure'
 
   - task: DotNetCoreCLI@2
+    displayName: Restore
+    inputs:
+      command: custom
+      custom: restore
+      arguments: -v m
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
+    displayName: Build
+    inputs:
+      command: build
+      arguments: -v m -c release --no-restore
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
     displayName: Non-E2E integration tests
     inputs:
       command: test
       testRunTitle: Non-E2E integration tests
-      arguments: '--filter "Category!=E2E"'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Category!=E2E" -c release --no-build'
+      projects: $(test_projects)
     env:
       AzureWebJobsStorage: $(Storage)
       AzureWebJobsSecondaryStorage: $(SecondaryStorage)
@@ -89,6 +98,7 @@ jobs:
       AzureWebJobsSecretStorageKeyVaultTenantId: $(AzureTenantId)
       AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
       AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
+      AzureWebJobsEventHubPath: testhub
 
   - task: AzurePowerShell@5
     condition: always()
