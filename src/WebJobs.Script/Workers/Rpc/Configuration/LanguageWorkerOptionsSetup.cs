@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver, _workerConfigurationResolverOptions);
+            var configFactory = new RpcWorkerConfigFactory(_logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver, _workerConfigurationResolverOptions);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }

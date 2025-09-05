@@ -145,6 +145,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void ReadWorkerProviderFromConfig_AddProvidersFromAppSettings()
+        {
+            var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, []) };
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
+            string path = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\node\\3.10.1");
+            Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
+            {
+                [$"{RpcWorkerConstants.LanguageWorkersSectionName}:node:{WorkerConstants.WorkerDirectorySectionName}"] = path
+            };
+            var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger("node"), testMetricsLogger, "node", keyValuePairs);
+            AreRequiredMetricsEmitted(testMetricsLogger);
+            Assert.Equal(workerConfigs.Count(), 2);
+            RpcWorkerConfig workerConfig = workerConfigs.Where(p => p.Description.Language == "node").First();
+            Assert.Equal(Path.Combine(path, "worker.config.json"), workerConfig.Description.DefaultWorkerPath);
+        }
+
+        [Fact]
         public void ReadWorkerProviderFromConfig_InvalidConfigFile()
         {
             var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, new string[0], true) };
@@ -696,7 +714,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
                 var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactoryMock.Object, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
 
-                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver, optionsMonitor);
+                var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver, optionsMonitor);
 
                 if (appSvcEnv)
                 {

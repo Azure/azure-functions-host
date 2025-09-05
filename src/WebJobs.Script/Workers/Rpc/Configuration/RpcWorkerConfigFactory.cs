@@ -16,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     // Gets fully configured WorkerConfigs from IWorkerProviders
     internal class RpcWorkerConfigFactory
     {
-        private readonly IConfiguration _config;
         private readonly ILogger _logger;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
         private readonly IWorkerProfileManager _profileManager;
@@ -27,8 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _workerConfigurationResolverOptions;
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
-        public RpcWorkerConfigFactory(IConfiguration config,
-                                        ILogger logger,
+        public RpcWorkerConfigFactory(ILogger logger,
                                         ISystemRuntimeInformation systemRuntimeInfo,
                                         IEnvironment environment,
                                         IMetricsLogger metricsLogger,
@@ -36,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IWorkerConfigurationResolver workerConfigurationResolver,
                                         IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -64,22 +61,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProvidersFromAppSettings()
         {
-            var languagesSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}");
-            foreach (var languageSection in languagesSection.GetChildren())
+            var languageWorkersSettings = _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings;
+            foreach (var kvp in languageWorkersSettings)
             {
-                var workerDirectorySection = languageSection.GetSection(WorkerConstants.WorkerDirectorySectionName);
-                if (workerDirectorySection.Value != null)
+                var language = kvp.Key;
+                var workerDescription = kvp.Value;
+                if (!string.IsNullOrEmpty(workerDescription?.WorkerDirectory))
                 {
-                    _workerDescriptionDictionary.Remove(languageSection.Key);
-                    var rpcWorkerConfig = WorkerConfigurationHelper.AddProvider(_workerConfigurationResolverOptions.CurrentValue,
-                                                                                workerDirectorySection.Value,
-                                                                                _metricsLogger,
-                                                                                _logger,
-                                                                                _systemRuntimeInformation,
-                                                                                _profileManager);
+                    _workerDescriptionDictionary.Remove(language);
+                    var rpcWorkerConfig = WorkerConfigurationHelper.AddProvider(
+                                                                        _workerConfigurationResolverOptions.CurrentValue,
+                                                                        workerDescription.WorkerDirectory,
+                                                                        _metricsLogger,
+                                                                        _logger,
+                                                                        _systemRuntimeInformation,
+                                                                        _profileManager);
                     if (rpcWorkerConfig is not null)
                     {
-                        _workerDescriptionDictionary[languageSection.Key] = rpcWorkerConfig;
+                        _workerDescriptionDictionary[language] = rpcWorkerConfig;
                     }
                 }
             }
