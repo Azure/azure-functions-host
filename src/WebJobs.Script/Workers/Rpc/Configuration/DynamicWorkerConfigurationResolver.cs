@@ -47,19 +47,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         }
 
         /// <summary>
-        /// Gets the list of worker configuration by searching probing paths and fallback path.
+        /// Gets the list of worker configurations by searching probing paths and fallback path.
         /// </summary>
         public Dictionary<string, RpcWorkerConfig> GetWorkerConfigs()
         {
             var workerRuntime = _workerConfigurationResolverOptions.CurrentValue.WorkerRuntime;
             var workerProbingPaths = _workerConfigurationResolverOptions.CurrentValue.ProbingPaths;
 
-            // Search for worker configs in probing paths. Returns a dictionary of { FUNCTIONS_WORKER_RUNTIME environment variable value : path of workerConfig }
-            // Sample runtimeToConfigPathMap: {"java": "path1", "node": "path2", "dotnet-isolated": "path3"} for multilanguage worker scenario
-            // Path format: "<rootProbingPath>/<workerRuntimeDir>/<workerVersion>/". Path example: "c:\\home\\SiteExtensions\\functionsworkers\\java\\1.0.0"
+            // Search for worker configs in probing paths. Returns a dictionary of { FUNCTIONS_WORKER_RUNTIME : RpcWorkerConfig }
             var runtimeToConfigMap = ResolveWorkerConfigsFromProbingPaths(workerProbingPaths, workerRuntime);
 
-            if (WorkerConfigurationHelper.FoundWorkerConfigPath(workerRuntime, runtimeToConfigMap, _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled, _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment))
+            if (WorkerConfigurationHelper.FoundWorkerConfig(workerRuntime, runtimeToConfigMap, _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled, _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment))
             {
                 return runtimeToConfigMap;
             }

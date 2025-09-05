@@ -347,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Determines if the required worker config path is found.
         /// </summary>
-        internal static bool FoundWorkerConfigPath(string workerRuntime, Dictionary<string, RpcWorkerConfig> runtimeToConfigPathMap, bool isMultiLanguageWorkerEnvironment, bool isPlaceholderModeEnabled)
+        internal static bool FoundWorkerConfig(string workerRuntime, Dictionary<string, RpcWorkerConfig> runtimeToConfigPathMap, bool isMultiLanguageWorkerEnvironment, bool isPlaceholderModeEnabled)
         {
             return !isMultiLanguageWorkerEnvironment &&
                     !isPlaceholderModeEnabled &&
