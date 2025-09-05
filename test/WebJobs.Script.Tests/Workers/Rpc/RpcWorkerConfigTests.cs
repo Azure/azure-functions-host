@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -142,6 +142,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(workerConfig.Description.Arguments.Contains("--inspect=5689"));
             Assert.True(workerConfig.Description.Arguments.Contains("--no-deprecation"));
             Assert.True(workerConfig.Description.Arguments.Contains("--expose-http2"));
+        }
+
+        [Fact]
+        public void ReadWorkerProviderFromConfig_AddProvidersFromAppSettings()
+        {
+            var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, []) };
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
+            string path = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\node\\3.10.1");
+            Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
+            {
+                [$"{RpcWorkerConstants.LanguageWorkersSectionName}:node:{WorkerConstants.WorkerDirectorySectionName}"] = path
+            };
+            var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger("node"), testMetricsLogger, "node", keyValuePairs);
+            AreRequiredMetricsEmitted(testMetricsLogger);
+            Assert.Equal(workerConfigs.Count(), 2);
+            RpcWorkerConfig workerConfig = workerConfigs.Where(p => p.Description.Language == "node").First();
+            Assert.Equal(Path.Combine(path, "worker.config.json"), workerConfig.Description.DefaultWorkerPath);
         }
 
         [Fact]
@@ -393,7 +411,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger);
+            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, "python", environmentRuntimeVersion, _testEnvironment.GetEffectiveCoresCount(), testLogger);
 
             // Override file exists to return true
             workerDescription.FileExists = path =>
@@ -449,7 +467,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger);
+            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, "python", null, _testEnvironment.GetEffectiveCoresCount(), testLogger);
 
             Assert.Equal(expectedPath, workerDescription.DefaultWorkerPath);
             Assert.Equal("3.6", workerDescription.DefaultRuntimeVersion);
@@ -490,7 +508,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(unsupportedArch);
             mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(OSPlatform.Linux);
 
-            var ex = Assert.Throws<PlatformNotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(mockRuntimeInfo.Object, _testEnvironment, testLogger));
+            var ex = Assert.Throws<PlatformNotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(mockRuntimeInfo.Object, "python", null, _testEnvironment.GetEffectiveCoresCount(), testLogger));
             Assert.Equal(ex.Message, $"Architecture {unsupportedArch.ToString()} is not supported for language {workerDescription.Language}");
         }
 
@@ -526,7 +544,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(Architecture.X64);
             mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(bogusOS);
 
-            var ex = Assert.Throws<PlatformNotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(mockRuntimeInfo.Object, _testEnvironment, testLogger));
+            var ex = Assert.Throws<PlatformNotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(mockRuntimeInfo.Object, "python", null, _testEnvironment.GetEffectiveCoresCount(), testLogger));
             Assert.Equal(ex.Message, $"OS BogusOS is not supported for language {workerDescription.Language}");
         }
 
@@ -553,7 +571,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
 
-            var ex = Assert.Throws<NotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger));
+            var ex = Assert.Throws<NotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, "python", null, _testEnvironment.GetEffectiveCoresCount(), testLogger));
             Assert.Equal(ex.Message, $"Version {workerDescription.DefaultRuntimeVersion} is not supported for language {workerDescription.Language}");
         }
 
@@ -590,7 +608,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
 
-            var ex = Assert.Throws<NotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger));
+            var ex = Assert.Throws<NotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, "python", _testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName), _testEnvironment.GetEffectiveCoresCount(), testLogger));
             Assert.Equal(ex.Message, expectedExceptionMessage);
         }
 
@@ -612,7 +630,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 DefaultRuntimeVersion = "3.7" // Ignore this if environment is set
             };
             var testLogger = new TestLogger("test");
-            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger);
+            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, "python", null, _testEnvironment.GetEffectiveCoresCount(), testLogger);
             Assert.Equal("3.7", workerDescription.DefaultRuntimeVersion);
         }
 
@@ -684,12 +702,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
                 var workerProfileManager = new Mock<IWorkerProfileManager>();
+                var testMetricLogger = new TestMetricsLogger();
                 var testScriptHostManager = new Mock<IScriptHostManager>();
                 var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
-                var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-                var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, optionsMonitor);
 
-                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver);
+                var loggerFactoryMock = new Mock<ILoggerFactory>();
+                loggerFactoryMock
+                    .Setup(f => f.CreateLogger(It.IsAny<string>()))
+                    .Returns(testLogger);
+
+                var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
+                var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactoryMock.Object, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
+
+                var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver, optionsMonitor);
 
                 if (appSvcEnv)
                 {
