@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 IsMultiLanguageWorkerEnvironment = true,
                 ProbingPaths = new List<string> { "path1", "path2" },
                 WorkersAvailableForResolution = new HashSet<string> { "node", "python" }.ToImmutableHashSet(),
-                LanguageWorkersSettings = ImmutableDictionary<string, RpcWorkerDescription>.Empty.Add("node", new RpcWorkerDescription { Language = "node" }),
+                WorkerDescriptionOverrides = ImmutableDictionary<string, RpcWorkerDescription>.Empty.Add("node", new RpcWorkerDescription { Language = "node" }),
                 IgnoredWorkerVersions = new Dictionary<string, HashSet<Version>>
                 {
                     { "node", new HashSet<Version> { new Version("14.0.0"), new Version("16.0.0") } },
@@ -191,8 +191,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(2, probingPathsProperty.GetArrayLength());
             Assert.True(root.TryGetProperty("WorkersAvailableForResolution", out var workersAvailableProperty));
             Assert.Equal(2, workersAvailableProperty.GetArrayLength());
-            Assert.True(root.TryGetProperty("LanguageWorkersSettings", out var languageWorkersSettingsProperty));
-            Assert.NotNull(languageWorkersSettingsProperty);
+            Assert.True(root.TryGetProperty("WorkerDescriptionOverrides", out var workerDescriptionOverridesProperty));
+            Assert.NotNull(workerDescriptionOverridesProperty);
             Assert.True(root.TryGetProperty("IgnoredWorkerVersions", out var ignoredWorkerVersionsProperty));
             Assert.NotNull(ignoredWorkerVersionsProperty);
             Assert.True(root.TryGetProperty("IsDynamicWorkerResolutionEnabled", out var dynamicWorkerResolutionProperty));
@@ -256,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(options.IsPlaceholderModeEnabled);
             Assert.False(options.IsMultiLanguageWorkerEnvironment);
             Assert.Equal("/default/workers", options.WorkersRootDirPath);
-            Assert.NotNull(options.LanguageWorkersSettings);
+            Assert.NotNull(options.WorkerDescriptionOverrides);
 
             Assert.Equal(2, options.ProbingPaths.Count);
             Assert.True(options.ProbingPaths.Contains("testPath1"));
@@ -322,7 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(options.IsPlaceholderModeEnabled);
             Assert.True(options.IsMultiLanguageWorkerEnvironment);
             Assert.Equal("/default/workers", options.WorkersRootDirPath);
-            Assert.NotNull(options.LanguageWorkersSettings);
+            Assert.NotNull(options.WorkerDescriptionOverrides);
 
             Assert.NotNull(options.ProbingPaths);
             Assert.False(options.ProbingPaths.Any());

@@ -61,8 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProvidersFromAppSettings()
         {
-            var languageWorkersSettings = _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings;
-            foreach (var kvp in languageWorkersSettings)
+            var workerDescriptionOverrides = _workerConfigurationResolverOptions.CurrentValue.WorkerDescriptionOverrides;
+            foreach (var kvp in workerDescriptionOverrides)
             {
                 var language = kvp.Key;
                 var workerDescription = kvp.Value;

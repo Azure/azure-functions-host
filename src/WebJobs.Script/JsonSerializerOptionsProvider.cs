@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly JsonSerializerOptions Options = CreateJsonOptions();
 
         /// <summary>
-        /// Shared Json serializer with the following settings:
+        /// Shared Json serializer with the following setting:
         /// - PropertyNameCaseInsensitive: true.
         /// </summary>
         public static readonly JsonSerializerOptions WorkerConfigJsonSerializerOptions = CreateWorkerConfigJsonOptions();

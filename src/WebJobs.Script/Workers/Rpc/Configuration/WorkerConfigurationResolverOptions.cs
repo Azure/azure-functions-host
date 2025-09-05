@@ -43,9 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         public ImmutableHashSet<string> WorkersAvailableForResolution { get; set; }
 
         /// <summary>
-        /// Gets or sets the dictionary containing language workers related settings in configuration.
+        /// Gets or sets the dictionary containing language workers related overrides in configuration.
         /// </summary>
-        public ImmutableDictionary<string, RpcWorkerDescription> LanguageWorkersSettings { get; set; }
+        public ImmutableDictionary<string, RpcWorkerDescription> WorkerDescriptionOverrides { get; set; }
 
         /// <summary>
         /// Gets or sets the dictionary that contains the versions of language workers to be ignored during probing outside of the Host.

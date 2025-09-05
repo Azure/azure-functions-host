@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -53,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     var workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
 
-                    RpcWorkerDescription workerDescription = GetWorkerDescription(workerConfig, workerDir, profileManager, resolverOptions.LanguageWorkersSettings, logger);
+                    RpcWorkerDescription workerDescription = GetWorkerDescription(workerConfig, workerDir, profileManager, resolverOptions.WorkerDescriptionOverrides, logger);
 
                     if (workerDescription.IsDisabled == true)
                     {
@@ -219,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             JsonElement workerConfig,
             string workerDir,
             IWorkerProfileManager profileManager,
-            ImmutableDictionary<string, RpcWorkerDescription> languageWorkersSettings,
+            ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides,
             ILogger logger)
         {
             var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
@@ -240,11 +239,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             workerDescription.Arguments ??= new List<string>();
 
-            if (languageWorkersSettings is not null)
+            if (workerDescriptionOverrides is not null)
             {
                 // Check if any app settings are provided for that language
-                GetWorkerDescriptionFromAppSettings(workerDescription, languageWorkersSettings);
-                AddArgumentsFromAppSettings(workerDescription, languageWorkersSettings);
+                GetWorkerDescriptionFromAppSettings(workerDescription, workerDescriptionOverrides);
+                AddArgumentsFromAppSettings(workerDescription, workerDescriptionOverrides);
             }
 
             // Validate workerDescription
@@ -316,18 +315,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return descriptionProfiles;
         }
 
-        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> languageWorkersSettings)
+        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
         {
-            if (languageWorkersSettings.TryGetValue(workerDescription.Language, out var rpcWorkerDescription))
+            if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription))
             {
                 workerDescription.DefaultExecutablePath = rpcWorkerDescription.DefaultExecutablePath ?? workerDescription.DefaultExecutablePath;
                 workerDescription.DefaultRuntimeVersion = rpcWorkerDescription.DefaultRuntimeVersion ?? workerDescription.DefaultRuntimeVersion;
             }
         }
 
-        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> languageWorkersSettings)
+        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
         {
-            if (languageWorkersSettings.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription.Arguments is string[] args && args.Length > 0)
+            if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription.Arguments is string[] args && args.Length > 0)
             {
                 ((List<string>)workerDescription.Arguments).AddRange(args);
             }

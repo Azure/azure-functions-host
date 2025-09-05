@@ -262,7 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                                             workerConfig: workerConfigJson,
                                                             workerDir: workerDirPath,
                                                             profileManager: _profileManager,
-                                                            languageWorkersSettings: _workerConfigurationResolverOptions.CurrentValue.LanguageWorkersSettings,
+                                                            workerDescriptionOverrides: _workerConfigurationResolverOptions.CurrentValue.WorkerDescriptionOverrides,
                                                             logger: _logger);
 
             if (workerDescription.IsDisabled == true)

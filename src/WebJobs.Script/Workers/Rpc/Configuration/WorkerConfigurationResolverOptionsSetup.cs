@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             options.WorkersAvailableForResolution = GetWorkersAvailableForResolution();
             options.IsPlaceholderModeEnabled = _environment.IsPlaceholderModeEnabled();
             options.IsMultiLanguageWorkerEnvironment = _environment.IsMultiLanguageRuntimeEnvironment();
-            options.LanguageWorkersSettings = GetLanguageWorkersSettings(configuration);
+            options.WorkerDescriptionOverrides = GetWorkerDescriptionOverrides(configuration);
             options.FunctionsWorkerProcessCount = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName);
             options.FunctionWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
             options.EffectiveCoresCount = _environment.GetEffectiveCoresCount();
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Converts language workers related configuration sections to a dictionary.
         /// </summary>
-        internal static ImmutableDictionary<string, RpcWorkerDescription> GetLanguageWorkersSettings(IConfiguration configuration)
+        internal static ImmutableDictionary<string, RpcWorkerDescription> GetWorkerDescriptionOverrides(IConfiguration configuration)
         {
             var workerDescriptionsMap = new Dictionary<string, RpcWorkerDescription>();
             var langaugeWorkersSection = configuration.GetSection(RpcWorkerConstants.LanguageWorkersSectionName);
