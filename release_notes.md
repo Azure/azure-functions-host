@@ -3,6 +3,4 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Allow sync trigger to happen in managed environment when `AzureWebJobsStorage` is not set (#11214)
-- Moving to version 1.5.7 of Microsoft.Azure.AppService.Middleware.Functions (https://github.com/Azure/azure-functions-host/pull/11232)
-- Add JitTrace files for v4.43 (#11277)
+- Cap v4.x extension bundle versions on .NET 6 to the range (>4.2.0, <4.22.0) by default (#11289)
