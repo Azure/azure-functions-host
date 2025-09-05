@@ -63,6 +63,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         public string WorkersRootDirPath { get; set; }
 
+        /// <summary>
+        /// Gets or sets the value of processor cores count.
+        /// </summary>
+        public int EffectiveCoresCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the value of worker process count.
+        /// </summary>
+        public string FunctionsWorkerProcessCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the value of function worker runtime version.
+        /// </summary>
+        public string FunctionWorkerRuntimeVersion { get; set; }
+
         /// <inheritdoc>
         /// Implements the Format method from IOptionsFormatter interface.
         /// </inheritdoc>

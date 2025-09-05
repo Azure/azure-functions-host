@@ -2,11 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +17,204 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
     internal static class WorkerConfigurationHelper
     {
+        internal static RpcWorkerConfig AddProvider(WorkerConfigurationResolverOptions resolverOptions,
+                                                    string workerDir,
+                                                    IMetricsLogger metricsLogger,
+                                                    ILogger logger,
+                                                    ISystemRuntimeInformation systemRuntimeInformation,
+                                                    IWorkerProfileManager profileManager)
+        {
+            using (metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDir)))
+            {
+                try
+                {
+                    string workerRuntime = resolverOptions.WorkerRuntime;
+                    // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
+                    if (!string.IsNullOrWhiteSpace(resolverOptions.WorkerRuntime) && !resolverOptions.IsPlaceholderModeEnabled && !resolverOptions.IsMultiLanguageWorkerEnvironment)
+                    {
+                        string workerName = Path.GetFileName(workerDir);
+                        // Only skip worker directories that don't match the current runtime.
+                        // Do not skip non-worker directories like the function app payload directory
+                        if (!workerName.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(resolverOptions.WorkersRootDirPath))
+                        {
+                            return null;
+                        }
+                    }
+
+                    string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
+
+                    if (!File.Exists(workerConfigPath))
+                    {
+                        logger.LogDebug("Did not find worker config file at: {workerConfigPath}", workerConfigPath);
+                        return null;
+                    }
+
+                    logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
+
+                    var workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
+
+                    RpcWorkerDescription workerDescription = GetWorkerDescription(workerConfig, workerDir, profileManager, resolverOptions.LanguageWorkersSettings, logger);
+
+                    if (workerDescription.IsDisabled == true)
+                    {
+                        logger.LogInformation("Skipping WorkerConfig for stack: {language} since it is disabled.", workerDescription.Language);
+                        return null;
+                    }
+
+                    if (ShouldAddWorkerConfig(workerDescription.Language, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment, logger, workerRuntime))
+                    {
+                        workerDescription.FormatWorkerPathIfNeeded(systemRuntimeInformation, workerRuntime, resolverOptions.FunctionWorkerRuntimeVersion, resolverOptions.EffectiveCoresCount, logger);
+                        workerDescription.FormatWorkingDirectoryIfNeeded();
+                        workerDescription.FormatArgumentsIfNeeded(logger);
+                        workerDescription.ThrowIfFileNotExists(workerDescription.DefaultWorkerPath, nameof(workerDescription.DefaultWorkerPath));
+                        workerDescription.ExpandEnvironmentVariables();
+
+                        WorkerProcessCountOptions workerProcessCount = GetWorkerProcessCount(workerConfig, resolverOptions.FunctionsWorkerProcessCount, resolverOptions.EffectiveCoresCount);
+
+                        var arguments = new WorkerProcessArguments()
+                        {
+                            ExecutablePath = workerDescription.DefaultExecutablePath,
+                            WorkerPath = workerDescription.DefaultWorkerPath
+                        };
+
+                        arguments.ExecutableArguments.AddRange(workerDescription.Arguments);
+
+                        var rpcWorkerConfig = new RpcWorkerConfig()
+                        {
+                            Description = workerDescription,
+                            Arguments = arguments,
+                            CountOptions = workerProcessCount,
+                        };
+
+                        ReadLanguageWorkerFile(arguments.WorkerPath, resolverOptions.IsPlaceholderModeEnabled, logger, workerRuntime);
+
+                        logger.LogDebug("Added WorkerConfig for language: {language} with worker path: {path}", workerDescription.Language, workerDescription.DefaultWorkerPath);
+
+                        return rpcWorkerConfig;
+                    }
+                }
+                catch (Exception ex) when (!ex.IsFatal())
+                {
+                    logger.LogError(ex, "Failed to initialize worker provider for: {workerDir}", workerDir);
+                }
+            }
+
+            return null;
+        }
+
+        internal static WorkerProcessCountOptions GetWorkerProcessCount(JsonElement workerConfig, string functionsWorkerProcessCount, int coresCount)
+        {
+            WorkerProcessCountOptions workerProcessCount = null;
+            var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
+
+            if (workerConfig.TryGetProperty(WorkerConstants.ProcessCount, out var processCountElement))
+            {
+                workerProcessCount = processCountElement.Deserialize<WorkerProcessCountOptions>(jsonSerializerOptions);
+            }
+
+            workerProcessCount ??= new WorkerProcessCountOptions();
+
+            if (workerProcessCount.SetProcessCountToNumberOfCpuCores)
+            {
+                workerProcessCount.ProcessCount = coresCount;
+                // set Max worker process count to Number of effective cores if MaxProcessCount is less than MinProcessCount
+                workerProcessCount.MaxProcessCount = workerProcessCount.ProcessCount > workerProcessCount.MaxProcessCount ? workerProcessCount.ProcessCount : workerProcessCount.MaxProcessCount;
+            }
+
+            // Env variable takes precedence over worker.config
+            string processCountEnvSetting = functionsWorkerProcessCount;
+            if (!string.IsNullOrEmpty(processCountEnvSetting))
+            {
+                workerProcessCount.ProcessCount = int.Parse(processCountEnvSetting) > 1 ? int.Parse(processCountEnvSetting) : 1;
+            }
+
+            // Validate
+            if (workerProcessCount.ProcessCount <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(workerProcessCount.ProcessCount), "ProcessCount must be greater than 0.");
+            }
+            if (workerProcessCount.ProcessCount > workerProcessCount.MaxProcessCount)
+            {
+                throw new ArgumentException($"{nameof(workerProcessCount.ProcessCount)} must not be greater than {nameof(workerProcessCount.MaxProcessCount)}");
+            }
+            if (workerProcessCount.ProcessStartupInterval.Ticks < 0)
+            {
+                throw new ArgumentOutOfRangeException($"{nameof(workerProcessCount.ProcessStartupInterval)}", "The TimeSpan must not be negative.");
+            }
+
+            return workerProcessCount;
+        }
+
+        internal static bool ShouldAddWorkerConfig(string workerDescriptionLanguage, bool placeholderModeEnabled, bool multiLanguageWorkerEnvironment, ILogger logger, string workerRuntime)
+        {
+            if (placeholderModeEnabled)
+            {
+                return true;
+            }
+
+            if (multiLanguageWorkerEnvironment)
+            {
+                logger.LogInformation("Found multi-language runtime environment. Starting WorkerConfig for language: {workerDescriptionLanguage}", workerDescriptionLanguage);
+                return true;
+            }
+
+            if (!string.IsNullOrEmpty(workerRuntime))
+            {
+                logger.LogDebug("EnvironmentVariable {functionWorkerRuntimeSettingName}: {workerRuntime}", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+                if (workerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                // After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
+                logger.LogInformation("{FUNCTIONS_WORKER_RUNTIME} set to {workerRuntime}. Skipping WorkerConfig for language: {workerDescriptionLanguage}", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime, workerDescriptionLanguage);
+                return false;
+            }
+
+            return true;
+        }
+
+        private static void ReadLanguageWorkerFile(string workerPath, bool placeHolderModeEnabled, ILogger logger, string workerRuntime)
+        {
+            if (!placeHolderModeEnabled
+                || string.IsNullOrWhiteSpace(workerRuntime)
+                || !File.Exists(workerPath))
+            {
+                return;
+            }
+
+            // Reads the file to warm up the operating system's file cache. Can run in the background.
+            _ = Task.Run(() =>
+            {
+                const int bufferSize = 4096;
+                var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+
+                try
+                {
+                    using var fs = new FileStream(
+                        workerPath,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read,
+                        bufferSize,
+                        FileOptions.SequentialScan);
+
+                    while (fs.Read(buffer, 0, bufferSize) > 0)
+                    {
+                        // Do nothing. The goal is to read the file into the OS cache.
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Unexpected error warming up worker file: {filePath}", workerPath);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
+            });
+        }
+
         internal static RpcWorkerDescription GetWorkerDescription(
             JsonElement workerConfig,
             string workerDir,
@@ -130,6 +331,28 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 ((List<string>)workerDescription.Arguments).AddRange(args);
             }
+        }
+
+        /// <summary>
+        /// Determines if the worker directory should be skipped based on the current worker runtime and environment settings.
+        /// </summary>
+        internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir, bool isMultiLanguageWorkerEnvironment, bool isPlaceholderModeEnabled)
+        {
+            return !isMultiLanguageWorkerEnvironment &&
+                    !isPlaceholderModeEnabled &&
+                    workerRuntime is not null &&
+                    !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Determines if the required worker config path is found.
+        /// </summary>
+        internal static bool FoundWorkerConfig(string workerRuntime, Dictionary<string, RpcWorkerConfig> runtimeToConfigPathMap, bool isMultiLanguageWorkerEnvironment, bool isPlaceholderModeEnabled)
+        {
+            return !isMultiLanguageWorkerEnvironment &&
+                    !isPlaceholderModeEnabled &&
+                    !string.IsNullOrWhiteSpace(workerRuntime) &&
+                    runtimeToConfigPathMap.ContainsKey(workerRuntime);
         }
     }
 }
