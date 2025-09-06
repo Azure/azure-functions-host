@@ -53,8 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             options.IsPlaceholderModeEnabled = _environment.IsPlaceholderModeEnabled();
             options.IsMultiLanguageWorkerEnvironment = _environment.IsMultiLanguageRuntimeEnvironment();
             options.WorkerDescriptionOverrides = GetWorkerDescriptionOverrides(configuration);
-            options.FunctionsWorkerProcessCount = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName);
-            options.FunctionWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+            options.WorkerProcessCount = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName);
+            options.FunctionsWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
             options.EffectiveCoresCount = _environment.GetEffectiveCoresCount();
             options.IsDynamicWorkerResolutionEnabled = IsDynamicWorkerResolutionEnabled(options.WorkerRuntime, options.WorkersAvailableForResolution, options.IsPlaceholderModeEnabled, options.IsMultiLanguageWorkerEnvironment);
 

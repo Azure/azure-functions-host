@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 {
                     string workerRuntime = resolverOptions.WorkerRuntime;
                     // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
-                    if (!string.IsNullOrWhiteSpace(resolverOptions.WorkerRuntime) && !resolverOptions.IsPlaceholderModeEnabled && !resolverOptions.IsMultiLanguageWorkerEnvironment)
+                    if (!string.IsNullOrWhiteSpace(workerRuntime) && !resolverOptions.IsPlaceholderModeEnabled && !resolverOptions.IsMultiLanguageWorkerEnvironment)
                     {
                         string workerName = Path.GetFileName(workerDir);
                         // Only skip worker directories that don't match the current runtime.
@@ -62,13 +62,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     if (ShouldAddWorkerConfig(workerDescription.Language, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment, logger, workerRuntime))
                     {
-                        workerDescription.FormatWorkerPathIfNeeded(systemRuntimeInformation, workerRuntime, resolverOptions.FunctionWorkerRuntimeVersion, resolverOptions.EffectiveCoresCount, logger);
+                        workerDescription.FormatWorkerPathIfNeeded(systemRuntimeInformation, workerRuntime, resolverOptions.FunctionsWorkerRuntimeVersion, resolverOptions.EffectiveCoresCount, logger);
                         workerDescription.FormatWorkingDirectoryIfNeeded();
                         workerDescription.FormatArgumentsIfNeeded(logger);
                         workerDescription.ThrowIfFileNotExists(workerDescription.DefaultWorkerPath, nameof(workerDescription.DefaultWorkerPath));
                         workerDescription.ExpandEnvironmentVariables();
 
-                        WorkerProcessCountOptions workerProcessCount = GetWorkerProcessCount(workerConfig, resolverOptions.FunctionsWorkerProcessCount, resolverOptions.EffectiveCoresCount);
+                        WorkerProcessCountOptions workerProcessCount = GetWorkerProcessCount(workerConfig, resolverOptions.WorkerProcessCount, resolverOptions.EffectiveCoresCount);
 
                         var arguments = new WorkerProcessArguments()
                         {
@@ -99,6 +99,69 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             return null;
+        }
+
+        internal static JsonElement GetWorkerConfigJsonElement(string workerConfigPath)
+        {
+            ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath);
+
+            if (jsonSpan.StartsWith<byte>([0xEF, 0xBB, 0xBF]))
+            {
+                jsonSpan = jsonSpan[3..]; // Skip UTF-8 Byte Order Mark (BOM) if present at the beginning of the file.
+            }
+
+            if (jsonSpan.IsEmpty)
+            {
+                return default; // Return default JsonElement if the file is empty.
+            }
+
+            var reader = new Utf8JsonReader(jsonSpan, isFinalBlock: true, state: default);
+            using var doc = JsonDocument.ParseValue(ref reader);
+
+            return doc.RootElement.Clone();
+        }
+
+        private static List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JsonElement profilesElement,
+                                                                    JsonSerializerOptions jsonSerializerOptions,
+                                                                    IWorkerProfileManager profileManager,
+                                                                    ILogger logger)
+        {
+            var profiles = profilesElement.Deserialize<IList<WorkerProfileDescriptor>>(jsonSerializerOptions);
+
+            if (profiles == null || profiles.Count <= 0)
+            {
+                return new List<WorkerDescriptionProfile>(0);
+            }
+
+            var descriptionProfiles = new List<WorkerDescriptionProfile>(profiles.Count);
+
+            try
+            {
+                foreach (var profile in profiles)
+                {
+                    var profileConditions = new List<IWorkerProfileCondition>(profile.Conditions.Count);
+
+                    foreach (var descriptor in profile.Conditions)
+                    {
+                        if (!profileManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
+                        {
+                            // Failed to resolve condition. This profile will be disabled using a mock false condition
+                            logger.LogInformation("Profile {name} is disabled. Cannot resolve the profile condition {condition}", profile.ProfileName, descriptor.Type);
+                            condition = new FalseCondition();
+                        }
+
+                        profileConditions.Add(condition);
+                    }
+
+                    descriptionProfiles.Add(new(profile.ProfileName, profileConditions, profile.Description));
+                }
+            }
+            catch (Exception)
+            {
+                throw new FormatException("Failed to parse profiles in worker config.");
+            }
+
+            return descriptionProfiles;
         }
 
         internal static WorkerProcessCountOptions GetWorkerProcessCount(JsonElement workerConfig, string functionsWorkerProcessCount, int coresCount)
@@ -142,6 +205,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             return workerProcessCount;
+        }
+
+        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
+        {
+            if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription))
+            {
+                workerDescription.DefaultExecutablePath = rpcWorkerDescription.DefaultExecutablePath ?? workerDescription.DefaultExecutablePath;
+                workerDescription.DefaultRuntimeVersion = rpcWorkerDescription.DefaultRuntimeVersion ?? workerDescription.DefaultRuntimeVersion;
+            }
+        }
+
+        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
+        {
+            if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription.Arguments is string[] args && args.Length > 0)
+            {
+                ((List<string>)workerDescription.Arguments).AddRange(args);
+            }
         }
 
         internal static bool ShouldAddWorkerConfig(string workerDescriptionLanguage, bool placeholderModeEnabled, bool multiLanguageWorkerEnvironment, ILogger logger, string workerRuntime)
@@ -239,119 +319,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             workerDescription.Arguments ??= new List<string>();
 
-            if (workerDescriptionOverrides is not null)
-            {
-                // Check if any app settings are provided for that language
-                GetWorkerDescriptionFromAppSettings(workerDescription, workerDescriptionOverrides);
-                AddArgumentsFromAppSettings(workerDescription, workerDescriptionOverrides);
-            }
+            // Check if any app settings are provided for that language
+            GetWorkerDescriptionFromAppSettings(workerDescription, workerDescriptionOverrides);
+            AddArgumentsFromAppSettings(workerDescription, workerDescriptionOverrides);
 
             // Validate workerDescription
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger);
 
             return workerDescription;
-        }
-
-        internal static JsonElement GetWorkerConfigJsonElement(string workerConfigPath)
-        {
-            ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath);
-
-            if (jsonSpan.StartsWith<byte>([0xEF, 0xBB, 0xBF]))
-            {
-                jsonSpan = jsonSpan[3..]; // Skip UTF-8 Byte Order Mark (BOM) if present at the beginning of the file.
-            }
-
-            if (jsonSpan.IsEmpty)
-            {
-                return default; // Return default JsonElement if the file is empty.
-            }
-
-            var reader = new Utf8JsonReader(jsonSpan, isFinalBlock: true, state: default);
-            using var doc = JsonDocument.ParseValue(ref reader);
-
-            return doc.RootElement.Clone();
-        }
-
-        private static List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JsonElement profilesElement,
-                                                                            JsonSerializerOptions jsonSerializerOptions,
-                                                                            IWorkerProfileManager profileManager,
-                                                                            ILogger logger)
-        {
-            var profiles = profilesElement.Deserialize<IList<WorkerProfileDescriptor>>(jsonSerializerOptions);
-
-            if (profiles == null || profiles.Count <= 0)
-            {
-                return new List<WorkerDescriptionProfile>(0);
-            }
-
-            var descriptionProfiles = new List<WorkerDescriptionProfile>(profiles.Count);
-
-            try
-            {
-                foreach (var profile in profiles)
-                {
-                    var profileConditions = new List<IWorkerProfileCondition>(profile.Conditions.Count);
-
-                    foreach (var descriptor in profile.Conditions)
-                    {
-                        if (!profileManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
-                        {
-                            // Failed to resolve condition. This profile will be disabled using a mock false condition
-                            logger.LogInformation("Profile {name} is disabled. Cannot resolve the profile condition {condition}", profile.ProfileName, descriptor.Type);
-                            condition = new FalseCondition();
-                        }
-
-                        profileConditions.Add(condition);
-                    }
-
-                    descriptionProfiles.Add(new(profile.ProfileName, profileConditions, profile.Description));
-                }
-            }
-            catch (Exception)
-            {
-                throw new FormatException("Failed to parse profiles in worker config.");
-            }
-
-            return descriptionProfiles;
-        }
-
-        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
-        {
-            if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription))
-            {
-                workerDescription.DefaultExecutablePath = rpcWorkerDescription.DefaultExecutablePath ?? workerDescription.DefaultExecutablePath;
-                workerDescription.DefaultRuntimeVersion = rpcWorkerDescription.DefaultRuntimeVersion ?? workerDescription.DefaultRuntimeVersion;
-            }
-        }
-
-        internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
-        {
-            if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription.Arguments is string[] args && args.Length > 0)
-            {
-                ((List<string>)workerDescription.Arguments).AddRange(args);
-            }
-        }
-
-        /// <summary>
-        /// Determines if the worker directory should be skipped based on the current worker runtime and environment settings.
-        /// </summary>
-        internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir, bool isMultiLanguageWorkerEnvironment, bool isPlaceholderModeEnabled)
-        {
-            return !isMultiLanguageWorkerEnvironment &&
-                    !isPlaceholderModeEnabled &&
-                    workerRuntime is not null &&
-                    !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// Determines if the required worker config path is found.
-        /// </summary>
-        internal static bool FoundWorkerConfig(string workerRuntime, Dictionary<string, RpcWorkerConfig> runtimeToConfigPathMap, bool isMultiLanguageWorkerEnvironment, bool isPlaceholderModeEnabled)
-        {
-            return !isMultiLanguageWorkerEnvironment &&
-                    !isPlaceholderModeEnabled &&
-                    !string.IsNullOrWhiteSpace(workerRuntime) &&
-                    runtimeToConfigPathMap.ContainsKey(workerRuntime);
         }
     }
 }

@@ -71,12 +71,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Gets or sets the value of worker process count.
         /// </summary>
-        public string FunctionsWorkerProcessCount { get; set; }
+        public string WorkerProcessCount { get; set; }
 
         /// <summary>
         /// Gets or sets the value of function worker runtime version.
         /// </summary>
-        public string FunctionWorkerRuntimeVersion { get; set; }
+        public string FunctionsWorkerRuntimeVersion { get; set; }
 
         /// <inheritdoc>
         /// Implements the Format method from IOptionsFormatter interface.

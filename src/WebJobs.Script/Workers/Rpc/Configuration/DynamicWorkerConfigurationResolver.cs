@@ -3,10 +3,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions;
-using System.Linq;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -57,9 +55,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // Search for worker configs in probing paths. Returns a dictionary of { FUNCTIONS_WORKER_RUNTIME : RpcWorkerConfig }
             var runtimeToConfigMap = ResolveWorkerConfigsFromProbingPaths(workerProbingPaths, workerRuntime);
 
-            if (WorkerConfigurationHelper.FoundWorkerConfig(workerRuntime, runtimeToConfigMap, _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled, _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment))
-            {
-                return runtimeToConfigMap;
+            if (!_workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
+                !_workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
+                !string.IsNullOrWhiteSpace(workerRuntime) &&
+                runtimeToConfigMap.ContainsKey(workerRuntime))
+                {
+                    return runtimeToConfigMap;
             }
 
             // Search in fallback path if worker cannot be found in probing paths
@@ -107,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         // Skip worker directories that don't match the current runtime or are not enabled via hosting config
                         // Do not load all workers after the specialization is done and if it is not a multi-language runtime environment
                         if (!_workerConfigurationResolverOptions.CurrentValue.WorkersAvailableForResolution.Contains(workerRuntimeDir) ||
-                            WorkerConfigurationHelper.ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir, _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled, _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment))
+                            ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir, _workerConfigurationResolverOptions.CurrentValue.IsPlaceholderModeEnabled, _workerConfigurationResolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment))
                         {
                             continue;
                         }
@@ -191,15 +192,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         {
             _logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", _workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath);
 
-            var config = DefaultWorkerConfigurationResolver.ResolveWorkerConfigsFromWithinHost(_workerConfigurationResolverOptions.CurrentValue,
+            return DefaultWorkerConfigurationResolver.ResolveWorkerConfigsFromWithinHost(_workerConfigurationResolverOptions.CurrentValue,
                                                                                                 _logger,
                                                                                                 _fileSystem,
                                                                                                 _metricsLogger,
                                                                                                 _systemRuntimeInformation,
                                                                                                 _profileManager,
                                                                                                 runtimeToConfigPathMap);
-
-            return runtimeToConfigPathMap;
         }
 
         /// <summary>
@@ -288,6 +287,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var hostCapabilities = ScriptConstants.HostCapabilities;
 
             return hostRequirements.IsSubsetOf(hostCapabilities);
+        }
+
+        /// <summary>
+        /// Determines if the worker directory should be skipped based on the current worker runtime and environment settings.
+        /// </summary>
+        internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir, bool isMultiLanguageWorkerEnvironment, bool isPlaceholderModeEnabled)
+        {
+            return !isMultiLanguageWorkerEnvironment &&
+                    !isPlaceholderModeEnabled &&
+                    workerRuntime is not null &&
+                    !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _systemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
+            ArgumentNullException.ThrowIfNull(_workerConfigurationResolverOptions.CurrentValue);
         }
 
         public Dictionary<string, RpcWorkerConfig> GetWorkerConfigs()
@@ -59,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                                                                     IWorkerProfileManager profileManager,
                                                                                     Dictionary<string, RpcWorkerConfig> runtimeToConfigMap = null)
         {
-            runtimeToConfigMap = runtimeToConfigMap ?? [];
+            runtimeToConfigMap = runtimeToConfigMap ?? new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var workerPath in fileSystem.Directory.EnumerateDirectories(resolverOptions.WorkersRootDirPath))
             {
@@ -80,7 +81,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     }
                 }
 
-                if (WorkerConfigurationHelper.FoundWorkerConfig(resolverOptions.WorkerRuntime, runtimeToConfigMap, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment))
+                if (!resolverOptions.IsMultiLanguageWorkerEnvironment &&
+                    !resolverOptions.IsPlaceholderModeEnabled &&
+                    !string.IsNullOrWhiteSpace(resolverOptions.WorkerRuntime) &&
+                    runtimeToConfigMap.ContainsKey(resolverOptions.WorkerRuntime))
                 {
                     break;
                 }
