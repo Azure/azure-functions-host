@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal void FormatWorkerPathIfNeeded(ISystemRuntimeInformation systemRuntimeInformation, string workerRuntime, string version, int effectiveCoresCount, ILogger logger)
+        internal void FormatWorkerPathIfNeeded(ISystemRuntimeInformation systemRuntimeInformation, string workerRuntime, string version, ILogger logger)
         {
             if (string.IsNullOrEmpty(DefaultWorkerPath))
             {

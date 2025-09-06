@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions;
-using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
@@ -153,10 +152,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var probingPaths = probingPathsSection.Get<List<string>>();
             _logger.LogDebug("Worker probing paths specified via configuration: {probingPaths}.", probingPaths);
 
-            if (probingPaths is null || probingPaths.Count == 0)
-            {
-                probingPaths = probingPaths ?? [];
+            probingPaths = probingPaths ?? [];
 
+            if (probingPaths.Count == 0)
+            {
                 if (_environment.IsHostedWindowsEnvironment())
                 {
                     // Default worker probing path for Windows
@@ -240,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         /// <summary>
         /// Returns a dictionary of worker names to sets of ignored versions, parsed from hosting config options.
-        /// Output format: { worker: { hashset of versions to be ignored }}.
+        /// Output format: { worker-name: { hashset of versions to be ignored }}.
         /// Sample output: {"java": {"2.19.0", "2.18.0"}, "dotnet-isolated": {"1.0.0"}}.
         /// </summary>
         internal ImmutableDictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
