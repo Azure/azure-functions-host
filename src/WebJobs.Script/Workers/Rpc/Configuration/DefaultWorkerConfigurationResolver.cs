@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 string workerConfigPath = Path.Combine(workerPath, RpcWorkerConstants.WorkerConfigFileName);
                 if (File.Exists(workerConfigPath))
                 {
-                    var workerConfig = WorkerConfigurationHelper.AddProvider(resolverOptions, workerPath, metricsLogger, logger, systemRuntimeInformation, profileManager);
+                    var workerConfig = WorkerConfigurationHelper.BuildWorkerConfig(resolverOptions, workerPath, metricsLogger, logger, systemRuntimeInformation, profileManager);
                     if (workerConfig is not null)
                     {
                         runtimeToConfigMap[workerDir] = workerConfig;

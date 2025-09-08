@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Returns the default site extensions path for Windows environment.
         /// </summary>
-        private string GetWindowsSiteExtensionsPath()
+        private static string GetWindowsSiteExtensionsPath()
         {
             var assemblyDir = AppContext.BaseDirectory;
 

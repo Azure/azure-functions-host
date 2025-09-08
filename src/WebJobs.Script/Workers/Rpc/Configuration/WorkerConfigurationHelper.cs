@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
     internal static class WorkerConfigurationHelper
     {
-        internal static RpcWorkerConfig AddProvider(WorkerConfigurationResolverOptions resolverOptions,
+        internal static RpcWorkerConfig BuildWorkerConfig(WorkerConfigurationResolverOptions resolverOptions,
                                                     string workerDir,
                                                     IMetricsLogger metricsLogger,
                                                     ILogger logger,

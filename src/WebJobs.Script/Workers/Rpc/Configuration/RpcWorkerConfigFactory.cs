@@ -62,20 +62,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void AddProvidersFromAppSettings()
         {
             var workerDescriptionOverrides = _workerConfigurationResolverOptions.CurrentValue.WorkerDescriptionOverrides;
-            foreach (var kvp in workerDescriptionOverrides)
+            foreach (var (language, workerDescription) in workerDescriptionOverrides)
             {
-                var language = kvp.Key;
-                var workerDescription = kvp.Value;
                 if (!string.IsNullOrEmpty(workerDescription?.WorkerDirectory))
                 {
                     _workerDescriptionDictionary.Remove(language);
-                    var rpcWorkerConfig = WorkerConfigurationHelper.AddProvider(
-                                                                        _workerConfigurationResolverOptions.CurrentValue,
-                                                                        workerDescription.WorkerDirectory,
-                                                                        _metricsLogger,
-                                                                        _logger,
-                                                                        _systemRuntimeInformation,
-                                                                        _profileManager);
+
+                    var rpcWorkerConfig = WorkerConfigurationHelper.BuildWorkerConfig(_workerConfigurationResolverOptions.CurrentValue, workerDescription.WorkerDirectory, _metricsLogger, _logger, _systemRuntimeInformation, _profileManager);
+
                     if (rpcWorkerConfig is not null)
                     {
                         _workerDescriptionDictionary[language] = rpcWorkerConfig;

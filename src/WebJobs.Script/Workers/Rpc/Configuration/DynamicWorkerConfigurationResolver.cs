@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return null;
             }
 
-            return WorkerConfigurationHelper.AddProvider(_resolverOptions.CurrentValue, outputWorkerVersionPath, _metricsLogger, _logger, _systemRuntimeInformation, _profileManager);
+            return WorkerConfigurationHelper.BuildWorkerConfig(_resolverOptions.CurrentValue, outputWorkerVersionPath, _metricsLogger, _logger, _systemRuntimeInformation, _profileManager);
         }
 
         /// <summary>
