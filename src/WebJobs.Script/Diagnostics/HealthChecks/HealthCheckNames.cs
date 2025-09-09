@@ -8,15 +8,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
     /// </summary>
     internal static class HealthCheckNames
     {
-        private const string Prefix = "az.functions.";
+        private const string Prefix = "azure.functions.";
 
         /// <summary>
-        /// The 'az.functions.web_host.lifecycle' check monitors the lifecycle of the web host.
+        /// The 'azure.functions.web_host.lifecycle' check monitors the lifecycle of the web host.
         /// </summary>
         public const string WebHostLifeCycle = Prefix + "web_host.lifecycle";
 
         /// <summary>
-        /// The 'az.functions.script_host.lifecycle' check monitors the lifecycle of the script host.
+        /// The 'azure.functions.script_host.lifecycle' check monitors the lifecycle of the script host.
         /// </summary>
         public const string ScriptHostLifeCycle = Prefix + "script_host.lifecycle";
     }

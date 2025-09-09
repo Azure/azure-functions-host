@@ -8,10 +8,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
     /// </summary>
     internal static class HealthCheckTags
     {
-        private const string Prefix = "az.functions.";
+        private const string Prefix = "azure.functions.";
 
         /// <summary>
-        /// The 'az.functions.liveness' tag is used for liveness checks in the Azure Functions host.
+        /// The 'azure.functions.liveness' tag is used for liveness checks in the Azure Functions host.
         /// </summary>
         /// <remarks>
         /// Liveness checks are used to determine if the host is alive and responsive.
@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         public const string Liveness = Prefix + "liveness";
 
         /// <summary>
-        /// The 'az.functions.readiness' tag is used for readiness checks in the Azure Functions host.
+        /// The 'azure.functions.readiness' tag is used for readiness checks in the Azure Functions host.
         /// </summary>
         /// <remarks>
         /// Readiness checks are used to determine if the host is ready to process requests.
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         public const string Readiness = Prefix + "readiness";
 
         /// <summary>
-        /// The 'az.functions.configuration' tag is used for configuration-related health checks in the Azure Functions host.
+        /// The 'azure.functions.configuration' tag is used for configuration-related health checks in the Azure Functions host.
         /// </summary>
         /// <remarks>
         /// These are typically customer configuration related, such as configuring AzureWebJobsStorage access.
