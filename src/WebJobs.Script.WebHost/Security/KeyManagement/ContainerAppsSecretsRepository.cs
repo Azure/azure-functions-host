@@ -44,22 +44,22 @@ public class ContainerAppsSecretsRepository : ISecretsRepository
 
     public async Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName)
     {
-        if (type == ScriptSecretsType.Function && string.IsNullOrEmpty(functionName))
+        if (type == ScriptSecretsType.Function)
         {
-            throw new ArgumentNullException(nameof(functionName), $"{nameof(functionName)} cannot be null or empty with {nameof(type)} = {nameof(ScriptSecretsType.Function)}");
+            ArgumentException.ThrowIfNullOrEmpty(functionName);
         }
 
         return type == ScriptSecretsType.Host ? await ReadHostSecretsAsync() : await ReadFunctionSecretsAsync(functionName.ToLowerInvariant());
     }
 
     public Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
-        => throw new NotImplementedException();
+        => throw new NotSupportedException($"The {nameof(ContainerAppsSecretsRepository)} is read-only.");
 
     private async Task<ScriptSecrets> ReadHostSecretsAsync()
     {
-        var secrets = await GetFromFilesAsync(ContainerAppsSecretsDir);
+        IDictionary<string, string> secrets = await GetFromFilesAsync(ContainerAppsSecretsDir);
 
-        HostSecrets hostSecrets = new HostSecrets()
+        HostSecrets hostSecrets = new()
         {
             FunctionKeys = [],
             SystemKeys = []
@@ -67,11 +67,11 @@ public class ContainerAppsSecretsRepository : ISecretsRepository
 
         foreach (var pair in secrets)
         {
-            if (pair.Key.StartsWith(MasterKey, StringComparison.OrdinalIgnoreCase))
+            if (string.Compare(pair.Key, MasterKey) == 0)
             {
                 hostSecrets.MasterKey = new Key("master", pair.Value);
             }
-            else if (pair.Key.StartsWith(HostFunctionKeyPrefix, StringComparison.OrdinalIgnoreCase))
+            else if (pair.Key.StartsWith(HostFunctionKeyPrefix))
             {
                 hostSecrets.FunctionKeys.Add(ParseKeyWithPrefix(HostFunctionKeyPrefix, pair.Key, pair.Value));
             }
@@ -110,7 +110,7 @@ public class ContainerAppsSecretsRepository : ISecretsRepository
         string[] files = await FileUtility.GetFilesAsync(path, "*");
         var secrets = new Dictionary<string, string>(files.Length);
 
-        StringBuilder sb = new StringBuilder("Loaded secrets from files:");
+        StringBuilder sb = new("Loaded secrets from files:");
 
         foreach (var file in files)
         {
@@ -118,27 +118,31 @@ public class ContainerAppsSecretsRepository : ISecretsRepository
             sb.AppendLine($"  {file}");
         }
 
-        _logger.LogDebug(sb.ToString());
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug(sb.ToString());
+        }
+
         return secrets;
     }
 
     /// <summary>
     /// no-op - allow stale secrets to remain.
     /// </summary>
-    public async Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger)
-        => await Task.Yield();
+    public Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger)
+        => Task.CompletedTask;
 
     /// <summary>
     /// Runtime is not responsible for encryption so this code will never be executed.
     /// </summary>
     public Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
-        => throw new NotSupportedException();
+        => throw new NotSupportedException($"The {nameof(ContainerAppsSecretsRepository)} is read-only.");
 
     /// <summary>
     /// Runtime is not responsible for encryption so this code will never be executed.
     /// </summary>
     public Task<string[]> GetSecretSnapshots(ScriptSecretsType type, string functionName)
-        => throw new NotSupportedException();
+        => throw new NotSupportedException($"The {nameof(ContainerAppsSecretsRepository)} is read-only.");
 
     private static Key ParseKeyWithPrefix(string prefix, string key, string value)
         => new(key.Substring(prefix.Length), value);
