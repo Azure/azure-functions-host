@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Http
         private readonly HttpMessageInvoker _messageInvoker;
         private readonly ForwarderRequestConfig _forwarderRequestConfig;
         private readonly ILogger<DefaultHttpProxyService> _logger;
+        private readonly HttpTransformer _httpTransformer = ScriptInvocationRequestTransformer.Instance;
 
         public DefaultHttpProxyService(IHttpForwarder httpForwarder, ILogger<DefaultHttpProxyService> logger)
         {
@@ -98,7 +99,11 @@ namespace Microsoft.Azure.WebJobs.Script.Http
             // add invocation id as correlation id, override existing header if present
             httpRequest.Headers[ScriptConstants.HttpProxyCorrelationHeader] = context.ExecutionContext.InvocationId.ToString();
 
-            var forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig).AsTask();
+            // Add the script invocation context for later observation of the ScriptInvocationResult task.
+            // This helps track failures/cancellations that should halt retrying the http request.
+            httpContext.Items[ScriptConstants.HttpProxyScriptInvocationContext] = context;
+
+            var forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig, _httpTransformer).AsTask();
             context.Properties[ScriptConstants.HttpProxyTask] = forwardingTask;
         }
     }

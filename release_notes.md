@@ -3,9 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Add JitTrace Files for v4.1042
-- Updating OTel related nuget packages (#11216)
-- Moving to version 1.5.7 of Microsoft.Azure.AppService.Middleware.Functions (https://github.com/Azure/azure-functions-host/pull/11231)
-- Refactor code to move the logic to search for WorkerConfigs to a default worker configuration resolver (#11219)
-- Update Node.js Worker Version to [3.11.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.11.0)
-- Adding restart reason to the logs (#11191)
+- Rev `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` to `1.0.13` (#11269)
+- Refactor telemetry & exporter setup: deprecations, noise reduction, and API updates (#11260)
+- Update Python Worker Version to [4.39.2](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.39.2)
+- Add JitTrace Files for v4.1043 (#11281)

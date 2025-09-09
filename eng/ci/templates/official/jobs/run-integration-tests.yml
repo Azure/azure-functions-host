@@ -8,8 +8,9 @@ jobs:
     os: windows
 
   variables:
-    IntegrationProject: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
-    IsReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
+    test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
+    is_release: $[contains(variables['Build.SourceBranch'], 'release/')]
+    test_args: -c release --no-build
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -45,12 +46,6 @@ jobs:
       command: ci
       workingDir: sample/CustomHandlerRetry
 
-  - task: DotNetCoreCLI@2
-    displayName: Build Integration.csproj
-    inputs:
-      command: build
-      projects: $(IntegrationProject)
-
   - task: AzurePowerShell@5
     displayName: Checkout secrets
     inputs:
@@ -74,6 +69,7 @@ jobs:
         Write-Host "##vso[task.setvariable variable=ConnectionStrings__CosmosDB]$env:CosmosDbSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubSender]$env:AzureWebJobsEventHubSenderSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubReceiver]$env:AzureWebJobsEventHubReceiverSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubPath]testhub"
     env:
       AzureWebJobsStorageSecretMap: $(Storage)
       AzureWebJobsSecondaryStorageSecretMap: $(SecondaryStorage)
@@ -82,12 +78,27 @@ jobs:
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
 
   - task: DotNetCoreCLI@2
+    displayName: Restore
+    inputs:
+      command: custom
+      custom: restore
+      arguments: -v m
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
+    displayName: Build
+    inputs:
+      command: build
+      arguments: -v m -c release --no-restore
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
     displayName: C# end to end tests
     inputs:
       command: test
       testRunTitle: C# end to end tests
-      arguments: '--filter "Group=CSharpEndToEndTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=CSharpEndToEndTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Node end to end tests
@@ -95,8 +106,8 @@ jobs:
     inputs:
       command: test
       testRunTitle: Node end to end tests
-      arguments: '--filter "Group=NodeEndToEndTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=NodeEndToEndTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Direct load end to end tests
@@ -104,8 +115,8 @@ jobs:
     inputs:
       command: test
       testRunTitle: Direct load end to end tests
-      arguments: '--filter "Group=DirectLoadEndToEndTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=DirectLoadEndToEndTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: F# end to end tests
@@ -113,8 +124,8 @@ jobs:
     inputs:
       command: test
       testRunTitle: F# end to end tests
-      arguments: '--filter "Group=FSharpEndToEndTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=FSharpEndToEndTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Language worker end to end tests
@@ -122,8 +133,8 @@ jobs:
     inputs:
       command: test
       testRunTitle: Language worker end to end tests
-      arguments: '--filter "Group=LanguageWorkerSelectionEndToEndTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=LanguageWorkerSelectionEndToEndTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Node script host end to end tests
@@ -131,8 +142,8 @@ jobs:
     inputs:
       command: test
       testRunTitle: Node script host end to end tests
-      arguments: '--filter "Group=NodeScriptHostTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=NodeScriptHostTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Raw assembly end to end tests
@@ -140,8 +151,8 @@ jobs:
     inputs:
       command: test
       testRunTitle: Raw assembly end to end tests
-      arguments: '--filter "Group=RawAssemblyEndToEndTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=RawAssemblyEndToEndTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Samples end to end tests
@@ -149,8 +160,8 @@ jobs:
     inputs:
       command: test
       testRunTitle: Samples end to end tests
-      arguments: '--filter "Group=SamplesEndToEndTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=SamplesEndToEndTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Drain mode end to end tests
@@ -158,8 +169,8 @@ jobs:
     inputs:
       command: test
       testRunTitle: Drain mode end to end tests
-      arguments: '--filter "Group=DrainModeEndToEndTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=DrainModeEndToEndTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Standby mode end to end tests Windows
@@ -167,8 +178,8 @@ jobs:
     inputs:
       command: test
       testRunTitle: Standby mode end to end tests Windows
-      arguments: '--filter "Group=StandbyModeEndToEndTests_Windows" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=StandbyModeEndToEndTests_Windows" $(test_args)'
+      projects: $(test_projects)
 
   # Disabled to unblock in 202401. Will fix shortly.
   # - task: DotNetCoreCLI@2
@@ -177,8 +188,8 @@ jobs:
   #   inputs:
   #     command: test
   #     testRunTitle: Standby mode end to end tests Linux
-  #     arguments: '--filter "Group=StandbyModeEndToEndTests_Linux" --no-build'
-  #     projects: $(IntegrationProject)
+  #     arguments: '--filter "Group=StandbyModeEndToEndTests_Linux" $(test_args)'
+  #     projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Linux container end to end tests Windows
@@ -186,17 +197,17 @@ jobs:
     inputs:
       command: test
       testRunTitle: Linux container end to end tests Windows
-      arguments: '--filter "Group=ContainerInstanceTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=ContainerInstanceTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Release verification tests
-    condition: ${{ eq(variables.IsReleaseBranch, true) }}
+    condition: ${{ eq(variables.is_release, true) }}
     inputs:
       command: test
       testRunTitle: Release verification tests
-      arguments: '--filter "Group=ReleaseTests" --no-build'
-      projects: $(IntegrationProject)
+      arguments: '--filter "Group=ReleaseTests" $(test_args)'
+      projects: $(test_projects)
 
   - task: AzurePowerShell@5
     condition: always()

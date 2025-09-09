@@ -32,8 +32,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public static partial class TestHelpers
     {
+#if DEBUG
+        public const string BuildConfig = "debug";
+#else
+        public const string BuildConfig = "release";
+#endif
+
         private const string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         private static readonly Random Random = new Random();
+
+        /// <summary>
+        /// Helper method to inline an action delegate.
+        /// </summary>
+        /// <param name="act">The action.</param>
+        /// <returns>The provided action.</returns>
+        /// <remarks>
+        /// This is intended to be used with a fluent assertion.
+        /// <c>Act(() => { }).Should().Something();</c>.
+        /// </remarks>
+        public static Action Act(Action act) => act;
+
+        /// <summary>
+        /// Helper method to inline an action delegate.
+        /// </summary>
+        /// <param name="act">The action.</param>
+        /// <returns>The provided action.</returns>
+        /// <remarks>
+        /// This is intended to be used with a fluent assertion.
+        /// <c>Act(() => { }).Should().Something();</c>.
+        /// </remarks>
+        public static Func<T> Act<T>(Func<T> act) => act;
 
         public static Task WaitOneAsync(this WaitHandle waitHandle)
         {
