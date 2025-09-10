@@ -45,14 +45,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         }
 
         /// <summary>
-        /// Gets the list of worker configurations by searching probing paths and fallback path.
+        /// Retrieves a dictionary of worker configurations by searching the probing paths and fallback path.
+        /// The returned dictionary maps FUNCTIONS_WORKER_RUNTIME values to the corresponding RpcWorkerConfig - { FUNCTIONS_WORKER_RUNTIME : RpcWorkerConfig }.
         /// </summary>
         public Dictionary<string, RpcWorkerConfig> GetWorkerConfigs()
         {
             var workerRuntime = _resolverOptions.CurrentValue.WorkerRuntime;
             var workerProbingPaths = _resolverOptions.CurrentValue.ProbingPaths;
 
-            // Search for worker configs in probing paths. Returns a dictionary of { FUNCTIONS_WORKER_RUNTIME : RpcWorkerConfig }
             var runtimeToConfigMap = ResolveWorkerConfigsFromProbingPaths(workerProbingPaths, workerRuntime);
 
             if (!_resolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
@@ -64,9 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             // Search in fallback path if worker cannot be found in probing paths
-            runtimeToConfigMap = ResolveWorkerConfigsFromWithinHost(runtimeToConfigMap);
-
-            return runtimeToConfigMap;
+            return ResolveWorkerConfigsFromWithinHost(runtimeToConfigMap);
         }
 
         /// <summary>
@@ -108,13 +106,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         // Skip worker directories that don't match the current runtime or are not enabled via hosting config
                         // Do not load all workers after the specialization is done and if it is not a multi-language runtime environment
                         if (!_resolverOptions.CurrentValue.WorkersAvailableForResolution.Contains(workerRuntimeDir) ||
-                            ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir, _resolverOptions.CurrentValue.IsPlaceholderModeEnabled, _resolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment))
+                            ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir))
                         {
                             continue;
                         }
 
                         // Search for worker config inside version directories within the language worker directory
-                        // Example workerVersionPath: "<rootProbingPath>/java/1.0.0"
                         var resolvedWorkerConfig = ResolveWorkerConfigFromVersionsDirs(workerRuntimePath, workerRuntimeDir);
                         if (resolvedWorkerConfig is not null)
                         {
@@ -140,8 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         {
             var workerVersionPaths = _fileSystem.Directory.EnumerateDirectories(languageWorkerPath);
 
-            // Map of: (parsed worker version, worker path)
-            // Example: [ (1.0.0, "<rootProbingPath>/java/1.0.0"), (2.0.0, "<rootProbingPath>/java/2.0.0") ]
+            // Map of: (parsed worker version, worker path). Example: [ (2.0.0, "<rootProbingPath>/java/2.0.0"), (1.0.0, "<rootProbingPath>/java/1.0.0") ]
             var versionPathMap = GetWorkerVersionsDescending(workerVersionPaths);
 
             int compatibleWorkerCount = 0;
@@ -206,8 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         private SortedList<Version, string> GetWorkerVersionsDescending(IEnumerable<string> workerVersionPaths)
         {
-            // Map of: (parsed worker version, worker path)
-            // Example: [ (2.0.0, "<rootProbingPath>/java/2.0.0"), (1.0.0, "<rootProbingPath>/java/1.0.0") ]
+            // Map of: (parsed worker version, worker path). Example: [ (2.0.0, "<rootProbingPath>/java/2.0.0"), (1.0.0, "<rootProbingPath>/java/1.0.0") ]
             var versionPathMap = new SortedList<Version, string>(new DescendingVersionComparer());
 
             foreach (var workerVersionPath in workerVersionPaths)
@@ -242,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (workerConfigJson.ValueKind == JsonValueKind.Undefined)
             {
-                _logger.LogDebug("Skipping worker at '{workerConfigPath}' due to undefined JsonElement.", workerConfigPath);
+                _logger.LogDebug("Skipping worker at '{workerConfigPath}' due to empty worker config.", workerConfigPath);
                 return false;
             }
 
@@ -273,11 +268,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Determines if the worker directory should be skipped based on the current worker runtime and environment settings.
         /// </summary>
-        internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir, bool isMultiLanguageWorkerEnvironment, bool isPlaceholderModeEnabled)
+        internal bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir)
         {
-            return !isMultiLanguageWorkerEnvironment &&
-                    !isPlaceholderModeEnabled &&
-                    workerRuntime is not null &&
+            return !_resolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment &&
+                    !_resolverOptions.CurrentValue.IsPlaceholderModeEnabled &&
+                    !string.IsNullOrWhiteSpace(workerRuntime) &&
                     !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
         }
 
@@ -288,8 +283,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         {
             string releaseChannel = _resolverOptions.CurrentValue.ReleaseChannel;
             return !string.IsNullOrWhiteSpace(releaseChannel) &&
-                                                (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase) ||
-                                                releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase));
+                    (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase) ||
+                    releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>

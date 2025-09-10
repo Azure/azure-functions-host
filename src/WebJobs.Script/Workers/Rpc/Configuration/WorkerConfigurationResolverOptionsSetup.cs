@@ -199,13 +199,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal static ImmutableDictionary<string, RpcWorkerDescription> GetWorkerDescriptionOverrides(IConfiguration configuration)
         {
             var workerDescriptionsMap = new Dictionary<string, RpcWorkerDescription>();
-            var langaugeWorkersSection = configuration.GetSection(RpcWorkerConstants.LanguageWorkersSectionName);
-            langaugeWorkersSection.Bind(workerDescriptionsMap);
+            var languageWorkersSection = configuration.GetSection(RpcWorkerConstants.LanguageWorkersSectionName);
+            languageWorkersSection.Bind(workerDescriptionsMap);
 
             // special handling for Arguments which takes a string but internally requires a List<string>.
             foreach (var (language, workerDescription) in workerDescriptionsMap)
             {
-                string arguments = langaugeWorkersSection.GetSection(language).GetValue<string>(WorkerConstants.WorkerDescriptionArguments);
+                string arguments = languageWorkersSection.GetSection(language).GetValue<string>(WorkerConstants.WorkerDescriptionArguments);
                 if (!string.IsNullOrEmpty(arguments))
                 {
                     workerDescription.Arguments = Regex.Split(arguments, @"\s+");

@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
         {
-            if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription))
+            if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription is not null)
             {
                 workerDescription.DefaultExecutablePath = rpcWorkerDescription.DefaultExecutablePath ?? workerDescription.DefaultExecutablePath;
                 workerDescription.DefaultRuntimeVersion = rpcWorkerDescription.DefaultRuntimeVersion ?? workerDescription.DefaultRuntimeVersion;
@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
         {
-            if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription.Arguments is string[] args && args.Length > 0)
+            if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription?.Arguments is string[] args && args.Length > 0)
             {
                 ((List<string>)workerDescription.Arguments).AddRange(args);
             }
