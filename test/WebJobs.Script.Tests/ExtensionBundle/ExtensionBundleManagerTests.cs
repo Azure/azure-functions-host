@@ -684,6 +684,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 #endif
 
 #if NET6_0
+
+        [Fact]
+        public void FindBestVersionMatch_V4Range_PlaceholderMode_AllowsPreviouslyCappedMin()
+        {
+            // Without placeholder mode, only version "4.2.0" would be excluded by the adjusted open interval (4.2.0, 4.22.0),
+            // resulting in a null match (covered by existing test FindBestVersionMatch_V4Range_AllFiltered_ReturnsNull).
+            // With placeholder mode enabled, adjustment is skipped and "4.2.0" is valid and should be selected.
+            var range = VersionRange.Parse("[4.0.0, 5.0.0)");
+            var versions = new List<string> { "4.2.0" };
+
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*,5.0.0)");
+            var env = GetTestAppServiceEnvironment();
+            env.SetEnvironmentVariable(AzureWebsitePlaceholderMode, "1"); // enable placeholder mode
+
+            var manager = GetExtensionBundleManager(options, env);
+
+            var resolved = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Equal("4.2.0", resolved);
+        }
+
+        [Fact]
+        public void FindBestVersionMatch_V4Range_PlaceholderMode_AllowsPreviouslyCappedOuterVersions()
+        {
+            // Version adjustment on .NET 6 would cap effective range to (4.2.0, 4.22.0) (exclusive on both ends),
+            // excluding 4.2.0, 4.22.0, and anything above (e.g., 4.23.0). Normal (non-placeholder) selection (with provided list)
+            // would therefore choose 4.21.9 (if present) or next highest inside interval.
+            // With placeholder mode enabled, no adjustment occurs and the highest (4.23.0) should be selected.
+            var range = VersionRange.Parse("[4.0.0, 5.0.0)");
+            var versions = new List<string> { "4.2.0", "4.3.0", "4.21.9", "4.22.0", "4.23.0" };
+
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*,5.0.0)");
+            var env = GetTestAppServiceEnvironment();
+            env.SetEnvironmentVariable(AzureWebsitePlaceholderMode, "1"); // enable placeholder mode
+
+            var manager = GetExtensionBundleManager(options, env);
+
+            var resolved = manager.FindBestVersionMatch(range, versions, ScriptConstants.DefaultExtensionBundleId, new FunctionsHostingConfigOptions());
+
+            Assert.Equal("4.23.0", resolved);
+        }
+
         [Fact]
         public void FindBestVersionMatch_V4Range_MinCapApplied_ExcludesCappedMin()
         {
