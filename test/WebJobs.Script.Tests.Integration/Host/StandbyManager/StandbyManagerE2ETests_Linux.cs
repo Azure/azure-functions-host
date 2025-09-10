@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 SiteName = "TestApp",
                 Environment = environment
             };
-            var encryptedAssignmentContext = CreateEncryptedContext(assignmentContext, encryptionKey);
+            var encryptedAssignmentContext = CreateHostAssignmentRequest(assignmentContext, encryptionKey);
             string json = JsonConvert.SerializeObject(encryptedAssignmentContext);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
@@ -279,13 +279,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         }
 
-        private static EncryptedHostAssignmentContext CreateEncryptedContext(HostAssignmentContext context, string key)
+        private static HostAssignmentRequest CreateHostAssignmentRequest(HostAssignmentContext context, string key)
         {
             string json = JsonConvert.SerializeObject(context);
             var encryptionKey = Convert.FromBase64String(key);
             string encrypted = EncryptionHelper.Encrypt(json, encryptionKey);
 
-            return new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
+            return new HostAssignmentRequest { EncryptedContext = encrypted };
         }
     }
 }

@@ -135,18 +135,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// Decrypt and deserialize the specified context, and apply values from it to the
         /// startup cache context.
         /// </summary>
-        /// <param name="encryptedContext">The encrypted assignment context.</param>
-        /// <returns>The decrypted assignment context</returns>
-        public virtual HostAssignmentContext SetContext(EncryptedHostAssignmentContext encryptedContext)
+        /// <param name="hostAssignmentRequest">The Host assignment request.</param>
+        /// <returns>The decrypted assignment context.</returns>
+        public virtual HostAssignmentContext SetContext(HostAssignmentRequest hostAssignmentRequest)
         {
-            string decryptedContext = EncryptionHelper.Decrypt(encryptedContext.EncryptedContext, environment: _environment);
-            var hostAssignmentContext = JsonConvert.DeserializeObject<HostAssignmentContext>(decryptedContext);
+            var hostAssignmentContext = hostAssignmentRequest.AssignmentContext;
 
-            return SetContext(hostAssignmentContext);
-        }
+            if (!string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext))
+            {
+                string decryptedContext = EncryptionHelper.Decrypt(hostAssignmentRequest.EncryptedContext, environment: _environment);
+                hostAssignmentContext = JsonConvert.DeserializeObject<HostAssignmentContext>(decryptedContext);
+            }
 
-        public virtual HostAssignmentContext SetContext(HostAssignmentContext hostAssignmentContext)
-        {
             // Don't update StartupContext for warmup requests
             if (!hostAssignmentContext.IsWarmupRequest)
             {

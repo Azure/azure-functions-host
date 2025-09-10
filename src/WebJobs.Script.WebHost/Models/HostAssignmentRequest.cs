@@ -5,9 +5,12 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
-    public class EncryptedHostAssignmentContext
+    public class HostAssignmentRequest
     {
         [JsonProperty("encryptedContext")]
         public string EncryptedContext { get; set; }
+
+        [JsonProperty("assignmentContext")]
+        public HostAssignmentContext AssignmentContext { get; set; }
     }
 }

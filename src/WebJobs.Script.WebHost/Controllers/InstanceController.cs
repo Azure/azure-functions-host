@@ -35,49 +35,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/instance/assign")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> Assign([FromBody] EncryptedHostAssignmentContext encryptedAssignmentContext)
+        public async Task<IActionResult> Assign([FromBody] HostAssignmentRequest hostAssignmentContext)
         {
-            _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. ContextLength is: {encryptedAssignmentContext.EncryptedContext?.Length}");
-
-            var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
-
-            return await AssignInternal(assignmentContext);
-        }
-
-        [HttpPost]
-        [Route("admin/instance/assign2")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> Assign2([FromBody] FunctionsWorkerContainerAssignmentContext workerAssignmentContext)
-        {
-            if (workerAssignmentContext?.AssignmentContext == null || workerAssignmentContext.AssignmentContext == null)
+            if (string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext) &&
+                hostAssignmentContext.AssignmentContext == null)
             {
-                return BadRequest("Assignment context is missing.");
+                return BadRequest("Atleast one of Assignment context and EncryptedContext needs to be set.");
+            }
+            if (!string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext) &&
+                !(hostAssignmentContext.AssignmentContext == null))
+            {
+                return BadRequest("Only one of Assignment context and EncryptedContext needs to be set.");
+            }
+            if (!string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext))
+            {
+                _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. ContextLength is {hostAssignmentContext.EncryptedContext.Length}");
+            }
+            else
+            {
+                _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. Using unencrypted assignment context");
             }
 
-            _logger.LogDebug($"Starting container assignment for host : {Request?.Host}");
-            var assignmentContext = _startupContextProvider.SetContext(workerAssignmentContext.AssignmentContext);
+            var assignmentContext = _startupContextProvider.SetContext(hostAssignmentContext);
 
-            return await AssignInternal(assignmentContext);
-        }
-
-        [HttpGet]
-        [Route("admin/instance/info")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public IActionResult GetInstanceInfo()
-        {
-            return Ok(_instanceManager.GetInstanceInfo());
-        }
-
-        [HttpGet]
-        [Route("admin/instance/http-health")]
-        public IActionResult GetHttpHealthStatus()
-        {
-            // Reaching here implies that http health of the container is ok.
-            return Ok();
-        }
-
-        private async Task<IActionResult> AssignInternal(HostAssignmentContext assignmentContext)
-        {
             // before starting the assignment we want to perform as much
             // up front validation on the context as possible
             string error = await _instanceManager.ValidateContext(assignmentContext);
@@ -99,6 +79,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return succeeded
                 ? Accepted()
                 : StatusCode(StatusCodes.Status409Conflict, "Instance already assigned");
+        }
+
+        [HttpGet]
+        [Route("admin/instance/info")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public IActionResult GetInstanceInfo()
+        {
+            return Ok(_instanceManager.GetInstanceInfo());
+        }
+
+        [HttpGet]
+        [Route("admin/instance/http-health")]
+        public IActionResult GetHttpHealthStatus()
+        {
+            // Reaching here implies that http health of the container is ok.
+            return Ok();
         }
     }
 }

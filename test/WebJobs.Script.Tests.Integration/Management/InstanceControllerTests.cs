@@ -80,14 +80,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var encryptedHostAssignmentValue = EncryptionHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
-            var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
+            var hostAssignmentRequest = new HostAssignmentRequest()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.EncryptionKey);
 
-            IActionResult result = await instanceController.Assign(encryptedHostAssignmentContext);
+            IActionResult result = await instanceController.Assign(hostAssignmentRequest);
 
             var objectResult = result as ObjectResult;
 
@@ -156,14 +156,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var encryptedHostAssignmentValue = EncryptionHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
-            var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
+            var hostAssignmentRequest = new HostAssignmentRequest()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.EncryptionKey);
 
-            await instanceController.Assign(encryptedHostAssignmentContext);
+            await instanceController.Assign(hostAssignmentRequest);
             Assert.NotNull(startupContextProvider.Context);
         }
 
@@ -209,14 +209,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var encryptedHostAssignmentValue = EncryptionHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext), TestHelpers.EncryptionKey.ToKeyBytes());
 
-            var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
+            var hostAssignmentRequest = new HostAssignmentRequest()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.EncryptionKey);
 
-            await instanceController.Assign(encryptedHostAssignmentContext);
+            await instanceController.Assign(hostAssignmentRequest);
             Assert.Null(startupContextProvider.Context);
         }
 
@@ -250,14 +250,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 EncryptionHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext),
                     TestHelpers.EncryptionKey.ToKeyBytes());
 
-            var encryptedHostAssignmentContext = new EncryptedHostAssignmentContext()
+            var hostAssignmentRequest = new HostAssignmentRequest()
             {
                 EncryptedContext = encryptedHostAssignmentValue
             };
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.EncryptionKey);
             
-            await instanceController.Assign(encryptedHostAssignmentContext);
+            await instanceController.Assign(hostAssignmentRequest);
 
             instanceManager.Verify(i => i.ValidateContext(It.IsAny<HostAssignmentContext>()),
                 shouldInvokeMethod ? Times.Once() : Times.Never());

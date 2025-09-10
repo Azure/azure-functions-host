@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             string json = JsonConvert.SerializeObject(context);
             string encrypted = EncryptionHelper.Encrypt(json, environment: _environment);
-            var encryptedContext = new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
+            var encryptedContext = new HostAssignmentRequest { EncryptedContext = encrypted };
 
             var result = _startupContextProvider.SetContext(encryptedContext);
             Assert.Equal(context.SiteName, result.SiteName);
@@ -212,9 +212,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             string json = JsonConvert.SerializeObject(context);
             string encrypted = EncryptionHelper.Encrypt(json, environment: _environment);
-            var encryptedContext = new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
+            var hostAssignmentRequest = new HostAssignmentRequest { EncryptedContext = encrypted };
 
-            var result = _startupContextProvider.SetContext(encryptedContext);
+            var result = _startupContextProvider.SetContext(hostAssignmentRequest);
             Assert.Equal(context.SiteName, result.SiteName);
             Assert.Equal(_secrets.Host.Master, result.Secrets.Host.Master);
 
