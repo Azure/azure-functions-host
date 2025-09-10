@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -69,11 +69,6 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                     await Task.Delay(currentDelay, cancellationToken);
 
                     currentDelay = Math.Min(currentDelay * 2, MaximumDelay);
-                }
-                catch (FunctionAbortedException)
-                {
-                    _logger.LogDebug("Function invocation aborted. Request will not be retried.");
-                    throw;
                 }
                 catch (Exception ex)
                 {
