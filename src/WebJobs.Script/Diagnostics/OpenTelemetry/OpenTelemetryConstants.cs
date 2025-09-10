@@ -15,5 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         internal const string AzureFunctionsGroup = "azure.functions.group";
         internal const string HttpTriggerType = "http";
         internal const string HostActivitySourceName = "Microsoft.Azure.WebJobs";
+        internal const string HostActivitySourceVersion = "1.0.0";
     }
 }

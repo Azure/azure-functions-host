@@ -14,9 +14,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
     {
         private readonly ActivitySource _activitySource;
 
-        public ActivitySourceWrapper(string sourceName)
+        public ActivitySourceWrapper(string sourceName, string version)
         {
-            _activitySource = new ActivitySource(sourceName);
+            _activitySource = new ActivitySource(sourceName, version);
         }
 
         public IDisposable? StartActivity(IFunctionInstanceEx functionInstance)
