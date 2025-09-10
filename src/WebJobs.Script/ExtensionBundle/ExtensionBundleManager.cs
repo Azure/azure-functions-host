@@ -281,9 +281,11 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         }
 
         // Applies bundle version limits for .NET 6, using the default bundle if referencing a v4 major bundle version.
+        // Does not apply version limit in placeholder mode. This will prevent bundle download in placeholder mode as long as a matching bundle is available.
         private VersionRange GetAdjustedVersion(int dotnetVersion, VersionRange versionRange, string bundleId)
         {
-            if (dotnetVersion != 6
+            if (_environment.IsPlaceholderModeEnabled()
+                || dotnetVersion != 6
                 || !string.Equals(bundleId, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
                 || versionRange.MinVersion.Major != ScriptConstants.ExtensionBundleV4MajorVersion)
             {
