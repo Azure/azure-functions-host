@@ -8,3 +8,4 @@
 - Update Python Worker Version to [4.39.2](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.39.2)
 - Add JitTrace Files for v4.1043 (#11281)
 - Update `Microsoft.Azure.WebJobs` reference to `3.0.42` (#11309)
+- Setting current activity status for failed invocations (#11313)
