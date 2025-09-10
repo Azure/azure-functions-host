@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -1561,6 +1561,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(TaskStatus.RanToCompletion, resultSource.Task.Status);
         }
 
+        [Fact]
+        public async Task Ensure_Failure_Status_On_CurrentActivity_WhenInvocationFailed()
+        {
+            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HttpUri, "http://localhost:1234" } });
+            Activity activity = new Activity("testActivity");
+            activity.Start();
+
+            var httpInvocationId = Guid.NewGuid();
+            ScriptInvocationContext httpInvocationContext = GetTestScriptInvocationContext(httpInvocationId, new TaskCompletionSource<ScriptInvocationResult>(), logger: _logger);
+            httpInvocationContext.FunctionMetadata = BuildFunctionMetadataForHttpTrigger("httpTrigger");
+
+            // Send http trigger invocation invocation request.
+            await _workerChannel.SendInvocationRequest(httpInvocationContext);
+
+            // Send http trigger invocation response
+            await _workerChannel.InvokeResponse(BuildSFailureInvocationResponse(httpInvocationId.ToString()));
+            activity.Stop();
+
+            Assert.Equal(ActivityStatusCode.Error, activity.Status);
+            Assert.Contains("Failure", activity.StatusDescription);
+        }
+
         private static IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
         {
             return GetTestFunctionsList(runtime, numberOfFunctions: 2, addWorkerProperties);
@@ -1701,6 +1723,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Result = new StatusResult
                 {
                     Status = StatusResult.Types.Status.Success
+                },
+            };
+        }
+
+        private static InvocationResponse BuildSFailureInvocationResponse(string invocationId)
+        {
+            return new InvocationResponse
+            {
+                InvocationId = invocationId,
+                Result = new StatusResult
+                {
+                    Status = StatusResult.Types.Status.Failure
                 },
             };
         }
