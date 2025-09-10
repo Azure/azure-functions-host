@@ -15,9 +15,12 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NuGet.Versioning;
+using Polly;
+using Polly.Extensions.Http;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -506,13 +509,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         {
             environment = environment ?? new TestEnvironment();
 
+            var httpClientFactory = new Mock<IHttpClientFactory>();
+            httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(new HttpClient());
+
             if (mockLoggerFactory is null)
             {
-                return new ExtensionBundleManager(bundleOptions, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions());
+                return new ExtensionBundleManager(bundleOptions, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions(), httpClientFactory.Object);
             }
             else
             {
-                return new ExtensionBundleManager(bundleOptions, environment, mockLoggerFactory.Object, new FunctionsHostingConfigOptions());
+                return new ExtensionBundleManager(bundleOptions, environment, mockLoggerFactory.Object, new FunctionsHostingConfigOptions(), httpClientFactory.Object);
             }
         }
 
@@ -646,6 +652,134 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 }
                 stream.Seek(0, SeekOrigin.Begin);
                 return new StreamContent(stream);
+            }
+        }
+
+        [Fact]
+        public async Task GetExtensionBundle_RetriesZipDownload_Succeeds_AfterTransientFailures()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*, 5.0.0)");
+            var environment = GetTestAppServiceEnvironment();
+            var version = "4.2.0";
+
+            var handler = new TransientZipFailureHandler(version, zipFailuresBeforeSuccess: 2);
+            var services = new ServiceCollection();
+            services.AddLogging();
+
+            // Register named client identical to production name so manager picks up retry policy.
+            services.AddHttpClient(nameof(ExtensionBundleManager))
+                .ConfigurePrimaryHttpMessageHandler(() => handler)
+                .AddPolicyHandler(HttpPolicyExtensions
+                    .HandleTransientHttpError()
+                    .OrResult(resp => resp.StatusCode == HttpStatusCode.TooManyRequests)
+                    .WaitAndRetryAsync(
+                        retryCount: 4,
+                        sleepDurationProvider: _ => TimeSpan.Zero,
+                        onRetry: (_, __, ___, ____) => { }));
+
+            var provider = services.BuildServiceProvider();
+            var factory = provider.GetRequiredService<IHttpClientFactory>();
+            var manager = new ExtensionBundleManager(options, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions(), factory);
+
+            var path = await manager.GetExtensionBundlePath();
+
+            Assert.NotNull(path);
+            Assert.True(Directory.Exists(Path.Combine(options.DownloadPath, version)));
+            Assert.Equal(1, handler.IndexAttempts); // index.json fetched once
+            Assert.Equal(3, handler.ZipAttempts);   // 2 failures + 1 success
+        }
+
+        [Fact]
+        public async Task GetExtensionBundle_RetriesZipDownload_ExhaustsAndFails()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*, 5.0.0)");
+            var environment = GetTestAppServiceEnvironment();
+            var version = "4.2.0";
+
+            var handler = new TransientZipFailureHandler(version, zipFailuresBeforeSuccess: 10); // exceed retry budget
+            var services = new ServiceCollection();
+            services.AddLogging();
+
+            services.AddHttpClient(nameof(ExtensionBundleManager))
+                .ConfigurePrimaryHttpMessageHandler(() => handler)
+                .AddPolicyHandler(HttpPolicyExtensions
+                    .HandleTransientHttpError()
+                    .OrResult(resp => resp.StatusCode == HttpStatusCode.TooManyRequests)
+                    .WaitAndRetryAsync(
+                        retryCount: 4,
+                        sleepDurationProvider: _ => TimeSpan.Zero,
+                        onRetry: (_, __, ___, ____) => { }));
+
+            var provider = services.BuildServiceProvider();
+            var factory = provider.GetRequiredService<IHttpClientFactory>();
+            var manager = new ExtensionBundleManager(options, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions(), factory);
+
+            var path = await manager.GetExtensionBundlePath();
+
+            Assert.Null(path);
+            Assert.Equal(1, handler.IndexAttempts);
+            Assert.Equal(5, handler.ZipAttempts); // initial + 4 retries
+            Assert.False(Directory.Exists(Path.Combine(options.DownloadPath, version)));
+        }
+
+        // Primary handler simulating transient zip download failures to exercise retry policy.
+        private sealed class TransientZipFailureHandler : HttpMessageHandler
+        {
+            private readonly string _version;
+            private int _zipFailuresRemaining;
+
+            public int IndexAttempts { get; private set; }
+
+            public int ZipAttempts { get; private set; }
+
+            public TransientZipFailureHandler(string version, int zipFailuresBeforeSuccess)
+            {
+                _version = version;
+                _zipFailuresRemaining = zipFailuresBeforeSuccess;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                var path = request.RequestUri.AbsolutePath;
+                if (path.EndsWith("index.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    IndexAttempts++;
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("[ \"4.1.0\", \"4.2.0\" ]")
+                    });
+                }
+
+                if (path.Contains($"{BundleId}.{_version}", StringComparison.OrdinalIgnoreCase))
+                {
+                    ZipAttempts++;
+                    if (_zipFailuresRemaining > 0)
+                    {
+                        _zipFailuresRemaining--;
+                        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+                    }
+
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = CreateBundleZipContent()
+                    });
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            }
+
+            private static HttpContent CreateBundleZipContent()
+            {
+                var ms = new MemoryStream();
+                using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, true))
+                {
+                    var entry = zip.CreateEntry("bundle.json");
+                    using var entryStream = entry.Open();
+                    using var sw = new StreamWriter(entryStream);
+                    sw.Write("{ id: \"Microsoft.Azure.Functions.ExtensionBundle\" }");
+                }
+                ms.Seek(0, SeekOrigin.Begin);
+                return new StreamContent(ms);
             }
         }
     }
