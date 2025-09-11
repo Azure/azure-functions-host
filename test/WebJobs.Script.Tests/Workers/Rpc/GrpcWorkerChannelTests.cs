@@ -1563,14 +1563,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData(3, true)]
         [InlineData(1, false)]
         [InlineData(3, false)]
-        public async Task Shutdown_FailsInFlightInvocations(int numberOfInvocations, bool hasFailureException)
+        public async Task Shutdown_FailsInFlightInvocations(int numberOfInFlightInvocations, bool hasFailureException)
         {
             await CreateDefaultWorkerChannel();
 
             var invocationContexts = new List<ScriptInvocationContext>();
             var invocationIds = new List<Guid>();
 
-            for (int i = 0; i < numberOfInvocations; i++)
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
             {
                 var invocationId = Guid.NewGuid();
                 var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
@@ -1587,7 +1587,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 invocationIds.Add(invocationId);
             }
 
-            for (int i = 0; i < numberOfInvocations; i++)
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
             {
                 Assert.True(_workerChannel.IsExecutingInvocation(invocationIds[i].ToString()),
                     $"Invocation {i} should be executing");
@@ -1597,14 +1597,61 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.Shutdown(workerException);
 
-            for (int i = 0; i < numberOfInvocations; i++)
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
             {
                 Assert.False(_workerChannel.IsExecutingInvocation(invocationIds[i].ToString()),
                     $"Invocation {i} should no longer be executing");
 
                 var resultSource = invocationContexts[i].ResultSource;
                 Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
-                Assert.IsType<FunctionTimeoutAbortException>(resultSource.Task.Exception.InnerException);
+            }
+        }
+
+        [Theory]
+        [InlineData(1, true)]
+        [InlineData(3, true)]
+        public async Task Shutdown_WithFunctionTimeoutException_FailsInFlightInvocations(int numberOfInFlightInvocations, bool hasFailureException)
+        {
+            await CreateDefaultWorkerChannel();
+
+            var invocationContexts = new List<ScriptInvocationContext>();
+            var invocationIds = new List<Guid>();
+
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
+            {
+                var invocationId = Guid.NewGuid();
+                var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+
+                var invocationContext = GetTestScriptInvocationContext(
+                    invocationId,
+                    resultSource,
+                    logger: _logger,
+                    scriptRootPath: _scriptRootPath);
+
+                await _workerChannel.SendInvocationRequest(invocationContext);
+
+                invocationContexts.Add(invocationContext);
+                invocationIds.Add(invocationId);
+            }
+
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
+            {
+                Assert.True(_workerChannel.IsExecutingInvocation(invocationIds[i].ToString()),
+                    $"Invocation {i} should be executing");
+            }
+
+            var workerException = hasFailureException ? new FunctionTimeoutException("Invocation timed out.") : null;
+
+            _workerChannel.Shutdown(workerException);
+
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
+            {
+                Assert.False(_workerChannel.IsExecutingInvocation(invocationIds[i].ToString()),
+                    $"Invocation {i} should no longer be executing");
+
+                var resultSource = invocationContexts[i].ResultSource;
+                Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
+                Assert.Equal(typeof(FunctionTimeoutAbortException), resultSource.Task.Exception.InnerException.GetType());
             }
         }
 
