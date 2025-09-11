@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Http
                 {
                     if (resultSource is not null && (resultSource.Task.IsFaulted || resultSource.Task.IsCanceled))
                     {
-                        _logger.LogWarning("HTTP request will not be retried. The associated function invocation has failed with exception: {exception}.", resultSource.Task.Exception);
+                        // if the ScriptInvocation has already failed, we do not need to retry any more because there's no request to proxy.
                         throw;
                     }
 
