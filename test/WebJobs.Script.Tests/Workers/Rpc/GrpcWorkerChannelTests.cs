@@ -1576,7 +1576,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.SendInvocationRequest(httpInvocationContext);
 
             // Send http trigger invocation response
-            await _workerChannel.InvokeResponse(BuildSFailureInvocationResponse(httpInvocationId.ToString()));
+            await _workerChannel.InvokeResponse(BuildFailureInvocationResponse(httpInvocationId.ToString()));
             activity.Stop();
 
             Assert.Equal(ActivityStatusCode.Error, activity.Status);
@@ -1727,7 +1727,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
         }
 
-        private static InvocationResponse BuildSFailureInvocationResponse(string invocationId)
+        private static InvocationResponse BuildFailureInvocationResponse(string invocationId)
         {
             return new InvocationResponse
             {

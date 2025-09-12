@@ -1728,8 +1728,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void SetCurrentActivityStatus(ScriptInvocationContext context, Exception exception)
         {
-            // If AsyncExecutionContext is null or if current activity is null, skip running
-            if (context?.AsyncExecutionContext is null || Activity.Current is null)
+            // If AsyncExecutionContext is null, skip running.
+            if (context?.AsyncExecutionContext is null)
             {
                 return;
             }
