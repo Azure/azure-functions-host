@@ -522,7 +522,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public class Fixture : IDisposable
+        public class Fixture : IAsyncLifetime
         {
             private readonly DefaultAzureCredentialOptions _azureCredentialOptions;
 
@@ -614,14 +614,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 };
             }
 
-            public void Dispose()
+            public Task InitializeAsync()
+            {
+                return Task.CompletedTask;
+            }
+
+            public async Task DisposeAsync()
             {
                 try
                 {
                     // delete blob files
-                    ClearAllBlobSecrets().ContinueWith(t => { });
+                    await ClearAllBlobSecrets();
                     ClearAllFileSecrets();
-                    ClearAllKeyVaultSecrets().ContinueWith(t => { });
+                    await ClearAllKeyVaultSecrets();
                 }
                 catch
                 {

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Abstractions;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
@@ -219,6 +220,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             builder.ConfigureWebJobs((context, webJobsBuilder) =>
             {
+                webJobsBuilder.Services.AddSingleton<IActivitySourceAbstraction>(provider =>
+                  new ActivitySourceWrapper(OpenTelemetryConstants.HostActivitySourceName, OpenTelemetryConstants.HostActivitySourceVersion));
+
                 // Built in binding registrations
                 webJobsBuilder.AddExecutionContextBinding(o =>
                 {
