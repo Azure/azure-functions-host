@@ -1115,7 +1115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null, true)]
         // Only Default category(ScriptConstants.DefaultAzureMonitorCategories) disables logging.
         [InlineData(ScriptConstants.DefaultAzureMonitorCategories, false)]
-        // No presence of ScriptConstants.AzureMonitorTraceCategory category disables logging
+        // Absence of ScriptConstants.AzureMonitorTraceCategory category disables logging
         [InlineData("SomeOtherCategory", false)]
         // Only ScriptConstants.AzureMonitorTraceCategory category enables logging
         [InlineData(ScriptConstants.AzureMonitorTraceCategory, true)]
