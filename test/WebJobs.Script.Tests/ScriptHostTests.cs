@@ -1775,6 +1775,95 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Fact]
+        public async Task Initialize_WithRouteHandlingModeFunctionAndAuthLevelSet_Throws()
+        {
+            using (var tempDirectory = new TempDirectory())
+            {
+                string rootPath = Path.Combine(tempDirectory.Path, Guid.NewGuid().ToString());
+                Directory.CreateDirectory(rootPath);
+
+                JObject config = new JObject();
+                config["version"] = "2.0";
+                config["id"] = ID;
+
+                var routeHandling = new JObject();
+                routeHandling["mode"] = "function";
+                routeHandling["authenticationLevel"] = "anonymous";
+                config["routeHandling"] = routeHandling;
+
+                File.WriteAllText(Path.Combine(rootPath, ScriptConstants.HostMetadataFileName), config.ToString());
+
+                IHost host = new HostBuilder()
+                    .ConfigureDefaultTestWebScriptHost(o =>
+                    {
+                        o.ScriptPath = rootPath;
+                    })
+                    .Build();
+
+                var scriptHost = host.GetScriptHost();
+
+                await Assert.ThrowsAsync<HostInitializationException>(() => scriptHost.InitializeAsync());
+            }
+        }
+
+        [Fact]
+        public async Task Initialize_WithRouteHandlingModeAll_ExposesImplicitHttpHandler()
+        {
+            using (var tempDirectory = new TempDirectory())
+            {
+                string rootPath = Path.Combine(tempDirectory.Path, Guid.NewGuid().ToString());
+                Directory.CreateDirectory(rootPath);
+
+                JObject config = new JObject();
+                config["version"] = "2.0";
+                config["id"] = ID;
+
+                var routeHandling = new JObject();
+                routeHandling["mode"] = "all";
+                routeHandling["authenticationLevel"] = "anonymous";
+                config["routeHandling"] = routeHandling;
+
+                File.WriteAllText(Path.Combine(rootPath, ScriptConstants.HostMetadataFileName), config.ToString());
+
+                IHost host = new HostBuilder()
+                    .ConfigureDefaultTestWebScriptHost(o =>
+                    {
+                        o.ScriptPath = rootPath;
+                    })
+                    .Build();
+
+                var scriptHost = host.GetScriptHost();
+                await scriptHost.InitializeAsync();
+
+                var handlerDescriptor = scriptHost.Functions.SingleOrDefault(f => string.Equals(f.Name, "http-handler", StringComparison.OrdinalIgnoreCase));
+                Assert.NotNull(handlerDescriptor);
+
+                // Validate metadata bindings
+                var inputBinding = handlerDescriptor.Metadata.InputBindings.SingleOrDefault();
+                Assert.NotNull(inputBinding);
+                Assert.Equal("httpTrigger", inputBinding.Type, ignoreCase: true);
+                Assert.Equal("req", inputBinding.Name, ignoreCase: true);
+
+                // Raw metadata should contain authLevel, route and methods
+                Assert.NotNull(inputBinding.Raw);
+                Assert.Equal("anonymous", inputBinding.Raw.Value<string>("authLevel"));
+                Assert.Equal("{*route}", inputBinding.Raw.Value<string>("route"));
+                var methods = inputBinding.Raw.Value<JArray>("methods");
+                Assert.NotNull(methods);
+                var expectedMethods = new[] { "get", "post", "put", "delete", "patch", "head", "options" };
+                foreach (var m in expectedMethods)
+                {
+                    Assert.Contains(methods, t => string.Equals(t.Value<string>(), m, StringComparison.OrdinalIgnoreCase));
+                }
+
+                var outputBinding = handlerDescriptor.Metadata.OutputBindings.SingleOrDefault();
+                Assert.NotNull(outputBinding);
+                Assert.Equal("http", outputBinding.Type, ignoreCase: true);
+                Assert.Equal("res", outputBinding.Name, ignoreCase: true);
+            }
+        }
+
         public class AssemblyMock : Assembly
         {
             public override object[] GetCustomAttributes(Type attributeType, bool inherit)

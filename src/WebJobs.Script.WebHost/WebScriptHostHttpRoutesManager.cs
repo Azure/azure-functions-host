@@ -6,6 +6,7 @@ using System.Text;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -17,13 +18,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IWebJobsRouter _router;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IEnvironment _environment;
+        private readonly RouteHandlingOptions _routeHandlingOptions;
 
-        public WebScriptHostHttpRoutesManager(IOptions<HttpOptions> httpOptions, IWebJobsRouter router, ILoggerFactory loggerFactory, IEnvironment environment)
+        public WebScriptHostHttpRoutesManager(IOptions<HttpOptions> httpOptions, IWebJobsRouter router, ILoggerFactory loggerFactory, IEnvironment environment, IOptions<RouteHandlingOptions> routeHandlingOptions)
         {
             _httpOptions = httpOptions;
             _router = router;
             _loggerFactory = loggerFactory;
             _environment = environment;
+            _routeHandlingOptions = routeHandlingOptions?.Value;
         }
 
         public void InitializeHttpFunctionRoutes(IScriptJobHost host)
@@ -34,7 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _router.ClearRoutes();
 
             // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
-            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, false), _httpOptions.Value.RoutePrefix);
+            // If routeHandling.mode is "all", map routes at root (no routePrefix). Otherwise honor configured routePrefix.
+            string routePrefixToUse = _httpOptions.Value.RoutePrefix;
+            if (string.Equals(_routeHandlingOptions?.Mode, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                routePrefixToUse = null;
+            }
+
+            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, false), routePrefixToUse);
 
             // Proxies do not honor the route prefix defined in host.json
             WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, true), routePrefix: null);

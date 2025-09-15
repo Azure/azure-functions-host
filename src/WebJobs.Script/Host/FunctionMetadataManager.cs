@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -28,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
 
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageOptions;
+        private RouteHandlingOptions _routeHandlingOptions;
         private IDisposable _onChangeSubscription;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
         private ILogger _logger;
@@ -44,7 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptHostManager scriptHostManager,
             ILoggerFactory loggerFactory,
             IEnvironment environment,
-            IOptionsMonitor<LanguageWorkerOptions> languageOptions)
+            IOptionsMonitor<LanguageWorkerOptions> languageOptions,
+            IOptions<RouteHandlingOptions> routeHandlingOptions)
         {
             _scriptOptions = scriptOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
@@ -52,6 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
             _environment = environment;
+
+            // Route handling options are used to determine if an implicit http-handler function
+            // should be exposed when routeHandling.mode == "all". Capture the configured values
+            // so the metadata manager can include the implicit handler in its function list.
+            _routeHandlingOptions = routeHandlingOptions?.Value;
 
             _languageOptions = languageOptions;
             _onChangeSubscription = languageOptions.OnChange(_ => _servicesReset = true);
@@ -128,6 +136,10 @@ namespace Microsoft.Azure.WebJobs.Script
             _isHttpWorker = _serviceProvider.GetService<IOptions<HttpWorkerOptions>>()?.Value?.Description != null;
             _scriptOptions = _serviceProvider.GetService<IOptions<ScriptJobHostOptions>>();
 
+            // Refresh route handling options from the new host scope so routeHandling.mode
+            // reflects the active host configuration (e.g. after specialization/host swap).
+            _routeHandlingOptions = _serviceProvider.GetService<IOptions<RouteHandlingOptions>>()?.Value;
+
             // Resetting the logger switches the logger scope to Script Host level,
             // also making the logs available to Application Insights
             _logger = _serviceProvider?.GetService<ILoggerFactory>().CreateLogger(LogCategories.Startup);
@@ -152,6 +164,43 @@ namespace Microsoft.Azure.WebJobs.Script
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();
+
+            // If routeHandling.mode is "all", ignore any function metadata configured and expose a single implicit http-handler function.
+            // This ensures the FunctionMetadataManager is aware of the implicit handler so it can be resolved at runtime
+            // for logging/metrics and other metadata lookups.
+            if (string.Equals(_routeHandlingOptions?.Mode, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                var handler = new FunctionMetadata()
+                {
+                    Name = "http-handler"
+                };
+
+                var inputRaw = new global::Newtonsoft.Json.Linq.JObject
+                {
+                    ["type"] = "httpTrigger",
+                    ["authLevel"] = _routeHandlingOptions?.AuthenticationLevel ?? "function",
+                    ["direction"] = "in",
+                    ["name"] = "req",
+                    ["methods"] = new global::Newtonsoft.Json.Linq.JArray("get", "post", "put", "delete", "patch", "head", "options"),
+                    ["route"] = "{*route}"
+                };
+
+                var outputRaw = new global::Newtonsoft.Json.Linq.JObject
+                {
+                    ["type"] = "http",
+                    ["direction"] = "out",
+                    ["name"] = "res"
+                };
+
+                handler.Bindings.Add(BindingMetadata.Create(inputRaw));
+                handler.Bindings.Add(BindingMetadata.Create(outputRaw));
+
+                // Ensure Errors is non-null so callers that enumerate it (ScriptHost.GetFunctionsMetadata)
+                // do not throw when routeHandling.mode == "all" and we return early.
+                Errors = _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
+
+                return new[] { handler }.ToImmutableArray();
+            }
 
             if (!immutableFunctionMetadata.IsDefaultOrEmpty)
             {

@@ -36,6 +36,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -74,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
+        private readonly RouteHandlingOptions _routeHandlingOptions;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
 
@@ -110,7 +112,8 @@ namespace Microsoft.Azure.WebJobs.Script
             IFunctionDataCache functionDataCache,
             IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            ScriptSettingsManager settingsManager = null)
+            ScriptSettingsManager settingsManager = null,
+            IOptions<RouteHandlingOptions> routeHandlingOptions = null)
             : base(options, jobHostContextFactory)
         {
             _environment = environment;
@@ -158,6 +161,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _functionDataCache = functionDataCache;
             _hostingConfigOptions = hostingConfigOptions;
+
+            _routeHandlingOptions = routeHandlingOptions?.Value;
         }
 
         public event EventHandler HostInitializing;
@@ -279,6 +284,13 @@ namespace Microsoft.Azure.WebJobs.Script
             _stopwatch = ValueStopwatch.StartNew();
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
+                // Validate route handling configuration: authenticationLevel is only valid when mode = "all".
+                if (string.Equals(_routeHandlingOptions?.Mode, "function", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrEmpty(_routeHandlingOptions?.AuthenticationLevel))
+                {
+                    throw new HostInitializationException("Invalid configuration: 'routeHandling.authenticationLevel' cannot be set when 'routeHandling.mode' is 'function'.");
+                }
+
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
@@ -378,6 +390,37 @@ namespace Microsoft.Azure.WebJobs.Script
             foreach (var error in _functionMetadataManager.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value);
+            }
+
+            // If routeHandling.mode is "all", ignore any function metadata configured and expose a single implicit http-handler function.
+            if (string.Equals(_routeHandlingOptions?.Mode, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                var handler = new FunctionMetadata()
+                {
+                    Name = "http-handler"
+                };
+
+                var inputRaw = new JObject
+                {
+                    ["type"] = "httpTrigger",
+                    ["authLevel"] = _routeHandlingOptions?.AuthenticationLevel ?? "function",
+                    ["direction"] = "in",
+                    ["name"] = "req",
+                    ["methods"] = new JArray("get", "post", "put", "delete", "patch", "head", "options"),
+                    ["route"] = "{*route}"
+                };
+
+                var outputRaw = new JObject
+                {
+                    ["type"] = "http",
+                    ["direction"] = "out",
+                    ["name"] = "res"
+                };
+
+                handler.Bindings.Add(BindingMetadata.Create(inputRaw));
+                handler.Bindings.Add(BindingMetadata.Create(outputRaw));
+
+                return new[] { handler };
             }
 
             return functionMetadata;
@@ -558,6 +601,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime)
         {
+            // If routeHandling.mode is "all", we expose a single implicit http-handler function.
+            // Ensure we add a descriptor provider capable of creating a descriptor for this implicit
+            // handler regardless of the resolved worker runtime. The HttpFunctionDescriptorProvider
+            // can create descriptors for http triggered metadata even when no language/script file
+            // is present.
+            if (string.Equals(_routeHandlingOptions?.Mode, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.AddingDescriptorProviderForLanguage("http-handler");
+                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime, _httpWorkerOptions.InitializationTimeout));
+            }
             if (_environment.IsPlaceholderModeEnabled())
             {
                 _logger.HostIsInPlaceholderMode();
@@ -1001,22 +1054,57 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return false;
             }
-            string errorStack = exception.ToString().ToLowerInvariant();
+
+            // Normalize the exception stack trace to use forward slashes so we can
+            // match against Windows and Unix path styles.
+            string errorStack = exception.ToString().ToLowerInvariant().Replace('\\', '/');
+
             foreach (var currFunction in functions)
             {
-                // For each function, we search the entire error stack trace to see if it contains
-                // the function entry/primary script path. If it does, we're virtually certain that
-                // that function caused the error (e.g. as in the case of global unhandled exceptions
-                // coming from Node.js scripts).
-                // We use the directory name for the script rather than the full script path itself to ensure
-                // that we handle cases where the error might be coming from some other script (e.g. an NPM
-                // module) that is part of the function.
-                string absoluteScriptPath = Path.GetFullPath(currFunction.Metadata.ScriptFile).ToLowerInvariant();
-                string functionDirectory = Path.GetDirectoryName(absoluteScriptPath);
-                if (errorStack.Contains(functionDirectory))
+                var scriptFile = currFunction?.Metadata?.ScriptFile;
+                if (string.IsNullOrEmpty(scriptFile))
+                {
+                    continue;
+                }
+
+                string scriptFileLower = scriptFile.ToLowerInvariant();
+
+                // Prepare multiple normalized candidates to match against the stack.
+                string scriptFileNormalized = scriptFileLower.Replace('\\', '/');
+
+                // Derive the directory portion from the script file using string operations
+                // so we don't depend on platform specific Path behavior for Windows paths.
+                int lastSep = Math.Max(scriptFileLower.LastIndexOf('/'), scriptFileLower.LastIndexOf('\\'));
+                string directoryRaw = lastSep >= 0 ? scriptFileLower.Substring(0, lastSep) : null;
+                string directoryNormalized = directoryRaw?.Replace('\\', '/');
+
+                // Also get just the final directory name (e.g. HttpTriggerNode) as a last resort
+                string directoryName = null;
+                if (!string.IsNullOrEmpty(directoryRaw))
+                {
+                    int lastSeg = Math.Max(directoryRaw.LastIndexOf('/'), directoryRaw.LastIndexOf('\\'));
+                    directoryName = lastSeg >= 0 ? directoryRaw.Substring(lastSeg + 1) : directoryRaw;
+                }
+
+                // Match against the fully normalized directory path (covers nested files from within the function),
+                // the full normalized script path, or just the final directory name as a fallback.
+                if ((!string.IsNullOrEmpty(directoryNormalized) && errorStack.Contains(directoryNormalized)) ||
+                    (!string.IsNullOrEmpty(scriptFileNormalized) && errorStack.Contains(scriptFileNormalized)))
                 {
                     function = currFunction;
                     return true;
+                }
+
+                if (!string.IsNullOrEmpty(directoryName))
+                {
+                    // Look for the directory name as a path segment in the stack. This helps match cases
+                    // where the stack includes an inner file (e.g. .../HttpTriggerNode/npm/lib/foo.js).
+                    string seg = "/" + directoryName + "/";
+                    if (errorStack.Contains(seg) || errorStack.Contains("/" + directoryName + ":"))
+                    {
+                        function = currFunction;
+                        return true;
+                    }
                 }
             }
 

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -60,7 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions);
+            var routeOptions = Microsoft.Extensions.Options.Options.Create(new RouteHandlingOptions());
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions, routeOptions);
         }
 
         public static FunctionMetadataManager GetFunctionMetadataManagerWithDefaultHostConfig(IOptions<ScriptJobHostOptions> jobHostOptions,
@@ -94,7 +96,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions);
+            var routeOptions = Microsoft.Extensions.Options.Options.Create(new RouteHandlingOptions());
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions, routeOptions);
         }
     }
 }
