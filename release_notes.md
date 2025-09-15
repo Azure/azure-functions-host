@@ -10,3 +10,4 @@
 - Update `Microsoft.Azure.WebJobs` reference to `3.0.42` (#11309)
 - Adding Activity wrapper to create a function-level request telemetry when none exists (#11311)
 - Adding test coverage for `Utility.IsAzureMonitorLoggingEnabled` (#11322)
+- Reduce allocations in `Utility.IsAzureMonitorLoggingEnabled` (#11323)
