@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             "mcp", new Dictionary<string, string>
             {
                 [ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "customHandler", "enableHttpProxyingRequest")] = "true",
-                [ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "http", "routePrefix")] = string.Empty,
+                [ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "extensions", "http", "routePrefix")] = string.Empty,
             });
 
         private HostConfigurationProfile(
