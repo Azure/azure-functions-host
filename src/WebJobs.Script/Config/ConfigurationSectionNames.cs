@@ -27,5 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string TelemetryMode = "telemetryMode";
         public const string MetadataProviderTimeout = "metadataProviderTimeout";
         public const string RouteHandling = "routeHandling";
+        public const string CustomHandlerRouteHandling = CustomHandler + ":routeHandling";
     }
 }

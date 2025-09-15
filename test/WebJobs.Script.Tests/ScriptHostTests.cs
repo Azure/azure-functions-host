@@ -1787,10 +1787,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 config["version"] = "2.0";
                 config["id"] = ID;
 
+                var customHandler = new JObject();
+                var description = new JObject();
+                description["defaultExecutablePath"] = "testExe";
+                customHandler["description"] = description;
+                
                 var routeHandling = new JObject();
                 routeHandling["mode"] = "function";
                 routeHandling["authenticationLevel"] = "anonymous";
-                config["routeHandling"] = routeHandling;
+                customHandler["routeHandling"] = routeHandling;
+                config["customHandler"] = customHandler;
 
                 File.WriteAllText(Path.Combine(rootPath, ScriptConstants.HostMetadataFileName), config.ToString());
 
@@ -1819,10 +1825,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 config["version"] = "2.0";
                 config["id"] = ID;
 
+                var customHandler = new JObject();
+                var description = new JObject();
+                description["defaultExecutablePath"] = "testExe";
+                customHandler["description"] = description;
+                
                 var routeHandling = new JObject();
                 routeHandling["mode"] = "all";
                 routeHandling["authenticationLevel"] = "anonymous";
-                config["routeHandling"] = routeHandling;
+                customHandler["routeHandling"] = routeHandling;
+                config["customHandler"] = customHandler;
 
                 File.WriteAllText(Path.Combine(rootPath, ScriptConstants.HostMetadataFileName), config.ToString());
 

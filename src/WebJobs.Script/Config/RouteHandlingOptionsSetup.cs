@@ -20,9 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public void Configure(RouteHandlingOptions options)
         {
             IConfigurationSection jobHostSection = _configuration.GetSection(ConfigurationSectionNames.JobHost);
-            var routeHandlingSection = jobHostSection.GetSection(ConfigurationSectionNames.RouteHandling);
+            var routeHandlingSection = jobHostSection.GetSection(ConfigurationSectionNames.CustomHandlerRouteHandling);
 
-            // If the routeHandling section is not defined in host.json, do not bind or validate it.
+            // If the routeHandling section is not defined in host.json under customHandler, do not bind or validate it.
             if (!routeHandlingSection.Exists())
             {
                 return;
