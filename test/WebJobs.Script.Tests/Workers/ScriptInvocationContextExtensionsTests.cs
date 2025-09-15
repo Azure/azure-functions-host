@@ -1053,11 +1053,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 AsyncExecutionContext = System.Threading.ExecutionContext.Capture()
             };
 
-            var context2 = new ScriptInvocationContext
-            {
-                ResultSource = new TaskCompletionSource<ScriptInvocationResult>()
-            };
-
             var ex = new InvalidOperationException("Test error");
 
             // Act
