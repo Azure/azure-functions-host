@@ -11,10 +11,11 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
     public class HostConfigurationProfile
     {
         public static readonly HostConfigurationProfile Default = new(
-            string.Empty, ImmutableDictionary<string, string>.Empty);
+            "default", ImmutableDictionary<string, string>.Empty);
 
         public static readonly HostConfigurationProfile Mcp = new(
-            "mcp", new Dictionary<string, string>
+            "mcp",
+            new Dictionary<string, string>
             {
                 [ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "customHandler", "enableHttpProxyingRequest")] = "true",
                 [ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "extensions", "http", "routePrefix")] = string.Empty,
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         public IReadOnlyDictionary<string, string> Configuration { get; }
 
-        public static HostConfigurationProfile FromName(string name)
+        public static HostConfigurationProfile Get(string name)
         {
             if (TryGet(name, out HostConfigurationProfile profile))
             {
@@ -40,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             }
 
             throw new ArgumentException(
-                $"Unknown configuration profile '{name}'. Allowed values are '', 'default', 'mcp'.",
+                $"Configuration profile '{name}' is not supported. Supported values: '', 'default', 'mcp'.",
                 nameof(name));
         }
 

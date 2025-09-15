@@ -75,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 (JObject hostJson, HostConfigurationProfile profile) = LoadHostConfigurationFile();
 
                 // Apply profile settings first, so that they can be overridden by host.json settings.
+                _logger.LogDebug("Loading host configuration profile '{profileName}'.", profile.Name);
                 foreach ((string key, string value) in profile.Configuration)
                 {
                     Data[key] = value;

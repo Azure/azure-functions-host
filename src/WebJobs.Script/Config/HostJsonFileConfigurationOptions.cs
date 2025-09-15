@@ -50,14 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 ? NormalizeConfigProfile(hostFile.GetValue(ConfigProfileKey)?.Value<string>())
                 : NormalizeConfigProfile(_configProfile);
 
-            return HostConfigurationProfile.FromName(name);
+            return HostConfigurationProfile.Get(name);
         }
 
         private static string NormalizeConfigProfile(string configProfile)
         {
             return configProfile?.Trim().ToLowerInvariant() switch
             {
-                null or "" or "default" => string.Empty,
+                null or "" or "default" => "default",
                 string s => s,
             };
         }
