@@ -37,14 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _router.ClearRoutes();
 
             // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
-            // If routeHandling.mode is "all", map routes at root (no routePrefix). Otherwise honor configured routePrefix.
-            string routePrefixToUse = _httpOptions.Value.RoutePrefix;
-            if (string.Equals(_routeHandlingOptions?.Mode, "all", StringComparison.OrdinalIgnoreCase))
-            {
-                routePrefixToUse = null;
-            }
-
-            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, false), routePrefixToUse);
+            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, false), _httpOptions.Value.RoutePrefix);
 
             // Proxies do not honor the route prefix defined in host.json
             WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, true), routePrefix: null);
