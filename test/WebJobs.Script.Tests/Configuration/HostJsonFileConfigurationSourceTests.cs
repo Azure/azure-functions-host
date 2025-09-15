@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             AreExpectedMetricsGenerated(testMetricsLogger);
             var configList = config.AsEnumerable().ToList();
             Assert.Equal(config["AzureFunctionsJobHost:version"], "2.0");
-            Assert.Equal(configList.Count, 3);
+            Assert.Equal(configList.Count, 4);
             Assert.True(configList.TrueForAll((k) => !k.Key.Contains("extensionBundle")));
 
             var log = _loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage == "No host configuration file found. Creating a default host.json file.");
@@ -312,7 +312,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void Load_WithProfile_ValuesOverridden()
         {
             HostConfigurationProfile profile = HostConfigurationProfile.Get("mcp");
-            string keyToOverride = profile.Configuration.Keys.First();
+            string keyToOverride = profile.Configuration
+                .First(x => x.Key != "configurationProfile").Key;
             string overrideValue = Guid.NewGuid().ToString();
             string json = $$"""
             {

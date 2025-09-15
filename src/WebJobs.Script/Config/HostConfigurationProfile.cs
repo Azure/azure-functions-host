@@ -3,35 +3,40 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
     public class HostConfigurationProfile
     {
-        public static readonly HostConfigurationProfile Default = new(
-            "default", ImmutableDictionary<string, string>.Empty);
+        public const string SectionKey = "configurationProfile";
+
+        // Make sure to update this as new profiles are added.
+        private const string SupportedValues = "'', 'default', 'mcp'";
+
+        public static readonly HostConfigurationProfile Default = new("default", []);
 
         public static readonly HostConfigurationProfile Mcp = new(
             "mcp",
-            new Dictionary<string, string>
-            {
-                [ConfigurationPath.Combine("customHandler", "enableHttpProxyingRequest")] = "true",
-                [ConfigurationPath.Combine("extensions", "http", "routePrefix")] = string.Empty,
-            });
+            [
+                KeyValuePair.Create(ConfigurationPath.Combine(
+                    ConfigurationSectionNames.CustomHandler, "enableHttpProxyingRequest"), "true"),
+                KeyValuePair.Create(ConfigurationPath.Combine(
+                    ConfigurationSectionNames.Http, "routePrefix"), string.Empty),
+            ]);
 
         private HostConfigurationProfile(
             string name,
-            IReadOnlyDictionary<string, string> configuration)
+            IEnumerable<KeyValuePair<string, string>> configuration)
         {
             Name = name;
-            Configuration = configuration;
+            Configuration = configuration.Append(KeyValuePair.Create(SectionKey, name));
         }
 
         public string Name { get; }
 
-        public IReadOnlyDictionary<string, string> Configuration { get; }
+        public IEnumerable<KeyValuePair<string, string>> Configuration { get; }
 
         public static HostConfigurationProfile Get(string name)
         {
@@ -40,9 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 "mcp" => Mcp,
                 "" or "default" => Default,
-                _ => throw new ArgumentException(
-                        $"Configuration profile '{name}' is not supported. Supported values: '', 'default', 'mcp'.",
-                        nameof(name)),
+                _ => throw new NotSupportedException(
+                        $"Configuration profile '{name}' is not supported. Supported values: {SupportedValues}."),
             };
         }
     }

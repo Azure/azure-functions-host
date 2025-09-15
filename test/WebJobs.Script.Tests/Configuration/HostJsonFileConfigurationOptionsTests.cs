@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             Action action = () => HostJsonFileConfigurationOptions.Create(new TestEnvironment(), null);
 
-            action.Should().ThrowExactly<ArgumentNullException>().WithParameterName("scriptOptions");
+            action.Should().ThrowExactly<ArgumentNullException>().WithParameterName("hostOptions");
         }
 
         [Theory]
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 ["AzureFunctionsJobHost__configurationProfile"] = "mcp",
             };
 
-            JObject hostFile = new(new { configurationProfile = "default" });
+            JObject hostFile = JObject.Parse("{ 'configurationProfile': 'default' }");
             HostJsonFileConfigurationOptions options = HostJsonFileConfigurationOptions
                 .Create(environment, new());
 
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             TestEnvironment environment = new();
 
-            JObject hostFile = new(new { configurationProfile = "mcp" });
+            JObject hostFile = JObject.Parse("{ 'configurationProfile': 'mcp' }");
             HostJsonFileConfigurationOptions options = HostJsonFileConfigurationOptions
                 .Create(environment, new());
 

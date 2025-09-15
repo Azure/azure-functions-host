@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -72,9 +73,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             public override void Load()
             {
-                (JObject hostJson, HostConfigurationProfile profile) = LoadHostConfigurationFile();
+                JObject hostJson = LoadHostConfigurationFile();
 
                 // Apply profile settings first, so that they can be overridden by host.json settings.
+                HostConfigurationProfile profile = GetConfigProfile(hostJson);
                 _logger.LogDebug("Loading host configuration profile '{profileName}'.", profile.Name);
                 foreach ((string key, string value) in profile.Configuration)
                 {
@@ -140,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             /// <summary>
             /// Read and apply host.json configuration.
             /// </summary>
-            private (JObject Json, HostConfigurationProfile Profile) LoadHostConfigurationFile()
+            private JObject LoadHostConfigurationFile()
             {
                 using (_metricsLogger.LatencyEvent(MetricEventNames.LoadHostConfigurationSource))
                 {
@@ -165,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     _logger.HostConfigReading(hostFilePath);
                     _logger.HostConfigRead(sanitizedJson);
 
-                    return (hostConfigObject, GetConfigProfile(hostConfigObject));
+                    return hostConfigObject;
                 }
             }
 
@@ -274,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 {
                     return Options.GetConfigProfile(hostFile);
                 }
-                catch (ArgumentException ex)
+                catch (NotSupportedException ex)
                 {
                     throw new HostConfigurationException(ex.Message, ex);
                 }

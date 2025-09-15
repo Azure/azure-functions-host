@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using FluentAssertions;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Xunit;
@@ -18,8 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             HostConfigurationProfile profile = HostConfigurationProfile.Get(name);
 
+            Dictionary<string, string> configDict = new(profile.Configuration);
             profile.Name.Should().Be("default");
-            profile.Configuration.Should().BeEmpty();
+            configDict.Should().HaveCount(1);
+            configDict.Should().ContainKey("configurationProfile")
+                .WhoseValue.Should().Be("default");
         }
 
         [Theory]
@@ -29,10 +33,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             HostConfigurationProfile profile = HostConfigurationProfile.Get(name);
 
+            Dictionary<string, string> configDict = new(profile.Configuration);
             profile.Name.Should().Be("mcp");
-            profile.Configuration.Should().HaveCount(2);
-            profile.Configuration["customHandler:enableHttpProxyingRequest"].Should().Be("true");
-            profile.Configuration["extensions:http:routePrefix"].Should().Be(string.Empty);
+            configDict.Should().HaveCount(3);
+            configDict.Should().ContainKey("configurationProfile")
+                .WhoseValue.Should().Be("mcp");
+            configDict.Should().ContainKey("customHandler:enableHttpProxyingRequest")
+                .WhoseValue.Should().Be("true");
+            configDict.Should().ContainKey("extensions:http:routePrefix")
+                .WhoseValue.Should().Be(string.Empty);
         }
 
         [Fact]
@@ -48,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Action action = () => HostConfigurationProfile.Get("invalid");
 
             action.Should()
-                .ThrowExactly<ArgumentException>()
+                .ThrowExactly<NotSupportedException>()
                 .WithMessage("Configuration profile 'invalid' is not supported. Supported values: '', 'default', 'mcp'.");
         }
     }

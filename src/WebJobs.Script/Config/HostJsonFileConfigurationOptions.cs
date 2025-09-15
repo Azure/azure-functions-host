@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private string _configProfile;
 
-        public string WorkerRuntime { get; init; }
+        public string WorkerRuntime { get; init; } = string.Empty;
 
         public bool IsLogicApp { get; init; }
 
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // Right now this is ONLY set via env variable, which will always take precedence over host.json.
             // If in the future we allow this to be set via other means (e.g. CLI arg), we may need to revisit precedence.
             // If config profile is not set via env, check host.json for the value.
-            string name = _configProfile is not null
+            string name = _configProfile is null
                 ? NormalizeConfigProfile(hostFile.GetValue(ConfigProfileKey)?.Value<string>())
                 : NormalizeConfigProfile(_configProfile);
 
