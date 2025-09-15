@@ -17,8 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             "mcp",
             new Dictionary<string, string>
             {
-                [ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "customHandler", "enableHttpProxyingRequest")] = "true",
-                [ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "extensions", "http", "routePrefix")] = string.Empty,
+                [ConfigurationPath.Combine("customHandler", "enableHttpProxyingRequest")] = "true",
+                [ConfigurationPath.Combine("extensions", "http", "routePrefix")] = string.Empty,
             });
 
         private HostConfigurationProfile(
@@ -35,27 +35,15 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         public static HostConfigurationProfile Get(string name)
         {
-            if (TryGet(name, out HostConfigurationProfile profile))
-            {
-                return profile;
-            }
-
-            throw new ArgumentException(
-                $"Configuration profile '{name}' is not supported. Supported values: '', 'default', 'mcp'.",
-                nameof(name));
-        }
-
-        public static bool TryGet(string name, out HostConfigurationProfile profile)
-        {
             ArgumentNullException.ThrowIfNull(name);
-            profile = name?.ToLowerInvariant() switch
+            return name.ToLowerInvariant() switch
             {
                 "mcp" => Mcp,
                 "" or "default" => Default,
-                _ => null,
+                _ => throw new ArgumentException(
+                        $"Configuration profile '{name}' is not supported. Supported values: '', 'default', 'mcp'.",
+                        nameof(name)),
             };
-
-            return profile is not null;
         }
     }
 }

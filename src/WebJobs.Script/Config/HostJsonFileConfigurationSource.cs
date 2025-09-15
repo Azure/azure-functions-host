@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 _logger.LogDebug("Loading host configuration profile '{profileName}'.", profile.Name);
                 foreach ((string key, string value) in profile.Configuration)
                 {
-                    Data[key] = value;
+                    Data[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, key)] = value;
                 }
 
                 ProcessObject(hostJson);
