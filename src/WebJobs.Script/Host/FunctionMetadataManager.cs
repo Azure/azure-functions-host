@@ -135,9 +135,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _isHttpWorker = _serviceProvider.GetService<IOptions<HttpWorkerOptions>>()?.Value?.Description != null;
             _scriptOptions = _serviceProvider.GetService<IOptions<ScriptJobHostOptions>>();
-
-            // Refresh route handling options from the new host scope so routeHandling.mode
-            // reflects the active host configuration (e.g. after specialization/host swap).
             _routeHandlingOptions = _serviceProvider.GetService<IOptions<RouteHandlingOptions>>()?.Value;
 
             // Resetting the logger switches the logger scope to Script Host level,
