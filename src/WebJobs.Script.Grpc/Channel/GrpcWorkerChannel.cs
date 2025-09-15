@@ -858,14 +858,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (_functionLoadErrors.TryGetValue(functionId, out Exception exception))
                 {
                     _workerChannelLogger.LogDebug("Function {functionName} failed to load", context.FunctionMetadata.Name);
-                    context.ResultSource.TrySetException(exception);
+                    context.RecordException(exception);
                     RemoveExecutingInvocation(invocationId);
                     return;
                 }
                 else if (_metadataRequestErrors.TryGetValue(functionId, out exception))
                 {
                     _workerChannelLogger.LogDebug("Worker failed to load metadata for {functionName}", context.FunctionMetadata.Name);
-                    context.ResultSource.TrySetException(exception);
+                    context.RecordException(exception);
                     RemoveExecutingInvocation(invocationId);
                     return;
                 }
@@ -913,7 +913,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             catch (Exception invokeEx)
             {
-                context.ResultSource.TrySetException(invokeEx);
+                context.RecordException(invokeEx);
             }
         }
 
@@ -1131,16 +1131,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     else
                     {
                         var rpcException = invokeResponse.Result.GetRpcException(userCodeExceptionHandlingEnabled);
-                        SetCurrentActivityStatus(context, rpcException);
-                        context.ResultSource.SetException(rpcException);
+                        context.RecordException(rpcException);
 
                         _metricsLogger.LogEvent(_workerInvocationFailedMetric);
                     }
                 }
                 catch (Exception exc)
                 {
-                    SetCurrentActivityStatus(context, exc);
-                    context.ResultSource.TrySetException(exc);
+                    context.RecordException(exc);
                 }
                 finally
                 {
@@ -1565,7 +1563,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 string invocationId = invocation.Context?.ExecutionContext?.InvocationId.ToString();
                 _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
-                invocation.Context?.ResultSource?.TrySetException(workerException);
+                invocation.Context?.RecordException(workerException);
                 RemoveExecutingInvocation(invocationId);
             }
             return true;
@@ -1724,39 +1722,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInvocationId, invocationRequest.InvocationId);
             }
-        }
-
-        private void SetCurrentActivityStatus(ScriptInvocationContext context, Exception exception)
-        {
-            // If AsyncExecutionContext is null, skip running.
-            if (context?.AsyncExecutionContext is null)
-            {
-                return;
-            }
-
-            // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
-            System.Threading.ExecutionContext.Run(
-                context.AsyncExecutionContext,
-                static state =>
-                {
-                    var invocationState = (InvocationState)state!;
-                    Activity.Current?.AddException(invocationState.Exception);
-                    Activity.Current?.SetStatus(ActivityStatusCode.Error, invocationState.Exception.Message);
-                },
-                new InvocationState(context, exception));
-        }
-
-        private sealed class InvocationState
-        {
-            public InvocationState(ScriptInvocationContext context, Exception exception)
-            {
-                Context = context;
-                Exception = exception;
-            }
-
-            public ScriptInvocationContext Context { get; }
-
-            public Exception Exception { get; }
         }
 
         private sealed class ExecutingInvocation : IDisposable
