@@ -1791,7 +1791,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var description = new JObject();
                 description["defaultExecutablePath"] = "testExe";
                 customHandler["description"] = description;
-                
+
                 var routeHandling = new JObject();
                 routeHandling["mode"] = "function";
                 routeHandling["authenticationLevel"] = "anonymous";
@@ -1829,7 +1829,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var description = new JObject();
                 description["defaultExecutablePath"] = "testExe";
                 customHandler["description"] = description;
-                
+
                 var routeHandling = new JObject();
                 routeHandling["mode"] = "all";
                 routeHandling["authenticationLevel"] = "anonymous";
