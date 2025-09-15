@@ -1054,57 +1054,23 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return false;
             }
-
-            // Normalize the exception stack trace to use forward slashes so we can
-            // match against Windows and Unix path styles.
-            string errorStack = exception.ToString().ToLowerInvariant().Replace('\\', '/');
+            string errorStack = exception.ToString().ToLowerInvariant();
 
             foreach (var currFunction in functions)
             {
-                var scriptFile = currFunction?.Metadata?.ScriptFile;
-                if (string.IsNullOrEmpty(scriptFile))
-                {
-                    continue;
-                }
-
-                string scriptFileLower = scriptFile.ToLowerInvariant();
-
-                // Prepare multiple normalized candidates to match against the stack.
-                string scriptFileNormalized = scriptFileLower.Replace('\\', '/');
-
-                // Derive the directory portion from the script file using string operations
-                // so we don't depend on platform specific Path behavior for Windows paths.
-                int lastSep = Math.Max(scriptFileLower.LastIndexOf('/'), scriptFileLower.LastIndexOf('\\'));
-                string directoryRaw = lastSep >= 0 ? scriptFileLower.Substring(0, lastSep) : null;
-                string directoryNormalized = directoryRaw?.Replace('\\', '/');
-
-                // Also get just the final directory name (e.g. HttpTriggerNode) as a last resort
-                string directoryName = null;
-                if (!string.IsNullOrEmpty(directoryRaw))
-                {
-                    int lastSeg = Math.Max(directoryRaw.LastIndexOf('/'), directoryRaw.LastIndexOf('\\'));
-                    directoryName = lastSeg >= 0 ? directoryRaw.Substring(lastSeg + 1) : directoryRaw;
-                }
-
-                // Match against the fully normalized directory path (covers nested files from within the function),
-                // the full normalized script path, or just the final directory name as a fallback.
-                if ((!string.IsNullOrEmpty(directoryNormalized) && errorStack.Contains(directoryNormalized)) ||
-                    (!string.IsNullOrEmpty(scriptFileNormalized) && errorStack.Contains(scriptFileNormalized)))
+                // For each function, we search the entire error stack trace to see if it contains
+                // the function entry/primary script path. If it does, we're virtually certain that
+                // that function caused the error (e.g. as in the case of global unhandled exceptions
+                // coming from Node.js scripts).
+                // We use the directory name for the script rather than the full script path itself to ensure
+                // that we handle cases where the error might be coming from some other script (e.g. an NPM
+                // module) that is part of the function.
+                string absoluteScriptPath = Path.GetFullPath(currFunction.Metadata.ScriptFile).ToLowerInvariant();
+                string functionDirectory = Path.GetDirectoryName(absoluteScriptPath);
+                if (errorStack.Contains(functionDirectory))
                 {
                     function = currFunction;
                     return true;
-                }
-
-                if (!string.IsNullOrEmpty(directoryName))
-                {
-                    // Look for the directory name as a path segment in the stack. This helps match cases
-                    // where the stack includes an inner file (e.g. .../HttpTriggerNode/npm/lib/foo.js).
-                    string seg = "/" + directoryName + "/";
-                    if (errorStack.Contains(seg) || errorStack.Contains("/" + directoryName + ":"))
-                    {
-                        function = currFunction;
-                        return true;
-                    }
                 }
             }
 
