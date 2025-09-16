@@ -613,7 +613,7 @@
     },
     {
       "name": "Microsoft.Extensions.Compliance.Abstractions",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Extensions.Configuration",
@@ -789,7 +789,7 @@
     },
     {
       "name": "Microsoft.Extensions.Telemetry.Abstractions",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Extensions.WebEncoders",
