@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public static void RecordException(this ScriptInvocationContext context, Exception exception)
+        public static void SetException(this ScriptInvocationContext context, Exception exception)
         {
             context.ResultSource?.TrySetException(exception);
 

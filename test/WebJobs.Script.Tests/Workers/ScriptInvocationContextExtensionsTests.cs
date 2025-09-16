@@ -1033,7 +1033,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             var ex = new InvalidOperationException("Test error");
 
             // Act
-            context.RecordException(ex);
+            context.SetException(ex);
 
             // Assert
             Assert.True(context.ResultSource.Task.IsFaulted);
@@ -1056,7 +1056,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             var ex = new InvalidOperationException("Test error");
 
             // Act
-            context.RecordException(ex);
+            context.SetException(ex);
 
             // Assert
             Assert.True(context.ResultSource.Task.IsFaulted);

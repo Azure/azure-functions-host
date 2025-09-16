@@ -858,14 +858,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (_functionLoadErrors.TryGetValue(functionId, out Exception exception))
                 {
                     _workerChannelLogger.LogDebug("Function {functionName} failed to load", context.FunctionMetadata.Name);
-                    context.RecordException(exception);
+                    context.SetException(exception);
                     RemoveExecutingInvocation(invocationId);
                     return;
                 }
                 else if (_metadataRequestErrors.TryGetValue(functionId, out exception))
                 {
                     _workerChannelLogger.LogDebug("Worker failed to load metadata for {functionName}", context.FunctionMetadata.Name);
-                    context.RecordException(exception);
+                    context.SetException(exception);
                     RemoveExecutingInvocation(invocationId);
                     return;
                 }
@@ -913,7 +913,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             catch (Exception invokeEx)
             {
-                context.RecordException(invokeEx);
+                context.SetException(invokeEx);
             }
         }
 
@@ -1131,14 +1131,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     else
                     {
                         var rpcException = invokeResponse.Result.GetRpcException(userCodeExceptionHandlingEnabled);
-                        context.RecordException(rpcException);
+                        context.SetException(rpcException);
 
                         _metricsLogger.LogEvent(_workerInvocationFailedMetric);
                     }
                 }
                 catch (Exception exc)
                 {
-                    context.RecordException(exc);
+                    context.SetException(exc);
                 }
                 finally
                 {
@@ -1563,7 +1563,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 string invocationId = invocation.Context?.ExecutionContext?.InvocationId.ToString();
                 _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
-                invocation.Context?.RecordException(workerException);
+                invocation.Context?.SetException(workerException);
                 RemoveExecutingInvocation(invocationId);
             }
             return true;
