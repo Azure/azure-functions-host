@@ -162,18 +162,11 @@ namespace Microsoft.Azure.WebJobs.Script
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();
 
-            // If routeHandling.mode is "all", ignore any function metadata configured and expose a single implicit http-handler function.
-            // This ensures the FunctionMetadataManager is aware of the implicit handler so it can be resolved at runtime
-            // for logging/metrics and other metadata lookups.
-            if (_routeHandlingOptions?.Mode == RouteHandlingMode.All)
+            // Handle the special case where routeHandling.mode is "all"
+            var routeHandlingResult = TryHandleRouteHandlingAllMode();
+            if (routeHandlingResult.HasValue)
             {
-                var handler = _routeHandlingOptions.CreateHttpHandlerMetadata();
-
-                // Ensure Errors is non-null so callers that enumerate it (ScriptHost.GetFunctionsMetadata)
-                // do not throw when routeHandling.mode == "all" and we return early.
-                Errors = _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
-
-                return new[] { handler }.ToImmutableArray();
+                return routeHandlingResult.Value;
             }
 
             if (!immutableFunctionMetadata.IsDefaultOrEmpty)
@@ -317,6 +310,29 @@ namespace Microsoft.Azure.WebJobs.Script
                     _functionErrors[errorKvp.Key] = errorKvp.Value.ToList();
                 }
             }
+        }
+
+        /// <summary>
+        /// Handles the special case where routeHandling.mode is "all" by creating a single implicit http-handler function.
+        /// </summary>
+        /// <returns>An array containing the http-handler function if mode is "all", otherwise null to indicate normal processing should continue.</returns>
+        private ImmutableArray<FunctionMetadata>? TryHandleRouteHandlingAllMode()
+        {
+            // If routeHandling.mode is "all", ignore any function metadata configured and expose a single implicit http-handler function.
+            // This ensures the FunctionMetadataManager is aware of the implicit handler so it can be resolved at runtime
+            // for logging/metrics and other metadata lookups.
+            if (_routeHandlingOptions?.Mode == RouteHandlingMode.All)
+            {
+                var handler = _routeHandlingOptions.CreateHttpHandlerMetadata();
+
+                // Ensure Errors is non-null so callers that enumerate it (ScriptHost.GetFunctionsMetadata)
+                // do not throw when routeHandling.mode == "all" and we return early.
+                Errors = _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
+
+                return [handler];
+            }
+
+            return null;
         }
 
         private void ValidateHostJsonFile()
