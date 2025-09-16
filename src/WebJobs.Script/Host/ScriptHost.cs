@@ -284,13 +284,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _stopwatch = ValueStopwatch.StartNew();
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
-                // Validate route handling configuration: authenticationLevel is only valid when mode = "all".
-                if (string.Equals(_routeHandlingOptions?.Mode, "function", StringComparison.OrdinalIgnoreCase) &&
-                    !string.IsNullOrEmpty(_routeHandlingOptions?.AuthenticationLevel))
-                {
-                    throw new HostInitializationException("Invalid configuration: 'routeHandling.authenticationLevel' cannot be set when 'routeHandling.mode' is 'function'.");
-                }
-
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
@@ -393,33 +386,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // If routeHandling.mode is "all", ignore any function metadata configured and expose a single implicit http-handler function.
-            if (string.Equals(_routeHandlingOptions?.Mode, "all", StringComparison.OrdinalIgnoreCase))
+            if (_routeHandlingOptions?.Mode == RouteHandlingMode.All)
             {
-                var handler = new FunctionMetadata()
-                {
-                    Name = "http-handler"
-                };
-
-                var inputRaw = new JObject
-                {
-                    ["type"] = "httpTrigger",
-                    ["authLevel"] = _routeHandlingOptions?.AuthenticationLevel ?? "function",
-                    ["direction"] = "in",
-                    ["name"] = "req",
-                    ["methods"] = new JArray("get", "post", "put", "delete", "patch", "head", "options"),
-                    ["route"] = "{*route}"
-                };
-
-                var outputRaw = new JObject
-                {
-                    ["type"] = "http",
-                    ["direction"] = "out",
-                    ["name"] = "res"
-                };
-
-                handler.Bindings.Add(BindingMetadata.Create(inputRaw));
-                handler.Bindings.Add(BindingMetadata.Create(outputRaw));
-
+                var handler = _routeHandlingOptions.CreateHttpHandlerMetadata();
                 return new[] { handler };
             }
 
@@ -606,7 +575,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // handler regardless of the resolved worker runtime. The HttpFunctionDescriptorProvider
             // can create descriptors for http triggered metadata even when no language/script file
             // is present.
-            if (string.Equals(_routeHandlingOptions?.Mode, "all", StringComparison.OrdinalIgnoreCase))
+            if (_routeHandlingOptions?.Mode == RouteHandlingMode.All)
             {
                 _logger.AddingDescriptorProviderForLanguage("http-handler");
                 _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime, _httpWorkerOptions.InitializationTimeout));

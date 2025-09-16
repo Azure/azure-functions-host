@@ -165,32 +165,9 @@ namespace Microsoft.Azure.WebJobs.Script
             // If routeHandling.mode is "all", ignore any function metadata configured and expose a single implicit http-handler function.
             // This ensures the FunctionMetadataManager is aware of the implicit handler so it can be resolved at runtime
             // for logging/metrics and other metadata lookups.
-            if (string.Equals(_routeHandlingOptions?.Mode, "all", StringComparison.OrdinalIgnoreCase))
+            if (_routeHandlingOptions?.Mode == RouteHandlingMode.All)
             {
-                var handler = new FunctionMetadata()
-                {
-                    Name = "http-handler"
-                };
-
-                var inputRaw = new global::Newtonsoft.Json.Linq.JObject
-                {
-                    ["type"] = "httpTrigger",
-                    ["authLevel"] = _routeHandlingOptions?.AuthenticationLevel ?? "function",
-                    ["direction"] = "in",
-                    ["name"] = "req",
-                    ["methods"] = new global::Newtonsoft.Json.Linq.JArray("get", "post", "put", "delete", "patch", "head", "options"),
-                    ["route"] = "{*route}"
-                };
-
-                var outputRaw = new global::Newtonsoft.Json.Linq.JObject
-                {
-                    ["type"] = "http",
-                    ["direction"] = "out",
-                    ["name"] = "res"
-                };
-
-                handler.Bindings.Add(BindingMetadata.Create(inputRaw));
-                handler.Bindings.Add(BindingMetadata.Create(outputRaw));
+                var handler = _routeHandlingOptions.CreateHttpHandlerMetadata();
 
                 // Ensure Errors is non-null so callers that enumerate it (ScriptHost.GetFunctionsMetadata)
                 // do not throw when routeHandling.mode == "all" and we return early.

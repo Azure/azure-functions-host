@@ -330,7 +330,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddOptions<WorkerConcurrencyOptions>();
                 services.ConfigureOptions<HttpWorkerOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
-                services.ConfigureOptions<RouteHandlingOptionsSetup>();
+                services.AddOptions<RouteHandlingOptions>()
+                    .BindConfiguration(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.CustomHandlerRouteHandling));
+                services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<RouteHandlingOptions>, RouteHandlingOptionsValidator>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
                     {

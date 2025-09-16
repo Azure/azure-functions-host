@@ -64,18 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             public override Collection<Attribute> GetAttributes()
             {
-                AuthorizationLevel defaultLevel = AuthorizationLevel.Function;
-                if (!string.IsNullOrEmpty(_parentRouteHandlingOptions?.AuthenticationLevel))
-                {
-                    try
-                    {
-                        defaultLevel = (AuthorizationLevel)Enum.Parse(typeof(AuthorizationLevel), _parentRouteHandlingOptions.AuthenticationLevel, ignoreCase: true);
-                    }
-                    catch
-                    {
-                        // ignore invalid configuration and fall back to Function
-                    }
-                }
+                AuthorizationLevel defaultLevel = _parentRouteHandlingOptions?.GetAuthorizationLevelForBinding() ?? AuthorizationLevel.Function;
 
                 var authLevel = Context.GetMetadataEnumValue<AuthorizationLevel>("authLevel", defaultLevel);
 

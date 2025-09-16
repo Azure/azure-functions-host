@@ -58,7 +58,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.ConfigureOptions<AppServiceOptionsSetup>();
                     services.ConfigureOptions<HostEasyAuthOptionsSetup>();
                     services.ConfigureOptions<PrimaryHostCoordinatorOptionsSetup>();
-                    services.ConfigureOptions<RouteHandlingOptionsSetup>();
+                    services.AddOptions<RouteHandlingOptions>()
+                        .BindConfiguration(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, ConfigurationSectionNames.CustomHandlerRouteHandling));
+                    services.AddSingleton<Microsoft.Extensions.Options.IValidateOptions<RouteHandlingOptions>, RouteHandlingOptionsValidator>();
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {

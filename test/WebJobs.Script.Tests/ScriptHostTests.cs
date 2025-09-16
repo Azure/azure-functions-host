@@ -1776,7 +1776,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task Initialize_WithRouteHandlingModeFunctionAndAuthLevelSet_Throws()
+        public void Initialize_WithRouteHandlingModeFunctionAndAuthLevelSet_Throws()
         {
             using (var tempDirectory = new TempDirectory())
             {
@@ -1807,9 +1807,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     })
                     .Build();
 
-                var scriptHost = host.GetScriptHost();
-
-                await Assert.ThrowsAsync<HostInitializationException>(() => scriptHost.InitializeAsync());
+                // The validation now happens during options construction, not during host initialization
+                var ex = Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(() => host.GetScriptHost());
+                Assert.Contains("routeHandling.authenticationLevel", ex.Message);
+                Assert.Contains("routeHandling.mode", ex.Message);
             }
         }
 
