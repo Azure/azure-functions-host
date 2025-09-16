@@ -50,10 +50,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         }
 
         [Fact]
-        public void AddWebJobsScriptHealthChecks_RegistersBothHealthChecks()
+        public void AddWebJobsScriptHealthChecks_RegistersExpectedServices()
         {
             // arrange
+            ServiceCollection services = new();
             Mock<IHealthChecksBuilder> builder = new(MockBehavior.Strict);
+            builder.Setup(b => b.Services).Returns(services);
             builder.Setup(b => b.Add(It.IsAny<HealthCheckRegistration>())).Returns(builder.Object);
 
             // act
@@ -67,7 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             builder.Verify(b => b.Add(IsRegistration<ScriptHostHealthCheck>(
                 HealthCheckNames.ScriptHostLifeCycle, HealthCheckTags.Readiness)),
                 Times.Once);
+            builder.Verify(b => b.Services, Times.AtLeastOnce);
             builder.VerifyNoOtherCalls();
+
+            VerifyPublishers(services, null, HealthCheckTags.Liveness, HealthCheckTags.Readiness);
         }
 
         [Fact]
@@ -216,17 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             builder.AddTelemetryPublisher(tags);
 
             // assert
-            services.Where(x => x.ServiceType == typeof(IHealthCheckPublisher)).Should().HaveCount(expected.Length)
-                .And.AllSatisfy(x => x.Lifetime.Should().Be(ServiceLifetime.Singleton));
-
-            ServiceProvider provider = services.BuildServiceProvider();
-            IEnumerable<IHealthCheckPublisher> publishers = provider.GetServices<IHealthCheckPublisher>();
-
-            publishers.Should().HaveCount(expected.Length);
-            foreach (string tag in expected)
-            {
-                publishers.Should().ContainSingle(p => VerifyPublisher(p, tag));
-            }
+            VerifyPublishers(services, expected);
         }
 
         private static HealthCheckRegistration IsRegistration<T>(string name, string tag)
@@ -246,6 +241,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             {
                 return r.Name == name && r.Tags.Contains(tag) && IsType(r);
             });
+        }
+
+        private static void VerifyPublishers(IServiceCollection services, params string[] tags)
+        {
+            services.Where(x => x.ServiceType == typeof(IHealthCheckPublisher)).Should().HaveCount(tags.Length)
+                .And.AllSatisfy(x => x.Lifetime.Should().Be(ServiceLifetime.Singleton));
+
+            ServiceProvider provider = services.BuildServiceProvider();
+            IEnumerable<IHealthCheckPublisher> publishers = provider.GetServices<IHealthCheckPublisher>();
+
+            publishers.Should().HaveCount(tags.Length);
+            foreach (string tag in tags)
+            {
+                publishers.Should().ContainSingle(p => VerifyPublisher(p, tag));
+            }
         }
 
         private static bool VerifyPublisher(IHealthCheckPublisher publisher, string tag)
