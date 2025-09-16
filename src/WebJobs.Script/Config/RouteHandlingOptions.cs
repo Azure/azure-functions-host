@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using AuthLevel = Microsoft.Azure.WebJobs.Extensions.Http.AuthorizationLevel;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
     public class RouteHandlingOptions
     {
-        private AuthorizationLevel? _authenticationLevel;
+        private AuthorizationLevel? _authorizationLevel;
 
         /// <summary>
         /// Mode determining how routes are mapped.
@@ -32,15 +33,15 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public RouteHandlingMode Mode { get; set; } = RouteHandlingMode.Function;
 
         /// <summary>
-        /// Only applicable to mode = "all". Determines the authentication level for the catch-all route.
+        /// Only applicable to mode = "all". Determines the authorization level for the catch-all route.
         /// Defaults to "function" when Mode == "all". When Mode == "function" this defaults to null.
         /// Supports all AuthorizationLevel values: Anonymous, Function, User, Admin, System.
         /// </summary>
-        public AuthorizationLevel? AuthenticationLevel
+        public AuthorizationLevel? AuthorizationLevel
         {
-            get => _authenticationLevel ??
-                   (Mode == RouteHandlingMode.All ? AuthorizationLevel.Function : null);
-            set => _authenticationLevel = value;
+            get => _authorizationLevel ??
+                   (Mode == RouteHandlingMode.All ? AuthLevel.Function : null);
+            set => _authorizationLevel = value;
         }
 
         /// <summary>
@@ -49,16 +50,16 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         /// <returns>The AuthorizationLevel to use for binding.</returns>
         public AuthorizationLevel GetAuthorizationLevelForBinding()
         {
-            return AuthenticationLevel ?? AuthorizationLevel.Function;
+            return AuthorizationLevel ?? AuthLevel.Function;
         }
 
         /// <summary>
-        /// Gets the authentication level as a string for compatibility.
+        /// Gets the authorization level as a string for compatibility.
         /// </summary>
-        /// <returns>The authentication level as a string, or null if not set.</returns>
-        public string GetAuthenticationLevelString()
+        /// <returns>The authorization level as a string, or null if not set.</returns>
+        public string GetAuthorizationLevelString()
         {
-            var authLevel = AuthenticationLevel;
+            var authLevel = AuthorizationLevel;
             return authLevel?.ToString().ToLowerInvariant();
         }
 
@@ -81,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             var inputRaw = new Newtonsoft.Json.Linq.JObject
             {
                 ["type"] = "httpTrigger",
-                ["authLevel"] = GetAuthenticationLevelString() ?? "function",
+                ["authLevel"] = GetAuthorizationLevelString() ?? "function",
                 ["direction"] = "in",
                 ["name"] = "req",
                 ["methods"] = new Newtonsoft.Json.Linq.JArray("get", "post", "put", "delete", "patch", "head", "options"),
@@ -114,11 +115,11 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 return Microsoft.Extensions.Options.ValidateOptionsResult.Success;
             }
 
-            // AuthenticationLevel is only valid when mode = "all"
-            if (options.Mode == RouteHandlingMode.Function && options.AuthenticationLevel.HasValue)
+            // AuthorizationLevel is only valid when mode = "all"
+            if (options.Mode == RouteHandlingMode.Function && options.AuthorizationLevel.HasValue)
             {
                 return Microsoft.Extensions.Options.ValidateOptionsResult.Fail(
-                    "Invalid configuration: 'routeHandling.authenticationLevel' cannot be set when 'routeHandling.mode' is 'function'.");
+                    "Invalid configuration: 'routeHandling.authorizationLevel' cannot be set when 'routeHandling.mode' is 'function'.");
             }
 
             return Microsoft.Extensions.Options.ValidateOptionsResult.Success;

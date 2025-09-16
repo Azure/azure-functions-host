@@ -1794,7 +1794,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var routeHandling = new JObject();
                 routeHandling["mode"] = "function";
-                routeHandling["authenticationLevel"] = "anonymous";
+                routeHandling["authorizationLevel"] = "anonymous";
                 customHandler["routeHandling"] = routeHandling;
                 config["customHandler"] = customHandler;
 
@@ -1809,7 +1809,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // The validation now happens during options construction, not during host initialization
                 var ex = Assert.Throws<Microsoft.Extensions.Options.OptionsValidationException>(() => host.GetScriptHost());
-                Assert.Contains("routeHandling.authenticationLevel", ex.Message);
+                Assert.Contains("routeHandling.authorizationLevel", ex.Message);
                 Assert.Contains("routeHandling.mode", ex.Message);
             }
         }
@@ -1833,7 +1833,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var routeHandling = new JObject();
                 routeHandling["mode"] = "all";
-                routeHandling["authenticationLevel"] = "anonymous";
+                routeHandling["authorizationLevel"] = "anonymous";
                 customHandler["routeHandling"] = routeHandling;
                 config["customHandler"] = customHandler;
 
