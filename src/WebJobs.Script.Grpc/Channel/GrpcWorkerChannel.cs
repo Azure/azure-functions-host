@@ -35,7 +35,6 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using OpenTelemetry.Trace;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -861,14 +860,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (_functionLoadErrors.TryGetValue(functionId, out Exception exception))
                 {
                     _workerChannelLogger.LogDebug("Function {functionName} failed to load", context.FunctionMetadata.Name);
-                    context.ResultSource.TrySetException(exception);
+                    context.SetException(exception);
                     RemoveExecutingInvocation(invocationId);
                     return;
                 }
                 else if (_metadataRequestErrors.TryGetValue(functionId, out exception))
                 {
                     _workerChannelLogger.LogDebug("Worker failed to load metadata for {functionName}", context.FunctionMetadata.Name);
-                    context.ResultSource.TrySetException(exception);
+                    context.SetException(exception);
                     RemoveExecutingInvocation(invocationId);
                     return;
                 }
@@ -916,7 +915,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             catch (Exception invokeEx)
             {
-                context.ResultSource.TrySetException(invokeEx);
+                context.SetException(invokeEx);
             }
         }
 
@@ -1134,14 +1133,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     else
                     {
                         var rpcException = invokeResponse.Result.GetRpcException(userCodeExceptionHandlingEnabled);
-                        context.ResultSource.SetException(rpcException);
+                        context.SetException(rpcException);
 
                         _metricsLogger.LogEvent(_workerInvocationFailedMetric);
                     }
                 }
                 catch (Exception exc)
                 {
-                    context.ResultSource.TrySetException(exc);
+                    context.SetException(exc);
                 }
                 finally
                 {
@@ -1286,8 +1285,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                                 // TODO fix RpcException catch all https://github.com/Azure/azure-functions-dotnet-worker/issues/370
                                 var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
                                 context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
-                                Activity.Current?.AddException(exception);
-                                Activity.Current?.SetStatus(ActivityStatusCode.Error, exception.Message);
                             }
                             else
                             {
@@ -1570,9 +1567,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 string invocationId = invocation.Context?.ExecutionContext?.InvocationId.ToString();
                 _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
-
-                invocation.Context?.ResultSource?.TrySetException(shutdownException);
-
+                invocation.Context?.SetException(workerException);
                 RemoveExecutingInvocation(invocationId);
             }
         }

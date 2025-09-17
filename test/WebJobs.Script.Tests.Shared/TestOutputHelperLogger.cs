@@ -7,7 +7,7 @@ using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    internal class TestOutputHelperLogger : ILogger
+    public class TestOutputHelperLogger : ILogger
     {
         private readonly ITestOutputHelper _outputHelper;
 

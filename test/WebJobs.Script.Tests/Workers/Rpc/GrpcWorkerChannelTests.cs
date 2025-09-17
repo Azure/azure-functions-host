@@ -1549,6 +1549,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+
         public async Task Shutdown_WithNoExecutingInvocations_DoesNotThrow()
         {
             await CreateDefaultWorkerChannel();
@@ -1653,6 +1654,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
                 Assert.Equal(typeof(FunctionTimeoutAbortException), resultSource.Task.Exception.InnerException.GetType());
             }
+
+        public async Task Ensure_Failure_Status_On_CurrentActivity_WhenInvocationFailed()
+        {
+            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HttpUri, "http://localhost:1234" } });
+            Activity activity = new Activity("testActivity");
+            activity.Start();
+
+            var httpInvocationId = Guid.NewGuid();
+            ScriptInvocationContext httpInvocationContext = GetTestScriptInvocationContext(httpInvocationId, new TaskCompletionSource<ScriptInvocationResult>(), logger: _logger);
+            httpInvocationContext.FunctionMetadata = BuildFunctionMetadataForHttpTrigger("httpTrigger");
+
+            // Send http trigger invocation invocation request.
+            await _workerChannel.SendInvocationRequest(httpInvocationContext);
+
+            // Send http trigger invocation response
+            await _workerChannel.InvokeResponse(BuildFailureInvocationResponse(httpInvocationId.ToString()));
+            activity.Stop();
+
+            Assert.Equal(ActivityStatusCode.Error, activity.Status);
+            Assert.Contains("Failure", activity.StatusDescription);
+
         }
 
         private static IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
@@ -1795,6 +1817,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Result = new StatusResult
                 {
                     Status = StatusResult.Types.Status.Success
+                },
+            };
+        }
+
+        private static InvocationResponse BuildFailureInvocationResponse(string invocationId)
+        {
+            return new InvocationResponse
+            {
+                InvocationId = invocationId,
+                Result = new StatusResult
+                {
+                    Status = StatusResult.Types.Status.Failure
                 },
             };
         }

@@ -1,8 +1,9 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -268,6 +269,41 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     };
                 }
             }
+        }
+
+        public static void SetException(this ScriptInvocationContext context, Exception exception)
+        {
+            context.ResultSource?.TrySetException(exception);
+
+            // If AsyncExecutionContext is null, skip running.
+            if (context?.AsyncExecutionContext is null)
+            {
+                return;
+            }
+
+            // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
+            System.Threading.ExecutionContext.Run(
+                context.AsyncExecutionContext,
+                static state =>
+                {
+                    var invocationState = (InvocationState)state!;
+                    Activity.Current?.AddException(invocationState.Exception);
+                    Activity.Current?.SetStatus(ActivityStatusCode.Error, invocationState.Exception.Message);
+                },
+                new InvocationState(context, exception));
+        }
+
+        private sealed class InvocationState
+        {
+            public InvocationState(ScriptInvocationContext context, Exception exception)
+            {
+                Context = context;
+                Exception = exception;
+            }
+
+            public ScriptInvocationContext Context { get; }
+
+            public Exception Exception { get; }
         }
     }
 }
