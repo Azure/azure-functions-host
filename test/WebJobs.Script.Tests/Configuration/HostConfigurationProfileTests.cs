@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             action.Should()
                 .ThrowExactly<NotSupportedException>()
-                .WithMessage("Configuration profile 'invalid' is not supported. Supported values: '', 'default', 'mcp'.");
+                .WithMessage("Configuration profile 'invalid' is not supported. Supported values: '', 'default', 'mcp-customer-handler'.");
         }
     }
 }
