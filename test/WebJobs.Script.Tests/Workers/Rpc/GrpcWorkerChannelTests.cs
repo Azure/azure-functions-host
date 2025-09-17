@@ -1611,6 +1611,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Theory]
         [InlineData(1, true)]
         [InlineData(3, true)]
+        [InlineData(1, false)]
+        [InlineData(3, false)]
         public async Task Shutdown_WithFunctionTimeoutException_FailsInFlightInvocations(int numberOfInFlightInvocations, bool hasFailureException)
         {
             await CreateDefaultWorkerChannel();
@@ -1641,9 +1643,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     $"Invocation {i} should be executing");
             }
 
-            var workerException = hasFailureException ? new FunctionTimeoutException("Invocation timed out.") : null;
+            var workerException = hasFailureException ? new InvalidOperationException("This operation is invalid.") : null;
 
             _workerChannel.Shutdown(workerException);
+
+            var traces = _logger.GetLogMessages();
 
             for (int i = 0; i < numberOfInFlightInvocations; i++)
             {
@@ -1652,8 +1656,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
                 var resultSource = invocationContexts[i].ResultSource;
                 Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
-                Assert.Equal(typeof(FunctionTimeoutAbortException), resultSource.Task.Exception.InnerException.GetType());
+
+                if (hasFailureException)
+                {
+                    // If there is a worker exception, the inner exception should be the worker exception
+                    Assert.Equal(typeof(InvalidOperationException), resultSource.Task.Exception.InnerException.GetType());
+                }
+                else
+                {
+                    // If there is no worker exception, the inner exception should be FunctionTimeoutAbortException
+                    Assert.Equal(typeof(FunctionTimeoutAbortException), resultSource.Task.Exception.InnerException.GetType());
+                }
+
+                // Assert log message for each failed invocation
+                string expectedLog = $"Worker '{_workerId}' encountered a fatal error. Failing invocation: '{invocationIds[i]}'";
+                Assert.Contains(traces, m =>
+                    string.Equals(m.FormattedMessage, expectedLog, StringComparison.Ordinal) &&
+                    m.Level == LogLevel.Debug);
             }
+        }
 
         public async Task Ensure_Failure_Status_On_CurrentActivity_WhenInvocationFailed()
         {
@@ -1674,7 +1695,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.Equal(ActivityStatusCode.Error, activity.Status);
             Assert.Contains("Failure", activity.StatusDescription);
-
         }
 
         private static IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime, bool addWorkerProperties = false)
