@@ -1024,7 +1024,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 return false;
             }
             string errorStack = exception.ToString().ToLowerInvariant();
-
             foreach (var currFunction in functions)
             {
                 // For each function, we search the entire error stack trace to see if it contains
