@@ -12,3 +12,4 @@
 - Setting current activity status for failed invocations (#11313)
 - Adding test coverage for `Utility.IsAzureMonitorLoggingEnabled` (#11322)
 - Reduce allocations in `Utility.IsAzureMonitorLoggingEnabled` (#11323)
+- Bug fix that fails in-flight invocations when a worker channel shuts down (#11159)
