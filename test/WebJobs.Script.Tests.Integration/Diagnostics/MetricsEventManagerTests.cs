@@ -588,7 +588,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
         }
 
-        [Fact(Skip ="Need to investigate why this fails on CI. Works locally.")]
+        [Fact(Skip = "Need to investigate why this fails on CI. Works locally.")]
         public async Task MetricsEventManager_MultipleConcurrentLongFunctionExecutions()
         {
             var taskList = new List<Task>();
