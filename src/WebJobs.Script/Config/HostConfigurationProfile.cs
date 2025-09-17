@@ -13,12 +13,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string SectionKey = "configurationProfile";
 
         // Make sure to update this as new profiles are added.
-        private const string SupportedValues = "'', 'default', 'mcp'";
+        private const string SupportedValues = "'', 'default', 'mcp-customer-handler'";
 
         public static readonly HostConfigurationProfile Default = new("default", []);
 
-        public static readonly HostConfigurationProfile Mcp = new(
-            "mcp",
+        public static readonly HostConfigurationProfile McpCustomHandler = new(
+            "mcp-customer-handler",
             [
                 KeyValuePair.Create(ConfigurationPath.Combine(
                     ConfigurationSectionNames.CustomHandler, "enableHttpProxyingRequest"), "true"),
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             ArgumentNullException.ThrowIfNull(name);
             return name.ToLowerInvariant() switch
             {
-                "mcp" => Mcp,
+                "mcp-customer-handler" => McpCustomHandler,
                 "" or "default" => Default,
                 _ => throw new NotSupportedException(
                         $"Configuration profile '{name}' is not supported. Supported values: {SupportedValues}."),

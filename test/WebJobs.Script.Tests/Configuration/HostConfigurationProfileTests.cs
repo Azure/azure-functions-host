@@ -27,17 +27,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData("mcp")]
-        [InlineData("MCP")]
+        [InlineData("mcp-customer-handler")]
+        [InlineData("MCP-customer-handler")]
         public void Get_Mcp_ReturnsExpectedProfile(string name)
         {
             HostConfigurationProfile profile = HostConfigurationProfile.Get(name);
 
             Dictionary<string, string> configDict = new(profile.Configuration);
-            profile.Name.Should().Be("mcp");
+            profile.Name.Should().Be("mcp-customer-handler");
             configDict.Should().HaveCount(3);
             configDict.Should().ContainKey("configurationProfile")
-                .WhoseValue.Should().Be("mcp");
+                .WhoseValue.Should().Be("mcp-customer-handler");
             configDict.Should().ContainKey("customHandler:enableHttpProxyingRequest")
                 .WhoseValue.Should().Be("true");
             configDict.Should().ContainKey("extensions:http:routePrefix")
