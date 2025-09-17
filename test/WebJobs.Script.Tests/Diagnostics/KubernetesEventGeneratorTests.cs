@@ -1,11 +1,13 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -24,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 _events.Add(s);
             };
 
-            _generator = new KubernetesEventGenerator(writer);
+            _generator = new KubernetesEventGenerator(Options.Create(new ConsoleLoggingOptions()), writer);
         }
 
         [Theory]
