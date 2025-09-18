@@ -16,12 +16,14 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Exceptions;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
@@ -1552,21 +1554,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _executingInvocations.ContainsKey(invocationId);
         }
 
-        public bool TryFailExecutions(Exception workerException)
+        public void Shutdown(Exception workerException)
         {
-            if (workerException == null)
+            var shutdownException = workerException;
+
+            if (workerException is null || workerException is FunctionTimeoutException)
             {
-                return false;
+                shutdownException = new FunctionTimeoutAbortException(workerException?.Message ?? "Worker channel is shutting down. Aborting function.", workerException);
             }
 
             foreach (var invocation in _executingInvocations?.Values)
             {
                 string invocationId = invocation.Context?.ExecutionContext?.InvocationId.ToString();
                 _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation: '{invocationId}'", _workerId, invocationId);
-                invocation.Context?.SetException(workerException);
+                invocation.Context?.SetException(shutdownException);
                 RemoveExecutingInvocation(invocationId);
             }
-            return true;
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                 var messages = host.GetScriptHostLogMessages().Where(t => t?.FormattedMessage != null);
                 Assert.Contains(messages, t => t.FormattedMessage.StartsWith("A function timeout has occurred. Restarting worker process executing invocationId "));
                 Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Restarting channel"));
-                Assert.Contains(messages, t => t.FormattedMessage == "Restart of language worker process(es) completed.");
+                Assert.Contains(messages, t => t.FormattedMessage == "Attempt to restart language worker process(es) completed.");
             }
         }
 

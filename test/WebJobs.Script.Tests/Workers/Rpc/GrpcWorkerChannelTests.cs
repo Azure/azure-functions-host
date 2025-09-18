@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -28,6 +29,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 using Xunit.Abstractions;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
@@ -570,21 +572,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             });
             await result;
             Assert.Equal(result.Status, TaskStatus.RanToCompletion);
-        }
-
-        [Fact]
-        public async Task InFlight_Functions_FailedWithException()
-        {
-            await CreateDefaultWorkerChannel();
-            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), resultSource);
-            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
-            Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
-            Exception workerException = new Exception("worker failed");
-            _workerChannel.TryFailExecutions(workerException);
-            Assert.False(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
-            Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
-            Assert.Equal(workerException, resultSource.Task.Exception.InnerException);
         }
 
         [Fact]
@@ -1562,6 +1549,133 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+
+        public async Task Shutdown_WithNoExecutingInvocations_DoesNotThrow()
+        {
+            await CreateDefaultWorkerChannel();
+            var workerException = new Exception("Worker process crashed");
+
+            // Should not throw even if there are no executing invocations
+            _workerChannel.Shutdown(workerException);
+        }
+
+        [Theory]
+        [InlineData(1, true)]
+        [InlineData(3, true)]
+        [InlineData(1, false)]
+        [InlineData(3, false)]
+        public async Task Shutdown_FailsInFlightInvocations(int numberOfInFlightInvocations, bool hasFailureException)
+        {
+            await CreateDefaultWorkerChannel();
+
+            var invocationContexts = new List<ScriptInvocationContext>();
+            var invocationIds = new List<Guid>();
+
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
+            {
+                var invocationId = Guid.NewGuid();
+                var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+
+                var invocationContext = GetTestScriptInvocationContext(
+                    invocationId,
+                    resultSource,
+                    logger: _logger,
+                    scriptRootPath: _scriptRootPath);
+
+                await _workerChannel.SendInvocationRequest(invocationContext);
+
+                invocationContexts.Add(invocationContext);
+                invocationIds.Add(invocationId);
+            }
+
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
+            {
+                Assert.True(_workerChannel.IsExecutingInvocation(invocationIds[i].ToString()),
+                    $"Invocation {i} should be executing");
+            }
+
+            var workerException = hasFailureException ? new Exception("Worker process crashed") : null;
+
+            _workerChannel.Shutdown(workerException);
+
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
+            {
+                Assert.False(_workerChannel.IsExecutingInvocation(invocationIds[i].ToString()),
+                    $"Invocation {i} should no longer be executing");
+
+                var resultSource = invocationContexts[i].ResultSource;
+                Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
+            }
+        }
+
+        [Theory]
+        [InlineData(1, true)]
+        [InlineData(3, true)]
+        [InlineData(1, false)]
+        [InlineData(3, false)]
+        public async Task Shutdown_WithFunctionTimeoutException_FailsInFlightInvocations(int numberOfInFlightInvocations, bool hasFailureException)
+        {
+            await CreateDefaultWorkerChannel();
+
+            var invocationContexts = new List<ScriptInvocationContext>();
+            var invocationIds = new List<Guid>();
+
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
+            {
+                var invocationId = Guid.NewGuid();
+                var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+
+                var invocationContext = GetTestScriptInvocationContext(
+                    invocationId,
+                    resultSource,
+                    logger: _logger,
+                    scriptRootPath: _scriptRootPath);
+
+                await _workerChannel.SendInvocationRequest(invocationContext);
+
+                invocationContexts.Add(invocationContext);
+                invocationIds.Add(invocationId);
+            }
+
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
+            {
+                Assert.True(_workerChannel.IsExecutingInvocation(invocationIds[i].ToString()),
+                    $"Invocation {i} should be executing");
+            }
+
+            var workerException = hasFailureException ? new InvalidOperationException("This operation is invalid.") : null;
+
+            _workerChannel.Shutdown(workerException);
+
+            var traces = _logger.GetLogMessages();
+
+            for (int i = 0; i < numberOfInFlightInvocations; i++)
+            {
+                Assert.False(_workerChannel.IsExecutingInvocation(invocationIds[i].ToString()),
+                    $"Invocation {i} should no longer be executing");
+
+                var resultSource = invocationContexts[i].ResultSource;
+                Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
+
+                if (hasFailureException)
+                {
+                    // If there is a worker exception, the inner exception should be the worker exception
+                    Assert.Equal(typeof(InvalidOperationException), resultSource.Task.Exception.InnerException.GetType());
+                }
+                else
+                {
+                    // If there is no worker exception, the inner exception should be FunctionTimeoutAbortException
+                    Assert.Equal(typeof(FunctionTimeoutAbortException), resultSource.Task.Exception.InnerException.GetType());
+                }
+
+                // Assert log message for each failed invocation
+                string expectedLog = $"Worker '{_workerId}' encountered a fatal error. Failing invocation: '{invocationIds[i]}'";
+                Assert.Contains(traces, m =>
+                    string.Equals(m.FormattedMessage, expectedLog, StringComparison.Ordinal) &&
+                    m.Level == LogLevel.Debug);
+            }
+        }
+
         public async Task Ensure_Failure_Status_On_CurrentActivity_WhenInvocationFailed()
         {
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HttpUri, "http://localhost:1234" } });
