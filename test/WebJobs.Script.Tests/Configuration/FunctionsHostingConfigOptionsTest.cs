@@ -132,9 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 (nameof(FunctionsHostingConfigOptions.WorkerIndexingEnabled), "WORKER_INDEXING_ENABLED=1", true),
                 (nameof(FunctionsHostingConfigOptions.WorkerRuntimeStrictValidationEnabled), "WORKER_RUNTIME_STRICT_VALIDATION_ENABLED=1", true),
 
-                (nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=|", "|"),
-                (nameof(FunctionsHostingConfigOptions.InternalAuthApisAllowList), "InternalAuthApisAllowList=/admin/host/foo|/admin/host/bar", "/admin/host/foo|/admin/host/bar"),
-
                 (nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true)
             };
 
@@ -258,20 +255,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             // returns false when disabled
             options.Features[ScriptConstants.HostingConfigSwtIssuerEnabled] = "0";
             Assert.False(options.SwtIssuerEnabled);
-        }
-
-        [Fact]
-        public void InternalAuthApisAllowList_ReturnsExpectedValue()
-        {
-            FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
-
-            Assert.Null(options.InternalAuthApisAllowList);
-
-            options.InternalAuthApisAllowList = string.Empty;
-            Assert.Equal(string.Empty, options.InternalAuthApisAllowList);
-
-            options.InternalAuthApisAllowList = "/admin/host/synctriggers|/admin/host/status";
-            Assert.Equal("/admin/host/synctriggers|/admin/host/status", options.InternalAuthApisAllowList);
         }
 
         internal static IHostBuilder GetScriptHostBuilder(string fileName, string fileContent)
