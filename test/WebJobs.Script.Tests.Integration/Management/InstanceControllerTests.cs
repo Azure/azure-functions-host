@@ -221,9 +221,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Theory]
-        [InlineData(true, true)]
-        [InlineData(false, true)]
-        public async Task Assignment_Invokes_InstanceManager_Methods_For_Warmup_Requests_Also(bool isWarmupRequest, bool shouldInvokeMethod)
+        [InlineData(true, true, true)]
+        [InlineData(false, true, true)]
+        [InlineData(true, true, false)]
+        [InlineData(false, true, false)]
+        public async Task Assignment_Invokes_InstanceManager_Methods_For_Warmup_Requests_Also(bool isWarmupRequest, bool shouldInvokeMethod, bool useEncryptedPayload)
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -250,11 +252,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 EncryptionHelper.Encrypt(JsonConvert.SerializeObject(hostAssignmentContext),
                     TestHelpers.EncryptionKey.ToKeyBytes());
 
-            var hostAssignmentRequest = new HostAssignmentRequest()
+            var hostAssignmentRequest = new HostAssignmentRequest() { };
+            if (useEncryptedPayload)
             {
-                EncryptedContext = encryptedHostAssignmentValue
-            };
-
+                hostAssignmentRequest.EncryptedContext = encryptedHostAssignmentValue;
+            }
+            else
+            {
+                hostAssignmentRequest.AssignmentContext = hostAssignmentContext;
+            }
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, TestHelpers.EncryptionKey);
             
             await instanceController.Assign(hostAssignmentRequest);
@@ -265,6 +271,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 shouldInvokeMethod ? Times.Once() : Times.Never());
             instanceManager.Verify(i => i.StartAssignment(It.IsAny<HostAssignmentContext>()),
                 shouldInvokeMethod ? Times.Once() : Times.Never());
+        }
+
+        [Fact]
+        public async Task Assignment_ErrorScenarios()
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var loggerFactory = new LoggerFactory();
+            var loggerProvider = new TestLoggerProvider();
+            loggerFactory.AddProvider(loggerProvider);
+            var instanceController = new InstanceController(environment, null, loggerFactory, null);
+
+            // Both encrypted and unencrypted context are null
+            var hostAssignmentRequest = new HostAssignmentRequest() { };
+            var result = await instanceController.Assign(hostAssignmentRequest);
+            var badRequestResult = result as BadRequestObjectResult;
+            Assert.NotNull(badRequestResult);
+            Assert.Equal(400, badRequestResult.StatusCode);
+            Assert.Equal("Atleast one of Assignment context and EncryptedContext needs to be set.", badRequestResult.Value);
+
+            // Both encrypted and unencrypted context are set
+            hostAssignmentRequest = new HostAssignmentRequest()
+            {
+                EncryptedContext = "EncryptedContext",
+                AssignmentContext = new HostAssignmentContext()
+            };
+            result = await instanceController.Assign(hostAssignmentRequest);
+            badRequestResult = result as BadRequestObjectResult;
+            Assert.NotNull(badRequestResult);
+            Assert.Equal(400, badRequestResult.StatusCode);
+            Assert.Equal("Only one of Assignment context and EncryptedContext needs to be set.", badRequestResult.Value);
         }
     }
 }
