@@ -1,0 +1,46 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+#nullable enable
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Metrics;
+
+namespace Microsoft.Azure.WebJobs.Script.Diagnostics
+{
+    /// <summary>
+    /// Options for <see cref="ApplicationInsightsMeterListener"/>.
+    /// </summary>
+    public class ApplicationInsightsMeterOptions
+    {
+        /// <summary>
+        /// Gets the set of meter names to listen to.
+        /// </summary>
+        public ISet<string> Sources { get; } = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Gets or sets the interval to collect meter values. Default is 30 seconds.
+        /// </summary>
+        /// <remarks>
+        /// This is the interval at which values for metrics will be tracked on the Application Insights SDK. This is
+        /// NOT the export interval. Application Insights SDK will export tracked values based on its own internal
+        /// schedule.
+        /// </remarks>
+        public TimeSpan CollectInterval { get; set; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Determines if given instrument should be listened to.
+        /// </summary>
+        /// <param name="instrument">The instrument.</param>
+        /// <returns><c>true</c> if should be listened to, <c>false</c> otherwise.</returns>
+        public bool ShouldListenTo(Instrument instrument)
+        {
+            ArgumentNullException.ThrowIfNull(instrument);
+
+            // TODO: consider allowing wildcards or regex
+            // For now, just exact match on meter name
+            return Sources.Contains(instrument.Meter.Name);
+        }
+    }
+}
