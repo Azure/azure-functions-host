@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics.Metrics;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 {
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             // We don't dispose the meter because IMeterFactory handles that
             // An issue on analyzer side: https://github.com/dotnet/roslyn-analyzers/issues/6912
             // Related documentation: https://github.com/dotnet/docs/pull/37170
-            Meter meter = meterFactory.Create("Microsoft.Azure.WebJobs.Script");
+            Meter meter = meterFactory.Create(HostMetrics.FaasMeterName, HostMetrics.FaasMeterVersion);
 #pragma warning restore CA2000 // Dispose objects before losing scope
 
             HealthCheckReport = HealthCheckMetricsGeneration.CreateHealthCheckReportHistogram(meter);
