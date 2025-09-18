@@ -14,4 +14,4 @@
 - Reduce allocations in `Utility.IsAzureMonitorLoggingEnabled` (#11323)
 - Update PowerShell worker to [4.0.4581](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4581)
 - Bug fix that fails in-flight invocations when a worker channel shuts down (#11159)
-- Update Node.js Worker Version to [3.11.1] (https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.11.1)
+- Update Node.js Worker Version to [3.11.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.11.1)
