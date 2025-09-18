@@ -16,10 +16,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         // This ensures tests will fail if these values are changed without updating the test also.
         private const string DefaultProfile = "default";
 
-        private const string McpCustomerHandlerProfile = "mcp-customer-handler";
+        private const string McpCustomerHandlerProfile = "mcp-custom-handler";
 
         // Make sure to update this as new profiles are added.
-        private const string SupportedValues = $"'', {DefaultProfile}, {McpCustomerHandlerProfile}";
+        private const string SupportedValues = $"'', '{DefaultProfile}', '{McpCustomerHandlerProfile}'";
 
         public static readonly HostConfigurationProfile Default = new(DefaultProfile, []);
 

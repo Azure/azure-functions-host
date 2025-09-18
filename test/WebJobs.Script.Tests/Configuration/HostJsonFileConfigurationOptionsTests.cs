@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             TestEnvironment environment = new()
             {
-                ["AzureFunctionsJobHost__configurationProfile"] = "mcp-customer-handler",
+                ["AzureFunctionsJobHost__configurationProfile"] = "mcp-custom-handler",
             };
 
             JObject hostFile = JObject.Parse("{ 'configurationProfile': 'default' }");
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             HostConfigurationProfile profile = options.GetConfigProfile(hostFile);
 
-            profile.Name.Should().Be("mcp-customer-handler");
+            profile.Name.Should().Be("mcp-custom-handler");
         }
 
         [Fact]
@@ -81,12 +81,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             TestEnvironment environment = new();
 
-            JObject hostFile = JObject.Parse("{ 'configurationProfile': 'mcp-customer-handler' }");
+            JObject hostFile = JObject.Parse("{ 'configurationProfile': 'mcp-custom-handler' }");
             HostJsonFileConfigurationOptions options = new(environment, new());
 
             HostConfigurationProfile profile = options.GetConfigProfile(hostFile);
 
-            profile.Name.Should().Be("mcp-customer-handler");
+            profile.Name.Should().Be("mcp-custom-handler");
         }
 
         private record EnvironmentTest(

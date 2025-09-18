@@ -27,17 +27,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData("mcp-customer-handler")]
-        [InlineData("MCP-customer-handler")]
+        [InlineData("mcp-custom-handler")]
+        [InlineData("MCP-Custom-Handler")]
         public void Get_Mcp_ReturnsExpectedProfile(string name)
         {
             HostConfigurationProfile profile = HostConfigurationProfile.Get(name);
 
             Dictionary<string, string> configDict = new(profile.Configuration);
-            profile.Name.Should().Be("mcp-customer-handler");
+            profile.Name.Should().Be("mcp-custom-handler");
             configDict.Should().HaveCount(3);
             configDict.Should().ContainKey("configurationProfile")
-                .WhoseValue.Should().Be("mcp-customer-handler");
+                .WhoseValue.Should().Be("mcp-custom-handler");
             configDict.Should().ContainKey("customHandler:enableHttpProxyingRequest")
                 .WhoseValue.Should().Be("true");
             configDict.Should().ContainKey("extensions:http:routePrefix")
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             action.Should()
                 .ThrowExactly<NotSupportedException>()
-                .WithMessage("Configuration profile 'invalid' is not supported. Supported values: '', 'default', 'mcp-customer-handler'.");
+                .WithMessage("Configuration profile 'invalid' is not supported. Supported values: '', 'default', 'mcp-custom-handler'.");
         }
     }
 }

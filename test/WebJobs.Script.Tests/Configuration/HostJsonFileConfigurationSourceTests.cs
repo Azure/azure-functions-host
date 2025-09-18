@@ -269,15 +269,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void Load_WithProfile_FromEnvironment_ValuesIncluded()
         {
-            HostConfigurationProfile profile = HostConfigurationProfile.Get("mcp-customer-handler");
+            HostConfigurationProfile profile = HostConfigurationProfile.Get("mcp-custom-handler");
             TestEnvironment environment = new()
             {
-                ["AzureFunctionsJobHost__configurationProfile"] = "mcp-customer-handler",
+                ["AzureFunctionsJobHost__configurationProfile"] = "mcp-custom-handler",
             };
 
             IConfiguration config = BuildHostJsonConfiguration(new TestMetricsLogger(), environment);
 
-            Assert.Equal("mcp-customer-handler", config["AzureFunctionsJobHost:configurationProfile"]);
+            Assert.Equal("mcp-custom-handler", config["AzureFunctionsJobHost:configurationProfile"]);
 
             foreach ((string key, string value) in profile.Configuration)
             {
@@ -289,17 +289,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void Load_WithProfile_FromJson_ValuesIncluded()
         {
-            HostConfigurationProfile profile = HostConfigurationProfile.Get("mcp-customer-handler");
+            HostConfigurationProfile profile = HostConfigurationProfile.Get("mcp-custom-handler");
             string json = """
             {
                 "version": "2.0",
-                "configurationProfile": "mcp-customer-handler"
+                "configurationProfile": "mcp-custom-handler"
             }
             """;
 
             File.WriteAllText(_hostJsonFile, json);
             IConfiguration config = BuildHostJsonConfiguration(new TestMetricsLogger(), new TestEnvironment());
-            Assert.Equal("mcp-customer-handler", config["AzureFunctionsJobHost:configurationProfile"]);
+            Assert.Equal("mcp-custom-handler", config["AzureFunctionsJobHost:configurationProfile"]);
 
             foreach ((string key, string value) in profile.Configuration)
             {
@@ -311,21 +311,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void Load_WithProfile_ValuesOverridden()
         {
-            HostConfigurationProfile profile = HostConfigurationProfile.Get("mcp-customer-handler");
+            HostConfigurationProfile profile = HostConfigurationProfile.Get("mcp-custom-handler");
             string keyToOverride = profile.Configuration
                 .First(x => x.Key != "configurationProfile").Key;
             string overrideValue = Guid.NewGuid().ToString();
             string json = $$"""
             {
                 "version": "2.0",
-                "configurationProfile": "mcp-customer-handler",
+                "configurationProfile": "mcp-custom-handler",
                 "{{keyToOverride}}": "{{overrideValue}}"
             }
             """;
 
             File.WriteAllText(_hostJsonFile, json);
             IConfiguration config = BuildHostJsonConfiguration(new TestMetricsLogger(), new TestEnvironment());
-            Assert.Equal("mcp-customer-handler", config["AzureFunctionsJobHost:configurationProfile"]);
+            Assert.Equal("mcp-custom-handler", config["AzureFunctionsJobHost:configurationProfile"]);
             foreach ((string key, string value) in profile.Configuration)
             {
                 string expected = key == keyToOverride ? overrideValue : value;
