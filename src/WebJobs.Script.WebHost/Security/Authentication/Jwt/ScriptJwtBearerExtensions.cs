@@ -149,6 +149,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 result.ValidIssuers =
                 [
                     AppServiceCoreUri,
+                    LegionCoreUri, // ATOL: Specialization is invoked from Legion.
                     string.Format(ScmSiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
                     string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
                 ];
