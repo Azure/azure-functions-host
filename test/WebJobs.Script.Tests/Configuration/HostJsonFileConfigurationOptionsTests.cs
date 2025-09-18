@@ -17,14 +17,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             ["Empty Environment"] = new(
                 new TestEnvironment(),
-                new HostJsonFileConfigurationOptions()),
+                new HostJsonFileConfigurationOptions(new())),
             ["LogicApp=true,WorkerRuntime=something"] = new(
                 new TestEnvironment
                 {
                     ["APP_KIND"] = "workflowapp",
                     ["FUNCTIONS_WORKER_RUNTIME"] = "something",
                 },
-                new HostJsonFileConfigurationOptions
+                new HostJsonFileConfigurationOptions(new())
                 {
                     IsLogicApp = true,
                     WorkerRuntime = "something",
@@ -35,28 +35,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             .Select(x => new object[] { x });
 
         [Fact]
-        public void Create_NullEnvironment_Throws()
+        public void Ctor_NullEnvironment_Throws()
         {
-            Action action = () => HostJsonFileConfigurationOptions.Create(null, new ScriptApplicationHostOptions());
-
+            Action action = () => new HostJsonFileConfigurationOptions(null, new ScriptApplicationHostOptions());
             action.Should().ThrowExactly<ArgumentNullException>().WithParameterName("environment");
         }
 
         [Fact]
-        public void Create_NullScriptOptions_Throws()
+        public void Ctor_NullScriptOptions_Throws()
         {
-            Action action = () => HostJsonFileConfigurationOptions.Create(new TestEnvironment(), null);
-
+            Action action = () => new HostJsonFileConfigurationOptions(new TestEnvironment(), null);
             action.Should().ThrowExactly<ArgumentNullException>().WithParameterName("hostOptions");
         }
 
         [Theory]
         [MemberData(nameof(EnvironmentTestData))]
-        public void Create_ValidParameters_ReturnsOptions(string testName)
+        public void Ctor_ValidParameters_ReturnsOptions(string testName)
         {
             EnvironmentTest test = _environmentTestValues[testName];
-            HostJsonFileConfigurationOptions options = HostJsonFileConfigurationOptions
-                .Create(test.Environment, new());
+            HostJsonFileConfigurationOptions options = new(test.Environment, new());
 
             options.Should().NotBeNull();
             options.WorkerRuntime.Should().Be(test.Expected.WorkerRuntime);
@@ -72,8 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
 
             JObject hostFile = JObject.Parse("{ 'configurationProfile': 'default' }");
-            HostJsonFileConfigurationOptions options = HostJsonFileConfigurationOptions
-                .Create(environment, new());
+            HostJsonFileConfigurationOptions options = new(environment, new());
 
             HostConfigurationProfile profile = options.GetConfigProfile(hostFile);
 
@@ -86,8 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             TestEnvironment environment = new();
 
             JObject hostFile = JObject.Parse("{ 'configurationProfile': 'mcp-customer-handler' }");
-            HostJsonFileConfigurationOptions options = HostJsonFileConfigurationOptions
-                .Create(environment, new());
+            HostJsonFileConfigurationOptions options = new(environment, new());
 
             HostConfigurationProfile profile = options.GetConfigProfile(hostFile);
 

@@ -340,7 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             LoggerFactory loggerFactory = new();
             loggerFactory.AddProvider(_loggerProvider);
 
-            HostJsonFileConfigurationOptions options = HostJsonFileConfigurationOptions.Create(environment, _options);
+            HostJsonFileConfigurationOptions options = new(environment, _options);
             HostJsonFileConfigurationSource configSource = new(options, loggerFactory, testMetricsLogger);
 
             IConfigurationBuilder configurationBuilder = new ConfigurationBuilder().Add(configSource);

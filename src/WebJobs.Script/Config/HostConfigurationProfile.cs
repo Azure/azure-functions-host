@@ -8,17 +8,23 @@ using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
-    public class HostConfigurationProfile
+    public sealed class HostConfigurationProfile
     {
         public const string SectionKey = "configurationProfile";
 
-        // Make sure to update this as new profiles are added.
-        private const string SupportedValues = "'', 'default', 'mcp-customer-handler'";
+        // note: profile name consts are intentionally private.
+        // This ensures tests will fail if these values are changed without updating the test also.
+        private const string DefaultProfile = "default";
 
-        public static readonly HostConfigurationProfile Default = new("default", []);
+        private const string McpCustomerHandlerProfile = "mcp-customer-handler";
+
+        // Make sure to update this as new profiles are added.
+        private const string SupportedValues = $"'', {DefaultProfile}, {McpCustomerHandlerProfile}";
+
+        public static readonly HostConfigurationProfile Default = new(DefaultProfile, []);
 
         public static readonly HostConfigurationProfile McpCustomHandler = new(
-            "mcp-customer-handler",
+            McpCustomerHandlerProfile,
             [
                 KeyValuePair.Create(ConfigurationPath.Combine(
                     ConfigurationSectionNames.CustomHandler, "enableHttpProxyingRequest"), "true"),
@@ -31,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             IEnumerable<KeyValuePair<string, string>> configuration)
         {
             Name = name;
-            Configuration = configuration.Append(KeyValuePair.Create(SectionKey, name));
+            Configuration = [.. configuration, KeyValuePair.Create(SectionKey, name)];
         }
 
         public string Name { get; }
@@ -43,8 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             ArgumentNullException.ThrowIfNull(name);
             return name.ToLowerInvariant() switch
             {
-                "mcp-customer-handler" => McpCustomHandler,
-                "" or "default" => Default,
+                McpCustomerHandlerProfile => McpCustomHandler,
+                "" or DefaultProfile => Default,
                 _ => throw new NotSupportedException(
                         $"Configuration profile '{name}' is not supported. Supported values: {SupportedValues}."),
             };
