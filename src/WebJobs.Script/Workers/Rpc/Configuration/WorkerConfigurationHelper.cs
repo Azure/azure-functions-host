@@ -18,47 +18,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     {
         internal static RpcWorkerConfig BuildWorkerConfig(WorkerConfigurationResolverOptions resolverOptions,
                                                     string workerDir,
+                                                    JsonElement workerConfig,
+                                                    RpcWorkerDescription workerDescription,
                                                     IMetricsLogger metricsLogger,
                                                     ILogger logger,
-                                                    ISystemRuntimeInformation systemRuntimeInformation,
-                                                    IWorkerProfileManager profileManager)
+                                                    ISystemRuntimeInformation systemRuntimeInformation)
         {
             using (metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDir)))
             {
                 try
                 {
                     string workerRuntime = resolverOptions.WorkerRuntime;
-                    // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
-                    if (!string.IsNullOrWhiteSpace(workerRuntime) && !resolverOptions.IsPlaceholderModeEnabled && !resolverOptions.IsMultiLanguageWorkerEnvironment)
-                    {
-                        string workerName = Path.GetFileName(workerDir);
-                        // Only skip worker directories that don't match the current runtime.
-                        // Do not skip non-worker directories like the function app payload directory
-                        if (!workerName.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase) && workerDir.StartsWith(resolverOptions.WorkersRootDirPath))
-                        {
-                            return null;
-                        }
-                    }
-
-                    string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
-
-                    if (!File.Exists(workerConfigPath))
-                    {
-                        logger.LogDebug("Did not find worker config file at: {workerConfigPath}", workerConfigPath);
-                        return null;
-                    }
-
-                    logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
-
-                    var workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
-
-                    RpcWorkerDescription workerDescription = GetWorkerDescription(workerConfig, workerDir, profileManager, resolverOptions.WorkerDescriptionOverrides, logger);
-
-                    if (workerDescription.IsDisabled == true)
-                    {
-                        logger.LogInformation("Skipping WorkerConfig for stack: {language} since it is disabled.", workerDescription.Language);
-                        return null;
-                    }
 
                     if (ShouldAddWorkerConfig(workerDescription.Language, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment, logger, workerRuntime))
                     {
@@ -101,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return null;
         }
 
-        internal static JsonElement GetWorkerConfigJsonElement(string workerConfigPath)
+        internal static JsonElement GetWorkerConfigJsonElement(string workerConfigPath, ILogger logger)
         {
             ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath);
 
@@ -112,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (jsonSpan.IsEmpty)
             {
+                logger.LogDebug("Worker config at '{workerConfigPath}' is empty.", workerConfigPath);
                 return default; // Return default JsonElement if the file is empty.
             }
 
@@ -294,39 +265,96 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             });
         }
 
-        internal static RpcWorkerDescription GetWorkerDescription(
-            JsonElement workerConfig,
+        internal static (RpcWorkerDescription WorkerDescription, JsonElement WorkerConfig) GetWorkerDescription(
             string workerDir,
             IWorkerProfileManager profileManager,
             ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides,
             ILogger logger)
         {
-            var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
-            var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
-            var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
-            workerDescription.WorkerDirectory = workerDir;
-
-            // Read the profiles from worker description and load the profile for which the conditions match
-            if (workerConfig.TryGetProperty(WorkerConstants.WorkerDescriptionProfiles, out var profiles))
+            try
             {
-                List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles, jsonSerializerOptions, profileManager, logger);
-                if (workerDescriptionProfiles.Count > 0)
+                string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
+                if (!ValidateWorkerConfigPath(workerConfigPath, logger))
                 {
-                    profileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
-                    profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
+                    return (null, default);
                 }
+
+                var workerConfig = GetWorkerConfigJsonElement(workerConfigPath, logger);
+                if (workerConfig.ValueKind == JsonValueKind.Undefined)
+                {
+                    return (null, default);
+                }
+
+                var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
+                var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
+                var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
+                workerDescription.WorkerDirectory = workerDir;
+
+                // Read the profiles from worker description and load the profile for which the conditions match
+                if (workerConfig.TryGetProperty(WorkerConstants.WorkerDescriptionProfiles, out var profiles))
+                {
+                    List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles, jsonSerializerOptions, profileManager, logger);
+                    if (workerDescriptionProfiles.Count > 0)
+                    {
+                        profileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
+                        profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
+                    }
+                }
+
+                workerDescription.Arguments ??= new List<string>();
+
+                // Check if any app settings are provided for that language
+                GetWorkerDescriptionFromAppSettings(workerDescription, workerDescriptionOverrides);
+                AddArgumentsFromAppSettings(workerDescription, workerDescriptionOverrides);
+
+                // Validate workerDescription
+                workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger);
+
+                return (workerDescription, workerConfig);
+            }
+            catch (Exception ex) when (!ex.IsFatal())
+            {
+                logger.LogError(ex, "Failed to initialize worker provider for: {workerDir}", workerDir);
             }
 
-            workerDescription.Arguments ??= new List<string>();
+            return (null, default);
+        }
 
-            // Check if any app settings are provided for that language
-            GetWorkerDescriptionFromAppSettings(workerDescription, workerDescriptionOverrides);
-            AddArgumentsFromAppSettings(workerDescription, workerDescriptionOverrides);
+        /// <summary>
+        /// Determines if the worker directory should be skipped based on the current worker runtime and environment settings.
+        /// </summary>
+        internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir, bool isMultiLanguageEnv, bool isPLaceholderMode)
+        {
+            // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
+            // Only skip worker directories that don't match the current runtime.
+            return !isMultiLanguageEnv &&
+                    !isPLaceholderMode &&
+                    !string.IsNullOrWhiteSpace(workerRuntime) &&
+                    !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
+        }
 
-            // Validate workerDescription
-            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger);
+        internal static bool ValidateWorkerConfigPath(string workerConfigPath, ILogger logger)
+        {
+            if (!File.Exists(workerConfigPath))
+            {
+                logger.LogDebug("Did not find worker config file at: {workerConfigPath}", workerConfigPath);
+                return false;
+            }
 
-            return workerDescription;
+            logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
+
+            return true;
+        }
+
+        internal static bool ShouldSkipDisabledWorker(RpcWorkerDescription workerDescription, ILogger logger)
+        {
+            if (workerDescription.IsDisabled == true)
+            {
+                logger.LogInformation("Skipping WorkerConfig for stack: {language} since it is disabled.", workerDescription.Language);
+                return true;
+            }
+
+            return false;
         }
     }
 }

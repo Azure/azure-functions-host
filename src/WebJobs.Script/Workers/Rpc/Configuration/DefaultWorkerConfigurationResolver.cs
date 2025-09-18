@@ -66,19 +66,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 string workerDir = Path.GetFileName(workerPath);
 
-                if (runtimeToConfigMap.ContainsKey(workerDir))
+                if (runtimeToConfigMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(resolverOptions.WorkerRuntime, Path.GetFileName(workerPath), resolverOptions.IsMultiLanguageWorkerEnvironment, resolverOptions.IsPlaceholderModeEnabled))
                 {
                     continue;
                 }
 
-                string workerConfigPath = Path.Combine(workerPath, RpcWorkerConstants.WorkerConfigFileName);
-                if (File.Exists(workerConfigPath))
+                (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerDescription(workerPath, profileManager, resolverOptions.WorkerDescriptionOverrides, logger);
+                if (workerDescription is null || WorkerConfigurationHelper.ShouldSkipDisabledWorker(workerDescription, logger))
                 {
-                    var workerConfig = WorkerConfigurationHelper.BuildWorkerConfig(resolverOptions, workerPath, metricsLogger, logger, systemRuntimeInformation, profileManager);
-                    if (workerConfig is not null)
-                    {
-                        runtimeToConfigMap[workerDir] = workerConfig;
-                    }
+                    continue;
+                }
+
+                var workerConfig = WorkerConfigurationHelper.BuildWorkerConfig(resolverOptions, workerPath, workerConfigJson, workerDescription, metricsLogger, logger, systemRuntimeInformation);
+                if (workerConfig is not null)
+                {
+                    runtimeToConfigMap[workerDir] = workerConfig;
                 }
 
                 if (!resolverOptions.IsMultiLanguageWorkerEnvironment &&
