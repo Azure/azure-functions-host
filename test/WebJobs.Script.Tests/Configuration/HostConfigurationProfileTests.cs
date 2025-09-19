@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Xunit;
 
