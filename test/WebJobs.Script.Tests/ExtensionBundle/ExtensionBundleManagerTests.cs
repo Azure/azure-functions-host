@@ -517,7 +517,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             services.AddLogging();
 
             // Register named client identical to production name so manager picks up retry policy.
-            services.AddHttpClient(nameof(ExtensionBundleManager))
+#pragma warning disable SA1313 // Parameter names should begin with lower-case letter
+            _ = services.AddHttpClient(nameof(ExtensionBundleManager))
                 .ConfigurePrimaryHttpMessageHandler(() => handler)
                 .AddPolicyHandler(HttpPolicyExtensions
                     .HandleTransientHttpError()
@@ -526,6 +527,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                         retryCount: 4,
                         sleepDurationProvider: _ => TimeSpan.Zero,
                         onRetry: (_, __, ___, ____) => { }));
+#pragma warning restore SA1313 // Parameter names should begin with lower-case letter
 
             var provider = services.BuildServiceProvider();
             var factory = provider.GetRequiredService<IHttpClientFactory>();
@@ -550,6 +552,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var services = new ServiceCollection();
             services.AddLogging();
 
+#pragma warning disable SA1313 // Parameter names should begin with lower-case letter
             services.AddHttpClient(nameof(ExtensionBundleManager))
                 .ConfigurePrimaryHttpMessageHandler(() => handler)
                 .AddPolicyHandler(HttpPolicyExtensions
@@ -559,6 +562,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                         retryCount: 4,
                         sleepDurationProvider: _ => TimeSpan.Zero,
                         onRetry: (_, __, ___, ____) => { }));
+#pragma warning restore SA1313 // Parameter names should begin with lower-case letter
 
             var provider = services.BuildServiceProvider();
             var factory = provider.GetRequiredService<IHttpClientFactory>();
