@@ -69,5 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
 
             return principal.HasClaim(SecurityConstants.InvokeClaimType, "true");
         }
+
+        public static bool PrincipalHasUnencryptedAssignClaim(ClaimsPrincipal principal, AuthorizationLevel requiredLevel)
+        {
+            return principal.HasClaim(SecurityConstants.AssignUnencryptedClaimType, "true");
+        }
     }
 }

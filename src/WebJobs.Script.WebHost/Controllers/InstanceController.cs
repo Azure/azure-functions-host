@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
 
@@ -53,11 +54,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else
             {
-                var isHttps = Request?.IsHttps; // Request is null in integration tests.
-                if (isHttps is not null && !isHttps.Value)
+                if (User != null &&
+                    !User.HasClaim(c => c.Type == SecurityConstants.AssignUnencryptedClaimType && c.Value == "true"))
                 {
-                    _logger.LogWarning("Unencrypted assignment request made over HTTP. This request should be made over HTTPS.");
-                    return StatusCode(StatusCodes.Status403Forbidden, new { status = "Unencrypted assignment requests must be made over HTTPS." });
+                    _logger.LogWarning("Required claims missing for invoking unencrypted assignment");
+                    return StatusCode(StatusCodes.Status403Forbidden, new { status = "Required claims missing for invoking unencrypted assignment" });
                 }
                 _logger.LogDebug("Starting container assignment.");
             }
