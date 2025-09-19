@@ -724,23 +724,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 stream.Seek(0, SeekOrigin.Begin);
                 return new StreamContent(stream);
             }
-        }
+        }       
 
         // Primary handler simulating transient zip download failures to exercise retry policy.
-        private sealed class TransientZipFailureHandler : HttpMessageHandler
+        private sealed class TransientZipFailureHandler(string version, int zipFailuresBeforeSuccess) : HttpMessageHandler
         {
-            private readonly string _version;
-            private int _zipFailuresRemaining;
+            private readonly string _version = version;
+            private int _zipFailuresRemaining = zipFailuresBeforeSuccess;
 
             public int IndexAttempts { get; private set; }
 
             public int ZipAttempts { get; private set; }
-
-            public TransientZipFailureHandler(string version, int zipFailuresBeforeSuccess)
-            {
-                _version = version;
-                _zipFailuresRemaining = zipFailuresBeforeSuccess;
-            }
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
