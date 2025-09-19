@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 options.IsStandbyConfiguration = true;
             }
 
-            options.IsFileSystemReadOnly |= IsZipDeployment(out bool isScmRunFromPackage);
+            options.IsFileSystemReadOnly |= IsZipDeployment(out bool isScmRunFromPackage) || _environment.IsManagedAppEnvironment();
             options.IsScmRunFromPackage = isScmRunFromPackage;
         }
 
@@ -75,13 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             // Flex consumption does not support mutable filesystems, and therefore always counts as zip deployment. It does not use scmRunFromPackage.
             // TODO: revisit whether this flex consumption path should return false when in placeholder mode? Thats how it appears to work for other SKUs.
             if (_environment.IsFlexConsumptionSku())
-            {
-                isScmRunFromPackage = false;
-                return true;
-            }
-
-            // Functions on Container Apps always have a read-only filesystem
-            if (_environment.IsManagedAppEnvironment())
             {
                 isScmRunFromPackage = false;
                 return true;
