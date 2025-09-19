@@ -5,7 +5,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;

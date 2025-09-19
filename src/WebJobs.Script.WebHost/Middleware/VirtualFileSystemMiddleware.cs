@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var authorizationPolicyProvider = context.RequestServices.GetRequiredService<IAuthorizationPolicyProvider>();
             var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
 
-            if (!AuthorizationOptionsExtensions.CheckPlatformInternal(context, allowAppServiceInternal: false))
+            if (!AuthorizationOptionsExtensions.EnforceAdminIsolation(context, allowAppServiceInternal: false))
             {
                 return false;
             }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -48,14 +48,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // explicitly in order to pass the timeout.
             // Task ignoreTask = _hostManager.StopAsync();
             // Give the manager and all running tasks some time to shut down gracefully.
-            //await Task.Delay(timeoutGracePeriod);
+            // await Task.Delay(timeoutGracePeriod);
             IFunctionInvocationDispatcher functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
             if (!functionInvocationDispatcher.State.Equals(FunctionInvocationDispatcherState.Default))
             {
                 _logger.LogWarning($"A function timeout has occurred. Restarting worker process executing invocationId '{timeoutException.InstanceId}'.", exceptionInfo.SourceException);
+
                 // If invocation id is not found in any of the workers => worker is already disposed. No action needed.
-                await functionInvocationDispatcher.RestartWorkerWithInvocationIdAsync(timeoutException.InstanceId.ToString());
-                _logger.LogWarning("Restart of language worker process(es) completed.", exceptionInfo.SourceException);
+                await functionInvocationDispatcher.RestartWorkerWithInvocationIdAsync(timeoutException.InstanceId.ToString(), timeoutException);
+
+                _logger.LogWarning("Attempt to restart language worker process(es) completed.", exceptionInfo.SourceException);
             }
             else
             {

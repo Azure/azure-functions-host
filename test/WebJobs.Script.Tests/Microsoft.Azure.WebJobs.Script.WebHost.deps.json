@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v8.0": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/4.1043.100-pr.25425.3": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/4.1044.100-pr.25452.4": {
         "dependencies": {
           "AspNetCore.HealthChecks.UI.Client": "9.0.0",
           "Azure.Data.Tables": "12.8.3",
@@ -22,19 +22,19 @@
           "Microsoft.AspNetCore.Mvc.NewtonsoftJson": "8.0.1",
           "Microsoft.Azure.AppService.Middleware.Functions": "1.5.7",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
-          "Microsoft.Azure.Functions.DotNetIsolatedNativeHost": "1.0.12",
+          "Microsoft.Azure.Functions.DotNetIsolatedNativeHost": "1.0.13",
           "Microsoft.Azure.Functions.JavaWorker": "2.19.2",
           "Microsoft.Azure.Functions.NodeJsWorker": "3.11.0",
           "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption": "1.0.5",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.0": "4.0.3148",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.2": "4.0.4025",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.4": "4.0.4206",
-          "Microsoft.Azure.Functions.PythonWorker": "4.38.0",
+          "Microsoft.Azure.Functions.PythonWorker": "4.39.2",
           "Microsoft.Azure.Storage.File": "11.1.7",
           "Microsoft.Azure.WebJobs": "3.0.41",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.1",
-          "Microsoft.Azure.WebJobs.Script": "4.1043.100-pr.25425.3",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1043.100-pr.25425.3",
+          "Microsoft.Azure.WebJobs.Script": "4.1044.100-pr.25452.4",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1044.100-pr.25452.4",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "6.35.0",
           "Microsoft.IdentityModel.Tokens": "6.35.0",
@@ -45,8 +45,8 @@
           "System.IdentityModel.Tokens.Jwt": "6.35.0",
           "System.Memory.Data": "8.0.1",
           "System.Net.NameResolution": "4.3.0",
-          "Microsoft.Azure.WebJobs.Script.Reference": "4.1043.0.0",
-          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1043.0.0"
+          "Microsoft.Azure.WebJobs.Script.Reference": "4.1044.0.0",
+          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1044.0.0"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.WebHost.dll": {}
@@ -388,7 +388,7 @@
           "Microsoft.AspNetCore.Http.Abstractions": "2.2.0",
           "Microsoft.AspNetCore.Http.Extensions": "2.2.0",
           "Microsoft.AspNetCore.WebUtilities": "2.2.0",
-          "Microsoft.Extensions.ObjectPool": "2.2.0"
+          "Microsoft.Extensions.ObjectPool": "8.0.19"
         }
       },
       "Microsoft.AspNetCore.Authentication.Abstractions/2.2.0": {
@@ -492,7 +492,7 @@
         "dependencies": {
           "Microsoft.AspNetCore.Http.Abstractions": "2.2.0",
           "Microsoft.AspNetCore.WebUtilities": "2.2.0",
-          "Microsoft.Extensions.ObjectPool": "2.2.0",
+          "Microsoft.Extensions.ObjectPool": "8.0.19",
           "Microsoft.Extensions.Options": "9.0.6",
           "Microsoft.Net.Http.Headers": "2.2.0"
         }
@@ -718,7 +718,7 @@
           "Microsoft.AspNetCore.Http.Extensions": "2.2.0",
           "Microsoft.AspNetCore.Routing.Abstractions": "2.2.0",
           "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.ObjectPool": "2.2.0",
+          "Microsoft.Extensions.ObjectPool": "8.0.19",
           "Microsoft.Extensions.Options": "9.0.6"
         }
       },
@@ -842,7 +842,7 @@
           }
         }
       },
-      "Microsoft.Azure.Functions.DotNetIsolatedNativeHost/1.0.12": {},
+      "Microsoft.Azure.Functions.DotNetIsolatedNativeHost/1.0.13": {},
       "Microsoft.Azure.Functions.JavaWorker/2.19.2": {},
       "Microsoft.Azure.Functions.NodeJsWorker/3.11.0": {},
       "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption/1.0.5": {
@@ -860,7 +860,7 @@
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.3148": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.4025": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.4206": {},
-      "Microsoft.Azure.Functions.PythonWorker/4.38.0": {},
+      "Microsoft.Azure.Functions.PythonWorker/4.39.2": {},
       "Microsoft.Azure.KeyVault.Core/2.0.4": {
         "dependencies": {
           "System.Runtime": "4.3.1",
@@ -1344,6 +1344,18 @@
           "Microsoft.Extensions.Primitives": "9.0.6"
         }
       },
+      "Microsoft.Extensions.Compliance.Abstractions/9.8.0": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
+          "Microsoft.Extensions.ObjectPool": "8.0.19"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.Extensions.Compliance.Abstractions.dll": {
+            "assemblyVersion": "9.8.0.0",
+            "fileVersion": "9.800.25.41206"
+          }
+        }
+      },
       "Microsoft.Extensions.Configuration/9.0.0": {
         "dependencies": {
           "Microsoft.Extensions.Configuration.Abstractions": "9.0.6",
@@ -1592,7 +1604,14 @@
           "System.Text.Json": "8.0.5"
         }
       },
-      "Microsoft.Extensions.ObjectPool/2.2.0": {},
+      "Microsoft.Extensions.ObjectPool/8.0.19": {
+        "runtime": {
+          "lib/net8.0/Microsoft.Extensions.ObjectPool.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.1925.37204"
+          }
+        }
+      },
       "Microsoft.Extensions.Options/9.0.6": {
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
@@ -1625,6 +1644,20 @@
           "lib/net8.0/Microsoft.Extensions.Primitives.dll": {
             "assemblyVersion": "9.0.0.0",
             "fileVersion": "9.0.625.26613"
+          }
+        }
+      },
+      "Microsoft.Extensions.Telemetry.Abstractions/9.8.0": {
+        "dependencies": {
+          "Microsoft.Extensions.Compliance.Abstractions": "9.8.0",
+          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
+          "Microsoft.Extensions.ObjectPool": "8.0.19",
+          "Microsoft.Extensions.Options": "9.0.6"
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.Extensions.Telemetry.Abstractions.dll": {
+            "assemblyVersion": "9.8.0.0",
+            "fileVersion": "9.800.25.41206"
           }
         }
       },
@@ -2999,7 +3032,7 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script/4.1043.100-pr.25425.3": {
+      "Microsoft.Azure.WebJobs.Script/4.1044.100-pr.25452.4": {
         "dependencies": {
           "Azure.Core": "1.47.1",
           "Azure.Data.Tables": "12.8.3",
@@ -3024,6 +3057,7 @@
           "Microsoft.Extensions.Azure": "1.12.0",
           "Microsoft.Extensions.Hosting.Abstractions": "9.0.6",
           "Microsoft.Extensions.Logging.Console": "8.0.0",
+          "Microsoft.Extensions.Telemetry.Abstractions": "9.8.0",
           "Mono.Posix.NETStandard": "1.0.0",
           "Newtonsoft.Json": "13.0.3",
           "NuGet.ProjectModel": "5.11.6",
@@ -3053,7 +3087,7 @@
           "Microsoft.Azure.WebJobs.Script.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/4.1043.100-pr.25425.3": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/4.1044.100-pr.25452.4": {
         "dependencies": {
           "Grpc.AspNetCore": "2.55.0",
           "Microsoft.ApplicationInsights": "2.22.0",
@@ -3062,7 +3096,7 @@
           "Microsoft.ApplicationInsights.WindowsServer": "2.22.0",
           "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.22.0",
           "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.37",
-          "Microsoft.Azure.WebJobs.Script": "4.1043.100-pr.25425.3",
+          "Microsoft.Azure.WebJobs.Script": "4.1044.100-pr.25452.4",
           "System.IO.FileSystem.Primitives": "4.3.0",
           "System.Threading.Channels": "8.0.0"
         },
@@ -3070,26 +3104,26 @@
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Reference/4.1043.0.0": {
+      "Microsoft.Azure.WebJobs.Script.Reference/4.1044.0.0": {
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.dll": {
-            "assemblyVersion": "4.1043.0.0",
-            "fileVersion": "4.1043.100.25425"
+            "assemblyVersion": "4.1044.0.0",
+            "fileVersion": "4.1044.100.25452"
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1043.0.0": {
+      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1044.0.0": {
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
-            "assemblyVersion": "4.1043.0.0",
-            "fileVersion": "4.1043.100.25425"
+            "assemblyVersion": "4.1044.0.0",
+            "fileVersion": "4.1044.100.25452"
           }
         }
       }
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/4.1043.100-pr.25425.3": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/4.1044.100-pr.25452.4": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -3654,12 +3688,12 @@
       "path": "microsoft.azure.appservice.proxy.runtime/2.3.20240307.67",
       "hashPath": "microsoft.azure.appservice.proxy.runtime.2.3.20240307.67.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.DotNetIsolatedNativeHost/1.0.12": {
+    "Microsoft.Azure.Functions.DotNetIsolatedNativeHost/1.0.13": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-hN0gQEik7IcoYRHvJQCwujDHVfJ3HMm1nfyYTigJhmsAb3xOJOMUvF6OG4DG0GfcxRXpYw+taleJQHfn9BI+7w==",
-      "path": "microsoft.azure.functions.dotnetisolatednativehost/1.0.12",
-      "hashPath": "microsoft.azure.functions.dotnetisolatednativehost.1.0.12.nupkg.sha512"
+      "sha512": "sha512-uuv5PTBCTPSJTog1667UHOyFWVUH/xlFarVuI76RiCpkN5Vaq31BytvIwTRia1IGQbbYL5pJf23dmfoleEmE4A==",
+      "path": "microsoft.azure.functions.dotnetisolatednativehost/1.0.13",
+      "hashPath": "microsoft.azure.functions.dotnetisolatednativehost.1.0.13.nupkg.sha512"
     },
     "Microsoft.Azure.Functions.JavaWorker/2.19.2": {
       "type": "package",
@@ -3703,12 +3737,12 @@
       "path": "microsoft.azure.functions.powershellworker.ps7.4/4.0.4206",
       "hashPath": "microsoft.azure.functions.powershellworker.ps7.4.4.0.4206.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.PythonWorker/4.38.0": {
+    "Microsoft.Azure.Functions.PythonWorker/4.39.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-EYInb3chrmhVADbgWxLkD6clfEYY00nqquKfxITuZi1tjZJ6PtflHAVwM4h6FzvIDR9nDL6/2Lhd+/P4uDc+kQ==",
-      "path": "microsoft.azure.functions.pythonworker/4.38.0",
-      "hashPath": "microsoft.azure.functions.pythonworker.4.38.0.nupkg.sha512"
+      "sha512": "sha512-HB0A4kHTGnKpI7pz5CRflCfaKo68nk6mei3Ed49uH+/BLe1jFn6yLe8QX7fqHYnBE6+E6Z10tvmyHFp1VfjPTw==",
+      "path": "microsoft.azure.functions.pythonworker/4.39.2",
+      "hashPath": "microsoft.azure.functions.pythonworker.4.39.2.nupkg.sha512"
     },
     "Microsoft.Azure.KeyVault.Core/2.0.4": {
       "type": "package",
@@ -3884,6 +3918,13 @@
       "sha512": "sha512-/1qPCleFOkJe0O+xmFqCNLFYQZTJz965sVw8CUB/BQgsApBwzAUsL2BUkDvQW+geRUVTXUS9zLa0pBjC2VJ1gA==",
       "path": "microsoft.extensions.caching.memory/5.0.0",
       "hashPath": "microsoft.extensions.caching.memory.5.0.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Compliance.Abstractions/9.8.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-PNmBfkdM4GzZRpq40UIO0xPLHIgfZAQ246NGu1S5hOCtIZHBjCREqYpygM6PIGJ+I81QXm4Be058AWym4SmXTQ==",
+      "path": "microsoft.extensions.compliance.abstractions/9.8.0",
+      "hashPath": "microsoft.extensions.compliance.abstractions.9.8.0.nupkg.sha512"
     },
     "Microsoft.Extensions.Configuration/9.0.0": {
       "type": "package",
@@ -4067,12 +4108,12 @@
       "path": "microsoft.extensions.logging.console/8.0.0",
       "hashPath": "microsoft.extensions.logging.console.8.0.0.nupkg.sha512"
     },
-    "Microsoft.Extensions.ObjectPool/2.2.0": {
+    "Microsoft.Extensions.ObjectPool/8.0.19": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-gA8H7uQOnM5gb+L0uTNjViHYr+hRDqCdfugheGo/MxQnuHzmhhzCBTIPm19qL1z1Xe0NEMabfcOBGv9QghlZ8g==",
-      "path": "microsoft.extensions.objectpool/2.2.0",
-      "hashPath": "microsoft.extensions.objectpool.2.2.0.nupkg.sha512"
+      "sha512": "sha512-CYJW9hxuOT7xUrOnPjwpoU01GYLXWsCHmygF8ttS4kB+ZbXWYvSR3d8mL2fVL2QLg5fu4cgsmtz7xe1dI9FUpQ==",
+      "path": "microsoft.extensions.objectpool/8.0.19",
+      "hashPath": "microsoft.extensions.objectpool.8.0.19.nupkg.sha512"
     },
     "Microsoft.Extensions.Options/9.0.6": {
       "type": "package",
@@ -4094,6 +4135,13 @@
       "sha512": "sha512-BHniU24QV67qp1pJknqYSofAPYGmijGI8D+ci9yfw33iuFdyOeB9lWTg78ThyYLyQwZw3s0vZ36VMb0MqbUuLw==",
       "path": "microsoft.extensions.primitives/9.0.6",
       "hashPath": "microsoft.extensions.primitives.9.0.6.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Telemetry.Abstractions/9.8.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-kO2q2nzlaKZLi3eYa1nRPsbWms56RjQCFQalvT92Zt9j89PPxsyhdT++9s0aLKWDe3eVZpjY1329ZERXvW/1Dg==",
+      "path": "microsoft.extensions.telemetry.abstractions/9.8.0",
+      "hashPath": "microsoft.extensions.telemetry.abstractions.9.8.0.nupkg.sha512"
     },
     "Microsoft.Extensions.WebEncoders/2.2.0": {
       "type": "package",
@@ -5117,22 +5165,22 @@
       "path": "yarp.reverseproxy/2.0.1",
       "hashPath": "yarp.reverseproxy.2.0.1.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script/4.1043.100-pr.25425.3": {
+    "Microsoft.Azure.WebJobs.Script/4.1044.100-pr.25452.4": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/4.1043.100-pr.25425.3": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/4.1044.100-pr.25452.4": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Reference/4.1043.0.0": {
+    "Microsoft.Azure.WebJobs.Script.Reference/4.1044.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1043.0.0": {
+    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1044.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""

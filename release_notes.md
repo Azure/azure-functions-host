@@ -11,3 +11,8 @@
 - Adding Activity wrapper to create a function-level request telemetry when none exists (#11311)
 - Introduce 'configurationProfile' functionality (#11324)
 - Remove request size limit for Host <--> Worker communication (#11295)
+- Setting current activity status for failed invocations (#11313)
+- Adding test coverage for `Utility.IsAzureMonitorLoggingEnabled` (#11322)
+- Reduce allocations in `Utility.IsAzureMonitorLoggingEnabled` (#11323)
+- Update PowerShell worker to [4.0.4581](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4581)
+- Bug fix that fails in-flight invocations when a worker channel shuts down (#11159)

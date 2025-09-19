@@ -612,6 +612,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Extensions.Compliance.Abstractions",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Extensions.Configuration",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -782,6 +786,10 @@
     {
       "name": "Microsoft.Extensions.Primitives",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Telemetry.Abstractions",
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Extensions.WebEncoders",

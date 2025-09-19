@@ -3,7 +3,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;

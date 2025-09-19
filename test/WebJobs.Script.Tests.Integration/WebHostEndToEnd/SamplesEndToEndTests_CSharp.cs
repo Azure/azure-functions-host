@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -220,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [InlineData("admin/host/extensionBundle/v1/templates", true, true, false, true, false, HttpStatusCode.Unauthorized)]
         [InlineData("admin/host/extensionBundle/v1/templates", true, true, true, false, true, HttpStatusCode.NotFound)]
         [InlineData("admin/host/extensionBundle/v1/templates", true, false, false, false, true, HttpStatusCode.NotFound)]
-        [InlineData("admin/host/extensionBundle/v1/templates", true, true, false, true, true, HttpStatusCode.Forbidden)]
+        [InlineData("admin/host/extensionBundle/v1/templates", true, true, false, true, true, HttpStatusCode.NotFound)]
         [InlineData("admin/vfs/host.json", true, true, true, false, true, HttpStatusCode.OK)]
         [InlineData("admin/vfs/host.json", true, true, false, false, true, HttpStatusCode.Unauthorized)]
         [InlineData("admin/vfs/host.json", true, true, true, false, false, HttpStatusCode.Unauthorized)]
@@ -450,46 +450,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task SyncTriggers_InternalAuth_Succeeds()
+        public async Task SyncTriggers_AdminTokenProvided_Succeeds()
         {
             using (var httpClient = _fixture.Host.CreateHttpClient())
             {
                 string uri = "admin/host/synctriggers";
+                string token = _fixture.Host.GenerateAdminJwtToken(issuer: ScriptConstants.AppServiceCoreUri);
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
                 HttpResponseMessage response = await httpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             }
         }
 
-        [Theory]
-        [InlineData("", HttpStatusCode.Unauthorized)]
-        [InlineData("|", HttpStatusCode.Unauthorized)]
-        [InlineData("/admin/host/foo|/admin/host/bar", HttpStatusCode.Unauthorized)]
-        [InlineData("/admin/host/status|/admin/host/synctriggers", HttpStatusCode.OK)]
-        public async Task SyncTriggers_InternalAuth_AllowListSpecified_ReturnsExpectedResult(string allowList, HttpStatusCode expected)
-        {
-            var options = _fixture.Host.WebHostServices.GetService<IOptions<FunctionsHostingConfigOptions>>().Value;
-
-            try
-            {
-                options.InternalAuthApisAllowList = allowList;
-
-                using (var httpClient = _fixture.Host.CreateHttpClient())
-                {
-                    string uri = "admin/host/synctriggers";
-                    HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-                    HttpResponseMessage response = await httpClient.SendAsync(request);
-                    Assert.Equal(expected, response.StatusCode);
-                }
-            }
-            finally
-            {
-                options.InternalAuthApisAllowList = null;
-            }
-        }
-
         [Fact]
-        public async Task SyncTriggers_ExternalUnauthorized_ReturnsUnauthorized()
+        public async Task SyncTriggers_NoAuthentication_ReturnsUnauthorized()
         {
             string uri = "admin/host/synctriggers";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
@@ -498,7 +473,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task SyncTriggers_AdminLevel_Succeeds()
+        public async Task SyncTriggers_MasterKeyProvided_Succeeds()
         {
             string uri = "admin/host/synctriggers";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
@@ -515,23 +490,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task HostLog_PlatformInternal_Succeeds()
-        {
-            var environment = _fixture.Host.JobHostServices.GetService<IEnvironment>();
-            Assert.True(environment.IsAppService());
-
-            using (var httpClient = _fixture.Host.CreateHttpClient())
-            {
-                // no x-arr-log-id header makes this request platform internal
-                var request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
-                request.Content = new StringContent("[]");
-                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                var response = await httpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            }
         }
 
         [Fact]
