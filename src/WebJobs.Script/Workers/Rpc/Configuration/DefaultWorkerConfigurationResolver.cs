@@ -58,15 +58,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                                                                     IMetricsLogger metricsLogger,
                                                                                     ISystemRuntimeInformation systemRuntimeInformation,
                                                                                     IWorkerProfileManager profileManager,
-                                                                                    Dictionary<string, RpcWorkerConfig> runtimeToConfigMap = null)
+                                                                                    Dictionary<string, RpcWorkerConfig> availableRuntimeToConfigMap = null)
         {
-            runtimeToConfigMap = runtimeToConfigMap ?? new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
+            // It could be partially filled by dynamic worker config resolver, which searches for worker configs in probing paths.
+            // This applies to scenarios such as multi-language worker environment and placeholder mode where some worker configs are found in probing paths, while remaining configs will be loaded from the default path within the Host.
+            availableRuntimeToConfigMap = availableRuntimeToConfigMap ?? new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var workerPath in fileSystem.Directory.EnumerateDirectories(resolverOptions.WorkersRootDirPath))
             {
                 string workerDir = Path.GetFileName(workerPath);
 
-                if (runtimeToConfigMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(resolverOptions.WorkerRuntime, Path.GetFileName(workerPath), resolverOptions.IsMultiLanguageWorkerEnvironment, resolverOptions.IsPlaceholderModeEnabled))
+                if (availableRuntimeToConfigMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(resolverOptions.WorkerRuntime, Path.GetFileName(workerPath), resolverOptions.IsMultiLanguageWorkerEnvironment, resolverOptions.IsPlaceholderModeEnabled))
                 {
                     continue;
                 }
@@ -80,19 +82,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 var workerConfig = WorkerConfigurationHelper.BuildWorkerConfig(resolverOptions, workerPath, workerConfigJson, workerDescription, metricsLogger, logger, systemRuntimeInformation);
                 if (workerConfig is not null)
                 {
-                    runtimeToConfigMap[workerDir] = workerConfig;
+                    availableRuntimeToConfigMap[workerDir] = workerConfig;
                 }
 
                 if (!resolverOptions.IsMultiLanguageWorkerEnvironment &&
                     !resolverOptions.IsPlaceholderModeEnabled &&
                     !string.IsNullOrWhiteSpace(resolverOptions.WorkerRuntime) &&
-                    runtimeToConfigMap.ContainsKey(resolverOptions.WorkerRuntime))
+                    availableRuntimeToConfigMap.ContainsKey(resolverOptions.WorkerRuntime))
                 {
                     break;
                 }
             }
 
-            return runtimeToConfigMap;
+            return availableRuntimeToConfigMap;
         }
     }
 }

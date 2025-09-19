@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 string arguments = languageWorkersSection.GetSection(language).GetValue<string>(WorkerConstants.WorkerDescriptionArguments);
                 if (!string.IsNullOrEmpty(arguments))
                 {
-                    workerDescription.Arguments = Regex.Split(arguments, @"\s+");
+                    workerDescription.Arguments = WhiteSpaceRegexHolder.WhiteSpaceRegex().Split(arguments);
                     workerDescriptionsMap[language] = workerDescription;
                 }
             }
@@ -287,5 +287,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             return ignoredVersionsOut.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase);
         }
+    }
+
+    internal static partial class WhiteSpaceRegexHolder
+    {
+#if NET7_0_OR_GREATER
+        [GeneratedRegex(@"\s+")]
+        public static partial Regex WhiteSpaceRegex();
+#else
+        public static Regex WhiteSpaceRegex() => new Regex(@"\s+");
+#endif
     }
 }
