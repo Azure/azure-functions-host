@@ -283,15 +283,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static HostAssignmentRequest CreateHostAssignmentRequest(HostAssignmentContext context, string key, bool useEncryptedPayload)
         {
+            if (!useEncryptedPayload)
+            {
+                return new HostAssignmentRequest { AssignmentContext = context };
+            }
+
             string json = JsonConvert.SerializeObject(context);
             var encryptionKey = Convert.FromBase64String(key);
             string encrypted = EncryptionHelper.Encrypt(json, encryptionKey);
-            
-            if (useEncryptedPayload)
-            {
-                return new HostAssignmentRequest { EncryptedContext = encrypted };
-            }
-            return new HostAssignmentRequest { AssignmentContext = context };
+            return new HostAssignmentRequest { EncryptedContext = encrypted };
         }
     }
 }

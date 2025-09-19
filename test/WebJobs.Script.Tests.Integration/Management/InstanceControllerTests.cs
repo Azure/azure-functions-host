@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var badRequestResult = result as BadRequestObjectResult;
             Assert.NotNull(badRequestResult);
             Assert.Equal(400, badRequestResult.StatusCode);
-            Assert.Equal("Atleast one of Assignment context and EncryptedContext needs to be set.", badRequestResult.Value);
+            Assert.Equal("At least one of 'assignmentContext' or 'encryptedContext' must be provided.", badRequestResult.Value);
 
             // Both encrypted and unencrypted context are set
             hostAssignmentRequest = new HostAssignmentRequest()
@@ -301,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             badRequestResult = result as BadRequestObjectResult;
             Assert.NotNull(badRequestResult);
             Assert.Equal(400, badRequestResult.StatusCode);
-            Assert.Equal("Only one of Assignment context and EncryptedContext needs to be set.", badRequestResult.Value);
+            Assert.Equal("Only one of 'assignmentContext' or 'encryptedContext' may be set.", badRequestResult.Value);
         }
     }
 }

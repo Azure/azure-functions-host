@@ -38,22 +38,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public async Task<IActionResult> Assign([FromBody] HostAssignmentRequest hostAssignmentContext)
         {
             if (string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext) &&
-                hostAssignmentContext.AssignmentContext == null)
+                hostAssignmentContext.AssignmentContext is null)
             {
-                return BadRequest("Atleast one of Assignment context and EncryptedContext needs to be set.");
+                return BadRequest("At least one of 'assignmentContext' or 'encryptedContext' must be provided.");
             }
             if (!string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext) &&
-                !(hostAssignmentContext.AssignmentContext == null))
+                hostAssignmentContext.AssignmentContext is not null)
             {
-                return BadRequest("Only one of Assignment context and EncryptedContext needs to be set.");
+                return BadRequest("Only one of 'assignmentContext' or 'encryptedContext' may be set.");
             }
             if (!string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext))
             {
-                _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. ContextLength is {hostAssignmentContext.EncryptedContext.Length}");
+                _logger.LogDebug("Starting container assignment. ContextLength is {ContextLength}", hostAssignmentContext.EncryptedContext.Length);
             }
             else
             {
-                _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. Using unencrypted assignment context");
+                var isHttps = Request.IsHttps;
+                if (!isHttps)
+                {
+                    _logger.LogWarning("Unencrypted assignment request made over HTTP. This request should be made over HTTPS.");
+                    return StatusCode(StatusCodes.Status403Forbidden, new { status = "Unencrypted assignment requests must be made over HTTPS." });
+                }
+                _logger.LogDebug("Starting container assignment.");
             }
 
             var assignmentContext = _startupContextProvider.SetContext(hostAssignmentContext);
