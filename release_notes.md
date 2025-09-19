@@ -14,3 +14,4 @@
 - Reduce allocations in `Utility.IsAzureMonitorLoggingEnabled` (#11323)
 - Update PowerShell worker to [4.0.4581](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4581)
 - Bug fix that fails in-flight invocations when a worker channel shuts down (#11159)
+- Adds WebHost and ScriptHost health checks. (#11341, #11183, #11178, #11173, #11161)
