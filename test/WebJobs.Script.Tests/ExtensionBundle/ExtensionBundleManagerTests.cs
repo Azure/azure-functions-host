@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -505,6 +505,73 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             mockLogger.Verify();
         }
 
+        [Fact]
+        public async Task GetExtensionBundle_RetriesZipDownload_SucceedsAfterTransientFailures()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*, 5.0.0)");
+            var environment = GetTestAppServiceEnvironment();
+            var version = "4.2.0";
+
+            var handler = new TransientZipFailureHandler(version, zipFailuresBeforeSuccess: 2);
+            var services = new ServiceCollection();
+            services.AddLogging();
+
+            // Register named client identical to production name so manager picks up retry policy.
+            services.AddHttpClient(nameof(ExtensionBundleManager))
+                .ConfigurePrimaryHttpMessageHandler(() => handler)
+                .AddPolicyHandler(HttpPolicyExtensions
+                    .HandleTransientHttpError()
+                    .OrResult(resp => resp.StatusCode == HttpStatusCode.TooManyRequests)
+                    .WaitAndRetryAsync(
+                        retryCount: 4,
+                        sleepDurationProvider: _ => TimeSpan.Zero,
+                        onRetry: (_, __, ___, ____) => { }));
+
+            var provider = services.BuildServiceProvider();
+            var factory = provider.GetRequiredService<IHttpClientFactory>();
+            var manager = new ExtensionBundleManager(options, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions(), factory);
+
+            var path = await manager.GetExtensionBundlePath();
+
+            Assert.NotNull(path);
+            Assert.True(Directory.Exists(Path.Combine(options.DownloadPath, version)));
+            Assert.Equal(1, handler.IndexAttempts); // index.json fetched once
+            Assert.Equal(3, handler.ZipAttempts);   // 2 failures + 1 success
+        }
+
+        [Fact]
+        public async Task GetExtensionBundle_RetriesZipDownload_ExhaustsAndFails()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[4.*, 5.0.0)");
+            var environment = GetTestAppServiceEnvironment();
+            var version = "4.2.0";
+
+            var handler = new TransientZipFailureHandler(version, zipFailuresBeforeSuccess: 10); // exceed retry budget
+            var services = new ServiceCollection();
+            services.AddLogging();
+
+            services.AddHttpClient(nameof(ExtensionBundleManager))
+                .ConfigurePrimaryHttpMessageHandler(() => handler)
+                .AddPolicyHandler(HttpPolicyExtensions
+                    .HandleTransientHttpError()
+                    .OrResult(resp => resp.StatusCode == HttpStatusCode.TooManyRequests)
+                    .WaitAndRetryAsync(
+                        retryCount: 4,
+                        sleepDurationProvider: _ => TimeSpan.Zero,
+                        onRetry: (_, __, ___, ____) => { }));
+
+            var provider = services.BuildServiceProvider();
+            var factory = provider.GetRequiredService<IHttpClientFactory>();
+            var manager = new ExtensionBundleManager(options, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions(), factory);
+
+            var path = await manager.GetExtensionBundlePath();
+
+            Assert.Null(path);
+            Assert.Equal(1, handler.IndexAttempts);
+            Assert.Equal(5, handler.ZipAttempts); // initial + 4 retries
+            Assert.False(Directory.Exists(Path.Combine(options.DownloadPath, version)));
+        }
+
         private ExtensionBundleManager GetExtensionBundleManager(ExtensionBundleOptions bundleOptions, TestEnvironment environment = null, Mock<ILoggerFactory> mockLoggerFactory = null)
         {
             environment = environment ?? new TestEnvironment();
@@ -653,73 +720,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 stream.Seek(0, SeekOrigin.Begin);
                 return new StreamContent(stream);
             }
-        }
-
-        [Fact]
-        public async Task GetExtensionBundle_RetriesZipDownload_Succeeds_AfterTransientFailures()
-        {
-            var options = GetTestExtensionBundleOptions(BundleId, "[4.*, 5.0.0)");
-            var environment = GetTestAppServiceEnvironment();
-            var version = "4.2.0";
-
-            var handler = new TransientZipFailureHandler(version, zipFailuresBeforeSuccess: 2);
-            var services = new ServiceCollection();
-            services.AddLogging();
-
-            // Register named client identical to production name so manager picks up retry policy.
-            services.AddHttpClient(nameof(ExtensionBundleManager))
-                .ConfigurePrimaryHttpMessageHandler(() => handler)
-                .AddPolicyHandler(HttpPolicyExtensions
-                    .HandleTransientHttpError()
-                    .OrResult(resp => resp.StatusCode == HttpStatusCode.TooManyRequests)
-                    .WaitAndRetryAsync(
-                        retryCount: 4,
-                        sleepDurationProvider: _ => TimeSpan.Zero,
-                        onRetry: (_, __, ___, ____) => { }));
-
-            var provider = services.BuildServiceProvider();
-            var factory = provider.GetRequiredService<IHttpClientFactory>();
-            var manager = new ExtensionBundleManager(options, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions(), factory);
-
-            var path = await manager.GetExtensionBundlePath();
-
-            Assert.NotNull(path);
-            Assert.True(Directory.Exists(Path.Combine(options.DownloadPath, version)));
-            Assert.Equal(1, handler.IndexAttempts); // index.json fetched once
-            Assert.Equal(3, handler.ZipAttempts);   // 2 failures + 1 success
-        }
-
-        [Fact]
-        public async Task GetExtensionBundle_RetriesZipDownload_ExhaustsAndFails()
-        {
-            var options = GetTestExtensionBundleOptions(BundleId, "[4.*, 5.0.0)");
-            var environment = GetTestAppServiceEnvironment();
-            var version = "4.2.0";
-
-            var handler = new TransientZipFailureHandler(version, zipFailuresBeforeSuccess: 10); // exceed retry budget
-            var services = new ServiceCollection();
-            services.AddLogging();
-
-            services.AddHttpClient(nameof(ExtensionBundleManager))
-                .ConfigurePrimaryHttpMessageHandler(() => handler)
-                .AddPolicyHandler(HttpPolicyExtensions
-                    .HandleTransientHttpError()
-                    .OrResult(resp => resp.StatusCode == HttpStatusCode.TooManyRequests)
-                    .WaitAndRetryAsync(
-                        retryCount: 4,
-                        sleepDurationProvider: _ => TimeSpan.Zero,
-                        onRetry: (_, __, ___, ____) => { }));
-
-            var provider = services.BuildServiceProvider();
-            var factory = provider.GetRequiredService<IHttpClientFactory>();
-            var manager = new ExtensionBundleManager(options, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions(), factory);
-
-            var path = await manager.GetExtensionBundlePath();
-
-            Assert.Null(path);
-            Assert.Equal(1, handler.IndexAttempts);
-            Assert.Equal(5, handler.ZipAttempts); // initial + 4 retries
-            Assert.False(Directory.Exists(Path.Combine(options.DownloadPath, version)));
         }
 
         // Primary handler simulating transient zip download failures to exercise retry policy.

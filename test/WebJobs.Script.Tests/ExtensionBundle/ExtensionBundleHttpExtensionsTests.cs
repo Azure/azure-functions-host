@@ -1,6 +1,9 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System.Net.Http;
-using Xunit;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 {
