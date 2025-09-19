@@ -1,8 +1,10 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -14,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
     internal class HttpWorkerOptionsSetup : IConfigureOptions<HttpWorkerOptions>
     {
+        private readonly IEnvironment _environment;
         private IConfiguration _configuration;
         private ILogger _logger;
         private IMetricsLogger _metricsLogger;
@@ -21,12 +24,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private string argumentsSectionName = $"{WorkerConstants.WorkerDescription}:arguments";
         private string workerArgumentsSectionName = $"{WorkerConstants.WorkerDescription}:workerArguments";
 
-        public HttpWorkerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        public HttpWorkerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, IEnvironment environment)
         {
             _scriptJobHostOptions = scriptJobHostOptions.Value;
             _configuration = configuration;
             _metricsLogger = metricsLogger;
             _logger = loggerFactory.CreateLogger<HttpWorkerOptionsSetup>();
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
         public void Configure(HttpWorkerOptions options)
@@ -39,6 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 _logger.LogWarning($"Both {ConfigurationSectionNames.HttpWorker} and {ConfigurationSectionNames.CustomHandler} sections are spefified in {ScriptConstants.HostMetadataFileName} file. {ConfigurationSectionNames.CustomHandler} takes precedence.");
             }
+
+            options.WorkerRuntime = _environment.GetFunctionsWorkerRuntime();
 
             if (customHandlerSection.Exists())
             {
@@ -71,6 +77,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (httpWorkerDescription == null)
             {
                 throw new HostConfigurationException($"Missing worker Description.");
+            }
+
+            if (options.HttpRoutes is not null
+                && options.HttpRoutes.Any(r => string.IsNullOrEmpty(r.Route)))
+            {
+                throw new HostConfigurationException("HTTP route for custom handlers cannot be empty.");
             }
 
             var argumentsList = GetArgumentList(workerSection, argumentsSectionName);
