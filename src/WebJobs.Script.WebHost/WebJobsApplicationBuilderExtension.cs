@@ -45,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<HandleCancellationMiddleware>();
             builder.UseMiddleware<HostnameFixupMiddleware>();
 
-            UseHealthChecks(builder);
+            // Health is registered early in the pipeline to ensure it can avoid failures from the rest of the pipeline.
+            builder.UseHealthChecks();
 
             if (environment.IsAnyLinuxConsumption() || environment.IsAnyKubernetesEnvironment())
             {
@@ -123,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return builder;
         }
 
-        private static void UseHealthChecks(IApplicationBuilder app)
+        private static void UseHealthChecks(this IApplicationBuilder app)
         {
             // '/runtime' is a reserved API path. We use that to avoid conflict with any customer function routes.
             const string healthPrefix = "/runtime/health";
@@ -134,6 +135,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             app.MapWhen(Predicate, app =>
             {
+                app.UseMiddleware<HealthCheckAuthMiddleware>();
+
                 // This supports the ?wait={seconds} query string.
                 app.UseMiddleware<HealthCheckWaitMiddleware>();
 
