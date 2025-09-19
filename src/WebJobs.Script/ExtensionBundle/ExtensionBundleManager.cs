@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -212,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
                 // Log AzureRef header if present (debug level to avoid noise in normal operations)
                 azureRef = response.GetAzureRef();
- 
+
                 response.EnsureSuccessStatusCode();
 
                 using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
