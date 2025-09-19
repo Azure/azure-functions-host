@@ -53,8 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else
             {
-                var isHttps = Request.IsHttps;
-                if (!isHttps)
+                var isHttps = Request?.IsHttps; // Request is null in integration tests.
+                if (isHttps is not null && !isHttps.Value)
                 {
                     _logger.LogWarning("Unencrypted assignment request made over HTTP. This request should be made over HTTPS.");
                     return StatusCode(StatusCodes.Status403Forbidden, new { status = "Unencrypted assignment requests must be made over HTTPS." });
