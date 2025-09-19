@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal string GetDefaultWorkersDirectory()
         {
             var assemblyDir = AppContext.BaseDirectory;
-            string workersDirPath = Path.Combine(assemblyDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            var workersDirPath = Path.Combine(assemblyDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
 
             if (!_fileSystem.Directory.Exists(workersDirPath))
             {
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         private void LogWorkersDirSectionPresence(IConfiguration configuration, string configurationSource)
         {
-            string configSectionToCheck = ConfigurationPath.Combine(RpcWorkerConstants.LanguageWorkersSectionName, WorkerConstants.WorkersDirectorySectionName);
+            var configSectionToCheck = ConfigurationPath.Combine(RpcWorkerConstants.LanguageWorkersSectionName, WorkerConstants.WorkersDirectorySectionName);
             var section = configuration.GetSection(configSectionToCheck);
 
             if (!string.IsNullOrEmpty(section.Value))
@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             // special handling for Arguments which takes a string but internally requires a List<string>.
             foreach (var (language, workerDescription) in workerDescriptionsMap)
             {
-                string arguments = languageWorkersSection.GetSection(language).GetValue<string>(WorkerConstants.WorkerDescriptionArguments);
+                var arguments = languageWorkersSection.GetSection(language).GetValue<string>(WorkerConstants.WorkerDescriptionArguments);
                 if (!string.IsNullOrEmpty(arguments))
                 {
                     workerDescription.Arguments = WhiteSpaceRegexHolder.WhiteSpaceRegex().Split(arguments);
@@ -245,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal ImmutableDictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
         {
             // Example value of ignoredWorkerVersions: "Worker1Name:Version1|Worker1Name:Version2|Worker2Name:Version1|Worker3Name:Version1".
-            string ignoredWorkerVersions = _functionsHostingConfigOptions.Value.IgnoredWorkerVersions;
+            var ignoredWorkerVersions = _functionsHostingConfigOptions.Value.IgnoredWorkerVersions;
 
             if (string.IsNullOrWhiteSpace(ignoredWorkerVersions))
             {
@@ -265,8 +265,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     continue;
                 }
 
-                string workerName = workerVersionParts[0];
-                string version = workerVersionParts[1];
+                var workerName = workerVersionParts[0];
+                var version = workerVersionParts[1];
 
                 if (!Version.TryParse(version, out Version parsedVersion))
                 {

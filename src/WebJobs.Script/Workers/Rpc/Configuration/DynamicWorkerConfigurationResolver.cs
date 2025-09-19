@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     foreach (var workerRuntimePath in _fileSystem.Directory.EnumerateDirectories(probingPath))
                     {
-                        string workerRuntimeDir = Path.GetFileName(workerRuntimePath);
+                        var workerRuntimeDir = Path.GetFileName(workerRuntimePath);
 
                         // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
                         if (runtimeToConfigPathMap.ContainsKey(workerRuntimeDir))
@@ -140,9 +140,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     continue;
                 }
 
-                string languageWorkerVersionPath = versionPair.Value;
+                var languageWorkerVersionPath = versionPair.Value;
 
-                (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerDescription(languageWorkerVersionPath, _profileManager, _resolverOptions.WorkerDescriptionOverrides, _logger);
+                (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerConfigAndDescription(languageWorkerVersionPath, _profileManager, _resolverOptions.WorkerDescriptionOverrides, _logger);
                 if (workerDescription is null || WorkerConfigurationHelper.ShouldSkipDisabledWorker(workerDescription, _logger))
                 {
                     continue;
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             foreach (var workerVersionPath in workerVersionPaths)
             {
-                string versionDir = Path.GetFileName(workerVersionPath);
+                var versionDir = Path.GetFileName(workerVersionPath);
 
                 if (Version.TryParse(versionDir, out Version version))
                 {
@@ -256,7 +256,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         private bool IsStandardOrExtendedChannel()
         {
-            string releaseChannel = _resolverOptions.ReleaseChannel;
+            var releaseChannel = _resolverOptions.ReleaseChannel;
+
             return !string.IsNullOrWhiteSpace(releaseChannel) &&
                     (releaseChannel.Equals(ScriptConstants.StandardPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase) ||
                     releaseChannel.Equals(ScriptConstants.ExtendedPlatformChannelNameUpper, StringComparison.OrdinalIgnoreCase));

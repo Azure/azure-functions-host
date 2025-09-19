@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 try
                 {
-                    string workerRuntime = resolverOptions.WorkerRuntime;
+                    var workerRuntime = resolverOptions.WorkerRuntime;
 
                     if (ShouldAddWorkerConfig(workerDescription.Language, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment, logger, workerRuntime))
                     {
@@ -265,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             });
         }
 
-        internal static (RpcWorkerDescription WorkerDescription, JsonElement WorkerConfig) GetWorkerDescription(
+        internal static (RpcWorkerDescription WorkerDescription, JsonElement WorkerConfig) GetWorkerConfigAndDescription(
             string workerDir,
             IWorkerProfileManager profileManager,
             ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides,
@@ -273,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         {
             try
             {
-                string workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
+                var workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
                 if (!ValidateWorkerConfigPath(workerConfigPath, logger))
                 {
                     return (null, default);

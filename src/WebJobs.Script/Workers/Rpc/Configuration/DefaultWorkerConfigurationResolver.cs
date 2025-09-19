@@ -66,14 +66,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             foreach (var workerPath in fileSystem.Directory.EnumerateDirectories(resolverOptions.WorkersRootDirPath))
             {
-                string workerDir = Path.GetFileName(workerPath);
+                var workerDir = Path.GetFileName(workerPath);
 
                 if (availableRuntimeToConfigMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(resolverOptions.WorkerRuntime, Path.GetFileName(workerPath), resolverOptions.IsMultiLanguageWorkerEnvironment, resolverOptions.IsPlaceholderModeEnabled))
                 {
                     continue;
                 }
 
-                (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerDescription(workerPath, profileManager, resolverOptions.WorkerDescriptionOverrides, logger);
+                (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerConfigAndDescription(workerPath, profileManager, resolverOptions.WorkerDescriptionOverrides, logger);
                 if (workerDescription is null || WorkerConfigurationHelper.ShouldSkipDisabledWorker(workerDescription, logger))
                 {
                     continue;

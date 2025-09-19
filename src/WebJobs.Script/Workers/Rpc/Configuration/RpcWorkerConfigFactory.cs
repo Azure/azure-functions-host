@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         continue;
                     }
 
-                    (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerDescription(workerDescriptionOverride.WorkerDirectory, _profileManager, _resolverOptions.CurrentValue.WorkerDescriptionOverrides, _logger);
+                    (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerConfigAndDescription(workerDescriptionOverride.WorkerDirectory, _profileManager, _resolverOptions.CurrentValue.WorkerDescriptionOverrides, _logger);
                     if (workerDescription is null || WorkerConfigurationHelper.ShouldSkipDisabledWorker(workerDescription, _logger))
                     {
                         continue;
