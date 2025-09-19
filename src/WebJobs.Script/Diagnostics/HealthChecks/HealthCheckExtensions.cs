@@ -9,8 +9,26 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 {
+    /// <summary>
+    /// Health check related extension methods.
+    /// </summary>
     internal static class HealthCheckExtensions
     {
+        /// <summary>
+        /// Registers all health check services required for the functions host. Should be called
+        /// on the WebHost.
+        /// </summary>
+        /// <param name="builder">The builder to register health checks with.</param>
+        /// <returns>The original builder, for call chaining.</returns>
+        public static IHealthChecksBuilder AddWebJobsScriptHealthChecks(this IHealthChecksBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            builder
+                .AddWebHostHealthCheck()
+                .AddScriptHostHealthCheck();
+            return builder;
+        }
+
         /// <summary>
         /// Registers the telemetry health check publisher with the specified additional tags.
         /// NOTE: this is currently not safe to call multiple times.
@@ -46,6 +64,32 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
                 }
             }
 
+            return builder;
+        }
+
+        /// <summary>
+        /// Adds a health check for the web host lifecycle.
+        /// </summary>
+        /// <param name="builder">The builder to register health checks with.</param>
+        /// <returns>The original builder, for call chaining.</returns>
+        public static IHealthChecksBuilder AddWebHostHealthCheck(this IHealthChecksBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            builder.AddCheck<WebHostHealthCheck>(
+                HealthCheckNames.WebHostLifeCycle, tags: [HealthCheckTags.Liveness]);
+            return builder;
+        }
+
+        /// <summary>
+        /// Adds a health check for the script host lifecycle.
+        /// </summary>
+        /// <param name="builder">The builder to register health checks with.</param>
+        /// <returns>The original builder, for call chaining.</returns>
+        public static IHealthChecksBuilder AddScriptHostHealthCheck(this IHealthChecksBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            builder.AddCheck<ScriptHostHealthCheck>(
+                HealthCheckNames.ScriptHostLifeCycle, tags: [HealthCheckTags.Readiness]);
             return builder;
         }
 
