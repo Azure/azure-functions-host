@@ -9,3 +9,5 @@
 - Add JitTrace Files for v4.1043 (#11281)
 - Update `Microsoft.Azure.WebJobs` reference to `3.0.42` (#11309)
 - Adding Activity wrapper to create a function-level request telemetry when none exists (#11311)
+- Introduce 'configurationProfile' functionality (#11324)
+- Remove request size limit for Host <--> Worker communication (#11295)
