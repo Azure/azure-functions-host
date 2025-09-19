@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                         IRpcWorkerChannel channel = await value?.Task;
                         if (channel != null)
                         {
-                            channel.TryFailExecutions(workerException);
+                            channel.Shutdown(workerException);
                             (channel as IDisposable)?.Dispose();
                             rpcWorkerChannels.Remove(workerId);
                             return true;

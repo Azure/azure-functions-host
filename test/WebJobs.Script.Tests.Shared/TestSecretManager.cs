@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestSecretManager : ISecretManager
     {
-        internal const string TestMasterKey = "1234";
+        public const string TestMasterKey = "1234";
         private Dictionary<string, string> _hostSystemKeys;
         private Dictionary<string, string> _hostFunctionKeys;
 

@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/host/status")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [TypeFilter(typeof(EnableDebugModeFilter))]
         public async Task<IActionResult> GetHostStatus([FromServices] IScriptHostManager scriptHostManager, [FromServices] IHostIdProvider hostIdProvider, [FromServices] IServiceProvider serviceProvider = null)
         {
@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         /// </summary>
         [HttpGet]
         [Route("admin/host/processes")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> GetWorkerProcesses([FromServices] IScriptHostManager scriptHostManager)
         {
             if (!Utility.TryGetHostService(scriptHostManager, out IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager))
@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/drain")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Drain([FromServices] IScriptHostManager scriptHostManager, CancellationToken cancellation)
         {
             _logger.LogDebug("Received request to drain the host");
@@ -225,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/host/drain/status")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult DrainStatus([FromServices] IScriptHostManager scriptHostManager)
         {
             if (Utility.TryGetHostService(scriptHostManager, out IFunctionActivityStatusProvider functionActivityStatusProvider) &&
@@ -259,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/resume")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Resume([FromServices] IScriptHostManager scriptHostManager, CancellationToken cancellation)
         {
             try
@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/scale/status")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         [RequiresRunningHost]
         public async Task<IActionResult> GetScaleStatus([FromBody] ScaleStatusContext context, [FromServices] IScriptHostManager scriptHostManager)
@@ -356,7 +356,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/log")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult Log([FromBody] IEnumerable<HostLogEntry> logEntries)
         {
             if (logEntries == null)
@@ -407,7 +407,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/synctriggers")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [RequiresRunningHost]
         public async Task<IActionResult> SyncTriggers()
         {
@@ -423,7 +423,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/host/triggers")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [ResourceContainsSecrets]
         [RequiresRunningHost]
         public async Task<IActionResult> GetTriggers()
@@ -539,7 +539,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [Route("admin/host/config")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [RequiresRunningHost]
         public IActionResult GetConfig([FromServices] IScriptHostManager scriptHostManager)
         {

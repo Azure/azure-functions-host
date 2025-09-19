@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
@@ -1157,8 +1158,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 // This is set when customer does not subscribe any category.
                 return false;
             }
-            string[] categories = azureMonitorcategoriesSubscribed.Split(',');
-            return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
+
+            return azureMonitorcategoriesSubscribed.ContainsToken(token: ScriptConstants.AzureMonitorTraceCategory, separator: ',');
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
