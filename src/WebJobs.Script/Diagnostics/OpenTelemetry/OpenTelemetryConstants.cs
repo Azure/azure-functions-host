@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
@@ -14,5 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         internal const string OwnerNameEnvVar = "WEBSITE_OWNER_NAME";
         internal const string AzureFunctionsGroup = "azure.functions.group";
         internal const string HttpTriggerType = "http";
+        internal const string HostActivitySourceName = "Microsoft.Azure.WebJobs";
+        internal const string HostActivitySourceVersion = "1.0.0";
     }
 }

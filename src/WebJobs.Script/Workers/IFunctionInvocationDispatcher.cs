@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         Task ShutdownAsync();
 
-        Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId);
+        Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception);
 
         Task StartWorkerChannel();
 

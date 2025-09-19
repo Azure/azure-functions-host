@@ -206,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return Task.CompletedTask;
         }
 
-        public Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId)
+        public Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception = null)
         {
             // Since there's only one channel for httpworker
             DisposeAndRestartWorkerChannel(_httpWorkerChannel.Id);

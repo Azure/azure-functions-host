@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -13,9 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -102,13 +100,6 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             var header = request.Headers[ScriptConstants.AntaresPlatformInternal];
             string value = header.FirstOrDefault();
             return string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0;
-        }
-
-        public static bool IsInternalAuthAllowed(this HttpRequest httpRequest)
-        {
-            // Check to see if the specific API is allowed based on any configured allow list
-            var options = httpRequest.HttpContext.RequestServices.GetService<IOptions<FunctionsHostingConfigOptions>>().Value;
-            return options.CheckInternalAuthAllowList(httpRequest);
         }
 
         private static IEnvironment GetEnvironment(HttpRequest request, IEnvironment environment = null)

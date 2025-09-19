@@ -39,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 #endif
 
         private const string Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        private static readonly Random Random = new Random();
 
         /// <summary>
         /// Helper method to inline an action delegate.
@@ -53,10 +52,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static Action Act(Action act) => act;
 
         /// <summary>
-        /// Helper method to inline an action delegate.
+        /// Helper method to inline an func delegate.
         /// </summary>
-        /// <param name="act">The action.</param>
-        /// <returns>The provided action.</returns>
+        /// <param name="act">The function.</param>
+        /// <returns>The provided function.</returns>
         /// <remarks>
         /// This is intended to be used with a fluent assertion.
         /// <c>Act(() => { }).Should().Something();</c>.
@@ -105,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             return new string(
                 Enumerable.Repeat('x', length)
-                    .Select(c => Chars[Random.Next(Chars.Length)])
+                    .Select(c => Chars[Random.Shared.Next(Chars.Length)])
                     .ToArray());
         }
 
@@ -169,23 +168,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static async Task WaitForBlobAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
         {
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new();
 
-            await TestHelpers.Await(async () =>
-            {
-                bool exists = await blob.ExistsAsync();
-                sb.AppendLine($"{blob.Name} exists: {exists}.");
-                return exists;
-            },
-            pollingInterval: 500,
-            userMessageCallback: () =>
-            {
-                if (userMessageCallback != null)
+            await TestHelpers.Await(
+                async () =>
                 {
-                    sb.AppendLine().Append(userMessageCallback());
-                }
-                return sb.ToString();
-            });
+                    bool exists = await blob.ExistsAsync();
+                    sb.AppendLine($"{blob.Name} exists: {exists}.");
+                    return exists;
+                },
+                pollingInterval: 500,
+                userMessageCallback: () =>
+                {
+                    if (userMessageCallback != null)
+                    {
+                        sb.AppendLine().Append(userMessageCallback());
+                    }
+                    return sb.ToString();
+                });
         }
 
         public static void ClearFunctionLogs(string functionName)
@@ -215,13 +215,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static bool IsHostRunning(HttpClient client)
         {
-            using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty))
-            {
-                using (HttpResponseMessage response = client.SendAsync(request).Result)
-                {
-                    return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK;
-                }
-            }
+            using HttpRequestMessage request = new(HttpMethod.Get, string.Empty);
+            using HttpResponseMessage response = client.SendAsync(request).GetAwaiter().GetResult();
+            return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK;
         }
 
         public static void ClearHostLogs()

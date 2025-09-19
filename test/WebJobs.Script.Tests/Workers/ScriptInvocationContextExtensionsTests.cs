@@ -1,8 +1,9 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -1018,6 +1019,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             // The input data should be transferred over regular RPC despite enabling shared memory
             Assert.Equal(inputString, result.InputData[1].Data.String);
             Assert.Equal(inputBytes, result.InputData[2].Data.Bytes);
+        }
+
+        [Fact]
+        public void RecordException_WhenAsyncExecutionContextIsNull_SetsException()
+        {
+            // Arrange
+            var context = new ScriptInvocationContext
+            {
+                ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
+                AsyncExecutionContext = null
+            };
+            var ex = new InvalidOperationException("Test error");
+
+            // Act
+            context.SetException(ex);
+
+            // Assert
+            Assert.True(context.ResultSource.Task.IsFaulted);
+            Assert.Same(ex, context.ResultSource.Task.Exception!.InnerException);
+        }
+
+        [Fact]
+        public void RecordException_WhenAsyncExecutionContextNotNull_SetsExceptionAndUpdatesActivity()
+        {
+            using var activity = new Activity("TestActivity");
+            activity.Start();
+
+            // Arrange
+            var context = new ScriptInvocationContext
+            {
+                ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture()
+            };
+
+            var ex = new InvalidOperationException("Test error");
+
+            // Act
+            context.SetException(ex);
+
+            // Assert
+            Assert.True(context.ResultSource.Task.IsFaulted);
+            Assert.Same(ex, context.ResultSource.Task.Exception!.InnerException);
+
+            // Verify Activity was updated
+            Assert.Equal(ActivityStatusCode.Error, activity.Status);
+            Assert.Contains(activity.Events, e => e.Name == "exception");
         }
 
         private class TestPoco

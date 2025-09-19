@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     {
                         string id = rpcChannel.Id;
                         _logger.LogDebug("Disposing language worker channel with id:{workerId}", id);
-                        rpcChannel.TryFailExecutions(workerException);
+                        rpcChannel.Shutdown(workerException);
 
                         (rpcChannel as IDisposable)?.Dispose();
                         _logger.LogDebug("Disposed language worker channel with id:{workerId}", id);
