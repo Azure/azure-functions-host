@@ -17,13 +17,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public KubernetesEventGenerator(IOptions<ConsoleLoggingOptions> consoleLoggingOptions, Action<string> writeEvent = null)
         {
-            if (consoleLoggingOptions.Value.LoggingDisabled)
+            if (writeEvent != null)
+            {
+                _writeEvent = writeEvent;
+            }
+            else if (consoleLoggingOptions.Value.LoggingDisabled)
             {
                 _writeEvent = (string s) => { };
             }
             else
             {
-                _writeEvent = writeEvent ?? ConsoleWriter;
+                _writeEvent = ConsoleWriter;
             }
         }
 
