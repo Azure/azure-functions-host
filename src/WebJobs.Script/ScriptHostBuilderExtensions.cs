@@ -517,12 +517,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
 
                 // Configure the meter listener, so we publish Meter API based metrics to application insights.
-                builder.Services.Configure<ApplicationInsightsMeterOptions>(o =>
+                builder.Services.AddSingleton<ITelemetryModule, ApplicationInsightsMetricExporter>();
+                builder.Services.Configure<ApplicationInsightsMetricExporterOptions>(o =>
                 {
-                    o.Sources.Add(HostMetrics.FaasMeterName);
+                    o.Meters.Add(HostMetrics.FaasMeterName);
                 });
-
-                builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<ITelemetryModule, ApplicationInsightsMeterListener>());
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
                 {

@@ -10,14 +10,14 @@ using System.Diagnostics.Metrics;
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     /// <summary>
-    /// Options for <see cref="ApplicationInsightsMeterListener"/>.
+    /// Options for <see cref="ApplicationInsightsMetricExporter"/>.
     /// </summary>
-    public class ApplicationInsightsMeterOptions
+    public class ApplicationInsightsMetricExporterOptions
     {
         /// <summary>
         /// Gets the set of meter names to listen to.
         /// </summary>
-        public ISet<string> Sources { get; } = new HashSet<string>(StringComparer.Ordinal);
+        public ISet<string> Meters { get; } = new HashSet<string>(StringComparer.Ordinal);
 
         /// <summary>
         /// Gets or sets the interval to collect meter values. Default is 30 seconds.
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
             // TODO: consider allowing wildcards or regex
             // For now, just exact match on meter name
-            return Sources.Contains(instrument.Meter.Name);
+            return Meters.Contains(instrument.Meter.Name);
         }
     }
 }
