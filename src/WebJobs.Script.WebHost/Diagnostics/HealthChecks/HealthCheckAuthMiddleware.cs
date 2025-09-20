@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
 
             AuthenticateResult authentication = await _policy.AuthenticateAsync(policy, context)
                 .ConfigureAwait(false);
+
             if (!authentication.Succeeded)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -36,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
 
             PolicyAuthorizationResult authorization = await _policy.AuthorizeAsync(
                 policy, authentication, context, null).ConfigureAwait(false);
+
             if (!authorization.Succeeded)
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
