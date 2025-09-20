@@ -46,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
             _workerConfigurationResolverOptions = workerConfigResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigResolverOptions));
-            ArgumentNullException.ThrowIfNull(workerConfigResolverOptions.CurrentValue);
 
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
         }
@@ -80,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            var configFactory = new RpcWorkerConfigFactory(_logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver, _workerConfigurationResolverOptions);
+            var configFactory = new RpcWorkerConfigFactory(_logger, SystemRuntimeInformation.Instance, _metricsLogger, _workerProfileManager, _workerConfigurationResolver, _workerConfigurationResolverOptions);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }

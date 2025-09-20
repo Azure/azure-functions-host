@@ -714,7 +714,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
                 var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactoryMock.Object, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
 
-                var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver, optionsMonitor);
+                var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver, optionsMonitor);
 
                 if (appSvcEnv)
                 {

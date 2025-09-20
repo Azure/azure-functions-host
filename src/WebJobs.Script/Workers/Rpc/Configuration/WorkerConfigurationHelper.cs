@@ -265,16 +265,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             });
         }
 
-        internal static (RpcWorkerDescription WorkerDescription, JsonElement WorkerConfig) GetWorkerConfigAndDescription(
-            string workerDir,
+        internal static (RpcWorkerDescription WorkerDescription, JsonElement WorkerConfig) GetWorkerDescriptionAndConfig(
+            string workerDirPath,
             IWorkerProfileManager profileManager,
             ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides,
             ILogger logger)
         {
             try
             {
-                var workerConfigPath = Path.Combine(workerDir, RpcWorkerConstants.WorkerConfigFileName);
-                if (!ValidateWorkerConfigPath(workerConfigPath, logger))
+                var workerConfigPath = Path.Combine(workerDirPath, RpcWorkerConstants.WorkerConfigFileName);
+                if (!IsWorkerConfigPathValid(workerConfigPath, logger))
                 {
                     return (null, default);
                 }
@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
                 var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
                 var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
-                workerDescription.WorkerDirectory = workerDir;
+                workerDescription.WorkerDirectory = workerDirPath;
 
                 // Read the profiles from worker description and load the profile for which the conditions match
                 if (workerConfig.TryGetProperty(WorkerConstants.WorkerDescriptionProfiles, out var profiles))
@@ -314,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
             catch (Exception ex) when (!ex.IsFatal())
             {
-                logger.LogError(ex, "Failed to initialize worker provider for: {workerDir}", workerDir);
+                logger.LogError(ex, "Failed to initialize worker provider for: {workerDir}", workerDirPath);
             }
 
             return (null, default);
@@ -326,14 +326,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir, bool isMultiLanguageEnv, bool isPLaceholderMode)
         {
             // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
-            // Only skip worker directories that don't match the current runtime.
+            // Skip worker directories that don't match the current runtime.
             return !isMultiLanguageEnv &&
                     !isPLaceholderMode &&
                     !string.IsNullOrWhiteSpace(workerRuntime) &&
                     !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
         }
 
-        internal static bool ValidateWorkerConfigPath(string workerConfigPath, ILogger logger)
+        /// <summary>
+        /// Checks if the specified worker configuration file exists at the given path.
+        /// </summary>
+        internal static bool IsWorkerConfigPathValid(string workerConfigPath, ILogger logger)
         {
             if (!File.Exists(workerConfigPath))
             {
@@ -346,7 +349,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return true;
         }
 
-        internal static bool ShouldSkipDisabledWorker(RpcWorkerDescription workerDescription, ILogger logger)
+        /// <summary>
+        /// Determines if the specified worker description is disabled.
+        /// </summary>
+        internal static bool IsWorkerDescriptionDisabled(RpcWorkerDescription workerDescription, ILogger logger)
         {
             if (workerDescription.IsDisabled == true)
             {

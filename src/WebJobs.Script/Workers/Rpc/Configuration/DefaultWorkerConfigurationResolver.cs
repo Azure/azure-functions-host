@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                                                                     IWorkerProfileManager profileManager,
                                                                                     Dictionary<string, RpcWorkerConfig> availableRuntimeToConfigMap = null)
         {
-            // It could be partially filled by dynamic worker config resolver, which searches for worker configs in probing paths.
+            // `availableRuntimeToConfigMap` could be partially filled by DynamicWorkerConfigurationResolver, which searches for worker configs in probing paths.
             // This applies to scenarios such as multi-language worker environment and placeholder mode where some worker configs are found in probing paths, while remaining configs will be loaded from the default path within the Host.
             availableRuntimeToConfigMap = availableRuntimeToConfigMap ?? new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
 
@@ -68,13 +68,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 var workerDir = Path.GetFileName(workerPath);
 
-                if (availableRuntimeToConfigMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(resolverOptions.WorkerRuntime, Path.GetFileName(workerPath), resolverOptions.IsMultiLanguageWorkerEnvironment, resolverOptions.IsPlaceholderModeEnabled))
+                if (availableRuntimeToConfigMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(resolverOptions.WorkerRuntime, workerDir, resolverOptions.IsMultiLanguageWorkerEnvironment, resolverOptions.IsPlaceholderModeEnabled))
                 {
                     continue;
                 }
 
-                (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerConfigAndDescription(workerPath, profileManager, resolverOptions.WorkerDescriptionOverrides, logger);
-                if (workerDescription is null || WorkerConfigurationHelper.ShouldSkipDisabledWorker(workerDescription, logger))
+                (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerDescriptionAndConfig(workerPath, profileManager, resolverOptions.WorkerDescriptionOverrides, logger);
+                if (workerDescription is null || WorkerConfigurationHelper.IsWorkerDescriptionDisabled(workerDescription, logger))
                 {
                     continue;
                 }
@@ -83,14 +83,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 if (workerConfig is not null)
                 {
                     availableRuntimeToConfigMap[workerDir] = workerConfig;
-                }
-
-                if (!resolverOptions.IsMultiLanguageWorkerEnvironment &&
-                    !resolverOptions.IsPlaceholderModeEnabled &&
-                    !string.IsNullOrWhiteSpace(resolverOptions.WorkerRuntime) &&
-                    availableRuntimeToConfigMap.ContainsKey(resolverOptions.WorkerRuntime))
-                {
-                    break;
                 }
             }
 

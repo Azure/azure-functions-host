@@ -20,14 +20,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
         private readonly IWorkerProfileManager _profileManager;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly IEnvironment _environment;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _resolverOptions;
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
         public RpcWorkerConfigFactory(ILogger logger,
                                         ISystemRuntimeInformation systemRuntimeInfo,
-                                        IEnvironment environment,
                                         IMetricsLogger metricsLogger,
                                         IWorkerProfileManager workerProfileManager,
                                         IWorkerConfigurationResolver workerConfigurationResolver,
@@ -35,7 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
@@ -75,8 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         continue;
                     }
 
-                    (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerConfigAndDescription(workerDescriptionOverride.WorkerDirectory, _profileManager, _resolverOptions.CurrentValue.WorkerDescriptionOverrides, _logger);
-                    if (workerDescription is null || WorkerConfigurationHelper.ShouldSkipDisabledWorker(workerDescription, _logger))
+                    (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerDescriptionAndConfig(workerDescriptionOverride.WorkerDirectory, _profileManager, _resolverOptions.CurrentValue.WorkerDescriptionOverrides, _logger);
+                    if (workerDescription is null || WorkerConfigurationHelper.IsWorkerDescriptionDisabled(workerDescription, _logger))
                     {
                         continue;
                     }
