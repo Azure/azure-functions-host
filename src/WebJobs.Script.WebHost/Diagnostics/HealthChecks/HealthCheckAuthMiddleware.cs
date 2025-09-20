@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 
-
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
 {
     public sealed class HealthCheckAuthMiddleware(
