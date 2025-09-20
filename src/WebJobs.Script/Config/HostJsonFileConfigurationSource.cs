@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -10,7 +10,6 @@ using System.Text;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -23,22 +22,23 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         private readonly ILogger _logger;
         private readonly IMetricsLogger _metricsLogger;
 
-        public HostJsonFileConfigurationSource(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        public HostJsonFileConfigurationSource(
+            HostJsonFileConfigurationOptions options,
+            ILoggerFactory loggerFactory,
+            IMetricsLogger metricsLogger)
         {
-            if (loggerFactory == null)
-            {
-                throw new ArgumentNullException(nameof(loggerFactory));
-            }
+            ArgumentNullException.ThrowIfNull(options);
+            ArgumentNullException.ThrowIfNull(loggerFactory);
+            ArgumentNullException.ThrowIfNull(metricsLogger);
 
-            HostOptions = applicationHostOptions;
-            Environment = environment;
-            _metricsLogger = metricsLogger;
+            Options = options;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            _metricsLogger = metricsLogger;
         }
 
-        public ScriptApplicationHostOptions HostOptions { get; }
+        private HostJsonFileConfigurationOptions Options { get; }
 
-        public IEnvironment Environment { get; }
+        private ScriptApplicationHostOptions HostOptions => Options.Host;
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
@@ -47,30 +47,41 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         public class HostJsonFileConfigurationProvider : ConfigurationProvider
         {
-            private static readonly string[] WellKnownHostJsonProperties = new[]
-            {
+            private static readonly string[] WellKnownHostJsonProperties =
+            [
                 "version", "functionTimeout", "retry", "functions", "http", "watchDirectories", "watchFiles", "queues", "serviceBus",
                 "eventHub", "singleton", "logging", "aggregator", "healthMonitor", "extensionBundle", "managedDependencies",
                 "customHandler", "httpWorker", "extensions", "concurrency", "telemetryMode", ConfigurationSectionNames.SendCanceledInvocationsToWorker,
                 ConfigurationSectionNames.MetadataProviderTimeout, "isDefaultHostConfig"
-            };
+            ];
 
             private readonly HostJsonFileConfigurationSource _configurationSource;
-            private readonly Stack<string> _path;
+            private readonly Stack<string> _path = new();
             private readonly ILogger _logger;
             private readonly IMetricsLogger _metricsLogger;
 
-            public HostJsonFileConfigurationProvider(HostJsonFileConfigurationSource configurationSource, ILogger logger, IMetricsLogger metricsLogger)
+            public HostJsonFileConfigurationProvider(
+                HostJsonFileConfigurationSource configurationSource, ILogger logger, IMetricsLogger metricsLogger)
             {
                 _configurationSource = configurationSource;
-                _path = new Stack<string>();
                 _logger = logger;
                 _metricsLogger = metricsLogger;
             }
 
+            private HostJsonFileConfigurationOptions Options => _configurationSource.Options;
+
             public override void Load()
             {
                 JObject hostJson = LoadHostConfigurationFile();
+
+                // Apply profile settings first, so that they can be overridden by host.json settings.
+                HostConfigurationProfile profile = GetConfigProfile(hostJson);
+                _logger.LogDebug("Loading host configuration profile '{profileName}'.", profile.Name);
+                foreach ((string key, string value) in profile.Configuration)
+                {
+                    Data[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, key)] = value;
+                }
+
                 ProcessObject(hostJson);
             }
 
@@ -141,9 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     // to the startup logger until we've read configuration settings and can create the real logger.
                     // The "startup" logger is used in this class for startup related logs. The public logger is used
                     // for all other logging after startup.
-
-                    ScriptApplicationHostOptions options = _configurationSource.HostOptions;
-                    string hostFilePath = Path.Combine(options.ScriptPath, ScriptConstants.HostMetadataFileName);
+                    string hostFilePath = Path.Combine(Options.Host.ScriptPath, ScriptConstants.HostMetadataFileName);
                     JObject hostConfigObject = LoadHostConfig(hostFilePath);
                     hostConfigObject = InitializeHostConfig(hostFilePath, hostConfigObject);
 
@@ -192,10 +201,11 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         throw new HostConfigurationException(errorMsg.ToString());
                     }
                 }
+
                 return hostConfigObject;
             }
 
-            internal JObject LoadHostConfig(string configFilePath)
+            private JObject LoadHostConfig(string configFilePath)
             {
                 using (_metricsLogger.LatencyEvent(MetricEventNames.LoadHostConfiguration))
                 {
@@ -227,11 +237,11 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         // So a newly created function app from the portal would have no host.json. In that case we need to
                         // create a new function app with host.json that includes a matching extension bundle based on the app kind.
                         hostConfigObject = GetDefaultHostConfigObject();
-                        string bundleId = _configurationSource.Environment.IsLogicApp() ?
+                        string bundleId = Options.IsLogicApp ?
                                             ScriptConstants.WorkFlowExtensionBundleId :
                                             ScriptConstants.DefaultExtensionBundleId;
 
-                        string bundleVersion = _configurationSource.Environment.IsLogicApp() ?
+                        string bundleVersion = Options.IsLogicApp ?
                                             ScriptConstants.LogicAppDefaultExtensionBundleVersion :
                                             ScriptConstants.DefaultExtensionBundleVersion;
 
@@ -248,13 +258,27 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 // isDefaultHostConfig is used to determine if the host.json file was created by the system
                 var hostJsonJObj = JObject.Parse("{'version': '2.0', 'isDefaultHostConfig': true}");
-                if (string.Equals(_configurationSource.Environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell", StringComparison.InvariantCultureIgnoreCase)
-                    && !_configurationSource.HostOptions.IsFileSystemReadOnly)
+                if (string.Equals(Options.WorkerRuntime, "powershell", StringComparison.InvariantCultureIgnoreCase)
+                    && !Options.Host.IsFileSystemReadOnly)
                 {
                     hostJsonJObj.Add("managedDependency", JToken.Parse("{'Enabled': true}"));
                 }
 
                 return hostJsonJObj;
+            }
+
+            private HostConfigurationProfile GetConfigProfile(JObject hostFile)
+            {
+                ArgumentNullException.ThrowIfNull(hostFile);
+
+                try
+                {
+                    return Options.GetConfigProfile(hostFile);
+                }
+                catch (NotSupportedException ex)
+                {
+                    throw new HostConfigurationException(ex.Message, ex);
+                }
             }
 
             private void TryWriteHostJson(string filePath, JObject content)
@@ -278,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             private JObject TryAddBundleConfiguration(JObject content, string bundleId, string bundleVersion)
             {
-                if (!_configurationSource.HostOptions.IsFileSystemReadOnly)
+                if (!Options.Host.IsFileSystemReadOnly)
                 {
                     string bundleConfiguration = "{ 'id': '" + bundleId + "', 'version': '" + bundleVersion + "'}";
                     content.Add("extensionBundle", JToken.Parse(bundleConfiguration));

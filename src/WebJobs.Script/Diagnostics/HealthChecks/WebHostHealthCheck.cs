@@ -8,6 +8,10 @@ using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 {
+    /// <summary>
+    /// A health check that reports the status of the web host lifecycle.
+    /// </summary>
+    /// <param name="lifetime">The application lifetime.</param>
     internal class WebHostHealthCheck(IHostApplicationLifetime lifetime) : IHealthCheck
     {
         private static readonly Task<HealthCheckResult> _healthy = Task.FromResult(HealthCheckResult.Healthy());
@@ -15,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         private static readonly Task<HealthCheckResult> _unhealthyStopping = Task.FromResult(HealthCheckResult.Unhealthy("Stopping"));
         private static readonly Task<HealthCheckResult> _unhealthyStopped = Task.FromResult(HealthCheckResult.Unhealthy("Stopped"));
 
+        /// <inheritdoc />
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             bool isStopped = lifetime.ApplicationStopped.IsCancellationRequested;
