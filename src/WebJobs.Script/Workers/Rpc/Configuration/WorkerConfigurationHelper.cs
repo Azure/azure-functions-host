@@ -323,12 +323,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Determines if the worker directory should be skipped based on the current worker runtime and environment settings.
         /// </summary>
-        internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir, bool isMultiLanguageEnv, bool isPLaceholderMode)
+        internal static bool ShouldSkipWorkerDirectory(string workerRuntime, string workerDir, bool isMultiLanguageEnv, bool isPlaceholderMode)
         {
             // After specialization, load worker config only for the specified runtime unless it's a multi-language app.
             // Skip worker directories that don't match the current runtime.
             return !isMultiLanguageEnv &&
-                    !isPLaceholderMode &&
+                    !isPlaceholderMode &&
                     !string.IsNullOrWhiteSpace(workerRuntime) &&
                     !workerRuntime.Equals(workerDir, StringComparison.OrdinalIgnoreCase);
         }

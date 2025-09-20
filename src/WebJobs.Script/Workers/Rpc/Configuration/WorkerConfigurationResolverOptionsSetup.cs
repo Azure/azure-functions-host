@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal string GetDefaultWorkersDirectory()
         {
             var assemblyDir = AppContext.BaseDirectory;
-            var workersDirPath = Path.Combine(assemblyDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            string workersDirPath = Path.Combine(assemblyDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
 
             if (!_fileSystem.Directory.Exists(workersDirPath))
             {
@@ -159,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 if (_environment.IsHostedWindowsEnvironment())
                 {
                     // Default worker probing path for Windows
-                    string windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
+                    var windowsSiteExtensionsPath = GetWindowsSiteExtensionsPath();
 
                     if (!string.IsNullOrWhiteSpace(windowsSiteExtensionsPath))
                     {
@@ -198,22 +199,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         internal static ImmutableDictionary<string, RpcWorkerDescription> GetWorkerDescriptionOverrides(IConfiguration configuration)
         {
-            var workerDescriptionsMap = new Dictionary<string, RpcWorkerDescription>();
+            var workerDescriptionsMap = ImmutableDictionary.CreateBuilder<string, RpcWorkerDescription>();
             var languageWorkersSection = configuration.GetSection(RpcWorkerConstants.LanguageWorkersSectionName);
             languageWorkersSection.Bind(workerDescriptionsMap);
 
             // special handling for Arguments which takes a string but internally requires a List<string>.
-            foreach (var (language, workerDescription) in workerDescriptionsMap)
+            for (int i = 0; i < workerDescriptionsMap.Keys.Count(); i++)
             {
+                var (language, workerDescription) = workerDescriptionsMap.ElementAt(i);
                 var arguments = languageWorkersSection.GetSection(language).GetValue<string>(WorkerConstants.WorkerDescriptionArguments);
                 if (!string.IsNullOrEmpty(arguments))
                 {
-                    workerDescription.Arguments = WhiteSpaceRegexHolder.WhiteSpaceRegex().Split(arguments);
+                    workerDescription.Arguments = RegexHolder.WhiteSpaceRegex().Split(arguments);
                     workerDescriptionsMap[language] = workerDescription;
                 }
             }
 
-            return workerDescriptionsMap.ToImmutableDictionary();
+            return workerDescriptionsMap.ToImmutable();
         }
 
         /// <summary>
@@ -253,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
 
             var ignoredVersions = ignoredWorkerVersions.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>(capacity: ignoredVersions.Length, comparer: StringComparer.OrdinalIgnoreCase);
+            var ignoredVersionsOut = ImmutableDictionary.CreateBuilder<string, HashSet<Version>>(StringComparer.OrdinalIgnoreCase);
 
             foreach (string ignoredVersion in ignoredVersions)
             {
@@ -285,11 +287,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            return ignoredVersionsOut.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase);
+            return ignoredVersionsOut.ToImmutable();
         }
     }
 
-    internal static partial class WhiteSpaceRegexHolder
+    internal static partial class RegexHolder
     {
 #if NET7_0_OR_GREATER
         [GeneratedRegex(@"\s+")]

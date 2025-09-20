@@ -41,12 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static JsonSerializerOptions CreateWorkerConfigJsonOptions()
         {
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            return options;
+            return new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         }
     }
 }
