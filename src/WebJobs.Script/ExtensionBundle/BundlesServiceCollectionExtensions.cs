@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             services.AddHttpClient(nameof(ExtensionBundleManager), client =>
             {
                 var hostVersion = ScriptHost.Version;
-                client.DefaultRequestHeaders.UserAgent.ParseAdd($"AzureFunctionsHost/{hostVersion};");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd($"AzureFunctionsHost/{hostVersion}");
             })
                 .AddPolicyHandler((sp, request) =>
                 {
