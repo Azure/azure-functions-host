@@ -5,7 +5,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -30,6 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public bool Is64BitProcess => _is64BitProcess;
+
+        public string this[string key]
+        {
+            get => GetEnvironmentVariable(key);
+            set => SetEnvironmentVariable(key, value);
+        }
 
         public void Clear()
         {

@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script
                                                  IMetricsLogger metricsLogger,
                                                  Action<IWebJobsBuilder> configureWebJobs = null)
         {
-            loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+            loggerFactory ??= NullLoggerFactory.Instance;
 
             builder.SetAzureFunctionsConfigurationRoot();
             // Host configuration
@@ -103,7 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (!context.Properties.ContainsKey(ScriptConstants.SkipHostJsonConfigurationKey))
                 {
-                    configBuilder.Add(new HostJsonFileConfigurationSource(applicationOptions, SystemEnvironment.Instance, loggerFactory, metricsLogger));
+                    HostJsonFileConfigurationOptions hostJsonConfigOptions = new(SystemEnvironment.Instance, applicationOptions);
+                    configBuilder.Add(new HostJsonFileConfigurationSource(hostJsonConfigOptions, loggerFactory, metricsLogger));
                 }
                 // Adding hosting config into job host configuration
                 configBuilder.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
@@ -128,18 +129,24 @@ namespace Microsoft.Azure.WebJobs.Script
             builder.ConfigureAppConfiguration((context, configBuilder) =>
             {
                 // Pre-build configuration here to load bundles and to store for later validation.
-                var config = configBuilder.Build();
-                var extensionBundleOptions = GetExtensionBundleOptions(config);
-                FunctionsHostingConfigOptions configOption = new FunctionsHostingConfigOptions();
-                var optionsSetup = new FunctionsHostingConfigOptionsSetup(config);
+                IConfigurationRoot config = configBuilder.Build();
+                ExtensionBundleOptions extensionBundleOptions = GetExtensionBundleOptions(config);
+                FunctionsHostingConfigOptions configOption = new();
+                FunctionsHostingConfigOptionsSetup optionsSetup = new(config);
                 optionsSetup.Configure(configOption);
 
                 var extensionRequirementOptions = applicationOptions.RootServiceProvider.GetService<IOptions<ExtensionRequirementOptions>>();
 
-                var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption);
+                ExtensionBundleManager bundleManager = new(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
 
-                var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, extensionRequirementOptions);
+                ScriptStartupTypeLocator locator = new(
+                    applicationOptions.ScriptPath,
+                    loggerFactory.CreateLogger<ScriptStartupTypeLocator>(),
+                    bundleManager,
+                    metadataServiceManager,
+                    metricsLogger,
+                    extensionRequirementOptions);
 
                 // The locator (and thus the bundle manager) need to be created now in order to configure app configuration.
                 // Store them so they do not need to be re-created later when configuring services.

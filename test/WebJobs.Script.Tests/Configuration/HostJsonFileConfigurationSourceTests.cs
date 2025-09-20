@@ -1,8 +1,9 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         private readonly string _defaultHostJson = "{\r\n  \"version\": \"2.0\",\r\n  \"isDefaultHostConfig\": true\r\n}";
         private readonly ScriptApplicationHostOptions _options;
         private readonly string _hostJsonFile;
-        private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
+        private readonly TestLoggerProvider _loggerProvider = new();
 
         public HostJsonFileConfigurationSourceTests()
         {
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void MissingHostJson_GeneratesExpectedDefaultConfigFile()
         {
             Assert.False(File.Exists(_hostJsonFile));
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            TestMetricsLogger testMetricsLogger = new();
 
             BuildHostJsonConfiguration(testMetricsLogger);
 
@@ -70,13 +71,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void MissingHostJson_WorkflowApp_GeneratesExpectedDefaultConfigFile()
         {
-            var environment = new TestEnvironment(new Dictionary<string, string>
+            var environment = new TestEnvironment
             {
-                { EnvironmentSettingNames.AppKind, "workflowApp" }
-            });
+                [EnvironmentSettingNames.AppKind] = "workflowApp"
+            };
 
             Assert.False(File.Exists(_hostJsonFile));
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            TestMetricsLogger testMetricsLogger = new();
 
             BuildHostJsonConfiguration(testMetricsLogger, environment);
 
@@ -98,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             File.WriteAllText(_hostJsonFile, json);
             Assert.True(File.Exists(_hostJsonFile));
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            TestMetricsLogger testMetricsLogger = new();
 
             BuildHostJsonConfiguration(testMetricsLogger);
 
@@ -116,12 +117,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("'version': '3.0',", "'3.0' is an invalid value for host.json 'version' property.", "This does not correspond to the function runtime version")]
         public void InvalidVersionThrowsException(string versionLine, string errorStartsWith, string errorContains)
         {
-            StringBuilder hostJsonContentBuilder = new StringBuilder(@"{");
+            StringBuilder hostJsonContentBuilder = new(@"{");
             hostJsonContentBuilder.Append(versionLine);
             hostJsonContentBuilder.Append(@"'functions': [ 'FunctionA', 'FunctionB' ]}");
             string hostJsonContent = hostJsonContentBuilder.ToString();
 
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            TestMetricsLogger testMetricsLogger = new();
 
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             Assert.True(File.Exists(_hostJsonFile));
@@ -137,17 +138,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.False(File.Exists(_hostJsonFile));
             _options.IsFileSystemReadOnly = true;
 
-            var environment = new TestEnvironment(new Dictionary<string, string>
+            TestEnvironment environment = new()
             {
-                { EnvironmentSettingNames.AzureWebsiteZipDeployment, "1" }
-            });
+                [EnvironmentSettingNames.AzureWebsiteZipDeployment] = "1"
+            };
 
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            TestMetricsLogger testMetricsLogger = new();
             IConfiguration config = BuildHostJsonConfiguration(testMetricsLogger, environment);
             AreExpectedMetricsGenerated(testMetricsLogger);
             var configList = config.AsEnumerable().ToList();
             Assert.Equal(config["AzureFunctionsJobHost:version"], "2.0");
-            Assert.Equal(configList.Count, 3);
+            Assert.Equal(configList.Count, 4);
             Assert.True(configList.TrueForAll((k) => !k.Key.Contains("extensionBundle")));
 
             var log = _loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage == "No host configuration file found. Creating a default host.json file.");
@@ -187,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     'MyCustomValue': 'abc'
                 }
             }";
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            TestMetricsLogger testMetricsLogger = new();
 
             File.WriteAllText(_hostJsonFile, hostJsonContent);
 
@@ -234,8 +235,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             Assert.False(File.Exists(_hostJsonFile));
 
-            var hostJsonContent = " { fooBar";
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            string hostJsonContent = " { fooBar";
+            TestMetricsLogger testMetricsLogger = new();
 
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             Assert.True(File.Exists(_hostJsonFile));
@@ -265,17 +266,84 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.NotNull(actualEvent);
         }
 
+        [Fact]
+        public void Load_WithProfile_FromEnvironment_ValuesIncluded()
+        {
+            HostConfigurationProfile profile = HostConfigurationProfile.Get("mcp-custom-handler");
+            TestEnvironment environment = new()
+            {
+                ["AzureFunctionsJobHost__configurationProfile"] = "mcp-custom-handler",
+            };
+
+            IConfiguration config = BuildHostJsonConfiguration(new TestMetricsLogger(), environment);
+
+            Assert.Equal("mcp-custom-handler", config["AzureFunctionsJobHost:configurationProfile"]);
+
+            foreach ((string key, string value) in profile.Configuration)
+            {
+                string path = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, key);
+                Assert.Equal(value, config[path]);
+            }
+        }
+
+        [Fact]
+        public void Load_WithProfile_FromJson_ValuesIncluded()
+        {
+            HostConfigurationProfile profile = HostConfigurationProfile.Get("mcp-custom-handler");
+            string json = """
+            {
+                "version": "2.0",
+                "configurationProfile": "mcp-custom-handler"
+            }
+            """;
+
+            File.WriteAllText(_hostJsonFile, json);
+            IConfiguration config = BuildHostJsonConfiguration(new TestMetricsLogger(), new TestEnvironment());
+            Assert.Equal("mcp-custom-handler", config["AzureFunctionsJobHost:configurationProfile"]);
+
+            foreach ((string key, string value) in profile.Configuration)
+            {
+                string path = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, key);
+                Assert.Equal(value, config[path]);
+            }
+        }
+
+        [Fact]
+        public void Load_WithProfile_ValuesOverridden()
+        {
+            HostConfigurationProfile profile = HostConfigurationProfile.Get("mcp-custom-handler");
+            string keyToOverride = profile.Configuration
+                .First(x => x.Key != "configurationProfile").Key;
+            string overrideValue = Guid.NewGuid().ToString();
+            string json = $$"""
+            {
+                "version": "2.0",
+                "configurationProfile": "mcp-custom-handler",
+                "{{keyToOverride}}": "{{overrideValue}}"
+            }
+            """;
+
+            File.WriteAllText(_hostJsonFile, json);
+            IConfiguration config = BuildHostJsonConfiguration(new TestMetricsLogger(), new TestEnvironment());
+            Assert.Equal("mcp-custom-handler", config["AzureFunctionsJobHost:configurationProfile"]);
+            foreach ((string key, string value) in profile.Configuration)
+            {
+                string expected = key == keyToOverride ? overrideValue : value;
+                string path = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, key);
+                Assert.Equal(expected, config[path]);
+            }
+        }
+
         private IConfiguration BuildHostJsonConfiguration(TestMetricsLogger testMetricsLogger, IEnvironment environment = null)
         {
-            environment = environment ?? new TestEnvironment();
-            var loggerFactory = new LoggerFactory();
+            environment ??= new TestEnvironment();
+            LoggerFactory loggerFactory = new();
             loggerFactory.AddProvider(_loggerProvider);
 
-            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, testMetricsLogger);
+            HostJsonFileConfigurationOptions options = new(environment, _options);
+            HostJsonFileConfigurationSource configSource = new(options, loggerFactory, testMetricsLogger);
 
-            var configurationBuilder = new ConfigurationBuilder()
-                .Add(configSource);
-
+            IConfigurationBuilder configurationBuilder = new ConfigurationBuilder().Add(configSource);
             return configurationBuilder.Build();
         }
 
