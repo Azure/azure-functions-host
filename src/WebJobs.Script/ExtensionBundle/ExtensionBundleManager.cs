@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 using var response = await httpClient.GetAsync(zipUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
                 // Log AzureRef header if present (debug level to avoid noise in normal operations)
-                azureRef = response.GetAzureRef();
+                response.TryGetAzureRef(out azureRef);
 
                 response.EnsureSuccessStatusCode();
 

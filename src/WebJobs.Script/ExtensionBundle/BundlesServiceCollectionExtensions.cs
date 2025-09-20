@@ -18,10 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         {
             services.AddHttpClient(nameof(ExtensionBundleManager), client =>
             {
-                var hostVersion = typeof(ExtensionBundleManager).Assembly.GetName().Version?.ToString() ?? "unknown";
-                var os = RuntimeInformation.OSDescription.Replace('(', '[').Replace(')', ']'); // avoid nesting parentheses issues
-                var arch = RuntimeInformation.ProcessArchitecture.ToString();
-                client.DefaultRequestHeaders.UserAgent.ParseAdd($"FunctionsExtensionBundle/{hostVersion} ({os}; {arch})");
+                var hostVersion = ScriptHost.Version;
+                client.DefaultRequestHeaders.UserAgent.ParseAdd($"AzureFunctionsHost/{hostVersion};");
             })
                 .AddPolicyHandler((sp, request) =>
                 {
@@ -38,7 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                         {
                             var statusCode = outcome.Result?.StatusCode;
                             var statusCodeDisplay = statusCode.HasValue ? ((int)statusCode.Value).ToString() : "None";
-                            outcome.Result?.TryGetAzureRef(out string azureRef);
+                            string azureRef = null;
+                            outcome.Result?.TryGetAzureRef(out azureRef);
                             logger.LogWarning(
                                 outcome.Exception,
                                 "Extension bundle download failure. Status: {StatusCode}, Attempt: {Attempt}, Uri: {Uri}, AzureRef: {AzureRef}. Retrying after {DelayMs}ms.",

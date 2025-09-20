@@ -10,36 +10,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
     public class ExtensionBundleHttpExtensionsTests
     {
         [Fact]
-        public void GetAzureRef_ReturnsOfficialSampleValue()
+        public void TryGetAzureRef_ReturnsOfficialSampleValue()
         {
             var headerValue = "0zxV+XAAAAABKMMOjBv2NT4TY6SQVjC0zV1NURURHRTA2MTkANDM3YzgyY2QtMzYwYS00YTU0LTk0YzMtNWZmNzA3NjQ3Nzgz";
             var resp = new HttpResponseMessage(System.Net.HttpStatusCode.OK);
             resp.Headers.Add(ExtensionBundleHttpExtensions.AzureRefHeaderName, headerValue);
-
-            var result = resp.GetAzureRef();
+            Assert.True(resp.TryGetAzureRef(out var result));
             Assert.Equal(headerValue, result);
         }
 
+        // Sanitization/length truncation removed: ensure full value is returned.
         [Fact]
-        public void GetAzureRef_TruncatesAndSanitizes()
+        public void TryGetAzureRef_LongValue_Preserved()
         {
             var longVal = new string('a', 140);
-            var noisy = "\t" + longVal + "\n";
             var resp = new HttpResponseMessage(System.Net.HttpStatusCode.OK);
-            resp.Headers.Add(ExtensionBundleHttpExtensions.AzureRefHeaderName, noisy);
-
-            var result = resp.GetAzureRef();
-            Assert.NotNull(result);
-            Assert.Equal(128, result.Length);
-            Assert.DoesNotContain('\n', result);
-            Assert.DoesNotContain('\t', result);
+            resp.Headers.Add(ExtensionBundleHttpExtensions.AzureRefHeaderName, longVal);
+            Assert.True(resp.TryGetAzureRef(out var result));
+            Assert.Equal(longVal, result);
         }
 
         [Fact]
-        public void GetAzureRef_Absent_ReturnsNull()
+        public void TryGetAzureRef_Absent_ReturnsFalse()
         {
             var resp = new HttpResponseMessage(System.Net.HttpStatusCode.OK);
-            Assert.Null(resp.GetAzureRef());
+            Assert.False(resp.TryGetAzureRef(out var result));
+            Assert.Null(result);
         }
     }
 }

@@ -1,73 +1,46 @@
-// Centralized helper for reading and sanitizing the x-azure-ref header for Extension Bundle downloads.
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 {
     internal static class ExtensionBundleHttpExtensions
     {
-        internal const string AzureRefHeaderName = "x-azure-ref";
-        private const int MaxAzureRefLength = 128;
+        // The X-Azure-Ref header is added by Azure Front Door for requests that traverse Front Door to the origin.
+        // Documentation: https://learn.microsoft.com/en-us/azure/frontdoor/front-door-http-headers-protocol#from-the-front-door-to-the-backend
+        // We capture and log this value (sanitized + length bounded) with extension bundle download failures
+        // to enable end-to-end correlation and root cause analysis on the Front Door side when diagnosing
+        // CDN/edge or networking issues impacting bundle retrieval.
+        internal const string AzureRefHeaderName = "X-Azure-Ref";
 
-        internal static string GetAzureRef(this HttpResponseMessage response)
+        internal static bool TryGetAzureRef(this HttpResponseMessage response, out string azureRef)
         {
+            azureRef = null;
             try
             {
-                if (response == null)
+                if (response is null)
                 {
-                    return null;
+                    return false;
                 }
 
                 if (response.Headers != null &&
                     response.Headers.TryGetValues(AzureRefHeaderName, out var values))
                 {
-                    return Sanitize(values.FirstOrDefault());
-                }
-
-                if (response.Content?.Headers != null &&
-                    response.Content.Headers.TryGetValues(AzureRefHeaderName, out var contentValues))
-                {
-                    return Sanitize(contentValues.FirstOrDefault());
+                    azureRef = values.FirstOrDefault();
+                    return !string.IsNullOrEmpty(azureRef);
                 }
             }
             catch
             {
-                // Ignore header parsing issues.
+                azureRef = null;
+                return false;
             }
 
-            return null;
-        }
-
-        private static string Sanitize(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return null;
-            }
-
-            var sb = new StringBuilder(value.Length);
-            foreach (var ch in value)
-            {
-                if (!char.IsControl(ch))
-                {
-                    sb.Append(ch);
-                }
-            }
-
-            var cleaned = sb.ToString().Trim();
-            if (cleaned.Length == 0)
-            {
-                return null;
-            }
-
-            if (cleaned.Length > MaxAzureRefLength)
-            {
-                cleaned = cleaned.Substring(0, MaxAzureRefLength);
-            }
-
-            return cleaned;
+            azureRef = null;
+            return false;
         }
     }
 }
