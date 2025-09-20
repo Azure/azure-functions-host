@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                         {
                             var statusCode = outcome.Result?.StatusCode;
                             var statusCodeDisplay = statusCode.HasValue ? ((int)statusCode.Value).ToString() : "None";
-                            string azureRef = outcome.Result?.GetAzureRef();
+                            outcome.Result?.TryGetAzureRef(out string azureRef);
                             logger.LogWarning(
                                 outcome.Exception,
                                 "Extension bundle download failure. Status: {StatusCode}, Attempt: {Attempt}, Uri: {Uri}, AzureRef: {AzureRef}. Retrying after {DelayMs}ms.",
