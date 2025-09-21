@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading;
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
         {
             if (!_options.CurrentValue.IsFileSystemReadOnly)
             {
-                var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName));
+                var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime));
                 if (funcAppFileProvisioner != null)
                 {
                     await funcAppFileProvisioner.ProvisionFiles(_options.CurrentValue.ScriptPath);

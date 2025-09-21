@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
             var settings = new Dictionary<string, string>()
             {
-                [RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = workerRuntime
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
             var settings = new Dictionary<string, string>()
             {
-                [RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = workerRuntime
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
             var settings = new Dictionary<string, string>()
             {
-                [RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = workerRuntime
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
             var settings = new Dictionary<string, string>()
             {
-                [RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = workerRuntime
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime
             };
             var testEnvironment = new TestEnvironment(settings);
 
@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
             var settings = new Dictionary<string, string>()
             {
-                [RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = workerRuntime
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime
             };
             var testEnvironment = new TestEnvironment(settings);
 

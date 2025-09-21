@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -471,7 +471,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     var environment = new TestEnvironment();
 
                     environment.SetEnvironmentVariable(
-                        RpcWorkerConstants.FunctionWorkerRuntimeSettingName, functionsWorkerRuntime);
+                        EnvironmentSettingNames.FunctionWorkerRuntime, functionsWorkerRuntime);
                     environment.SetEnvironmentVariable(
                         EnvironmentSettingNames.FunctionsExtensionVersion, functionsExtensionVersion);
                     environment.SetEnvironmentVariable(
@@ -1220,7 +1220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
 
             HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, false, false, CancellationToken.None));
-            Assert.Equal($"Found functions with more than one language. Select a language for your function app by specifying {RpcWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting", ex.Message);
+            Assert.Equal($"Found functions with more than one language. Select a language for your function app by specifying {EnvironmentSettingNames.FunctionWorkerRuntime} AppSetting", ex.Message);
         }
 
         [Fact]

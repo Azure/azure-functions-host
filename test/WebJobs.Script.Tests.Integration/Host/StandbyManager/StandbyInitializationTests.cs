@@ -1,4 +1,4 @@
-﻿//// Copyright (c) .NET Foundation. All rights reserved.
+//// Copyright (c) .NET Foundation. All rights reserved.
 //// Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet");
         }
 
         private static async Task<HttpResponseMessage> InvokeFunction(HttpClient client)

@@ -533,7 +533,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static void RegisterFileProvisioningService(IHostBuilder builder)
         {
-            if (string.Equals(Environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell"))
+            if (string.Equals(Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime), "powershell"))
             {
                 builder.ConfigureServices(services =>
                 {
