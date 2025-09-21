@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 if (!TryValidateHttpRoute(route?.Route, out string error))
                 {
                     AddFunctionError(functionName, error);
-                    _logger.LogError("Unable to create function '{functionName}' for '{route}' due to invalid route: {reason}", functionName, route, error);
+                    _logger.LogError("Unable to create function '{functionName}' for route '{route}' due to invalid route: {reason}", functionName, route?.Route ?? "<null>", error);
                     continue;
                 }
 
