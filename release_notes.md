@@ -21,3 +21,4 @@
 - Added support for MCP custom handler. (#11355)
 - Update Python Worker Version to [4.40.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.40.0)
 - RpcException Handling (#11347)
+- Adding route handling configuration for custom handlers (#11345)
