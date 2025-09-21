@@ -91,9 +91,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             error = route switch
             {
-                string r when string.IsNullOrEmpty(r) => "Route template cannot be empty.",
-                string r when r.Contains(SpaceChar) => "Route template cannot contain spaces.",
-                string r when r.Contains(DoubleSlash) => "Route template cannot contain consecutive '/'.",
+                _ when string.IsNullOrEmpty(route) => "Route template cannot be null or empty.",
+                _ when route.Contains(SpaceChar) => "Route template cannot contain spaces.",
+                _ when route.Contains(DoubleSlash) => "Route template cannot contain consecutive '/'.",
                 _ => null
             };
 
