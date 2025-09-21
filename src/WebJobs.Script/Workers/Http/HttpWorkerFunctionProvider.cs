@@ -66,13 +66,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private ImmutableArray<FunctionMetadata> CreateFunctionsFromRoutes(IEnumerable<HttpWorkerRoute> routes)
         {
-            var list = routes as IList<HttpWorkerRoute> ?? routes.ToList();
             var functions = new Collection<FunctionMetadata>();
-
-            for (int i = 0; i < list.Count; i++)
+            int i = 0;
+            foreach (var route in routes)
             {
-                var route = list[i];
                 var functionName = $"http-handler{i + 1}";
+                i++;
 
                 if (!TryValidateHttpRoute(route?.Route, out string error))
                 {
