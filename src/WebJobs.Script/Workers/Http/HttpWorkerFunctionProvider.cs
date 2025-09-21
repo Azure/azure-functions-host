@@ -24,8 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly IHostFunctionMetadataProvider _hostFunctionMetadataProvider;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private readonly ILogger _logger;
-        private readonly Dictionary<string, List<string>> _errors = [];
-        private static readonly ImmutableArray<string> HttpAllMethods = ["get", "post", "put", "delete", "patch", "head", "options"];
+        private readonly Dictionary<string, List<string>> _errors = new();
+        private static readonly ImmutableArray<string> AllHttpMethods = ["get", "post", "put", "delete", "patch", "head", "options"];
 
         public HttpWorkerFunctionProvider(IOptions<HttpWorkerOptions> httpWorkerOptions, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IHostFunctionMetadataProvider hostFunctionMetadataProvider, IEnvironment environment, ILogger<HttpWorkerFunctionProvider> logger)
         {
@@ -61,12 +61,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     "Only one configuration source is supported. Remove either the function.json files or the HTTP routes entries in host.json.");
             }
 
-            var routesLength = _httpWorkerOptions.HttpRoutes.Count();
+            return CreateFunctionsFromRoutes(routes);
+        }
+
+        private ImmutableArray<FunctionMetadata> CreateFunctionsFromRoutes(IEnumerable<HttpWorkerRoute> routes)
+        {
+            var list = routes as IList<HttpWorkerRoute> ?? routes.ToList();
             var functions = new Collection<FunctionMetadata>();
 
-            for (int i = 0; i < routesLength; i++)
+            for (int i = 0; i < list.Count; i++)
             {
-                HttpWorkerRoute route = routes.ElementAt(i);
+                var route = list[i];
                 var functionName = $"http-handler{i + 1}";
 
                 if (!TryValidateHttpRoute(route?.Route, out string error))
@@ -85,22 +90,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private static bool TryValidateHttpRoute(string route, out string error)
         {
-            error = null;
-
-            // Basic constraints: no spaces, no double slashes (except root), balanced braces, no empty parameters.
-            if (route.Contains(SpaceChar))
+            error = route switch
             {
-                error = "Route template cannot contain spaces.";
+                string r when string.IsNullOrEmpty(r) => "Route template cannot be empty.",
+                string r when r.Contains(SpaceChar) => "Route template cannot contain spaces.",
+                string r when r.Contains(DoubleSlash) => "Route template cannot contain consecutive '/'.",
+                _ => null
+            };
+
+            if (error is not null)
+            {
                 return false;
             }
 
-            if (route.Contains(DoubleSlash))
-            {
-                error = "Route template cannot contain consecutive '/'.";
-                return false;
-            }
-
-            // Balanced braces and no empty placeholders "{}"
             int depth = 0;
             for (int i = 0; i < route.Length; i++)
             {
@@ -108,7 +110,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 if (c == '{')
                 {
                     depth++;
-                    // Empty param check: next must not be '}'
                     if (i + 1 < route.Length && route[i + 1] == '}')
                     {
                         error = "Route template contains an empty parameter '{}'.";
@@ -155,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     ["authLevel"] = route.AuthorizationLevel.ToString(),
                     ["direction"] = "in",
                     ["name"] = "req",
-                    ["methods"] = new JArray(HttpAllMethods),
+                    ["methods"] = new JArray(AllHttpMethods),
                     ["route"] = route.Route
                 }
             };

@@ -79,12 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 throw new HostConfigurationException($"Missing worker Description.");
             }
 
-            if (options.HttpRoutes is not null
-                && options.HttpRoutes.Any(r => string.IsNullOrEmpty(r.Route)))
-            {
-                throw new HostConfigurationException("HTTP route for custom handlers cannot be empty.");
-            }
-
             var argumentsList = GetArgumentList(workerSection, argumentsSectionName);
             if (argumentsList != null)
             {
