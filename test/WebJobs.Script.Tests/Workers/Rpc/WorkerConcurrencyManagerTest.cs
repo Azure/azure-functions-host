@@ -40,7 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _loggerFactory.AddProvider(_loggerProvider);
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
-            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.NodeLanguageWorkerName);
 
             var optionsMonitor = new Mock<IOptionsMonitor<FunctionsHostingConfigOptions>>();
