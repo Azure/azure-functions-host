@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment;
             _rpcServerShutdownTimeoutInMilliseconds = 5000;
             _webHostRpcWorkerChannelManager = rpcWorkerChannelManager ?? throw new ArgumentNullException(nameof(rpcWorkerChannelManager));
-            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             _placeholderLanguageWorkersList = _environment.GetLanguageWorkerListToStartInPlaceholder();
             _languageWorkerOptions = languageWorkerOptions;
         }
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (_environment.IsPlaceholderModeEnabled())
             {
-                _logger.LogDebug("Initializing language worker channels. {workerRuntimeSetting}: '{workerRuntime}', placeholderChannelList: '{placeholderChannelList}' in placeholder mode.", nameof(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), _workerRuntime, string.Join(",", _placeholderLanguageWorkersList));
+                _logger.LogDebug("Initializing language worker channels. {workerRuntimeSetting}: '{workerRuntime}', placeholderChannelList: '{placeholderChannelList}' in placeholder mode.", nameof(EnvironmentSettingNames.FunctionWorkerRuntime), _workerRuntime, string.Join(",", _placeholderLanguageWorkersList));
 
                 if (_placeholderLanguageWorkersList.Count() != 0)
                 {

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -263,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     { EnvironmentSettingNames.AzureWebsiteZipDeployment, sasUri.ToString() },
                     { RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "~2" },
-                    { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node" }
+                    { EnvironmentSettingNames.FunctionWorkerRuntime, "node" }
                 };
             var assignmentContext = new HostAssignmentContext
             {
