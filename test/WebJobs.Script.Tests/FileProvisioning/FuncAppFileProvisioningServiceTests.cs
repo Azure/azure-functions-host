@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -42,8 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         {
             File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
             File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
-            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(_environment, _optionsMonitor, _funcAppFileProvisionerFactory);
+            var mockWorkerRuntimeResolver = new Moq.Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(Moq.It.IsAny<string>()))
+                .Returns("1");
+
+            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(mockWorkerRuntimeResolver.Object,
+                                                                                    _optionsMonitor,
+                                                                                    _funcAppFileProvisionerFactory);
+
             await funcAppFileProvisioningService.StartAsync(_cancellationTokenSource.Token);
             Assert.True(!File.Exists(Path.Combine(_scriptRootPath, "requirements.psd1")));
             Assert.True(!File.Exists(Path.Combine(_scriptRootPath, "profile.ps1")));
@@ -56,8 +63,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         {
             File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
             File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
-            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(_environment, _optionsMonitor, _funcAppFileProvisionerFactory);
+            var mockWorkerRuntimeResolver = new Moq.Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(Moq.It.IsAny<string>()))
+                .Returns("1");
+
+            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(mockWorkerRuntimeResolver.Object,
+                                                                                    _optionsMonitor,
+                                                                                    _funcAppFileProvisionerFactory);
+
             await funcAppFileProvisioningService.StartAsync(_cancellationTokenSource.Token);
             if (string.Equals(workerRuntime, "powershell", StringComparison.InvariantCultureIgnoreCase))
             {

@@ -373,21 +373,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, RpcWorkerConstants.PowerShellLanguageWorkerName)]
-        [InlineData(RpcWorkerConstants.DotNetLanguageWorkerName, RpcWorkerConstants.DotNetLanguageWorkerName)]
-        [InlineData(RpcWorkerConstants.PythonLanguageWorkerName, RpcWorkerConstants.PythonLanguageWorkerName)]
-        [InlineData(RpcWorkerConstants.JavaLanguageWorkerName, RpcWorkerConstants.JavaLanguageWorkerName)]
-        [InlineData(RpcWorkerConstants.NodeLanguageWorkerName, RpcWorkerConstants.NodeLanguageWorkerName)]
-        [InlineData(null, "")]
-        [InlineData("", "")]
-        public void Returns_WorkerRuntime(string workerRuntime, string expectedWorkerRuntime)
-        {
-            TestEnvironment environment = new();
-            environment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
-            Assert.Equal(expectedWorkerRuntime, environment.GetFunctionsWorkerRuntime());
-        }
-
-        [Theory]
         [InlineData("~1", "~1")]
         [InlineData("~2", "~2")]
         [InlineData("~3", "~3")]
@@ -425,8 +410,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             {
                 workerRuntime = workerRuntime.ToUpperInvariant();
             }
-            environment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
-            Assert.Equal(supportsAzureFileShareMount, environment.SupportsAzureFileShareMount());
+
+            Assert.Equal(supportsAzureFileShareMount, Utility.IsAzureFileShareMountSupported(workerRuntime));
         }
 
         [Theory]

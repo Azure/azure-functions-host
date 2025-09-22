@@ -86,6 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
             IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager, IHostMetrics hostMetrics,
+            IWorkerRuntimeResolver workerRuntimeResolver,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             WorkerConfigCacheInvalidator workerConfigCacheInvalidator)
         {
@@ -124,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // we'll use this to emit telemetry on if and how this process has been specialized
             _originalStandbyModeValue = _scriptWebHostEnvironment.InStandbyMode;
-            _originalFunctionsWorkerRuntime = _environment.GetFunctionsWorkerRuntime();
+            _originalFunctionsWorkerRuntime = workerRuntimeResolver.GetWorkerRuntime();
             _originalFunctionsWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
         }
 

@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public void Configure(LanguageWorkerOptions options)
         {
+            // FACAVAL
             string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
             // Parsing worker.config.json should always be done in case of multi language worker

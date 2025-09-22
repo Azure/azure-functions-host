@@ -34,6 +34,11 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets or sets the name of the configuration profile used by the application.
+        /// </summary>
+        public string ConfigurationProfile { get; set; } = string.Empty;
+
+        /// <summary>
         /// Gets or sets the path to the script function directory.
         /// </summary>
         public string RootScriptPath

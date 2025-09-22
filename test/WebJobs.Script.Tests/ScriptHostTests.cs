@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -1756,7 +1757,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var configOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
 
-            ScriptHost.ValidateFunctionsWorkerRuntime(environment, configOptions, loggerFactory.CreateLogger<ScriptHost>());
+            var workerRuntimeResolverMock = new Mock<IWorkerRuntimeResolver>();
+            workerRuntimeResolverMock.Setup(r => r.GetWorkerRuntime(It.IsAny<string>()))
+                .Returns(functionsWorkerRuntime);
+
+            var workerRuntimeResolver = workerRuntimeResolverMock.Object;
+
+            ScriptHost.ValidateFunctionsWorkerRuntime(workerRuntimeResolver, configOptions, loggerFactory.CreateLogger<ScriptHost>());
 
             if (string.IsNullOrEmpty(functionsWorkerRuntime))
             {
