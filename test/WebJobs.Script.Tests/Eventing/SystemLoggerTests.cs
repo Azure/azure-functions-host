@@ -4,12 +4,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -313,20 +315,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void Log_RpcException()
         {
-            var ex = new RpcException("result", "stack", "type");
-            var details = "Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException : Result: result\nType: \nException: An exception occurred during invocation, but its details are redacted. Customers with AppInsights or OTel enabled can access full exception details. (Hash: buCObrO8b0W8mfzTn8xHkoahvrDATTnyBMYXYjeAddY=)\nStack: type";
+            var innerException = new RpcException("result", "message", "stack", "type");
+            var functionInvocationException = new FunctionInvocationException("Invocation failed", Guid.Empty, "Functions.TestFunction", innerException);
             var formattedMessage = "Test log";
-            var innerExceptionType = ex.GetType().ToString();
-            var innerExceptionMessage = "Result: result\nType: \nException: An exception occurred during invocation, but its details are redacted. Customers with AppInsights or OTel enabled can access full exception details. (Hash: buCObrO8b0W8mfzTn8xHkoahvrDATTnyBMYXYjeAddY=)\nStack: type";
-
+            var hash = EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes("message"));
+            var innerExceptionType = innerException.GetType().ToString();
             var eventName = string.Empty;
             var functionInvocationId = string.Empty;
             var activityId = string.Empty;
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, details,
-                formattedMessage, innerExceptionType, innerExceptionMessage, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, It.Is<string>(s => s.Contains(hash)),
+                formattedMessage, innerExceptionType, It.Is<string>(s => s.Contains(hash)), functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
 
-            _logger.LogError(ex, formattedMessage);
+            _logger.LogError(functionInvocationException, formattedMessage);
 
             _mockEventGenerator.VerifyAll();
         }
