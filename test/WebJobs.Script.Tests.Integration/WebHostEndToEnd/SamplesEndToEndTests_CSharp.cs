@@ -317,9 +317,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Theory]
-        [InlineData("/runtime/health")]
-        [InlineData("/runtime/health/live")]
-        [InlineData("/runtime/health/ready")]
+        [InlineData("/admin/health")]
+        [InlineData("/admin/health/live")]
+        [InlineData("/admin/health/ready")]
         public async Task HealthCheck_AdminToken_Succeeds(string uri)
         {
             // token specified as bearer token
@@ -328,15 +328,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            
+
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("{\"status\":\"Healthy\"}", body);
         }
 
         [Theory]
-        [InlineData("/runtime/health")]
-        [InlineData("/runtime/health/live")]
-        [InlineData("/runtime/health/ready")]
+        [InlineData("/admin/health")]
+        [InlineData("/admin/health/live")]
+        [InlineData("/admin/health/ready")]
         public async Task HealthCheck_NoAdminToken_Fail(string uri)
         {
             // token specified as bearer token

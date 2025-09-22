@@ -126,8 +126,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static void UseHealthChecks(this IApplicationBuilder app)
         {
-            // '/runtime' is a reserved API path. We use that to avoid conflict with any customer function routes.
-            const string healthPrefix = "/runtime/health";
+            // To start we are putting health under 'admin' to:
+            // 1. Avoid conflicts with function routes.
+            // 2. Allow for the same auth model as other admin APIs.
+            // 3. Ensure this is always available to platform callers.
+            // 4. Bypass easy-auth auth.
+            const string healthPrefix = "/admin/health";
             static bool Predicate(HttpContext context)
             {
                 return context.Request.Path.StartsWithSegments(healthPrefix);
