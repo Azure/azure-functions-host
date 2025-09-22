@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -479,10 +480,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                  'description': {
                     'defaultExecutablePath': 'handlerExecutable'
                  },
-                 'httpRoutes': [
-                    { 'route': '/alpha', 'authorizationLevel': 'function' },
-                    { 'route': '{*catchAll}', 'authorizationLevel': 'function' }
-                 ]
+                 'http': {
+                    'routes': [
+                       { 'route': '/alpha', 'authorizationLevel': 'function' },
+                       { 'route': '{*catchAll}', 'authorizationLevel': 'function' }
+                    ]
+                 }
               }
             }";
 
@@ -499,11 +502,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             setup.Configure(options);
 
-            Assert.NotNull(options.HttpRoutes);
-            Assert.Equal(2, options.HttpRoutes.Count());
-            Assert.Collection(options.HttpRoutes,
+            Assert.NotNull(options.Http);
+            Assert.NotNull(options.Http.Routes);
+            Assert.Equal(2, options.Http.Routes.Count());
+            Assert.Collection(options.Http.Routes,
                 r => Assert.Equal("/alpha", r.Route),
                 r => Assert.Equal("{*catchAll}", r.Route));
+        }
+
+        [Theory]
+        [InlineData("customHandler", "custom", true)]
+        [InlineData("customHandler", "node", false)]
+        [InlineData("httpWorker", "custom", true)]
+        [InlineData("httpWorker", "node", false)]
+        public void Configure_SetsCustomRoutesEnabled_BasedOnWorkerRuntime(string section, string workerRuntime, bool expectedEnabled)
+        {
+            string hostJsonContent = $@"{{
+  'version': '2.0',
+  '{section}': {{
+     'description': {{
+        'defaultExecutablePath': 'handlerExe'
+     }},
+     'http': {{
+        'routes': [
+           {{ 'route': '/alpha', 'authorizationLevel': 'function' }}
+        ]
+     }}
+  }}
+}}";
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+
+            // Set FUNCTIONS_WORKER_RUNTIME
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+
+            var configuration = BuildHostJsonConfiguration(_environment);
+            var setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+            var options = new HttpWorkerOptions
+            {
+                Description = new HttpWorkerDescription
+                {
+                    FileExists = _ => true
+                }
+            };
+
+            setup.Configure(options);
+
+            Assert.Equal(expectedEnabled, options.CustomRoutesEnabled);
         }
     }
 }

@@ -8,7 +8,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
     /// <summary>
     /// Route mapping for a custom handler HTTP worker.
     /// </summary>
-    /// <param name="Route">Route template (e.g. "/my/route", "{*route}").</param>
-    /// <param name="AuthorizationLevel">Authorization level (default Function).</param>
-    public record HttpWorkerRoute(string Route, AuthorizationLevel AuthorizationLevel = AuthorizationLevel.Function);
+    public sealed class HttpWorkerRoute
+    {
+        /// <summary>
+        /// Gets or sets route template.
+        /// </summary>
+        public string Route { get; set; }
+
+        /// <summary>
+        /// Gets or sets the authorization level.
+        /// </summary>
+        public AuthorizationLevel? AuthorizationLevel { get; set; }
+    }
 }
