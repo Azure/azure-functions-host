@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -526,8 +527,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
-            var logs = new HostLogEntry[]
-            {
+            HostLogEntry[] logs =
+            [
                 new HostLogEntry
                 {
                     Level = System.Diagnostics.TraceLevel.Verbose,
@@ -553,13 +554,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     FunctionName = "TestFunction",
                     Message = string.Format("Test Error log {0}", Guid.NewGuid().ToString())
                 }
-            };
-            var serializer = new JsonSerializer();
-            var writer = new StringWriter();
-            serializer.Serialize(writer, logs);
-            var json = writer.ToString();
-            request.Content = new StringContent(json);
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            ];
+
+            request.Content = JsonContent.Create(logs);
 
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -569,7 +566,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var hostLogs = _fixture.Host.GetScriptHostLogMessages();
             foreach (var expectedLog in logs.Select(p => p.Message))
             {
-                Assert.Equal(1, hostLogs.Count(p => p.FormattedMessage != null && p.FormattedMessage.Contains(expectedLog)));
+                Assert.True(
+                    1 == hostLogs.Count(p => p.FormattedMessage != null && p.FormattedMessage.Contains(expectedLog)),
+                    $"Expected log message '{expectedLog}' not found. Log count: {hostLogs.Count}");
             }
         }
 
