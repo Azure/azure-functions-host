@@ -15,7 +15,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
-    internal class HttpWorkerFunctionProvider : IFunctionProvider
+    internal sealed class HttpWorkerFunctionProvider : IFunctionProvider
     {
         private const char SpaceChar = ' ';
         private const string DoubleSlash = "//";
