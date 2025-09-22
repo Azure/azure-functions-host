@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 static string BuildReplacement(string msg)
                     => $"{RedactedMessage} (Hash: {EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes(msg))})";
 
-                if (baseEx is RpcException { RemoteMessage: { } remoteMsg })
+                if (exception is FunctionInvocationException && baseEx is RpcException { RemoteMessage: { } remoteMsg })
                 {
                     var replacement = BuildReplacement(remoteMsg);
                     innerExceptionMessage = Sanitizer.Sanitize(originalMessage.Replace(remoteMsg, replacement));
