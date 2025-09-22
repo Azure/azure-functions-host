@@ -873,10 +873,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(false, false, true)] // RestrictHostLogs is false, FeatureFlag is not set, should result in unrestricted logs. This is the default behaviour of the host.
-        [InlineData(false, true, true)] // RestrictHostLogs is false, FeatureFlag is set, should result in unrestricted logs.
-        [InlineData(true, true, true)] // RestrictHostLogs is true, FeatureFlag is set, should result in unrestricted logs.
-        [InlineData(true, false, false)] // RestrictHostLogs is true, FeatureFlag is not set, should result in **restricted** logs.
+        [InlineData(false, false, false)] // HostLogsEnabled is false, FeatureFlag is not set, should result in **restricted** logs. This is the default behaviour of the host.
+        [InlineData(false, true, true)] // HostLogsEnabled is false, FeatureFlag is set, should result in unrestricted logs.
+        [InlineData(true, true, true)] // HostLogsEnabled is true, FeatureFlag is set, should result in unrestricted logs.
+        [InlineData(true, false, true)] // HostLogsEnabled is true, FeatureFlag is not set, should result in unrestricted logs.
         public void GetAllowedLogCategoryPrefixes_Returns_Expected(bool enableHostingConfig, bool enableHostLogs, bool systemLogCategoryPrefixes)
         {
             var environment = new TestEnvironment();
@@ -888,7 +888,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var hostingConfigOptions = new FunctionsHostingConfigOptions();
             if (enableHostingConfig)
             {
-                hostingConfigOptions = new FunctionsHostingConfigOptions { RestrictHostLogs = enableHostingConfig };
+                hostingConfigOptions = new FunctionsHostingConfigOptions { HostLogsEnabled = enableHostingConfig };
             }
 
             var factory = new TestOptionsFactory<FunctionsHostingConfigOptions>(hostingConfigOptions);

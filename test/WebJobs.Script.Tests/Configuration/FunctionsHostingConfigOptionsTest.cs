@@ -136,20 +136,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void RestrictHostLogs_ReturnsExpectedValue()
+        public void EnableHostLogs_ReturnsExpectedValue()
         {
             FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();
 
             // defaults to false
-            Assert.False(options.RestrictHostLogs);
+            Assert.False(options.HostLogsEnabled);
 
             // returns true when explicitly enabled
-            options.Features[ScriptConstants.HostingConfigRestrictHostLogs] = "1";
-            Assert.True(options.RestrictHostLogs);
+            options.Features[ScriptConstants.HostingConfigHostLogsEnabled] = "1";
+            Assert.True(options.HostLogsEnabled);
 
             // returns false when disabled
-            options.Features[ScriptConstants.HostingConfigRestrictHostLogs] = "0";
-            Assert.False(options.RestrictHostLogs);
+            options.Features[ScriptConstants.HostingConfigHostLogsEnabled] = "0";
+            Assert.False(options.HostLogsEnabled);
+
+            // returns false when disabled
+            options.Features[ScriptConstants.HostingConfigHostLogsEnabled] = null;
+            Assert.False(options.HostLogsEnabled);
+
+            // returns false when disabled
+            options.Features[ScriptConstants.HostingConfigHostLogsEnabled] = "test";
+            Assert.False(options.HostLogsEnabled);
         }
 
         internal static IHostBuilder GetScriptHostBuilder(string fileName, string fileContent, IEnvironment environment = null)

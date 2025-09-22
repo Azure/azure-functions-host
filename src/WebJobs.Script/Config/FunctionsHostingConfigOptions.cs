@@ -86,18 +86,18 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
-        /// Gets or sets a value indicating whether non-critical logs should be disabled in the host.
+        /// Gets or sets a value indicating whether non-critical logs should be enabled in the host.
         /// </summary>
-        public bool RestrictHostLogs
+        public bool HostLogsEnabled
         {
             get
             {
-                return GetFeatureOrDefault(ScriptConstants.HostingConfigRestrictHostLogs, "0") == "1";
+                return GetFeatureOrDefault(ScriptConstants.HostingConfigHostLogsEnabled, "0") == "1";
             }
 
             set
             {
-                _features[ScriptConstants.HostingConfigRestrictHostLogs] = value ? "1" : "0";
+                _features[ScriptConstants.HostingConfigHostLogsEnabled] = value ? "1" : "0";
             }
         }
 
