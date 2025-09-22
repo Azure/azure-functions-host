@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -34,12 +33,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public TimeSpan InitializationTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
-        public string WorkerRuntime { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether custom routes are enabled.
+        /// </summary>
+        public bool CustomRoutesEnabled { get; set; }
 
         /// <summary>
         /// Gets or sets route mapping for a HTTP worker.
         /// </summary>
-        public IEnumerable<HttpWorkerRoute> HttpRoutes { get; set; }
+        public CustomHandlerHttpOptions Http { get; set; }
 
         public string Format()
         {

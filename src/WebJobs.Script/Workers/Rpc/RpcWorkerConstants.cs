@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string JavaLanguageWorkerName = "java";
         public const string PowerShellLanguageWorkerName = "powershell";
         public const string PythonLanguageWorkerName = "python";
+        public const string CustomHandlerLanguageWorkerName = "custom";
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
 

@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -21,20 +20,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
 {
     public class HttpWorkerFunctionProviderTests
     {
-        private static IOptions<HttpWorkerOptions> CreateHttpWorkerOptions(string runtime, IEnumerable<HttpWorkerRoute> routes = null)
+        private static IOptions<HttpWorkerOptions> CreateHttpWorkerOptions(IEnumerable<HttpWorkerRoute> routes = null, bool customRoutesEnabled = true, bool includeHttpSection = true)
         {
-            return Options.Create(new HttpWorkerOptions
+            var options = new HttpWorkerOptions
             {
-                WorkerRuntime = runtime,
-                HttpRoutes = routes
-            });
+                CustomRoutesEnabled = customRoutesEnabled
+            };
+
+            if (includeHttpSection)
+            {
+                options.Http = new CustomHandlerHttpOptions
+                {
+                    Routes = routes
+                };
+            }
+
+            return Options.Create(options);
         }
 
-        private static IOptionsMonitor<LanguageWorkerOptions> CreateLanguageWorkerOptions()
+        private static TestOptionsMonitor<LanguageWorkerOptions> CreateLanguageWorkerOptions()
         {
             var lang = new LanguageWorkerOptions
             {
-                WorkerConfigs = new List<RpcWorkerConfig>()
+                WorkerConfigs = []
             };
             return new TestOptionsMonitor<LanguageWorkerOptions>(lang);
         }
@@ -47,16 +55,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
                 httpOptions,
                 CreateLanguageWorkerOptions(),
                 hostMetadataProvider,
-                new TestEnvironment(),
                 new NullLogger<HttpWorkerFunctionProvider>());
         }
 
         [Fact]
-        public async Task GetFunctionMetadataAsync_RuntimeNotCustom_ReturnsEmpty()
+        public async Task GetFunctionMetadataAsync_NoHttpSection_ReturnsEmpty()
         {
             var hostMeta = new Mock<IHostFunctionMetadataProvider>(MockBehavior.Strict);
             var provider = CreateProvider(
-                CreateHttpWorkerOptions("dotnet-isolated"),
+                CreateHttpWorkerOptions(routes: null, customRoutesEnabled: true, includeHttpSection: false),
                 hostMeta.Object);
 
             var result = await provider.GetFunctionMetadataAsync();
@@ -70,12 +77,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         {
             var hostMeta = new Mock<IHostFunctionMetadataProvider>(MockBehavior.Strict);
             var provider = CreateProvider(
-                CreateHttpWorkerOptions(ScriptConstants.CustomHandlerWorkerRuntime, null),
+                CreateHttpWorkerOptions(null),
                 hostMeta.Object);
 
             var result = await provider.GetFunctionMetadataAsync();
 
             Assert.Empty(result);
+            hostMeta.Verify(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadataAsync_CustomRoutesDisabled_NoRoutes_ReturnsEmpty_NoException()
+        {
+            var hostMeta = new Mock<IHostFunctionMetadataProvider>(MockBehavior.Strict);
+            var provider = CreateProvider(
+                CreateHttpWorkerOptions(null, customRoutesEnabled: false),
+                hostMeta.Object);
+
+            var result = await provider.GetFunctionMetadataAsync();
+
+            Assert.Empty(result);
+            hostMeta.Verify(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadataAsync_CustomRoutesDisabled_WithRoutes_Throws()
+        {
+            var hostMeta = new Mock<IHostFunctionMetadataProvider>(MockBehavior.Strict);
+            var routes = new[]
+            {
+                new HttpWorkerRoute
+                {
+                    Route = "/a",
+                    AuthorizationLevel = AuthorizationLevel.Function
+                }
+            };
+            var provider = CreateProvider(
+                CreateHttpWorkerOptions(routes, customRoutesEnabled: false),
+                hostMeta.Object);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetFunctionMetadataAsync());
+            Assert.Equal("Routes configuration is only allowed for worker runtime: custom", ex.Message);
             hostMeta.Verify(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false), Times.Never);
         }
 
@@ -88,9 +130,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             hostMeta.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false))
                 .ReturnsAsync(existing);
 
-            var routes = new[] { new HttpWorkerRoute("/a", AuthorizationLevel.Function) };
+            var routes = new[]
+            {
+                new HttpWorkerRoute
+                {
+                    Route = "/a",
+                    AuthorizationLevel = AuthorizationLevel.Function
+                }
+            };
             var provider = CreateProvider(
-                CreateHttpWorkerOptions(ScriptConstants.CustomHandlerWorkerRuntime, routes),
+                CreateHttpWorkerOptions(routes),
                 hostMeta.Object);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetFunctionMetadataAsync());
@@ -103,16 +152,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         {
             var hostMeta = new Mock<IHostFunctionMetadataProvider>(MockBehavior.Strict);
             hostMeta.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false))
-                .ReturnsAsync(ImmutableArray<FunctionMetadata>.Empty);
+                .ReturnsAsync([]);
 
             var routes = new[]
             {
-                new HttpWorkerRoute("/one", AuthorizationLevel.Function),
-                new HttpWorkerRoute("/two/{id}", AuthorizationLevel.Function),
+                new HttpWorkerRoute
+                {
+                    Route = "/one",
+                    AuthorizationLevel = AuthorizationLevel.Function
+                },
+                new HttpWorkerRoute
+                {
+                    Route = "/two/{id}",
+                    AuthorizationLevel = AuthorizationLevel.Function
+                }
             };
 
             var provider = CreateProvider(
-                CreateHttpWorkerOptions(ScriptConstants.CustomHandlerWorkerRuntime, routes),
+                CreateHttpWorkerOptions(routes),
                 hostMeta.Object);
 
             var result = await provider.GetFunctionMetadataAsync();
@@ -138,70 +195,87 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         {
             var hostMeta = new Mock<IHostFunctionMetadataProvider>(MockBehavior.Strict);
             hostMeta.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false))
-                .ReturnsAsync(ImmutableArray<FunctionMetadata>.Empty);
+                .ReturnsAsync([]);
 
             var routes = new[]
             {
-                new HttpWorkerRoute("/ok/{id}", AuthorizationLevel.Function),
-                new HttpWorkerRoute("/bad//slash", AuthorizationLevel.Function),
-                new HttpWorkerRoute("/also {bad}", AuthorizationLevel.Function),
-                new HttpWorkerRoute("/empty/{}", AuthorizationLevel.Function)
+                new HttpWorkerRoute
+                {
+                    Route = "/ok/{id}",
+                    AuthorizationLevel = AuthorizationLevel.Function
+                },
+                new HttpWorkerRoute
+                {
+                    Route = "/bad//slash",
+                    AuthorizationLevel = AuthorizationLevel.Function
+                },
+                new HttpWorkerRoute
+                {
+                    Route = "/empty/{}",
+                    AuthorizationLevel = AuthorizationLevel.Function
+                }
             };
 
             var provider = CreateProvider(
-                CreateHttpWorkerOptions(ScriptConstants.CustomHandlerWorkerRuntime, routes),
+                CreateHttpWorkerOptions(routes),
                 hostMeta.Object);
 
             var result = await provider.GetFunctionMetadataAsync();
 
-            // Only the first one should be valid
             Assert.Single(result);
             Assert.Equal("http-handler1", result[0].Name);
 
             var errors = provider.FunctionErrors;
             Assert.True(errors.ContainsKey("http-handler2"));
             Assert.True(errors.ContainsKey("http-handler3"));
-            Assert.True(errors.ContainsKey("http-handler4"));
-            Assert.Contains("consecutive '/'", errors["http-handler2"].First(), StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("spaces", errors["http-handler3"].First(), StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("empty parameter", errors["http-handler4"].First(), StringComparison.OrdinalIgnoreCase);
+
+            Assert.Contains("cannot appear consecutively", errors["http-handler2"].First(), StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("invalid", errors["http-handler3"].First(), StringComparison.OrdinalIgnoreCase);
         }
 
         [Theory]
         [InlineData("/simple", true, null)]
-        [InlineData("/with space", false, "Route template cannot contain spaces.")]
-        [InlineData("/double//slash", false, "Route template cannot contain consecutive '/'.")]
-        [InlineData("", false, "Route template cannot be null or empty.")]
-        [InlineData(null, false, "Route template cannot be null or empty.")]
-        [InlineData("/empty/{}", false, "Route template contains an empty parameter '{}'.")]
+        [InlineData("/with space", true, null)]
+        [InlineData("/double//slash", false, "cannot appear consecutively")]
+        [InlineData("", false, "Route cannot be null or empty.")]
+        [InlineData(null, false, "Route cannot be null or empty.")]
+        [InlineData("/empty/{}", false, "invalid")]
         [InlineData("/param/{name}", true, null)]
-        [InlineData("/unbalanced/{name", false, "Route template contains unmatched '{'.")]
-        [InlineData("/too/many/close}", false, "Route template contains unmatched closing brace '}'.")]
-        public void TryValidateHttpRoute_Patterns(string route, bool expectedSuccess, string expectedError)
+        [InlineData("/unbalanced/{name", false, "incomplete parameter")]
+        [InlineData("/too/many/close}", false, "incomplete parameter")]
+        public async Task RouteValidation_Patterns(string route, bool expectedSuccess, string expectedErrorSubstring)
         {
-            var (success, error) = InvokeTryValidateHttpRoute(route);
-            Assert.Equal(expectedSuccess, success);
+            var hostMeta = new Mock<IHostFunctionMetadataProvider>(MockBehavior.Strict);
+            hostMeta.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false))
+                .ReturnsAsync([]);
+
+            var routes = new[]
+            {
+                new HttpWorkerRoute
+                {
+                    Route = route,
+                    AuthorizationLevel = AuthorizationLevel.Function
+                }
+            };
+            var provider = CreateProvider(
+                CreateHttpWorkerOptions(routes),
+                hostMeta.Object);
+
+            var result = await provider.GetFunctionMetadataAsync();
+
             if (expectedSuccess)
             {
-                Assert.Null(error);
+                Assert.Single(result);
+                Assert.Empty(provider.FunctionErrors);
             }
             else
             {
-                Assert.Equal(expectedError, error);
+                Assert.Empty(result);
+                var errors = provider.FunctionErrors;
+                Assert.True(errors.ContainsKey("http-handler1"));
+                var msg = Assert.Single(errors["http-handler1"]);
+                Assert.Contains(expectedErrorSubstring, msg, StringComparison.OrdinalIgnoreCase);
             }
-        }
-
-        private static (bool Success, string Error) InvokeTryValidateHttpRoute(string route)
-        {
-            var method = typeof(HttpWorkerFunctionProvider)
-                .GetMethod("TryValidateHttpRoute", BindingFlags.NonPublic | BindingFlags.Static);
-
-            Assert.NotNull(method);
-
-            object[] parameters = new object[] { route, null };
-            bool result = (bool)method.Invoke(null, parameters);
-            string error = (string)parameters[1];
-            return (result, error);
         }
 
         private sealed class TestOptionsMonitor<T> : IOptionsMonitor<T>
@@ -216,7 +290,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
 
             public IDisposable OnChange(Action<T, string> listener) => new Dummy();
 
-            private sealed class Dummy : IDisposable { public void Dispose() { } }
+            private sealed class Dummy : IDisposable
+            {
+                public void Dispose()
+                {
+                }
+            }
         }
     }
 }

@@ -4,9 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing.Template;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -17,17 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
     internal sealed class HttpWorkerFunctionProvider : IFunctionProvider
     {
-        private const char SpaceChar = ' ';
-        private const string DoubleSlash = "//";
-
         private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly IHostFunctionMetadataProvider _hostFunctionMetadataProvider;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private readonly ILogger _logger;
-        private readonly Dictionary<string, List<string>> _errors = new();
-        private static readonly ImmutableArray<string> AllHttpMethods = ["get", "post", "put", "delete", "patch", "head", "options"];
+        private ImmutableDictionary<string, ImmutableArray<string>> _errors = ImmutableDictionary<string, ImmutableArray<string>>.Empty;
+        private static readonly JArray AllHttpMethods = BuildAllHttpMethods();
 
-        public HttpWorkerFunctionProvider(IOptions<HttpWorkerOptions> httpWorkerOptions, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IHostFunctionMetadataProvider hostFunctionMetadataProvider, IEnvironment environment, ILogger<HttpWorkerFunctionProvider> logger)
+        public HttpWorkerFunctionProvider(IOptions<HttpWorkerOptions> httpWorkerOptions, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IHostFunctionMetadataProvider hostFunctionMetadataProvider, ILogger<HttpWorkerFunctionProvider> logger)
         {
             _httpWorkerOptions = httpWorkerOptions?.Value ?? throw new ArgumentNullException(nameof(httpWorkerOptions));
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider ?? throw new ArgumentNullException(nameof(hostFunctionMetadataProvider));
@@ -35,20 +33,34 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors =>
-           _errors.ToImmutableDictionary(k => k.Key, v => v.Value.ToImmutableArray());
+        public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors => _errors;
+
+        private static JArray BuildAllHttpMethods()
+        {
+            return new JArray(
+                HttpMethods.Get,
+                HttpMethods.Post,
+                HttpMethods.Put,
+                HttpMethods.Delete,
+                HttpMethods.Patch,
+                HttpMethods.Head,
+                HttpMethods.Options,
+                HttpMethods.Trace,
+                HttpMethods.Connect);
+        }
 
         public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync()
         {
-            if (!string.Equals(_httpWorkerOptions.WorkerRuntime, ScriptConstants.CustomHandlerWorkerRuntime, StringComparison.OrdinalIgnoreCase))
+            var routes = _httpWorkerOptions.Http?.Routes;
+
+            if (routes is null || !routes.Any())
             {
                 return [];
             }
 
-            var routes = _httpWorkerOptions.HttpRoutes;
-            if (routes is null || !routes.Any())
+            if (!_httpWorkerOptions.CustomRoutesEnabled)
             {
-                return [];
+                throw new InvalidOperationException($"Routes configuration is only allowed for worker runtime: custom");
             }
 
             var hostFunctionMetadata = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(_languageWorkerOptions.CurrentValue.WorkerConfigs, forceRefresh: false);
@@ -66,108 +78,58 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private ImmutableArray<FunctionMetadata> CreateFunctionsFromRoutes(IEnumerable<HttpWorkerRoute> routes)
         {
-            var functions = new Collection<FunctionMetadata>();
+            var metadatabuilder = ImmutableArray.CreateBuilder<FunctionMetadata>();
+            var errorsBuilder = ImmutableDictionary.CreateBuilder<string, ImmutableArray<string>>();
             int i = 0;
+
             foreach (var route in routes)
             {
                 var functionName = $"http-handler{i + 1}";
                 i++;
 
-                if (!TryValidateHttpRoute(route?.Route, out string error))
+                try
                 {
-                    AddFunctionError(functionName, error);
-                    _logger.LogError("Unable to create function '{functionName}' for route '{route}' due to invalid route: {reason}", functionName, route?.Route ?? "<null>", error);
+                    // Template parser does not check for empty route.
+                    if (string.IsNullOrEmpty(route.Route))
+                    {
+                        throw new ArgumentException("Route cannot be null or empty.");
+                    }
+
+                    _ = TemplateParser.Parse(route?.Route);
+                    metadatabuilder.Add(CreateHttpFunctionMetadata(route, functionName));
+                    _logger.LogInformation("Created function '{functionName}' for route '{routeTemplate}' (authLevel={auth}).",
+                        functionName, route.Route, route.AuthorizationLevel);
+                }
+                catch (ArgumentException ex)
+                {
+                    errorsBuilder.Add(functionName, [ex.Message]);
+                    _logger.LogError("Unable to create function '{functionName}' for route '{route}' due to invalid route: {reason}",
+                        functionName, route?.Route ?? "<null>", ex.Message);
                     continue;
                 }
-
-                functions.Add(CreateHttpFunctionMetadata(route, functionName));
-                _logger.LogInformation("Created function '{functionName}' for route '{routeTemplate}' (authLevel={auth}).", functionName, route.Route, route.AuthorizationLevel);
             }
 
-            return [.. functions];
-        }
-
-        private static bool TryValidateHttpRoute(string route, out string error)
-        {
-            error = route switch
-            {
-                _ when string.IsNullOrEmpty(route) => "Route template cannot be null or empty.",
-                _ when route.Contains(SpaceChar) => "Route template cannot contain spaces.",
-                _ when route.Contains(DoubleSlash) => "Route template cannot contain consecutive '/'.",
-                _ => null
-            };
-
-            if (error is not null)
-            {
-                return false;
-            }
-
-            int depth = 0;
-            for (int i = 0; i < route.Length; i++)
-            {
-                char c = route[i];
-                if (c == '{')
-                {
-                    depth++;
-                    if (i + 1 < route.Length && route[i + 1] == '}')
-                    {
-                        error = "Route template contains an empty parameter '{}'.";
-                        return false;
-                    }
-                }
-                else if (c == '}')
-                {
-                    depth--;
-                    if (depth < 0)
-                    {
-                        error = "Route template contains unmatched closing brace '}'.";
-                        return false;
-                    }
-                }
-            }
-
-            if (depth != 0)
-            {
-                error = "Route template contains unmatched '{'.";
-                return false;
-            }
-
-            return true;
-        }
-
-        private void AddFunctionError(string functionName, string message)
-        {
-            if (!_errors.TryGetValue(functionName, out var list))
-            {
-                list = [];
-                _errors[functionName] = list;
-            }
-            list.Add(message);
+            _errors = errorsBuilder.ToImmutable();
+            return metadatabuilder.ToImmutable();
         }
 
         private static FunctionMetadata CreateHttpFunctionMetadata(HttpWorkerRoute route, string functionName)
         {
-            var trigger = new BindingMetadata
+            var trigger = new JObject
             {
-                Raw = new JObject
-                {
-                    ["type"] = "httpTrigger",
-                    ["authLevel"] = route.AuthorizationLevel.ToString(),
-                    ["direction"] = "in",
-                    ["name"] = "req",
-                    ["methods"] = new JArray(AllHttpMethods),
-                    ["route"] = route.Route
-                }
+                ["type"] = "httpTrigger",
+                ["authLevel"] = route.AuthorizationLevel.ToString(),
+                ["direction"] = "in",
+                ["name"] = "req",
+                ["methods"] = AllHttpMethods,
+                ["route"] = route.Route
             };
 
-            var output = new BindingMetadata
+            var output = new JObject
             {
-                Raw = new JObject
-                {
-                    ["type"] = "http",
-                    ["direction"] = "out",
-                    ["name"] = "res"
-                }
+                ["type"] = "http",
+                ["direction"] = "out",
+                ["name"] = "res"
             };
 
             var metadata = new FunctionMetadata
@@ -175,8 +137,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 Name = functionName
             };
 
-            metadata.Bindings.Add(trigger);
-            metadata.Bindings.Add(output);
+            metadata.Bindings.Add(BindingMetadata.Create(trigger));
+            metadata.Bindings.Add(BindingMetadata.Create(output));
 
             return metadata;
         }

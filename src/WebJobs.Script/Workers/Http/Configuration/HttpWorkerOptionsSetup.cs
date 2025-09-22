@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -44,8 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 _logger.LogWarning($"Both {ConfigurationSectionNames.HttpWorker} and {ConfigurationSectionNames.CustomHandler} sections are spefified in {ScriptConstants.HostMetadataFileName} file. {ConfigurationSectionNames.CustomHandler} takes precedence.");
             }
 
-            options.WorkerRuntime = _environment.GetFunctionsWorkerRuntime();
-
             if (customHandlerSection.Exists())
             {
                 _metricsLogger.LogEvent(MetricEventNames.CustomHandlerConfiguration);
@@ -72,6 +71,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private void ConfigureWorkerDescription(HttpWorkerOptions options, IConfigurationSection workerSection)
         {
             workerSection.Bind(options);
+
+            var workerRuntime = _environment.GetFunctionsWorkerRuntime();
+            if (string.Equals(workerRuntime, RpcWorkerConstants.CustomHandlerLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                options.CustomRoutesEnabled = true;
+            }
+
+            if (options.Http?.Routes is not null && options.Http.Routes.Any())
+            {
+                foreach (var route in options.Http.Routes)
+                {
+                    route.AuthorizationLevel ??= options.Http.DefaultAuthorizationLevel;
+                }
+            }
+
             HttpWorkerDescription httpWorkerDescription = options.Description;
 
             if (httpWorkerDescription == null)

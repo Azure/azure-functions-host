@@ -262,7 +262,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string HttpProxyCorrelationHeader = "x-ms-invocation-id";
         public static readonly string HttpProxyTask = "HttpProxyTask";
         public static readonly string HttpProxyScriptInvocationContext = "HttpProxyScriptInvocationContext";
-        public static readonly string CustomHandlerWorkerRuntime = "custom";
 
         public static readonly string OperationNameKey = "OperationName";
 
