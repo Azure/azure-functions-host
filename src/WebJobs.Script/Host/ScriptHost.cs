@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -110,9 +110,12 @@ namespace Microsoft.Azure.WebJobs.Script
             IFunctionDataCache functionDataCache,
             IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IWorkerRuntimeResolver workerRuntimeResolver,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
+            ArgumentNullException.ThrowIfNull(workerRuntimeResolver);
+
             _environment = environment;
             _typeLocator = typeLocator as ScriptTypeLocator
                 ?? throw new ArgumentException(nameof(typeLocator), $"A {nameof(ScriptTypeLocator)} instance is required.");
@@ -135,6 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _functionDispatcher = functionDispatcherFactory.GetFunctionDispatcher();
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
             ExtensionBundleManager = extensionBundleManager;
+            _workerRuntimeResolver = workerRuntimeResolver;
 
             _metricsLogger = metricsLogger;
 
@@ -173,6 +177,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public IScriptEventManager EventManager { get; }
 
         internal IExtensionBundleManager ExtensionBundleManager { get; }
+
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
 
         public ILogger Logger { get; internal set; }
 
@@ -445,7 +451,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            ValidateFunctionsWorkerRuntime(_environment, _hostingConfigOptions, _logger);
+            ValidateFunctionsWorkerRuntime(_workerRuntimeResolver, _hostingConfigOptions, _logger);
 
             // Log whether App Insights is enabled
             if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsInstrumentationKey) || !string.IsNullOrEmpty(_settingsManager.ApplicationInsightsConnectionString))
@@ -472,9 +478,9 @@ namespace Microsoft.Azure.WebJobs.Script
             InitializeFileSystem();
         }
 
-        internal static void ValidateFunctionsWorkerRuntime(IEnvironment environment, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
+        internal static void ValidateFunctionsWorkerRuntime(IWorkerRuntimeResolver workerRuntimeResolver, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
         {
-            if (string.IsNullOrEmpty(environment.GetFunctionsWorkerRuntime()))
+            if (string.IsNullOrEmpty(workerRuntimeResolver.GetWorkerRuntime()))
             {
                 string baseMessage = $"The '{EnvironmentSettingNames.FunctionWorkerRuntime}' setting is required. Please specify a valid value. See {DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink} for more information.";
 

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -104,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     JObject functionConfig = JObject.Parse(json);
 
+                    // FACAVAL|FWR: Dependency on parent scope
                     return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem,
                         workerConfigs, _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime));
                 }

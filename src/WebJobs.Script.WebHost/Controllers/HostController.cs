@@ -23,6 +23,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -121,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/host/processes")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> GetWorkerProcesses([FromServices] IScriptHostManager scriptHostManager)
+        public async Task<IActionResult> GetWorkerProcesses([FromServices] IScriptHostManager scriptHostManager, [FromServices] IWorkerRuntimeResolver runtimeResolver)
         {
             if (!Utility.TryGetHostService(scriptHostManager, out IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager))
             {
@@ -140,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
             };
 
-            string workerRuntime = _environment.GetFunctionsWorkerRuntime();
+            string workerRuntime = runtimeResolver.GetWorkerRuntime();
 
             List<IRpcWorkerChannel> channels = null;
             if (Utility.TryGetHostService(scriptHostManager, out IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager))

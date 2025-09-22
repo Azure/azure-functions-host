@@ -3,6 +3,8 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
@@ -11,16 +13,16 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
     internal class FuncAppFileProvisioningService : IHostedService
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
-        private readonly IEnvironment _environment;
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         private readonly IFuncAppFileProvisionerFactory _funcAppFileProvisionerFactory;
 
         public FuncAppFileProvisioningService(
-            IEnvironment environment,
+            IWorkerRuntimeResolver workerRuntimeResolver,
             IOptionsMonitor<ScriptApplicationHostOptions> options,
             IFuncAppFileProvisionerFactory funcAppFileProvisionerFactory)
         {
-            _environment = environment;
             _options = options;
+            _workerRuntimeResolver = workerRuntimeResolver;
             _funcAppFileProvisionerFactory = funcAppFileProvisionerFactory;
         }
 
@@ -28,7 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
         {
             if (!_options.CurrentValue.IsFileSystemReadOnly)
             {
-                var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime));
+                string workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
+                IFuncAppFileProvisioner funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(workerRuntime);
+
                 if (funcAppFileProvisioner != null)
                 {
                     await funcAppFileProvisioner.ProvisionFiles(_options.CurrentValue.ScriptPath);

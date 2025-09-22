@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -12,9 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ScriptJobHostOptions
     {
-        private string _rootScriptPath;
-        private ImmutableArray<string> _directorySnapshot;
-
         public ScriptJobHostOptions()
         {
             FileWatchingEnabled = true;
@@ -25,17 +22,14 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets or sets the name of the configuration profile used by the application.
+        /// </summary>
+        public string ConfigurationProfile { get; set; } = string.Empty;
+
+        /// <summary>
         /// Gets or sets the path to the script function directory.
         /// </summary>
-        public string RootScriptPath
-        {
-            get => _rootScriptPath;
-            set
-            {
-                _directorySnapshot = ImmutableArray<string>.Empty;
-                _rootScriptPath = value;
-            }
-        }
+        public string RootScriptPath { get; set; }
 
         /// <summary>
         /// Gets the current ScriptHost instance id.
