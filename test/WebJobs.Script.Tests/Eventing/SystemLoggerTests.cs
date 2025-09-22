@@ -314,14 +314,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Log_RpcException()
         {
             var ex = new RpcException("result", "stack", "type");
-            string details = "Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException : Result: result\nType: \nException: An exception occurred during invocation, but its details are redacted. Customers with AppInsights or OTel enabled can access full exception details. (Hash: buCObrO8b0W8mfzTn8xHkoahvrDATTnyBMYXYjeAddY=)\nStack: type";            
-            string formattedMessage = "Test log";
-            string innerExceptionType = ex.GetType().ToString(); 
-            string innerExceptionMessage = "Result: result\nType: \nException: An exception occurred during invocation, but its details are redacted. Customers with AppInsights or OTel enabled can access full exception details. (Hash: buCObrO8b0W8mfzTn8xHkoahvrDATTnyBMYXYjeAddY=)\nStack: type";
+            var details = "Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException : Result: result\nType: \nException: An exception occurred during invocation, but its details are redacted. Customers with AppInsights or OTel enabled can access full exception details. (Hash: buCObrO8b0W8mfzTn8xHkoahvrDATTnyBMYXYjeAddY=)\nStack: type";
+            var formattedMessage = "Test log";
+            var innerExceptionType = ex.GetType().ToString();
+            var innerExceptionMessage = "Result: result\nType: \nException: An exception occurred during invocation, but its details are redacted. Customers with AppInsights or OTel enabled can access full exception details. (Hash: buCObrO8b0W8mfzTn8xHkoahvrDATTnyBMYXYjeAddY=)\nStack: type";
 
-            string eventName = string.Empty;
-            string functionInvocationId = string.Empty;
-            string activityId = string.Empty;
+            var eventName = string.Empty;
+            var functionInvocationId = string.Empty;
+            var activityId = string.Empty;
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, details,
                 formattedMessage, innerExceptionType, innerExceptionMessage, functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
@@ -334,16 +334,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void Log_NonRpcException()
         {
-            string secretReplacement = "[Hidden Credential]";
-            string secretString = "{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }";
-            string sanitizedString = $"{{ \"AzureWebJobsStorage\": \"{secretReplacement}\", \"AnotherKey\": \"AnotherValue\" }}";
+            var secretReplacement = "[Hidden Credential]";
+            var secretString = "{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }";
+            var sanitizedString = $"{{ \"AzureWebJobsStorage\": \"{secretReplacement}\", \"AnotherKey\": \"AnotherValue\" }}";
 
-            string sanitizedDetails = "System.ArgumentNullException : Value cannot be null. (Parameter 'result')";
-            string sanitizedExceptionMessage = "Value cannot be null. (Parameter 'result')";
+            var sanitizedDetails = "System.ArgumentNullException : Value cannot be null. (Parameter 'result')";
+            var sanitizedExceptionMessage = "Value cannot be null. (Parameter 'result')";
 
-            string eventName = string.Empty;
-            string functionInvocationId = string.Empty;
-            string activityId = string.Empty;
+            var eventName = string.Empty;
+            var functionInvocationId = string.Empty;
+            var activityId = string.Empty;
 
             var ex = new ArgumentNullException("result");
 
