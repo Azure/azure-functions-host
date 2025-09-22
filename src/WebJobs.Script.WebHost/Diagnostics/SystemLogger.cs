@@ -1,14 +1,17 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -173,9 +176,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
 
-                (innerExceptionType, innerExceptionMessage, details) = exception.GetExceptionDetails();
-                formattedMessage = Sanitizer.Sanitize(formattedMessage);
-                innerExceptionMessage = innerExceptionMessage ?? string.Empty;
+                var baseEx = exception.GetBaseException();
+                innerExceptionType = baseEx.GetType().FullName;
+
+                var originalMessage = baseEx.Message;
+                var formattedDetails = exception.ToFormattedString();
+
+                const string RedactedMessage = "An exception occurred during invocation, but its details are redacted. Customers with AppInsights or OTel enabled can access full exception details.";
+
+                static string BuildReplacement(string msg)
+                    => $"{RedactedMessage} (Hash: {EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes(msg))})";
+
+                if (baseEx is RpcException { RemoteMessage: { } remoteMsg })
+                {
+                    var replacement = BuildReplacement(remoteMsg);
+                    innerExceptionMessage = Sanitizer.Sanitize(originalMessage.Replace(remoteMsg, replacement));
+                    details = Sanitizer.Sanitize(formattedDetails.Replace(remoteMsg, replacement));
+                }
+                else
+                {
+                    innerExceptionMessage = Sanitizer.Sanitize(originalMessage);
+                    details = Sanitizer.Sanitize(formattedDetails);
+                }
             }
 
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
