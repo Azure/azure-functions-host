@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class SystemLogger : ILogger
     {
+        private const string RedactedMessage = "[Redacted]- Customers using AppInsights or OTel can view full details.";
         private readonly string _categoryName;
         private readonly string _functionName;
         private readonly string _hostInstanceId;
@@ -176,20 +177,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
 
+                formattedMessage = Sanitizer.Sanitize(formattedMessage);
                 var baseEx = exception.GetBaseException();
-                innerExceptionType = baseEx.GetType().FullName;
+                innerExceptionType = baseEx.GetType().ToString();
 
                 var originalMessage = baseEx.Message;
                 var formattedDetails = exception.ToFormattedString();
 
-                const string RedactedMessage = "An exception occurred during invocation, but its details are redacted. Customers with AppInsights or OTel enabled can access full exception details.";
-
-                static string BuildReplacement(string msg)
-                    => $"{RedactedMessage} (Hash: {EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes(msg))})";
-
                 if (exception is FunctionInvocationException && baseEx is RpcException { RemoteMessage: { } remoteMsg })
                 {
-                    var replacement = BuildReplacement(remoteMsg);
+                    var replacement = GetRedactedExceptionMessage(remoteMsg);
                     innerExceptionMessage = Sanitizer.Sanitize(originalMessage.Replace(remoteMsg, replacement));
                     details = Sanitizer.Sanitize(formattedDetails.Replace(remoteMsg, replacement));
                 }
@@ -201,6 +198,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
+        }
+
+        private static string GetRedactedExceptionMessage(string msg)
+        {
+            return $"{RedactedMessage} (Hash: {EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes(msg))})";
         }
     }
 }

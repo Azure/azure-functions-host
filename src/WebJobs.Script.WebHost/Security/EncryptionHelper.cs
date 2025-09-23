@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             return Decrypt(key, value);
         }
 
-        public static string GetSHA256Base64String(byte[] key)
+        internal static string GetSHA256Base64String(byte[] key)
         {
             using (var sha256 = SHA256.Create())
             {
