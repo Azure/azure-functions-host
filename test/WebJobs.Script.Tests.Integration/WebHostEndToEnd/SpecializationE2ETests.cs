@@ -1,16 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Runtime;
-using System.Threading;
-using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using Microsoft.ApplicationInsights.Channel;
@@ -35,6 +25,16 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Runtime;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -54,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _dotnetIsolated60Path = Path.GetFullPath($@"..\..\DotNetIsolated60\{TestHelpers.BuildConfig}");
         private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath($@"..\..\DotNetIsolatedUnsupportedWorker\{TestHelpers.BuildConfig}");
         private static readonly string _dotnetIsolatedEmptyScriptRoot = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
+        private static readonly string _dotnetCustomHandlerPath = Path.GetFullPath($@"..\..\DotNetCustomHandler\{TestHelpers.BuildConfig}");
 
         private static Action<IServiceCollection> _customizeScriptHostServices;
 
@@ -800,10 +801,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Theory]
+        [InlineData(ScriptConstants.FlexConsumptionSku)]
+        [InlineData(ScriptConstants.DynamicSku)]
+        [InlineData(ScriptConstants.ElasticPremiumSku)]
+        [InlineData("")]
+        public async Task Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(string websiteSku)
+        {
+            var environmentVariables = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsiteSku, websiteSku }
+            };
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetCustomHandlerPath, functions: "SimpleHttpTrigger", environmentVariables: environmentVariables);
+
+            using var testServer = new TestServer(builder);
+            var client = testServer.CreateClient();
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            // Validate that the channel is set up with native worker
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            //var channel = await webChannelManager.GetChannels("python").FirstOrDefault().Value.Task;
+            var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+            Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
+            Assert.NotNull(placeholderChannel.WorkerProcess.Process.Id);
+
+            // Simulate specialization of custom handler payload with MCP CustomHandlerPreview enabled
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/SimpleHttpTrigger");
+            response.EnsureSuccessStatusCode();
+
+            var log = _loggerProvider.GetLog();
+
+            if (string.Equals(websiteSku, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase))
+            {
+                // Verify expected logs when running the custom handler executable.
+                Assert.Contains("MCP custom handler preview is enabled. Setting FUNCTIONS_WORKER_RUNTIME to 'custom'", log);
+                Assert.Contains("Mapped function route 'api/SimpleHttpTrigger'", log);
+            }
+            else
+            {
+                Assert.DoesNotContain("MCP custom handler preview is enabled. Setting FUNCTIONS_WORKER_RUNTIME to 'custom'", log);
+            }
+
+            // Ensure the original placeholder channel was not used.
+            Assert.DoesNotContain("UsePlaceholderDotNetIsolated: True", log);
+        }
+
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit()
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, functions: "HttpRequestDataFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -845,7 +896,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("", null)]
         public async Task ResponseCompressionWorksAfterSpecialization(string acceptEncodingRequestHeaderValue, string expectedContentEncodingResponseHeaderValue)
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, functions: "HttpRequestDataFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -865,7 +916,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags , ScriptConstants.FeatureFlagEnableResponseCompression);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableResponseCompression);
 
             response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
@@ -918,7 +969,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // This test ensures that capabilities are correctly applied in EnvironmentReload during
             // specialization
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, functions: "HttpRequestFunction");
 
             using var testServer = new TestServer(builder);
 
@@ -1052,7 +1103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await queue.CreateIfNotExistsAsync();
             await queue.ClearAsync();
 
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction", "QueueFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, functions: ["HttpRequestDataFunction", "QueueFunction"]);
 
             using var testServer = new TestServer(builder);
 
@@ -1128,7 +1179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 s.AddSingleton<ILoggerProvider>(testLoggerProvider);
             };
 
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "HttpRequestDataFunction", "QueueFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, functions: ["HttpRequestDataFunction", "QueueFunction"]);
             var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
 
             using var testServer = new TestServer(builder);
@@ -1167,7 +1218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private async Task DotNetIsolatedPlaceholderMiss(string scriptRootPath, Action additionalSpecializedSetup = null)
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(scriptRootPath, "HttpRequestDataFunction");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(scriptRootPath, functions: "HttpRequestDataFunction");
 
             // remove WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, null);
@@ -1215,12 +1266,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, params string[] functions)
+        private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, Dictionary<string, string> environmentVariables = null, params string[] functions)
         {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "6.0");
+
+            if (environmentVariables is not null)
+            {
+                foreach (var kvp in environmentVariables)
+                {
+                    _environment.SetEnvironmentVariable(kvp.Key, kvp.Value);
+                }
+            }
+
+            var builder = CreateStandbyHostBuilder(functions);
+
+            builder.ConfigureAppConfiguration(config =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, scriptRootPath },
+                });
+            });
+
+            return builder;
+        }
+
+        private IWebHostBuilder InitializePythonPlaceholderBuilder(string scriptRootPath, params string[] functions)
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
 
             var builder = CreateStandbyHostBuilder(functions);
 

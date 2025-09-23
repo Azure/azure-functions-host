@@ -126,6 +126,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public async Task SpecializeAsync()
         {
             _logger.LogInformation("Starting language worker channel specialization");
+
+            // For Flex Consumption SKU: if MCP custom handler preview is enabled, set worker runtime env to "custom".
+            if (_environment.IsFlexConsumptionSku() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview, _environment))
+            {
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "custom");
+                _logger.LogInformation("MCP custom handler preview is enabled. Setting {envVar} to 'custom'", EnvironmentSettingNames.FunctionWorkerRuntime);
+            }
+
             _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
             IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);

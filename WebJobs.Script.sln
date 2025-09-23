@@ -65,6 +65,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobsStartupTests", "test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.Shared", "test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.csproj", "{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetCustomHandler", "test\Resources\TestProjects\DotNetCustomHandler\DotNetCustomHandler.csproj", "{276857C1-88C8-994D-593E-AE6FA9B14556}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -145,6 +147,10 @@ Global
 		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{276857C1-88C8-994D-593E-AE6FA9B14556}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{276857C1-88C8-994D-593E-AE6FA9B14556}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{276857C1-88C8-994D-593E-AE6FA9B14556}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{276857C1-88C8-994D-593E-AE6FA9B14556}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -171,6 +177,7 @@ Global
 		{98B2CC4A-33EB-4310-B08D-3DB58630E981} = {B2312621-6D0A-429F-9A45-06B45CE69691}
 		{3746E49F-DD26-4CBD-B961-0ADF6EA84909} = {B2312621-6D0A-429F-9A45-06B45CE69691}
 		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
+		{276857C1-88C8-994D-593E-AE6FA9B14556} = {B2312621-6D0A-429F-9A45-06B45CE69691}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}

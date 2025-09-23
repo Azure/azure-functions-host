@@ -139,6 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagStrictHISModeWarn = "StrictHISModeWarn";
         public const string FeatureFlagEnableOrderedInvocationmessages = "EnableOrderedInvocationMessages";
         public const string FeatureFlagEnableResponseCompression = "EnableResponseCompression";
+        public const string FeatureFlagEnableMcpCustomHandlerPreview = "EnableMcpCustomHandlerPreview";
         public const string FeatureFlagDisableOrderedInvocationMessages = "DisableOrderedInvocationMessages";
         public const string FeatureFlagEnableAzureMonitorTimeIsoFormat = "EnableAzureMonitorTimeIsoFormat";
         public const string FeatureFlagEnableTestDataSuppression = "EnableTestDataSuppression";
