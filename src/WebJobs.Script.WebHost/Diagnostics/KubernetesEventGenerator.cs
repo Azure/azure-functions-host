@@ -19,18 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             var opts = consoleLoggingOptions.Value;
 
-            if (opts.LoggingDisabled)
-            {
-                _writeEvent = _ => { };
-            }
-            else if (opts.CustomWriterEnabled)
-            {
-                _writeEvent = opts.Writer.WriteLine;
-            }
-            else
-            {
-                _writeEvent = Console.WriteLine;
-            }
+            _writeEvent = opts.LoggingDisabled
+                ? _ => { }
+                : opts.CustomWriterEnabled
+                    ? opts.Writer.WriteLine
+                    : Console.WriteLine;
         }
 
         public override void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp)
