@@ -43,11 +43,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 return BadRequest("At least one of 'assignmentContext' or 'encryptedContext' must be provided.");
             }
+
             if (!string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext) &&
                 hostAssignmentContext.AssignmentContext is not null)
             {
                 return BadRequest("Only one of 'assignmentContext' or 'encryptedContext' may be set.");
             }
+
             if (!string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext))
             {
                 _logger.LogDebug("Starting container assignment. ContextLength is {ContextLength}", hostAssignmentContext.EncryptedContext.Length);
@@ -58,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     !User.HasClaim(c => c.Type == SecurityConstants.AssignUnencryptedClaimType && c.Value == "true"))
                 {
                     _logger.LogWarning("Required claims missing for invoking unencrypted assignment");
-                    return StatusCode(StatusCodes.Status403Forbidden, new { status = "Required claims missing for invoking unencrypted assignment" });
+                    return StatusCode(StatusCodes.Status403Forbidden, new { status = "Required claims missing" });
                 }
                 _logger.LogDebug("Starting container assignment.");
             }
