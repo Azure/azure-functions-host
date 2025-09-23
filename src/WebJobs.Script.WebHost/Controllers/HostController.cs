@@ -121,7 +121,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [Route("admin/host/processes")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> GetWorkerProcesses([FromServices] IScriptHostManager scriptHostManager, [FromServices] IWorkerRuntimeResolver runtimeResolver)
+        public async Task<IActionResult> GetWorkerProcesses(
+            [FromServices] IScriptHostManager scriptHostManager,
+            [FromServices] IWorkerRuntimeResolver runtimeResolver)
         {
             if (!Utility.TryGetHostService(scriptHostManager, out IWebHostWorkerManager webHostWorkerManager))
             {

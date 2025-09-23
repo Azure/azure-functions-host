@@ -31,6 +31,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Host;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -73,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
 
@@ -177,8 +179,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public IScriptEventManager EventManager { get; }
 
         internal IExtensionBundleManager ExtensionBundleManager { get; }
-
-        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
 
         public ILogger Logger { get; internal set; }
 

@@ -30,6 +30,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
@@ -102,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.TryAddSingleton<IStandbyManager, StandbyManager>();
             services.TryAddSingleton<IServiceCollection>(services);
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
+            services.AddSingleton<IWorkerRuntimeResolver, WebHostWorkerRuntimeResolverAdapter>();
 
             // Metrics
             services.AddSingleton<IHostMetricsProvider, HostMetricsProvider>();

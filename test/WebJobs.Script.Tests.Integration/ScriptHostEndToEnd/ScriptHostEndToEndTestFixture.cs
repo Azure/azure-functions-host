@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.DependencyInjection;
@@ -91,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public HttpConfiguration RequestConfiguration { get; }
 
-        public IScriptEventManager EventManager { get; set;  }
+        public IScriptEventManager EventManager { get; set; }
 
         public async Task InitializeAsync()
         {
@@ -128,8 +129,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     webjobsBuilder.AddAzureStorage();
 
-                   // This needs to added manually at the ScriptHost level, as although FunctionMetadataManager is available through WebHost,
-                   // it needs to change the services during its lifetime.
+                    // This needs to added manually at the ScriptHost level, as although FunctionMetadataManager is available through WebHost,
+                    // it needs to change the services during its lifetime.
                     webjobsBuilder.Services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
                 },
                 o =>
@@ -171,6 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
 
                     services.AddSingleton<IHostMetrics, HostMetrics>();
+                    services.AddSingleton<IWorkerRuntimeResolver>((s) => new TestWorkerRuntimeResolver(_functionsWorkerLanguage));
 
                     ConfigureServices(services);
                 })

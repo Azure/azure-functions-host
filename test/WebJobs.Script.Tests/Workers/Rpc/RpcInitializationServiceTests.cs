@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -47,11 +48,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             IRpcServer testRpcServer = new TestRpcServer();
             var mockEnvironment = new Mock<IEnvironment>();
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockWorkerRuntimeResolver.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.JavaLanguageWorkerName);
             string offlineFilePath = null;
             try
             {
                 offlineFilePath = TestHelpers.CreateOfflineFile();
-                _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _logger, _workerOptionsMonitor);
+                _rpcInitializationService = new RpcInitializationService(
+                    _optionsMonitor,
+                    mockEnvironment.Object,
+                    testRpcServer,
+                    _mockLanguageWorkerChannelManager.Object,
+                    _logger,
+                    _workerOptionsMonitor,
+                    mockWorkerRuntimeResolver.Object);
                 await _rpcInitializationService.StartAsync(CancellationToken.None);
                 _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
                 Assert.DoesNotContain("testserver", testRpcServer.Uri.ToString());
@@ -69,7 +79,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             IRpcServer testRpcServer = new TestRpcServer();
             var mockEnvironment = new Mock<IEnvironment>();
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
-            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _logger, _workerOptionsMonitor);
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockWorkerRuntimeResolver.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
+
+            _rpcInitializationService = new RpcInitializationService(
+                _optionsMonitor,
+                mockEnvironment.Object,
+                testRpcServer,
+                _mockLanguageWorkerChannelManager.Object,
+                _logger,
+                _workerOptionsMonitor,
+                mockWorkerRuntimeResolver.Object);
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), RpcWorkerConstants.NodeLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
@@ -84,7 +104,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
 
-            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _logger, _workerOptionsMonitor);
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockWorkerRuntimeResolver.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
+
+            _rpcInitializationService = new RpcInitializationService(
+                _optionsMonitor,
+                mockEnvironment.Object,
+                testRpcServer,
+                _mockLanguageWorkerChannelManager.Object,
+                _logger,
+                _workerOptionsMonitor,
+                mockWorkerRuntimeResolver.Object);
 
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), RpcWorkerConstants.NodeLanguageWorkerName), Times.Once);
@@ -110,7 +140,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 mockEnvironment.Setup(p => p.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName)).Returns($"{RpcWorkerConstants.PythonLanguageWorkerName};{RpcWorkerConstants.JavaLanguageWorkerName};");
             }
 
-            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _logger, _workerOptionsMonitor);
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockWorkerRuntimeResolver.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
+
+            _rpcInitializationService = new RpcInitializationService(
+                _optionsMonitor,
+                mockEnvironment.Object,
+                testRpcServer,
+                _mockLanguageWorkerChannelManager.Object,
+                _logger,
+                _workerOptionsMonitor,
+                mockWorkerRuntimeResolver.Object);
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), RpcWorkerConstants.NodeLanguageWorkerName), Times.Once);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), RpcWorkerConstants.JavaLanguageWorkerName), Times.Once);
@@ -127,7 +167,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName)).Returns($"{RpcWorkerConstants.PythonLanguageWorkerName};{RpcWorkerConstants.JavaLanguageWorkerName};");
 
-            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _logger, _workerOptionsMonitor);
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockWorkerRuntimeResolver.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
+
+            _rpcInitializationService = new RpcInitializationService(
+                _optionsMonitor,
+                mockEnvironment.Object,
+                testRpcServer,
+                _mockLanguageWorkerChannelManager.Object,
+                _logger,
+                _workerOptionsMonitor,
+                mockWorkerRuntimeResolver.Object);
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), RpcWorkerConstants.NodeLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
@@ -140,7 +190,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task RpcInitializationService_Stops_DoesNotStopRpcServer()
         {
             var testRpcServer = new Mock<IRpcServer>();
-            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger, _workerOptionsMonitor);
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockWorkerRuntimeResolver.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
+
+            _rpcInitializationService = new RpcInitializationService(
+                _optionsMonitor,
+                new Mock<IEnvironment>().Object,
+                testRpcServer.Object,
+                _mockLanguageWorkerChannelManager.Object,
+                _logger,
+                _workerOptionsMonitor,
+                mockWorkerRuntimeResolver.Object);
             await _rpcInitializationService.StopAsync(CancellationToken.None);
             testRpcServer.Verify(a => a.KillAsync(), Times.Never);
             testRpcServer.Verify(a => a.ShutdownAsync(), Times.Never);
@@ -149,8 +209,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task RpcInitializationService_TriggerShutdown()
         {
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
+
             Mock<IRpcServer> testRpcServer = new Mock<IRpcServer>();
-            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger, _workerOptionsMonitor);
+            _rpcInitializationService = new RpcInitializationService(
+                _optionsMonitor,
+                new Mock<IEnvironment>().Object,
+                testRpcServer.Object,
+                _mockLanguageWorkerChannelManager.Object,
+                _logger,
+                _workerOptionsMonitor,
+                mockWorkerRuntimeResolver.Object);
             await _rpcInitializationService.OuterStopAsync(CancellationToken.None);
             testRpcServer.Verify(a => a.ShutdownAsync(), Times.Once);
             testRpcServer.Verify(a => a.KillAsync(), Times.Never);
@@ -159,9 +229,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task RpcInitializationService_TriggerShutdown_KillGetsCalledWhenShutdownTimesout()
         {
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
+
             Mock<IRpcServer> testRpcServer = new Mock<IRpcServer>();
             testRpcServer.Setup(a => a.ShutdownAsync()).Returns(Task.Delay(6000));
-            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger, _workerOptionsMonitor);
+            _rpcInitializationService = new RpcInitializationService(
+                _optionsMonitor,
+                new Mock<IEnvironment>().Object,
+                testRpcServer.Object,
+                _mockLanguageWorkerChannelManager.Object,
+                _logger,
+                _workerOptionsMonitor,
+                mockWorkerRuntimeResolver.Object);
             await _rpcInitializationService.OuterStopAsync(CancellationToken.None);
             testRpcServer.Verify(a => a.ShutdownAsync(), Times.Once);
             testRpcServer.Verify(a => a.KillAsync(), Times.Once);
@@ -170,9 +250,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task RpcInitializationService_TriggerShutdown_KillGetsCalledWhenShutdownThrowsException()
         {
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
             Mock<IRpcServer> testRpcServer = new Mock<IRpcServer>();
             testRpcServer.Setup(a => a.ShutdownAsync()).ThrowsAsync(new Exception("Random Exception"));
-            _rpcInitializationService = new RpcInitializationService(_optionsMonitor, new Mock<IEnvironment>().Object, testRpcServer.Object, _mockLanguageWorkerChannelManager.Object, _logger, _workerOptionsMonitor);
+            _rpcInitializationService = new RpcInitializationService(
+                _optionsMonitor,
+                new Mock<IEnvironment>().Object,
+                testRpcServer.Object,
+                _mockLanguageWorkerChannelManager.Object,
+                _logger,
+                _workerOptionsMonitor,
+                mockWorkerRuntimeResolver.Object);
             await _rpcInitializationService.OuterStopAsync(CancellationToken.None);
             testRpcServer.Verify(a => a.ShutdownAsync(), Times.Once);
             testRpcServer.Verify(a => a.KillAsync(), Times.Once);

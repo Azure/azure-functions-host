@@ -7,10 +7,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
@@ -20,7 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
         private readonly IFuncAppFileProvisionerFactory _funcAppFileProvisionerFactory;
         private readonly ILoggerFactory _loggerFactory;
-        private readonly IEnvironment _environment;
         private readonly string _scriptRootPath;
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
 
@@ -33,7 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
             };
 
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
-            _environment = new TestEnvironment();
             _loggerFactory = new LoggerFactory();
             _funcAppFileProvisionerFactory = new FuncAppFileProvisionerFactory(_loggerFactory);
         }
@@ -43,11 +40,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         {
             File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
             File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));
-            var mockWorkerRuntimeResolver = new Moq.Mock<IWorkerRuntimeResolver>();
-            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(Moq.It.IsAny<string>()))
-                .Returns("1");
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("go");
 
-            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(mockWorkerRuntimeResolver.Object,
+            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(mockRuntimeResolver.Object,
                                                                                     _optionsMonitor,
                                                                                     _funcAppFileProvisionerFactory);
 
@@ -63,11 +59,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         {
             File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
             File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));
-            var mockWorkerRuntimeResolver = new Moq.Mock<IWorkerRuntimeResolver>();
-            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(Moq.It.IsAny<string>()))
-                .Returns("1");
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(Moq.It.IsAny<string>()))
+                .Returns(workerRuntime);
 
-            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(mockWorkerRuntimeResolver.Object,
+            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(mockRuntimeResolver.Object,
                                                                                     _optionsMonitor,
                                                                                     _funcAppFileProvisionerFactory);
 

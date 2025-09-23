@@ -659,8 +659,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-       
-
         public static string GetHttpLeaderEndpoint(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariableOrDefault(HttpLeaderEndpoint, string.Empty);

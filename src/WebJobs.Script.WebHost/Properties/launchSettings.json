@@ -4,10 +4,7 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "AzureWebJobsScriptRoot": "C:\\Users\\facaval\\source\\repos\\TestAzureFunctions\\TestAzureFunctions\\bin\\Debug\\net8.0",
-        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-        "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-        "AZURE_FUNCTIONS_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "applicationUrl": "https://localhost:62513;http://localhost:62514"
     }

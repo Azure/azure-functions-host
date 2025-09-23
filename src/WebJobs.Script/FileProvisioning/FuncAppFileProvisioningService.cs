@@ -30,8 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
         {
             if (!_options.CurrentValue.IsFileSystemReadOnly)
             {
-                string workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
-                IFuncAppFileProvisioner funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(workerRuntime);
+                var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_workerRuntimeResolver.GetWorkerRuntime());
 
                 if (funcAppFileProvisioner != null)
                 {

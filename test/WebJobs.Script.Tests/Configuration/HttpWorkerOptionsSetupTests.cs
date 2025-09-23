@@ -18,12 +18,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class HttpWorkerOptionsSetupTests
     {
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         private readonly TestEnvironment _environment = new();
         private readonly TestLoggerProvider _loggerProvider = new();
         private readonly TestMetricsLogger _metricsLogger = new();
@@ -37,6 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         public HttpWorkerOptionsSetupTests()
         {
+            var workerRuntimeResolverMock = new Mock<IWorkerRuntimeResolver>();
+            workerRuntimeResolverMock.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("go");
+            _workerRuntimeResolver = workerRuntimeResolverMock.Object;
+
             _testLoggerProvider = new TestLoggerProvider();
             _testLoggerFactory = new LoggerFactory();
             _testLoggerFactory.AddProvider(_testLoggerProvider);
@@ -89,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _workerRuntimeResolver);
             HttpWorkerOptions options = new();
             options.Description = new HttpWorkerDescription();
             options.Description.FileExists = path =>
@@ -126,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _workerRuntimeResolver);
             HttpWorkerOptions options = new();
             var ex = Record.Exception(() => setup.Configure(options));
             Assert.NotNull(ex);
@@ -156,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                         new("AzureFunctionsJobHost:customHandler:port", value.ToString())
                         }).Build();
 
-            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _workerRuntimeResolver);
 
             Action act = () =>
                     {
@@ -172,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void CustomHandlerConfig_Validate_InvalidPort_ExpandEnvVars(int value)
         {
             HttpWorkerOptions options = new() { Port = value };
-            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), new ConfigurationBuilder().Build(), _testLoggerFactory, _metricsLogger, _environment);
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), new ConfigurationBuilder().Build(), _testLoggerFactory, _metricsLogger, _workerRuntimeResolver);
 
             Action act = () =>
             {
@@ -199,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Environment.SetEnvironmentVariable("TestEnv", "TestVal");
                 File.WriteAllText(_hostJsonFile, hostJsonContent);
                 var configuration = BuildHostJsonConfiguration();
-                HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+                HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _workerRuntimeResolver);
                 HttpWorkerOptions options = new();
                 setup.Configure(options);
                 setup.Validate(nameof(options), options);
@@ -257,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _workerRuntimeResolver);
             HttpWorkerOptions options = new();
             setup.Configure(options);
 
@@ -346,7 +352,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, loggerFactory, _metricsLogger, _environment);
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, loggerFactory, _metricsLogger, _workerRuntimeResolver);
             HttpWorkerOptions options = new();
             options.Description = new HttpWorkerDescription();
             options.Description.FileExists = path =>
@@ -418,7 +424,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:defaultWorkerPath", "OneSecondTimer/run.csx");
                 Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:arguments", "[\"--xTest5\", \"--xTest6\", \"--xTest7\"]");
                 IConfiguration configuration = BuildHostJsonConfiguration();
-                HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+                HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _workerRuntimeResolver);
                 HttpWorkerOptions options = new();
                 setup.Configure(options);
                 Assert.Equal("dotnet", options.Description.DefaultExecutablePath);
@@ -571,7 +577,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            var setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+            var setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _workerRuntimeResolver);
             var options = new HttpWorkerOptions
             {
                 Description = new HttpWorkerDescription
@@ -612,11 +618,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 }}";
             File.WriteAllText(_hostJsonFile, hostJsonContent);
 
-            // Set FUNCTIONS_WORKER_RUNTIME
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
+            var workerRuntimeResolverMock = new Moq.Mock<IWorkerRuntimeResolver>();
+            workerRuntimeResolverMock.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns(workerRuntime);
 
             var configuration = BuildHostJsonConfiguration(_environment);
-            var setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+            var setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, workerRuntimeResolverMock.Object);
             var options = new HttpWorkerOptions
             {
                 Description = new HttpWorkerDescription

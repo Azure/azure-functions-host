@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
+        private readonly IWorkerRuntimeResolver _workerRunimeResolver;
         private readonly IEnvironment _environment;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly SemaphoreSlim _startWorkerProcessLock = new SemaphoreSlim(1, 1);
@@ -78,7 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IRpcFunctionInvocationDispatcherLoadBalancer functionDispatcherLoadBalancer,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            IHostMetrics hostMetrics)
+            IHostMetrics hostMetrics,
+            IWorkerRuntimeResolver workerRunimeResolver)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
@@ -95,7 +97,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
             _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
-            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _workerRunimeResolver = workerRunimeResolver;
+            _workerRuntime = _workerRunimeResolver.GetWorkerRuntime();
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _hostingConfigOptions = hostingConfigOptions;
@@ -198,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal async void ShutdownWebhostLanguageWorkerChannels()
         {
-            _logger.LogDebug("{workerRuntimeConstant}={value}. Will shutdown all the worker channels that started in placeholder mode", EnvironmentSettingNames.FunctionWorkerRuntime, _workerRuntime);
+            _logger.LogDebug("{workerRuntimeConstant}={value}. Will shutdown all the worker channels that started in placeholder mode", "Functions worker runtime", _workerRuntime);
             await _webHostLanguageWorkerChannelManager?.ShutdownChannelsAsync();
         }
 

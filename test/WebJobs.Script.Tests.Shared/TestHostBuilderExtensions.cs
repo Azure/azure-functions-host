@@ -89,6 +89,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IWorkerConfigurationProvider, DefaultWorkerConfigurationProvider>();
             services.AddSingleton<IWorkerConfigurationProvider, DynamicWorkerConfigurationProvider>();
             services.AddSingleton<IWorkerConfigurationProvider, ExplicitWorkerConfigurationProvider>();
+            services.AddSingleton<IWorkerRuntimeResolver, ScriptHostWorkerRuntimeResolver>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddSingleton(_ => new WorkerConfigCacheInvalidator(null, null));

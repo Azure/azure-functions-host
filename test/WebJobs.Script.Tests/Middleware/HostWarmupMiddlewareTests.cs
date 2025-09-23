@@ -27,11 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         private readonly IEnvironment _testEnvironment;
         private readonly TestLoggerProvider _loggerProvider;
         private readonly ILoggerFactory _loggerFactory;
-        private readonly LanguageWorkerOptions _languageWorkerOptions;
         private readonly Mock<IRpcWorkerProcessFactory> _rpcWorkerProcessFactory;
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
-        private readonly IOptionsMonitor<LanguageWorkerOptions> _workerOptionsMonitor;
         private readonly Mock<IWorkerProcess> _rpcWorkerProcess;
         private readonly TestLogger _testLogger;
         private readonly IConfiguration _emptyConfig;
@@ -57,10 +55,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             _testEnvironment = new TestEnvironment();
             _loggerFactory.AddProvider(_loggerProvider);
             _rpcWorkerProcess = new Mock<IWorkerProcess>();
-            _languageWorkerOptions = new LanguageWorkerOptions
-            {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
-            };
 
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
             _workerProfileManager = new WorkerProfileManager(workerProfileLogger, _testEnvironment);
@@ -73,15 +67,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
 
-            _workerOptionsMonitor = TestHelpers.CreateOptionsMonitor(_languageWorkerOptions);
-
             _rpcWorkerProcessFactory = new Mock<IRpcWorkerProcessFactory>();
             _rpcWorkerProcessFactory.Setup(m => m.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<RpcWorkerConfig>())).Returns(_rpcWorkerProcess.Object);
 
             _testLogger = new TestLogger("WebHostLanguageWorkerChannelManagerTests");
             _rpcWorkerChannelFactory = new TestRpcWorkerChannelFactory(_eventManager, _testLogger, _scriptRootPath);
             _emptyConfig = new ConfigurationBuilder().Build();
-            _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, new TestMetricsLogger(), _emptyConfig, _workerProfileManager, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()), new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
+
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
+
+            _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(
+                _eventManager,
+                _testEnvironment,
+                _loggerFactory,
+                _rpcWorkerChannelFactory,
+                _optionsMonitor,
+                new TestMetricsLogger(),
+                _emptyConfig,
+                _workerProfileManager,
+                new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()),
+                new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()),
+                mockWorkerRuntimeResolver.Object);
             _webHostWorkerManager = new RpcWebHostWorkerManager(_rpcWorkerChannelManager);
         }
 
@@ -154,7 +161,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             testLoggerFactory.AddProvider(testLoggerProvider);
             ILogger<HostWarmupMiddleware> testLogger = testLoggerFactory.CreateLogger<HostWarmupMiddleware>();
 
-            HostWarmupMiddleware hostWarmupMiddleware = new HostWarmupMiddleware(null, new Mock<IScriptWebHostEnvironment>().Object, environment, new Mock<IScriptHostManager>().Object, testLogger, _webHostWorkerManager, _functionsHostingConfigOptions);
+            HostWarmupMiddleware hostWarmupMiddleware = new(
+                null,
+                new Mock<IScriptWebHostEnvironment>().Object,
+                environment,
+                new Mock<IScriptHostManager>().Object,
+                testLogger,
+                _webHostWorkerManager,
+                _functionsHostingConfigOptions);
 
             hostWarmupMiddleware.ReadRuntimeAssemblyFiles();
             // Assert

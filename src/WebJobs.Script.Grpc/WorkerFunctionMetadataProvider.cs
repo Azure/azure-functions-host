@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -28,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
         private IHost _currentJobHost = null;
@@ -37,14 +39,16 @@ namespace Microsoft.Azure.WebJobs.Script
             ILogger<WorkerFunctionMetadataProvider> logger,
             IEnvironment environment,
             IWebHostRpcWorkerChannelManager webHostRpcWorkerChannelManager,
-            IScriptHostManager scriptHostManager)
+            IScriptHostManager scriptHostManager,
+            IWorkerRuntimeResolver workerRuntimeResolver)
         {
             _scriptOptions = scriptOptions;
             _logger = logger;
             _environment = environment;
             _channelManager = webHostRpcWorkerChannelManager;
             _scriptHostManager = scriptHostManager;
-            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _workerRuntimeResolver = workerRuntimeResolver;
+            _workerRuntime = workerRuntimeResolver.GetWorkerRuntime();
 
             _scriptHostManager.ActiveHostChanged += OnHostChanged;
         }
@@ -54,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public async Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
-            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
 
             _logger.LogInformation("Fetching metadata for workerRuntime: {workerRuntime}", _workerRuntime);
 
@@ -236,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     Utility.ValidateName(function.Name);
 
-                    function.Language = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                    function.Language = _workerRuntimeResolver.GetWorkerRuntime();
 
                     // skip function directory validation because this involves reading function.json
 

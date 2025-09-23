@@ -1737,11 +1737,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Missing_FunctionsWorkerRuntime_LogsWarning(string functionsWorkerRuntime)
         {
             var environment = new TestEnvironment();
-            if (functionsWorkerRuntime != null)
-            {
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, functionsWorkerRuntime);
-            }
-
             var diagnosticEventRepository = new TestDiagnosticEventRepository();
             var diagnosticEventRepositoryFactory = new TestDiagnosticEventRepositoryFactory(diagnosticEventRepository);
             var standbyOptions = new StandbyOptions { InStandbyMode = false };
@@ -1757,7 +1752,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var configOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions());
 
-            var workerRuntimeResolverMock = new Mock<IWorkerRuntimeResolver>();
+            var workerRuntimeResolverMock = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
             workerRuntimeResolverMock.Setup(r => r.GetWorkerRuntime(It.IsAny<string>()))
                 .Returns(functionsWorkerRuntime);
 

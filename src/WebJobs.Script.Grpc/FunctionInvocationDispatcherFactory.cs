@@ -35,7 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IRpcFunctionInvocationDispatcherLoadBalancer functionDispatcherLoadBalancer,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            IHostMetrics hostMetrics)
+            IHostMetrics hostMetrics,
+            IWorkerRuntimeResolver workerRuntimeResolver)
         {
             if (httpWorkerOptions.Value == null)
             {
@@ -61,7 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 functionDispatcherLoadBalancer,
                 workerConcurrencyOptions,
                 hostingConfigOptions,
-                hostMetrics);
+                hostMetrics,
+                workerRuntimeResolver);
         }
 
         public IFunctionInvocationDispatcher GetFunctionDispatcher() => _functionDispatcher;

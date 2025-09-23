@@ -729,10 +729,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, maxProcessCountValue.ToString());
 
-            if (runtime != null)
-            {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, runtime);
-            }
             if (workerIndexing)
             {
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
@@ -777,6 +773,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _javaTestChannel = new TestRpcWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(workerConfigOptions);
 
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockWorkerRuntimeResolver.Setup(m => m.GetWorkerRuntime(It.IsAny<string>())).Returns(runtime);
+
             testEnv.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
             return new RpcFunctionInvocationDispatcher(scriptOptions,
                 metricsLogger.Object,
@@ -792,7 +791,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 mockFunctionDispatcherLoadBalancer.Object,
                 Options.Create(new WorkerConcurrencyOptions()),
                 Options.Create(new FunctionsHostingConfigOptions()),
-                mockHostMetrics.Object);
+                mockHostMetrics.Object,
+                mockWorkerRuntimeResolver.Object);
         }
 
         private async Task<int> WaitForJobhostWorkerChannelsToStartup(RpcFunctionInvocationDispatcher functionDispatcher, int expectedCount, bool allReadyForInvocations = true)

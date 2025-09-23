@@ -365,6 +365,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IHostOptionsProvider, HostOptionsProvider>();
                 services.AddSingleton<IInstanceServicesProviderFactory, ScriptInstanceServicesProviderFactory>();
+                services.AddSingleton<IWorkerRuntimeResolver, ScriptHostWorkerRuntimeResolver>();
             });
 
             RegisterFileProvisioningService(builder);

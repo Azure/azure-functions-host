@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
@@ -15,12 +16,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     internal static class WorkerConfigurationResolverTestsHelper
     {
         internal static IOptionsMonitor<WorkerConfigurationResolverOptions> GetTestWorkerConfigurationResolverOptions(IConfiguration configuration,
+                                        string workerRuntime,
                                         IEnvironment environment,
                                         IScriptHostManager scriptHostManager,
                                         IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions = null)
@@ -31,8 +34,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 functionsHostingConfigOptions = new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions);
             }
 
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns(workerRuntime);
+
             var testLoggerFactory = GetTestLoggerFactory();
-            var resolverOptionsSetup = new WorkerConfigurationResolverOptionsSetup(testLoggerFactory, configuration, environment, FileUtility.Instance, scriptHostManager, functionsHostingConfigOptions);
+            var resolverOptionsSetup = new WorkerConfigurationResolverOptionsSetup(
+                testLoggerFactory,
+                configuration,
+                environment,
+                FileUtility.Instance,
+                scriptHostManager,
+                functionsHostingConfigOptions,
+                mockWorkerRuntimeResolver.Object);
             var resolverOptions = new WorkerConfigurationResolverOptions();
             resolverOptionsSetup.Configure(resolverOptions);
 

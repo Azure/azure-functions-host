@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private ILoggerFactory _loggerFactory;
         private Mock<IScriptWebHostEnvironment> _mockScriptWebHostEnvironment;
         private Mock<IEnvironment> _mockEnvironment;
+        private Mock<IWorkerRuntimeResolver> _mockWorkerRuntimeResolver;
         private IConfiguration _mockConfig;
         private OptionsWrapper<HostHealthMonitorOptions> _healthMonitorOptions;
         private HostPerformanceManager _hostPerformanceManager;
@@ -61,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _host = CreateMockHost();
 
+            _mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
             _mockScriptWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             _mockEnvironment = new Mock<IEnvironment>();
             _healthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(new HostHealthMonitorOptions());
@@ -514,6 +517,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .Build();
 
+            var mockWorkerResolver = new Mock<IWorkerRuntimeResolver>();
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
@@ -551,6 +555,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
                 }
             });
+
+            var mockWorkerResolver = new Mock<IWorkerRuntimeResolver>();
 
             using (_hostService = new WebJobsScriptHostService(
                             _monitor, scriptHostBuilder.Object, NullLoggerFactory.Instance,
