@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             foreach (var route in routes)
             {
-                var functionName = $"http-handler{i + 1}";
+                var functionName = $"http-handler{++i}";
                 i++;
 
                 try
