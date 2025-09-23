@@ -26,7 +26,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.22.0" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" Version="8.1.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.39.2" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="4.40.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="Moq" Version="4.18.4" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="all" />

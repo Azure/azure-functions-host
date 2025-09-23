@@ -18,3 +18,4 @@
 - Bug fix that fails in-flight invocations when a worker channel shuts down (#11159)
 - Adds WebHost and ScriptHost health checks. (#11341, #11183, #11178, #11173, #11161)
 - Update Node.js Worker Version to [3.12.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.12.0)
+- Update Python Worker Version to [4.40.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.40.0)
