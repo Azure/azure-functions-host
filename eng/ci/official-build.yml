@@ -59,7 +59,6 @@ extends:
       - template: /eng/ci/templates/official/jobs/build-artifacts-windows.yml@self
       - template: /eng/ci/templates/official/jobs/build-artifacts-linux.yml@self
 
-    # tests are always ran for official branches
     - stage: Test
       dependsOn: ''
 
