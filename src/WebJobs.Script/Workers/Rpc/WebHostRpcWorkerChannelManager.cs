@@ -1,11 +1,10 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.AppService.Proxy.Common.Infra;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -21,12 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     public class WebHostRpcWorkerChannelManager : IWebHostRpcWorkerChannelManager
     {
         private readonly ILogger _logger = null;
-        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
-        private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment;
-        private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _profileManager;
@@ -50,8 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _eventManager = eventManager;
-            _loggerFactory = loggerFactory;
             _metricsLogger = metricsLogger;
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
             _logger = loggerFactory.CreateLogger<WebHostRpcWorkerChannelManager>();
@@ -132,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public async Task SpecializeAsync()
         {
             _logger.LogInformation("Starting language worker channel specialization");
-            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
             IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
 
@@ -158,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task WorkerWarmupAsync()
         {
-            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
             if (_workerRuntime == null)
             {
@@ -269,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                 if (workerChannel != null)
                                 {
                                     _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, language);
-                                    workerChannel.TryFailExecutions(workerException);
+                                    workerChannel.Shutdown(workerException);
                                     (channelTask.Result as IDisposable)?.Dispose();
                                 }
                             }
@@ -295,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             if (workerChannel != null)
                             {
                                 _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, language);
-                                workerChannel.TryFailExecutions(workerException);
+                                workerChannel.Shutdown(workerException);
                                 (channelTask.Result as IDisposable)?.Dispose();
                             }
                         }
@@ -311,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationScheduleShutdownStandbyChannels))
             {
-                _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+                _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
                 if (!string.IsNullOrEmpty(_workerRuntime))
                 {
                     var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));

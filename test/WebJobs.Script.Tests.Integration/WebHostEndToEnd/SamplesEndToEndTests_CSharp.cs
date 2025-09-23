@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -220,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [InlineData("admin/host/extensionBundle/v1/templates", true, true, false, true, false, HttpStatusCode.Unauthorized)]
         [InlineData("admin/host/extensionBundle/v1/templates", true, true, true, false, true, HttpStatusCode.NotFound)]
         [InlineData("admin/host/extensionBundle/v1/templates", true, false, false, false, true, HttpStatusCode.NotFound)]
-        [InlineData("admin/host/extensionBundle/v1/templates", true, true, false, true, true, HttpStatusCode.Forbidden)]
+        [InlineData("admin/host/extensionBundle/v1/templates", true, true, false, true, true, HttpStatusCode.NotFound)]
         [InlineData("admin/vfs/host.json", true, true, true, false, true, HttpStatusCode.OK)]
         [InlineData("admin/vfs/host.json", true, true, false, false, true, HttpStatusCode.Unauthorized)]
         [InlineData("admin/vfs/host.json", true, true, true, false, false, HttpStatusCode.Unauthorized)]
@@ -314,6 +315,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var cacheHeader = response.Headers.GetValues("Cache-Control").Single();
             Assert.Equal("no-store, no-cache", cacheHeader);
+        }
+
+        [Theory]
+        [InlineData("/admin/health")]
+        [InlineData("/admin/health/live")]
+        [InlineData("/admin/health/ready")]
+        public async Task HealthCheck_AdminToken_Succeeds(string uri)
+        {
+            // token specified as bearer token
+            HttpRequestMessage request = new(HttpMethod.Get, uri);
+            string token = _fixture.Host.GenerateAdminJwtToken();
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("{\"status\":\"Healthy\"}", body);
+        }
+
+        [Theory]
+        [InlineData("/admin/health")]
+        [InlineData("/admin/health/live")]
+        [InlineData("/admin/health/ready")]
+        public async Task HealthCheck_NoAdminToken_Fail(string uri)
+        {
+            // token specified as bearer token
+            HttpRequestMessage request = new(HttpMethod.Get, uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
         [Fact]
@@ -450,46 +480,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task SyncTriggers_InternalAuth_Succeeds()
+        public async Task SyncTriggers_AdminTokenProvided_Succeeds()
         {
             using (var httpClient = _fixture.Host.CreateHttpClient())
             {
                 string uri = "admin/host/synctriggers";
+                string token = _fixture.Host.GenerateAdminJwtToken(issuer: ScriptConstants.AppServiceCoreUri);
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+                request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
                 HttpResponseMessage response = await httpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             }
         }
 
-        [Theory]
-        [InlineData("", HttpStatusCode.Unauthorized)]
-        [InlineData("|", HttpStatusCode.Unauthorized)]
-        [InlineData("/admin/host/foo|/admin/host/bar", HttpStatusCode.Unauthorized)]
-        [InlineData("/admin/host/status|/admin/host/synctriggers", HttpStatusCode.OK)]
-        public async Task SyncTriggers_InternalAuth_AllowListSpecified_ReturnsExpectedResult(string allowList, HttpStatusCode expected)
-        {
-            var options = _fixture.Host.WebHostServices.GetService<IOptions<FunctionsHostingConfigOptions>>().Value;
-
-            try
-            {
-                options.InternalAuthApisAllowList = allowList;
-
-                using (var httpClient = _fixture.Host.CreateHttpClient())
-                {
-                    string uri = "admin/host/synctriggers";
-                    HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-                    HttpResponseMessage response = await httpClient.SendAsync(request);
-                    Assert.Equal(expected, response.StatusCode);
-                }
-            }
-            finally
-            {
-                options.InternalAuthApisAllowList = null;
-            }
-        }
-
         [Fact]
-        public async Task SyncTriggers_ExternalUnauthorized_ReturnsUnauthorized()
+        public async Task SyncTriggers_NoAuthentication_ReturnsUnauthorized()
         {
             string uri = "admin/host/synctriggers";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
@@ -498,7 +503,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task SyncTriggers_AdminLevel_Succeeds()
+        public async Task SyncTriggers_MasterKeyProvided_Succeeds()
         {
             string uri = "admin/host/synctriggers";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
@@ -518,29 +523,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task HostLog_PlatformInternal_Succeeds()
-        {
-            var environment = _fixture.Host.JobHostServices.GetService<IEnvironment>();
-            Assert.True(environment.IsAppService());
-
-            using (var httpClient = _fixture.Host.CreateHttpClient())
-            {
-                // no x-arr-log-id header makes this request platform internal
-                var request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
-                request.Content = new StringContent("[]");
-                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                var response = await httpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            }
-        }
-
-        [Fact]
         public async Task HostLog_AdminLevel_Succeeds()
         {
             var request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
-            var logs = new HostLogEntry[]
-            {
+            HostLogEntry[] logs =
+            [
                 new HostLogEntry
                 {
                     Level = System.Diagnostics.TraceLevel.Verbose,
@@ -566,13 +554,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     FunctionName = "TestFunction",
                     Message = string.Format("Test Error log {0}", Guid.NewGuid().ToString())
                 }
-            };
-            var serializer = new JsonSerializer();
-            var writer = new StringWriter();
-            serializer.Serialize(writer, logs);
-            var json = writer.ToString();
-            request.Content = new StringContent(json);
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            ];
+
+            request.Content = JsonContent.Create(logs);
 
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -582,7 +566,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var hostLogs = _fixture.Host.GetScriptHostLogMessages();
             foreach (var expectedLog in logs.Select(p => p.Message))
             {
-                Assert.Equal(1, hostLogs.Count(p => p.FormattedMessage != null && p.FormattedMessage.Contains(expectedLog)));
+                Assert.True(
+                    1 == hostLogs.Count(p => p.FormattedMessage != null && p.FormattedMessage.Contains(expectedLog)),
+                    $"Expected log message '{expectedLog}' not found. Log count: {hostLogs.Count}");
             }
         }
 
@@ -813,7 +799,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -844,7 +830,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -953,7 +939,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -975,7 +961,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1046,7 +1032,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName},
                 { EnvironmentSettingNames.FunctionsAdminIsolationEnabled, "1" }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
@@ -1084,11 +1070,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
-                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName);
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
                 string uri = $"api/httptrigger?code={functionKey}&name=Mathew&name=Amy";
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -1107,7 +1093,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1172,7 +1158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1198,7 +1184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName},
                 { "WEBSITE_AUTH_ENABLED", "TRUE"}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
@@ -1223,7 +1209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName},
                 { "WEBSITE_AUTH_ENABLED", "TRUE"}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
@@ -1246,7 +1232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName},
                 { "WEBSITE_AUTH_ENABLED", "FALSE"}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))

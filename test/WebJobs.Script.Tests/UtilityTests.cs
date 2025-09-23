@@ -1110,6 +1110,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Utility.ValidateRetryOptions(retryOptions);
         }
 
+        [Theory]
+        // Null input should enable logging.
+        [InlineData(null, true)]
+        // Only Default category(ScriptConstants.DefaultAzureMonitorCategories) disables logging.
+        [InlineData(ScriptConstants.DefaultAzureMonitorCategories, false)]
+        // Absence of ScriptConstants.AzureMonitorTraceCategory category disables logging
+        [InlineData("SomeOtherCategory", false)]
+        // Only ScriptConstants.AzureMonitorTraceCategory category enables logging
+        [InlineData(ScriptConstants.AzureMonitorTraceCategory, true)]
+        // ScriptConstants.AzureMonitorTraceCategory category present among others enables logging
+        [InlineData($"{ScriptConstants.DefaultAzureMonitorCategories},{ScriptConstants.AzureMonitorTraceCategory}", true)]
+        [InlineData($"{ScriptConstants.AzureMonitorTraceCategory},{ScriptConstants.DefaultAzureMonitorCategories}", true)]
+        [InlineData($"{ScriptConstants.DefaultAzureMonitorCategories},{ScriptConstants.AzureMonitorTraceCategory},Other", true)]
+        // Empty string disables logging (no Trace category present)
+        [InlineData("", false)]
+        public void IsAzureMonitorLoggingEnabled_ReturnsExpected(string subscribedCategories, bool expectedResult)
+        {
+            var result = Utility.IsAzureMonitorLoggingEnabled(subscribedCategories);
+            Assert.Equal(expectedResult, result);
+        }
+
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
         {
             var message = allLogs.FirstOrDefault(l => l.FormattedMessage.Contains(msg));

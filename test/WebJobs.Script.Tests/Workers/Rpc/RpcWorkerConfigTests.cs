@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -363,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             string sanitizeRuntimeVersionRegex,
             string expectedPath)
         {
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, environmentRuntimeVersion);
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
@@ -566,7 +567,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             string expectedExceptionMessage)
         {
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.4");
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
 
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
@@ -597,7 +598,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void LanguageWorker_FormatWorkerPath_DefualtRuntimeVersion_WorkerRuntimeMismatch()
         {
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "13");
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
 
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
@@ -683,7 +684,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
                 var workerProfileManager = new Mock<IWorkerProfileManager>();
-                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger, workerProfileManager.Object);
+                var testScriptHostManager = new Mock<IScriptHostManager>();
+                var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+                var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
+                var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, optionsMonitor);
+
+                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver);
 
                 if (appSvcEnv)
                 {

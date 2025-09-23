@@ -1,8 +1,9 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -11,6 +12,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.CodeAnalysis;
@@ -211,6 +213,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private void HandleReturnParameter(ScriptInvocationResult result)
         {
+            if (result.Outputs is IImmutableDictionary<string, object> immutableOutputs)
+            {
+                return;
+            }
+
             result.Outputs[ScriptConstants.SystemReturnParameterBindingName] = result.Return;
         }
 

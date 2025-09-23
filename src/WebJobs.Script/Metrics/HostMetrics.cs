@@ -25,6 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
         // FaaS Metrics
         public const string FaasInvokeDuration = "faas.invoke_duration";
 
+        public static readonly string FaasMeterVersion = typeof(HostMetrics).Assembly.GetName().Version?.ToString();
+
         private Counter<long> _appFailureCount;
         private Counter<long> _startedInvocationCount;
         private Histogram<double> _faasInvokeDuration;
@@ -65,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
             _appFailureCount = meter.CreateCounter<long>(AppFailureCount, "numeric", "Number of times the host has failed to start.");
             _startedInvocationCount = meter.CreateCounter<long>(StartedInvocationCount, "numeric", "Number of function invocations that have started.");
 
-            var faasMeter = meterFactory.Create(new MeterOptions(FaasMeterName));
+            var faasMeter = meterFactory.Create(new MeterOptions(FaasMeterName) { Version = FaasMeterVersion });
             _faasInvokeDuration = faasMeter.CreateHistogram<double>(
                 name: FaasInvokeDuration,
                 unit: "s",

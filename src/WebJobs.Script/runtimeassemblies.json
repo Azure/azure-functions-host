@@ -20,10 +20,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "Azure.Monitor.OpenTelemetry.AspNetCore",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Azure.Monitor.OpenTelemetry.Exporter",
       "resolutionPolicy": "private"
     },
@@ -69,6 +65,14 @@
     },
     {
       "name": "Grpc.Net.Common",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "HealthChecks.UI.Client",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "HealthChecks.UI.Core",
       "resolutionPolicy": "private"
     },
     {
@@ -608,6 +612,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Extensions.Compliance.Abstractions",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Extensions.Configuration",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -780,6 +788,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Extensions.Telemetry.Abstractions",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Extensions.WebEncoders",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -926,11 +938,7 @@
     {
       "name": "OpenTelemetry.Api.ProviderBuilderExtensions",
       "resolutionPolicy": "private"
-    },
-    {
-      "name": "OpenTelemetry.Exporter.Console",
-      "resolutionPolicy": "private"
-    },
+    },   
     {
       "name": "OpenTelemetry.Exporter.OpenTelemetryProtocol",
       "resolutionPolicy": "private"

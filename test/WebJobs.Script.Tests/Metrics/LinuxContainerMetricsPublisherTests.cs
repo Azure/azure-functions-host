@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             _metricsPublisher.SendRequest(testQueue, "testPath").GetAwaiter().GetResult();
             Assert.Matches("Failed to publish status to testPath", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
             Assert.Matches("NullReferenceException", _testLoggerProvider.GetAllLogMessages().Single().Exception.ToString());
-            Assert.Equal(LogLevel.Error, _testLoggerProvider.GetAllLogMessages().Single().Level);
+            Assert.Equal(LogLevel.Debug, _testLoggerProvider.GetAllLogMessages().Single().Level);
         }
 
         [Fact]

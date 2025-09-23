@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Restarts the current Script Job Host.
         /// </summary>
-        /// <returns>A <see cref="Task"/> that will completed when the host is restarted.</returns>
-        Task RestartHostAsync(CancellationToken cancellationToken = default);
+        /// <returns>A <see cref="Task"/> that completes when the host is restarted.</returns>
+        Task RestartHostAsync(string reason, CancellationToken cancellationToken = default);
     }
 }

@@ -32,6 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         bool IsExecutingInvocation(string invocationId);
 
-        bool TryFailExecutions(Exception workerException);
+        void Shutdown(Exception workerException);
     }
 }

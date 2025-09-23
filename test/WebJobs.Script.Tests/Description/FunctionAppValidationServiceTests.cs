@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -198,14 +198,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Assert
             var logMessages = _testLoggerProvider.GetAllLogMessages();
 
-            // Check for both possible resource strings (future and past deprecation)
-            bool hasFutureWarning = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion)
-                && m.FormattedMessage.Contains("will reach end of support on Aug 4, 2026.")
+            bool hasOutdatedBundleLog = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion)
+                && m.FormattedMessage.Contains("deprecated version")
                 && m.Level == LogLevel.Warning);
-            bool hasPastWarning = logMessages.Any(m => m.FormattedMessage.Contains(bundleVersion)
-                && m.FormattedMessage.Contains("has reached end of support on Aug 4, 2026.")
-                && m.Level == LogLevel.Warning);
-            bool hasOutdatedBundleLog = hasFutureWarning || hasPastWarning;
 
             Assert.Equal(shouldLogEvent, hasOutdatedBundleLog);
         }

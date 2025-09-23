@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -63,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryHost = "Host";
         public const string LogCategoryFunction = "Function";
         public const string LogCategoryWorker = "Worker";
+        public const string LogCategoryWorkerConfig = "Host.LanguageWorkerConfig";
 
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
         public const string SkipHostInitializationKey = "MS_SkipHostInitialization";
@@ -144,7 +145,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
         public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";
-        public const string HostingConfigInternalAuthApisAllowList = "InternalAuthApisAllowList";
         public const string HostingConfigDotNetInProcDisabled = "DotNetInProcDisabled";
 
         public const string SiteAzureFunctionsUriFormat = "https://{0}.azurewebsites.net/azurefunctions";
@@ -262,6 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string HttpProxyingEnabled = "HttpProxyingEnabled";
         public static readonly string HttpProxyCorrelationHeader = "x-ms-invocation-id";
         public static readonly string HttpProxyTask = "HttpProxyTask";
+        public static readonly string HttpProxyScriptInvocationContext = "HttpProxyScriptInvocationContext";
 
         public static readonly string OperationNameKey = "OperationName";
 

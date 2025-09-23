@@ -1,12 +1,11 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public static class RpcWorkerConstants
     {
-        public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
-        // semicolon seperated string - list of runtimes to start in placeholder mode
+        // Semicolon separated string - list of runtimes to start in placeholder mode
         public const string FunctionWorkerPlaceholderModeListSettingName = "FUNCTIONS_WORKER_RUNTIME_PLACEHOLDER_MODE_LIST";
         public const string FunctionWorkerRuntimeVersionSettingName = "FUNCTIONS_WORKER_RUNTIME_VERSION";
         public const string FunctionsWorkerProcessCountSettingName = "FUNCTIONS_WORKER_PROCESS_COUNT";

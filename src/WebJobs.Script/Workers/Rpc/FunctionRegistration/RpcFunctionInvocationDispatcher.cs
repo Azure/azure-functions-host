@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
             _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
-            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _hostingConfigOptions = hostingConfigOptions;
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal async void ShutdownWebhostLanguageWorkerChannels()
         {
-            _logger.LogDebug("{workerRuntimeConstant}={value}. Will shutdown all the worker channels that started in placeholder mode", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime);
+            _logger.LogDebug("{workerRuntimeConstant}={value}. Will shutdown all the worker channels that started in placeholder mode", EnvironmentSettingNames.FunctionWorkerRuntime, _workerRuntime);
             await _webHostLanguageWorkerChannelManager?.ShutdownChannelsAsync();
         }
 
@@ -676,7 +676,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             Dispose(true);
         }
 
-        public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId)
+        public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception = null)
         {
             // Dispose and restart errored channel with the particular invocation id
             var channels = await GetInitializedWorkerChannelsAsync();
@@ -685,10 +685,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (channel.IsExecutingInvocation(invocationId))
                 {
                     _logger.LogDebug($"Restarting channel with workerId: '{channel.Id}' that is executing invocation: '{invocationId}' and timed out.");
-                    await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
+                    await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id, exception);
                     return true;
                 }
             }
+
+            _logger.LogDebug("The channel that is executing invocation {invocationId} no longer exists.", invocationId);
+
             return false;
         }
 

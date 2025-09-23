@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
                 {
                     if (c.Resource is AuthorizationFilterContext filterContext)
                     {
-                        if (!CheckPlatformInternal(filterContext.HttpContext, allowAppServiceInternal: false))
+                        if (!EnforceAdminIsolation(filterContext.HttpContext, allowAppServiceInternal: true))
                         {
                             return false;
                         }
@@ -41,34 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
                 p.AddRequirements(new AuthLevelRequirement(AuthorizationLevel.System));
             });
 
-            options.AddPolicy(PolicyNames.AdminAuthLevelOrInternal, p =>
-            {
-                p.AddScriptAuthenticationSchemes();
-                p.RequireAssertion(async c =>
-                {
-                    if (c.Resource is AuthorizationFilterContext filterContext)
-                    {
-                        if (!CheckPlatformInternal(filterContext.HttpContext, allowAppServiceInternal: true))
-                        {
-                            return false;
-                        }
-
-                        if (filterContext.HttpContext.Request.IsAppServiceInternalRequest() &&
-                            filterContext.HttpContext.Request.IsInternalAuthAllowed())
-                        {
-                            return true;
-                        }
-
-                        var authorizationService = filterContext.HttpContext.RequestServices.GetRequiredService<IAuthorizationService>();
-                        AuthorizationResult result = await authorizationService.AuthorizeAsync(c.User, PolicyNames.AdminAuthLevel);
-
-                        return result.Succeeded;
-                    }
-
-                    return false;
-                });
-            });
-
             options.AddPolicy(PolicyNames.SystemKeyAuthLevel, p =>
             {
                 p.AddScriptAuthenticationSchemes();
@@ -76,12 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
                 {
                     if (c.Resource is AuthorizationFilterContext filterContext)
                     {
-                        if (filterContext.HttpContext.Request.IsAppServiceInternalRequest() &&
-                            filterContext.HttpContext.Request.IsInternalAuthAllowed())
-                        {
-                            return true;
-                        }
-
                         string keyName = null;
                         object keyNameObject = filterContext.RouteData.Values["extensionName"];
                         if (keyNameObject != null)
@@ -114,9 +80,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
             builder.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
         }
 
-        internal static bool CheckPlatformInternal(HttpContext httpContext, bool allowAppServiceInternal)
+        /// <summary>
+        /// When AdminIsolation is enabled, performs platform internal request verification on the specified HTTP context.
+        /// </summary>
+        /// <param name="httpContext">The <see cref="HttpContext"/> to check.</param>
+        /// <param name="allowAppServiceInternal">True if App Service internal requests should also be allowed; otherwise, false.</param>
+        /// <returns>True if the request passes isolation checks, false otherwise.</returns>
+        internal static bool EnforceAdminIsolation(HttpContext httpContext, bool allowAppServiceInternal)
         {
-            // when AdminIsolation is enabled, verify the request is platform internal
             var environment = httpContext.RequestServices.GetRequiredService<IEnvironment>();
             if (environment.IsAdminIsolationEnabled() &&
                 !(httpContext.Request.IsPlatformInternalRequest(environment) || (allowAppServiceInternal && httpContext.Request.IsAppServiceInternalRequest())))

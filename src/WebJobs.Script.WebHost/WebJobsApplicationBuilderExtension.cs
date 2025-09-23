@@ -3,10 +3,13 @@
 
 using System;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -41,6 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<SystemTraceMiddleware>();
             builder.UseMiddleware<HandleCancellationMiddleware>();
             builder.UseMiddleware<HostnameFixupMiddleware>();
+
+            // Health is registered early in the pipeline to ensure it can avoid failures from the rest of the pipeline.
+            builder.UseHealthChecks();
+
             if (environment.IsAnyLinuxConsumption() || environment.IsAnyKubernetesEnvironment())
             {
                 builder.UseMiddleware<EnvironmentReadyCheckMiddleware>();
@@ -115,6 +122,45 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseHttpBindingRouting(applicationLifetime, routes);
 
             return builder;
+        }
+
+        private static void UseHealthChecks(this IApplicationBuilder app)
+        {
+            // To start we are putting health under 'admin' to:
+            // 1. Avoid conflicts with function routes.
+            // 2. Allow for the same auth model as other admin APIs.
+            // 3. Ensure this is always available to platform callers.
+            // 4. Bypass easy-auth auth.
+            const string healthPrefix = "/admin/health";
+            static bool Predicate(HttpContext context)
+            {
+                return context.Request.Path.StartsWithSegments(healthPrefix);
+            }
+
+            app.MapWhen(Predicate, app =>
+            {
+                app.UseMiddleware<HealthCheckAuthMiddleware>();
+
+                // This supports the ?wait={seconds} query string.
+                app.UseMiddleware<HealthCheckWaitMiddleware>();
+
+                app.UseHealthChecks(healthPrefix, new HealthCheckOptions
+                {
+                    ResponseWriter = HealthCheckResponseWriter.WriteResponseAsync,
+                });
+
+                app.UseHealthChecks($"{healthPrefix}/live", new HealthCheckOptions
+                {
+                    Predicate = r => r.Tags.Contains("az.functions.liveness"),
+                    ResponseWriter = HealthCheckResponseWriter.WriteResponseAsync,
+                });
+
+                app.UseHealthChecks($"{healthPrefix}/ready", new HealthCheckOptions
+                {
+                    Predicate = r => r.Tags.Contains("az.functions.readiness"),
+                    ResponseWriter = HealthCheckResponseWriter.WriteResponseAsync,
+                });
+            });
         }
     }
 }

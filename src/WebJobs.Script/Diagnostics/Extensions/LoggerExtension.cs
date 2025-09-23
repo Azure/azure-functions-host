@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -206,15 +206,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, Exception> _publishingMetrics =
             LoggerMessage.Define<string>(LogLevel.Debug, new EventId(338, nameof(PublishingMetrics)), "{metrics}");
 
-        private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundleFuture =
-           LoggerMessage.Define<string, int, int>(LogLevel.Warning,
+        private static readonly Action<ILogger, string, Exception> _outdatedExtensionBundle =
+           LoggerMessage.Define<string>(LogLevel.Warning,
            new EventId(342, nameof(OutdatedExtensionBundle)),
-           "Your current bundle version {currentVersion} will reach end of support on Aug 4, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/FunctionsBundlesUpgrade");
+           "Your app is using a deprecated version - {currentVersion} of extension bundles. Upgrade to a supported version: https://aka.ms/FunctionsBundlesUpgrade");
 
-        private static readonly Action<ILogger, string, int, int, Exception> _outdatedExtensionBundlePast =
-           LoggerMessage.Define<string, int, int>(LogLevel.Warning,
-           new EventId(342, nameof(OutdatedExtensionBundle)),
-           "Your current bundle version {currentVersion} has reached end of support on Aug 4, 2026. Upgrade to [{suggestedMinVersion}.*, {suggestedMaxVersion}.0.0). For more information, see https://aka.ms/FunctionsBundlesUpgrade");
+        private static readonly Action<ILogger, string, Exception> _defaultWorkersDirectoryPath =
+           LoggerMessage.Define<string>(LogLevel.Debug,
+           new EventId(343, nameof(DefaultWorkersDirectoryPath)),
+           "Workers Directory set to: {workersDirPath}");
 
         public static void PublishingMetrics(this ILogger logger, string metrics)
         {
@@ -418,19 +418,14 @@ Lock file hash: {currentLockFileHash}";
             _incorrectAzureFunctionsFolderPath(logger, path, EnvironmentSettingNames.FunctionWorkerRuntime, null);
         }
 
-        public static void OutdatedExtensionBundle(this ILogger logger, string currentVersion, int suggestedMinVersion, int suggestedMaxVersion)
+        public static void DefaultWorkersDirectoryPath(this ILogger logger, string workersDirPath)
         {
-            var currentTime = DateTime.UtcNow;
-            var deprecationDate = new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc);
+            _defaultWorkersDirectoryPath(logger, workersDirPath, null);
+        }
 
-            if (currentTime >= deprecationDate)
-            {
-                _outdatedExtensionBundlePast(logger, currentVersion, suggestedMinVersion, suggestedMaxVersion, null);
-            }
-            else
-            {
-                _outdatedExtensionBundleFuture(logger, currentVersion, suggestedMinVersion, suggestedMaxVersion, null);
-            }
+        public static void OutdatedExtensionBundle(this ILogger logger, string currentVersion)
+        {
+            _outdatedExtensionBundle(logger, currentVersion, null);
         }
     }
 }

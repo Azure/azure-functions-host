@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
             if (!string.IsNullOrEmpty(_functionsWorkerRuntime))
             {
-                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, _functionsWorkerRuntime);
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, _workerProcessCount.ToString());
             }
             if (!string.IsNullOrEmpty(_functionsWorkerRuntimeVersion))
@@ -323,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             }
 
-            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, string.Empty);
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, string.Empty);
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, string.Empty);
             return _azurite.DisposeAsync();

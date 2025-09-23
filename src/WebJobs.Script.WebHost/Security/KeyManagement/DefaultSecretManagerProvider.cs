@@ -123,6 +123,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                                                                     _environment,
                                                                     _azureBlobStorageProvider);
                 }
+                else if (repositoryType == typeof(ContainerAppsSecretsRepository))
+                {
+                    repository = new ContainerAppsSecretsRepository(_loggerFactory.CreateLogger<ContainerAppsSecretsRepository>());
+                }
             }
 
             if (repository == null)
@@ -164,6 +168,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             else if (secretStorageType != null && secretStorageType.Equals("kubernetes", StringComparison.OrdinalIgnoreCase))
             {
                 repositoryType = typeof(KubernetesSecretsRepository);
+                return true;
+            }
+            else if (secretStorageType != null && secretStorageType.Equals("containerapps", StringComparison.OrdinalIgnoreCase))
+            {
+                repositoryType = typeof(ContainerAppsSecretsRepository);
                 return true;
             }
             else if (secretStorageSas != null)

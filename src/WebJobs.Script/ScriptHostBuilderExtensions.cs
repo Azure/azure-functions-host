@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Abstractions;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
@@ -33,6 +34,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -78,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script
                                                  IMetricsLogger metricsLogger,
                                                  Action<IWebJobsBuilder> configureWebJobs = null)
         {
-            loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
+            loggerFactory ??= NullLoggerFactory.Instance;
 
             builder.SetAzureFunctionsConfigurationRoot();
             // Host configuration
@@ -101,7 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (!context.Properties.ContainsKey(ScriptConstants.SkipHostJsonConfigurationKey))
                 {
-                    configBuilder.Add(new HostJsonFileConfigurationSource(applicationOptions, SystemEnvironment.Instance, loggerFactory, metricsLogger));
+                    HostJsonFileConfigurationOptions hostJsonConfigOptions = new(SystemEnvironment.Instance, applicationOptions);
+                    configBuilder.Add(new HostJsonFileConfigurationSource(hostJsonConfigOptions, loggerFactory, metricsLogger));
                 }
                 // Adding hosting config into job host configuration
                 configBuilder.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
@@ -126,18 +129,24 @@ namespace Microsoft.Azure.WebJobs.Script
             builder.ConfigureAppConfiguration((context, configBuilder) =>
             {
                 // Pre-build configuration here to load bundles and to store for later validation.
-                var config = configBuilder.Build();
-                var extensionBundleOptions = GetExtensionBundleOptions(config);
-                FunctionsHostingConfigOptions configOption = new FunctionsHostingConfigOptions();
-                var optionsSetup = new FunctionsHostingConfigOptionsSetup(config);
+                IConfigurationRoot config = configBuilder.Build();
+                ExtensionBundleOptions extensionBundleOptions = GetExtensionBundleOptions(config);
+                FunctionsHostingConfigOptions configOption = new();
+                FunctionsHostingConfigOptionsSetup optionsSetup = new(config);
                 optionsSetup.Configure(configOption);
 
                 var extensionRequirementOptions = applicationOptions.RootServiceProvider.GetService<IOptions<ExtensionRequirementOptions>>();
 
-                var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption);
+                ExtensionBundleManager bundleManager = new(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
 
-                var locator = new ScriptStartupTypeLocator(applicationOptions.ScriptPath, loggerFactory.CreateLogger<ScriptStartupTypeLocator>(), bundleManager, metadataServiceManager, metricsLogger, extensionRequirementOptions);
+                ScriptStartupTypeLocator locator = new(
+                    applicationOptions.ScriptPath,
+                    loggerFactory.CreateLogger<ScriptStartupTypeLocator>(),
+                    bundleManager,
+                    metadataServiceManager,
+                    metricsLogger,
+                    extensionRequirementOptions);
 
                 // The locator (and thus the bundle manager) need to be created now in order to configure app configuration.
                 // Store them so they do not need to be re-created later when configuring services.
@@ -218,6 +227,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             builder.ConfigureWebJobs((context, webJobsBuilder) =>
             {
+                webJobsBuilder.Services.AddSingleton<IActivitySourceAbstraction>(provider =>
+                  new ActivitySourceWrapper(OpenTelemetryConstants.HostActivitySourceName, OpenTelemetryConstants.HostActivitySourceVersion));
+
                 // Built in binding registrations
                 webJobsBuilder.AddExecutionContextBinding(o =>
                 {
@@ -346,6 +358,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 else
                 {
+                    services.ConfigureOptions<WorkerConfigurationResolverOptionsSetup>();
                     services.ConfigureOptions<LanguageWorkerOptionsSetup>();
                     AddCommonServices(services);
                 }
@@ -520,7 +533,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static void RegisterFileProvisioningService(IHostBuilder builder)
         {
-            if (string.Equals(Environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell"))
+            if (string.Equals(Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime), "powershell"))
             {
                 builder.ConfigureServices(services =>
                 {

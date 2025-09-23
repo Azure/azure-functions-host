@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
@@ -29,7 +30,9 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
 using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
@@ -228,14 +231,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddHostingConfigOptions(configuration);
             services.ConfigureOptions<ExtensionRequirementOptionsSetup>();
 
-            // Refresh LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
+            // Refresh WorkerConfigurationResolverOptions and LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
+            services.ConfigureOptionsWithChangeTokenSource<WorkerConfigurationResolverOptions, WorkerConfigurationResolverOptionsSetup, HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, HostBuiltChangeTokenSource<LanguageWorkerOptions>>();
 
+            services.AddSingleton<IWorkerConfigurationResolver, DefaultWorkerConfigurationResolver>();
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
 
             // Add AzureBlobStorageProvider to WebHost (also needed for ScriptHost) and AzureTableStorageProvider
             services.AddAzureStorageProviders();
+
+            // Add health checks
+            services.AddHealthChecks().AddWebJobsScriptHealthChecks();
         }
 
         internal static void AddHostingConfigOptions(this IServiceCollection services, IConfiguration configuration)
