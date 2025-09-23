@@ -74,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
 
@@ -177,8 +178,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public IScriptEventManager EventManager { get; }
 
         internal IExtensionBundleManager ExtensionBundleManager { get; }
-
-        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
 
         public ILogger Logger { get; internal set; }
 
