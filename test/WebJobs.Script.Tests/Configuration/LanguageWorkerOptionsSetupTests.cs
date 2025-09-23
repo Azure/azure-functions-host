@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
@@ -31,15 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
-            if (!string.IsNullOrEmpty(workerRuntime))
-            {
-                testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
-            }
-            else
-            {
-                // The dotnet-isolated worker only runs in placeholder mode. Setting the placeholder environment to 1 for the test.
-                testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            }
+            var workerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            workerRuntimeResolver.Setup(r => r.GetWorkerRuntime(null)).Returns(workerRuntime);
 
             testProfileManager.Setup(pm => pm.LoadWorkerDescriptionFromProfiles(It.IsAny<RpcWorkerDescription>(), out It.Ref<RpcWorkerDescription>.IsAny))
                 .Callback((RpcWorkerDescription defaultDescription, out RpcWorkerDescription outDescription) =>
@@ -60,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, optionsMonitor);
 
-            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver);
+            var setup = new LanguageWorkerOptionsSetup(configuration, loggerFactory, testEnvironment, testMetricLogger, testProfileManager.Object, testScriptHostManager.Object, resolver, workerRuntimeResolver.Object);
             var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
