@@ -164,11 +164,11 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         {
             string bundleMetatdataFile = Path.Combine(_options.DownloadPath, version, ScriptConstants.ExtensionBundleMetadataFile);
             string bundlePath = Path.Combine(_options.DownloadPath, version);
-            if (FileUtility.FileExists(bundleMetatdataFile))
-            {
-                _logger.LogInformation($"Skipping bundle download since it already exists at path {bundlePath}");
-                return bundlePath;
-            }
+            //if (FileUtility.FileExists(bundleMetatdataFile))
+            //{
+            //    _logger.LogInformation($"Skipping bundle download since it already exists at path {bundlePath}");
+            //    return bundlePath;
+            //}
 
             string zipDirectoryPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             FileUtility.EnsureDirectoryExists(zipDirectoryPath);
