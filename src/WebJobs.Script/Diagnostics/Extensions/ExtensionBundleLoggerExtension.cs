@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -60,11 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(107, nameof(ErrorDownloadingZip)),
             "Error downloading zip content {zip}. Status Code:{statusCode}. Reason:{reasonPhrase}");
 
-        private static readonly Action<ILogger, string, string, Exception> _downloadComplete =
-            LoggerMessage.Define<string, string>(
+        private static readonly Action<ILogger, string, string, string, Exception> _downloadComplete =
+            LoggerMessage.Define<string, string, string>(
             LogLevel.Information,
             new EventId(108, nameof(DownloadComplete)),
-            "Completed downloading extension bundle from {zip} to {filePath}");
+            "Completed downloading extension bundle from {zip} to {filePath} AzureRef {azureRef}");
 
         private static readonly Action<ILogger, string, string, Exception> _fetchingVersionInfo =
             LoggerMessage.Define<string, string>(
@@ -165,10 +165,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             _errorDownloadingExtensionBundleZipIO(logger, zipUri, filePath, diskUsage, azureRef, ex);
         }
 
-        public static void DownloadComplete(this ILogger logger, Uri zipUri, string filePath)
+        public static void DownloadComplete(this ILogger logger, Uri zipUri, string filePath, string azureRef)
         {
             string zip = zipUri.ToString();
-            _downloadComplete(logger, zip, filePath, null);
+            _downloadComplete(logger, zip, filePath, azureRef, null);
         }
 
         public static void FetchingVersionInfo(this ILogger logger, string id, Uri uri)

@@ -223,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 await response.Content.CopyToAsync(fileStream, cancellationToken);
                 await fileStream.FlushAsync(cancellationToken);
 
-                _logger.DownloadComplete(zipUri, filePath);
+                _logger.DownloadComplete(zipUri, filePath, azureRef);
 
                 return true;
             }
