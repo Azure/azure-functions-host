@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string InitializedFromPlaceholder = "INITIALIZED_FROM_PLACEHOLDER";
         public const string AzureWebsiteHomePath = "HOME";
         public const string AzureWebJobsScriptRoot = "AzureWebJobsScriptRoot";
+        public const string AzureWebJobsScriptRootForSpecializationSimulation = "SpecializationSimulationAzureWebJobsScriptRoot";
         public const string CompilationReleaseMode = "AzureWebJobsDotNetReleaseCompilation";
         public const string AzureWebJobsDisableHomepage = "AzureWebJobsDisableHomepage";
         public const string TypeScriptCompilerPath = "AzureWebJobs_TypeScriptPath";

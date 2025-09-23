@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -35,13 +35,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 if (Interlocked.Exchange(ref _specializationDone, 1) == 0)
                 {
-                    var scriptRoot = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot);
-                    if (string.IsNullOrWhiteSpace(scriptRoot))
+                    var scriptRootForSpecialization = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRootForSpecializationSimulation);
+                    if (string.IsNullOrWhiteSpace(scriptRootForSpecialization))
                     {
-                        const string error = $"Invalid script root. Provide the function function app payload location via {EnvironmentSettingNames.AzureWebJobsScriptRoot} environment variable";
+                        const string error = $"Invalid script root. Provide the function function app payload location via {EnvironmentSettingNames.AzureWebJobsScriptRootForSpecializationSimulation} environment variable";
                         throw new InvalidOperationException(error);
                     }
 
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot, scriptRootForSpecialization);
                     _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
                     _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
                     _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
