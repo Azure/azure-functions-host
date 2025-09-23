@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(LinuxEventGenerator.NormalizeString(details, addEnclosingQuotes: false), p.Value.ToString()),
                 p => Assert.Equal(LinuxEventGenerator.NormalizeString(summary, addEnclosingQuotes: false), p.Value.ToString()),
                 p => Assert.Equal(ScriptHost.Version, p.Value),
-                p => Assert.True(DateTime.TryParse(p.Value.ToString(), out DateTime dt)),
+                p => Assert.True(DateTime.TryParse(p.Value.ToString(), out _)),
                 p => Assert.Equal(exceptionType, p.Value.ToString()),
                 p => Assert.Equal(LinuxEventGenerator.NormalizeString(exceptionMessage, addEnclosingQuotes: false), p.Value.ToString()),
                 p => Assert.Equal(functionInvocationId, p.Value.ToString()),
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(maximum, long.Parse(p.Value.ToString())),
                 p => Assert.Equal(count, long.Parse(p.Value.ToString())),
                 p => Assert.Equal(ScriptHost.Version, p.Value),
-                p => Assert.True(DateTime.TryParse(p.Value.ToString(), out DateTime dt)),
+                p => Assert.True(DateTime.TryParse(p.Value.ToString(), out _)),
                 p => Assert.Equal(LinuxEventGenerator.NormalizeString(data), p.Value),
                 p => Assert.Equal(runtimeSiteName, p.Value),
                 p => Assert.Equal(slotName, p.Value));
