@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     var scriptRootForSpecialization = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRootForSpecializationSimulation);
                     if (string.IsNullOrWhiteSpace(scriptRootForSpecialization))
                     {
-                        const string error = $"Invalid script root. Provide the function function app payload location via {EnvironmentSettingNames.AzureWebJobsScriptRootForSpecializationSimulation} environment variable";
+                        const string error = $"Invalid script root. Provide the function app payload location via {EnvironmentSettingNames.AzureWebJobsScriptRootForSpecializationSimulation} environment variable";
                         throw new InvalidOperationException(error);
                     }
 
