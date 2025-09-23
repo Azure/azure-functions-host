@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
             _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
-            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _hostingConfigOptions = hostingConfigOptions;
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal async void ShutdownWebhostLanguageWorkerChannels()
         {
-            _logger.LogDebug("{workerRuntimeConstant}={value}. Will shutdown all the worker channels that started in placeholder mode", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime);
+            _logger.LogDebug("{workerRuntimeConstant}={value}. Will shutdown all the worker channels that started in placeholder mode", EnvironmentSettingNames.FunctionWorkerRuntime, _workerRuntime);
             await _webHostLanguageWorkerChannelManager?.ShutdownChannelsAsync();
         }
 

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal void ApplyWorkerConcurrencyLimits(ProcessStartInfo startInfo)
         {
-            string functionWorkerRuntime = startInfo.EnvironmentVariables.GetValueOrNull(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            string functionWorkerRuntime = startInfo.EnvironmentVariables.GetValueOrNull(EnvironmentSettingNames.FunctionWorkerRuntime);
             if (string.IsNullOrEmpty(startInfo.EnvironmentVariables.GetValueOrNull(RpcWorkerConstants.PythonThreadpoolThreadCount)) &&
                 string.Equals(functionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {

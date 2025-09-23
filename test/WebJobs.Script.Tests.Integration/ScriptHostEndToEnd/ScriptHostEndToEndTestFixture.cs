@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -20,7 +20,6 @@ using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -99,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await _azurite.InitializeAsync();
             if (!string.IsNullOrEmpty(_functionsWorkerLanguage))
             {
-                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerLanguage);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, _functionsWorkerLanguage);
             }
             if (_addWorkerConcurrency)
             {
@@ -286,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 JobHost.Dispose();
                 Host.Dispose();
             }
-            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, string.Empty);
 
             await _azurite.DisposeAsync();
         }

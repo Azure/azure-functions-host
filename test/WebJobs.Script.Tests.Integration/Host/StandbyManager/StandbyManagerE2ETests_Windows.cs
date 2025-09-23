@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 // Copyright (c) .NET Foundation. All rights reserved.
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteRunFromPackage, "1");
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
 
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
 
             var environment = new TestEnvironment(_settings);
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
 
             await InitializeTestHostAsync("Windows", environment);
 
@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet");
 
             Assert.False(environment.IsPlaceholderModeEnabled());
             Assert.True(environment.IsContainerReady());
@@ -219,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
 
             Assert.False(environment.IsPlaceholderModeEnabled());
@@ -333,7 +333,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task StandbyModeE2E_JavaTemplateSite()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
-            _settings.Add(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.JavaLanguageWorkerName);
+            _settings.Add(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.JavaLanguageWorkerName);
             await Verify_StandbyModeE2E_Java();
         }
 
@@ -364,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "java");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "java");
 
             Assert.False(environment.IsPlaceholderModeEnabled());
             Assert.True(environment.IsContainerReady());
@@ -405,7 +405,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot, "/");
 
             Assert.False(environment.IsPlaceholderModeEnabled());

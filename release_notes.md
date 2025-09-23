@@ -17,3 +17,5 @@
 - Update PowerShell worker to [4.0.4581](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.4581)
 - Bug fix that fails in-flight invocations when a worker channel shuts down (#11159)
 - Implementing a resolver that resolves worker configurations from specified probing paths (#11258)
+- Adds WebHost and ScriptHost health checks. (#11341, #11183, #11178, #11173, #11161)
+- Update Node.js Worker Version to [3.12.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.12.0)

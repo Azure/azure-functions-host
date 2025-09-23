@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -89,13 +89,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Specialize_ReloadsEnvironmentVariables()
         {
             TestMetricsLogger metricsLogger = new TestMetricsLogger();
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.JavaLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.JavaLanguageWorkerName);
             _mockLanguageWorkerChannelManager.Setup(m => m.SpecializeAsync()).Returns(async () =>
             {
                 _testEnvironment.SetEnvironmentVariable(_testSettingName, _testSettingValue);
                 await Task.Yield();
             });
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.JavaLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.JavaLanguageWorkerName);
 
             var hostNameProvider = new HostNameProvider(_testEnvironment);
             var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);

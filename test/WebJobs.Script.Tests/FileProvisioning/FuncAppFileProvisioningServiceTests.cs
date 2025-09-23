@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         {
             File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
             File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));
-            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             var funcAppFileProvisioningService = new FuncAppFileProvisioningService(_environment, _optionsMonitor, _funcAppFileProvisionerFactory);
             await funcAppFileProvisioningService.StartAsync(_cancellationTokenSource.Token);
             if (string.Equals(workerRuntime, "powershell", StringComparison.InvariantCultureIgnoreCase))

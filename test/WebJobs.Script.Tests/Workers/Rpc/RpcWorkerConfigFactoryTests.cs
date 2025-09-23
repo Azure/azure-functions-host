@@ -301,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
             if (!string.IsNullOrEmpty(workerRuntime))
             {
-                _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             }
             var config = new ConfigurationBuilder().Build();
             var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
@@ -315,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
             var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver, optionsMonitor);
 
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             Assert.Equal(expectedResult, WorkerConfigurationHelper.ShouldAddWorkerConfig(workerLanguage, placeholderMode, false, testLogger, workerRuntime));
         }
 

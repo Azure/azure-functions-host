@@ -303,7 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var configuration = configBuilder.Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
 
-            testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "java");
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "java");
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, "standard");
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, "workflowapp");
 

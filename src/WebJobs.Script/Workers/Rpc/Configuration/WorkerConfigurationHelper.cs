@@ -210,14 +210,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (!string.IsNullOrEmpty(workerRuntime))
             {
-                logger.LogDebug("EnvironmentVariable {functionWorkerRuntimeSettingName}: {workerRuntime}", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+                logger.LogDebug("EnvironmentVariable {functionWorkerRuntimeSettingName}: {workerRuntime}", EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
                 if (workerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
 
                 // After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
-                logger.LogInformation("{FUNCTIONS_WORKER_RUNTIME} set to {workerRuntime}. Skipping WorkerConfig for language: {workerDescriptionLanguage}", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime, workerDescriptionLanguage);
+                logger.LogInformation("{FUNCTIONS_WORKER_RUNTIME} set to {workerRuntime}. Skipping WorkerConfig for language: {workerDescriptionLanguage}", EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime, workerDescriptionLanguage);
                 return false;
             }
 

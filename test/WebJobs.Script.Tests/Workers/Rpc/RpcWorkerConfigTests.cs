@@ -382,7 +382,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             string sanitizeRuntimeVersionRegex,
             string expectedPath)
         {
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, environmentRuntimeVersion);
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
@@ -585,7 +585,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             string expectedExceptionMessage)
         {
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.4");
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
 
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
@@ -616,7 +616,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void LanguageWorker_FormatWorkerPath_DefualtRuntimeVersion_WorkerRuntimeMismatch()
         {
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "13");
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
 
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
