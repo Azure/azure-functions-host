@@ -15,19 +15,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const int MaxDetailsLength = 10000;
         private readonly Action<string> _writeEvent;
 
-        public KubernetesEventGenerator(IOptions<ConsoleLoggingOptions> consoleLoggingOptions, Action<string> writeEvent = null)
+        public KubernetesEventGenerator(IOptions<ConsoleLoggingOptions> consoleLoggingOptions)
         {
-            if (writeEvent != null)
+            var opts = consoleLoggingOptions.Value;
+
+            if (opts.LoggingDisabled)
             {
-                _writeEvent = writeEvent;
+                _writeEvent = _ => { };
             }
-            else if (consoleLoggingOptions.Value.LoggingDisabled)
+            else if (opts.CustomWriterEnabled)
             {
-                _writeEvent = (string s) => { };
+                _writeEvent = opts.Writer.WriteLine;
             }
             else
             {
-                _writeEvent = ConsoleWriter;
+                _writeEvent = Console.WriteLine;
             }
         }
 
@@ -113,11 +115,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             azMonEvent.Add("Properties", NormalizeString(properties.Replace("'", string.Empty)));
 
             _writeEvent(azMonEvent.ToString(Formatting.None));
-        }
-
-        private void ConsoleWriter(string evt)
-        {
-            Console.WriteLine(evt);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -19,6 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         public bool BufferEnabled { get; set; } = true;
 
         public int BufferSize { get; set; } = DefaultBufferSize;
+
+        // primarily for KubernetesEventGenerator unit tests to enable the custom Writer
+        public bool CustomWriterEnabled { get; set; } = false;
 
         /// <summary>
         /// Gets or sets the <see cref="TextWriter"/> to write logs to.
