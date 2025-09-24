@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             return metadataBuilder.ToImmutable();
 
-            bool TryParseRoute(string template, out string? error)
+            bool TryParseRoute(string template, out string error)
             {
                 try
                 {
