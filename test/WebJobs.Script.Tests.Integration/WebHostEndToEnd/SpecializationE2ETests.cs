@@ -1294,23 +1294,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return builder;
         }
 
-        private IWebHostBuilder InitializePythonPlaceholderBuilder(string scriptRootPath, params string[] functions)
-        {
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
-
-            var builder = CreateStandbyHostBuilder(functions);
-
-            builder.ConfigureAppConfiguration(config =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string>
-                {
-                    { _scriptRootConfigPath, scriptRootPath },
-                });
-            });
-
-            return builder;
-        }
-
         private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)
         {
             var builder = Program.CreateWebHostBuilder()
