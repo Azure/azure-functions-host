@@ -3,15 +3,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.WebHost.Security;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -19,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class SystemLogger : ILogger
     {
-        private const string RedactedMessage = "[Redacted]- Customers using AppInsights or OTel can view full details.";
         private readonly string _categoryName;
         private readonly string _functionName;
         private readonly string _hostInstanceId;
@@ -177,32 +173,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
 
-                formattedMessage = Sanitizer.Sanitize(formattedMessage);
-                var baseEx = exception.GetBaseException();
-                innerExceptionType = baseEx.GetType().ToString();
-
-                var originalMessage = baseEx.Message;
-                var formattedDetails = exception.ToFormattedString();
-
-                if (exception is FunctionInvocationException && baseEx is RpcException { RemoteMessage: { } remoteMsg })
-                {
-                    var replacement = GetRedactedExceptionMessage(remoteMsg);
-                    innerExceptionMessage = Sanitizer.Sanitize(originalMessage.Replace(remoteMsg, replacement));
-                    details = Sanitizer.Sanitize(formattedDetails.Replace(remoteMsg, replacement));
-                }
-                else
-                {
-                    innerExceptionMessage = Sanitizer.Sanitize(originalMessage);
-                    details = Sanitizer.Sanitize(formattedDetails);
-                }
+                (innerExceptionType, innerExceptionMessage, details, formattedMessage) = exception.GetSanitizedExceptionDetails(formattedMessage);
             }
 
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
-        }
-
-        private static string GetRedactedExceptionMessage(string msg)
-        {
-            return $"{RedactedMessage} (Hash: {EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes(msg))})";
         }
     }
 }

@@ -315,10 +315,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void Log_RpcException()
         {
-            var innerException = new RpcException("result", "message", "stack", "type");
+            string secretString = "{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }";
+            var innerException = new RpcException("result", secretString, "stack", "type");
             var functionInvocationException = new FunctionInvocationException("Invocation failed", Guid.Empty, "Functions.TestFunction", innerException);
             var formattedMessage = "Test log";
-            var hash = EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes("message"));
+            var hash = EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes(innerException.RemoteMessage));
             var innerExceptionType = innerException.GetType().ToString();
             var eventName = string.Empty;
             var functionInvocationId = string.Empty;
