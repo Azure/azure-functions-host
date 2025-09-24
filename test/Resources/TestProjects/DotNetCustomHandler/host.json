@@ -8,6 +8,6 @@
     "description": {
       "defaultExecutablePath": "DotNetCustomHandler.exe"
     },
-    "enableForwardingHttpRequest": true
+    "enableProxyingHttpRequest": true
   }
 }

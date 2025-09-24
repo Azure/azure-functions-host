@@ -802,11 +802,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(ScriptConstants.FlexConsumptionSku)]
-        [InlineData(ScriptConstants.DynamicSku)]
-        [InlineData(ScriptConstants.ElasticPremiumSku)]
-        [InlineData("")]
-        public async Task Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(string websiteSku)
+        [InlineData(ScriptConstants.FlexConsumptionSku, ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview, true)]
+        [InlineData(ScriptConstants.FlexConsumptionSku, $"Feature1,{ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview}", true)]
+        [InlineData(ScriptConstants.FlexConsumptionSku, "Feature1", false)]
+        [InlineData(ScriptConstants.FlexConsumptionSku, null, false)]
+        [InlineData(ScriptConstants.DynamicSku, null, false)]
+        [InlineData(ScriptConstants.DynamicSku, ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview, false)]
+        [InlineData(ScriptConstants.DynamicSku, $"Feature1,{ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview}", false)]
+        [InlineData(ScriptConstants.ElasticPremiumSku, null, false)]
+        [InlineData(ScriptConstants.ElasticPremiumSku, $"Feature1,{ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview}", true)]
+        [InlineData("", null, false)]
+        public async Task Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(string websiteSku, string featureFlags, bool isExpectedToResetWorkerRuntime)
         {
             var environmentVariables = new Dictionary<string, string>
             {
@@ -825,8 +831,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
             Assert.NotNull(placeholderChannel.WorkerProcess.Process.Id);
 
-            // Simulate specialization of custom handler payload with MCP CustomHandlerPreview enabled
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlags);
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
@@ -835,7 +840,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var log = _loggerProvider.GetLog();
 
-            if (string.Equals(websiteSku, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase))
+            if (isExpectedToResetWorkerRuntime)
             {
                 // Verify expected logs when running the custom handler executable.
                 Assert.Contains("MCP custom handler preview is enabled. Setting FUNCTIONS_WORKER_RUNTIME to 'custom'", log);

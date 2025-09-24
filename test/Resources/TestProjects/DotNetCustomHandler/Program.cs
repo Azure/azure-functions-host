@@ -1,19 +1,11 @@
-var builder = WebApplication.CreateBuilder(args);
+var app = WebApplication.CreateBuilder(args).Build();
 
-var app = builder.Build();
+var port = Environment.GetEnvironmentVariable("FUNCTIONS_CUSTOMHANDLER_PORT")
+           ?? throw new InvalidOperationException("FUNCTIONS_CUSTOMHANDLER_PORT environment variable is not set.");
 
-app.MapGet("/api/SimpleHttpTrigger", (HttpContext context) => "Hello from .NET custom handler");
+app.Urls.Add($"http://localhost:{port}");
 
-var customHandlerPort = Environment.GetEnvironmentVariable("FUNCTIONS_CUSTOMHANDLER_PORT");
-if (!string.IsNullOrEmpty(customHandlerPort))
-{
-    Console.WriteLine($"FUNCTIONS_CUSTOMHANDLER_PORT: {customHandlerPort}");
-    app.Urls.Add($"http://localhost:{customHandlerPort}");
-}
-else
-{
-    throw new InvalidOperationException("FUNCTIONS_CUSTOMHANDLER_PORT environment variable is not set.");
-}
+app.MapGet("/api/SimpleHttpTrigger", () => "Hello from .NET custom handler");
 
-Console.WriteLine($".NET server Listening...on FUNCTIONS_CUSTOMHANDLER_PORT: {customHandlerPort}");
-app.Run();
+Console.WriteLine($".NET server listening on FUNCTIONS_CUSTOMHANDLER_PORT: {port}");
+await app.RunAsync();
