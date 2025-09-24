@@ -20,12 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public int BufferSize { get; set; } = DefaultBufferSize;
 
-        // primarily for KubernetesEventGenerator unit tests to enable the custom Writer
-        public bool CustomWriterEnabled { get; set; } = false;
-
         /// <summary>
         /// Gets or sets the <see cref="TextWriter"/> to write logs to.
-        /// IMPORTANT: this is primarily for unit tests to redirect logs to a different writer.
         /// </summary>
         internal TextWriter Writer { get; set; } = Console.Out;
     }

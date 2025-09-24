@@ -129,7 +129,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             ConsoleLoggingOptions options = new()
             {
-                CustomWriterEnabled = true,
                 Writer = _writer
             };
 

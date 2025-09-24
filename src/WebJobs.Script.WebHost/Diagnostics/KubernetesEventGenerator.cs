@@ -17,13 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public KubernetesEventGenerator(IOptions<ConsoleLoggingOptions> consoleLoggingOptions)
         {
-            var opts = consoleLoggingOptions.Value;
-
-            _writeEvent = opts.LoggingDisabled
-                ? _ => { }
-                : opts.CustomWriterEnabled
-                    ? opts.Writer.WriteLine
-                    : Console.WriteLine;
+            _writeEvent = consoleLoggingOptions.Value.LoggingDisabled
+                ? _ => { } // no-op
+                : consoleLoggingOptions.Value.Writer.WriteLine;
         }
 
         public override void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp)
