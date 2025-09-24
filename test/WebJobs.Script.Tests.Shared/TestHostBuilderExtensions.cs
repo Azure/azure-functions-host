@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Tests;
@@ -61,6 +62,10 @@ namespace Microsoft.WebJobs.Script.Tests
                     o.ScriptPath = webHostOptions.ScriptPath;
                     o.LogPath = webHostOptions.LogPath;
                 });
+
+            // Sets up the HttpClient for ExtensionBundleManager.
+            services.AddHttpClient(nameof(ExtensionBundleManager));
+
             AddMockedSingleton<IDebugStateProvider>(services);
             AddMockedSingleton<IScriptHostManager>(services);
             AddMockedSingleton<IEnvironment>(services);
