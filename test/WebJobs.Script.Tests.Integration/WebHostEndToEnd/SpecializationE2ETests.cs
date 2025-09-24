@@ -821,7 +821,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Validate that the channel is set up with native worker
             var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
-            //var channel = await webChannelManager.GetChannels("python").FirstOrDefault().Value.Task;
             var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
             Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
             Assert.NotNull(placeholderChannel.WorkerProcess.Process.Id);
@@ -1275,9 +1274,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             if (environmentVariables is not null)
             {
-                foreach (var kvp in environmentVariables)
+                foreach (var entry in environmentVariables)
                 {
-                    _environment.SetEnvironmentVariable(kvp.Key, kvp.Value);
+                    _environment.SetEnvironmentVariable(entry.Key, entry.Value);
                 }
             }
 
