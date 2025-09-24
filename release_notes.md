@@ -20,3 +20,4 @@
 - Update Node.js Worker Version to [3.12.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.12.0)
 - Added support for MCP custom handler. (#11355)
 - Update Python Worker Version to [4.40.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.40.0)
+- Add exponential backoff retries for extension bundle download (#11315)
