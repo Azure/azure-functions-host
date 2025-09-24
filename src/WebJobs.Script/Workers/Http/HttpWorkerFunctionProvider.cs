@@ -93,9 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 try
                 {
                     // Template parser does not check for empty route.
-                    if (string.IsNullOrEmpty(route.Route))
+                    if (string.IsNullOrWhiteSpace(route.Route))
                     {
-                        throw new ArgumentException("Route cannot be null or empty.");
+                        throw new ArgumentException("Route cannot be null, empty or whitespace.");
                     }
 
                     _ = TemplateParser.Parse(route.Route);
