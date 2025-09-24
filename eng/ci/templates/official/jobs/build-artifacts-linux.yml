@@ -6,6 +6,7 @@ jobs:
     project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
     configuration: release
     runtime: linux-x64
+    intermediate_path: $(Agent.TempDirectory)/linux_host
     drop_path: $(Build.ArtifactStagingDirectory)
     linux_drop_path: $(drop_path)/linux
     build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true'
@@ -58,4 +59,15 @@ jobs:
       zipAfterPublish: false # we use our own zip logic
       modifyOutputPath: false
       projects: $(project)
-      arguments: '$(build_args) --no-build -o $(linux_drop_path)/host'
+      arguments: '$(build_args) --no-build -o $(intermediate_path)'
+
+  # Pipeline artifacts do not retain file metadata and lose file permission bits.
+  # As a workaround, we tar/gzip the files to retain the permission bits.
+  - task: ArchiveFiles@2
+    displayName: Archive Linux Artifacts
+    inputs:
+      rootFolderOrFile: $(intermediate_path)
+      includeRootFolder: false
+      archiveType: tar
+      tarCompression: gz
+      archiveFile: $(linux_drop_path)/host.linux-x64.tar.gz
