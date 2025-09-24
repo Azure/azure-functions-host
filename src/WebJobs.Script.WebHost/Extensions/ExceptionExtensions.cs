@@ -35,8 +35,8 @@ namespace System
         }
 
         /// <summary>
-        /// Returns sanitized exception details. The remote message segment is replaced with a redacted placeholder containing a stable hash so that
-        /// occurrences can still be correlated without exposing the original content.
+        /// For FunctionInvocationException with innermost exception as RpcException, the remote message segment is replaced with a redacted placeholder
+        /// containing a stable hash so that occurrences can still be correlated without exposing the original content.
         /// </summary>
         /// <param name="exception">
         /// The exception instance to inspect. Must not be null.
@@ -62,16 +62,24 @@ namespace System
             var originalMessage = baseException.Message;
             var formattedDetails = exception.ToFormattedString();
 
-            return exception is FunctionInvocationException
-                && baseException is RpcException { RemoteMessage: var remoteMsg } && remoteMsg is not null
-                ? (innerType,
-                    Sanitizer.Sanitize(originalMessage.Replace(remoteMsg, GetRedactedExceptionMessage(remoteMsg), StringComparison.Ordinal)),
-                    Sanitizer.Sanitize(formattedDetails.Replace(remoteMsg, GetRedactedExceptionMessage(remoteMsg), StringComparison.Ordinal)),
-                    formattedMessage)
-                : (innerType,
-                    Sanitizer.Sanitize(originalMessage),
-                    Sanitizer.Sanitize(formattedDetails),
-                    formattedMessage);
+            if (exception is FunctionInvocationException && baseException is RpcException { RemoteMessage: var remoteMsg } && remoteMsg is not null)
+            {
+                var redacted = GetRedactedExceptionMessage(remoteMsg);
+
+                var innerExceptionMessage = Sanitizer.Sanitize(
+                    originalMessage.Replace(remoteMsg, redacted, StringComparison.Ordinal));
+
+                var detailsSanitized = Sanitizer.Sanitize(
+                    formattedDetails.Replace(remoteMsg, redacted, StringComparison.Ordinal));
+
+                return (innerType, innerExceptionMessage, detailsSanitized, formattedMessage);
+            }
+
+            var defaultInnerExceptionMessage = Sanitizer.Sanitize(originalMessage);
+            var defaultDetails = Sanitizer.Sanitize(formattedDetails);
+
+            return (innerType, defaultInnerExceptionMessage, defaultDetails, formattedMessage);
+
         }
 
         private static string GetRedactedExceptionMessage(string msg)
