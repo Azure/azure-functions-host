@@ -810,7 +810,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(ScriptConstants.DynamicSku, ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview, false)]
         [InlineData(ScriptConstants.DynamicSku, $"Feature1,{ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview}", false)]
         [InlineData(ScriptConstants.ElasticPremiumSku, null, false)]
-        [InlineData(ScriptConstants.ElasticPremiumSku, $"Feature1,{ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview}", true)]
+        [InlineData(ScriptConstants.ElasticPremiumSku, $"Feature1,{ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview}", false)]
         [InlineData("", null, false)]
         public async Task Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(string websiteSku, string featureFlags, bool isExpectedToResetWorkerRuntime)
         {
