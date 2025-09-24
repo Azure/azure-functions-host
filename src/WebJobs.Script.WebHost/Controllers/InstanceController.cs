@@ -56,11 +56,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else
             {
-                if (User != null &&
-                    !User.HasClaim(c => c.Type == SecurityConstants.AssignUnencryptedClaimType && c.Value == "true"))
+                if (!User.HasClaim(c => c.Type == SecurityConstants.AssignUnencryptedClaimType && c.Value == "true"))
                 {
                     _logger.LogWarning("Required claims missing for invoking unencrypted assignment");
-                    return StatusCode(StatusCodes.Status403Forbidden, new { status = "Required claims missing" });
+                    return StatusCode(StatusCodes.Status403Forbidden);
                 }
                 _logger.LogDebug("Starting container assignment.");
             }

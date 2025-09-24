@@ -1,12 +1,7 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
@@ -14,11 +9,19 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Moq.Protected;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
+using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -241,6 +244,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceController = new InstanceController(environment, instanceManager.Object, loggerFactory,
                 startupContextProvider);
+            DefaultHttpContext context = new() { User = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
+            {
+                new Claim(SecurityConstants.AssignUnencryptedClaimType, "true")
+            })) };
+            instanceController.ControllerContext = new() { HttpContext = context };
 
             var hostAssignmentContext = new HostAssignmentContext
             {
