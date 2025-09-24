@@ -37,5 +37,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             Assert.False(resp.TryGetAzureRef(out var result));
             Assert.Null(result);
         }
+
+        [Fact]
+        public void TryGetAzureRef_MultipleValues_PicksFirst()
+        {
+            var resp = new HttpResponseMessage(System.Net.HttpStatusCode.OK);
+            resp.Headers.Add(
+                ExtensionBundleHttpExtensions.AzureRefHeaderName,
+                new[] { "first-value", "second-value" });
+
+            Assert.True(resp.TryGetAzureRef(out var result));
+            Assert.Equal("first-value", result);
+        }
+
+        [Fact]
+        public void TryGetAzureRef_NullResponse_Throws()
+        {
+            HttpResponseMessage resp = null;
+            Assert.Throws<System.ArgumentNullException>(() => ExtensionBundleHttpExtensions.TryGetAzureRef(resp, out _));
+        }
     }
 }

@@ -576,6 +576,68 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             Assert.False(Directory.Exists(Path.Combine(options.DownloadPath, version)));
         }
 
+        [Fact]
+        public async Task TryDownloadZip_HttpFailure_LogsAzureRef_AndReturnsNull()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var environment = GetTestAppServiceEnvironment();
+
+            const string version = "2.0.1";
+            const string azureRef = "test-ref-http-123";
+
+            var capturingLogger = new CapturingLogger();
+            var capturingFactory = new CapturingLoggerFactory(capturingLogger);
+
+            var manager = GetExtensionBundleManager(options, environment, new Mock<ILoggerFactory>());
+            // Override with capturing factory
+            manager = new ExtensionBundleManager(options, environment, capturingFactory, new FunctionsHostingConfigOptions(), new Mock<IHttpClientFactory>().Object);
+
+            using var http = new HttpClient(new HttpFailureWithAzureRefHandler(version, azureRef));
+            var path = await manager.GetExtensionBundlePath(http);
+
+            Assert.Null(path);
+            Assert.Contains(capturingLogger.Entries, e => e.Level == LogLevel.Error && e.State.TryGetValue("azureRef", out var v) && string.Equals(v?.ToString(), azureRef, StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task TryDownloadZip_IOFailure_LogsAzureRef_AndReturnsNull()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var environment = GetTestAppServiceEnvironment();
+
+            const string version = "2.0.1";
+            const string azureRef = "test-ref-io-456";
+
+            var capturingLogger = new CapturingLogger();
+            var capturingFactory = new CapturingLoggerFactory(capturingLogger);
+
+            var manager = new ExtensionBundleManager(options, environment, capturingFactory, new FunctionsHostingConfigOptions(), new Mock<IHttpClientFactory>().Object);
+
+            using var http = new HttpClient(new IoFailureWithAzureRefHandler(version, azureRef));
+            var path = await manager.GetExtensionBundlePath(http);
+
+            Assert.Null(path);
+            Assert.Contains(capturingLogger.Entries, e => e.Level == LogLevel.Error && e.State.TryGetValue("azureRef", out var v) && string.Equals(v?.ToString(), azureRef, StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task TryDownloadZip_UnexpectedFailure_LogsUnexpected_AndReturnsNull()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            var environment = GetTestAppServiceEnvironment();
+
+            var capturingLogger = new CapturingLogger();
+            var capturingFactory = new CapturingLoggerFactory(capturingLogger);
+
+            var manager = new ExtensionBundleManager(options, environment, capturingFactory, new FunctionsHostingConfigOptions(), new Mock<IHttpClientFactory>().Object);
+
+            using var http = new HttpClient(new UnexpectedContentHandler("2.0.1"));
+            var path = await manager.GetExtensionBundlePath(http);
+
+            Assert.Null(path);
+            Assert.Contains(capturingLogger.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("Unexpected error downloading extension bundle Zip content", StringComparison.Ordinal));
+        }
+
         private ExtensionBundleManager GetExtensionBundleManager(ExtensionBundleOptions bundleOptions, TestEnvironment environment = null, Mock<ILoggerFactory> mockLoggerFactory = null)
         {
             environment = environment ?? new TestEnvironment();
@@ -656,6 +718,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         private Mock<ILogger> GetVerifiableMockLogger(string stringToVerify, LogLevel logLevel)
         {
             var mockLogger = new Mock<ILogger>();
+            mockLogger.Setup(l => l.IsEnabled(logLevel)).Returns(true);
             mockLogger
                 .Setup(x => x.Log(
                     logLevel,
@@ -779,6 +842,147 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 ms.Seek(0, SeekOrigin.Begin);
                 return new StreamContent(ms);
             }
+        }
+
+        // Insert new helper sealed classes immediately after the existing sealed class.
+        private sealed class HttpFailureWithAzureRefHandler(string version, string azureRef) : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                var path = request.RequestUri.AbsolutePath;
+
+                if (path.IndexOf("index.json", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("[ \"2.0.1\" ]")
+                    });
+                }
+
+                if (path.Contains($"{BundleId}.{version}", StringComparison.OrdinalIgnoreCase))
+                {
+                    var resp = new HttpResponseMessage(HttpStatusCode.InternalServerError);
+                    resp.Headers.Add(ExtensionBundleHttpExtensions.AzureRefHeaderName, azureRef);
+                    return Task.FromResult(resp);
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            }
+        }
+
+        private sealed class IoFailureWithAzureRefHandler(string version, string azureRef) : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                var path = request.RequestUri.AbsolutePath;
+
+                if (path.EndsWith("index.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("[ \"2.0.1\" ]")
+                    });
+                }
+
+                if (path.Contains($"{BundleId}.{version}", StringComparison.OrdinalIgnoreCase))
+                {
+                    var resp = new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new ThrowingContent()
+                    };
+                    resp.Headers.Add(ExtensionBundleHttpExtensions.AzureRefHeaderName, azureRef);
+                    return Task.FromResult(resp);
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            }
+        }
+
+        private sealed class ThrowingContent : HttpContent
+        {
+            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
+                => throw new IOException("Simulated IO failure during content copy.");
+
+            protected override bool TryComputeLength(out long length)
+            {
+                length = 0;
+                return false;
+            }
+        }
+
+        private sealed class ThrowingContentUnexpected : HttpContent
+        {
+            protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
+                => throw new InvalidOperationException("Simulated unexpected failure during content copy.");
+
+            protected override bool TryComputeLength(out long length)
+            {
+                length = 0;
+                return false;
+            }
+        }
+
+        private sealed class UnexpectedContentHandler(string version) : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                var path = request.RequestUri.AbsolutePath;
+                if (path.IndexOf("index.json", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent("[ \"" + version + "\" ]")
+                    });
+                }
+
+                if (path.Contains($"{BundleId}.{version}", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new ThrowingContentUnexpected()
+                    });
+                }
+
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            }
+        }
+
+        private sealed class CapturingLogger : ILogger
+        {
+            public List<(LogLevel Level, Dictionary<string, object> State, Exception Exception, string Message)> Entries { get; } = new();
+
+            public IDisposable BeginScope<TState>(TState state) => NullDisposable.Instance;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            {
+                var dict = new Dictionary<string, object>(StringComparer.Ordinal);
+                if (state is IEnumerable<KeyValuePair<string, object>> kvps)
+                {
+                    foreach (var kv in kvps)
+                    {
+                        dict[kv.Key] = kv.Value;
+                    }
+                }
+                Entries.Add((logLevel, dict, exception, formatter?.Invoke(state, exception) ?? state?.ToString()));
+            }
+
+            private sealed class NullDisposable : IDisposable
+            {
+                public static readonly NullDisposable Instance = new NullDisposable();
+
+                public void Dispose() { }
+            }
+        }
+
+        private sealed class CapturingLoggerFactory(CapturingLogger logger) : ILoggerFactory
+        {
+            public void AddProvider(ILoggerProvider provider) { }
+
+            public ILogger CreateLogger(string categoryName) => logger;
+
+            public void Dispose() { }
         }
     }
 }

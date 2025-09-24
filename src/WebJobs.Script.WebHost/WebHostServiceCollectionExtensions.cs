@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -144,7 +144,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddHttpClient();
-
             services.AddBundlesHttpClient();
 
             services.AddSingleton<StartupContextProvider>();
