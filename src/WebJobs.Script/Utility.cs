@@ -642,7 +642,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (string.IsNullOrEmpty(workerRuntime))
                 {
-                    throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {RpcWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
+                    throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {EnvironmentSettingNames.FunctionWorkerRuntime} AppSetting");
                 }
                 else
                 {

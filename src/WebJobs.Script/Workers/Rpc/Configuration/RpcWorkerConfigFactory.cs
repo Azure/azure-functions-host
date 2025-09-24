@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
         }
 
@@ -321,14 +321,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (!string.IsNullOrEmpty(_workerRuntime))
             {
-                _logger.LogDebug("EnvironmentVariable {functionWorkerRuntimeSettingName}: {workerRuntime}", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime);
+                _logger.LogDebug("EnvironmentVariable {functionWorkerRuntimeSettingName}: {workerRuntime}", EnvironmentSettingNames.FunctionWorkerRuntime, _workerRuntime);
                 if (_workerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
 
                 // After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
-                _logger.LogInformation("{FUNCTIONS_WORKER_RUNTIME} set to {workerRuntime}. Skipping WorkerConfig for language: {workerDescriptionLanguage}", RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _workerRuntime, workerDescriptionLanguage);
+                _logger.LogInformation("{FUNCTIONS_WORKER_RUNTIME} set to {workerRuntime}. Skipping WorkerConfig for language: {workerDescriptionLanguage}", EnvironmentSettingNames.FunctionWorkerRuntime, _workerRuntime, workerDescriptionLanguage);
                 return false;
             }
 

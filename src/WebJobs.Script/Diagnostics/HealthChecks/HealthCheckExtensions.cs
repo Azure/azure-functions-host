@@ -25,7 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             ArgumentNullException.ThrowIfNull(builder);
             builder
                 .AddWebHostHealthCheck()
-                .AddScriptHostHealthCheck();
+                .AddScriptHostHealthCheck()
+                .AddTelemetryPublisher(HealthCheckTags.Liveness, HealthCheckTags.Readiness);
             return builder;
         }
 

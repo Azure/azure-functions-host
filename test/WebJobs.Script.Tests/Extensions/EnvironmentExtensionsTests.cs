@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -477,7 +477,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         public void GetLanguageWorkerListToStartInPlaceholder_ReturnsExpectedResult(string workerRuntime, string workerRuntimeList, string expected)
         {
             var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName, workerRuntimeList);
             var resultSet = environment.GetLanguageWorkerListToStartInPlaceholder();
             if (string.IsNullOrEmpty(expected))

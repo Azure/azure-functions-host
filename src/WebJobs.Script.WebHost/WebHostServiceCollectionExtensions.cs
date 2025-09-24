@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
@@ -143,6 +144,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddHttpClient();
+            services.AddBundlesHttpClient();
+
             services.AddSingleton<StartupContextProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();

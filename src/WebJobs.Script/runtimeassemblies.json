@@ -672,6 +672,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Extensions.Diagnostics",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Extensions.Diagnostics.HealthChecks",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -714,6 +718,10 @@
     {
       "name": "Microsoft.Extensions.Http",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Http.Polly",
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Extensions.Identity.Core",
@@ -1629,6 +1637,14 @@
     },
     {
       "name": "protobuf-net",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Polly",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Polly.Extensions.Http",
       "resolutionPolicy": "private"
     },
     {

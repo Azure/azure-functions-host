@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -28,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     /// <summary>
     /// Controller responsible for administrative and management operations on functions
-    /// example retrieving a list of functions, invoking a function, creating a function, etc
+    /// example retrieving a list of functions, invoking a function, creating a function, etc.
     /// </summary>
     public class FunctionsController : Controller
     {
