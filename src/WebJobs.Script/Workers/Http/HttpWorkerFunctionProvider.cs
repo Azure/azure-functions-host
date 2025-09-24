@@ -27,10 +27,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public HttpWorkerFunctionProvider(IOptions<HttpWorkerOptions> httpWorkerOptions, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IHostFunctionMetadataProvider hostFunctionMetadataProvider, ILogger<HttpWorkerFunctionProvider> logger)
         {
-            _httpWorkerOptions = httpWorkerOptions?.Value ?? throw new ArgumentNullException(nameof(httpWorkerOptions));
-            _hostFunctionMetadataProvider = hostFunctionMetadataProvider ?? throw new ArgumentNullException(nameof(hostFunctionMetadataProvider));
-            _languageWorkerOptions = languageWorkerOptions ?? throw new ArgumentNullException(nameof(languageWorkerOptions));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(httpWorkerOptions?.Value);
+            ArgumentNullException.ThrowIfNull(languageWorkerOptions);
+            ArgumentNullException.ThrowIfNull(hostFunctionMetadataProvider);
+            _httpWorkerOptions = httpWorkerOptions?.Value;
+            _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
+            _languageWorkerOptions = languageWorkerOptions;
+            _logger = logger;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors => _errors;
@@ -94,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                         throw new ArgumentException("Route cannot be null or empty.");
                     }
 
-                    _ = TemplateParser.Parse(route?.Route);
+                    _ = TemplateParser.Parse(route.Route);
                     metadatabuilder.Add(CreateHttpFunctionMetadata(route, functionName));
                     _logger.LogInformation("Created function '{functionName}' for route '{routeTemplate}' (authLevel={auth}).",
                         functionName, route.Route, route.AuthorizationLevel);

@@ -7,7 +7,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
-    public class CustomHandlerHttpOptions
+    public sealed class CustomHandlerHttpOptions
     {
         /// <summary>
         /// Gets or sets the default authorization level for custom handler HTTP worker routes.

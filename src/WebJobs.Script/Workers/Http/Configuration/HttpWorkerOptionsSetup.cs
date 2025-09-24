@@ -31,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _configuration = configuration;
             _metricsLogger = metricsLogger;
             _logger = loggerFactory.CreateLogger<HttpWorkerOptionsSetup>();
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            ArgumentNullException.ThrowIfNull(environment);
+            _environment = environment;
         }
 
         public void Configure(HttpWorkerOptions options)
