@@ -18,25 +18,19 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         internal static bool TryGetAzureRef(this HttpResponseMessage response, out string azureRef)
         {
-            azureRef = null;
+            ArgumentNullException.ThrowIfNull(response);
+
             try
             {
-                if (response is null)
-                {
-                    return false;
-                }
-
-                if (response.Headers != null &&
+                if (response.Headers is not null &&
                     response.Headers.TryGetValues(AzureRefHeaderName, out var values))
                 {
                     azureRef = values.FirstOrDefault();
                     return !string.IsNullOrEmpty(azureRef);
                 }
             }
-            catch
+            catch (Exception)
             {
-                azureRef = null;
-                return false;
             }
 
             azureRef = null;
