@@ -673,7 +673,7 @@
     },
     {
       "name": "Microsoft.Extensions.Diagnostics",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Extensions.Diagnostics.HealthChecks",
