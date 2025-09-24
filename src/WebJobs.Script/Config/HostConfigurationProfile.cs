@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 KeyValuePair.Create(ConfigurationPath.Combine(
                     ConfigurationSectionNames.Http, "routePrefix"), string.Empty),
                 KeyValuePair.Create(ConfigurationPath.Combine(
-                    ConfigurationSectionNames.CustomHandler, "http", "Routes", "0", "route"), "{*route}"),
+                    ConfigurationSectionNames.CustomHandler, "http", "routes", "0", "route"), "{*route}"),
             ]);
 
         private HostConfigurationProfile(

@@ -27,11 +27,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public HttpWorkerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, IEnvironment environment)
         {
+            ArgumentNullException.ThrowIfNull(environment);
             _scriptJobHostOptions = scriptJobHostOptions.Value;
             _configuration = configuration;
             _metricsLogger = metricsLogger;
             _logger = loggerFactory.CreateLogger<HttpWorkerOptionsSetup>();
-            ArgumentNullException.ThrowIfNull(environment);
             _environment = environment;
         }
 

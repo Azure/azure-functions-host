@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         public bool CustomRoutesEnabled { get; set; }
 
         /// <summary>
-        /// Gets or sets route mapping for a HTTP worker.
+        /// Gets or sets http configuration.
         /// </summary>
         public CustomHandlerHttpOptions Http { get; set; }
 

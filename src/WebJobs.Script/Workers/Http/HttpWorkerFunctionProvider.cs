@@ -82,38 +82,65 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private ImmutableArray<FunctionMetadata> CreateFunctionsFromRoutes(IEnumerable<HttpWorkerRoute> routes)
         {
-            var metadatabuilder = ImmutableArray.CreateBuilder<FunctionMetadata>();
+            var metadataBuilder = ImmutableArray.CreateBuilder<FunctionMetadata>();
             var errorsBuilder = ImmutableDictionary.CreateBuilder<string, ImmutableArray<string>>();
-            int i = 0;
+
+            int index = 0;
 
             foreach (var route in routes)
             {
-                var functionName = $"http-handler{++i}";
+                var functionName = $"http-handler{++index}";
+                var routeTemplate = route.Route;
 
-                try
+                if (string.IsNullOrWhiteSpace(routeTemplate))
                 {
-                    // Template parser does not check for empty route.
-                    if (string.IsNullOrWhiteSpace(route.Route))
-                    {
-                        throw new ArgumentException("Route cannot be null, empty or whitespace.");
-                    }
-
-                    _ = TemplateParser.Parse(route.Route);
-                    metadatabuilder.Add(CreateHttpFunctionMetadata(route, functionName));
-                    _logger.LogInformation("Created function '{functionName}' for route '{routeTemplate}' (authLevel={auth}).",
-                        functionName, route.Route, route.AuthorizationLevel);
-                }
-                catch (ArgumentException ex)
-                {
-                    errorsBuilder.Add(functionName, [ex.Message]);
-                    _logger.LogError("Unable to create function '{functionName}' for route '{route}' due to invalid route: {reason}",
-                        functionName, route?.Route ?? "<null>", ex.Message);
+                    AddError("Route cannot be null, empty or whitespace.");
                     continue;
+                }
+
+                if (!TryParseRoute(routeTemplate, out var parseError))
+                {
+                    AddError(parseError!);
+                    continue;
+                }
+
+                metadataBuilder.Add(CreateHttpFunctionMetadata(route, functionName));
+
+                _logger.LogInformation(
+                    "Created function {FunctionName} for route {RouteTemplate} (authLevel={AuthLevel}).",
+                    functionName,
+                    routeTemplate,
+                    route.AuthorizationLevel);
+
+                void AddError(string reason)
+                {
+                    errorsBuilder.Add(functionName, [reason]);
+                    _logger.LogError(
+                        "Unable to create function {FunctionName} for route {Route} due to invalid route: {Reason}",
+                        functionName,
+                        routeTemplate ?? "<null>",
+                        reason);
                 }
             }
 
             _errors = errorsBuilder.ToImmutable();
-            return metadatabuilder.ToImmutable();
+
+            return metadataBuilder.ToImmutable();
+
+            bool TryParseRoute(string template, out string? error)
+            {
+                try
+                {
+                    _ = TemplateParser.Parse(template);
+                    error = null;
+                    return true;
+                }
+                catch (ArgumentException ex)
+                {
+                    error = ex.Message;
+                    return false;
+                }
+            }
         }
 
         private static FunctionMetadata CreateHttpFunctionMetadata(HttpWorkerRoute route, string functionName)
