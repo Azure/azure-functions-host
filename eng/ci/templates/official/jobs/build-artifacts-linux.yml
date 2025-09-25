@@ -6,6 +6,7 @@ jobs:
     project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
     configuration: release
     runtime: linux-x64
+    intermediate_path: $(Agent.TempDirectory)/linux_host
     drop_path: $(Build.ArtifactStagingDirectory)
     linux_drop_path: $(drop_path)/linux
     build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true --no-restore'
@@ -48,7 +49,7 @@ jobs:
       zipAfterPublish: false # we use our own zip logic
       modifyOutputPath: false
       projects: $(project)
-      arguments: '$(build_args) -f net6.0 -p:MinorVersionPrefix=6 -o $(linux_drop_path)/host_net6.0'
+      arguments: '$(build_args) -f net6.0 -p:MinorVersionPrefix=6 -o $(intermediate_path)/net6.0'
 
   - task: DotNetCoreCLI@2
     displayName: Publish (net8.0)
@@ -59,4 +60,24 @@ jobs:
       zipAfterPublish: false # we use our own zip logic
       modifyOutputPath: false
       projects: $(project)
-      arguments: '$(build_args) -f net8.0 -p:MinorVersionPrefix=8 -o $(linux_drop_path)/host_net8.0'
+      arguments: '$(build_args) -f net8.0 -p:MinorVersionPrefix=8 -o $(intermediate_path)/net8.0'
+
+  # Pipeline artifacts do not retain file metadata and lose file permission bits.
+  # As a workaround, we tar/gzip the files to retain the permission bits.
+  - task: ArchiveFiles@2
+    displayName: Archive Linux Artifacts
+    inputs:
+      rootFolderOrFile: $(intermediate_path)/net6.0
+      includeRootFolder: false
+      archiveType: tar
+      tarCompression: gz
+      archiveFile: $(linux_drop_path)/host.linux-x64.net6.tar.gz
+
+  - task: ArchiveFiles@2
+    displayName: Archive Linux Artifacts
+    inputs:
+      rootFolderOrFile: $(intermediate_path)/net8.0
+      includeRootFolder: false
+      archiveType: tar
+      tarCompression: gz
+      archiveFile: $(linux_drop_path)/host.linux-x64.net8.tar.gz
