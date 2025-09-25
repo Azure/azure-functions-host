@@ -78,7 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         public static bool IsAppServiceInternalRequest(this HttpRequest request, IEnvironment environment = null)
         {
             environment = GetEnvironment(request, environment);
-            if (!environment.IsAppService())
+
+            if (!FrontEndRoutingEnsured(environment))
             {
                 return false;
             }
@@ -92,7 +93,8 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         public static bool IsPlatformInternalRequest(this HttpRequest request, IEnvironment environment = null)
         {
             environment = GetEnvironment(request, environment);
-            if (!environment.IsAppService())
+
+            if (!FrontEndRoutingEnsured(environment))
             {
                 return false;
             }
@@ -100,6 +102,13 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             var header = request.Headers[ScriptConstants.AntaresPlatformInternal];
             string value = header.FirstOrDefault();
             return string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0;
+        }
+
+        private static bool FrontEndRoutingEnsured(this IEnvironment environment)
+        {
+            // Verify we're running on a sku that ensures all requests go through the
+            // Antares Front End.
+            return environment.IsAppService() || environment.IsFlexConsumptionSku();
         }
 
         private static IEnvironment GetEnvironment(HttpRequest request, IEnvironment environment = null)

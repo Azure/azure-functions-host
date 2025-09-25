@@ -211,24 +211,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         [Theory]
         [Trait(TestTraits.Group, TestTraits.AdminIsolationTests)]
-        [InlineData("admin/host/status", true, true, false, false, true, HttpStatusCode.Forbidden)]
-        [InlineData("admin/host/status", true, true, true, false, false, HttpStatusCode.Unauthorized)]
-        [InlineData("admin/host/status", true, true, true, true, true, HttpStatusCode.OK)]
-        [InlineData("admin/host/status", true, false, false, false, true, HttpStatusCode.OK)]
-        [InlineData("admin/host/status", true, false, false, true, true, HttpStatusCode.OK)]
-        [InlineData("admin/host/status", true, true, true, false, true, HttpStatusCode.OK)]
-        [InlineData("admin/host/status", false, true, false, true, true, HttpStatusCode.Forbidden)]
-        [InlineData("admin/host/extensionBundle/v1/templates", true, true, false, true, false, HttpStatusCode.Unauthorized)]
-        [InlineData("admin/host/extensionBundle/v1/templates", true, true, true, false, true, HttpStatusCode.NotFound)]
-        [InlineData("admin/host/extensionBundle/v1/templates", true, false, false, false, true, HttpStatusCode.NotFound)]
-        [InlineData("admin/host/extensionBundle/v1/templates", true, true, false, true, true, HttpStatusCode.NotFound)]
-        [InlineData("admin/vfs/host.json", true, true, true, false, true, HttpStatusCode.OK)]
-        [InlineData("admin/vfs/host.json", true, true, false, false, true, HttpStatusCode.Unauthorized)]
-        [InlineData("admin/vfs/host.json", true, true, true, false, false, HttpStatusCode.Unauthorized)]
-        public async Task AdminIsolation_ReturnsExpectedStatus(string uri, bool isAppService, bool enableIsolation, bool isPlatformInternal, bool bypassFE, bool addAuthKey, HttpStatusCode expectedStatus)
+        [InlineData("admin/host/status", ScriptConstants.DynamicSku, "1", true, false, false, true, HttpStatusCode.Forbidden)]
+        [InlineData("admin/host/status", ScriptConstants.DynamicSku, "1", true, true, false, false, HttpStatusCode.Unauthorized)]
+        [InlineData("admin/host/status", ScriptConstants.DynamicSku, "1", true, true, true, true, HttpStatusCode.OK)]
+        [InlineData("admin/host/status", ScriptConstants.DynamicSku, "1", false, false, false, true, HttpStatusCode.OK)]
+        [InlineData("admin/host/status", ScriptConstants.DynamicSku, "1", false, false, true, true, HttpStatusCode.OK)]
+        [InlineData("admin/host/status", ScriptConstants.DynamicSku, "1", true, true, false, true, HttpStatusCode.OK)]
+        [InlineData("admin/host/status", ScriptConstants.DynamicSku, null, true, false, true, true, HttpStatusCode.Forbidden)]
+        [InlineData("admin/host/extensionBundle/v1/templates", ScriptConstants.DynamicSku, "1", true, false, true, false, HttpStatusCode.Unauthorized)]
+        [InlineData("admin/host/extensionBundle/v1/templates", ScriptConstants.DynamicSku, "1", true, true, false, true, HttpStatusCode.NotFound)]
+        [InlineData("admin/host/extensionBundle/v1/templates", ScriptConstants.DynamicSku, "1", false, false, false, true, HttpStatusCode.NotFound)]
+        [InlineData("admin/host/extensionBundle/v1/templates", ScriptConstants.DynamicSku, "1", true, false, true, true, HttpStatusCode.NotFound)]
+        [InlineData("admin/vfs/host.json", ScriptConstants.DynamicSku, "1", true, true, false, true, HttpStatusCode.OK)]
+        [InlineData("admin/vfs/host.json", ScriptConstants.DynamicSku, "1", true, false, false, true, HttpStatusCode.Unauthorized)]
+        [InlineData("admin/vfs/host.json", ScriptConstants.DynamicSku, "1", true, true, false, false, HttpStatusCode.Unauthorized)]
+        [InlineData("admin/host/status", ScriptConstants.FlexConsumptionSku, null, true, true, false, true, HttpStatusCode.OK)]
+        [InlineData("admin/host/status", ScriptConstants.FlexConsumptionSku, null, true, false, true, true, HttpStatusCode.OK)]
+        [InlineData("admin/host/status", ScriptConstants.FlexConsumptionSku, null, true, false, false, true, HttpStatusCode.Forbidden)]
+        [InlineData("admin/host/status", ScriptConstants.FlexConsumptionSku, null, true, false, true, false, HttpStatusCode.Unauthorized)]
+        public async Task AdminIsolation_ReturnsExpectedStatus(string uri, string sku, string websiteInstanceId, bool enableIsolation, bool isPlatformInternal, bool bypassFE, bool addAuthKey, HttpStatusCode expectedStatus)
         {
             var environment = this._fixture.Host.WebHostServices.GetService<IEnvironment>();
-            string websiteInstanceId = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId);
+            string originalWebsiteInstanceId = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId);
+
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId);
 
             try
             {
@@ -236,16 +243,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 {
                     environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, "1");
                     Assert.True(environment.IsAdminIsolationEnabled());
-                }
-
-                if (!isAppService)
-                {
-                    environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, null);
-                    Assert.False(environment.IsAppService());
-                }
-                else
-                {
-                    Assert.True(environment.IsAppService());
                 }
 
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -274,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             finally
             {
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, null);
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId);
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, originalWebsiteInstanceId);
             }
         }
 

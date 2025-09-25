@@ -20,77 +20,73 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 {
     public class HttpRequestExtensionsTest
     {
-        [Fact]
+        [Theory]
         [Trait(TestTraits.Group, TestTraits.AdminIsolationTests)]
-        public void IsPlatformInternalRequest_ReturnsExpectedResult()
+        [InlineData(ScriptConstants.DynamicSku, null, "True", false)]
+        [InlineData(ScriptConstants.DynamicSku, "1", "True", true)]
+        [InlineData(ScriptConstants.DynamicSku, "1", "true", true)]
+        [InlineData(ScriptConstants.DynamicSku, "1", "False", false)]
+        [InlineData(ScriptConstants.DynamicSku, "1", null, false)]
+        [InlineData(ScriptConstants.FlexConsumptionSku, null, "True", true)]
+        [InlineData(ScriptConstants.FlexConsumptionSku, null, null, false)]
+        public void IsPlatformInternalRequest_ReturnsExpectedResult(string sku, string websiteInstanceId, string platformInternalHeaderValue, bool expected)
         {
-            // not running under Azure
-            TestEnvironment testEnvironment = new TestEnvironment();
-            var request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar");
-            Assert.False(request.IsPlatformInternalRequest(testEnvironment));
-
-            // running under Azure
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" }
+                { EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId },
+                { EnvironmentSettingNames.AzureWebsiteSku, sku }
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
                 var environment = SystemEnvironment.Instance;
-                Assert.True(environment.IsAppService());
 
                 var headers = new HeaderDictionary();
-                request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
-                Assert.False(request.IsPlatformInternalRequest(testEnvironment));
+                headers.Add(ScriptConstants.AntaresPlatformInternal, platformInternalHeaderValue);
 
-                headers.Clear();
-                headers.Add(ScriptConstants.AntaresPlatformInternal, "False");
-                request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
-                Assert.False(request.IsPlatformInternalRequest(environment));
+                // verify using explicit environment
+                var request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
+                Assert.Equal(expected, request.IsPlatformInternalRequest(environment));
 
-                headers.Clear();
-                headers.Add(ScriptConstants.AntaresPlatformInternal, "True");
-                request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
-                Assert.True(request.IsPlatformInternalRequest(environment));
-
-                headers.Clear();
-                headers.Add(ScriptConstants.AntaresPlatformInternal, "true");
-                request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
-                Assert.True(request.IsPlatformInternalRequest(environment));
-
-                headers.Clear();
-                headers.Add(ScriptConstants.AntaresPlatformInternal, "True");
+                // verify using request services environment
                 request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
                 var servicesMock = new Mock<IServiceProvider>();
                 servicesMock.Setup(s => s.GetService(typeof(IEnvironment))).Returns(environment);
                 request.HttpContext.RequestServices = servicesMock.Object;
-                Assert.True(request.IsPlatformInternalRequest());
+                Assert.Equal(expected, request.IsPlatformInternalRequest());
             }
         }
 
-        [Fact]
-        public void IsAppServiceInternalRequest_ReturnsExpectedResult()
+        [Theory]
+        [InlineData(ScriptConstants.DynamicSku, true, true, false)]
+        [InlineData(ScriptConstants.DynamicSku, true, false, true)]
+        [InlineData(ScriptConstants.DynamicSku, false, true, false)]
+        [InlineData(ScriptConstants.DynamicSku, false, false, false)]
+        [InlineData(ScriptConstants.FlexConsumptionSku, false, true, false)]
+        [InlineData(ScriptConstants.FlexConsumptionSku, false, false, true)]
+        public void IsAppServiceInternalRequest_ReturnsExpectedResult(string sku, bool includeWebsiteInstanceId, bool includeLogIdHeader, bool expected)
         {
-            // not running under Azure
             var request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar");
-            Assert.False(request.IsAppServiceInternalRequest());
 
-            // running under Azure
-            var vars = new Dictionary<string, string>
+            var vars = new Dictionary<string, string>();
+            vars.Add(EnvironmentSettingNames.AzureWebsiteSku, sku);
+            if (includeWebsiteInstanceId)
             {
-                { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" }
-            };
+                // container running in App Service
+                vars.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, "123");
+            }
+
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
-                // with header
                 var headers = new HeaderDictionary();
-                headers.Add(ScriptConstants.AntaresLogIdHeaderName, "123");
+
+                if (includeLogIdHeader)
+                {
+                    // include the FE log id header
+                    headers.Add(ScriptConstants.AntaresLogIdHeaderName, "123");
+                }
 
                 request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
-                Assert.False(request.IsAppServiceInternalRequest());
-
-                request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar");
-                Assert.True(request.IsAppServiceInternalRequest());
+                Assert.Equal(expected, request.IsAppServiceInternalRequest());
             }
         }
 
