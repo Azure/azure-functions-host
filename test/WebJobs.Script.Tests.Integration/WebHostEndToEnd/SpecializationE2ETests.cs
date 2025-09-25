@@ -819,7 +819,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { EnvironmentSettingNames.AzureWebsiteSku, websiteSku }
             };
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetCustomHandlerPath, null, environmentVariables, "SimpleHttpTrigger");
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetCustomHandlerPath, _loggerProvider, environmentVariables, "SimpleHttpTrigger");
 
             using var testServer = new TestServer(builder);
             var client = testServer.CreateClient();
@@ -1433,7 +1433,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, TestLoggerProvider testLoggerProvider, params string[] functions)
         {
-            return InitializeDotNetIsolatedPlaceholderBuilder(scriptRootPath, null, functions);
+            return InitializeDotNetIsolatedPlaceholderBuilder(scriptRootPath, testLoggerProvider, null, functions);
         }
 
         private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, TestLoggerProvider testLoggerProvider, Dictionary<string, string> environmentVariables, params string[] functions)
