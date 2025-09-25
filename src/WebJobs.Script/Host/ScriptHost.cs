@@ -787,7 +787,8 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             if (!cancellationToken.IsCancellationRequested)
             {
-                bool throwOnWorkerRuntimeAndPayloadMetadataMismatch = _environment.IsLogicApp() && _environment.IsLogicAppCodefulModeEnabled() ? false : true;
+                bool throwOnWorkerRuntimeAndPayloadMetadataMismatch = !(_environment.IsLogicApp() && _environment.IsLogicAppCodefulModeEnabled());
+
                 // this dotnet isolated specific logic is temporary to ensure in-proc payload compatibility with "dotnet-isolated" as the FUNCTIONS_WORKER_RUNTIME value.
                 if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
