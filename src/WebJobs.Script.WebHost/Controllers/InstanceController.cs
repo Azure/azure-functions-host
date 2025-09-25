@@ -36,27 +36,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/instance/assign")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> Assign([FromBody] HostAssignmentRequest hostAssignmentContext)
+        public async Task<IActionResult> Assign([FromBody] HostAssignmentRequest hostAssignmentRequest)
         {
-            if (string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext) &&
-                hostAssignmentContext.AssignmentContext is null)
+            if (string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext) &&
+                hostAssignmentRequest.AssignmentContext is null)
             {
-                return BadRequest("At least one of 'assignmentContext' or 'encryptedContext' must be provided.");
+                return BadRequest($"At least one of {nameof(HostAssignmentRequest.AssignmentContext)} or {nameof(HostAssignmentRequest.EncryptedContext)} must be provided.");
             }
 
-            if (!string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext) &&
-                hostAssignmentContext.AssignmentContext is not null)
+            if (!string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext) &&
+                hostAssignmentRequest.AssignmentContext is not null)
             {
-                return BadRequest("Only one of 'assignmentContext' or 'encryptedContext' may be set.");
+                return BadRequest($"Only one of {nameof(HostAssignmentRequest.AssignmentContext)} or {nameof(HostAssignmentRequest.EncryptedContext)} may be set.");
             }
 
-            if (!string.IsNullOrEmpty(hostAssignmentContext.EncryptedContext))
+            if (!string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext))
             {
-                _logger.LogDebug("Starting container assignment. ContextLength is {ContextLength}", hostAssignmentContext.EncryptedContext.Length);
+                _logger.LogDebug("Starting container assignment. ContextLength is {ContextLength}", hostAssignmentRequest.EncryptedContext.Length);
             }
             else
             {
-                if (!User.HasClaim(c => c.Type == SecurityConstants.AssignUnencryptedClaimType && c.Value == "true"))
+                if (!User.HasClaim(SecurityConstants.AssignUnencryptedClaimType, "true"))
                 {
                     _logger.LogWarning("Required claims missing for invoking unencrypted assignment");
                     return Forbid();
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 _logger.LogDebug("Starting container assignment.");
             }
 
-            var assignmentContext = _startupContextProvider.SetContext(hostAssignmentContext);
+            var assignmentContext = _startupContextProvider.SetContext(hostAssignmentRequest);
 
             // before starting the assignment we want to perform as much
             // up front validation on the context as possible

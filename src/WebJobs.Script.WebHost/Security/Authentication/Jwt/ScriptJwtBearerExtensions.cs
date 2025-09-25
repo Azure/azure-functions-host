@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -71,6 +71,7 @@ namespace Microsoft.Extensions.DependencyInjection
                     {
                         claims.Add(new Claim(SecurityConstants.InvokeClaimType, "true"));
                     }
+
                     if (string.Equals(c.SecurityToken.Issuer, ScriptConstants.LegionCoreUri, StringComparison.OrdinalIgnoreCase))
                     {
                         claims.Add(new Claim(SecurityConstants.AssignUnencryptedClaimType, "true"));
@@ -153,7 +154,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 result.ValidIssuers =
                 [
                     AppServiceCoreUri,
-                    LegionCoreUri, // ATOL: Specialization is invoked from Legion.
+                    LegionCoreUri,
                     string.Format(ScmSiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName)),
                     string.Format(SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName))
                 ];

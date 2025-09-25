@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
         public const string InvokeClaimType = "http://schemas.microsoft.com/2017/07/functions/claims/invoke";
 
         /// <summary>
-        /// Claim indicating whether a principal is authorized to invoke assign with unencrypted payload.
+        /// Claim indicating whether a principal is authorized to invoke assign with an unencrypted payload.
         /// </summary>
         public const string AssignUnencryptedClaimType = "http://schemas.microsoft.com/2017/07/functions/claims/assign-unencrypted";
     }

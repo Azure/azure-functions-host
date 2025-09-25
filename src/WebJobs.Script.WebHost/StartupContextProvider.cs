@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -132,11 +132,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         /// <summary>
-        /// Decrypt and deserialize the specified context, and apply values from it to the
-        /// startup cache context.
+        /// Applies the values from the specified assignment request to the startup cache context,
+        /// performing any required decryption.
         /// </summary>
         /// <param name="hostAssignmentRequest">The Host assignment request.</param>
-        /// <returns>The decrypted assignment context.</returns>
+        /// <returns>The assignment context applied.</returns>
         public virtual HostAssignmentContext SetContext(HostAssignmentRequest hostAssignmentRequest)
         {
             var hostAssignmentContext = hostAssignmentRequest.AssignmentContext;

@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        public async Task StandbyModeE2E_LinuxContainer(bool useEncyptedPayload)
+        public async Task StandbyModeE2E_LinuxContainer(bool useEncryptedPayload)
         {
             byte[] bytes = TestHelpers.GenerateKeyBytes();
             var encryptionKey = Convert.ToBase64String(bytes);
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await VerifyWarmupSucceeds(restart: true);
 
             // now specialize the site
-            await Assign(encryptionKey, useEncyptedPayload);
+            await Assign(encryptionKey, useEncryptedPayload);
 
             // immediately call a function - expect the call to block until
             // the host is fully specialized
