@@ -426,6 +426,15 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets if codeful mode is enabled for Logic App app kind.
+        /// </summary>
+        public static bool IsLogicAppCodefulModeEnabled(this IEnvironment environment)
+        {
+            bool.TryParse(environment.GetEnvironmentVariable(LogicAppCodefulModeEnabled), out bool logicAppCodefulModeEnabled);
+            return logicAppCodefulModeEnabled;
+        }
+
+        /// <summary>
         /// Gets if runtime environment needs multi language.
         /// </summary>
         public static bool IsMultiLanguageRuntimeEnvironment(this IEnvironment environment)
