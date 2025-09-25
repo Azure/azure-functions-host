@@ -3,6 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [4.40.1](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.40.1)
 - Rev `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` to `1.0.13` (#11269)
 - Refactor telemetry & exporter setup: deprecations, noise reduction, and API updates (#11260)
 - Update Python Worker Version to [4.39.2](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.39.2)
@@ -10,7 +11,8 @@
 - Update `Microsoft.Azure.WebJobs` reference to `3.0.42` (#11309)
 - Adding Activity wrapper to create a function-level request telemetry when none exists (#11311)
 - Introduce 'configurationProfile' functionality (#11324)
-- Remove request size limit for Host <--> Worker communication (#11295)
+- Remove request size limit for Host <-->
+- Update Python Worker Version to [4.40.1](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.40.1) Worker communication (#11295)
 - Setting current activity status for failed invocations (#11313)
 - Adding test coverage for `Utility.IsAzureMonitorLoggingEnabled` (#11322)
 - Reduce allocations in `Utility.IsAzureMonitorLoggingEnabled` (#11323)
