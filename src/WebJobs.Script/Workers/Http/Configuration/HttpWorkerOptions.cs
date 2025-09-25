@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -32,6 +32,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         public bool EnableProxyingHttpRequest { get; set; }
 
         public TimeSpan InitializationTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Gets or sets a value indicating whether custom routes are enabled.
+        /// </summary>
+        public bool CustomRoutesEnabled { get; set; }
+
+        /// <summary>
+        /// Gets or sets http configuration.
+        /// </summary>
+        public CustomHandlerHttpOptions Http { get; set; }
 
         public string Format()
         {

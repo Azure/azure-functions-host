@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -6,8 +6,8 @@ using System.IO;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
@@ -91,6 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Go async immediately to ensure that any async context from
             // the PlaceholderSpecializationMiddleware is properly suppressed.
             await Task.Yield();
+
+            ApplyMcpCustomHandlerSettings();
 
             _logger.LogInformation(Resources.HostSpecializationTrace);
 
@@ -181,6 +183,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _semaphore.Release();
                     }
                 }
+            }
+        }
+
+        private void ApplyMcpCustomHandlerSettings()
+        {
+            // For Flex Consumption SKU: if MCP custom handler preview is enabled, set worker runtime env to "custom".
+            if (_environment.IsFlexConsumptionSku() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview, _environment))
+            {
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "custom");
+                _logger.LogInformation("MCP custom handler preview is enabled. Setting {envVar} to 'custom'", EnvironmentSettingNames.FunctionWorkerRuntime);
             }
         }
 

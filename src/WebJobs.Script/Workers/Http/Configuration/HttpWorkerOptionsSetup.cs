@@ -1,10 +1,13 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
     internal class HttpWorkerOptionsSetup : IConfigureOptions<HttpWorkerOptions>
     {
+        private readonly IEnvironment _environment;
         private IConfiguration _configuration;
         private ILogger _logger;
         private IMetricsLogger _metricsLogger;
@@ -21,12 +25,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private string argumentsSectionName = $"{WorkerConstants.WorkerDescription}:arguments";
         private string workerArgumentsSectionName = $"{WorkerConstants.WorkerDescription}:workerArguments";
 
-        public HttpWorkerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        public HttpWorkerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, IEnvironment environment)
         {
+            ArgumentNullException.ThrowIfNull(environment);
             _scriptJobHostOptions = scriptJobHostOptions.Value;
             _configuration = configuration;
             _metricsLogger = metricsLogger;
             _logger = loggerFactory.CreateLogger<HttpWorkerOptionsSetup>();
+            _environment = environment;
         }
 
         public void Configure(HttpWorkerOptions options)
@@ -66,6 +72,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private void ConfigureWorkerDescription(HttpWorkerOptions options, IConfigurationSection workerSection)
         {
             workerSection.Bind(options);
+
+            var workerRuntime = _environment.GetFunctionsWorkerRuntime();
+            if (string.Equals(workerRuntime, RpcWorkerConstants.CustomHandlerLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                options.CustomRoutesEnabled = true;
+            }
+
+            if (options.Http?.Routes is not null && options.Http.Routes.Any())
+            {
+                foreach (var route in options.Http.Routes)
+                {
+                    route.AuthorizationLevel ??= options.Http.DefaultAuthorizationLevel;
+                }
+            }
+
             HttpWorkerDescription httpWorkerDescription = options.Description;
 
             if (httpWorkerDescription == null)

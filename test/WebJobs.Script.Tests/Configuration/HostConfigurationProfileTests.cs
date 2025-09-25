@@ -35,13 +35,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             Dictionary<string, string> configDict = new(profile.Configuration);
             profile.Name.Should().Be("mcp-custom-handler");
-            configDict.Should().HaveCount(3);
+            configDict.Should().HaveCount(4);
             configDict.Should().ContainKey("configurationProfile")
                 .WhoseValue.Should().Be("mcp-custom-handler");
             configDict.Should().ContainKey("customHandler:enableHttpProxyingRequest")
                 .WhoseValue.Should().Be("true");
             configDict.Should().ContainKey("extensions:http:routePrefix")
                 .WhoseValue.Should().Be(string.Empty);
+            configDict.Should().ContainKey("customHandler:http:routes:0:route")
+                .WhoseValue.Should().Be("{*route}");
         }
 
         [Fact]

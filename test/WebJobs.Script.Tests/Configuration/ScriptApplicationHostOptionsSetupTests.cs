@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -106,6 +106,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
+
+            ScriptApplicationHostOptions options = new ScriptApplicationHostOptions();
+            ConfiguredOptions(options, inStandbyMode: false, environment);
+
+            Assert.Equal(options.IsFileSystemReadOnly, true);
+        }
+
+        [Fact]
+        public void IsFileSystemReadOnly_AlwaysAppliesForContainerAppsEnvironment()
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment, "true");
 
             ScriptApplicationHostOptions options = new ScriptApplicationHostOptions();
             ConfiguredOptions(options, inStandbyMode: false, environment);
