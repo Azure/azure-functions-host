@@ -227,15 +227,15 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         // So a newly created function app from the portal would have no host.json. In that case we need to
                         // create a new function app with host.json that includes a matching extension bundle based on the app kind.
                         hostConfigObject = GetDefaultHostConfigObject();
-                        string bundleId = _configurationSource.Environment.IsLogicApp() ?
-                                            ScriptConstants.WorkFlowExtensionBundleId :
-                                            ScriptConstants.DefaultExtensionBundleId;
 
-                        string bundleVersion = _configurationSource.Environment.IsLogicApp() ?
-                                            ScriptConstants.LogicAppDefaultExtensionBundleVersion :
-                                            ScriptConstants.DefaultExtensionBundleVersion;
+                        // Add a default extension bundle for Logic Apps if one doesn't exist.
+                        if (_configurationSource.Environment.IsLogicApp())
+                        {
+                            hostConfigObject = TryAddBundleConfiguration(hostConfigObject,
+                                                                         ScriptConstants.WorkFlowExtensionBundleId,
+                                                                         ScriptConstants.LogicAppDefaultExtensionBundleVersion);
+                        }
 
-                        hostConfigObject = TryAddBundleConfiguration(hostConfigObject, bundleId, bundleVersion);
                         // Add bundle configuration if no file exists and file system is not read only
                         TryWriteHostJson(configFilePath, hostConfigObject);
                     }
