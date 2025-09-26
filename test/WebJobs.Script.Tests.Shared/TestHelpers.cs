@@ -654,6 +654,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Exception IScriptHostManager.LastError => throw new NotImplementedException();
 
+            IServiceProvider IScriptHostManager.Services => this;
+
             public void OnActiveHostChanged()
             {
                 ActiveHostChanged?.Invoke(this, new ActiveHostChangedEventArgs(null, null));

@@ -257,6 +257,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             public Exception LastError => throw new NotImplementedException();
 
+            public IServiceProvider Services => this;
+
             public object GetService(Type serviceType)
             {
                 if (serviceType == typeof(IMetricsLogger))

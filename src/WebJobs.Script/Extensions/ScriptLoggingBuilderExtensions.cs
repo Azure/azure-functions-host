@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
@@ -8,13 +9,24 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Extensions.Logging
 {
     public static class ScriptLoggingBuilderExtensions
     {
-        private static ConcurrentDictionary<string, bool> _filteredCategoryCache = new ConcurrentDictionary<string, bool>();
+        private static readonly ConcurrentDictionary<string, bool> _filteredCategoryCache = new();
+
+        public static ILoggingBuilder AddForwardingLogger(this ILoggingBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            builder.Services.AddKeyedSingleton<ILoggerFactory, ForwardingLoggerFactory>(
+                ForwardingLogger.ServiceKey);
+            builder.Services.AddKeyedSingleton(
+                typeof(ILogger<>), ForwardingLogger.ServiceKey, typeof(ForwardingLogger<>));
+            return builder;
+        }
 
         public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder)
         {
@@ -23,7 +35,8 @@ namespace Microsoft.Extensions.Logging
             return builder;
         }
 
-        public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
+        public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level)
+            where T : ILoggerProvider
         {
             builder.AddFilter<T>(null, LogLevel.None);
             builder.AddFilter<T>((c, l) => Filter(c, l, level));
@@ -37,7 +50,9 @@ namespace Microsoft.Extensions.Logging
 
         private static bool IsFiltered(string category)
         {
-            return _filteredCategoryCache.GetOrAdd(category, static cat => ScriptConstants.SystemLogCategoryPrefixes.Any(p => cat.StartsWith(p)));
+            return _filteredCategoryCache.GetOrAdd(
+                category,
+                static cat => ScriptConstants.SystemLogCategoryPrefixes.Any(p => cat.StartsWith(p)));
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)
@@ -45,12 +60,14 @@ namespace Microsoft.Extensions.Logging
             builder.AddConsoleIfEnabled(context.HostingEnvironment.IsDevelopment(), context.Configuration);
         }
 
-        private static void AddConsoleIfEnabled(this ILoggingBuilder builder, bool isDevelopment, IConfiguration configuration)
+        private static void AddConsoleIfEnabled(
+            this ILoggingBuilder builder, bool isDevelopment, IConfiguration configuration)
         {
             // console logging defaults to false, except for self host
             bool enableConsole = isDevelopment;
 
-            string consolePath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging", "Console", "IsEnabled");
+            string consolePath = ConfigurationPath.Combine(
+                ConfigurationSectionNames.JobHost, "Logging", "Console", "IsEnabled");
             IConfigurationSection configSection = configuration.GetSection(consolePath);
 
             if (configSection.Exists())
