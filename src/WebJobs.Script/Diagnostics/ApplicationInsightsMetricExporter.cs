@@ -58,6 +58,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             _listener.SetMeasurementEventCallback(CreateCallback<decimal>());
         }
 
+        /// <summary>
+        /// Initializes this module, starting the meter listener and exporting process.
+        /// </summary>
+        /// <param name="configuration">The telemetry configuration.</param>
         public void Initialize(TelemetryConfiguration configuration)
         {
             ArgumentNullException.ThrowIfNull(configuration);
@@ -66,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             _listener.Start();
         }
 
+        /// <inheritdoc />
         public async ValueTask DisposeAsync()
         {
             _listener.Dispose();
@@ -75,6 +80,14 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             await _client.FlushAsync(default).ConfigureAwait(false);
             _shutdown.Dispose();
         }
+
+        /// <summary>
+        /// Flushes the internal client.
+        /// </summary>
+        /// <remarks>
+        /// Primarily for testing purposes.
+        /// </remarks>
+        internal void Flush() => _client.Flush();
 
         private static MeasurementCallback<T> CreateCallback<T>()
             where T : struct, INumber<T>, IConvertible
