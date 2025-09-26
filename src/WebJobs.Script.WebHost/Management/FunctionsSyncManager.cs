@@ -310,8 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy())
-                .GroupBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(g => g.First());
+                .DistinctBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
 
             // trigger information used by the ScaleController
             var triggers = await GetFunctionTriggers(functionsMetadata, hostOptions);
