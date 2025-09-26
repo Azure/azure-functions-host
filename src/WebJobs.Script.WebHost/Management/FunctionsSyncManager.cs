@@ -309,8 +309,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             PrepareSyncTriggers();
 
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy())
+            var allFunctionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy()).ToList();
+            var functionsMetadata = allFunctionsMetadata.Where(m => !m.IsProxy())
                 .DistinctBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
+
+            // Log any duplicate function names and their script files
+            var duplicateGroups = allFunctionsMetadata
+                .GroupBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .ToList();
+
+            if (duplicateGroups.Count > 0)
+            {
+                var duplicateInfo = string.Join("; ",
+                    duplicateGroups.Select(g =>
+                        $"Name: '{g.Key}', Files: [{string.Join(", ", g.Select(f => f.ScriptFile ?? "<null>"))}]"));
+                _logger.LogDebug("Duplicate function metadata detected: {duplicateInfo}. Please review your functions again and remove duplicate names.", duplicateInfo);
+            }
 
             // trigger information used by the ScaleController
             var triggers = await GetFunctionTriggers(functionsMetadata, hostOptions);

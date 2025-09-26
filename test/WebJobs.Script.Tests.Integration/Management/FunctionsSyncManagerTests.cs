@@ -1071,7 +1071,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Name = "req",
                 Type = "httpTrigger",
                 Direction = BindingDirection.In,
-                // Set additional properties as needed, e.g.:
                 Raw = new JObject
                     {
                         { "authLevel", "anonymous" },
@@ -1093,7 +1092,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     }
             });
 
-            // Mock IFunctionMetadataManager to return both
             var functionMetadataManagerMock = new Mock<IFunctionMetadataManager>(MockBehavior.Strict);
             functionMetadataManagerMock
                 .Setup(m => m.GetFunctionMetadata(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
@@ -1120,11 +1118,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             optionsMonitorMock.Setup(m => m.Get(It.IsAny<string>())).Returns(scriptAppHostOptions);
 
             var hostingConfigOptions = new FunctionsHostingConfigOptions();
-            // Optionally set properties on hostingConfigOptions as needed for your test
             var hostingConfigOptionsMock = new Mock<IOptions<FunctionsHostingConfigOptions>>();
             hostingConfigOptionsMock.Setup(m => m.Value).Returns(hostingConfigOptions);
 
-            // Use all other dependencies from the test class, but replace IFunctionMetadataManager
             var syncManager = new FunctionsSyncManager(
                 Mock.Of<IHostIdProvider>(),
                 optionsMonitorMock.Object,
@@ -1139,7 +1135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 hostingConfigOptionsMock.Object,
                 Mock.Of<IScriptHostManager>());
 
-            // Use the public GetTriggersAsync method
+            // Use the public GetTriggersAsync method (main change is in a private method wrapped by this)
             var result = await syncManager.GetTriggersAsync();
 
             var content = JObject.Parse(result.Content);
