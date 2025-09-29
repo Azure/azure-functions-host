@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             instanceManager.Reset();
 
-            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
+            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider, new TestMetricsLogger());
 
             var hostAssignmentContext = new HostAssignmentContext
             {
@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerProvider = new TestLoggerProvider();
             loggerFactory.AddProvider(loggerProvider);
 
-            var instanceController = new InstanceController(null, null, loggerFactory, null);
+            var instanceController = new InstanceController(null, null, loggerFactory, null, new TestMetricsLogger());
         
             var actionResult = instanceController.GetHttpHealthStatus();
             var okResult = actionResult as OkResult;
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             instanceManager.Reset();
 
-            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
+            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider, new TestMetricsLogger());
 
             var hostAssignmentContext = new HostAssignmentContext
             {
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             instanceManager.Reset();
 
-            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
+            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider, new TestMetricsLogger());
 
             var hostAssignmentContext = new HostAssignmentContext
             {
@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             instanceManager.Reset();
 
             var instanceController = new InstanceController(environment, instanceManager.Object, loggerFactory,
-                startupContextProvider);
+                startupContextProvider, new TestMetricsLogger());
             DefaultHttpContext context = new() { User = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
             {
                 new Claim(SecurityConstants.AssignUnencryptedClaimType, "true")
@@ -289,15 +289,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerFactory = new LoggerFactory();
             var loggerProvider = new TestLoggerProvider();
             loggerFactory.AddProvider(loggerProvider);
-            var instanceController = new InstanceController(environment, null, loggerFactory, null);
+            var instanceController = new InstanceController(environment, null, loggerFactory, null, new TestMetricsLogger());
 
-            // Both encrypted and unencrypted context are null
-            var hostAssignmentRequest = new HostAssignmentRequest() { };
-            var result = await instanceController.Assign(hostAssignmentRequest);
+            // HostAssignmentRequest is null
+            var result = await instanceController.Assign(null);
             var badRequestResult = result as BadRequestObjectResult;
             Assert.NotNull(badRequestResult);
             Assert.Equal(400, badRequestResult.StatusCode);
-            Assert.Equal("At least one of 'assignmentContext' or 'encryptedContext' must be provided.", badRequestResult.Value);
+            Assert.Equal("hostAssignmentRequest cannot be null.", badRequestResult.Value);
+
+            // Both encrypted and unencrypted context are null
+            var hostAssignmentRequest = new HostAssignmentRequest() { };
+            result = await instanceController.Assign(hostAssignmentRequest);
+            badRequestResult = result as BadRequestObjectResult;
+            Assert.NotNull(badRequestResult);
+            Assert.Equal(400, badRequestResult.StatusCode);
+            Assert.Equal("At least one of AssignmentContext or EncryptedContext must be provided.", badRequestResult.Value);
 
             // Both encrypted and unencrypted context are set
             hostAssignmentRequest = new HostAssignmentRequest()
@@ -309,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             badRequestResult = result as BadRequestObjectResult;
             Assert.NotNull(badRequestResult);
             Assert.Equal(400, badRequestResult.StatusCode);
-            Assert.Equal("Only one of 'assignmentContext' or 'encryptedContext' may be set.", badRequestResult.Value);
+            Assert.Equal("Only one of AssignmentContext or EncryptedContext may be set.", badRequestResult.Value);
         }
     }
 }

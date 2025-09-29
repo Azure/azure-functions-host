@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
@@ -83,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string SecretManagerPurgeOldSecrets = "secretmanager.purgeoldsecrets.{0}";
 
         // Linux container specialization events
+        public const string LinuxContainerSpecializationAssign = "linux.container.specialization.assign";
         public const string LinuxContainerSpecializationBindMount = "linux.container.specialization.bind.mount";
         public const string LinuxContainerSpecializationMountCifs = "linux.container.specialization.mount.cifs";
         public const string LinuxContainerSpecializationZipExtract = "linux.container.specialization.zip.extract";
