@@ -196,6 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         /// <summary>
         /// Converts language workers related configuration sections to a dictionary.
+        /// Output format: { language: RpcWorkerDescription }.
         /// </summary>
         internal static ImmutableDictionary<string, RpcWorkerDescription> GetWorkerDescriptionOverrides(IConfiguration configuration)
         {

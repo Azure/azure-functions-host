@@ -699,7 +699,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         /// <summary>
         /// Returns the Antares platform release channel specified by the environment variable.
-        /// Value of this variable could be "LATEST", "STANDARD" or "EXTENDED".
+        /// Value of this setting could be "LATEST", "STANDARD" or "EXTENDED".
         /// If the environment variable is not set, the method returns the default value "LATEST".
         /// </summary>
         public static string GetPlatformReleaseChannel(this IEnvironment environment)
