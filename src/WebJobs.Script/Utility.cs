@@ -737,12 +737,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static ImmutableArray<string> GetAllowedLogCategoryPrefixes(IEnvironment environment, IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
-            if (hostingConfigOptions.CurrentValue is null)
-            {
-                return ScriptConstants.SystemLogCategoryPrefixes;
-            }
-
-            bool enableHostLogs = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs, environment) || !hostingConfigOptions.CurrentValue.RestrictHostLogs;
+            bool enableHostLogs = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableHostLogs, environment) || hostingConfigOptions.CurrentValue.HostLogsEnabled;
 
             return enableHostLogs ? ScriptConstants.SystemLogCategoryPrefixes : ScriptConstants.RestrictedSystemLogCategoryPrefixes;
         }
