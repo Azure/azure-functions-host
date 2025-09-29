@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                                     ILogger logger,
                                                     ISystemRuntimeInformation systemRuntimeInformation)
         {
-            using (metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDir)))
+            using (metricsLogger.LatencyEvent(string.Format(MetricEventNames.BuildWorkerConfig, workerDir)))
             {
                 try
                 {
@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal static WorkerProcessCountOptions GetWorkerProcessCount(JsonElement workerConfig, string functionsWorkerProcessCount, int coresCount)
         {
             WorkerProcessCountOptions workerProcessCount = null;
-            var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
+            var jsonSerializerOptions = JsonSerializerOptionsProvider.CaseInsensitiveJsonSerializerOptions;
 
             if (workerConfig.TryGetProperty(WorkerConstants.ProcessCount, out var processCountElement))
             {
@@ -285,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     return (null, default);
                 }
 
-                var jsonSerializerOptions = JsonSerializerOptionsProvider.WorkerConfigJsonSerializerOptions;
+                var jsonSerializerOptions = JsonSerializerOptionsProvider.CaseInsensitiveJsonSerializerOptions;
                 var workerDescriptionElement = workerConfig.GetProperty(WorkerConstants.WorkerDescription);
                 var workerDescription = workerDescriptionElement.Deserialize<RpcWorkerDescription>(jsonSerializerOptions);
                 workerDescription.WorkerDirectory = workerDirPath;

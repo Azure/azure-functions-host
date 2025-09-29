@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         // Worker configuration events
         public const string GetConfigs = "workerconfigfactory.getconfigs";
-        public const string AddProvider = "workerconfigfactory.getconfigs.buildworkerproviderdictionary.addprovider.{0}";
+        public const string BuildWorkerConfig = "workerconfigfactory.getconfigs.buildworkerproviderdictionary.buildworkerconfig.{0}";
 
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";
