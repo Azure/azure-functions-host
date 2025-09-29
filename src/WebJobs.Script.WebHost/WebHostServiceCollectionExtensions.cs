@@ -131,7 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else if (environment.IsAnyKubernetesEnvironment())
                 {
-                    return new KubernetesEventGenerator();
+                    var consoleLoggingOptions = p.GetService<IOptions<ConsoleLoggingOptions>>();
+                    return new KubernetesEventGenerator(consoleLoggingOptions);
                 }
                 else
                 {

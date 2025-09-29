@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks;
@@ -151,13 +152,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 app.UseHealthChecks($"{healthPrefix}/live", new HealthCheckOptions
                 {
-                    Predicate = r => r.Tags.Contains("az.functions.liveness"),
+                    Predicate = r => r.Tags.Contains(HealthCheckTags.Liveness),
                     ResponseWriter = HealthCheckResponseWriter.WriteResponseAsync,
                 });
 
                 app.UseHealthChecks($"{healthPrefix}/ready", new HealthCheckOptions
                 {
-                    Predicate = r => r.Tags.Contains("az.functions.readiness"),
+                    Predicate = r => r.Tags.Contains(HealthCheckTags.Readiness),
                     ResponseWriter = HealthCheckResponseWriter.WriteResponseAsync,
                 });
             });

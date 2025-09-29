@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -22,7 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         /// <summary>
         /// Gets or sets the <see cref="TextWriter"/> to write logs to.
-        /// IMPORTANT: this is primarily for unit tests to redirect logs to a different writer.
         /// </summary>
         internal TextWriter Writer { get; set; } = Console.Out;
     }
