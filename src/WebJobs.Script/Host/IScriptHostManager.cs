@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -19,7 +19,15 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
 
+        /// <summary>
+        /// Gets the current state of the script host.
+        /// </summary>
         ScriptHostState State { get; }
+
+        /// <summary>
+        /// Gets the services from the current script host.
+        /// </summary>
+        IServiceProvider Services { get; }
 
         /// <summary>
         /// Gets the last host <see cref="Exception"/> that has occurred.

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -72,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             builder.Verify(b => b.Services, Times.AtLeastOnce);
             builder.VerifyNoOtherCalls();
 
+            VerifyDynamicHealthCheckService(services);
             VerifyPublishers(services, null, HealthCheckTags.Liveness, HealthCheckTags.Readiness);
         }
 
@@ -224,6 +225,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             VerifyPublishers(services, expected);
         }
 
+        [Fact]
+        public void UseDynamicHealthCheckService_NullBuilder_Throws()
+        {
+            IHealthChecksBuilder builder = null!;
+
+            TestHelpers.Act(builder.UseDynamicHealthCheckService).Should()
+                .ThrowExactly<ArgumentNullException>()
+                .WithParameterName("builder");
+        }
+
+        [Fact]
+        public void UseDynamicHealthCheckService_AddHealthChecksNotCalled_Throws()
+        {
+            ServiceCollection services = new();
+            IHealthChecksBuilder builder = Mock.Of<IHealthChecksBuilder>(b => b.Services == services);
+
+            TestHelpers.Act(builder.UseDynamicHealthCheckService).Should()
+                .ThrowExactly<InvalidOperationException>()
+                .WithMessage("Ensure IServiceCollection.AddHealthChecks() is called before UseDynamicHealthCheckService.");
+        }
+
+        [Fact]
+        public void UseDynamicHealthCheckService_AddHealthChecksCalled_ReplacesHealthCheckService()
+        {
+            ServiceCollection services = new();
+            IHealthChecksBuilder builder = services.AddHealthChecks();
+
+            builder.UseDynamicHealthCheckService();
+            VerifyDynamicHealthCheckService(services);
+        }
+
         private static HealthCheckRegistration IsRegistration<T>(string name, string tag)
             where T : IHealthCheck
         {
@@ -262,6 +294,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         {
             return publisher is TelemetryHealthCheckPublisher telemetryPublisher
                 && telemetryPublisher.Tag == tag;
+        }
+
+        private static void VerifyDynamicHealthCheckService(IServiceCollection services)
+        {
+            services.Should().ContainSingle(x => x.ServiceType == typeof(HealthCheckService))
+                .Which.Should().Satisfy<ServiceDescriptor>(sd =>
+                {
+                    sd.Lifetime.Should().Be(ServiceLifetime.Singleton);
+                    sd.ImplementationFactory.Should().NotBeNull();
+                    sd.ImplementationFactory.Method.ReturnType.Should().Be<DynamicHealthCheckService>();
+                });
         }
 
         private class HealthChecksBuilder(IServiceCollection services) : IHealthChecksBuilder
