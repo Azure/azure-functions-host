@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     /// <summary>
     /// A meter listener which exports metrics to Application Insights.
     /// </summary>
-    public sealed class ApplicationInsightsMetricExporter : ITelemetryModule, IAsyncDisposable
+    public sealed partial class ApplicationInsightsMetricExporter : ITelemetryModule, IAsyncDisposable
     {
         private readonly MeterListener _listener;
         private readonly ApplicationInsightsMetricExporterOptions _options;
@@ -42,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
                 {
                     if (_options.ShouldListenTo(instrument))
                     {
+                        Events.Log.SubscribedToInstrument(instrument);
                         listener.EnableMeasurementEvents(instrument, this);
                     }
                 },
@@ -65,6 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         {
             ArgumentNullException.ThrowIfNull(configuration);
             ObjectDisposedException.ThrowIf(_shutdown.IsCancellationRequested, this);
+
+            Events.Log.MeterListeningStarted();
             _client = new TelemetryClient(configuration);
             _listener.Start();
             _exportTask = CollectAsync(_shutdown.Token);
@@ -73,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         /// <inheritdoc />
         public async ValueTask DisposeAsync()
         {
+            Events.Log.MeterListeningStopped();
             _listener.Dispose();
 
             await _shutdown.CancelNoThrowAsync();
@@ -114,12 +118,14 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             {
                 try
                 {
+                    Events.Log.BeginCollectObservables();
                     _listener.RecordObservableInstruments();
+                    Events.Log.EndCollectObservables();
                     await Task.Delay(_options.CollectInterval, cancellation);
                 }
                 catch (Exception ex) when (!ex.IsFatal())
                 {
-                    // swallow exceptions
+                    Events.Log.FailedToCollectInstruments(ex);
                 }
             }
         }
