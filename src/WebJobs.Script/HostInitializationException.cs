@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Runtime.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -17,8 +18,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public HostInitializationException(string message, Exception inner) : base(message, inner) { }
 
-        protected HostInitializationException(
-          System.Runtime.Serialization.SerializationInfo info,
-          System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+#if NET8_0_OR_GREATER
+        [Obsolete]
+#endif
+        protected HostInitializationException(SerializationInfo info, StreamingContext context)
+            : base(info, context) { }
     }
 }

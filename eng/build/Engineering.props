@@ -23,6 +23,7 @@
     <DebugType>embedded</DebugType>
     <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
     <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework> <!-- We are building net6 until OOP is end of life. -->
   </PropertyGroup>
 
   <ItemGroup>

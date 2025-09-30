@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 return codeBase;
             }
 
-            return assembly.CodeBase;
+            return assembly.Location;
         }
     }
 }

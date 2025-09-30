@@ -24,14 +24,13 @@ namespace Microsoft.Azure.WebJobs.Script
             _stackTraceString = GetStackTraceString();
         }
 
+#if NET8_0_OR_GREATER
+        [Obsolete]
+#endif
         protected HostDisposedException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            if (info == null)
-            {
-                throw new ArgumentNullException(nameof(info));
-            }
-
+            ArgumentNullException.ThrowIfNull(info);
             _stackTraceString = info.GetString("FullStackTraceString");
         }
 
@@ -42,10 +41,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return new StackTrace(true).ToString();
         }
 
+#if NET8_0_OR_GREATER
+        [Obsolete]
+#endif
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             base.GetObjectData(info, context);
-
             info.AddValue("FullStackTraceString", _stackTraceString);
         }
 
