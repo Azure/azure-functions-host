@@ -60,13 +60,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
         public override bool TryOpen(string mapName, out MemoryMappedFile mmf)
         {
-            mmf = null;
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (!OperatingSystem.IsWindows())
             {
-                Logger.LogError("Cannot open MemoryMappedFile: {MapName}. Unsupported platform.", mapName);
-                return false;
+                throw new PlatformNotSupportedException($"{nameof(TryOpen)} is not supported on the current platform.");
             }
 
+            mmf = null;
             try
             {
                 mmf = MemoryMappedFile.OpenExisting(
