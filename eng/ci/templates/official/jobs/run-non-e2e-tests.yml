@@ -15,7 +15,7 @@ jobs:
 
   - task: UseNode@1
     inputs:
-      version: 14.x
+      version: 22.x
 
   - task: JavaToolInstaller@0
     inputs:
