@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
@@ -14,6 +15,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     /// </summary>
     public class ApplicationInsightsMetricExporterOptions
     {
+        // AppInsights has some metrics which are already emitted a different way.
+        // We ignore them here to ensure we don't duplicate the metric.
+        private static readonly HashSet<string> IgnoredInstruments =
+        [
+            HostMetrics.FaasInvokeDuration,
+        ];
+
         /// <summary>
         /// Gets the set of meter names to listen to.
         /// </summary>
@@ -40,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
             // TODO: consider allowing wildcards or regex
             // For now, just exact match on meter name
-            return Meters.Contains(instrument.Meter.Name);
+            return Meters.Contains(instrument.Meter.Name) && !IgnoredInstruments.Contains(instrument.Name);
         }
     }
 }

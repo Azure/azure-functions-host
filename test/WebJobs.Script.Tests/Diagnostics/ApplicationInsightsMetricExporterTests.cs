@@ -133,12 +133,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 });
         }
 
-        private static ApplicationInsightsMetricExporter CreateExporter(
-            params ReadOnlySpan<string> meters)
+        private static ApplicationInsightsMetricExporter CreateExporter(params string[] meters)
             => new(CreateOptions(meters));
 
-        private static OptionsWrapper<ApplicationInsightsMetricExporterOptions> CreateOptions(
-            params ReadOnlySpan<string> meters)
+        private static OptionsWrapper<ApplicationInsightsMetricExporterOptions> CreateOptions(params string[] meters)
         {
             ApplicationInsightsMetricExporterOptions options = new();
             foreach (string meter in meters)

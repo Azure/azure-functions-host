@@ -30,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         /// <summary>
         /// Initializes a new instance of the <see cref="ApplicationInsightsMetricExporter"/> class.
         /// </summary>
-        /// <param name="lifetime">The application lifetime.</param>
         /// <param name="options">The options.</param>
         public ApplicationInsightsMetricExporter(IOptions<ApplicationInsightsMetricExporterOptions> options)
         {
@@ -65,9 +64,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public void Initialize(TelemetryConfiguration configuration)
         {
             ArgumentNullException.ThrowIfNull(configuration);
+            ObjectDisposedException.ThrowIf(_shutdown.IsCancellationRequested, this);
             _client = new TelemetryClient(configuration);
-            _exportTask = CollectAsync(_shutdown.Token);
             _listener.Start();
+            _exportTask = CollectAsync(_shutdown.Token);
         }
 
         /// <inheritdoc />
@@ -77,7 +77,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
             await _shutdown.CancelNoThrowAsync();
             await _exportTask.ConfigureAwait(false);
-            await _client.FlushAsync(default).ConfigureAwait(false);
+
+            if (_client is { } client)
+            {
+                await client.FlushAsync(default).ConfigureAwait(false);
+            }
+
             _shutdown.Dispose();
         }
 
