@@ -310,8 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var allFunctionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy()).ToList();
-            var functionsMetadata = allFunctionsMetadata.Where(m => !m.IsProxy())
-                .DistinctBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
+            var functionsMetadata = allFunctionsMetadata.DistinctBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
 
             // Log any duplicate function names and their script files
             var duplicateGroups = allFunctionsMetadata
