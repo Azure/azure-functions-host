@@ -64,13 +64,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal static string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
         {
-            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.Location).LocalPath);
-            string workersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            string assemblyDir = AppContext.BaseDirectory;
+            string workersDirPath = Path.Combine(assemblyDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
             if (!directoryExists(workersDirPath))
             {
                 // Site Extension. Default to parent directory
-                workersDirPath = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
+                string parentDir = Directory.GetParent(assemblyDir.TrimEnd(Path.DirectorySeparatorChar)).FullName;
+                workersDirPath = Path.Combine(parentDir, RpcWorkerConstants.DefaultWorkersDirectoryName);
             }
+
             return workersDirPath;
         }
 
