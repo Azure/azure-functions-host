@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
             public void Record(HealthReport report, string tag)
             {
-                if (string.IsNullOrEmpty(tag))
+                if (string.IsNullOrWhiteSpace(tag))
                 {
                     Record(report);
                     return;
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
             public void Record(string name, HealthReportEntry entry, string tag)
             {
-                if (string.IsNullOrEmpty(tag))
+                if (string.IsNullOrWhiteSpace(tag))
                 {
                     Record(name, entry);
                     return;
