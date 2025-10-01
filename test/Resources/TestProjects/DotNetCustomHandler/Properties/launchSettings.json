@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "DotNetCustomHandler": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:56495;http://localhost:56496"
+    }
+  }
+}
