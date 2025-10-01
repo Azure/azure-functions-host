@@ -177,9 +177,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
         private class MockScriptHostManager : IScriptHostManager
         {
+#pragma warning disable CS0067 // The event is never used
             public event EventHandler HostInitializing;
 
             public event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
+#pragma warning restore CS0067 // The event is never used
 
             public IServiceProvider Services { get; set; }
 
