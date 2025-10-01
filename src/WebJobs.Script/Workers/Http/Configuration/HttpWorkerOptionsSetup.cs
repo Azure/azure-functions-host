@@ -130,7 +130,37 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
             options.Arguments.WorkerArguments.AddRange(options.Description.WorkerArguments);
-            options.Port = WorkerUtilities.GetUnusedTcpPort();
+
+            options.Port = GetPort(workerSection);
+        }
+
+        private int GetPort(IConfigurationSection workerSection)
+        {
+            if (GetSequentialRestart())
+            {
+                if (workerSection.Key.Equals(ConfigurationSectionNames.CustomHandler, StringComparison.Ordinal))
+                {
+                    var portSection = workerSection.GetSection(ConfigurationSectionNames.Port);
+                    if (portSection.Exists() && int.TryParse(portSection.Value, out var port))
+                    {
+                        return port;
+                    }
+                }
+            }
+
+            return WorkerUtilities.GetUnusedTcpPort();
+        }
+
+        internal bool GetSequentialRestart()
+        {
+            var sequentialRestartSetting = _configuration.GetSection(ConfigurationSectionNames.SequentialJobHostRestart);
+            if (sequentialRestartSetting != null)
+            {
+                bool.TryParse(sequentialRestartSetting.Value, out bool enforceSequentialOrder);
+                return enforceSequentialOrder;
+            }
+
+            return false;
         }
 
         private static List<string> GetArgumentList(IConfigurationSection workerConfigSection, string argumentSectionName)

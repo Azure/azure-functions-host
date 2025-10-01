@@ -256,7 +256,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                                 'defaultExecutablePath': 'node',
                                 'arguments': ['httpWorker.js'],
                                 'workingDirectory': 'c:/myWorkingDir',
-                                'workerDirectory': 'c:/myWorkerDir'
+                                'workerDirectory': 'c:/myWorkerDir',
+                                'port': '1234'
                             }
                         }
                     }", false, false, false)]
@@ -266,7 +267,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                             'description': {
                                 'defaultExecutablePath': 'node',
                                 'workingDirectory': 'myWorkingDir',
-                                'workerDirectory': 'myWorkerDir'
+                                'workerDirectory': 'myWorkerDir',
+                                'port': '5678'
                             }
                         }
                     }", true, true, true)]
