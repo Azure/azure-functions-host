@@ -3,9 +3,7 @@
 
 using System;
 using AwesomeAssertions;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Testing;
 using Moq;
 using Xunit;
 
@@ -63,9 +61,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         }
 
         [Fact]
-        public void Dispose_DoesNotThrow()
+        public void CreateLogger_Caching_ReturnsSameInstance()
         {
-            TestHelpers.Act(_factory.Dispose).Should().NotThrow();
+            string categoryName = "TestCategory";
+            _mockInnerFactory.Setup(f => f.CreateLogger(categoryName)).Returns(_mockInnerLogger.Object);
+
+            ILogger result1 = _factory.CreateLogger(categoryName);
+            ILogger result2 = _factory.CreateLogger(categoryName);
+
+            result1.Should().NotBeNull();
+            result1.Should().BeOfType<ForwardingLogger>();
+            result2.Should().BeSameAs(result1);
+            _mockInnerFactory.Verify(f => f.CreateLogger(categoryName), Times.Once);
+        }
+
+        [Fact]
+        public void Dispose_BlocksCreation()
+        {
+            _factory.Dispose();
+            TestHelpers.Act(() => _factory.CreateLogger("TestCategory"))
+                .Should().Throw<ObjectDisposedException>();
         }
     }
 }

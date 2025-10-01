@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script;
 
@@ -16,8 +17,12 @@ namespace Microsoft.Extensions.Logging
     [DebuggerDisplay(@"InnerFactory = \{ {_inner} \}, ScriptHostState = {_manager.State}")]
     public sealed class ForwardingLoggerFactory : ILoggerFactory
     {
+        private readonly ConcurrentDictionary<string, ForwardingLogger> _loggers = new(StringComparer.Ordinal);
         private readonly ILoggerFactory _inner;
         private readonly IScriptHostManager _manager;
+        private readonly object _sync = new();
+
+        private bool _disposed;
 
         public ForwardingLoggerFactory(ILoggerFactory inner, IScriptHostManager manager)
         {
@@ -34,12 +39,30 @@ namespace Microsoft.Extensions.Logging
 
         /// <inheritdoc />
         public ILogger CreateLogger(string categoryName)
-            => new ForwardingLogger(categoryName, _inner.CreateLogger(categoryName), _manager);
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            if (!_loggers.TryGetValue(categoryName, out ForwardingLogger? logger))
+            {
+                lock (_sync)
+                {
+                    if (!_loggers.TryGetValue(categoryName, out logger))
+                    {
+                        ILogger innerLogger = _inner.CreateLogger(categoryName);
+                        logger = new ForwardingLogger(categoryName, innerLogger, _manager);
+                        _loggers[categoryName] = logger;
+                    }
+                }
+            }
+
+            return logger;
+        }
 
         /// <inheritdoc />
         public void Dispose()
         {
-            // no op.
+            // this is just to block further logger creation.
+            _disposed = true;
         }
     }
 }
