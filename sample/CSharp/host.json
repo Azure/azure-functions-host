@@ -24,6 +24,11 @@
         "queues": {
             "visibilityTimeout": "00:00:10",
             "maxDequeueCount": 3
-        }
+        },
+        "test2": {
+            "system": {
+                "webhookAuthorizationLevel": "anonymous"
+          }
+       }
     }
 }
