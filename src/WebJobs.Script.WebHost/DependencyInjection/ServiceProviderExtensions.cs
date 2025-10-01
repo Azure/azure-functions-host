@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -20,13 +19,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         /// <summary>
         /// Things we don't want to copy down to child containers because...
         /// </summary>
-        private static readonly HashSet<Type> ChildContainerIgnoredTypes = new()
-        {
+        private static readonly HashSet<Type> ChildContainerIgnoredTypes =
+        [
             typeof(IStartupFilter),        // This would re-add middlewares to the host pipeline
             typeof(IManagedHostedService), // These shouldn't be instantiated twice
             typeof(IHostedService),        // These shouldn't be instantiated twice
-            typeof(ILoggerProvider),        // These shouldn't be instantiated twice
-        };
+            typeof(ILoggerProvider),       // These shouldn't be instantiated twice
+            typeof(ILoggerFactory),        // WebHost has a keyed implementation which will fail propagation. ScriptHost registers its own anyways.
+            typeof(ILogger<>),             // Same reason as ILoggerFactory.
+        ];
 
         /// <summary>
         /// Creates a child container.
