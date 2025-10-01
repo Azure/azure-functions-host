@@ -247,6 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddAzureStorageProviders();
 
             // Add health checks
+            services.AddMetrics();
             services.AddHealthChecks().AddWebJobsScriptHealthChecks();
         }
 

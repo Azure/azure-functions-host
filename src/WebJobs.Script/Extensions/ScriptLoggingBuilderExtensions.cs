@@ -9,7 +9,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Extensions.Logging
@@ -21,9 +21,10 @@ namespace Microsoft.Extensions.Logging
         public static ILoggingBuilder AddForwardingLogger(this ILoggingBuilder builder)
         {
             ArgumentNullException.ThrowIfNull(builder);
-            builder.Services.AddKeyedSingleton<ILoggerFactory, ForwardingLoggerFactory>(
+
+            builder.Services.TryAddKeyedSingleton<ILoggerFactory, ForwardingLoggerFactory>(
                 ForwardingLogger.ServiceKey);
-            builder.Services.AddKeyedSingleton(
+            builder.Services.TryAddKeyedSingleton(
                 typeof(ILogger<>), ForwardingLogger.ServiceKey, typeof(ForwardingLogger<>));
             return builder;
         }
