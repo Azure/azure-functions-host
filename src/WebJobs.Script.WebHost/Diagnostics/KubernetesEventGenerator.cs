@@ -1,8 +1,10 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -13,9 +15,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const int MaxDetailsLength = 10000;
         private readonly Action<string> _writeEvent;
 
-        public KubernetesEventGenerator(Action<string> writeEvent = null)
+        public KubernetesEventGenerator(IOptions<ConsoleLoggingOptions> consoleLoggingOptions)
         {
-            _writeEvent = writeEvent ?? ConsoleWriter;
+            _writeEvent = consoleLoggingOptions.Value.LoggingDisabled
+                ? _ => { } // no-op
+                : consoleLoggingOptions.Value.Writer.WriteLine;
         }
 
         public override void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp)
@@ -100,11 +104,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             azMonEvent.Add("Properties", NormalizeString(properties.Replace("'", string.Empty)));
 
             _writeEvent(azMonEvent.ToString(Formatting.None));
-        }
-
-        private void ConsoleWriter(string evt)
-        {
-            Console.WriteLine(evt);
         }
     }
 }

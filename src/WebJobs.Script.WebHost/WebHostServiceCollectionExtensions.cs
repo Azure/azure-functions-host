@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -131,7 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else if (environment.IsAnyKubernetesEnvironment())
                 {
-                    return new KubernetesEventGenerator();
+                    var consoleLoggingOptions = p.GetService<IOptions<ConsoleLoggingOptions>>();
+                    return new KubernetesEventGenerator(consoleLoggingOptions);
                 }
                 else
                 {
