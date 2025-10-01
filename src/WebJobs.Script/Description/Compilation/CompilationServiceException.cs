@@ -26,7 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
         }
 
-        private CompilationServiceException(SerializationInfo info, StreamingContext context) : base(info, context)
+#if NET8_0_OR_GREATER
+        [Obsolete]
+#endif
+        private CompilationServiceException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
         {
         }
     }

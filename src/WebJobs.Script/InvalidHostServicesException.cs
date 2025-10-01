@@ -7,7 +7,7 @@ using System.Runtime.Serialization;
 namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
-    /// An exception that indicates an issue with the registerd services for a ScriptHost. This will
+    /// An exception that indicates an issue with the registered services for a ScriptHost. This will
     /// prevent the host from starting.
     /// </summary>
     [Serializable]
@@ -19,6 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public InvalidHostServicesException(string message, Exception inner) : base(message, inner) { }
 
+#if NET8_0_OR_GREATER
+        [Obsolete]
+#endif
         protected InvalidHostServicesException(SerializationInfo info, StreamingContext context)
             : base(info, context) { }
     }

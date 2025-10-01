@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
     <PackageId>Microsoft.Azure.WebJobs.Script</PackageId>
     <AssemblyName>Microsoft.Azure.WebJobs.Script</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script</RootNamespace>
@@ -9,26 +9,16 @@
   <ItemGroup>
     <None Remove="FileProvisioning\PowerShell\profile.ps1" />
     <None Remove="FileProvisioning\PowerShell\requirements.psd1" />
-    <None Remove="runtimeassemblies-net6.json" />
-    <None Remove="runtimeassemblies-net8.json" />
-    <None Remove="runtimeassemblies-relaxed.json" />
+    <None Remove="runtimeassemblies-*.json" />
     <None Remove="runtimes.json" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="extensionrequirements.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <EmbeddedResource Include="extensionrequirements.json" />
     <EmbeddedResource Include="FileProvisioning\PowerShell\profile.ps1" />
     <EmbeddedResource Include="FileProvisioning\PowerShell\requirements.psd1" />
-    <EmbeddedResource Include="runtimeassemblies-relaxed.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="runtimeassemblies-net6.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="runtimeassemblies-net8.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <EmbeddedResource Include="runtimeassemblies-relaxed.json" />
+    <EmbeddedResource Include="runtimeassemblies-net6.json" Link="runtimeassemblies.json" Condition="'$(TargetFramework)' == 'net6.0'" />
+    <EmbeddedResource Include="runtimeassemblies-net8.json" Link="runtimeassemblies.json" Condition="'$(TargetFramework)' == 'net8.0'" />
     <EmbeddedResource Include="runtimes.json" />
   </ItemGroup>
   <ItemGroup>
@@ -43,7 +33,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.21.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.21.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.2.0" NoWarn="NU1701" />
-	<PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.2.20220831.41" />
+    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.2.20220831.41" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.42" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.1" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="5.2.0-12282" />

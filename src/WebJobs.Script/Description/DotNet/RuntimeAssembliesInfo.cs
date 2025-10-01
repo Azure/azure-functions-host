@@ -3,16 +3,15 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal class RuntimeAssembliesInfo
     {
+        private readonly object _loadSyncRoot = new();
         private readonly IEnvironment _environment;
         private Lazy<Dictionary<string, ScriptRuntimeAssembly>> _runtimeAssemblies;
-        private object _loadSyncRoot = new object();
         private bool? _relaxedUnification;
 
         public RuntimeAssembliesInfo()
@@ -35,10 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             lock (_loadSyncRoot)
             {
                 _relaxedUnification = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagRelaxedAssemblyUnification, _environment);
-                var tfmversion = typeof(string).Assembly.GetName().Version.Major;
                 var manifestName = _relaxedUnification.Value
                     ? "runtimeassemblies-relaxed.json"
-                    : $"runtimeassemblies-net{tfmversion}.json";
+                    : $"runtimeassemblies.json";
 
                 return DependencyHelper.GetRuntimeAssemblies(manifestName);
             }
