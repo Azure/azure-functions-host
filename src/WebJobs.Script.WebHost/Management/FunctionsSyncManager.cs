@@ -1,16 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -25,6 +15,17 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
@@ -312,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var allFunctionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy()).ToList();
             var functionsMetadata = allFunctionsMetadata.DistinctBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
 
-            // Log any duplicate function names and their script files
+            // Check if there are any duplicates
             var duplicateGroups = allFunctionsMetadata
                 .GroupBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
                 .Where(g => g.Count() > 1)
@@ -320,10 +321,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (duplicateGroups.Count > 0)
             {
-                var duplicateInfo = string.Join("; ",
-                    duplicateGroups.Select(g =>
-                        $"Name: '{g.Key}', Files: [{string.Join(", ", g.Select(f => f.ScriptFile ?? "<null>"))}]"));
-                _logger.LogDebug("Duplicate function metadata detected: {duplicateInfo}. Please review your functions again and remove duplicate names.", duplicateInfo);
+                // we will just log an FYI for investigative purposes because duplicates are already logged by name and errors are thrown in other checks
+                // in the function metadata manager and the WebJobs function indexer.
+                _logger.LogDebug("Duplicate function metadata was detected and removed while preparing the sync triggers payload.");
             }
 
             // trigger information used by the ScaleController
