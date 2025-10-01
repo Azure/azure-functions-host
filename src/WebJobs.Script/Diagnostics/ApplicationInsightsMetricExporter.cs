@@ -67,24 +67,34 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             ArgumentNullException.ThrowIfNull(configuration);
             ObjectDisposedException.ThrowIf(_shutdown.IsCancellationRequested, this);
 
-            Events.Log.MeterListeningStarted();
-            _client = new TelemetryClient(configuration);
-            _listener.Start();
-            _exportTask = CollectAsync(_shutdown.Token);
+            try
+            {
+                _client = new TelemetryClient(configuration);
+                _listener.Start();
+                _exportTask = CollectAsync(_shutdown.Token);
+                Events.Log.MeterListeningStarted();
+            }
+            catch (Exception ex)
+            {
+                Events.Log.ErrorStartingMetricListener(ex);
+                throw;
+            }
         }
 
         /// <inheritdoc />
         public async ValueTask DisposeAsync()
         {
             Events.Log.MeterListeningStopped();
-            _listener.Dispose();
 
             await _shutdown.CancelNoThrowAsync();
             await _exportTask.ConfigureAwait(false);
+            CollectCore(); // collect one more time to ensure we get the last set of values.
+            _listener.Dispose();
 
             if (_client is { } client)
             {
                 await client.FlushAsync(default).ConfigureAwait(false);
+                Events.Log.FlushedTelemetryClient();
             }
 
             _shutdown.Dispose();
@@ -118,15 +128,26 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             {
                 try
                 {
-                    Events.Log.BeginCollectObservables();
-                    _listener.RecordObservableInstruments();
-                    Events.Log.EndCollectObservables();
+                    CollectCore();
                     await Task.Delay(_options.CollectInterval, cancellation);
                 }
-                catch (Exception ex) when (!ex.IsFatal())
+                catch (OperationCanceledException)
                 {
-                    Events.Log.FailedToCollectInstruments(ex);
                 }
+            }
+        }
+
+        private void CollectCore()
+        {
+            try
+            {
+                Events.Log.BeginCollectObservables();
+                _listener.RecordObservableInstruments();
+                Events.Log.EndCollectObservables();
+            }
+            catch (Exception ex) when (!ex.IsFatal())
+            {
+                Events.Log.FailedToCollectInstruments(ex);
             }
         }
 
