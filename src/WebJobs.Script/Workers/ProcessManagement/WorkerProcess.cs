@@ -179,12 +179,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 return;
             }
 
+            int exit = 0;
             try
             {
                 ThrowIfExitError();
 
-                Process.WaitForExit();
-                if (Process.ExitCode == WorkerConstants.IntentionalRestartExitCode)
+                exit = Process.ExitCode;
+                if (Process.ExitCode == WorkerConstants.SuccessExitCode)
+                {
+                    Process.WaitForExit();
+                    Process.Close();
+                }
+                else if (Process.ExitCode == WorkerConstants.IntentionalRestartExitCode)
                 {
                     HandleWorkerProcessRestart();
                 }
@@ -202,9 +208,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             finally
             {
-                _processExit.TrySetResult(Process.ExitCode);
+                _processExit.TrySetResult(exit);
                 UnregisterFromProcessMonitor();
-                Process.Close();
             }
         }
 
