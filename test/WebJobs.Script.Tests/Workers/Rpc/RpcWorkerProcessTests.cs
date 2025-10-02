@@ -272,10 +272,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task WorkerProcess_WaitForExit_Success_TaskCompletes()
         {
             // arrange
-            using Process process = GetProcess(exitCode: 0);
-            _hostProcessMonitorMock.Setup(m => m.RegisterChildProcess(process));
-            _hostProcessMonitorMock.Setup(m => m.UnregisterChildProcess(process));
-            _workerProcessFactory.Setup(m => m.CreateWorkerProcess(It.IsNotNull<WorkerContext>())).Returns(process);
+            await using ProcessWrapper wrapper = new(exitCode: 0);
+            _hostProcessMonitorMock.Setup(m => m.RegisterChildProcess(wrapper.Process));
+            _hostProcessMonitorMock.Setup(m => m.UnregisterChildProcess(wrapper.Process));
+            _workerProcessFactory.Setup(m => m.CreateWorkerProcess(It.IsNotNull<WorkerContext>()))
+                .Returns(wrapper.Process);
             using var rpcWorkerProcess = GetRpcWorkerConfigProcess(
                 TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().ElementAt(0));
 
@@ -290,10 +291,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task WorkerProcess_WaitForExit_Error_Rethrows()
         {
             // arrange
-            using Process process = GetProcess(exitCode: -1);
-            _hostProcessMonitorMock.Setup(m => m.RegisterChildProcess(process));
-            _hostProcessMonitorMock.Setup(m => m.UnregisterChildProcess(process));
-            _workerProcessFactory.Setup(m => m.CreateWorkerProcess(It.IsNotNull<WorkerContext>())).Returns(process);
+            await using ProcessWrapper wrapper = new(exitCode: -1);
+            _hostProcessMonitorMock.Setup(m => m.RegisterChildProcess(wrapper.Process));
+            _hostProcessMonitorMock.Setup(m => m.UnregisterChildProcess(wrapper.Process));
+            _workerProcessFactory.Setup(m => m.CreateWorkerProcess(It.IsNotNull<WorkerContext>()))
+                .Returns(wrapper.Process);
             using var rpcWorkerProcess = GetRpcWorkerConfigProcess(
                 TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().ElementAt(0));
 
@@ -310,13 +312,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 StartInfo = new()
                 {
-                    WindowStyle = ProcessWindowStyle.Hidden,
                     FileName = OperatingSystem.IsWindows() ? "cmd" : "bash",
                     Arguments = OperatingSystem.IsWindows() ? $"/C exit {exitCode}" : $"-c \"exit {exitCode}\"",
                     RedirectStandardError = true,
                     RedirectStandardOutput = true,
+                    CreateNoWindow = true,
+                    ErrorDialog = false,
+                    UseShellExecute = false
                 }
             };
+        }
+
+        private class ProcessWrapper(int exitCode) : IAsyncDisposable
+        {
+            public Process Process { get; } = GetProcess(exitCode);
+
+            public async ValueTask DisposeAsync()
+            {
+                if (!Process.HasExited)
+                {
+                    // We need to kill the entire process tree to ensure
+                    // CI tests don't hang due to child processes lingering around.
+                    Process.Kill(entireProcessTree: true);
+                    await Process.WaitForExitAsync();
+                }
+
+                Process.Dispose();
+            }
         }
     }
 }
