@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -8,7 +8,9 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -47,12 +49,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
+            var a = _fixture.Host.WebHostServices.GetService<WebJobsScriptHostService>();
+
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             string responseContent = await response.Content.ReadAsStringAsync();
             JObject res = JObject.Parse(responseContent);
             Assert.True(res["functionName"].ToString().StartsWith($"api/{functionName}"));
+
+            Assert.True(a.ShouldEnforceSequentialRestart());
         }
 
         private async Task InvokeProxy()

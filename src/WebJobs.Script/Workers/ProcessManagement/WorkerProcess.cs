@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -69,6 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal abstract Process CreateWorkerProcess();
 
+        internal abstract void OnErrorDataReceived(object sender, DataReceivedEventArgs e);
+
         public Task StartProcessAsync()
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.ProcessStart))
@@ -106,14 +108,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     _workerProcessLogger.LogError(ex, $"Failed to start Worker Channel. Process fileName: {Process.StartInfo.FileName}");
                     return Task.FromException(ex);
                 }
-            }
-        }
-
-        private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (e.Data != null)
-            {
-                ParseErrorMessageAndLog(e.Data);
             }
         }
 
