@@ -17,8 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string Extensions = "extensions";
         public const string HttpWorker = "httpWorker";
         public const string CustomHandler = "customHandler";
-        public const string Description = "description";
-        public const string Port = Description + ":port";
         public const string Http = Extensions + ":http";
         public const string Hsts = Http + ":hsts";
         public const string CustomHttpHeaders = Http + ":customHeaders";

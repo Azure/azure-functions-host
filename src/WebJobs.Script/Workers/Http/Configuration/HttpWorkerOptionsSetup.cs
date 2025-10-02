@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }
             else
             {
-                Environment.SetEnvironmentVariable("AzureFunctionsJobHost__SequentialRestart", "true");
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.EnforceSequentialHostRestart, "1");
             }
         }
 

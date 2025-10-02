@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool SequentialHostRestartEnforced(this IEnvironment environment)
         {
-            return environment.GetEnvironmentVariable(FunctionsEnforceSequentialHostRestart) == "1";
+            return environment.GetEnvironmentVariable(EnforceSequentialHostRestart) == "1";
         }
 
         public static bool UsePlaceholderDotNetIsolated(this IEnvironment environment)
