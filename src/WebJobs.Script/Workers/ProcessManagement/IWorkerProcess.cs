@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         Task StartProcessAsync(CancellationToken cancellationToken = default);
 
-        Task WaitForExitAsync(CancellationToken cancellationToken = default);
+        Task<int> WaitForExitAsync(CancellationToken cancellationToken = default);
 
         void WaitForProcessExitInMilliSeconds(int waitTime);
     }

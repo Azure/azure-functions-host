@@ -616,6 +616,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertNoErrors(traces);
         }
 
+        private static void AssertNoErrors(IList<LogMessage> traces)
+        {
+            Assert.False(traces.Any(m => m.Level == LogLevel.Error || m.Level == LogLevel.Critical));
+        }
+
         private static ExtensionBundleDetails GetBundleDetails(string version = "2.7.0")
         {
             return new ExtensionBundleDetails
@@ -750,11 +755,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     File.Copy(file, destination);
                 }
             }
-        }
-
-        private static void AssertNoErrors(IList<LogMessage> traces)
-        {
-            Assert.False(traces.Any(m => m.Level == LogLevel.Error || m.Level == LogLevel.Critical));
         }
     }
 }

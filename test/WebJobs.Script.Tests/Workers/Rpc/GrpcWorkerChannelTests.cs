@@ -76,7 +76,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testWorkerConfig.CountOptions.EnvironmentReloadTimeout = TimeSpan.FromSeconds(5);
 
             _mockRpcWorkerProcess.Setup(m => m.StartProcessAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-            _mockRpcWorkerProcess.Setup(m => m.WaitForExitAsync(It.IsAny<CancellationToken>())).Returns(Task.Delay(Timeout.Infinite));
+
+            TaskCompletionSource<int> tcs = new();
+            _mockRpcWorkerProcess.Setup(m => m.WaitForExitAsync(It.IsAny<CancellationToken>())).Returns(tcs.Task);
             _mockRpcWorkerProcess.Setup(m => m.Id).Returns(910);
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
@@ -185,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task StartWorkerProcessAsync_ProcessExits_Throws()
         {
             _mockRpcWorkerProcess.Setup(m => m.WaitForExitAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+                .ReturnsAsync(0);
             await CreateDefaultWorkerChannel(autoStart: false);
 
             WorkerProcessExitException ex = await Assert.ThrowsAsync<WorkerProcessExitException>(

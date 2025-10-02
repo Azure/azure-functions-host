@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly bool _useStdErrorStreamForErrorsOnly;
         private Queue<string> _processStdErrDataQueue = new(3);
         private IHostProcessMonitor _processMonitor;
-        private TaskCompletionSource _processExit; // used to hold custom exceptions on non-success exit.
+        private TaskCompletionSource<int> _processExit; // used to hold custom exceptions on non-success exit.
 
         internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger,
             IServiceProvider serviceProvider, ILoggerFactory loggerFactory, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> scriptApplicationHostOptions, bool useStdErrStreamForErrorsOnly = false)
@@ -114,8 +114,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        public Task WaitForExitAsync(CancellationToken cancellationToken = default)
+        public Task<int> WaitForExitAsync(CancellationToken cancellationToken = default)
         {
+            ObjectDisposedException.ThrowIf(Disposing, this);
             if (_processExit is { } tcs)
             {
                 // We use a TaskCompletionSource (and not Process.WaitForExitAsync) so we can propagate our custom exceptions.
@@ -201,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             finally
             {
-                _processExit.TrySetResult();
+                _processExit.TrySetResult(Process.ExitCode);
                 UnregisterFromProcessMonitor();
                 Process.Close();
             }
@@ -375,7 +376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     return;
                 }
 
-                UnixFileInfo fileInfo = new UnixFileInfo(filePath);
+                UnixFileInfo fileInfo = new(filePath);
                 if (!fileInfo.FileAccessPermissions.HasFlag(FileAccessPermissions.UserExecute))
                 {
                     _workerProcessLogger.LogDebug("Assigning execute permissions to file: {filePath}", filePath);
