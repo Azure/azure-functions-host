@@ -34,5 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string WorkerRuntimeDoesNotMatchWithFunctionMetadataErrorCode = "AZFD0013";
         public const string WorkerRuntimeDoesNotMatchWithFunctionMetadataHelpLink = "https://aka.ms/functions-invalid-worker-runtime";
+
+        public const string DeprecatedProxiesErrorCode = "AZFD0014";
+        public const string DeprecatedProxiesHelpLink = "https://azure.microsoft.com/en-us/updates?id=community-support-for-azure-functions-proxies-will-end-on-30-september-2025";
     }
 }

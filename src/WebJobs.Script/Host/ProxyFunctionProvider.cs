@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -41,6 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             if (_environment.IsProxiesEnabled())
             {
+                _logger.LogDiagnosticEventWarning(DiagnosticEventConstants.DeprecatedProxiesErrorCode, "Azure Functions Proxies are deprecated and community support will end on September 30, 2025. Please migrate to Azure API Management or Azure Container Apps. See https://azure.microsoft.com/en-us/updates?id=community-support-for-azure-functions-proxies-will-end-on-30-september-2025 for more information.", DiagnosticEventConstants.DeprecatedProxiesHelpLink, null);
+
                 if (_environment.IsFlexConsumptionSku())
                 {
                     _logger.LogWarning("Proxies are not supported in Flex Consumption. Proxy definitions will be ignored.");
