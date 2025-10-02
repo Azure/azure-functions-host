@@ -38,6 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(AzureWebsitePlaceholderMode) == "1";
         }
 
+        public static bool SequentialHostRestartEnforced(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(FunctionsEnforceSequentialHostRestart) == "1";
+        }
+
         public static bool UsePlaceholderDotNetIsolated(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariable(AzureWebsiteUsePlaceholderDotNetIsolated) == "1";

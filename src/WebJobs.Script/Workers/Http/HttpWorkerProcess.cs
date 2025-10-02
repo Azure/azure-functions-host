@@ -86,7 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (e.Data is not null)
             {
                 if (e.Data.Contains("address already in use", StringComparison.OrdinalIgnoreCase) ||
-                    e.Data.Contains("EADDRINUSE", StringComparison.OrdinalIgnoreCase))
+                    e.Data.Contains("EADDRINUSE", StringComparison.OrdinalIgnoreCase) ||
+                    e.Data.Contains("Only one usage of each socket address (protocol/network address/port) is normally permitted.", StringComparison.OrdinalIgnoreCase))
                 {
                     _workerProcessLogger.LogError("Port is already in use. Process cannot start.");
                 }

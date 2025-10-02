@@ -131,22 +131,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
             options.Arguments.WorkerArguments.AddRange(options.Description.WorkerArguments);
 
-            options.Port = GetPort(workerSection);
-        }
-
-        private int GetPort(IConfigurationSection workerSection)
-        {
-            if (workerSection.Key.Equals(ConfigurationSectionNames.CustomHandler, StringComparison.Ordinal))
+            if (options.Port == 0)
             {
-                var portSection = workerSection.GetSection(ConfigurationSectionNames.Port);
-                if (portSection.Exists() && int.TryParse(portSection.Value, out var port))
-                {
-                    _environment.SetEnvironmentVariable("AzureFunctionsJobHost__SequentialRestart", "true");
-                    return port;
-                }
+                options.Port = WorkerUtilities.GetUnusedTcpPort();
             }
-
-            return WorkerUtilities.GetUnusedTcpPort();
+            else
+            {
+                Environment.SetEnvironmentVariable("AzureFunctionsJobHost__SequentialRestart", "true");
+            }
         }
 
         private static List<string> GetArgumentList(IConfigurationSection workerConfigSection, string argumentSectionName)

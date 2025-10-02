@@ -838,6 +838,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await client.GetAsync("api/SimpleHttpTrigger");
             response.EnsureSuccessStatusCode();
 
+            var a = testServer.Services.GetService<WebJobsScriptHostService>();
+            Assert.True(a.ShouldEnforceSequentialRestart());
+
             var log = _loggerProvider.GetLog();
 
             if (isExpectedToResetWorkerRuntime)
