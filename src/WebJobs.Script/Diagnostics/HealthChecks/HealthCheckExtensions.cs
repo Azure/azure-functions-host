@@ -52,6 +52,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
                 });
             }
 
+            builder.Services.AddMetrics();
+            builder.Services.AddLogging(b => b.AddForwardingLogger());
             builder.Services.AddSingleton<HealthCheckMetrics>();
             RegisterPublisher(builder.Services, null); // always register the default publisher
 
