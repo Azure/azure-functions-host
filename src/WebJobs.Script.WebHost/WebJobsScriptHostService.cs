@@ -685,6 +685,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal bool ShouldEnforceSequentialRestart()
         {
+            if (_environment.SequentialHostRestartEnforced())
+            {
+                return true;
+            }
+
             var sequentialRestartSetting = _config.GetSection(ConfigurationSectionNames.SequentialJobHostRestart);
             if (sequentialRestartSetting != null)
             {

@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
-            var a = _fixture.Host.WebHostServices.GetService<WebJobsScriptHostService>();
+            var service = _fixture.Host.WebHostServices.GetService<WebJobsScriptHostService>();
 
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             JObject res = JObject.Parse(responseContent);
             Assert.True(res["functionName"].ToString().StartsWith($"api/{functionName}"));
 
-            Assert.True(a.ShouldEnforceSequentialRestart());
+            Assert.True(service.ShouldEnforceSequentialRestart());
         }
 
         private async Task InvokeProxy()
