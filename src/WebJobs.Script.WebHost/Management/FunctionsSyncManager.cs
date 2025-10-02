@@ -312,19 +312,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var allFunctionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy()).ToList();
             var functionsMetadata = allFunctionsMetadata.DistinctBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
 
-            // Check if there are any duplicates
-            var duplicateGroups = allFunctionsMetadata
-                .GroupBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
-                .Where(g => g.Count() > 1)
-                .ToList();
-
-            if (duplicateGroups.Count > 0)
-            {
-                // we will just log an FYI for investigative purposes because duplicates are already logged by name and errors are thrown in other checks
-                // in the function metadata manager and the WebJobs function indexer.
-                _logger.LogDebug("Duplicate function metadata was detected and removed while preparing the sync triggers payload.");
-            }
-
             // trigger information used by the ScaleController
             var triggers = await GetFunctionTriggers(functionsMetadata, hostOptions);
             var triggersArray = new JArray(triggers);
