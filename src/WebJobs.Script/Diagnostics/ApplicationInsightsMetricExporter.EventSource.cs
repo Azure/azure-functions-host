@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     public sealed partial class ApplicationInsightsMetricExporter
     {
-        [EventSource(Name = $"{ScriptConstants.HostDiagnosticSourcePrefix}Diagnostics.{nameof(ApplicationInsightsMetricExporter)}")]
+        [EventSource(Name = $"{ScriptConstants.HostEventSourcePrefix}{nameof(ApplicationInsightsMetricExporter)}")]
         private sealed class Events : EventSource
         {
             public static readonly Events Log = new();
