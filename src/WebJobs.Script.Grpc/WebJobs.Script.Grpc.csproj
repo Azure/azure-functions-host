@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFrameworks>net8.0;net6.0</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Grpc</AssemblyName>
-    <PackageId>$(AssemblyName).InProc</PackageId>
     <Ext Condition="'$(OS)' == 'Windows_NT'">bat</Ext>
     <Ext Condition="'$(OS)' != 'Windows_NT'">sh</Ext>
   </PropertyGroup>

@@ -2,7 +2,6 @@
   <PropertyGroup>
     <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script</AssemblyName>
-    <PackageId>$(AssemblyName).InProc</PackageId>
     <NoWarn>NU5104</NoWarn>
   </PropertyGroup>
   <ItemGroup>
