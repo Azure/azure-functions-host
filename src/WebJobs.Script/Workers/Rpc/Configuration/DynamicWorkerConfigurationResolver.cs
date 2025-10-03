@@ -54,16 +54,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var workerProbingPaths = _resolverOptions.CurrentValue.ProbingPaths;
 
             // Search for worker configs in probing paths
-            var runtimeToConfigMap = ResolveWorkerConfigsFromProbingPaths(workerProbingPaths, workerRuntime);
+            var workerRuntimeConfigMap = ResolveWorkerConfigsFromProbingPaths(workerProbingPaths, workerRuntime);
 
             // Return if required worker config has been found
-            if (!_resolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment && !_resolverOptions.CurrentValue.IsPlaceholderModeEnabled && !string.IsNullOrWhiteSpace(workerRuntime) && runtimeToConfigMap.ContainsKey(workerRuntime))
+            if (!_resolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment && !_resolverOptions.CurrentValue.IsPlaceholderModeEnabled && !string.IsNullOrWhiteSpace(workerRuntime) && workerRuntimeConfigMap.ContainsKey(workerRuntime))
             {
-                return runtimeToConfigMap;
+                return workerRuntimeConfigMap;
             }
 
             // Search in fallback path if worker config cannot be found in probing paths
-            return ResolveWorkerConfigsFromWithinHost(runtimeToConfigMap);
+            ResolveWorkerConfigsFromWithinHost(workerRuntimeConfigMap);
+
+            workerRuntimeConfigMap;
         }
 
         /// <summary>
@@ -71,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         private Dictionary<string, RpcWorkerConfig> ResolveWorkerConfigsFromProbingPaths(IReadOnlyList<string> workerProbingPaths, string workerRuntime)
         {
-            var runtimeToConfigMap = new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
+            var workerRuntimeToConfigMap = new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
@@ -90,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         var workerRuntimeDir = Path.GetFileName(workerRuntimePath);
 
                         // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
-                        if (runtimeToConfigMap.ContainsKey(workerRuntimeDir))
+                        if (workerRuntimeToConfigMap.ContainsKey(workerRuntimeDir))
                         {
                             _logger.LogDebug("Skipping duplicate worker runtime directory '{workerRuntimeDir}' in probing path '{probingPath}'.", workerRuntimeDir, probingPath);
                             continue;
@@ -107,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         var resolvedWorkerConfig = ResolveWorkerConfigFromVersionsDirs(workerRuntimePath, workerRuntimeDir);
                         if (resolvedWorkerConfig is not null)
                         {
-                            runtimeToConfigMap[workerRuntimeDir] = resolvedWorkerConfig;
+                            workerRuntimeToConfigMap[workerRuntimeDir] = resolvedWorkerConfig;
                         }
                     }
                 }
@@ -119,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 _logger.LogError(ex, "Failed to resolve worker configurations from probing paths.");
             }
 
-            return runtimeToConfigMap;
+            return workerRuntimeToConfigMap;
         }
 
         /// <summary>
@@ -173,17 +175,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Resolves worker configurations from the fallback directory within the host.
         /// </summary>
-        private Dictionary<string, RpcWorkerConfig> ResolveWorkerConfigsFromWithinHost(Dictionary<string, RpcWorkerConfig> availableRuntimeToConfigMap)
+        private void ResolveWorkerConfigsFromWithinHost(Dictionary<string, RpcWorkerConfig> workerRuntimeConfigMap)
         {
             _logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", _resolverOptions.CurrentValue.WorkersRootDirPath);
 
-            return DefaultWorkerConfigurationResolver.ResolveWorkerConfigsFromWithinHost(_resolverOptions.CurrentValue,
+            DefaultWorkerConfigurationResolver.ResolveWorkerConfigsFromWithinHost(_resolverOptions.CurrentValue,
                                                                                                 _logger,
                                                                                                 _fileSystem,
                                                                                                 _metricsLogger,
                                                                                                 _systemRuntimeInformation,
                                                                                                 _profileManager,
-                                                                                                availableRuntimeToConfigMap);
+                                                                                                workerRuntimeConfigMap);
         }
 
         /// <summary>
@@ -194,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             var workerVersionPaths = _fileSystem.Directory.EnumerateDirectories(languageWorkerPath);
 
             // Map of: (parsed worker version, worker path). Example: [ (2.0.0, "<rootProbingPath>/java/2.0.0"), (1.0.0, "<rootProbingPath>/java/1.0.0") ]
-            var versionPathMap = new SortedList<Version, string>(new DescendingVersionComparer());
+            var versionPathMap = new SortedList<Version, string>(DescendingVersionComparer.Instance);
 
             foreach (var workerVersionPath in workerVersionPaths)
             {
@@ -269,6 +271,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// </summary>
         private class DescendingVersionComparer : IComparer<Version>
         {
+            public static readonly DescendingVersionComparer Instance = new();
+
             public int Compare(Version version1, Version version2)
             {
                 return version2.CompareTo(version1); // Inverted comparison for descending order

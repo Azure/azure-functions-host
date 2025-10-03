@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Retrieves the list of worker probing paths from configuration or uses the default path for Windows environment.
         /// </summary>
-        internal List<string> GetWorkerProbingPaths(IConfiguration configuration)
+        private List<string> GetWorkerProbingPaths(IConfiguration configuration)
         {
             // If Configuration section is set, read probing paths from configuration.
             var probingPathsSection = configuration.GetSection(ConfigurationPath.Combine(RpcWorkerConstants.LanguageWorkersSectionName, RpcWorkerConstants.WorkerProbingPathsSectionName));
@@ -189,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Returns a set of worker runtimes available for dynamic resolution from hosting config.
         /// </summary>
-        internal ImmutableHashSet<string> GetWorkersAvailableForResolution() =>
+        private ImmutableHashSet<string> GetWorkersAvailableForResolution() =>
             (_functionsHostingConfigOptions.Value.WorkersAvailableForDynamicResolution ?? string.Empty)
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Converts language workers related configuration sections to a dictionary.
         /// Output format: { language: RpcWorkerDescription }.
         /// </summary>
-        internal static ImmutableDictionary<string, RpcWorkerDescription> GetWorkerDescriptionOverrides(IConfiguration configuration)
+        private static ImmutableDictionary<string, RpcWorkerDescription> GetWorkerDescriptionOverrides(IConfiguration configuration)
         {
             var workerDescriptionsMap = ImmutableDictionary.CreateBuilder<string, RpcWorkerDescription>();
             var languageWorkersSection = configuration.GetSection(RpcWorkerConstants.LanguageWorkersSectionName);
@@ -225,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
         /// Feature flag takes precedence over hosting config options.
         /// </summary>
-        internal bool IsDynamicWorkerResolutionEnabled(string workerRuntime, ImmutableHashSet<string> workersAvailableForResolution, bool isPlaceholderModeEnabled, bool isMultiLanguageEnv)
+        private bool IsDynamicWorkerResolutionEnabled(string workerRuntime, ImmutableHashSet<string> workersAvailableForResolution, bool isPlaceholderModeEnabled, bool isMultiLanguageEnv)
         {
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, _environment) || workersAvailableForResolution.Count == 0)
             {
@@ -245,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Output format: { worker-name: { hashset of versions to be ignored }}.
         /// Sample output: {"java": {"2.19.0", "2.18.0"}, "dotnet-isolated": {"1.0.0"}}.
         /// </summary>
-        internal ImmutableDictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
+        private ImmutableDictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
         {
             // Example value of ignoredWorkerVersions: "Worker1Name:Version1|Worker1Name:Version2|Worker2Name:Version1|Worker3Name:Version1".
             var ignoredWorkerVersions = _functionsHostingConfigOptions.Value.IgnoredWorkerVersions;

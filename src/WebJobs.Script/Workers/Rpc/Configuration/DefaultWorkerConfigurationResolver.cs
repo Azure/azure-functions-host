@@ -44,31 +44,36 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         {
             _logger.DefaultWorkersDirectoryPath(_workerConfigurationResolverOptions.CurrentValue.WorkersRootDirPath);
 
-            return ResolveWorkerConfigsFromWithinHost(_workerConfigurationResolverOptions.CurrentValue,
+            var workerRuntimeToConfigMap = new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
+
+            ResolveWorkerConfigsFromWithinHost(_workerConfigurationResolverOptions.CurrentValue,
                                                             _logger,
                                                             _fileSystem,
                                                             _metricsLogger,
                                                             _systemRuntimeInformation,
-                                                            _profileManager);
+                                                            _profileManager,
+                                                            workerRuntimeToConfigMap);
+
+            return workerRuntimeToConfigMap;
         }
 
-        internal static Dictionary<string, RpcWorkerConfig> ResolveWorkerConfigsFromWithinHost(WorkerConfigurationResolverOptions resolverOptions,
+        internal static void ResolveWorkerConfigsFromWithinHost(WorkerConfigurationResolverOptions resolverOptions,
                                                                                     ILogger logger,
                                                                                     IFileSystem fileSystem,
                                                                                     IMetricsLogger metricsLogger,
                                                                                     ISystemRuntimeInformation systemRuntimeInformation,
                                                                                     IWorkerProfileManager profileManager,
-                                                                                    Dictionary<string, RpcWorkerConfig> availableRuntimeToConfigMap = null)
+                                                                                    Dictionary<string, RpcWorkerConfig> availableWorkerRuntimeToConfigMap)
         {
-            // `availableRuntimeToConfigMap` could be partially filled by DynamicWorkerConfigurationResolver, which searches for worker configs in probing paths.
+            // `availableWorkerRuntimeToConfigMap` could be partially filled by DynamicWorkerConfigurationResolver, which searches for worker configs in probing paths.
             // This applies to scenarios such as multi-language worker environment and placeholder mode where some worker configs are found in probing paths, while remaining configs will be loaded from the default path within the Host.
-            availableRuntimeToConfigMap = availableRuntimeToConfigMap ?? new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
+            ArgumentNullException.ThrowIfNull(availableWorkerRuntimeToConfigMap);
 
             foreach (var workerPath in fileSystem.Directory.EnumerateDirectories(resolverOptions.WorkersRootDirPath))
             {
                 var workerDir = Path.GetFileName(workerPath);
 
-                if (availableRuntimeToConfigMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(resolverOptions.WorkerRuntime, workerDir, resolverOptions.IsMultiLanguageWorkerEnvironment, resolverOptions.IsPlaceholderModeEnabled))
+                if (availableWorkerRuntimeToConfigMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(resolverOptions.WorkerRuntime, workerDir, resolverOptions.IsMultiLanguageWorkerEnvironment, resolverOptions.IsPlaceholderModeEnabled))
                 {
                     continue;
                 }
@@ -82,11 +87,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 var workerConfig = WorkerConfigurationHelper.BuildWorkerConfig(resolverOptions, workerPath, workerConfigJson, workerDescription, metricsLogger, logger, systemRuntimeInformation);
                 if (workerConfig is not null)
                 {
-                    availableRuntimeToConfigMap[workerDir] = workerConfig;
+                    availableWorkerRuntimeToConfigMap[workerDir] = workerConfig;
                 }
             }
-
-            return availableRuntimeToConfigMap;
         }
     }
 }
