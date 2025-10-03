@@ -8,8 +8,9 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
-using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
 {
@@ -35,33 +36,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
                 });
             });
 
-            options.AddPolicy(PolicyNames.SystemAuthLevel, p =>
-            {
-                p.AddScriptAuthenticationSchemes();
-                p.AddRequirements(new AuthLevelRequirement(AuthorizationLevel.System));
-            });
-
-            options.AddPolicy(PolicyNames.SystemKeyAuthLevel, p =>
+            options.AddPolicy(PolicyNames.ExtensionWebhookInvoke, p =>
             {
                 p.AddScriptAuthenticationSchemes();
                 p.RequireAssertion(c =>
                 {
                     if (c.Resource is AuthorizationFilterContext filterContext)
                     {
-                        string keyName = null;
-                        object keyNameObject = filterContext.RouteData.Values["extensionName"];
-                        if (keyNameObject != null)
+                        string extensionName = filterContext.RouteData.Values["extensionName"]?.ToString();
+
+                        // First check to see if anonymous access has been configured for the webhook.
+                        // E.g. this might be configured for a Webhook extension in an app where App Service
+                        // authentication is being used.
+                        var snapshot = filterContext.HttpContext.RequestServices.GetRequiredService<IOptionsSnapshot<ExtensionSystemOptions>>();
+                        var extensionSystemOptions = snapshot.Get(extensionName);
+                        if (!string.IsNullOrEmpty(extensionName) && extensionSystemOptions?.WebhookAuthorizationLevel == AuthorizationLevel.Anonymous)
                         {
-                            keyName = DefaultScriptWebHookProvider.GetKeyName(keyNameObject.ToString());
+                            return true;
                         }
-                        else
-                        {
-                            keyNameObject = filterContext.RouteData.Values["keyName"];
-                            if (keyNameObject != null)
-                            {
-                                keyName = keyNameObject.ToString();
-                            }
-                        }
+
+                        string keyName = !string.IsNullOrEmpty(extensionName)
+                            ? DefaultScriptWebHookProvider.GetKeyName(extensionName)
+                            : filterContext.RouteData.Values["keyName"]?.ToString();
 
                         if (!string.IsNullOrEmpty(keyName) && AuthUtility.PrincipalHasAuthLevelClaim(filterContext.HttpContext.User, AuthorizationLevel.System, keyName))
                         {

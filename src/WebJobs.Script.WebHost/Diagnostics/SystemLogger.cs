@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -173,9 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
 
-                (innerExceptionType, innerExceptionMessage, details) = exception.GetExceptionDetails();
-                formattedMessage = Sanitizer.Sanitize(formattedMessage);
-                innerExceptionMessage = innerExceptionMessage ?? string.Empty;
+                (innerExceptionType, innerExceptionMessage, details, formattedMessage) = exception.GetSanitizedExceptionDetails(formattedMessage);
             }
 
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);

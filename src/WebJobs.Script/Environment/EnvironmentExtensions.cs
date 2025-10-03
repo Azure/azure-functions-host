@@ -305,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets a value indicating whether the application is running in Managed App environment.
+        /// Gets a value indicating whether the application is running in Managed App environment (Azure Container Apps environment).
         /// </summary>
         /// <param name="environment">The environment to verify.</param>
         /// <returns><see cref="true"/> if running in Managed App environment; otherwise, false.</returns>

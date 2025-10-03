@@ -54,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _dotnetIsolated60Path = Path.GetFullPath($@"..\..\DotNetIsolated60\{TestHelpers.BuildConfig}");
         private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath($@"..\..\DotNetIsolatedUnsupportedWorker\{TestHelpers.BuildConfig}");
         private static readonly string _dotnetIsolatedEmptyScriptRoot = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
+        private static readonly string _dotnetCustomHandlerPath = Path.GetFullPath($@"..\..\DotNetCustomHandler\{TestHelpers.BuildConfig}");
 
         private static Action<IServiceCollection> _customizeScriptHostServices;
 
@@ -800,6 +801,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Theory]
+        [InlineData(ScriptConstants.FlexConsumptionSku, ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview, true)]
+        [InlineData(ScriptConstants.FlexConsumptionSku, $"Feature1,{ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview}", true)]
+        [InlineData(ScriptConstants.FlexConsumptionSku, "Feature1", false)]
+        [InlineData(ScriptConstants.FlexConsumptionSku, null, false)]
+        [InlineData(ScriptConstants.DynamicSku, null, false)]
+        [InlineData(ScriptConstants.DynamicSku, ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview, false)]
+        [InlineData(ScriptConstants.DynamicSku, $"Feature1,{ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview}", false)]
+        [InlineData(ScriptConstants.ElasticPremiumSku, null, false)]
+        [InlineData(ScriptConstants.ElasticPremiumSku, $"Feature1,{ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview}", false)]
+        [InlineData("", null, false)]
+        public async Task Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(string websiteSku, string featureFlags, bool isExpectedToResetWorkerRuntime)
+        {
+            var environmentVariables = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsiteSku, websiteSku }
+            };
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetCustomHandlerPath, environmentVariables, "SimpleHttpTrigger");
+
+            using var testServer = new TestServer(builder);
+            var client = testServer.CreateClient();
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            // Validate that the channel is set up with native worker
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+            Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
+            Assert.NotNull(placeholderChannel.WorkerProcess.Process.Id);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlags);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/SimpleHttpTrigger");
+            response.EnsureSuccessStatusCode();
+
+            var log = _loggerProvider.GetLog();
+
+            if (isExpectedToResetWorkerRuntime)
+            {
+                // Verify expected logs when running the custom handler executable.
+                Assert.Contains("MCP custom handler preview is enabled. Setting FUNCTIONS_WORKER_RUNTIME to 'custom'", log);
+                Assert.Contains("Mapped function route 'api/SimpleHttpTrigger'", log);
+            }
+            else
+            {
+                Assert.DoesNotContain("MCP custom handler preview is enabled. Setting FUNCTIONS_WORKER_RUNTIME to 'custom'", log);
+            }
+        }
+
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit()
         {
@@ -865,7 +917,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags , ScriptConstants.FeatureFlagEnableResponseCompression);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableResponseCompression);
 
             response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
@@ -1217,10 +1269,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, params string[] functions)
         {
+            return InitializeDotNetIsolatedPlaceholderBuilder(scriptRootPath, null, functions);
+        }
+
+        private IWebHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, Dictionary<string, string> environmentVariables, params string[] functions)
+        {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "6.0");
+
+            if (environmentVariables is not null)
+            {
+                foreach (var (key, value) in environmentVariables)
+                {
+                    _environment.SetEnvironmentVariable(key, value);
+                }
+            }
 
             var builder = CreateStandbyHostBuilder(functions);
 

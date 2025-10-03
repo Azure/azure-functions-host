@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -22,15 +23,17 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 {
     public class ExtensionBundleManager : IExtensionBundleManager
     {
+        private const string ExtensionBundleClientName = nameof(ExtensionBundleManager);
         private readonly IEnvironment _environment;
         private readonly ExtensionBundleOptions _options;
         private readonly FunctionsHostingConfigOptions _configOption;
         private readonly ILogger _logger;
         private readonly string _cdnUri;
         private readonly string _platformReleaseChannel;
+        private readonly IHttpClientFactory _httpClientFactory;
         private string _extensionBundleVersion;
 
-        public ExtensionBundleManager(ExtensionBundleOptions options, IEnvironment environment, ILoggerFactory loggerFactory, FunctionsHostingConfigOptions configOption)
+        public ExtensionBundleManager(ExtensionBundleOptions options, IEnvironment environment, ILoggerFactory loggerFactory, FunctionsHostingConfigOptions configOption, IHttpClientFactory httpClientFactory)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = loggerFactory.CreateLogger<ExtensionBundleManager>() ?? throw new ArgumentNullException(nameof(loggerFactory));
@@ -38,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             _configOption = configOption ?? throw new ArgumentNullException(nameof(configOption));
             _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
             _platformReleaseChannel = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         }
 
         public async Task<ExtensionBundleDetails> GetExtensionBundleDetails()
@@ -79,10 +83,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         /// <returns>Path of the extension bundle.</returns>
         public async Task<string> GetExtensionBundlePath()
         {
-            using (var httpClient = new HttpClient())
-            {
-                return await GetBundle(httpClient);
-            }
+            var client = _httpClientFactory.CreateClient(ExtensionBundleClientName);
+            return await GetBundle(client);
         }
 
         /// <summary>
@@ -199,32 +201,101 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return ScriptConstants.ExtensionBundleForNonAppServiceEnvironment;
         }
 
-        private async Task<bool> TryDownloadZipFileAsync(Uri zipUri, string filePath, HttpClient httpClient)
+        private async Task<bool> TryDownloadZipFileAsync(Uri zipUri, string filePath, HttpClient httpClient, CancellationToken cancellationToken = default)
         {
-            _logger.DownloadingZip(zipUri, filePath);
-            var response = await httpClient.GetAsync(zipUri);
-            if (!response.IsSuccessStatusCode)
+            string azureRef = string.Empty;
+            try
             {
-                _logger.ErrorDownloadingZip(zipUri, response);
+                _logger.DownloadingZip(zipUri, filePath);
+
+                using var response = await httpClient.GetAsync(zipUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+                // Log AzureRef header if present (debug level to avoid noise in normal operations)
+                response.TryGetAzureRef(out azureRef);
+
+                response.EnsureSuccessStatusCode();
+
+                using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
+                await response.Content.CopyToAsync(fileStream, cancellationToken);
+                await fileStream.FlushAsync(cancellationToken);
+
+                _logger.DownloadComplete(zipUri, filePath);
+
+                return true;
+            }
+            catch (HttpRequestException ex)
+            {
+                var statusCode = ex.StatusCode;
+                _logger.ErrorDownloadingExtensionBundleZipHttpRequest(
+                    ex,
+                    zipUri,
+                    statusCode,
+                    ex.HttpRequestError,
+                    filePath,
+                    GetDiskUsageSafe(filePath),
+                    azureRef);
                 return false;
             }
-
-            using (var content = await response.Content.ReadAsStreamAsync())
-            using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+            catch (IOException ex)
             {
-                await content.CopyToAsync(stream);
+                _logger.ErrorDownloadingExtensionBundleZipIO(
+                    ex,
+                    zipUri,
+                    filePath,
+                    GetDiskUsageSafe(filePath),
+                    azureRef);
+                return false;
             }
+            catch (Exception ex)
+            {
+                // Non-HttpRequestException path: log as unexpected without HTTP-specific fields.
+                _logger.ErrorDownloadingExtensionBundleZipUnexpected(
+                    ex,
+                    zipUri,
+                    filePath,
+                    GetDiskUsageSafe(filePath),
+                    azureRef);
 
-            _logger.DownloadComplete(zipUri, filePath);
-            return true;
+                return false;
+            }
+        }
+
+        private string GetDiskUsageSafe(string path)
+        {
+            try
+            {
+                var root = Path.GetPathRoot(path);
+                if (string.IsNullOrEmpty(root))
+                {
+                    return "error=RootPathNotFound";
+                }
+
+                var di = new DriveInfo(root);
+                const double BytesPerMB = 1024d * 1024d;
+                double freeMb = di.AvailableFreeSpace / BytesPerMB;
+                double totalMb = di.TotalSize / BytesPerMB;
+                return $"free={freeMb:F2}MB total={totalMb:F2}MB";
+            }
+            catch (Exception ex)
+            {
+                return FormatDiskError(ex);
+            }
+        }
+
+        private static string FormatDiskError(Exception ex)
+        {
+            var msg = ex.Message?.Replace(Environment.NewLine, " ").Trim();
+            if (!string.IsNullOrEmpty(msg) && msg.Length > 200)
+            {
+                msg = msg.Substring(0, 200) + "...";
+            }
+            return $"error={ex.GetType().Name}: {msg}";
         }
 
         private async Task<string> GetLatestMatchingBundleVersionAsync()
         {
-            using (var httpClient = new HttpClient())
-            {
-                return await GetLatestMatchingBundleVersionAsync(httpClient);
-            }
+            var client = _httpClientFactory.CreateClient(ExtensionBundleClientName);
+            return await GetLatestMatchingBundleVersionAsync(client);
         }
 
         private async Task<string> GetLatestMatchingBundleVersionAsync(HttpClient httpClient)

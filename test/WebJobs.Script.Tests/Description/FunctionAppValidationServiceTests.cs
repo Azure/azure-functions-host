@@ -5,6 +5,7 @@ using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -178,7 +179,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var options = new ExtensionBundleOptions { Id = bundleId };
             var env = new TestEnvironment();
             var config = new FunctionsHostingConfigOptions();
-            var manager = new ExtensionBundleManager(options, env, _loggerFactory, config);
+            var httpClientFactory = new Mock<IHttpClientFactory>();
+            httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(new HttpClient());
+            var manager = new ExtensionBundleManager(options, env, _loggerFactory, config, httpClientFactory.Object);
 
             // Set the private _extensionBundleVersion field using reflection
             typeof(ExtensionBundleManager)

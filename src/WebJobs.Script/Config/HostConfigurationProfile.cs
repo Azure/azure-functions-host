@@ -30,6 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     ConfigurationSectionNames.CustomHandler, "enableHttpProxyingRequest"), "true"),
                 KeyValuePair.Create(ConfigurationPath.Combine(
                     ConfigurationSectionNames.Http, "routePrefix"), string.Empty),
+                KeyValuePair.Create(ConfigurationPath.Combine(
+                    ConfigurationSectionNames.CustomHandler, "http", "routes", "0", "route"), "{*route}"),
             ]);
 
         private HostConfigurationProfile(
