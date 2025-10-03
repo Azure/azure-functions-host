@@ -85,15 +85,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             if (e.Data is not null)
             {
+                string logMessage = e.Data;
+
                 if (e.Data.Contains("address already in use", StringComparison.OrdinalIgnoreCase) ||
                     e.Data.Contains("Only one usage of each socket address (protocol/network address/port) is normally permitted.", StringComparison.OrdinalIgnoreCase))
                 {
-                    _workerProcessLogger.LogError("Port is already in use. Worker process cannot be started. WorkerId: {workerId}", _workerId);
+                    logMessage = $"Error: Port {_httpWorkerOptions.Port} is already in use. Worker process cannot be started. WorkerId: {_workerId}. Error Data: {e.Data}";
                 }
-                else
-                {
-                    ParseErrorMessageAndLog(e.Data);
-                }
+
+                ParseErrorMessageAndLog(logMessage);
             }
         }
     }
