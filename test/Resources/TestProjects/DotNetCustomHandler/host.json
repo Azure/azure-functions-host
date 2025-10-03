@@ -8,6 +8,7 @@
     "description": {
       "defaultExecutablePath": "DotNetCustomHandler.exe"
     },
+    "port":  "1234",
     "enableProxyingHttpRequest": true
   }
 }

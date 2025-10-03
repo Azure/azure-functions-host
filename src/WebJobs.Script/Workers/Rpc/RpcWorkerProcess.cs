@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -91,6 +91,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _workerProcessLogger?.LogInformation("Language Worker Process exited and needs to be restarted.");
             _eventManager.Publish(new WorkerRestartEvent(_runtime, _workerId));
+        }
+
+        internal override void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (e.Data != null)
+            {
+                ParseErrorMessageAndLog(e.Data);
+            }
         }
     }
 }
