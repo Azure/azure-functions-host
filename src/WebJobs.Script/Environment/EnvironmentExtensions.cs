@@ -1,16 +1,15 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 using static Microsoft.Azure.WebJobs.Script.Utility;
 
@@ -39,14 +38,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(AzureWebsitePlaceholderMode) == "1";
         }
 
+        // Sets the environment variable to enforce sequential host restarts.
         public static void EnforceSequentialHostRestart(this IEnvironment environment)
         {
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.EnforceSequentialHostRestart, "1");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.SequentialHostRestart, "1");
         }
 
+        // Checks if sequential host restarts are enabled in Environment.
         public static bool IsSequentialHostRestartEnforced(this IEnvironment environment)
         {
-            return environment.GetEnvironmentVariable(EnvironmentSettingNames.EnforceSequentialHostRestart) == "1";
+            return environment.GetEnvironmentVariable(EnvironmentSettingNames.SequentialHostRestart) == "1";
         }
 
         public static bool UsePlaceholderDotNetIsolated(this IEnvironment environment)

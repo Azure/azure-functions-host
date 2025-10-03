@@ -133,10 +133,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             if (options.Port == 0)
             {
+                // If the port is not specified in the custom handler configuration, use an unused port.
                 options.Port = WorkerUtilities.GetUnusedTcpPort();
             }
             else
             {
+                // Enforce sequential restarts when a port is specified in the custom handler configuration to prevent port binding conflicts.
                 _environment.EnforceSequentialHostRestart();
             }
         }

@@ -822,7 +822,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             using var testServer = new TestServer(builder);
             var client = testServer.CreateClient();
-
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
@@ -839,8 +838,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await client.GetAsync("api/SimpleHttpTrigger");
             response.EnsureSuccessStatusCode();
 
-            var service = testServer.Services.GetService<WebJobsScriptHostService>();
-            Assert.True(service.ShouldEnforceSequentialRestart());
+            var hostService = testServer.Services.GetService<WebJobsScriptHostService>();
+            Assert.True(hostService.ShouldEnforceSequentialRestart());
 
             var log = _loggerProvider.GetLog();
 
