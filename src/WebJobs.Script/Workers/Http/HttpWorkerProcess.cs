@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly string _scriptRootPath;
         private readonly string _workerId;
         private readonly WorkerProcessArguments _workerProcessArguments;
+        private readonly string _errorPortInUseMessage = "Only one usage of each socket address (protocol/network address/port) is normally permitted";
 
         internal HttpWorkerProcess(string workerId,
                                        string rootScriptPath,
@@ -85,15 +86,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             if (e.Data is not null)
             {
-                string logMessage = e.Data;
+                string logString = e.Data;
 
-                if (e.Data.Contains("address already in use", StringComparison.OrdinalIgnoreCase) ||
-                    e.Data.Contains("Only one usage of each socket address (protocol/network address/port) is normally permitted.", StringComparison.OrdinalIgnoreCase))
+                if (e.Data.Contains(_errorPortInUseMessage, StringComparison.OrdinalIgnoreCase))
                 {
-                    logMessage = $"Error: Port {_httpWorkerOptions.Port} is already in use. Worker process cannot be started. WorkerId: {_workerId}. Error Data: {e.Data}";
+                    logString = $"Error: Port {_httpWorkerOptions.Port} is already in use. Worker process cannot be started. WorkerId: {_workerId}. Error Data: {e.Data}";
                 }
 
-                ParseErrorMessageAndLog(logMessage);
+                ParseErrorMessageAndLog(logString);
             }
         }
     }
