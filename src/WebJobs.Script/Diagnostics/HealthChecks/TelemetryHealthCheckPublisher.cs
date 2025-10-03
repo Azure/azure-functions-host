@@ -1,12 +1,12 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Linq;
-using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Pools;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 
@@ -58,29 +58,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             }
             else
             {
-                // Construct string showing list of all health entries status and description for logs
-                using PoolRental<StringBuilder> rental = PoolFactory.SharedStringBuilderPool.Rent();
-                string separator = string.Empty;
                 foreach (var entry in report.Entries)
                 {
                     if (entry.Value.Status != HealthStatus.Healthy)
                     {
                         _metrics.UnhealthyHealthCheck.Record(entry.Key, entry.Value, tag);
                     }
-
-                    rental.Value.Append(separator)
-                        .Append(entry.Key)
-                        .Append(": {")
-                        .Append("status: ")
-                        .Append(entry.Value.Status.ToString())
-                        .Append(", description: ")
-                        .Append(entry.Value.Description)
-                        .Append('}');
-
-                    separator = ", ";
                 }
 
-                Log.Unhealthy(_logger, tag, report.Status, rental.Value);
+                Log.Unhealthy(_logger, tag, report.Status, new HealthEntries(report));
             }
 
             _metrics.HealthCheckReport.Record(report, tag);
@@ -92,14 +78,60 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             return entry.Tags.Contains(_options.Tag);
         }
 
-        internal static partial class Log
+        /// <summary>
+        /// Wraps the health report entries for logging purposes.
+        /// </summary>
+        /// <param name="report">The report to log.</param>
+        /// <remarks>
+        /// By wrapping in a struct, we delay performing JSON serialization
+        /// until this is actually being logged (and not when it is filtered out).
+        /// </remarks>
+        private readonly struct HealthEntries(HealthReport report)
+        {
+            private static readonly JsonSerializerOptions _options
+                = new() { Converters = { new HealthEntriesConverter() } };
+
+            public override string ToString()
+            {
+                // We use a JSON serializer here to ensure proper escaping of values.
+                return JsonSerializer.Serialize(report, _options);
+            }
+        }
+
+        private class HealthEntriesConverter : JsonConverter<HealthReport>
+        {
+            public override HealthReport Read(
+                ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(
+                Utf8JsonWriter writer, HealthReport value, JsonSerializerOptions options)
+            {
+                writer.WriteStartObject();
+
+                foreach ((string name, HealthReportEntry entry) in value.Entries)
+                {
+                    writer.WritePropertyName(name);
+                    writer.WriteStartObject();
+                    writer.WriteString("status", entry.Status.ToString());
+                    writer.WriteString("description", entry.Description);
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndObject();
+            }
+        }
+
+        private static partial class Log
         {
             [LoggerMessage(0, LogLevel.Warning, "[Tag='{Tag}'] Process reporting unhealthy: {Status}. Health check entries are {Entries}")]
             public static partial void Unhealthy(
                 ILogger logger,
                 string tag,
                 HealthStatus status,
-                StringBuilder entries);
+                HealthEntries entries);
 
             [LoggerMessage(1, LogLevel.Debug, "[Tag='{Tag}'] Process reporting healthy: {Status}.")]
             public static partial void Healthy(

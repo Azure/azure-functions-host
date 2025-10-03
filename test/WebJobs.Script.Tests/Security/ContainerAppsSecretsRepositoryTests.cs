@@ -28,14 +28,25 @@ public class ContainerAppsSecretsRepositoryTests : IDisposable
         var mockDirectory = new Mock<DirectoryBase>(MockBehavior.Strict);
 
         // Setup directory and file existence
-        mockDirectory.Setup(d => d.Exists(It.IsAny<string>())).Returns(true);
+        mockDirectory
+            .Setup(d => d.Exists(ContainerAppsSecretsRepository.ContainerAppsSecretsDir))
+            .Returns(() => _fileContentMap is not null);
         mockFileSystem.SetupGet(fs => fs.Directory).Returns(mockDirectory.Object);
         mockFileSystem.SetupGet(fs => fs.File).Returns(mockFile.Object);
 
         // Return all files when asked
         mockDirectory
             .Setup(d => d.GetFiles(ContainerAppsSecretsRepository.ContainerAppsSecretsDir, "*"))
-            .Returns(() => _fileContentMap.Keys.ToArray());
+            .Returns(() =>
+            {
+                // treat a null map as a missing directory
+                if (_fileContentMap is not null)
+                {
+                    return _fileContentMap.Keys.ToArray();
+                }
+
+                throw new DirectoryNotFoundException();
+            });
 
         // Setup file existence checks
         mockFile
@@ -74,6 +85,20 @@ public class ContainerAppsSecretsRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Read_Host_Secrets_MissingDirectory()
+    {
+        _fileContentMap = null;
+
+        var result = await _repo.ReadAsync(ScriptSecretsType.Host, null);
+
+        var hostSecrets = result as HostSecrets;
+        Assert.NotNull(hostSecrets);
+        Assert.Null(hostSecrets.MasterKey);
+        Assert.Empty(hostSecrets.FunctionKeys);
+        Assert.Empty(hostSecrets.SystemKeys);
+    }
+
+    [Fact]
     public async Task Read_Function_Secrets()
     {
         _fileContentMap = new()
@@ -96,6 +121,18 @@ public class ContainerAppsSecretsRepositoryTests : IDisposable
         Assert.NotNull(functionSecrets);
         Assert.Equal("f2k1", functionSecrets.GetFunctionKey("Key1", "funcTion2").Value);
         Assert.Equal("f2k2", functionSecrets.GetFunctionKey("key2", "function2").Value);
+    }
+
+    [Fact]
+    public async Task Read_Function_Secrets_MissingDirectory()
+    {
+        _fileContentMap = null;
+
+        var result = await _repo.ReadAsync(ScriptSecretsType.Function, "function1");
+
+        var functionSecrets = result as FunctionSecrets;
+        Assert.NotNull(functionSecrets);
+        Assert.Empty(functionSecrets.Keys);
     }
 
     [Fact]

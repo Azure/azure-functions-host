@@ -1,9 +1,10 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;
+using System.Drawing.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AwesomeAssertions;
@@ -33,7 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
                 CreateOptions(true, null),
                 [HealthStatus.Degraded],
                 1,
-                "Process reporting unhealthy: Degraded. Health check entries are id0: {status: Degraded, description: desc0}",
+                @"Process reporting unhealthy: Degraded. Health check entries are " +
+                @"{""id0"":{""status"":""Degraded"",""description"":""desc0""}}",
                 LogLevel.Warning,
                 0.5
             },
@@ -41,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
                 CreateOptions(false, null),
                 [HealthStatus.Unhealthy],
                 1,
-                "Process reporting unhealthy: Unhealthy. Health check entries are id0: {status: Unhealthy, description: desc0}",
+                "Process reporting unhealthy: Unhealthy. Health check entries are "
+                + @"{""id0"":{""status"":""Unhealthy"",""description"":""desc0""}}",
                 LogLevel.Warning,
                 0
             },
@@ -57,7 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
                 CreateOptions(true, null),
                 [HealthStatus.Healthy, HealthStatus.Unhealthy],
                 1,
-                "Process reporting unhealthy: Unhealthy. Health check entries are id0: {status: Healthy, description: desc0}, id1: {status: Unhealthy, description: desc1}",
+                "Process reporting unhealthy: Unhealthy. Health check entries are "
+                + @"{""id0"":{""status"":""Healthy"",""description"":""desc0""},""id1"":{""status"":""Unhealthy"",""description"":""desc1""}}",
                 LogLevel.Warning,
                 0
             },
@@ -65,7 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
                 CreateOptions(true, null),
                 [HealthStatus.Healthy, (HealthStatus.Unhealthy, "some.tag")],
                 1,
-                "Process reporting unhealthy: Unhealthy. Health check entries are id0: {status: Healthy, description: desc0}, id1: {status: Unhealthy, description: desc1}",
+                "Process reporting unhealthy: Unhealthy. Health check entries are " +
+                @"{""id0"":{""status"":""Healthy"",""description"":""desc0""},""id1"":{""status"":""Unhealthy"",""description"":""desc1""}}",
                 LogLevel.Warning,
                 0
             },
@@ -74,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
                 [HealthStatus.Healthy, (HealthStatus.Degraded, "some.tag"), HealthStatus.Unhealthy],
                 1,
                 "Process reporting unhealthy: Unhealthy. Health check entries are " +
-                "id0: {status: Healthy, description: desc0}, id1: {status: Degraded, description: desc1}, id2: {status: Unhealthy, description: desc2}",
+                @"{""id0"":{""status"":""Healthy"",""description"":""desc0""},""id1"":{""status"":""Degraded"",""description"":""desc1""},""id2"":{""status"":""Unhealthy"",""description"":""desc2""}}",
                 LogLevel.Warning,
                 0
             },
@@ -91,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
                 [HealthStatus.Healthy, (HealthStatus.Degraded, "some.tag"), HealthStatus.Unhealthy],
                 1,
                 "Process reporting unhealthy: Degraded. Health check entries are " +
-                "id1: {status: Degraded, description: desc1}",
+                @"{""id1"":{""status"":""Degraded"",""description"":""desc1""}}",
                 LogLevel.Warning,
                 0.5
             },
@@ -100,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
                 [(HealthStatus.Healthy, "some.tag"), (HealthStatus.Degraded, "some.tag"), (HealthStatus.Unhealthy, "some.other.tag"), (HealthStatus.Unhealthy, "some.tag")],
                 1,
                 "Process reporting unhealthy: Unhealthy. Health check entries are " +
-                "id0: {status: Healthy, description: desc0}, id1: {status: Degraded, description: desc1}, id3: {status: Unhealthy, description: desc3}",
+                @"{""id0"":{""status"":""Healthy"",""description"":""desc0""},""id1"":{""status"":""Degraded"",""description"":""desc1""},""id3"":{""status"":""Unhealthy"",""description"":""desc3""}}",
                 LogLevel.Warning,
                 0
             }
@@ -154,8 +159,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
 
             latest.Should().NotBeNull();
             latest.Value.Should().Be(expectedMetricValue);
-            latest.Tags.Should().ContainKey(HealthCheckMetrics.Constants.HealthCheckTagTag)
-                .WhoseValue.Should().Be(options.Tag ?? string.Empty);
+
+            if (string.IsNullOrWhiteSpace(options.Tag))
+            {
+                latest.Tags.Should().NotContainKey(HealthCheckMetrics.Constants.HealthCheckTagTag);
+            }
+            else
+            {
+                latest.Tags.Should().ContainKey(HealthCheckMetrics.Constants.HealthCheckTagTag)
+                    .WhoseValue.Should().Be(options.Tag);
+            }
 
             IReadOnlyList<CollectedMeasurement<double>> unhealthyCounters = unhealthyMetricCollector
                 .GetMeasurementSnapshot();
@@ -214,14 +227,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         }
 
         private static double? GetValue(
-            IReadOnlyCollection<CollectedMeasurement<double>> counters, string name, string tag)
+            IReadOnlyCollection<CollectedMeasurement<double>> measurements, string name, string tag)
         {
-            foreach (CollectedMeasurement<double> counter in counters)
+            static bool MatchTag(CollectedMeasurement<double> measurement, string tag, string value)
             {
-                if (counter.Tags[HealthCheckMetrics.Constants.HealthCheckNameTag]?.ToString() == name &&
-                    counter.Tags[HealthCheckMetrics.Constants.HealthCheckTagTag]?.ToString() == tag)
+                if (measurement.Tags.TryGetValue(tag, out object actual))
                 {
-                    return counter.Value;
+                    return actual?.ToString() == value;
+                }
+
+                return string.IsNullOrWhiteSpace(value);
+            }
+
+            foreach (CollectedMeasurement<double> measurement in measurements)
+            {
+                if (MatchTag(measurement, HealthCheckMetrics.Constants.HealthCheckNameTag, name) &&
+                    MatchTag(measurement, HealthCheckMetrics.Constants.HealthCheckTagTag, tag))
+                {
+                    return measurement.Value;
                 }
             }
 
