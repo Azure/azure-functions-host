@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;
+using System.Drawing.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AwesomeAssertions;
@@ -158,8 +159,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
 
             latest.Should().NotBeNull();
             latest.Value.Should().Be(expectedMetricValue);
-            latest.Tags.Should().ContainKey(HealthCheckMetrics.Constants.HealthCheckTagTag)
-                .WhoseValue.Should().Be(options.Tag ?? string.Empty);
+
+            if (string.IsNullOrWhiteSpace(options.Tag))
+            {
+                latest.Tags.Should().NotContainKey(HealthCheckMetrics.Constants.HealthCheckTagTag);
+            }
+            else
+            {
+                latest.Tags.Should().ContainKey(HealthCheckMetrics.Constants.HealthCheckTagTag)
+                    .WhoseValue.Should().Be(options.Tag);
+            }
 
             IReadOnlyList<CollectedMeasurement<double>> unhealthyCounters = unhealthyMetricCollector
                 .GetMeasurementSnapshot();
@@ -218,14 +227,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         }
 
         private static double? GetValue(
-            IReadOnlyCollection<CollectedMeasurement<double>> counters, string name, string tag)
+            IReadOnlyCollection<CollectedMeasurement<double>> measurements, string name, string tag)
         {
-            foreach (CollectedMeasurement<double> counter in counters)
+            static bool MatchTag(CollectedMeasurement<double> measurement, string tag, string value)
             {
-                if (counter.Tags[HealthCheckMetrics.Constants.HealthCheckNameTag]?.ToString() == name &&
-                    counter.Tags[HealthCheckMetrics.Constants.HealthCheckTagTag]?.ToString() == tag)
+                if (measurement.Tags.TryGetValue(tag, out object actual))
                 {
-                    return counter.Value;
+                    return actual?.ToString() == value;
+                }
+
+                return string.IsNullOrWhiteSpace(value);
+            }
+
+            foreach (CollectedMeasurement<double> measurement in measurements)
+            {
+                if (MatchTag(measurement, HealthCheckMetrics.Constants.HealthCheckNameTag, name) &&
+                    MatchTag(measurement, HealthCheckMetrics.Constants.HealthCheckTagTag, tag))
+                {
+                    return measurement.Value;
                 }
             }
 
