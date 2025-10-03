@@ -13,6 +13,7 @@
     <WarningsAsErrors Condition="'$(CI)' == 'true'">$(WarningsAsErrors)NU1904;</WarningsAsErrors>
     <NuGetAuditLevel>moderate</NuGetAuditLevel> <!-- warn on moderate severity only. -->
     <NuGetAuditMode>all</NuGetAuditMode> <!-- audit transitive dependencies. -->
+    <WarnOnPackingNonPackableProject>false</WarnOnPackingNonPackableProject>
   </PropertyGroup>
 
   <PropertyGroup>
