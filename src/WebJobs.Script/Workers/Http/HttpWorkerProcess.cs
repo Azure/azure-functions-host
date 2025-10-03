@@ -84,11 +84,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         internal override void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            if (e.Data is not null)
-            {
-                string logString = e.Data;
+            string logString = e.Data;
 
-                if (e.Data.Contains(_errorPortInUseMessage, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(logString))
+            {
+                if (logString.Contains(_errorPortInUseMessage, StringComparison.OrdinalIgnoreCase))
                 {
                     logString = $"Error: Port {_httpWorkerOptions.Port} is already in use. Worker process cannot be started. WorkerId: {_workerId}. Error Data: {e.Data}";
                 }
