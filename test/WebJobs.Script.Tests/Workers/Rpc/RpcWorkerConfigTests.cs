@@ -724,12 +724,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     };
                     using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
                     {
-                        configFactory.BuildWorkerProviderDictionary();
                         return configFactory.GetConfigs();
                     }
                 }
 
-                configFactory.BuildWorkerProviderDictionary();
                 return configFactory.GetConfigs();
             }
             finally
@@ -771,7 +769,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             bool hasEnded = false;
             foreach (string begin in metricsLogger.EventsBegan)
             {
-                if (begin.Contains(MetricEventNames.BuildWorkerConfig.Substring(0, MetricEventNames.BuildWorkerConfig.IndexOf('{'))))
+                if (begin.Contains(MetricEventNames.AddProvider.Substring(0, MetricEventNames.AddProvider.IndexOf('{'))))
                 {
                     hasBegun = true;
                     break;
@@ -779,7 +777,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
             foreach (string end in metricsLogger.EventsEnded)
             {
-                if (end.Contains(MetricEventNames.BuildWorkerConfig.Substring(0, MetricEventNames.BuildWorkerConfig.IndexOf('{'))))
+                if (end.Contains(MetricEventNames.AddProvider.Substring(0, MetricEventNames.AddProvider.IndexOf('{'))))
                 {
                     hasEnded = true;
                     break;

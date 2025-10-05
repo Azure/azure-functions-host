@@ -57,32 +57,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddProvidersFromAppSettings()
         {
-            var workerDescriptionOverrides = _resolverOptions.CurrentValue.WorkerDescriptionOverrides;
-
-            foreach (var (language, workerDescriptionOverride) in workerDescriptionOverrides)
+            foreach (var (language, workerDescriptionOverride) in _resolverOptions.CurrentValue.WorkerDescriptionOverrides)
             {
                 if (!string.IsNullOrEmpty(workerDescriptionOverride?.WorkerDirectory))
                 {
                     _workerDescriptionDictionary.Remove(language);
-
-                    // Do not skip non-worker directories like the function app payload directory
-                    if (WorkerConfigurationHelper.ShouldSkipWorkerDirectory(_resolverOptions.CurrentValue.WorkerRuntime, Path.GetFileName(workerDescriptionOverride.WorkerDirectory), _resolverOptions.CurrentValue.IsMultiLanguageWorkerEnvironment, _resolverOptions.CurrentValue.IsPlaceholderModeEnabled)
-                        && workerDescriptionOverride.WorkerDirectory.StartsWith(_resolverOptions.CurrentValue.WorkersRootDirPath))
-                    {
-                        continue;
-                    }
-
-                    (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerDescriptionAndConfig(workerDescriptionOverride.WorkerDirectory, _profileManager, _resolverOptions.CurrentValue.WorkerDescriptionOverrides, _logger);
-                    if (workerDescription is null || WorkerConfigurationHelper.IsWorkerDescriptionDisabled(workerDescription, _logger))
-                    {
-                        continue;
-                    }
-
-                    var workerConfig = WorkerConfigurationHelper.BuildWorkerConfig(_resolverOptions.CurrentValue, workerDescriptionOverride.WorkerDirectory, workerConfigJson, workerDescription, _metricsLogger, _logger, _systemRuntimeInformation);
-                    if (workerConfig is not null)
-                    {
-                        _workerDescriptionDictionary[language] = workerConfig;
-                    }
+                    WorkerConfigurationHelper.AddProvider(_resolverOptions.CurrentValue, workerDescriptionOverride.WorkerDirectory, _metricsLogger, _profileManager, _logger, _systemRuntimeInformation, _workerDescriptionDictionary);
                 }
             }
         }

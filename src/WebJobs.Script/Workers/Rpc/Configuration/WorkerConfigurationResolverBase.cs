@@ -60,24 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             foreach (var workerPath in _fileSystem.Directory.EnumerateDirectories(WorkerResolverOptions.WorkersRootDirPath))
             {
-                var workerDir = Path.GetFileName(workerPath);
-
-                if (availableWorkerRuntimeToConfigMap.ContainsKey(workerDir) || WorkerConfigurationHelper.ShouldSkipWorkerDirectory(WorkerResolverOptions.WorkerRuntime, workerDir, WorkerResolverOptions.IsMultiLanguageWorkerEnvironment, WorkerResolverOptions.IsPlaceholderModeEnabled))
-                {
-                    continue;
-                }
-
-                (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerDescriptionAndConfig(workerPath, _profileManager, WorkerResolverOptions.WorkerDescriptionOverrides, _logger);
-                if (workerDescription is null || WorkerConfigurationHelper.IsWorkerDescriptionDisabled(workerDescription, _logger))
-                {
-                    continue;
-                }
-
-                var workerConfig = WorkerConfigurationHelper.BuildWorkerConfig(WorkerResolverOptions, workerPath, workerConfigJson, workerDescription, _metricsLogger, _logger, _systemRuntimeInformation);
-                if (workerConfig is not null)
-                {
-                    availableWorkerRuntimeToConfigMap[workerDir] = workerConfig;
-                }
+                WorkerConfigurationHelper.AddProvider(WorkerResolverOptions, workerPath, _metricsLogger, _profileManager, _logger, _systemRuntimeInformation, availableWorkerRuntimeToConfigMap);
             }
         }
     }
