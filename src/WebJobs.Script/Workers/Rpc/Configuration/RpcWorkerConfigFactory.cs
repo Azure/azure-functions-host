@@ -3,13 +3,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration.WorkerConfigurationHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (!string.IsNullOrEmpty(workerDescriptionOverride?.WorkerDirectory))
                 {
                     _workerDescriptionDictionary.Remove(language);
-                    WorkerConfigurationHelper.AddProvider(_resolverOptions.CurrentValue, workerDescriptionOverride.WorkerDirectory, _metricsLogger, _profileManager, _logger, _systemRuntimeInformation, _workerDescriptionDictionary);
+                    AddProvider(_resolverOptions.CurrentValue, workerDescriptionOverride.WorkerDirectory, _metricsLogger, _profileManager, _logger, _systemRuntimeInformation, _workerDescriptionDictionary);
                 }
             }
         }

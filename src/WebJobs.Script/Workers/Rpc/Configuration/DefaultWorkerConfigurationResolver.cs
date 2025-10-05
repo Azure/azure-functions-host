@@ -12,7 +12,9 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
-    // This class resolves worker configurations by scanning the "workers" directory within the Host for worker config files.
+    /// <summary>
+    /// This class resolves worker configurations by scanning the "workers" directory within the Host for worker config files.
+    /// </summary>
     internal sealed class DefaultWorkerConfigurationResolver(ILoggerFactory loggerFactory,
                                                 IMetricsLogger metricsLogger,
                                                 IFileSystem fileSystem,

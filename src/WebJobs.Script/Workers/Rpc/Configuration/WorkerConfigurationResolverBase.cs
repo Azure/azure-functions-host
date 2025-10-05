@@ -3,15 +3,18 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.IO.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration.WorkerConfigurationHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
+    /// <summary>
+    /// Base class for worker configuration resolvers.
+    /// </summary>
     internal abstract class WorkerConfigurationResolverBase : IWorkerConfigurationResolver
     {
         private readonly ILogger _logger;
@@ -52,15 +55,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public abstract Dictionary<string, RpcWorkerConfig> GetWorkerConfigs();
 
-        internal void ResolveWorkerConfigsFromWithinHost(Dictionary<string, RpcWorkerConfig> availableWorkerRuntimeToConfigMap)
+        /// <summary>
+        /// Resolves worker configurations by scanning the "workers" directory within the Host for worker config files.
+        /// </summary>
+        internal void ResolveWorkerConfigsFromWithinHost(Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap)
         {
-            // `availableWorkerRuntimeToConfigMap` could be partially filled by DynamicWorkerConfigurationResolver, which searches for worker configs in probing paths.
-            // This applies to scenarios such as multi-language worker environment and placeholder mode where some worker configs are found in probing paths, while remaining configs will be loaded from the default path within the Host.
-            ArgumentNullException.ThrowIfNull(availableWorkerRuntimeToConfigMap);
+            ArgumentNullException.ThrowIfNull(workerRuntimeToConfigMap);
 
             foreach (var workerPath in _fileSystem.Directory.EnumerateDirectories(WorkerResolverOptions.WorkersRootDirPath))
             {
-                WorkerConfigurationHelper.AddProvider(WorkerResolverOptions, workerPath, _metricsLogger, _profileManager, _logger, _systemRuntimeInformation, availableWorkerRuntimeToConfigMap);
+                AddProvider(WorkerResolverOptions, workerPath, _metricsLogger, _profileManager, _logger, _systemRuntimeInformation, workerRuntimeToConfigMap);
             }
         }
     }

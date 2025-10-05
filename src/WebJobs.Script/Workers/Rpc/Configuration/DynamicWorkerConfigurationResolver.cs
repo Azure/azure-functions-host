@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using static Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration.WorkerConfigurationHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
@@ -33,14 +34,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         public override Dictionary<string, RpcWorkerConfig> GetWorkerConfigs()
         {
             var workerRuntime = WorkerResolverOptions.WorkerRuntime;
-            var workerProbingPaths = WorkerResolverOptions.ProbingPaths;
+            var workerRuntimeConfigMap = ResolveWorkerConfigsFromProbingPaths(WorkerResolverOptions.ProbingPaths, workerRuntime);
 
-            // Search for worker configs in probing paths
-            var workerRuntimeConfigMap = ResolveWorkerConfigsFromProbingPaths(workerProbingPaths, workerRuntime);
-
-            // Return if required worker config has been found
             if (!WorkerResolverOptions.IsMultiLanguageWorkerEnvironment && !WorkerResolverOptions.IsPlaceholderModeEnabled && !string.IsNullOrWhiteSpace(workerRuntime) && workerRuntimeConfigMap.ContainsKey(workerRuntime))
             {
+                // Return if required worker config has been found
                 return workerRuntimeConfigMap;
             }
 
@@ -83,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                         // Skip worker directories that don't match the current runtime or are not enabled via hosting config. Do not load all workers after the specialization is done and if it is not a multi-language runtime environment
                         if (!WorkerResolverOptions.WorkersAvailableForResolution.Contains(workerRuntimeDir) ||
-                           WorkerConfigurationHelper.ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir, WorkerResolverOptions.IsMultiLanguageWorkerEnvironment, WorkerResolverOptions.IsPlaceholderModeEnabled))
+                           ShouldSkipWorkerDirectory(workerRuntime, workerRuntimeDir, WorkerResolverOptions.IsMultiLanguageWorkerEnvironment, WorkerResolverOptions.IsPlaceholderModeEnabled))
                         {
                             continue;
                         }
@@ -128,8 +126,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                 var languageWorkerVersionPath = versionPair.Value;
 
-                (var workerDescription, var workerConfigJson) = WorkerConfigurationHelper.GetWorkerDescriptionAndConfig(languageWorkerVersionPath, ProfileManager, WorkerResolverOptions.WorkerDescriptionOverrides, Logger);
-                if (workerDescription is null || WorkerConfigurationHelper.IsWorkerDescriptionDisabled(workerDescription, Logger))
+                (var workerDescription, var workerConfigJson) = GetWorkerDescriptionAndConfig(languageWorkerVersionPath, ProfileManager, WorkerResolverOptions.WorkerDescriptionOverrides, Logger);
+                if (workerDescription is null || IsWorkerDescriptionDisabled(workerDescription, Logger))
                 {
                     continue;
                 }
@@ -152,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return null;
             }
 
-            return WorkerConfigurationHelper.BuildWorkerConfig(WorkerResolverOptions, resolvedWorkerVersionPath, resolvedWorkerConfig, resolvedWorkerDescription, MetricsLogger, Logger, SystemRuntimeInformation);
+            return BuildWorkerConfig(WorkerResolverOptions, resolvedWorkerVersionPath, resolvedWorkerConfig, resolvedWorkerDescription, MetricsLogger, Logger, SystemRuntimeInformation);
         }
 
         /// <summary>
