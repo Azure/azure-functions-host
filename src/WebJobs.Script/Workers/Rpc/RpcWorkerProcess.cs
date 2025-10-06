@@ -92,13 +92,5 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerProcessLogger?.LogInformation("Language Worker Process exited and needs to be restarted.");
             _eventManager.Publish(new WorkerRestartEvent(_runtime, _workerId));
         }
-
-        internal override void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (e.Data != null)
-            {
-                ParseErrorMessageAndLog(e.Data);
-            }
-        }
     }
 }

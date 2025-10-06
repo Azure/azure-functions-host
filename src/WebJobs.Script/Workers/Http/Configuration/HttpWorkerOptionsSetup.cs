@@ -131,15 +131,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
             options.Arguments.WorkerArguments.AddRange(options.Description.WorkerArguments);
 
-            if (options.Port == 0)
+            if (options.Port is not null && options.Port != 0)
             {
-                // If the port is not specified in the custom handler configuration, use an unused port.
-                options.Port = WorkerUtilities.GetUnusedTcpPort();
+                if (!WorkerUtilities.IsValidPort((int)options.Port))
+                {
+                    throw new HostConfigurationException($"Invalid port number {options.Port} specified for custom handler.");
+                }
+
+                options.IsUserSpecifiedPort = true;
             }
             else
             {
-                // Enforce sequential restarts when a port is specified in the custom handler configuration to prevent port binding conflicts.
-                _environment.EnforceSequentialHostRestart();
+                // If the port is not specified in the custom handler configuration, use an unused port.
+                options.Port = WorkerUtilities.GetUnusedTcpPort();
             }
         }
 

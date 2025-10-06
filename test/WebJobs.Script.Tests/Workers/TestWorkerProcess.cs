@@ -31,10 +31,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         {
             throw new NotImplementedException();
         }
-
-        internal override void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

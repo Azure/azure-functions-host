@@ -38,18 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(AzureWebsitePlaceholderMode) == "1";
         }
 
-        // Sets the environment variable to enforce sequential host restarts.
-        public static void EnforceSequentialHostRestart(this IEnvironment environment)
-        {
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.SequentialHostRestart, "1");
-        }
-
-        // Checks if sequential host restarts are enabled in Environment.
-        public static bool IsSequentialHostRestartEnforced(this IEnvironment environment)
-        {
-            return environment.GetEnvironmentVariable(EnvironmentSettingNames.SequentialHostRestart) == "1";
-        }
-
         public static bool UsePlaceholderDotNetIsolated(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariable(AzureWebsiteUsePlaceholderDotNetIsolated) == "1";

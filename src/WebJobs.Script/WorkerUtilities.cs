@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Net;
@@ -16,6 +16,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 int port = ((IPEndPoint)tcpSocket.LocalEndPoint).Port;
                 return port;
             }
+        }
+
+        public static bool IsValidPort(int port)
+        {
+            using (Socket tcpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                try
+                {
+                    tcpSocket.Bind(new IPEndPoint(IPAddress.Loopback, port));
+                }
+                catch (SocketException)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

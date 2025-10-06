@@ -16,7 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public WorkerProcessArguments Arguments { get; set; }
 
-        public int Port { get; set; }
+        public int? Port { get; set; }
+
+        public bool IsUserSpecifiedPort { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the host will forward the request to the worker process.

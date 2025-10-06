@@ -19,7 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly string _scriptRootPath;
         private readonly string _workerId;
         private readonly WorkerProcessArguments _workerProcessArguments;
-        private readonly string _errorPortInUseMessage = "Only one usage of each socket address (protocol/network address/port) is normally permitted";
 
         internal HttpWorkerProcess(string workerId,
                                        string rootScriptPath,
@@ -54,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 WorkerId = _workerId,
                 Arguments = _workerProcessArguments,
                 WorkingDirectory = _httpWorkerOptions.Description.WorkingDirectory,
-                Port = _httpWorkerOptions.Port
+                Port = (int)_httpWorkerOptions.Port
             };
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.WorkerIdEnvVarName, _workerId);
@@ -80,21 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             _workerProcessLogger?.LogInformation("Language Worker Process exited and needs to be restarted.");
             _eventManager.Publish(new HttpWorkerRestartEvent(_workerId));
-        }
-
-        internal override void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            string logString = e.Data;
-
-            if (!string.IsNullOrWhiteSpace(logString))
-            {
-                if (logString.Contains(_errorPortInUseMessage, StringComparison.OrdinalIgnoreCase))
-                {
-                    logString = $"Error: Port {_httpWorkerOptions.Port} is already in use. Worker process cannot be started. WorkerId: {_workerId}. Error Data: {e.Data}";
-                }
-
-                ParseErrorMessageAndLog(logString);
-            }
         }
     }
 }

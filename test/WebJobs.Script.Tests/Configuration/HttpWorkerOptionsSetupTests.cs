@@ -318,7 +318,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
 
             Assert.Equal(outputPort, options.Port);
-            Assert.True(_environment.IsSequentialHostRestartEnforced());
         }
 
         [Fact]
