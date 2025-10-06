@@ -1,7 +1,9 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -18,21 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        public static bool IsValidPort(int port)
+        public static bool IsPortInUse(int port)
         {
-            using (Socket tcpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
-            {
-                try
-                {
-                    tcpSocket.Bind(new IPEndPoint(IPAddress.Loopback, port));
-                }
-                catch (SocketException)
-                {
-                    return false;
-                }
-            }
-
-            return true;
+            var ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
+            var tcpListeners = ipGlobalProperties.GetActiveTcpListeners();
+            return tcpListeners.Any(endpoint => endpoint.Port == port);
         }
     }
 }
