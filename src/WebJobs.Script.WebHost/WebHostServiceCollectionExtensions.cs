@@ -222,6 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // must happen after the StandbyOptions have reset. For this reason, we have a special ChangeTokenSource that
             // will reset the ScriptApplicationHostOptions only after StandbyOptions have been reset.
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
+            services.ConfigureOptions<ScriptJobHostWorkerOptionsSetup>();
             services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsChangeTokenSource>();
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();

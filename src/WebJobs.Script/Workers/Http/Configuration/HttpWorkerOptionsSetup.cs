@@ -131,9 +131,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
             options.Arguments.WorkerArguments.AddRange(options.Description.WorkerArguments);
 
-            if (options.Port is not null && options.Port != 0)
+            if (options.Port is not null)
             {
-                if (!WorkerUtilities.IsValidPort((int)options.Port))
+                if (options.Port == 0 || !WorkerUtilities.IsValidPort((int)options.Port))
                 {
                     throw new HostConfigurationException($"Invalid port number {options.Port} specified for custom handler.");
                 }
