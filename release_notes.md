@@ -5,3 +5,4 @@
 -->
 - Update Python Worker Version to [4.40.2](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.40.2)
 - Add JitTrace Files for v4.1044
+- Remove duplicate function names from sync triggers payload(#11371)
