@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             string logString = e.Data;
 
-            if (string.IsNullOrWhiteSpace(logString))
+            if (!string.IsNullOrWhiteSpace(logString))
             {
                 if (logString.Contains(_errorPortInUseMessage, StringComparison.OrdinalIgnoreCase))
                 {
