@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -107,6 +107,12 @@ public class ContainerAppsSecretsRepository : ISecretsRepository
 
     private async Task<IDictionary<string, string>> GetFromFilesAsync(string path)
     {
+        if (!FileUtility.DirectoryExists(path))
+        {
+            _logger.LogDebug("Secrets path '{path}' does not exist.", path);
+            return new Dictionary<string, string>();
+        }
+
         string[] files = await FileUtility.GetFilesAsync(path, "*");
         var secrets = new Dictionary<string, string>(files.Length);
 
