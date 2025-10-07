@@ -162,6 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 setup.Configure(options);
                 Assert.Equal("TestVal", options.Description.DefaultExecutablePath);
                 Assert.Contains("TestVal", options.Description.DefaultWorkerPath);
+                Assert.NotEqual(options.Port, 0);
             }
             finally
             {

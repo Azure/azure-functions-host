@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
-    internal class ScriptHostWorkerOptionsSetup : IConfigureOptions<ScriptHostWorkerOptions>
+    internal sealed class ScriptHostWorkerOptionsSetup : IConfigureOptions<ScriptHostWorkerOptions>
     {
         private readonly IOptions<HttpWorkerOptions> _httpWorkerOptions;
 
