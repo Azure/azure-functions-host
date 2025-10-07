@@ -18,7 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public int? Port { get; set; }
 
-        public bool IsUserSpecifiedPort { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether the <see cref="Port"/> property value is taken from configuration.
+        /// True value indicates that the host will use the configured port value rather than allocating a dynamic port.
+        /// </summary>
+        public bool IsConfigSpecifiedPort { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the host will forward the request to the worker process.

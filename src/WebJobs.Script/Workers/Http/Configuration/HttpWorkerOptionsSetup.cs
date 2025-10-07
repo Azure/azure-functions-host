@@ -133,12 +133,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             if (options.Port is not null)
             {
-                if (options.Port == 0 || WorkerUtilities.IsPortInUse((int)options.Port))
+                if (options.Port == 0 || !WorkerUtilities.CanBindToPort((int)options.Port))
                 {
-                    throw new HostConfigurationException($"Invalid port number {options.Port} specified for custom handler.");
+                    throw new HostConfigurationException($"Unable to bind to port {options.Port} specified in configuration.");
                 }
 
-                options.IsUserSpecifiedPort = true;
+                options.IsConfigSpecifiedPort = true;
             }
             else
             {

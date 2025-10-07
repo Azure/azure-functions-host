@@ -55,8 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 _httpClient.Timeout = scriptHostOptions.Value.FunctionTimeout.Value.Add(TimeSpan.FromMinutes(1));
             }
 
-            int destinationPort = _httpWorkerOptions.Port is null ? 0 : (int)_httpWorkerOptions.Port;
-            _destinationPrefix = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, destinationPort).Uri;
+            int port = _httpWorkerOptions.Port is null ? 0 : (int)_httpWorkerOptions.Port;
+            _destinationPrefix = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, port).Uri;
             _userAgentString = $"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}";
         }
 
