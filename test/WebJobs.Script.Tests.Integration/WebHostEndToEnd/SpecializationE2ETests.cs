@@ -839,7 +839,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response.EnsureSuccessStatusCode();
 
             var hostService = testServer.Services.GetService<WebJobsScriptHostService>();
-            Assert.True(hostService.ShouldEnforceSequentialRestart());
+            Assert.True(hostService.ShouldEnforceSequentialRestart(null));
 
             var log = _loggerProvider.GetLog();
 
