@@ -42,8 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             if (_environment.IsProxiesEnabled())
             {
-                _logger.LogDiagnosticEventWarning(DiagnosticEventConstants.DeprecatedProxiesErrorCode, "Azure Functions Proxies are deprecated and community support will end on September 30, 2025. Please migrate to Azure API Management or Azure Container Apps. See https://azure.microsoft.com/en-us/updates?id=community-support-for-azure-functions-proxies-will-end-on-30-september-2025 for more information.", DiagnosticEventConstants.DeprecatedProxiesHelpLink, null);
-
                 if (_environment.IsFlexConsumptionSku())
                 {
                     _logger.LogWarning("Proxies are not supported in Flex Consumption. Proxy definitions will be ignored.");
@@ -130,6 +128,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 logger.LogInformation("Loading proxies metadata");
                 var metadataCollection = LoadProxyMetadata(proxiesJson, functionErrors, logger);
                 logger.LogInformation($"{metadataCollection.Count} proxies loaded");
+
+                if (metadataCollection.Count > 0)
+                {
+                    logger.LogDiagnosticEventWarning(DiagnosticEventConstants.DeprecatedProxiesErrorCode, "Azure Functions Proxies are deprecated and community support will end on September 30, 2025. Please migrate to Azure API Management or Azure Container Apps. See https://aka.ms/functions-deprecated-proxies for more information.", DiagnosticEventConstants.DeprecatedProxiesHelpLink, null);
+                }
+
                 return metadataCollection;
             }
 

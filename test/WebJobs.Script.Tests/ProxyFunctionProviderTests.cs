@@ -63,33 +63,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void ProxyFunctionProvider_WhenProxiesEnabled_EmitsDiagnosticWarning()
+        public async Task ProxyFunctionProvider_WhenProxiesEnabled_EmitsDiagnosticWarning()
         {
-            var options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
+            using (var tempDirectory = new TempDirectory())
             {
-                RootScriptPath = Path.GetTempPath()
-            });
+                var testProxiesPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Proxies");
+                var options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
+                {
+                    RootScriptPath = tempDirectory.Path
+                });
 
-            var environment = new TestEnvironment(new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
-            });
-            var eventManager = new ScriptEventManager();
-            var loggerFactory = new LoggerFactory();
-            var testLogger = new TestLogger("Startup");
-            loggerFactory.AddProvider(new TestLoggerProvider(testLogger));
+                var environment = new TestEnvironment(new Dictionary<string, string>
+                {
+                    { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableProxies },
+                });
+                var eventManager = new ScriptEventManager();
+                var loggerFactory = new LoggerFactory();
+                var testLogger = new TestLogger("Startup");
+                loggerFactory.AddProvider(new TestLoggerProvider(testLogger));
 
-            var provider = new ProxyFunctionProvider(options, environment, eventManager, loggerFactory);
+                var provider = new ProxyFunctionProvider(options, environment, eventManager, loggerFactory);
 
-            var warningLog = testLogger.GetLogMessages().FirstOrDefault(m =>
-                m.Level == LogLevel.Warning &&
-                m.State is IDictionary<string, object> state &&
-                state.ContainsKey(ScriptConstants.ErrorCodeKey) &&
-                state[ScriptConstants.ErrorCodeKey].ToString() == DiagnosticEventConstants.DeprecatedProxiesErrorCode);
+                // Copy proxies definition to trigger the warning
+                FileUtility.CopyDirectory(testProxiesPath, tempDirectory.Path);
 
-            Assert.NotNull(warningLog);
-            Assert.Contains("Azure Functions Proxies are deprecated", warningLog.FormattedMessage);
-            Assert.Contains("September 30, 2025", warningLog.FormattedMessage);
+                // Get metadata to trigger loading of proxies and the diagnostic warning
+                ImmutableArray<FunctionMetadata> proxyMetadata = await provider.GetFunctionMetadataAsync();
+
+                // Verify proxies were loaded
+                Assert.NotEmpty(proxyMetadata);
+
+                var warningLog = testLogger.GetLogMessages().FirstOrDefault(m =>
+                    m.Level == LogLevel.Warning &&
+                    m.State is IDictionary<string, object> state &&
+                    state.ContainsKey(ScriptConstants.ErrorCodeKey) &&
+                    state[ScriptConstants.ErrorCodeKey].ToString() == DiagnosticEventConstants.DeprecatedProxiesErrorCode);
+
+                Assert.NotNull(warningLog);
+                Assert.Contains("Azure Functions Proxies are deprecated", warningLog.FormattedMessage);
+                Assert.Contains("September 30, 2025", warningLog.FormattedMessage);
+            }
         }
     }
 }
