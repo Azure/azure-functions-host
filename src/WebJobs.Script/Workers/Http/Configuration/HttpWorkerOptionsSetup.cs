@@ -139,6 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 }
 
                 options.IsPortConfigured = true;
+                _logger.LogInformation("Using port {port} specified via configuration for custom handler.", options.Port);
             }
             else
             {
