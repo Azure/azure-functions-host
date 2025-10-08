@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 WorkerId = _workerId,
                 Arguments = _workerProcessArguments,
                 WorkingDirectory = _httpWorkerOptions.Description.WorkingDirectory,
-                Port = _httpWorkerOptions.Port.Value
+                Port = _httpWorkerOptions.Port
             };
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.WorkerIdEnvVarName, _workerId);

@@ -205,6 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
                 HttpWorkerOptions options = new();
                 setup.Configure(options);
+                setup.Validate(nameof(options), options);
                 Assert.Equal("TestVal", options.Description.DefaultExecutablePath);
                 Assert.Contains("TestVal", options.Description.DefaultWorkerPath);
                 Assert.NotEqual(options.Port, 0);
@@ -335,6 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 return appendCurrentDirToDefaultExe;
             };
             setup.Configure(options);
+            setup.Validate(nameof(options), options);
 
             Assert.True(_metricsLogger.LoggedEvents.Contains(MetricEventNames.CustomHandlerConfiguration));
 

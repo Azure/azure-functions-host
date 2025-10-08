@@ -15,7 +15,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
-    internal class HttpWorkerOptionsSetup : IConfigureOptions<HttpWorkerOptions>
+    internal class HttpWorkerOptionsSetup : IConfigureOptions<HttpWorkerOptions>, IValidateOptions<HttpWorkerOptions>
     {
         private readonly IEnvironment _environment;
         private IConfiguration _configuration;
@@ -130,23 +130,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
             options.Arguments.WorkerArguments.AddRange(options.Description.WorkerArguments);
-
-            if (options.Port is not null)
-            {
-                if (options.Port == 0 || !WorkerUtilities.CanBindToPort(options.Port.Value))
-                {
-                    throw new HostConfigurationException($"Unable to bind to port {options.Port} specified in configuration. Please specify a different port or remove the section to allow dynamic binding of port.");
-                }
-
-                options.IsPortManuallySet = true;
-                _logger.LogInformation("Using port {port} specified via configuration for custom handler.", options.Port);
-            }
-            else
-            {
-                // If the port is not specified in the custom handler configuration, use an unused port.
-                options.Port = WorkerUtilities.GetUnusedTcpPort();
-                options.IsPortManuallySet = false;
-            }
         }
 
         private static List<string> GetArgumentList(IConfigurationSection workerConfigSection, string argumentSectionName)
@@ -163,6 +146,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 }
             }
             return null;
+        }
+
+        public ValidateOptionsResult Validate(string name, HttpWorkerOptions options)
+        {
+            var port = options.Port;
+
+            if (port == 0 || !WorkerUtilities.CanBindToPort(port))
+            {
+                throw new HostConfigurationException($"Unable to bind to port {port} specified in configuration. Please specify a different port or remove the section to allow dynamic binding of port.");
+            }
+
+            if (options.IsPortManuallySet.Value)
+            {
+                _logger.LogInformation("Using port {port} specified via configuration for custom handler.", port);
+            }
+
+            return ValidateOptionsResult.Success;
         }
     }
 }

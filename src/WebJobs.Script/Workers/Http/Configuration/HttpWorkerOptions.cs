@@ -10,19 +10,39 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
     public class HttpWorkerOptions : IOptionsFormatter
     {
+        private int? _port;
+
         public CustomHandlerType Type { get; set; }
 
         public HttpWorkerDescription Description { get; set; }
 
         public WorkerProcessArguments Arguments { get; set; }
 
-        public int? Port { get; set; }
+        public int Port
+        {
+            get
+            {
+                if (_port is null)
+                {
+                    _port = WorkerUtilities.GetUnusedTcpPort(); // Will always be realized during Options setup.
+                    IsPortManuallySet = false;
+                }
+
+                return _port.Value;
+            }
+
+            set
+            {
+                IsPortManuallySet ??= true;
+                _port = value;
+            }
+        }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the <see cref="Port"/> property value is taken from configuration.
+        /// Gets a value indicating whether the <see cref="Port"/> property value is taken from configuration.
         /// True value indicates that the host will use the configured port value rather than allocating a dynamic port.
         /// </summary>
-        public bool IsPortManuallySet { get; set; }
+        public bool? IsPortManuallySet { get; private set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the host will forward the request to the worker process.
@@ -48,11 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         /// Gets or sets http configuration.
         /// </summary>
         public CustomHandlerHttpOptions Http { get; set; }
-
-        public int GetPortOrDefault()
-        {
-            return Port ?? 0;
-        }
 
         public string Format()
         {
