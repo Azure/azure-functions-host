@@ -49,6 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         /// </summary>
         public CustomHandlerHttpOptions Http { get; set; }
 
+        internal int GetPortOrDefault()
+        {
+            return Port ?? 0;
+        }
+
         public string Format()
         {
             return JsonSerializer.Serialize(this, typeof(HttpWorkerOptions), HttpWorkerOptionsJsonSerializerContext.Default);

@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             if (options.Port is not null)
             {
-                if (options.Port == 0 || !WorkerUtilities.CanBindToPort((int)options.Port))
+                if (options.Port == 0 || !WorkerUtilities.CanBindToPort(options.Port.Value))
                 {
                     throw new HostConfigurationException($"Unable to bind to port {options.Port} specified in configuration. Please specify a different port or remove the section to allow dynamic binding of port.");
                 }
