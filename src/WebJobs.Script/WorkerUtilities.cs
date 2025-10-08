@@ -31,16 +31,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 try
                 {
                     tcpSocket.Bind(new IPEndPoint(IPAddress.IPv6Any, port));
-
-                    using (var tcpSocketAny = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
-                    {
-                        tcpSocketAny.Bind(new IPEndPoint(IPAddress.Any, port));
-                        return true;
-                    }
+                    return true;
                 }
                 catch (SocketException se) when (se.SocketErrorCode == SocketError.AddressAlreadyInUse)
                 {
                     return false;
+                }
+                catch
+                {
+                    using (var tcpSocketAny = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                    {
+                        try
+                        {
+                            tcpSocketAny.Bind(new IPEndPoint(IPAddress.Any, port));
+                            return true;
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    }
                 }
             }
         }

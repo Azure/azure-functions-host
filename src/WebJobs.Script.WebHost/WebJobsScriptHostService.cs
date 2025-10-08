@@ -689,7 +689,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (options is not null)
             {
                 var sequentialHostRestartRequired = options.Value?.SequentialHostRestartRequired ?? false;
-
                 if (sequentialHostRestartRequired)
                 {
                     return true;
