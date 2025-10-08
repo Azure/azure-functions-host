@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -533,7 +533,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 new Mock<IApplicationLifetime>().Object, config, new TestScriptEventManager(),
                 _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions);
 
-            Assert.Equal(expectedResult, _hostService.ShouldEnforceSequentialRestart());
+            Assert.Equal(expectedResult, _hostService.ShouldEnforceSequentialRestart(null));
         }
 
         [Fact]

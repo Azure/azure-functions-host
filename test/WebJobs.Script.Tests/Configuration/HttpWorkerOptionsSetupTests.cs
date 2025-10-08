@@ -162,6 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 setup.Configure(options);
                 Assert.Equal("TestVal", options.Description.DefaultExecutablePath);
                 Assert.Contains("TestVal", options.Description.DefaultWorkerPath);
+                Assert.NotEqual(options.Port, 0);
             }
             finally
             {
@@ -257,9 +258,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                                 'arguments': ['httpWorker.js'],
                                 'workingDirectory': 'c:/myWorkingDir',
                                 'workerDirectory': 'c:/myWorkerDir'
-                            }
+                            },
+                            'port': 1234
                         }
-                    }", false, false, false)]
+                    }", false, false, false, 1234)]
         [InlineData(@"{
                     'version': '2.0',
                     'customHandler': {
@@ -267,10 +269,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                                 'defaultExecutablePath': 'node',
                                 'workingDirectory': 'myWorkingDir',
                                 'workerDirectory': 'myWorkerDir'
-                            }
+                            },
+                            'port': '5678'
                         }
-                    }", true, true, true)]
-        public void CustomHandler_Config_ExpectedValues_WorkerDirectory_WorkingDirectory(string hostJsonContent, bool appendCurrentDirToDefaultExe, bool appendCurrentDirToWorkingDir, bool appendCurrentDirToWorkerDir)
+                    }", true, true, true, 5678)]
+        public void CustomHandler_Config_ExpectedValues_WorkerDirectory_WorkingDirectory(string hostJsonContent, bool appendCurrentDirToDefaultExe, bool appendCurrentDirToWorkingDir, bool appendCurrentDirToWorkerDir, int outputPort)
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
@@ -314,6 +317,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 Assert.Equal(@"c:/myWorkingDir", options.Description.WorkingDirectory);
             }
+
+            Assert.Equal(outputPort, options.Port);
         }
 
         [Fact]

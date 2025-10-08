@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 WorkerId = _workerId,
                 Arguments = _workerProcessArguments,
                 WorkingDirectory = _httpWorkerOptions.Description.WorkingDirectory,
-                Port = _httpWorkerOptions.Port
+                Port = _httpWorkerOptions.Port is null ? 0 : (int)_httpWorkerOptions.Port
             };
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.WorkerIdEnvVarName, _workerId);

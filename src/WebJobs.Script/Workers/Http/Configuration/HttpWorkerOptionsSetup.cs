@@ -130,7 +130,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
             options.Arguments.WorkerArguments.AddRange(options.Description.WorkerArguments);
-            options.Port = WorkerUtilities.GetUnusedTcpPort();
+
+            if (options.Port is not null)
+            {
+                if (options.Port == 0 || !WorkerUtilities.CanBindToPort((int)options.Port))
+                {
+                    throw new HostConfigurationException($"Unable to bind to port {options.Port} specified in configuration. Please specify a different port or remove the section to allow dynamic binding of port.");
+                }
+
+                options.IsPortConfigured = true;
+            }
+            else
+            {
+                // If the port is not specified in the custom handler configuration, use an unused port.
+                options.Port = WorkerUtilities.GetUnusedTcpPort();
+            }
         }
 
         private static List<string> GetArgumentList(IConfigurationSection workerConfigSection, string argumentSectionName)
