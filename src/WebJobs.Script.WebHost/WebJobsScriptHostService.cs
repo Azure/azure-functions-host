@@ -688,8 +688,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var options = host?.Services?.GetService<IOptions<ScriptHostRecycleOptions>>();
             if (options is not null)
             {
-                var sequentialHostRestartRequired = options.Value?.SequentialHostRestartRequired ?? false;
-                if (sequentialHostRestartRequired)
+                var sequentialRestartRequired = options.Value?.SequentialHostRestartRequired ?? false;
+                if (sequentialRestartRequired)
                 {
                     return true;
                 }
