@@ -7,3 +7,4 @@
 - Add JitTrace Files for v4.1044
 - Remove duplicate function names from sync triggers payload(#11371)
 - Avoid emitting empty tag values for health check metrics (#11393)
+- Run health checks from the active ScriptHost (#11410)
