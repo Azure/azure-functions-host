@@ -138,13 +138,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     throw new HostConfigurationException($"Unable to bind to port {options.Port} specified in configuration. Please specify a different port or remove the section to allow dynamic binding of port.");
                 }
 
-                options.IsPortConfigured = true;
+                options.IsPortManuallySet = true;
                 _logger.LogInformation("Using port {port} specified via configuration for custom handler.", options.Port);
             }
             else
             {
                 // If the port is not specified in the custom handler configuration, use an unused port.
                 options.Port = WorkerUtilities.GetUnusedTcpPort();
+                options.IsPortManuallySet = false;
             }
         }
 

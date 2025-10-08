@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 _httpClient.Timeout = scriptHostOptions.Value.FunctionTimeout.Value.Add(TimeSpan.FromMinutes(1));
             }
 
-            _destinationPrefix = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.GetPortOrDefault()).Uri;
+            _destinationPrefix = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port.Value).Uri;
             _userAgentString = $"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}";
         }
 
@@ -342,13 +342,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         internal string BuildAndGetUri(string pathValue = null)
         {
-            int port = _httpWorkerOptions.GetPortOrDefault();
-
             if (string.IsNullOrEmpty(pathValue))
             {
-                return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, port).ToString();
+                return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port.Value).ToString();
             }
-            return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, port, pathValue).ToString();
+            return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port.Value, pathValue).ToString();
         }
 
         private async Task<HttpResponseMessage> SendPingRequestAsync(string requestUri, HttpMethod method = null)

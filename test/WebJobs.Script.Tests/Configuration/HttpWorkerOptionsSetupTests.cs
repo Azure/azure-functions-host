@@ -208,6 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Assert.Equal("TestVal", options.Description.DefaultExecutablePath);
                 Assert.Contains("TestVal", options.Description.DefaultWorkerPath);
                 Assert.NotEqual(options.Port, 0);
+                Assert.False(options.IsPortManuallySet);
             }
             finally
             {
@@ -318,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                             'port': '5678'
                         }
                     }", true, true, true, 5678)]
-        public void CustomHandler_Config_ExpectedValues_WorkerDirectory_WorkingDirectory(string hostJsonContent, bool appendCurrentDirToDefaultExe, bool appendCurrentDirToWorkingDir, bool appendCurrentDirToWorkerDir, int outputPort)
+        public void CustomHandler_ConfigPort_ExpectedValues(string hostJsonContent, bool appendCurrentDirToDefaultExe, bool appendCurrentDirToWorkingDir, bool appendCurrentDirToWorkerDir, int outputPort)
         {
             _loggerProvider.ClearAllLogMessages();
             var loggerFactory = new LoggerFactory();
@@ -368,9 +369,78 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
 
             Assert.Equal(outputPort, options.Port);
+            Assert.True(options.IsPortManuallySet);
 
             var logs = _loggerProvider.GetAllLogMessages();
             Assert.True(logs.Any(l => l.FormattedMessage.Contains($"Using port {options.Port} specified via configuration for custom handler.")));
+        }
+
+        [Theory]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'customHandler': {
+                            'description': {
+                                'defaultExecutablePath': 'node',
+                                'arguments': ['httpWorker.js'],
+                                'workingDirectory': 'c:/myWorkingDir',
+                                'workerDirectory': 'c:/myWorkerDir'
+                            }
+                        }
+                    }", false, false, false)]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'customHandler': {
+                            'description': {
+                                'defaultExecutablePath': 'node',
+                                'workingDirectory': 'myWorkingDir',
+                                'workerDirectory': 'myWorkerDir'
+                            }
+                        }
+                    }", true, true, true)]
+        public void CustomHandler_Config_ExpectedValues_WorkerDirectory_WorkingDirectory(string hostJsonContent, bool appendCurrentDirToDefaultExe, bool appendCurrentDirToWorkingDir, bool appendCurrentDirToWorkerDir)
+        {
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            var configuration = BuildHostJsonConfiguration();
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+            HttpWorkerOptions options = new();
+            options.Description = new HttpWorkerDescription();
+            options.Description.FileExists = path =>
+            {
+                return appendCurrentDirToDefaultExe;
+            };
+            setup.Configure(options);
+
+            Assert.True(_metricsLogger.LoggedEvents.Contains(MetricEventNames.CustomHandlerConfiguration));
+
+            //Verify worker exe path is expected
+            if (appendCurrentDirToDefaultExe)
+            {
+                Assert.Equal(Path.Combine(_scriptJobHostOptions.RootScriptPath, "myWorkerDir", "node"), options.Description.DefaultExecutablePath);
+            }
+            else
+            {
+                Assert.Equal("node", options.Description.DefaultExecutablePath);
+            }
+
+            // Verify worker dir is expected
+            if (appendCurrentDirToWorkerDir)
+            {
+                Assert.Equal(Path.Combine(_scriptJobHostOptions.RootScriptPath, "myWorkerDir"), options.Description.WorkerDirectory);
+            }
+            else
+            {
+                Assert.Equal(@"c:/myWorkerDir", options.Description.WorkerDirectory);
+            }
+
+            //Verify workering Dir is expected
+            if (appendCurrentDirToWorkingDir)
+            {
+                Assert.Equal(Path.Combine(_scriptJobHostOptions.RootScriptPath, "myWorkingDir"), options.Description.WorkingDirectory);
+            }
+            else
+            {
+                Assert.Equal(@"c:/myWorkingDir", options.Description.WorkingDirectory);
+            }
         }
 
         [Fact]

@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         /// Gets or sets a value indicating whether the <see cref="Port"/> property value is taken from configuration.
         /// True value indicates that the host will use the configured port value rather than allocating a dynamic port.
         /// </summary>
-        public bool IsPortConfigured { get; set; }
+        public bool IsPortManuallySet { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the host will forward the request to the worker process.
@@ -48,11 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         /// Gets or sets http configuration.
         /// </summary>
         public CustomHandlerHttpOptions Http { get; set; }
-
-        internal int GetPortOrDefault()
-        {
-            return Port ?? 0;
-        }
 
         public string Format()
         {
