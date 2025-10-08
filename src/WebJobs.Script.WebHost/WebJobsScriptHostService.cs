@@ -685,7 +685,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal bool ShouldEnforceSequentialRestart(IHost host)
         {
-            var options = host?.Services?.GetService<IOptions<ScriptHostWorkerOptions>>();
+            var options = host?.Services?.GetService<IOptions<ScriptHostRecycleOptions>>();
             if (options is not null)
             {
                 var sequentialHostRestartRequired = options.Value?.SequentialHostRestartRequired ?? false;

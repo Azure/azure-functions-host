@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     throw new HostConfigurationException($"Unable to bind to port {options.Port} specified in configuration.");
                 }
 
-                options.IsConfigSpecifiedPort = true;
+                options.IsPortConfigured = true;
             }
             else
             {

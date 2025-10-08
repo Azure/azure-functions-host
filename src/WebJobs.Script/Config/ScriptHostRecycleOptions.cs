@@ -8,9 +8,9 @@ using Microsoft.Azure.WebJobs.Hosting;
 namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
-    /// Options for worker related behaviors in the Script Host.
+    /// Options that control Script Host recycling behavior.
     /// </summary>
-    public sealed class ScriptHostWorkerOptions : IOptionsFormatter
+    public sealed class ScriptHostRecycleOptions : IOptionsFormatter
     {
         /// <summary>
         /// Gets or sets a value indicating whether sequential host restarts are required.
@@ -19,11 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public string Format()
         {
-            return JsonSerializer.Serialize(this, typeof(ScriptHostWorkerOptions), ScriptHostWorkerOptionsJsonSerializerContext.Default);
+            return JsonSerializer.Serialize(this, typeof(ScriptHostRecycleOptions), ScriptHostRecycleOptionsJsonContext.Default);
         }
     }
 
     [JsonSourceGenerationOptions(WriteIndented = true)]
-    [JsonSerializable(typeof(ScriptHostWorkerOptions))]
-    internal partial class ScriptHostWorkerOptionsJsonSerializerContext : JsonSerializerContext;
+    [JsonSerializable(typeof(ScriptHostRecycleOptions))]
+    internal partial class ScriptHostRecycleOptionsJsonContext : JsonSerializerContext;
 }

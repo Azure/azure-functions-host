@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-            var options = _fixture.Host?.JobHostServices?.GetService<IOptions<ScriptHostWorkerOptions>>();
+            var options = _fixture.Host?.JobHostServices?.GetService<IOptions<ScriptHostRecycleOptions>>();
             Assert.True(options.Value.SequentialHostRestartRequired);
 
             string responseContent = await response.Content.ReadAsStringAsync();
