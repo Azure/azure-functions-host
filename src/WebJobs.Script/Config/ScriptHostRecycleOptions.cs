@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
     }
 
-    [JsonSourceGenerationOptions(WriteIndented = true)]
+    [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization, WriteIndented = true)]
     [JsonSerializable(typeof(ScriptHostRecycleOptions))]
     internal partial class ScriptHostRecycleOptionsJsonContext : JsonSerializerContext;
 }

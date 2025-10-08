@@ -145,7 +145,5 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets a value indicating the timeout duration for the function metadata provider.
         /// </summary>
         public TimeSpan MetadataProviderTimeout { get; set; } = TimeSpan.Zero;
-
-        public bool SequentialHostRestartRequired { get; set; }
     }
 }
