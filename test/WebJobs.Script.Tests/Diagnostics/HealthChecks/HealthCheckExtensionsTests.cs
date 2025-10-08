@@ -54,7 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         {
             // arrange
             ServiceCollection services = new();
-            Mock<IHealthChecksBuilder> builder = new(MockBehavior.Strict);
+            services.AddHealthChecks(); // to register some required services
+            Mock<IHealthChecksBuilder> builder = new(MockBehavior.Strict); // but still use the mock to verify calls
             builder.Setup(b => b.Services).Returns(services);
             builder.Setup(b => b.Add(It.IsAny<HealthCheckRegistration>())).Returns(builder.Object);
 
