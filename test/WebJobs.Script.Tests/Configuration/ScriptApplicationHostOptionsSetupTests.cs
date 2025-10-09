@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -13,6 +14,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class ScriptApplicationHostOptionsSetupTests
     {
+        [Theory]
+        [InlineData("1", false)]
+        [InlineData("0", false)]
+        [InlineData("true", true)]
+        [InlineData("True", true)]
+        [InlineData("false", false)]
+        public void SequentialHostRestartRequired_Configured(string value, bool expectedResult)
+        {
+            ScriptApplicationHostOptions options = new ScriptApplicationHostOptions();
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                { "AzureFunctionsJobHost:SequentialRestart",  value },
+                })
+                .Build();
+
+            var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions());
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            var mockEnvironment = new TestEnvironment();
+            var setup = new ScriptApplicationHostOptionsSetup(config, standbyOptions, mockServiceProvider.Object, mockEnvironment);
+
+            setup.Configure(options);
+            Assert.Equal(options.SequentialHostRestartRequired, expectedResult);
+        }
+
         [Fact]
         public void IsFileSystemReadOnly_CanBeConfiguredExplicitly()
         {

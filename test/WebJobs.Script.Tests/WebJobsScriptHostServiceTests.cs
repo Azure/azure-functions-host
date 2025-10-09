@@ -504,12 +504,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("1", false)]
-        [InlineData("0", false)]
-        [InlineData("true", true)]
-        [InlineData("True", true)]
-        [InlineData("false", false)]
-        public void ShouldEnforceSequentialRestart_WithCorrectConfig(string value, bool expectedResult)
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        public void ShouldEnforceSequentialRestart_WithCorrectConfig(bool value, bool expectedResult)
         {
             var metricsLogger = new TestMetricsLogger();
             _host.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
@@ -519,18 +516,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
                 .Returns(_host.Object);
 
-            IConfiguration config = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
-                {
-                    { "AzureFunctionsJobHost:SequentialRestart", value },
-                })
-                .Build();
+            _monitor.CurrentValue.SequentialHostRestartRequired = value;
 
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
-                new Mock<IApplicationLifetime>().Object, config, new TestScriptEventManager(),
+                new Mock<IApplicationLifetime>().Object, new ConfigurationBuilder().Build(), new TestScriptEventManager(),
                 _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions);
 
             Assert.Equal(expectedResult, _hostService.ShouldEnforceSequentialRestart(null));
