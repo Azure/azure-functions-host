@@ -690,12 +690,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             var applicationSequentialRestartRequired = _applicationHostOptions.CurrentValue.SequentialHostRestartRequired;
 
-            if (jobHostSequentialRestartRequired || applicationSequentialRestartRequired)
-            {
-                return true;
-            }
-
-            return false;
+            return jobHostSequentialRestartRequired || applicationSequentialRestartRequired;
         }
 
         private void OnHostInitializing(object sender, EventArgs e)
