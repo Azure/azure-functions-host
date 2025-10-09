@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Theory]
         [InlineData(0)]
         [InlineData(1234567)]
-        public void CustomHandlerConfig_InvalidPort_ExpandEnvVars(int value)
+        public void CustomHandlerConfig_Configure_InvalidPort_ExpandEnvVars(int value)
         {
             HttpWorkerOptions options = new();
 
@@ -161,8 +161,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Action act = () =>
                     {
                         setup.Configure(options);
-                        setup.Validate(nameof(options), options);
                     };
+
+            Assert.NotNull(options.Port);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1234567)]
+        public void CustomHandlerConfig_Validate_InvalidPort_ExpandEnvVars(int value)
+        {
+            HttpWorkerOptions options = new() { Port = value };
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), new ConfigurationBuilder().Build(), _testLoggerFactory, _metricsLogger, _environment);
+
+            Action act = () =>
+            {
+                setup.Validate(nameof(options), options);
+            };
 
             act.Should().ThrowExactly<HostConfigurationException>().WithMessage($"Unable to bind to port {value} specified in configuration. Please specify a different port or remove the section to allow dynamic binding of port.");
         }
