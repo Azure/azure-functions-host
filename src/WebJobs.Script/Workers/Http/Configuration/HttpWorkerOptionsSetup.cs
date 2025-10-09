@@ -150,15 +150,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public ValidateOptionsResult Validate(string name, HttpWorkerOptions options)
         {
-            var port = options.Port;
-
-            if (port == 0 || !WorkerUtilities.CanBindToPort(port))
+            if (options.IsPortManuallySet is true)
             {
-                throw new HostConfigurationException($"Unable to bind to port {port} specified in configuration. Please specify a different port or remove the section to allow dynamic binding of port.");
-            }
+                var port = options.Port;
 
-            if (options.IsPortManuallySet.Value)
-            {
+                if (port == 0 || !WorkerUtilities.CanBindToPort(port))
+                {
+                    throw new HostConfigurationException($"Unable to bind to port {port} specified in configuration. Please specify a different port or remove the section to allow dynamic binding of port.");
+                }
+
                 _logger.LogInformation("Using port {port} specified via configuration for custom handler.", port);
             }
 

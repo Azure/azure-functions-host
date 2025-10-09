@@ -157,11 +157,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                         }).Build();
 
             HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+
             Action act = () =>
                     {
                         setup.Configure(options);
                         setup.Validate(nameof(options), options);
                     };
+
             act.Should().ThrowExactly<HostConfigurationException>().WithMessage($"Unable to bind to port {value} specified in configuration. Please specify a different port or remove the section to allow dynamic binding of port.");
         }
 
@@ -375,7 +377,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 Assert.Equal(outputPort, options.Port);
                 Assert.True(options.IsPortManuallySet);
-
                 var logs = _loggerProvider.GetAllLogMessages();
                 Assert.True(logs.Any(l => l.FormattedMessage.Contains($"Using port {options.Port} specified via configuration for custom handler.")));
             }
