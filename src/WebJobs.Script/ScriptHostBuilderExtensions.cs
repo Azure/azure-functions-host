@@ -30,6 +30,7 @@ using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -479,39 +480,48 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Initialize ScriptTelemetryInitializer before any other telemetry initializers.
                 // This will allow HostInstanceId to be removed as part of MetricsCustomDimensionOptimization.
                 builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
-                builder.AddApplicationInsightsWebJobs(o =>
-                {
-                    o.InstrumentationKey = appInsightsInstrumentationKey;
-                    o.ConnectionString = appInsightsConnectionString;
+                builder.AddApplicationInsightsWebJobs(
+                    o =>
+                    {
+                        o.InstrumentationKey = appInsightsInstrumentationKey;
+                        o.ConnectionString = appInsightsConnectionString;
 
-                    if (!string.IsNullOrEmpty(eventLogLevel))
-                    {
-                        if (Enum.TryParse(eventLogLevel, ignoreCase: true, out EventLevel level))
+                        if (!string.IsNullOrEmpty(eventLogLevel))
                         {
-                            o.DiagnosticsEventListenerLogLevel = level;
+                            if (Enum.TryParse(eventLogLevel, ignoreCase: true, out EventLevel level))
+                            {
+                                o.DiagnosticsEventListenerLogLevel = level;
+                            }
+                            else
+                            {
+                                throw new InvalidEnumArgumentException($"Invalid `{EnvironmentSettingNames.AppInsightsEventListenerLogLevel}`.");
+                            }
                         }
-                        else
+                        if (!string.IsNullOrEmpty(authString))
                         {
-                            throw new InvalidEnumArgumentException($"Invalid `{EnvironmentSettingNames.AppInsightsEventListenerLogLevel}`.");
+                            o.TokenCredentialOptions = TokenCredentialOptions.ParseAuthenticationString(authString);
                         }
-                    }
-                    if (!string.IsNullOrEmpty(authString))
+                    },
+                    t =>
                     {
-                        o.TokenCredentialOptions = TokenCredentialOptions.ParseAuthenticationString(authString);
-                    }
-                }, t =>
-                {
-                    if (t.TelemetryChannel is ServerTelemetryChannel channel)
-                    {
-                        channel.TransmissionStatusEvent += TransmissionStatusHandler.Handler;
-                    }
+                        if (t.TelemetryChannel is ServerTelemetryChannel channel)
+                        {
+                            channel.TransmissionStatusEvent += TransmissionStatusHandler.Handler;
+                        }
 
-                    t.TelemetryProcessorChainBuilder.Use(next => new WorkerTraceFilterTelemetryProcessor(next));
-                    t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next));
-                });
+                        t.TelemetryProcessorChainBuilder.Use(next => new WorkerTraceFilterTelemetryProcessor(next));
+                        t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next));
+                    });
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
+
+                // Configure the meter listener, so we publish Meter API based metrics to application insights.
+                builder.Services.AddSingleton<ITelemetryModule, ApplicationInsightsMetricExporter>();
+                builder.Services.Configure<ApplicationInsightsMetricExporterOptions>(o =>
+                {
+                    o.Meters.Add(HostMetrics.FaasMeterName);
+                });
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
                 {

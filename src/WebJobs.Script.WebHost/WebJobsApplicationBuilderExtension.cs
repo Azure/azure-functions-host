@@ -90,9 +90,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.UseMiddleware<HostWarmupMiddleware>();
             });
 
-            // This middleware must be registered before any other middleware depending on
-            // JobHost/ScriptHost scoped services.
-            builder.UseMiddleware<ScriptHostRequestServiceProviderMiddleware>();
+            builder.UseWhen(context => !context.Request.IsAdminResumeRequest(), config =>
+            {
+                // This middleware must be registered before any other middleware depending on
+                // JobHost/ScriptHost scoped services.
+                config.UseMiddleware<ScriptHostRequestServiceProviderMiddleware>();
+            });
 
             if (environment.IsLinuxAzureManagedHosting())
             {
