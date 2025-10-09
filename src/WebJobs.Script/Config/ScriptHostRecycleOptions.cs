@@ -4,6 +4,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -17,9 +19,28 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public bool SequentialHostRestartRequired { get; set; }
 
+        public static ScriptHostRecycleOptions Create(IConfiguration configuration)
+        {
+            ScriptHostRecycleOptions options = new();
+            options.Configure(configuration);
+
+            // set from configuration
+            return options;
+        }
+
         public string Format()
         {
             return JsonSerializer.Serialize(this, typeof(ScriptHostRecycleOptions), ScriptHostRecycleOptionsJsonContext.Default);
+        }
+
+        internal void Configure(IConfiguration configuration)
+        {
+            var sequentialRestartSetting = configuration.GetSection(ConfigurationSectionNames.SequentialJobHostRestart);
+            if (sequentialRestartSetting != null)
+            {
+                _ = bool.TryParse(sequentialRestartSetting.Value, out bool enforceSequentialOrder);
+                SequentialHostRestartRequired = enforceSequentialOrder;
+            }
         }
     }
 
