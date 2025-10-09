@@ -630,7 +630,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         // If we are running in development mode with core tools, do not overlap the restarts.
                         // Overlapping restarts are problematic when language worker processes are listening
                         // to the same debug port
-                        if (ShouldEnforceSequentialRestart())
+                        if (ShouldEnforceSequentialRestart(previousHost))
                         {
                             stopTask = Orphan(previousHost, cancellationToken);
                             await stopTask;
@@ -683,16 +683,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             dispatcher?.PreShutdown();
         }
 
-        internal bool ShouldEnforceSequentialRestart()
+        internal bool ShouldEnforceSequentialRestart(IHost host = null)
         {
-            var sequentialRestartSetting = _config.GetSection(ConfigurationSectionNames.SequentialJobHostRestart);
-            if (sequentialRestartSetting != null)
-            {
-                bool.TryParse(sequentialRestartSetting.Value, out bool enforceSequentialOrder);
-                return enforceSequentialOrder;
-            }
-
-            return false;
+            var options = host?.Services?.GetService<IOptions<ScriptHostRecycleOptions>>().Value;
+            options ??= ScriptHostRecycleOptions.Create(_config);
+            return options.SequentialHostRestartRequired;
         }
 
         private void OnHostInitializing(object sender, EventArgs e)
