@@ -306,12 +306,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                             'description': {
                                 'defaultExecutablePath': 'node',
                                 'arguments': ['httpWorker.js'],
-                                'workingDirectory': 'c:/myWorkingDir',
-                                'workerDirectory': 'c:/myWorkerDir'
+                                'workingDirectory': 'myWorkingDir',
+                                'workerDirectory': 'myWorkerDir'
                             },
                             'port': 1234
                         }
-                    }", false, false, false, true, 1234)]
+                    }", true, true, true, true, 1234)]
         [InlineData(@"{
                     'version': '2.0',
                     'customHandler': {
