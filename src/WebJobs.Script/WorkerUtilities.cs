@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         internal static bool CanBindToPort(int port)
         {
             // Try to bind to the port using IPv6 dual mode socket to cover both IPv4 and IPv6.
-            using (var tcpSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp) { DualMode = true })
+            using var tcpSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp) { DualMode = true };
             {
                 try
                 {
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 catch
                 {
                     // Fall back to IPv4 only socket if IPv6 is not supported on the platform.
-                    using (var tcpSocketAny = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+                    using var tcpSocketAny = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     {
                         try
                         {

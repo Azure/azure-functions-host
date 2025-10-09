@@ -683,7 +683,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             dispatcher?.PreShutdown();
         }
 
-        internal bool ShouldEnforceSequentialRestart(IHost host)
+        internal bool ShouldEnforceSequentialRestart(IHost host = null)
         {
             var options = host?.Services?.GetService<IOptions<ScriptHostRecycleOptions>>().Value;
             options ??= ScriptHostRecycleOptions.Create(_config);

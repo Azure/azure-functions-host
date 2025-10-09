@@ -23,8 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             ScriptHostRecycleOptions options = new();
             options.Configure(configuration);
-
-            // set from configuration
             return options;
         }
 

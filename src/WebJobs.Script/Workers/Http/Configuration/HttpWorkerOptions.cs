@@ -33,7 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             set
             {
-                IsPortManuallySet ??= true;
+                // During dynamic allocation of port, the get method will be called before set method and _port will be assigned dynamically.
+                // Adding a check here to make sure we don't override IsPortManuallySet flag in that case.
+                if (_port != value)
+                {
+                    IsPortManuallySet ??= true;
+                }
                 _port = value;
             }
         }

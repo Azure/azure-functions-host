@@ -68,19 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             options.IsFileSystemReadOnly |= IsZipDeployment(out bool isScmRunFromPackage);
             options.IsScmRunFromPackage = isScmRunFromPackage;
-            options.SequentialHostRestartRequired = IsSequentialHostRestartRequired();
-        }
-
-        private bool IsSequentialHostRestartRequired()
-        {
-            var sequentialRestartSetting = _configuration.GetSection(ConfigurationSectionNames.SequentialJobHostRestart);
-            if (sequentialRestartSetting != null)
-            {
-                bool.TryParse(sequentialRestartSetting.Value, out bool enforceSequentialOrder);
-                return enforceSequentialOrder;
-            }
-
-            return false;
         }
 
         private bool IsZipDeployment(out bool isScmRunFromPackage)
