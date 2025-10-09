@@ -215,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return workerProcessCount;
         }
 
-        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
+        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, IReadOnlyDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
         {
             if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription is not null)
             {
@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
-        private static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
+        private static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, IReadOnlyDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
         {
             if (workerDescriptionOverrides.TryGetValue(workerDescription.Language, out var rpcWorkerDescription) && rpcWorkerDescription?.Arguments is string[] args && args.Length > 0)
             {
@@ -305,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         internal static (RpcWorkerDescription WorkerDescription, JsonElement WorkerConfig) GetWorkerDescriptionAndConfig(
             string workerDirPath,
             IWorkerProfileManager profileManager,
-            ImmutableDictionary<string, RpcWorkerDescription> workerDescriptionOverrides,
+            IReadOnlyDictionary<string, RpcWorkerDescription> workerDescriptionOverrides,
             ILogger logger)
         {
             try

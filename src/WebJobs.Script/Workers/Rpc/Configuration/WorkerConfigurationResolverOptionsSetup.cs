@@ -189,23 +189,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Returns a set of worker runtimes available for dynamic resolution from hosting config.
         /// </summary>
-        private ImmutableHashSet<string> GetWorkersAvailableForResolution() =>
+        private HashSet<string> GetWorkersAvailableForResolution() =>
             (_functionsHostingConfigOptions.Value.WorkersAvailableForDynamicResolution ?? string.Empty)
             .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Converts language workers related configuration sections to a dictionary.
         /// Output format: { language: RpcWorkerDescription }.
         /// </summary>
-        private static ImmutableDictionary<string, RpcWorkerDescription> GetWorkerDescriptionOverrides(IConfiguration configuration)
+        private static Dictionary<string, RpcWorkerDescription> GetWorkerDescriptionOverrides(IConfiguration configuration)
         {
-            var workerDescriptionsMap = ImmutableDictionary.CreateBuilder<string, RpcWorkerDescription>();
+            var workerDescriptionsMap = new Dictionary<string, RpcWorkerDescription>();
             var languageWorkersSection = configuration.GetSection(RpcWorkerConstants.LanguageWorkersSectionName);
             languageWorkersSection.Bind(workerDescriptionsMap);
 
             // special handling for Arguments which takes a string but internally requires a List<string>.
-            for (int i = 0; i < workerDescriptionsMap.Keys.Count(); i++)
+            for (int i = 0; i < workerDescriptionsMap.Keys.Count; i++)
             {
                 var (language, workerDescription) = workerDescriptionsMap.ElementAt(i);
                 var arguments = languageWorkersSection.GetSection(language).GetValue<string>(WorkerConstants.WorkerDescriptionArguments);
@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            return workerDescriptionsMap.ToImmutable();
+            return workerDescriptionsMap;
         }
 
         /// <summary>
@@ -225,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Worker resolution can be enabled for specific workers at the stamp level via hosting config options.
         /// Feature flag takes precedence over hosting config options.
         /// </summary>
-        private bool IsDynamicWorkerResolutionEnabled(string workerRuntime, ImmutableHashSet<string> workersAvailableForResolution, bool isPlaceholderModeEnabled, bool isMultiLanguageEnv)
+        private bool IsDynamicWorkerResolutionEnabled(string workerRuntime, IReadOnlySet<string> workersAvailableForResolution, bool isPlaceholderModeEnabled, bool isMultiLanguageEnv)
         {
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDynamicWorkerResolution, _environment) || workersAvailableForResolution.Count == 0)
             {
@@ -245,18 +245,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Output format: { worker-name: { hashset of versions to be ignored }}.
         /// Sample output: {"java": {"2.19.0", "2.18.0"}, "dotnet-isolated": {"1.0.0"}}.
         /// </summary>
-        private ImmutableDictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
+        private Dictionary<string, HashSet<Version>> GetIgnoredWorkerVersions()
         {
             // Example value of ignoredWorkerVersions: "Worker1Name:Version1|Worker1Name:Version2|Worker2Name:Version1|Worker3Name:Version1".
             var ignoredWorkerVersions = _functionsHostingConfigOptions.Value.IgnoredWorkerVersions;
 
             if (string.IsNullOrWhiteSpace(ignoredWorkerVersions))
             {
-                return ImmutableDictionary<string, HashSet<Version>>.Empty;
+                return new Dictionary<string, HashSet<Version>>();
             }
 
             var ignoredVersions = ignoredWorkerVersions.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var ignoredVersionsOut = ImmutableDictionary.CreateBuilder<string, HashSet<Version>>(StringComparer.OrdinalIgnoreCase);
+            var ignoredVersionsOut = new Dictionary<string, HashSet<Version>>(StringComparer.OrdinalIgnoreCase);
 
             foreach (string ignoredVersion in ignoredVersions)
             {
@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
             }
 
-            return ignoredVersionsOut.ToImmutable();
+            return ignoredVersionsOut;
         }
     }
 

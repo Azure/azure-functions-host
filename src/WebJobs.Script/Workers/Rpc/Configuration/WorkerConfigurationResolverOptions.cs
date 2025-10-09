@@ -40,18 +40,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Gets or sets the worker runtimes available for resolution via Hosting configuration.
         /// </summary>
-        public ImmutableHashSet<string> WorkersAvailableForResolution { get; set; }
+        public IReadOnlySet<string> WorkersAvailableForResolution { get; set; }
 
         /// <summary>
         /// Gets or sets the dictionary containing language workers related overrides in configuration.
         /// </summary>
-        public ImmutableDictionary<string, RpcWorkerDescription> WorkerDescriptionOverrides { get; set; }
+        public IReadOnlyDictionary<string, RpcWorkerDescription> WorkerDescriptionOverrides { get; set; }
 
         /// <summary>
         /// Gets or sets the dictionary that contains the versions of language workers to be ignored during probing outside of the Host.
         /// Key: worker name (e.g. "node", "python"). Value: set of versions to exclude from consideration.
         /// </summary>
-        public ImmutableDictionary<string, HashSet<Version>> IgnoredWorkerVersions { get; set; }
+        public IReadOnlyDictionary<string, HashSet<Version>> IgnoredWorkerVersions { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether dynamic worker resolution is enabled.
