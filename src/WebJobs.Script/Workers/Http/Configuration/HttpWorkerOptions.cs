@@ -37,9 +37,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // Adding a check here to make sure we don't override IsPortManuallySet flag in that case.
                 if (_port != value)
                 {
-                    IsPortManuallySet ??= true;
+                    IsPortManuallySet = true;
+                    _port = value;
                 }
-                _port = value;
             }
         }
 
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         /// Gets a value indicating whether the <see cref="Port"/> property value is taken from configuration.
         /// True value indicates that the host will use the configured port value rather than allocating a dynamic port.
         /// </summary>
-        public bool? IsPortManuallySet { get; private set; }
+        public bool IsPortManuallySet { get; private set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the host will forward the request to the worker process.

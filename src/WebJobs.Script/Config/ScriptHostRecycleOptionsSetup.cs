@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.Configure(_configuration);
 
             // Enforcing sequential host restarts when a user-specified custom handler port is configured to prevent multiple processes from attempting to bind to the same port concurrently.
-            if (_httpWorkerOptions.Value.IsPortManuallySet.Value)
+            if (_httpWorkerOptions.Value.IsPortManuallySet)
             {
                 options.SequentialHostRestartRequired = true;
             }

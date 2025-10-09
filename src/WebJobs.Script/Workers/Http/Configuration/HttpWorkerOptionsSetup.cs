@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public ValidateOptionsResult Validate(string name, HttpWorkerOptions options)
         {
-            if (options.IsPortManuallySet is true)
+            if (options.IsPortManuallySet)
             {
                 var port = options.Port;
 
