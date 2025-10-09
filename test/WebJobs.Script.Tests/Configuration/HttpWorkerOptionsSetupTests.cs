@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
@@ -142,31 +143,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData(@"{
-                    'version': '2.0',
-                    'customHandler': {
-                            'description': {
-                                'defaultExecutablePath': '%TestEnv%',
-                                'defaultWorkerPath': '%TestEnv%'
-                            },
-                        'port': 0
-                        },
-                    }", 0)]
-        [InlineData(@"{
-                    'version': '2.0',
-                    'customHandler': {
-                            'description': {
-                                'defaultExecutablePath': '%TestEnv%',
-                                'defaultWorkerPath': '%TestEnv%'
-                            },
-                        'port': 1234567
-                        },
-                    }", 1234567)]
-        public void CustomHandlerConfig_InvalidPort_ExpandEnvVars(string hostJsonContent, int value)
+        [InlineData(0)]
+        [InlineData(1234567)]
+        public void CustomHandlerConfig_InvalidPort_ExpandEnvVars(int value)
         {
             HttpWorkerOptions options = new();
-            File.WriteAllText(_hostJsonFile, hostJsonContent);
-            var configuration = BuildHostJsonConfiguration();
+
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
+                        {
+                        new("AzureFunctionsJobHost:customHandler:description:defaultExecutablePath", "%TestEnv%"),
+                        new("AzureFunctionsJobHost:customHandler:port", value.ToString())
+                        }).Build();
+
             HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
             Action act = () =>
                     {
