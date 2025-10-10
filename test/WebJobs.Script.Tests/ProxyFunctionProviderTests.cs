@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -80,8 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
                 var eventManager = new ScriptEventManager();
                 var loggerFactory = new LoggerFactory();
-                var testLogger = new TestLogger("Startup");
-                loggerFactory.AddProvider(new TestLoggerProvider(testLogger));
+                var testLoggerProvider = new TestLoggerProvider();
+                loggerFactory.AddProvider(testLoggerProvider);
 
                 var provider = new ProxyFunctionProvider(options, environment, eventManager, loggerFactory);
 
@@ -94,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Verify proxies were loaded
                 Assert.NotEmpty(proxyMetadata);
 
-                var warningLog = testLogger.GetLogMessages().FirstOrDefault(m =>
+                var warningLog = testLoggerProvider.GetAllLogMessages().FirstOrDefault(m =>
                     m.Level == LogLevel.Warning &&
                     m.State is IDictionary<string, object> state &&
                     state.ContainsKey(ScriptConstants.ErrorCodeKey) &&
