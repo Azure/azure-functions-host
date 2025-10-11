@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             foreach (var provider in _providers.OrderByDescending(p => p.Priority))
             {
-                provider.ResolveWorkerConfigs(configs);
+                provider.PopulateWorkerConfigs(configs);
             }
 
             return configs;

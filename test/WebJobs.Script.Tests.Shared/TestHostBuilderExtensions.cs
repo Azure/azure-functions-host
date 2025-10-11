@@ -84,7 +84,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
             services.AddSingleton<ISecretManagerProvider, TestSecretManagerProvider>();
             services.AddSingleton<IFileSystem>(FileUtility.Instance);
-            services.AddSingleton(SystemRuntimeInformation.Instance);
+            services.AddSingleton<ISystemRuntimeInformation>(SystemRuntimeInformation.Instance);
             services.AddSingleton<IWorkerConfigurationResolver, WorkerConfigurationResolver>();
             services.AddSingleton<IWorkerConfigurationProvider, DefaultWorkerConfigurationProvider>();
             services.AddSingleton<HostNameProvider>();

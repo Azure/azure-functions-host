@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
             var result = new Dictionary<string, RpcWorkerConfig>();
 
-            workerConfigurationResolver.ResolveWorkerConfigs(result);
+            workerConfigurationResolver.PopulateWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 5);
@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
             var result = new Dictionary<string, RpcWorkerConfig>();
 
-            workerConfigurationResolver.ResolveWorkerConfigs(result);
+            workerConfigurationResolver.PopulateWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 5);
@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
             var result = new Dictionary<string, RpcWorkerConfig>();
 
-            workerConfigurationResolver.ResolveWorkerConfigs(result);
+            workerConfigurationResolver.PopulateWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 5);
@@ -235,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
             var result = new Dictionary<string, RpcWorkerConfig>();
 
-            workerConfigurationResolver.ResolveWorkerConfigs(result);
+            workerConfigurationResolver.PopulateWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 1);
@@ -277,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
             var result = new Dictionary<string, RpcWorkerConfig>();
 
-            workerConfigurationResolver.ResolveWorkerConfigs(result);
+            workerConfigurationResolver.PopulateWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 5);
@@ -317,7 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
             var result = new Dictionary<string, RpcWorkerConfig>();
 
-            workerConfigurationResolver.ResolveWorkerConfigs(result);
+            workerConfigurationResolver.PopulateWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 1);

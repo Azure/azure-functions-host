@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -146,9 +147,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var functions = new[] { "InProcCSFunction", "JavascriptFunction" };
                 using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider }, testEnvironment, enableDynamicWorkerResolution))
                 {
-                    var services = host.WebHostServices.GetService<IWorkerConfigurationResolver>();
-                    var resolverType = enableDynamicWorkerResolution ? typeof(DynamicWorkerConfigurationProvider) : typeof(DefaultWorkerConfigurationProvider);
-                    Assert.True(services.GetType() == resolverType);
+                    var services = host.WebHostServices.GetServices<IWorkerConfigurationProvider>();
+                    Assert.Equal(3, services.Count());
+                    var providerTypes = services.Select(s => s.GetType()).ToList();
+                    Assert.Contains(typeof(DefaultWorkerConfigurationProvider), providerTypes);
+                    Assert.Contains(typeof(DynamicWorkerConfigurationProvider), providerTypes);
+                    Assert.Contains(typeof(ExplicitWorkerConfigurationProvider), providerTypes);
 
                     var cSharpFunctionKey = await host.GetFunctionSecretAsync("InProcCSFunction");
                     using var cSharpHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/InProcCSFunction?name=Azure&code={cSharpFunctionKey}");

@@ -10,11 +10,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     /// </summary>
     internal interface IWorkerConfigurationProvider
     {
+        /// <summary>
+        /// Gets the priority of this configuration provider. Higher value indicate higher priority.
+        /// </summary>
         int Priority { get; }
 
         /// <summary>
         /// Retrieves a dictionary of worker configurations, keyed by language name.
         /// </summary>
-        void ResolveWorkerConfigs(Dictionary<string, RpcWorkerConfig> configs);
+        void PopulateWorkerConfigs(Dictionary<string, RpcWorkerConfig> configs);
     }
 }

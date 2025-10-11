@@ -15,9 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     // Gets fully configured WorkerConfigs from IWorkerProviders
     internal class RpcWorkerConfigFactory
     {
-        private readonly ILogger _logger;
-        private readonly ISystemRuntimeInformation _systemRuntimeInformation;
-        private readonly IWorkerProfileManager _profileManager;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _resolverOptions;
@@ -30,10 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         IWorkerConfigurationResolver workerConfigurationResolver,
                                         IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
-            _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
             _resolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
             ArgumentNullException.ThrowIfNull(_resolverOptions.CurrentValue);

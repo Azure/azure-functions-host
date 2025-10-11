@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public abstract int Priority { get; }
 
-        public abstract void ResolveWorkerConfigs(Dictionary<string, RpcWorkerConfig> configs);
+        public abstract void PopulateWorkerConfigs(Dictionary<string, RpcWorkerConfig> configs);
 
         /// <summary>
         /// Resolves worker configurations by scanning the "workers" directory within the Host for worker config files.

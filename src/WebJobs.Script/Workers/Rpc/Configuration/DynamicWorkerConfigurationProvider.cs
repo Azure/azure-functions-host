@@ -33,20 +33,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// Retrieves a dictionary of worker configurations by searching the probing paths and fallback path.
         /// The returned dictionary maps FUNCTIONS_WORKER_RUNTIME values to the corresponding RpcWorkerConfig - { FUNCTIONS_WORKER_RUNTIME : RpcWorkerConfig }.
         /// </summary>
-        public override void ResolveWorkerConfigs(Dictionary<string, RpcWorkerConfig> workerRuntimeConfigMap)
+        public override void PopulateWorkerConfigs(Dictionary<string, RpcWorkerConfig> workerRuntimeConfigMap)
         {
             if (!WorkerResolverOptions.IsDynamicWorkerResolutionEnabled)
             {
-                return;
+                return; // Return if dynamic worker resolution is disabled
             }
 
             var workerRuntime = WorkerResolverOptions.WorkerRuntime;
+
             ResolveWorkerConfigsFromProbingPaths(workerRuntimeConfigMap, WorkerResolverOptions.ProbingPaths, workerRuntime);
 
             if (!WorkerResolverOptions.IsMultiLanguageWorkerEnvironment && !WorkerResolverOptions.IsPlaceholderModeEnabled && !string.IsNullOrWhiteSpace(workerRuntime) && workerRuntimeConfigMap.ContainsKey(workerRuntime))
             {
-                // Return if required worker config has been found
-                return;
+                return; // Return if required worker config has been found
             }
 
             Logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", WorkerResolverOptions.WorkersRootDirPath);

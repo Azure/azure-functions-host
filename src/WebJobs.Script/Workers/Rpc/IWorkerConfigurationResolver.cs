@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     /// <summary>
-    /// Provides an abstraction for retrieving worker configuration resolution details.
+    /// Provides an abstraction for retrieving worker configurations.
     /// </summary>
     internal interface IWorkerConfigurationResolver
     {

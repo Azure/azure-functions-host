@@ -14,36 +14,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// <summary>
     /// Resolves worker configurations based on explicit worker directory specified via App settings.
     /// </summary>
-    internal sealed class ExplicitWorkerConfigurationProvider : WorkerConfigurationProviderBase
+    internal sealed class ExplicitWorkerConfigurationProvider(
+                                ILoggerFactory loggerFactory,
+                                IMetricsLogger metricsLogger,
+                                IFileSystem fileSystem,
+                                IWorkerProfileManager workerProfileManager,
+                                ISystemRuntimeInformation systemRuntimeInformation,
+                                IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
+                    : WorkerConfigurationProviderBase(loggerFactory, metricsLogger, fileSystem, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
     {
-        public ExplicitWorkerConfigurationProvider(
-            ILoggerFactory loggerFactory,
-            IMetricsLogger metricsLogger,
-            IFileSystem fileSystem,
-            IWorkerProfileManager workerProfileManager,
-            ISystemRuntimeInformation systemRuntimeInformation,
-            IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
-            : base(loggerFactory, metricsLogger, fileSystem, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
-        {
-        }
-
         public override int Priority => 1;
 
-        public override void ResolveWorkerConfigs(Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap)
+        public override void PopulateWorkerConfigs(Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap)
         {
             foreach (var (language, workerDescriptionOverride) in WorkerResolverOptions.WorkerDescriptionOverrides)
             {
                 if (!string.IsNullOrEmpty(workerDescriptionOverride?.WorkerDirectory))
                 {
                     workerRuntimeToConfigMap.Remove(language);
-                    AddProvider(
-                        WorkerResolverOptions,
-                        workerDescriptionOverride.WorkerDirectory,
-                        MetricsLogger,
-                        ProfileManager,
-                        Logger,
-                        SystemRuntimeInformation,
-                        workerRuntimeToConfigMap);
+                    AddProvider(WorkerResolverOptions, workerDescriptionOverride.WorkerDirectory, MetricsLogger, ProfileManager, Logger, SystemRuntimeInformation, workerRuntimeToConfigMap);
                 }
             }
         }
