@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> Assign([FromBody] HostAssignmentRequest hostAssignmentRequest)
         {
-            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationMSIInit))
+            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationAssign))
             {
                 if (hostAssignmentRequest == null)
                 {
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
 
                 if (string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext) &&
-                hostAssignmentRequest.AssignmentContext is null)
+                    hostAssignmentRequest.AssignmentContext is null)
                 {
                     return BadRequest($"At least one of {nameof(HostAssignmentRequest.AssignmentContext)} or {nameof(HostAssignmentRequest.EncryptedContext)} must be provided.");
                 }

@@ -139,9 +139,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// <returns>The assignment context applied.</returns>
         public virtual HostAssignmentContext SetContext(HostAssignmentRequest hostAssignmentRequest)
         {
-            var hostAssignmentContext = hostAssignmentRequest.AssignmentContext;
+            HostAssignmentContext hostAssignmentContext = null;
 
-            if (!string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext))
+            // If AssignmentContext is set, use that
+            if (hostAssignmentRequest.AssignmentContext != null)
+            {
+                hostAssignmentContext = hostAssignmentRequest.AssignmentContext;
+            }
+            // Otherwise if EncryptedContext is set, use that
+            else if (!string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext))
             {
                 string decryptedContext = EncryptionHelper.Decrypt(hostAssignmentRequest.EncryptedContext, environment: _environment);
                 hostAssignmentContext = JsonConvert.DeserializeObject<HostAssignmentContext>(decryptedContext);

@@ -273,8 +273,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 SiteName = "TestApp",
                 Environment = environment
             };
-            var encryptedAssignmentContext = CreateHostAssignmentRequest(assignmentContext, encryptionKey, useEncryptedPayload);
-            string json = JsonConvert.SerializeObject(encryptedAssignmentContext);
+            var hostAssignmentRequest = CreateHostAssignmentRequest(assignmentContext, encryptionKey, useEncryptedPayload);
+            string json = JsonConvert.SerializeObject(hostAssignmentRequest);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
             var response = await _httpClient.SendAsync(request);
