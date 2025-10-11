@@ -42,6 +42,9 @@ extends:
       name: 1es-pool-azfunc
       image: 1es-windows-2022
       os: windows
+      ${{ if eq( variables['Build.Reason'], 'Schedule' ) }}:
+        demands:
+        - Priority -equals Low
 
     sdl:
       codeql:

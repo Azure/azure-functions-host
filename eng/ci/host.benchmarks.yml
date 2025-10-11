@@ -39,6 +39,9 @@ extends:
       name: 1es-pool-azfunc-benchmarking-large
       image: 1es-windows-2022-benchmark-runner-vanilla
       os: windows
+      ${{ if eq( variables['Build.Reason'], 'Schedule' ) }}:
+        demands:
+        - Priority -equals Low
 
     stages:
     - stage: Setup
