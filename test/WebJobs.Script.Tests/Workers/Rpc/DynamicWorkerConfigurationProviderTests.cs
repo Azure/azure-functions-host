@@ -19,12 +19,12 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class DynamicWorkerConfigurationResolverTests
+    public class DynamicWorkerConfigurationProviderTests
     {
         private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\");
         private readonly string _fallbackPath = Path.GetFullPath("workers");
 
-        public DynamicWorkerConfigurationResolverTests()
+        public DynamicWorkerConfigurationProviderTests()
         {
             EnvironmentExtensions.ClearCache();
         }
@@ -65,9 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var result = new Dictionary<string, RpcWorkerConfig>();
 
-            var result = workerConfigurationResolver.GetWorkerConfigs();
+            workerConfigurationResolver.ResolveWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 5);
@@ -117,9 +118,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testMetricLogger = new TestMetricsLogger();
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var result = new Dictionary<string, RpcWorkerConfig>();
 
-            var result = workerConfigurationResolver.GetWorkerConfigs();
+            workerConfigurationResolver.ResolveWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 5);
@@ -174,9 +176,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testMetricLogger = new TestMetricsLogger();
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var result = new Dictionary<string, RpcWorkerConfig>();
 
-            var result = workerConfigurationResolver.GetWorkerConfigs();
+            workerConfigurationResolver.ResolveWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 5);
@@ -229,9 +232,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testMetricLogger = new TestMetricsLogger();
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var result = new Dictionary<string, RpcWorkerConfig>();
 
-            var result = workerConfigurationResolver.GetWorkerConfigs();
+            workerConfigurationResolver.ResolveWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 1);
@@ -270,9 +274,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var testMetricLogger = new TestMetricsLogger();
 
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var result = new Dictionary<string, RpcWorkerConfig>();
 
-            var result = workerConfigurationResolver.GetWorkerConfigs();
+            workerConfigurationResolver.ResolveWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 5);
@@ -309,9 +314,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var testMetricLogger = new TestMetricsLogger();
 
-            var workerConfigurationResolver = new DynamicWorkerConfigurationResolver(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var result = new Dictionary<string, RpcWorkerConfig>();
 
-            var result = workerConfigurationResolver.GetWorkerConfigs();
+            workerConfigurationResolver.ResolveWorkerConfigs(result);
 
             // Assert
             Assert.Equal(result.Count, 1);

@@ -15,23 +15,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// <summary>
     /// This class resolves worker configurations by scanning the "workers" directory within the Host for worker config files.
     /// </summary>
-    internal sealed class DefaultWorkerConfigurationResolver(ILoggerFactory loggerFactory,
+    internal sealed class DefaultWorkerConfigurationProvider(ILoggerFactory loggerFactory,
                                                 IMetricsLogger metricsLogger,
                                                 IFileSystem fileSystem,
                                                 IWorkerProfileManager workerProfileManager,
                                                 ISystemRuntimeInformation systemRuntimeInformation,
                                                 IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
-                        : WorkerConfigurationResolverBase(loggerFactory, metricsLogger, fileSystem, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
+                        : WorkerConfigurationProviderBase(loggerFactory, metricsLogger, fileSystem, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
     {
-        public override Dictionary<string, RpcWorkerConfig> GetWorkerConfigs()
+        public override int Priority { get => 2; }
+
+        public override void ResolveWorkerConfigs(Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap)
         {
             Logger.DefaultWorkersDirectoryPath(WorkerResolverOptions.WorkersRootDirPath);
 
-            var workerRuntimeToConfigMap = new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
-
             ResolveWorkerConfigsFromWithinHost(workerRuntimeToConfigMap);
-
-            return workerRuntimeToConfigMap;
         }
     }
 }

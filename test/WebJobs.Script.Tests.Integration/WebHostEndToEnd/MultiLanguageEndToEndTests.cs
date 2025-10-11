@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider }, testEnvironment, enableDynamicWorkerResolution))
                 {
                     var services = host.WebHostServices.GetService<IWorkerConfigurationResolver>();
-                    var resolverType = enableDynamicWorkerResolution ? typeof(DynamicWorkerConfigurationResolver) : typeof(DefaultWorkerConfigurationResolver);
+                    var resolverType = enableDynamicWorkerResolution ? typeof(DynamicWorkerConfigurationProvider) : typeof(DefaultWorkerConfigurationProvider);
                     Assert.True(services.GetType() == resolverType);
 
                     var cSharpFunctionKey = await host.GetFunctionSecretAsync("InProcCSFunction");

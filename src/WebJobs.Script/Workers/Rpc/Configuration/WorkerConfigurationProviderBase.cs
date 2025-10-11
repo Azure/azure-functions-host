@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// <summary>
     /// Base class for worker configuration resolvers.
     /// </summary>
-    internal abstract class WorkerConfigurationResolverBase : IWorkerConfigurationResolver
+    internal abstract class WorkerConfigurationProviderBase : IWorkerConfigurationProvider
     {
         private readonly ILogger _logger;
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _resolverOptions;
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly IFileSystem _fileSystem;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
 
-        public WorkerConfigurationResolverBase(ILoggerFactory loggerFactory,
+        public WorkerConfigurationProviderBase(ILoggerFactory loggerFactory,
                                                     IMetricsLogger metricsLogger,
                                                     IFileSystem fileSystem,
                                                     IWorkerProfileManager workerProfileManager,
@@ -53,7 +53,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         protected ISystemRuntimeInformation SystemRuntimeInformation => _systemRuntimeInformation;
 
-        public abstract Dictionary<string, RpcWorkerConfig> GetWorkerConfigs();
+        public abstract int Priority { get; }
+
+        public abstract void ResolveWorkerConfigs(Dictionary<string, RpcWorkerConfig> configs);
 
         /// <summary>
         /// Resolves worker configurations by scanning the "workers" directory within the Host for worker config files.

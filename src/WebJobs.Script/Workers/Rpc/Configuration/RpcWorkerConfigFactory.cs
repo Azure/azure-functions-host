@@ -9,7 +9,6 @@ using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using static Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration.WorkerConfigurationHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -44,26 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.GetConfigs))
             {
-                BuildWorkerProviderDictionary();
+                _workerDescriptionDictionary = _workerConfigurationResolver.GetWorkerConfigs();
                 return _workerDescriptionDictionary.Values.ToList();
-            }
-        }
-
-        internal void BuildWorkerProviderDictionary()
-        {
-            _workerDescriptionDictionary = _workerConfigurationResolver.GetWorkerConfigs();
-            AddProvidersFromAppSettings();
-        }
-
-        internal void AddProvidersFromAppSettings()
-        {
-            foreach (var (language, workerDescriptionOverride) in _resolverOptions.CurrentValue.WorkerDescriptionOverrides)
-            {
-                if (!string.IsNullOrEmpty(workerDescriptionOverride?.WorkerDirectory))
-                {
-                    _workerDescriptionDictionary.Remove(language);
-                    AddProvider(_resolverOptions.CurrentValue, workerDescriptionOverride.WorkerDirectory, _metricsLogger, _profileManager, _logger, _systemRuntimeInformation, _workerDescriptionDictionary);
-                }
             }
         }
     }

@@ -19,43 +19,46 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// This class resolves worker configurations dynamically based on the current environment and configuration settings.
     /// It searches for worker configs in specified probing paths and the fallback path, and returns a list of worker configurations.
     /// </summary>
-    internal sealed class DynamicWorkerConfigurationResolver(ILoggerFactory loggerFactory,
+    internal sealed class DynamicWorkerConfigurationProvider(ILoggerFactory loggerFactory,
                                             IMetricsLogger metricsLogger,
                                             IFileSystem fileSystem,
                                             IWorkerProfileManager workerProfileManager,
                                             ISystemRuntimeInformation systemRuntimeInformation,
                                             IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
-                    : WorkerConfigurationResolverBase(loggerFactory, metricsLogger, fileSystem, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
+                    : WorkerConfigurationProviderBase(loggerFactory, metricsLogger, fileSystem, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
     {
+        public override int Priority { get => 3; }
+
         /// <summary>
         /// Retrieves a dictionary of worker configurations by searching the probing paths and fallback path.
         /// The returned dictionary maps FUNCTIONS_WORKER_RUNTIME values to the corresponding RpcWorkerConfig - { FUNCTIONS_WORKER_RUNTIME : RpcWorkerConfig }.
         /// </summary>
-        public override Dictionary<string, RpcWorkerConfig> GetWorkerConfigs()
+        public override void ResolveWorkerConfigs(Dictionary<string, RpcWorkerConfig> workerRuntimeConfigMap)
         {
+            if (!WorkerResolverOptions.IsDynamicWorkerResolutionEnabled)
+            {
+                return;
+            }
+
             var workerRuntime = WorkerResolverOptions.WorkerRuntime;
-            var workerRuntimeConfigMap = ResolveWorkerConfigsFromProbingPaths(WorkerResolverOptions.ProbingPaths, workerRuntime);
+            ResolveWorkerConfigsFromProbingPaths(workerRuntimeConfigMap, WorkerResolverOptions.ProbingPaths, workerRuntime);
 
             if (!WorkerResolverOptions.IsMultiLanguageWorkerEnvironment && !WorkerResolverOptions.IsPlaceholderModeEnabled && !string.IsNullOrWhiteSpace(workerRuntime) && workerRuntimeConfigMap.ContainsKey(workerRuntime))
             {
                 // Return if required worker config has been found
-                return workerRuntimeConfigMap;
+                return;
             }
 
             Logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", WorkerResolverOptions.WorkersRootDirPath);
 
             ResolveWorkerConfigsFromWithinHost(workerRuntimeConfigMap);
-
-            return workerRuntimeConfigMap;
         }
 
         /// <summary>
         /// Resolves worker configurations from the specified probing paths.
         /// </summary>
-        private Dictionary<string, RpcWorkerConfig> ResolveWorkerConfigsFromProbingPaths(IReadOnlyList<string> workerProbingPaths, string workerRuntime)
+        private void ResolveWorkerConfigsFromProbingPaths(Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap, IReadOnlyList<string> workerProbingPaths, string workerRuntime)
         {
-            var workerRuntimeToConfigMap = new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
-
             try
             {
                 Logger.WorkerProbingPaths(string.Join(", ", workerProbingPaths));
@@ -101,8 +104,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 // Logging the exception and continuing to search worker configs in the fallback path.
                 Logger.LogError(ex, "Failed to resolve worker configurations from probing paths.");
             }
-
-            return workerRuntimeToConfigMap;
         }
 
         /// <summary>

@@ -238,18 +238,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Refresh WorkerConfigurationResolverOptions and LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
             services.ConfigureOptionsWithChangeTokenSource<WorkerConfigurationResolverOptions, WorkerConfigurationResolverOptionsSetup, HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, HostBuiltChangeTokenSource<LanguageWorkerOptions>>();
-
-            services.AddSingleton<IWorkerConfigurationResolver>(p =>
-            {
-                var workerConfigurationResolverOptions = p.GetService<IOptionsMonitor<WorkerConfigurationResolverOptions>>();
-                var workerProfileManager = p.GetService<IWorkerProfileManager>();
-                var loggerFactory = p.GetService<ILoggerFactory>();
-                var metricsLogger = p.GetService<IMetricsLogger>();
-
-                return workerConfigurationResolverOptions?.CurrentValue?.IsDynamicWorkerResolutionEnabled is true ?
-                            new DynamicWorkerConfigurationResolver(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, workerConfigurationResolverOptions) :
-                            new DefaultWorkerConfigurationResolver(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, workerConfigurationResolverOptions);
-            });
+            services.AddSingleton<IWorkerConfigurationResolver, WorkerConfigurationResolver>();
+            services.AddSingleton<IWorkerConfigurationProvider, DefaultWorkerConfigurationProvider>();
+            services.AddSingleton<IWorkerConfigurationProvider, DynamicWorkerConfigurationProvider>();
+            services.AddSingleton<IWorkerConfigurationProvider, ExplicitWorkerConfigurationProvider>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
