@@ -7,6 +7,10 @@ using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
+    /// <summary>
+    /// Resolves worker configurations by aggregating results from multiple <see cref="IWorkerConfigurationProvider"/> instances,
+    /// ordered by their priority. Returns a dictionary of worker configurations keyed by language name.
+    /// </summary>
     internal sealed class WorkerConfigurationResolver : IWorkerConfigurationResolver
     {
         private readonly IEnumerable<IWorkerConfigurationProvider> _providers;

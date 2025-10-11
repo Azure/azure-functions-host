@@ -11,6 +11,9 @@ using static Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration.WorkerConf
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
+    /// <summary>
+    /// Resolves worker configurations based on explicit worker directory specified via App settings.
+    /// </summary>
     internal sealed class ExplicitWorkerConfigurationProvider : WorkerConfigurationProviderBase
     {
         public ExplicitWorkerConfigurationProvider(
