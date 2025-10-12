@@ -721,8 +721,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
                 var workerConfigurationResolver = new WorkerConfigurationResolver(providers);
 
-                var configFactory = new RpcWorkerConfigFactory(new TestMetricsLogger(), workerConfigurationResolver);
-
                 if (appSvcEnv)
                 {
                     var testEnvVariables = new Dictionary<string, string>
@@ -731,11 +729,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     };
                     using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
                     {
-                        return configFactory.GetConfigs();
+                        return workerConfigurationResolver.GetWorkerConfigs().Values.ToList();
                     }
                 }
 
-                return configFactory.GetConfigs();
+                return workerConfigurationResolver.GetWorkerConfigs().Values.ToList();
             }
             finally
             {
