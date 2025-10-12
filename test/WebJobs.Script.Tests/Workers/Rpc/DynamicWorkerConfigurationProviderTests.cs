@@ -30,13 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("LATEST", "java\\2.19.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        [InlineData("STANDARD", "java\\2.18.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        [InlineData("EXTENDED", "java\\2.18.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        [InlineData("laTest", "java\\2.19.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        [InlineData("abc", "java\\2.19.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        [InlineData("Standard", "java\\2.18.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs(string releaseChannel, string java, string node, string powershell, string dotnetIsolated, string python)
+        [InlineData("LATEST", "java\\2.19.0", "node\\3.10.1")]
+        [InlineData("STANDARD", "java\\2.18.0", "node\\3.10.1")]
+        [InlineData("EXTENDED", "java\\2.18.0", "node\\3.10.1")]
+        [InlineData("laTest", "java\\2.19.0", "node\\3.10.1")]
+        [InlineData("abc", "java\\2.19.0", "node\\3.10.1")]
+        [InlineData("Standard", "java\\2.18.0", "node\\3.10.1")]
+        public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs(string releaseChannel, string java, string node)
         {
             // Arrange
             var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
@@ -71,19 +71,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             workerConfigurationResolver.PopulateWorkerConfigs(result);
 
             // Assert
-            Assert.Equal(result.Count, 5);
+            Assert.Equal(result.Count, 2);
             Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath1, java))));
             Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath1, node))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, powershell))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, python))));
 
             var logs = loggerProvider.GetAllLogMessages();
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker configuration at ") && l.FormattedMessage.Contains("\\ProbingPaths\\functionsworkers\\java\\2.19.0' specifies host requirements [].")));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker configuration at ") && l.FormattedMessage.Contains("\\ProbingPaths\\functionsworkers\\node\\3.10.1' specifies host requirements [].")));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing path directory does not exist: path-not-exists.")));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
         }
 
         [Theory]
@@ -124,17 +120,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             workerConfigurationResolver.PopulateWorkerConfigs(result);
 
             // Assert
-            Assert.Equal(result.Count, 5);
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, java))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, node))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, powershell))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, python))));
+            Assert.Equal(result.Count, 0);
 
             var logs = loggerProvider.GetAllLogMessages();
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Failed to parse worker version")));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
         }
 
         [Theory]
@@ -181,14 +171,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             workerConfigurationResolver.PopulateWorkerConfigs(result);
 
-            // Assert
-            Assert.Equal(result.Count, 5);
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, "java"))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, "node"))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, "powershell"))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, "dotnet-isolated"))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, "python"))));
-        }
+            Assert.Equal(result.Count, 0);
+       }
 
         [Theory]
         [InlineData(null, "LATEST", "java")]
@@ -236,17 +220,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var result = new Dictionary<string, RpcWorkerConfig>();
 
             workerConfigurationResolver.PopulateWorkerConfigs(result);
-
-            // Assert
-            Assert.Equal(result.Count, 1);
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, languageWorker))));
+            Assert.Equal(result.Count, 0);
         }
 
         [Theory]
-        [InlineData("LATEST", "java:2.19.0", "java\\2.18.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        [InlineData("LATEST", "java:2.19.0|python:4.1.0", "java\\2.18.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        [InlineData("LATEST", "java:xyz|node:a.b.c", "java\\2.19.0", "node\\3.10.1", "powershell", "dotnet-isolated", "python")]
-        public void GetWorkerConfigs_MultiLang_IgnoredVersion_ReturnsExpectedConfigs(string releaseChannel, string setting, string java, string node, string powershell, string dotnetIsolated, string python)
+        [InlineData("LATEST", "java:2.19.0", "java\\2.18.0", "node\\3.10.1")]
+        [InlineData("LATEST", "java:2.19.0|python:4.1.0", "java\\2.18.0", "node\\3.10.1")]
+        [InlineData("LATEST", "java:xyz|node:a.b.c", "java\\2.19.0", "node\\3.10.1")]
+        public void GetWorkerConfigs_MultiLang_IgnoredVersion_ReturnsExpectedConfigs(string releaseChannel, string setting, string java, string node)
         {
             // Arrange
             var mockEnvironment = new Mock<IEnvironment>();
@@ -280,12 +261,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             workerConfigurationResolver.PopulateWorkerConfigs(result);
 
             // Assert
-            Assert.Equal(result.Count, 5);
+            Assert.Equal(result.Count, 2);
             Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath1, java))));
             Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath1, node))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, powershell))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, dotnetIsolated))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, python))));
         }
 
         [Theory]
@@ -320,8 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             workerConfigurationResolver.PopulateWorkerConfigs(result);
 
             // Assert
-            Assert.Equal(result.Count, 1);
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_fallbackPath, workerRuntime))));
+            Assert.Equal(result.Count, 0);
         }
     }
 }
