@@ -7,12 +7,11 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using static Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration.WorkerConfigurationHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
     /// <summary>
-    /// Resolves worker configurations based on explicit worker directory specified via App settings.
+    /// Resolves worker configuration based on explicit worker directory specified via App settings.
     /// </summary>
     internal sealed class ExplicitWorkerConfigurationProvider(
                                 ILoggerFactory loggerFactory,

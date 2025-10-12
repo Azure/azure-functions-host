@@ -721,7 +721,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
                 var workerConfigurationResolver = new WorkerConfigurationResolver(providers);
 
-                var configFactory = new RpcWorkerConfigFactory(testLogger, _testSysRuntimeInfo, new TestMetricsLogger(), workerProfileManager.Object, workerConfigurationResolver, optionsMonitor);
+                var configFactory = new RpcWorkerConfigFactory(new TestMetricsLogger(), workerConfigurationResolver);
 
                 if (appSvcEnv)
                 {

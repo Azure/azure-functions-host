@@ -5,10 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -17,20 +13,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
-        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _resolverOptions;
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
-        public RpcWorkerConfigFactory(ILogger logger,
-                                        ISystemRuntimeInformation systemRuntimeInfo,
-                                        IMetricsLogger metricsLogger,
-                                        IWorkerProfileManager workerProfileManager,
-                                        IWorkerConfigurationResolver workerConfigurationResolver,
-                                        IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
+        public RpcWorkerConfigFactory(IMetricsLogger metricsLogger,
+                                        IWorkerConfigurationResolver workerConfigurationResolver)
         {
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
-            _resolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
-            ArgumentNullException.ThrowIfNull(_resolverOptions.CurrentValue);
         }
 
         public IList<RpcWorkerConfig> GetConfigs()

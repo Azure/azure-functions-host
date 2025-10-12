@@ -11,13 +11,12 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using static Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration.WorkerConfigurationHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 {
     /// <summary>
     /// This class resolves worker configurations dynamically based on the current environment and configuration settings.
-    /// It searches for worker configs in specified probing paths and the fallback path, and returns a list of worker configurations.
+    /// It searches for worker configs in specified probing paths, and returns a list of worker configurations.
     /// </summary>
     internal sealed class DynamicWorkerConfigurationProvider(ILoggerFactory loggerFactory,
                                             IMetricsLogger metricsLogger,
@@ -29,15 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     {
         public override int Priority { get => 3; }
 
-        /// <summary>
-        /// Retrieves a dictionary of worker configurations by searching the probing paths and fallback path.
-        /// The returned dictionary maps FUNCTIONS_WORKER_RUNTIME values to the corresponding RpcWorkerConfig - { FUNCTIONS_WORKER_RUNTIME : RpcWorkerConfig }.
-        /// </summary>
         public override void PopulateWorkerConfigs(Dictionary<string, RpcWorkerConfig> workerRuntimeConfigMap)
         {
             if (!WorkerResolverOptions.IsDynamicWorkerResolutionEnabled)
             {
-                return; // Return if dynamic worker resolution is disabled
+                return;
             }
 
             ResolveWorkerConfigsFromProbingPaths(workerRuntimeConfigMap, WorkerResolverOptions.ProbingPaths);

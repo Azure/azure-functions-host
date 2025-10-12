@@ -27,7 +27,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         public override void PopulateWorkerConfigs(Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap)
         {
             Logger.DefaultWorkersDirectoryPath(WorkerResolverOptions.WorkersRootDirPath);
-            ResolveWorkerConfigsFromWithinHost(workerRuntimeToConfigMap);
+
+            // Resolves worker configurations by scanning the "workers" directory within the Host.
+            foreach (var workerPath in FileSystem.Directory.EnumerateDirectories(WorkerResolverOptions.WorkersRootDirPath))
+            {
+                var workerDirName = FileSystem.Path.GetFileName(workerPath);
+                AddProvider(WorkerResolverOptions, workerDirName, workerPath, MetricsLogger, ProfileManager, Logger, SystemRuntimeInformation, workerRuntimeToConfigMap);
+            }
         }
     }
 }
