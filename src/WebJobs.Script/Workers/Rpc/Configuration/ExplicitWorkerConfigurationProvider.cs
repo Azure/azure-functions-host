@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 if (!string.IsNullOrEmpty(workerDescriptionOverride?.WorkerDirectory))
                 {
                     workerRuntimeToConfigMap.Remove(language);
-                    AddProvider(WorkerResolverOptions, workerDescriptionOverride.WorkerDirectory, MetricsLogger, ProfileManager, Logger, SystemRuntimeInformation, workerRuntimeToConfigMap);
+                    AddProvider(WorkerResolverOptions, language, workerDescriptionOverride.WorkerDirectory, MetricsLogger, ProfileManager, Logger, SystemRuntimeInformation, workerRuntimeToConfigMap);
                 }
             }
         }

@@ -179,7 +179,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var providers = new List<IWorkerConfigurationProvider>
             {
-                new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor)
+                new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor),
+                new DefaultWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor)
             };
 
             var resolver = new WorkerConfigurationResolver(providers);
@@ -197,7 +198,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with worker path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
         }
 
         [Theory]
@@ -268,7 +268,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var providers = new List<IWorkerConfigurationProvider>
             {
-                new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor)
+                new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor),
+                new DefaultWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor)
             };
 
             var resolver = new WorkerConfigurationResolver(providers);
@@ -286,7 +287,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with worker path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Searching for worker configs in the fallback directory")));
         }
     }
 }

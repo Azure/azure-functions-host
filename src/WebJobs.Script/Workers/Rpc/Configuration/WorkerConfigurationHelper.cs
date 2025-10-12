@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     internal static class WorkerConfigurationHelper
     {
         internal static void AddProvider(WorkerConfigurationResolverOptions resolverOptions,
+                                            string workerName,
                                             string workerDirPath,
                                             IMetricsLogger metricsLogger,
                                             IWorkerProfileManager profileManager,
@@ -26,8 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         {
             using (metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDirPath)))
             {
-                string workerName = Path.GetFileName(workerDirPath);
-
                 if (workerRuntimeToConfigMap.ContainsKey(workerName))
                 {
                     return;

@@ -66,7 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             foreach (var workerPath in _fileSystem.Directory.EnumerateDirectories(WorkerResolverOptions.WorkersRootDirPath))
             {
-                AddProvider(WorkerResolverOptions, workerPath, _metricsLogger, _profileManager, _logger, _systemRuntimeInformation, workerRuntimeToConfigMap);
+                var workerDirName = _fileSystem.Path.GetFileName(workerPath);
+                AddProvider(WorkerResolverOptions, workerDirName, workerPath, _metricsLogger, _profileManager, _logger, _systemRuntimeInformation, workerRuntimeToConfigMap);
             }
         }
     }

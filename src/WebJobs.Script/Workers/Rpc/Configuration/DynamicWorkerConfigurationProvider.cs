@@ -40,28 +40,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return; // Return if dynamic worker resolution is disabled
             }
 
-            var workerRuntime = WorkerResolverOptions.WorkerRuntime;
-
-            ResolveWorkerConfigsFromProbingPaths(workerRuntimeConfigMap, WorkerResolverOptions.ProbingPaths, workerRuntime);
-
-            if (!WorkerResolverOptions.IsMultiLanguageWorkerEnvironment && !WorkerResolverOptions.IsPlaceholderModeEnabled && !string.IsNullOrWhiteSpace(workerRuntime) && workerRuntimeConfigMap.ContainsKey(workerRuntime))
-            {
-                return; // Return if required worker config has been found
-            }
-
-            Logger.LogDebug("Searching for worker configs in the fallback directory: {fallbackPath}", WorkerResolverOptions.WorkersRootDirPath);
-
-            ResolveWorkerConfigsFromWithinHost(workerRuntimeConfigMap);
+            ResolveWorkerConfigsFromProbingPaths(workerRuntimeConfigMap, WorkerResolverOptions.ProbingPaths);
         }
 
         /// <summary>
         /// Resolves worker configurations from the specified probing paths.
         /// </summary>
-        private void ResolveWorkerConfigsFromProbingPaths(Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap, IReadOnlyList<string> workerProbingPaths, string workerRuntime)
+        private void ResolveWorkerConfigsFromProbingPaths(Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap, IReadOnlyList<string> workerProbingPaths)
         {
             try
             {
                 Logger.WorkerProbingPaths(string.Join(", ", workerProbingPaths));
+                string workerRuntime = WorkerResolverOptions.WorkerRuntime;
 
                 // Probing path directory structure is: "<rootPath>/<workerRuntimeDir>/<workerVersion>/worker.config.json"
                 foreach (var probingPath in workerProbingPaths)
