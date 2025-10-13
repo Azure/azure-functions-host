@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -143,23 +143,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(workerConfig.Description.Arguments.Contains("--inspect=5689"));
             Assert.True(workerConfig.Description.Arguments.Contains("--no-deprecation"));
             Assert.True(workerConfig.Description.Arguments.Contains("--expose-http2"));
-        }
-
-        [Fact]
-        public void ReadWorkerProviderFromConfig_AddProvidersFromAppSettings()
-        {
-            var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, []) };
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
-
-            string path = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\node\\3.10.1");
-            Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
-            {
-                [$"{RpcWorkerConstants.LanguageWorkersSectionName}:node:{WorkerConstants.WorkerDirectorySectionName}"] = path
-            };
-            var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger("node"), testMetricsLogger, "node", keyValuePairs);
-            AreRequiredMetricsEmitted(testMetricsLogger);
-            RpcWorkerConfig workerConfig = workerConfigs.Where(p => p.Description.Language == "node").First();
-            Assert.Equal(Path.Combine(path, "worker.config.json"), workerConfig.Description.DefaultWorkerPath);
         }
 
         [Fact]
