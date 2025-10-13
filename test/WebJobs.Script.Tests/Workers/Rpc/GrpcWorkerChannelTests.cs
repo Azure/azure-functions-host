@@ -1335,25 +1335,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var attribs = ctx.Attributes;
             Assert.NotNull(attribs);
 
-            if (_testEnvironment.IsApplicationInsightsAgentEnabled())
-            {
-                _testOutput.WriteLine("Checking ENABLED app-insights fields...");
-                Assert.True(attribs.ContainsKey(ScriptConstants.LogPropertyProcessIdKey), "ScriptConstants.LogPropertyProcessIdKey");
-                Assert.True(attribs.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey), "ScriptConstants.LogPropertyHostInstanceIdKey");
-                Assert.True(attribs.TryGetValue(LogConstants.CategoryNameKey, out var catKey), "LogConstants.CategoryNameKey");
-                Assert.Equal(catKey, "testcat1");
-                Assert.True(attribs.TryGetValue(ScriptConstants.OperationNameKey, out var onKey), "ScriptConstants.OperationNameKey");
-                Assert.Equal(onKey, scriptInvocationContext.ExecutionContext.FunctionName);
-                Assert.Equal(4, attribs.Count);
-            }
-            else
-            {
-                _testOutput.WriteLine("Checking DISABLED app-insights fields...");
-                Assert.False(attribs.ContainsKey(ScriptConstants.LogPropertyProcessIdKey), "ScriptConstants.LogPropertyProcessIdKey");
-                Assert.False(attribs.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey), "ScriptConstants.LogPropertyHostInstanceIdKey");
-                Assert.False(attribs.ContainsKey(LogConstants.CategoryNameKey), "LogConstants.CategoryNameKey");
-                Assert.Equal(0, attribs.Count);
-            }
+            _testOutput.WriteLine("Checking app-insights fields...");
+            Assert.True(attribs.ContainsKey(ScriptConstants.LogPropertyProcessIdKey), "ScriptConstants.LogPropertyProcessIdKey");
+            Assert.True(attribs.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey), "ScriptConstants.LogPropertyHostInstanceIdKey");
+            Assert.True(attribs.TryGetValue(LogConstants.CategoryNameKey, out var catKey), "LogConstants.CategoryNameKey");
+            Assert.Equal(catKey, "testcat1");
+            Assert.True(attribs.TryGetValue(ScriptConstants.OperationNameKey, out var onKey), "ScriptConstants.OperationNameKey");
+            Assert.Equal(onKey, scriptInvocationContext.ExecutionContext.FunctionName);
+            Assert.Equal(4, attribs.Count);
         }
 
         [Fact]
@@ -1379,20 +1368,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             activity.Stop();
             var attribs = grpcEvent.Message.InvocationRequest.TraceContext.Attributes;
 
-            if (_testEnvironment.IsApplicationInsightsAgentEnabled())
-            {
-                Assert.True(attribs.TryGetValue(ScriptConstants.LiveLogsSessionAIKey, out var aiKey), "ScriptConstants.LiveLogsSessionAIKey");
-                Assert.Equal(sessionId, aiKey);
-                Assert.True(attribs.TryGetValue(LogConstants.CategoryNameKey, out var catKey), "LogConstants.CategoryNameKey");
-                Assert.Equal("testcat1", catKey);
-                Assert.True(attribs.TryGetValue(ScriptConstants.OperationNameKey, out var onKey), "ScriptConstants.OperationNameKey");
-                Assert.Equal(scriptInvocationContext.ExecutionContext.FunctionName, onKey);
-                Assert.Equal(5, attribs.Count);
-            }
-            else
-            {
-                Assert.False(attribs.ContainsKey(LogConstants.CategoryNameKey), "LogConstants.CategoryNameKey");
-            }
+            Assert.True(attribs.TryGetValue(ScriptConstants.LiveLogsSessionAIKey, out var aiKey), "ScriptConstants.LiveLogsSessionAIKey");
+            Assert.Equal(sessionId, aiKey);
+            Assert.True(attribs.TryGetValue(LogConstants.CategoryNameKey, out var catKey), "LogConstants.CategoryNameKey");
+            Assert.Equal("testcat1", catKey);
+            Assert.True(attribs.TryGetValue(ScriptConstants.OperationNameKey, out var onKey), "ScriptConstants.OperationNameKey");
+            Assert.Equal(scriptInvocationContext.ExecutionContext.FunctionName, onKey);
+            Assert.Equal(5, attribs.Count);
         }
 
         [Fact]

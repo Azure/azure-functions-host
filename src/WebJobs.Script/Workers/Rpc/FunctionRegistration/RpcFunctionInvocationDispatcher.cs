@@ -697,14 +697,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private void AddLogUserCategory(IEnumerable<FunctionMetadata> functions)
         {
-            // Add category, this is only needed for workers running AI agent
-            if (_environment.IsApplicationInsightsAgentEnabled())
+            foreach (FunctionMetadata metadata in functions)
             {
-                foreach (FunctionMetadata metadata in functions)
-                {
-                    metadata.Properties[LogConstants.CategoryNameKey] = LogCategories.CreateFunctionUserCategory(metadata.Name);
-                    metadata.Properties[ScriptConstants.LogPropertyHostInstanceIdKey] = _scriptOptions.InstanceId;
-                }
+                metadata.Properties[LogConstants.CategoryNameKey] = LogCategories.CreateFunctionUserCategory(metadata.Name);
+                metadata.Properties[ScriptConstants.LogPropertyHostInstanceIdKey] = _scriptOptions.InstanceId;
             }
         }
 
