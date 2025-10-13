@@ -149,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, []) };
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
-            // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
+
             string path = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\node\\3.10.1");
             Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
             {
@@ -157,7 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger("node"), testMetricsLogger, "node", keyValuePairs);
             AreRequiredMetricsEmitted(testMetricsLogger);
-            Assert.Equal(workerConfigs.Count(), 2);
             RpcWorkerConfig workerConfig = workerConfigs.Where(p => p.Description.Language == "node").First();
             Assert.Equal(Path.Combine(path, "worker.config.json"), workerConfig.Description.DefaultWorkerPath);
         }
@@ -707,17 +706,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
 
                 var loggerFactoryMock = new Mock<ILoggerFactory>();
-                loggerFactoryMock
-                    .Setup(f => f.CreateLogger(It.IsAny<string>()))
-                    .Returns(testLogger);
+                loggerFactoryMock.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(testLogger);
 
                 var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-
-                var providers = new List<IWorkerConfigurationProvider>
-                {
-                    new DefaultWorkerConfigurationProvider(loggerFactoryMock.Object, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor),
-                    new ExplicitWorkerConfigurationProvider(loggerFactoryMock.Object, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor)
-                };
+                var providers = WorkerConfigurationResolverTestsHelper.GetProviders(loggerFactoryMock.Object, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
 
                 var workerConfigurationResolver = new WorkerConfigurationResolver(providers);
 

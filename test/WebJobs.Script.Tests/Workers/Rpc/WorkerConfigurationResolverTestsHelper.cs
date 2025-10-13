@@ -3,9 +3,13 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -67,6 +71,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .AddJsonStream(jsonStream);
 
             return configurationBuilder.Build();
+        }
+
+        internal static IEnumerable<IWorkerConfigurationProvider> GetProviders(ILoggerFactory loggerFactory,
+                                                IMetricsLogger metricsLogger,
+                                                IFileSystem fileSystem,
+                                                IWorkerProfileManager workerProfileManager,
+                                                ISystemRuntimeInformation systemRuntimeInformation,
+                                                IOptionsMonitor<WorkerConfigurationResolverOptions> optionsMonitor)
+        {
+            return new List<IWorkerConfigurationProvider>
+                {
+                    new DefaultWorkerConfigurationProvider(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
+                    new DynamicWorkerConfigurationProvider(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
+                    new ExplicitWorkerConfigurationProvider(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
+                };
         }
     }
 }

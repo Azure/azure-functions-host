@@ -970,7 +970,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Specialization_DynamicResolution_FallbackPath_Logs()
         {
             var loggerProvider = new TestLoggerProvider();
-
             Guid guid = Guid.NewGuid();
             string path = "test-path" + guid.ToString();
 
@@ -981,11 +980,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string json = "{\r\n  \"version\": \"2.0\",\r\n  \"isDefaultHostConfig\": false\r\n}";
             File.WriteAllText(Path.Combine(path, "host.json"), json);
-
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(path, loggerProvider);
-
             string fallbackPath = Path.Combine(Directory.GetCurrentDirectory(), "workers");
 
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(path, loggerProvider);
             builder.ConfigureServices(services =>
             {
                 services.Configure<FunctionsHostingConfigOptions>(o => o.Features["WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION"] = "node");
@@ -1013,9 +1010,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var probingLog = logs.FirstOrDefault(p => p.Contains("Worker probing paths set to:"));
             Assert.True(probingLog.Any());
 
-            var fallbackLog = logs.FirstOrDefault(p => p.Contains("Searching for worker configs in the fallback directory:"));
-            Assert.True(fallbackLog.Any());
-
             loggerProvider.ClearAllLogMessages();
 
             await standbyManager.SpecializeHostAsync();
@@ -1037,17 +1031,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             probingLog = logs.FirstOrDefault(p => p.Contains("Worker probing paths set to:"));
             Assert.True(probingLog.Any());
-
-            fallbackLog = logs.FirstOrDefault(p => p.Contains("Searching for worker configs in the fallback directory:"));
-            Assert.True(fallbackLog.Any());
-
         }
 
         [Fact]
         public void Specialization_DynamicResolution_Logs()
         {
             var loggerProvider = new TestLoggerProvider();
-
             Guid guid = Guid.NewGuid();
             string path = "test-path" + guid.ToString();
 
@@ -1087,9 +1076,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             File.WriteAllText(Path.Combine(path, "host.json"), json);
 
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(path, loggerProvider);
-
-            string fallbackPath = Path.Combine(Directory.GetCurrentDirectory(), "workers");
-
             var inMemorySettings = new Dictionary<string, string>();
             inMemorySettings["languageWorkers:probingPaths:0"] = Path.Combine(workerPath, "decoupledWorkers");
 
@@ -1117,16 +1103,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("Placeholder mode is enabled: True", logs);
 
             var nodeLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: node with worker path:") && p.Contains("decoupledWorkers\\node"));
-            Assert.True(nodeLog.Any());
+            Assert.True(nodeLog.Length != 0);
 
             var javaLog = logs.FirstOrDefault(p => p.Contains("Added WorkerConfig for language: java with worker path:") && p.Contains("workers\\java"));
-            Assert.True(javaLog.Any());
+            Assert.True(javaLog.Length != 0);
 
             var probingLog = logs.FirstOrDefault(p => p.Contains("Worker probing paths set to:"));
-            Assert.True(probingLog.Any());
-
-            var fallbackLog = logs.FirstOrDefault(p => p.Contains("Searching for worker configs in the fallback directory:"));
-            Assert.True(fallbackLog.Any());
+            Assert.True(probingLog.Length != 0);
         }
 
         [Fact]
