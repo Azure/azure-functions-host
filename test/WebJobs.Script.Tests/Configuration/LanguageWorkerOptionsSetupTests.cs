@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Abstractions;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -16,12 +15,13 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.Tests.WorkerConfigurationResolverTestsHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class LanguageWorkerOptionsSetupTests
     {
-        private readonly string _probingPath1 = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "test", "TestWorkers", "ProbingPaths", "functionsworkers"));
+        private readonly string _probingPath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "test", "TestWorkers", "ProbingPaths", "functionsworkers"));
         private readonly string _fallbackPath = Path.GetFullPath("workers");
 
         public LanguageWorkerOptionsSetupTests()
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("node")]
         public void LanguageWorkerOptions_Expected_ListOfConfigs(string workerRuntime)
         {
-            var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var loggerFactory = GetTestLoggerFactory();
             var testEnvironment = new TestEnvironment();
             var testMetricLogger = new TestMetricsLogger();
             var configurationBuilder = new ConfigurationBuilder()
@@ -70,13 +70,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }
                 });
 
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, null);
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, null);
 
-            var providers = new List<IWorkerConfigurationProvider>
-            {
-                new DefaultWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor)
-            };
-
+            var providers = GetProviders(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver);
@@ -107,33 +103,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("node", "java|node", "EXTENDED", "3.10.1")]
         [InlineData("java", "java", " ", "2.19.0")]
         [InlineData("java", "java", null, "2.19.0")]
-        public void LanguageWorkerOptions_EnabledWorkerResolution_ReturnsListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel, string expectedVersion)
+        public void LanguageWorkerOptions_EnabledDynamicResolution_SingleWorker_ReturnsListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel, string expectedVersion)
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
 
             var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
+
             var testMetricLogger = new TestMetricsLogger();
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
-
-            var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
-            var configuration = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
+            var probingPaths = new List<string>() { _probingPath, string.Empty, "path-not-exists" };
+            var configuration = GetConfigurationWithProbingPaths(probingPaths);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
 
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var providers = new List<IWorkerConfigurationProvider>
-            {
-                new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor)
-            };
-
+            var providers = GetProviders(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver);
@@ -146,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var logs = loggerProvider.GetAllLogMessages();
 
-            string path = Path.Combine(_probingPath1, workerRuntime, expectedVersion);
+            string path = Path.Combine(_probingPath, workerRuntime, expectedVersion);
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with worker path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
@@ -158,31 +150,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("java", "java", "STANDARD")]
         [InlineData("node", "node", "LATEST")]
         [InlineData("node", "java|node", "STANDARD")]
-        public void LanguageWorkerOptions_DynamicResolver_NoProbingPaths_ReturnsListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel)
+        public void LanguageWorkerOptions_EnabledDynamicResolution_NoProbingPaths_ReturnsListOfConfigs(string workerRuntime, string hostingOptionsSetting, string releaseChannel)
         {
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
 
-            var testEnvironment = new TestEnvironment();
             var testMetricLogger = new TestMetricsLogger();
             var configuration = new ConfigurationBuilder().Add(new ScriptEnvironmentVariablesConfigurationSource()).Build();
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
+            var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var providers = new List<IWorkerConfigurationProvider>
-            {
-                new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor),
-                new DefaultWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor)
-            };
-
+            var providers = GetProviders(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver);
@@ -210,24 +197,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
 
-            var testEnvironment = new TestEnvironment();
             var testMetricLogger = new TestMetricsLogger();
             var configuration = new ConfigurationBuilder().Add(new ScriptEnvironmentVariablesConfigurationSource()).Build();
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
+            var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
-            var providers = new List<IWorkerConfigurationProvider>
-            {
-                new DefaultWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor)
-            };
-
+            var providers = GetProviders(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver);
@@ -243,50 +226,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with worker path: {path}";
             Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Workers Directory set to:")));
-        }
-
-        [Theory]
-        [InlineData("java")]
-        [InlineData("node")]
-        public void LanguageWorkerOptions_DynamicResolver_FallbackPath_NullHostingConfig(string workerRuntime)
-        {
-            var loggerProvider = new TestLoggerProvider();
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(loggerProvider);
-
-            var testEnvironment = new TestEnvironment();
-            var testMetricLogger = new TestMetricsLogger();
-            var configuration = new ConfigurationBuilder().Add(new ScriptEnvironmentVariablesConfigurationSource()).Build();
-            var testProfileManager = new Mock<IWorkerProfileManager>();
-            var testScriptHostManager = new Mock<IScriptHostManager>();
-
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
-
-            var hostingOptions = new FunctionsHostingConfigOptions();
-            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, workerRuntime);
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-
-            var providers = new List<IWorkerConfigurationProvider>
-            {
-                new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor),
-                new DefaultWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor)
-            };
-
-            var resolver = new WorkerConfigurationResolver(providers);
-
-            var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver);
-            LanguageWorkerOptions options = new LanguageWorkerOptions();
-
-            setup.Configure(options);
-
-            Assert.Equal(1, options.WorkerConfigs.Count);
-
-            var logs = loggerProvider.GetAllLogMessages();
-
-            string path = Path.Combine(_fallbackPath, workerRuntime);
-            string expectedLog = $"Added WorkerConfig for language: {workerRuntime} with worker path: {path}";
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains(expectedLog)));
-            Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
         }
     }
 }

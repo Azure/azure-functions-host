@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
@@ -10,18 +9,18 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.Tests.WorkerConfigurationResolverTestsHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class DynamicWorkerConfigurationProviderTests
     {
-        private readonly string _probingPath1 = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\");
+        private readonly string _probingPath = Path.GetFullPath("..\\..\\..\\..\\test\\TestWorkers\\ProbingPaths\\functionsworkers\\");
         private readonly string _fallbackPath = Path.GetFullPath("workers");
 
         public DynamicWorkerConfigurationProviderTests()
@@ -30,16 +29,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("LATEST", "java\\2.19.0", "node\\3.10.1")]
-        [InlineData("STANDARD", "java\\2.18.0", "node\\3.10.1")]
-        [InlineData("EXTENDED", "java\\2.18.0", "node\\3.10.1")]
-        [InlineData("laTest", "java\\2.19.0", "node\\3.10.1")]
-        [InlineData("abc", "java\\2.19.0", "node\\3.10.1")]
-        [InlineData("Standard", "java\\2.18.0", "node\\3.10.1")]
-        public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs(string releaseChannel, string java, string node)
+        [InlineData("LATEST", "1", "java\\2.19.0", "node\\3.10.1")]
+        [InlineData("STANDARD", "0",  "java\\2.18.0", "node\\3.10.1")]
+        [InlineData("EXTENDED", "1", "java\\2.18.0", "node\\3.10.1")]
+        [InlineData("laTest", "0", "java\\2.19.0", "node\\3.10.1")]
+        [InlineData("abc", "1", "java\\2.19.0", "node\\3.10.1")]
+        [InlineData("Standard", "1", "java\\2.18.0", "node\\3.10.1")]
+        public void GetWorkerConfigs_MultiLanguageWorker_ReturnsExpectedConfigs(string releaseChannel, string placeholderMode, string java, string node)
         {
             // Arrange
-            var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
+            var probingPaths = new List<string>() { _probingPath, string.Empty, "path-not-exists" };
             var fileSystem = new FileSystem();
 
             var loggerProvider = new TestLoggerProvider();
@@ -51,10 +50,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns(placeholderMode);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
 
-            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
+            var config = GetConfigurationWithProbingPaths(probingPaths);
 
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
             var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
@@ -62,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node");
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
 
             // Act
             var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
@@ -72,8 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Assert
             Assert.Equal(result.Count, 2);
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath1, java))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath1, node))));
+            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath, java))));
+            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath, node))));
 
             var logs = loggerProvider.GetAllLogMessages();
             Assert.True(logs.Any(l => l.FormattedMessage.Contains("Worker probing paths set to:")));
@@ -102,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
 
-            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
+            var config = GetConfigurationWithProbingPaths(probingPaths);
 
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
             var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
@@ -110,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node");
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var testMetricLogger = new TestMetricsLogger();
 
             // Act
@@ -128,53 +127,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData(null, "LATEST")]
-        [InlineData(null, "STANDARD")]
-        [InlineData("Empty", "LATEST")]
-        [InlineData("Empty", "abc")]
-        public void GetWorkerConfigs_MultiLanguageWorker_NullOREmptyProbingPath_ReturnsExpectedConfigs(string probingPathValue, string releaseChannel)
-        {
-            // Arrange
-            var loggerProvider = new TestLoggerProvider();
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(loggerProvider);
-
-            var mockEnvironment = new Mock<IEnvironment>();
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)null);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
-
-            List<string> probingPaths = null;
-
-            if (probingPathValue == "Empty")
-            {
-                probingPaths = new List<string>();
-            }
-
-            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
-            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
-            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
-            var fileSystem = new FileSystem();
-
-            var testScriptHostManager = new Mock<IScriptHostManager>();
-
-            var hostingOptions = new FunctionsHostingConfigOptions();
-            hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
-            var testMetricLogger = new TestMetricsLogger();
-
-            // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
-            var result = new Dictionary<string, RpcWorkerConfig>();
-
-            workerConfigurationResolver.PopulateWorkerConfigs(result);
-
-            Assert.Equal(result.Count, 0);
-       }
-
-        [Theory]
+        [InlineData(null, "LATEST", null)]
+        [InlineData(null, "STANDARD", null)]
+        [InlineData("Empty", "LATEST", null)]
+        [InlineData("Empty", "abc", null)]
         [InlineData(null, "LATEST", "java")]
         [InlineData(null, "STANDARD", "java")]
         [InlineData("Empty", "LATEST", "java")]
@@ -186,10 +142,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void GetWorkerConfigs_NullOREmptyProbingPath_ReturnsExpectedConfigs(string probingPathValue, string releaseChannel, string languageWorker)
         {
             // Arrange
-            var mockEnv = new Mock<IEnvironment>();
-            mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(languageWorker);
-            mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
-            mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
+            var mockEnvironment = new Mock<IEnvironment>();
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns((string)languageWorker);
+
+            if (languageWorker is null)
+            {
+                mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AppKind)).Returns(ScriptConstants.WorkFlowAppKind);
+            }
 
             List<string> probingPaths = null;
 
@@ -198,30 +164,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 probingPaths = new List<string>();
             }
 
-            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
-
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
-            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnv.Object);
-            var mockConfig = new Mock<IConfiguration>();
-
-            var loggerProvider = new TestLoggerProvider();
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(loggerProvider);
+            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
+            var config = GetConfigurationWithProbingPaths(probingPaths);
+            var fileSystem = new FileSystem();
 
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var testMetricLogger = new TestMetricsLogger();
 
             // Act
-            var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, fileSystem, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
             var result = new Dictionary<string, RpcWorkerConfig>();
 
             workerConfigurationResolver.PopulateWorkerConfigs(result);
+
             Assert.Equal(result.Count, 0);
-        }
+       }
 
         [Theory]
         [InlineData("LATEST", "java:2.19.0", "java\\2.18.0", "node\\3.10.1")]
@@ -240,8 +202,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
             var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
 
-            var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
-            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
+            var probingPaths = new List<string>() { _probingPath, string.Empty, "path-not-exists" };
+            var config = GetConfigurationWithProbingPaths(probingPaths);
 
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -252,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
             hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, setting);
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var testMetricLogger = new TestMetricsLogger();
 
             var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
@@ -262,13 +224,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Assert
             Assert.Equal(result.Count, 2);
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath1, java))));
-            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath1, node))));
+            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath, java))));
+            Assert.True(result.Any(r => r.Value.Description.DefaultWorkerPath.Contains(Path.Combine(_probingPath, node))));
         }
 
         [Theory]
         [InlineData("java:2.18.0|java:2.19.0", "java")]
-        public void GetWorkerConfigs_IgnoredVersion_ReturnsExpectedConfigs(string setting, string workerRuntime)
+        [InlineData("java:2.18.0|node:3.10.1", "node")]
+        public void GetWorkerConfigs_SingleWorker_IgnoredVersion_ReturnsExpectedConfigs(string setting, string workerRuntime)
         {
             // Arrange
             var mockEnvironment = new Mock<IEnvironment>();
@@ -277,8 +240,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
             var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
 
-            var probingPaths = new List<string>() { _probingPath1, string.Empty, "path-not-exists" };
-            var config = WorkerConfigurationResolverTestsHelper.GetConfigurationWithProbingPaths(probingPaths);
+            var probingPaths = new List<string>() { _probingPath, string.Empty, "path-not-exists" };
+            var config = GetConfigurationWithProbingPaths(probingPaths);
 
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -289,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
             hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, setting);
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var testMetricLogger = new TestMetricsLogger();
 
             var workerConfigurationResolver = new DynamicWorkerConfigurationProvider(loggerFactory, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);

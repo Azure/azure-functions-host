@@ -16,6 +16,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.Tests.WorkerConfigurationResolverTestsHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void Configure_WithEnvironmentValues_SetsCorrectValues()
         {
-            var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var loggerFactory = GetTestLoggerFactory();
             var testEnvironment = new TestEnvironment();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
             var hostingOptions = new FunctionsHostingConfigOptions();
@@ -112,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void Configure_WithNullConfigValues_SetsCorrectValues()
         {
-            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var testLoggerFactory = GetTestLoggerFactory();
             var testEnvironment = new TestEnvironment();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
             var hostingOptions = new FunctionsHostingConfigOptions();
@@ -133,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void Configure_WorkerConfigurationResolverOptions()
         {
-            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var testLoggerFactory = GetTestLoggerFactory();
             var testEnvironment = new TestEnvironment();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
             var configuration = new ConfigurationBuilder().Build();
@@ -272,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void Configure_NoProbingPaths_SetsCorrectValues()
         {
             // Arrange
-            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var testLoggerFactory = GetTestLoggerFactory();
             var testEnvironment = new TestEnvironment();
             var configuration = new ConfigurationBuilder().Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
@@ -294,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Arrange
             EnvironmentExtensions.ClearCache();
             var testEnvironment = new TestEnvironment();
-            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var testLoggerFactory = GetTestLoggerFactory();
             var configBuilder = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
@@ -353,7 +354,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlagValue);
 
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             bool result = optionsMonitor.CurrentValue.IsDynamicWorkerResolutionEnabled;
 
             Assert.Equal(expected, result);
@@ -382,7 +383,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, placeholdermode);
 
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             bool result = optionsMonitor.CurrentValue.IsDynamicWorkerResolutionEnabled;
 
             Assert.Equal(expected, result);

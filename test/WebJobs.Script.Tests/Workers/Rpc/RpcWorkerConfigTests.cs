@@ -17,6 +17,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.Tests.WorkerConfigurationResolverTestsHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
@@ -703,13 +704,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var workerProfileManager = new Mock<IWorkerProfileManager>();
                 var testMetricLogger = new TestMetricsLogger();
                 var testScriptHostManager = new Mock<IScriptHostManager>();
-                var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+                var loggerFactory = GetTestLoggerFactory();
 
                 var loggerFactoryMock = new Mock<ILoggerFactory>();
                 loggerFactoryMock.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(testLogger);
 
-                var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-                var providers = WorkerConfigurationResolverTestsHelper.GetProviders(loggerFactoryMock.Object, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
+                var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
+                var providers = GetProviders(loggerFactoryMock.Object, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
 
                 var workerConfigurationResolver = new WorkerConfigurationResolver(providers);
 
