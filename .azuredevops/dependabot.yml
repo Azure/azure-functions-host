@@ -1,0 +1,4 @@
+# Mirrored repository. We use dependabot via GitHub, not Azure DevOps.
+version: 2
+enable-security-updates: false
+enable-campaigned-updates: false

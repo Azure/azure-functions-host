@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -188,9 +188,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             string json = JsonConvert.SerializeObject(context);
             string encrypted = EncryptionHelper.Encrypt(json, environment: _environment);
-            var encryptedContext = new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
+            var hostAssignmentRequest = new HostAssignmentRequest { EncryptedContext = encrypted };
 
-            var result = _startupContextProvider.SetContext(encryptedContext);
+            var result = _startupContextProvider.SetContext(hostAssignmentRequest);
             Assert.Equal(context.SiteName, result.SiteName);
             Assert.Equal(_secrets.Host.Master, result.Secrets.Host.Master);
 
@@ -212,9 +212,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             string json = JsonConvert.SerializeObject(context);
             string encrypted = EncryptionHelper.Encrypt(json, environment: _environment);
-            var encryptedContext = new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
+            var hostAssignmentRequest = new HostAssignmentRequest { EncryptedContext = encrypted };
 
-            var result = _startupContextProvider.SetContext(encryptedContext);
+            var result = _startupContextProvider.SetContext(hostAssignmentRequest);
             Assert.Equal(context.SiteName, result.SiteName);
             Assert.Equal(_secrets.Host.Master, result.Secrets.Host.Master);
 
