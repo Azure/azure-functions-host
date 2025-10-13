@@ -961,28 +961,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(true, true, true)]
-        [InlineData(true, false, false)]
-        public void WorkerIndexingDecisionLogic_LogicApps(bool workerIndexingFeatureFlag, bool enableIndexingForCodeful, bool expected)
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        public void WorkerIndexingDecisionLogic_LogicApps(bool enableIndexingForCodeful, bool expected)
         {
-            var testEnv = new TestEnvironment();
-            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetExecutableName);
-            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, ScriptConstants.WorkFlowAppKind);
-
-            if (workerIndexingFeatureFlag)
-            {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
-            }
-
+            var environmentVariables = new Dictionary<string, string>
+                {
+                    { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetExecutableName },
+                    { EnvironmentSettingNames.AppKind, ScriptConstants.WorkFlowAppKind },
+                    { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing },
+                };
             if (enableIndexingForCodeful)
             {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.LogicAppCodefulModeEnabled, "true");
+                environmentVariables.Add(EnvironmentSettingNames.LogicAppCodefulModeEnabled, "true");
             }
+
+            var testEnv = new TestEnvironment(environmentVariables);
 
             RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("dotnet", "none", true) };
 
             bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv, new FunctionsHostingConfigOptions());
             Assert.Equal(expected, workerShouldIndex);
+
+            testEnv.Clear();
         }
 
         [Theory]

@@ -1034,7 +1034,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // WORKER_INDEXING_DISABLED contains the customers app name worker indexing is then disabled for that customer only
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, FunctionsHostingConfigOptions functionsHostingConfigOptions)
         {
-            // NOTE(apseth): Enabling the worker indexing for Logic Apps with codeful mode enabled.
+            // NOTE: Enabling the worker indexing for Logic Apps with codeful mode enabled.
             if (environment.IsLogicApp() && !environment.IsLogicAppCodefulModeEnabled())
             {
                 return false;

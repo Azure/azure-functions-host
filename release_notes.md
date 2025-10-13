@@ -10,3 +10,4 @@
 - Avoid emitting empty tag values for health check metrics (#11393)
 - Functions host to take a customer specified port in Custom Handler scenario (#11408)
 - Updated to version 1.5.8 of Microsoft.Azure.AppService.Middleware.Functions (#11416)
+- Enabling worker indexing for Logic Apps app kind behind an enviornment setting
