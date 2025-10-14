@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ContainerManagment
             _mockInstanceManager.Setup(m => m.AssignInstanceAsync(It.IsAny<HostAssignmentContext>())).Returns(tcs.Task);
 
             var assignmentContext = new HostAssignmentContext();
-            _mockStartupContextProvider.Setup(p => p.SetContext(It.IsAny<EncryptedHostAssignmentContext>())).Returns(assignmentContext);
+            _mockStartupContextProvider.Setup(p => p.SetContext(It.IsAny<HostAssignmentRequest>())).Returns(assignmentContext);
 
             var service = new TestLinuxContainerInitializationHostedService(GetTestEnvironment(), _mockInstanceManager.Object,
                 _mockLogger.Object, _mockStartupContextProvider.Object);
@@ -65,9 +65,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ContainerManagment
 
             protected override Task<(bool HasStartContext, string StartContext)> TryGetStartContextOrNullAsync(CancellationToken cancellationToken)
             {
-                var encryptedAssignmentContext = new EncryptedHostAssignmentContext { EncryptedContext = "test" };
+                var hostAssignmentRequest = new HostAssignmentRequest { EncryptedContext = "test" };
 
-                return Task.FromResult((true, JsonConvert.SerializeObject(encryptedAssignmentContext)));
+                return Task.FromResult((true, JsonConvert.SerializeObject(hostAssignmentRequest)));
             }
 
             protected override Task SpecializeMSISideCar(HostAssignmentContext assignmentContext)
