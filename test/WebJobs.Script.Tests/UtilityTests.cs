@@ -961,6 +961,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        public void WorkerIndexingDecisionLogic_LogicApps(bool enableIndexingForCodeful, bool expected)
+        {
+            var environmentVariables = new Dictionary<string, string>
+                {
+                    { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetExecutableName },
+                    { EnvironmentSettingNames.AppKind, ScriptConstants.WorkFlowAppKind },
+                    { EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing },
+                };
+            if (enableIndexingForCodeful)
+            {
+                environmentVariables.Add(EnvironmentSettingNames.LogicAppCodefulModeEnabled, "true");
+            }
+
+            var testEnv = new TestEnvironment(environmentVariables);
+
+            RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("dotnet", "none", true) };
+
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv, new FunctionsHostingConfigOptions());
+            Assert.Equal(expected, workerShouldIndex);
+
+            testEnv.Clear();
+        }
+
+        [Theory]
         [InlineData(true, false)]
         [InlineData(false, false)]
         public void WorkerIndexingDecisionLogic_NullConfig(bool workerIndexingFeatureFlag, bool expected)
