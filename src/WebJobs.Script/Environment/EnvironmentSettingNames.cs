@@ -150,6 +150,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string AppKind = "APP_KIND";
 
+        public const string LogicAppCodefulModeEnabled = "WORKFLOW_CODEFUL_ENABLED";
+
         public const string DrainOnApplicationStopping = "FUNCTIONS_ENABLE_DRAIN_ON_APP_STOPPING";
     }
 }
