@@ -2,12 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
+
+#nullable enable
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 {
@@ -21,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
     /// </remarks>
     public sealed partial class DynamicHealthCheckService : HealthCheckService
     {
+        private readonly ConcurrentDictionary<string, DateTimeOffset> _conflictLogBackoff = new();
+
         private readonly HealthCheckService _webHostCheck;
         private readonly IScriptHostManager _manager;
         private readonly ILogger _logger;
@@ -36,21 +41,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         }
 
         public override async Task<HealthReport> CheckHealthAsync(
-            Func<HealthCheckRegistration, bool> predicate,
+            Func<HealthCheckRegistration, bool>? predicate,
             CancellationToken cancellationToken = default)
         {
             Task<HealthReport> webHostReport = _webHostCheck.CheckHealthAsync(predicate, cancellationToken);
-            Task<HealthReport> scriptHostReport = CheckScriptHostHealthAsync(predicate, cancellationToken);
+            Task<HealthReport?> scriptHostReport = CheckScriptHostHealthAsync(predicate, cancellationToken);
             return MergeReports(await webHostReport, await scriptHostReport);
         }
 
-        private HealthReport MergeReports(HealthReport left, HealthReport right)
+        private HealthReport MergeReports(HealthReport left, HealthReport? right)
         {
-            if (left == null)
-            {
-                return right;
-            }
-
             if (right == null)
             {
                 return left;
@@ -62,7 +62,18 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             {
                 if (!entries.TryAdd(key, value))
                 {
-                    Log.DuplicateHealthCheckEntry(_logger, key);
+                    bool log = true;
+                    if (_conflictLogBackoff.TryGetValue(key, out DateTimeOffset lastLogTime))
+                    {
+                        // ensure we log this only once per hour
+                        log = DateTimeOffset.UtcNow - lastLogTime > TimeSpan.FromHours(1);
+                    }
+
+                    if (log)
+                    {
+                        _conflictLogBackoff[key] = DateTimeOffset.UtcNow;
+                        Log.DuplicateHealthCheckEntry(_logger, key);
+                    }
                 }
             }
 
@@ -77,12 +88,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             return new(entries, status, duration);
         }
 
-        private async Task<HealthReport> CheckScriptHostHealthAsync(
-            Func<HealthCheckRegistration, bool> predicate,
+        private async Task<HealthReport?> CheckScriptHostHealthAsync(
+            Func<HealthCheckRegistration, bool>? predicate,
             CancellationToken cancellationToken = default)
         {
-            HealthCheckService scriptHostCheck = _manager.Services.GetService<HealthCheckService>();
-            if (scriptHostCheck == null)
+            HealthCheckService? scriptHostCheck = _manager.Services.GetService<HealthCheckService>();
+            if (scriptHostCheck is null)
             {
                 Log.ScriptHostNoHealthCheckService(_logger);
                 return null;
