@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
+using AwesomeAssertions;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -140,6 +142,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
         }
 
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1234567)]
+        public void CustomHandlerConfig_Configure_InvalidPort_ExpandEnvVars(int value)
+        {
+            HttpWorkerOptions options = new();
+
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new List<KeyValuePair<string, string>>()
+                        {
+                        new("AzureFunctionsJobHost:customHandler:description:defaultExecutablePath", "%TestEnv%"),
+                        new("AzureFunctionsJobHost:customHandler:port", value.ToString())
+                        }).Build();
+
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+
+            Action act = () =>
+                    {
+                        setup.Configure(options);
+                    };
+
+            Assert.NotNull(options.Port);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1234567)]
+        public void CustomHandlerConfig_Validate_InvalidPort_ExpandEnvVars(int value)
+        {
+            HttpWorkerOptions options = new() { Port = value };
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), new ConfigurationBuilder().Build(), _testLoggerFactory, _metricsLogger, _environment);
+
+            Action act = () =>
+            {
+                setup.Validate(nameof(options), options);
+            };
+
+            act.Should().ThrowExactly<HostConfigurationException>().WithMessage($"Unable to bind to port {value} specified in configuration. Please specify a different port or remove the section to allow dynamic binding of port.");
+        }
+
         [Fact]
         public void CustomHandlerConfig_ExpandEnvVars()
         {
@@ -160,8 +202,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
                 HttpWorkerOptions options = new();
                 setup.Configure(options);
+                setup.Validate(nameof(options), options);
                 Assert.Equal("TestVal", options.Description.DefaultExecutablePath);
                 Assert.Contains("TestVal", options.Description.DefaultWorkerPath);
+                Assert.NotEqual(options.Port, 0);
+                Assert.False(options.IsPortManuallySet);
             }
             finally
             {
@@ -259,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                                 'workerDirectory': 'c:/myWorkerDir'
                             }
                         }
-                    }", false, false, false)]
+                    }", false, false, false, false, 0)]
         [InlineData(@"{
                     'version': '2.0',
                     'customHandler': {
@@ -269,12 +314,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                                 'workerDirectory': 'myWorkerDir'
                             }
                         }
-                    }", true, true, true)]
-        public void CustomHandler_Config_ExpectedValues_WorkerDirectory_WorkingDirectory(string hostJsonContent, bool appendCurrentDirToDefaultExe, bool appendCurrentDirToWorkingDir, bool appendCurrentDirToWorkerDir)
+                    }", true, true, true, false, 0)]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'customHandler': {
+                            'description': {
+                                'defaultExecutablePath': 'node',
+                                'arguments': ['httpWorker.js'],
+                                'workingDirectory': 'myWorkingDir',
+                                'workerDirectory': 'myWorkerDir'
+                            },
+                            'port': 1234
+                        }
+                    }", true, true, true, true, 1234)]
+        [InlineData(@"{
+                    'version': '2.0',
+                    'customHandler': {
+                            'description': {
+                                'defaultExecutablePath': 'node',
+                                'workingDirectory': 'myWorkingDir',
+                                'workerDirectory': 'myWorkerDir'
+                            },
+                            'port': '5678'
+                        }
+                    }", true, true, true, true, 5678)]
+        public void CustomHandler_Config_ExpectedValues_WorkerDirectory_WorkingDirectory(string hostJsonContent, bool appendCurrentDirToDefaultExe, bool appendCurrentDirToWorkingDir, bool appendCurrentDirToWorkerDir, bool portProvided, int outputPort)
         {
+            _loggerProvider.ClearAllLogMessages();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(_loggerProvider);
+
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger, _environment);
+            HttpWorkerOptionsSetup setup = new(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, loggerFactory, _metricsLogger, _environment);
             HttpWorkerOptions options = new();
             options.Description = new HttpWorkerDescription();
             options.Description.FileExists = path =>
@@ -282,6 +354,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 return appendCurrentDirToDefaultExe;
             };
             setup.Configure(options);
+            setup.Validate(nameof(options), options);
 
             Assert.True(_metricsLogger.LoggedEvents.Contains(MetricEventNames.CustomHandlerConfiguration));
 
@@ -313,6 +386,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             else
             {
                 Assert.Equal(@"c:/myWorkingDir", options.Description.WorkingDirectory);
+            }
+
+            if (portProvided)
+            {
+                Assert.Equal(outputPort, options.Port);
+                Assert.True(options.IsPortManuallySet);
+                var logs = _loggerProvider.GetAllLogMessages();
+                Assert.True(logs.Any(l => l.FormattedMessage.Contains($"Using port {options.Port} specified via configuration for custom handler.")));
             }
         }
 

@@ -152,6 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";
         public const string SiteUriFormat = "https://{0}.azurewebsites.net";
         public const string AppServiceCoreUri = "https://appservice.core.azurewebsites.net";
+        public const string LegionCoreUri = "https://legion.core.azurewebsites.net";
 
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
         public const string HttpMethodConstraintName = "httpMethod";
@@ -265,6 +266,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string HttpProxyCorrelationHeader = "x-ms-invocation-id";
         public static readonly string HttpProxyTask = "HttpProxyTask";
         public static readonly string HttpProxyScriptInvocationContext = "HttpProxyScriptInvocationContext";
+        public static readonly string EnableProxyingHttpRequest = "enableProxyingHttpRequest";
 
         public static readonly string OperationNameKey = "OperationName";
 
