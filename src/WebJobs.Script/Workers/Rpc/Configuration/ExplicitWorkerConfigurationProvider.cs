@@ -16,11 +16,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     internal sealed class ExplicitWorkerConfigurationProvider(
                                 ILoggerFactory loggerFactory,
                                 IMetricsLogger metricsLogger,
-                                IFileSystem fileSystem,
                                 IWorkerProfileManager workerProfileManager,
                                 ISystemRuntimeInformation systemRuntimeInformation,
                                 IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
-                    : WorkerConfigurationProviderBase(loggerFactory, metricsLogger, fileSystem, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
+                    : WorkerConfigurationProviderBase(loggerFactory, metricsLogger, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
     {
         public override int Priority => 1;
 
@@ -31,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 if (!string.IsNullOrEmpty(workerDescriptionOverride?.WorkerDirectory))
                 {
                     workerRuntimeToConfigMap.Remove(language);
-                    AddProvider(WorkerResolverOptions, language, workerDescriptionOverride.WorkerDirectory, MetricsLogger, ProfileManager, Logger, SystemRuntimeInformation, workerRuntimeToConfigMap);
+                    AddProvider(WorkerResolverOptions, language, workerDescriptionOverride.WorkerDirectory, workerRuntimeToConfigMap);
                 }
             }
         }

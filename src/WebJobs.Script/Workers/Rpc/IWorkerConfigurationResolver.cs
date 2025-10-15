@@ -13,6 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         /// <summary>
         /// Retrieves a dictionary of worker configurations, keyed by language name.
         /// </summary>
-        Dictionary<string, RpcWorkerConfig> GetWorkerConfigs();
+        IReadOnlyDictionary<string, RpcWorkerConfig> GetWorkerConfigs();
     }
 }

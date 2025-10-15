@@ -20,8 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                                 IWorkerProfileManager workerProfileManager,
                                                 ISystemRuntimeInformation systemRuntimeInformation,
                                                 IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
-                        : WorkerConfigurationProviderBase(loggerFactory, metricsLogger, fileSystem, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
+                        : WorkerConfigurationProviderBase(loggerFactory, metricsLogger, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
     {
+        private readonly IFileSystem _fileSystem = fileSystem;
+
         public override int Priority { get => 2; }
 
         public override void PopulateWorkerConfigs(Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap)
@@ -29,10 +31,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             Logger.DefaultWorkersDirectoryPath(WorkerResolverOptions.WorkersRootDirPath);
 
             // Resolves worker configurations by scanning the "workers" directory within the Host.
-            foreach (var workerPath in FileSystem.Directory.EnumerateDirectories(WorkerResolverOptions.WorkersRootDirPath))
+            foreach (var workerPath in _fileSystem.Directory.EnumerateDirectories(WorkerResolverOptions.WorkersRootDirPath))
             {
-                var workerDirName = FileSystem.Path.GetFileName(workerPath);
-                AddProvider(WorkerResolverOptions, workerDirName, workerPath, MetricsLogger, ProfileManager, Logger, SystemRuntimeInformation, workerRuntimeToConfigMap);
+                var workerDirName = _fileSystem.Path.GetFileName(workerPath);
+                AddProvider(WorkerResolverOptions, workerDirName, workerPath, workerRuntimeToConfigMap);
             }
         }
     }

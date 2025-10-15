@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     new DefaultWorkerConfigurationProvider(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
                     new DynamicWorkerConfigurationProvider(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
-                    new ExplicitWorkerConfigurationProvider(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
+                    new ExplicitWorkerConfigurationProvider(loggerFactory, metricsLogger, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
                 };
         }
     }

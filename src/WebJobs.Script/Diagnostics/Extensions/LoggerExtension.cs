@@ -1,4 +1,4 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -216,11 +216,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
            new EventId(343, nameof(DefaultWorkersDirectoryPath)),
            "Workers Directory set to: {workersDirPath}");
 
-        private static readonly Action<ILogger, string, Exception> _workerProbingPaths =
-           LoggerMessage.Define<string>(LogLevel.Debug,
-           new EventId(344, nameof(WorkerProbingPaths)),
-           "Worker probing paths set to: {workerProbingPaths}");
-
         public static void PublishingMetrics(this ILogger logger, string metrics)
         {
             _publishingMetrics(logger, metrics, null);
@@ -426,11 +421,6 @@ Lock file hash: {currentLockFileHash}";
         public static void DefaultWorkersDirectoryPath(this ILogger logger, string workersDirPath)
         {
             _defaultWorkersDirectoryPath(logger, workersDirPath, null);
-        }
-
-        public static void WorkerProbingPaths(this ILogger logger, string workerProbingPaths)
-        {
-            _workerProbingPaths(logger, workerProbingPaths, null);
         }
 
         public static void OutdatedExtensionBundle(this ILogger logger, string currentVersion)

@@ -5,7 +5,6 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Abstractions;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -20,56 +19,41 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// </summary>
     internal abstract class WorkerConfigurationProviderBase : IWorkerConfigurationProvider
     {
-        private readonly ILogger _logger;
-        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _resolverOptions;
-        private readonly IMetricsLogger _metricsLogger;
-        private readonly IWorkerProfileManager _profileManager;
-        private readonly IFileSystem _fileSystem;
-        private readonly ISystemRuntimeInformation _systemRuntimeInformation;
-
         public WorkerConfigurationProviderBase(ILoggerFactory loggerFactory,
                                                     IMetricsLogger metricsLogger,
-                                                    IFileSystem fileSystem,
                                                     IWorkerProfileManager workerProfileManager,
                                                     ISystemRuntimeInformation systemRuntimeInformation,
                                                     IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
-            _resolverOptions = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
-            _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
-            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
-            _profileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            _systemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
-            ArgumentNullException.ThrowIfNull(_resolverOptions.CurrentValue);
+            Logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
+            MetricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
+            ProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
+            SystemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
+            var resolverOptionsMonitor = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
+            WorkerResolverOptions = resolverOptionsMonitor.CurrentValue ?? throw new ArgumentNullException(nameof(resolverOptionsMonitor.CurrentValue));
         }
 
-        protected ILogger Logger => _logger;
+        protected ILogger Logger { get; }
 
-        protected WorkerConfigurationResolverOptions WorkerResolverOptions => _resolverOptions.CurrentValue;
+        protected WorkerConfigurationResolverOptions WorkerResolverOptions { get; }
 
-        protected IMetricsLogger MetricsLogger => _metricsLogger;
+        protected IMetricsLogger MetricsLogger { get; }
 
-        protected IWorkerProfileManager ProfileManager => _profileManager;
+        protected IWorkerProfileManager ProfileManager { get; }
 
-        protected IFileSystem FileSystem => _fileSystem;
-
-        protected ISystemRuntimeInformation SystemRuntimeInformation => _systemRuntimeInformation;
+        protected ISystemRuntimeInformation SystemRuntimeInformation { get; }
 
         public abstract int Priority { get; }
 
         public abstract void PopulateWorkerConfigs(Dictionary<string, RpcWorkerConfig> configs);
 
-        internal static void AddProvider(WorkerConfigurationResolverOptions resolverOptions,
+        internal void AddProvider(WorkerConfigurationResolverOptions resolverOptions,
                                     string workerName,
                                     string workerDirPath,
-                                    IMetricsLogger metricsLogger,
-                                    IWorkerProfileManager profileManager,
-                                    ILogger logger,
-                                    ISystemRuntimeInformation systemRuntimeInformation,
                                     Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap)
         {
-            using (metricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDirPath)))
+            using (MetricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDirPath)))
             {
                 if (workerRuntimeToConfigMap.ContainsKey(workerName))
                 {
@@ -85,13 +69,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     return;
                 }
 
-                (var workerDescription, var workerConfigJson) = GetWorkerDescriptionAndConfig(workerDirPath, profileManager, resolverOptions.WorkerDescriptionOverrides, logger);
-                if (workerDescription is null || IsWorkerDescriptionDisabled(workerDescription, logger))
+                (var workerDescription, var workerConfigJson) = GetWorkerDescriptionAndConfig(workerDirPath, resolverOptions.WorkerDescriptionOverrides);
+                if (workerDescription is null || IsWorkerDescriptionDisabled(workerDescription))
                 {
                     return;
                 }
 
-                var workerConfig = BuildWorkerConfig(resolverOptions, workerDirPath, workerConfigJson, workerDescription, metricsLogger, logger, systemRuntimeInformation);
+                var workerConfig = BuildWorkerConfig(resolverOptions, workerDirPath, workerConfigJson, workerDescription, MetricsLogger, Logger, SystemRuntimeInformation);
                 if (workerConfig is not null)
                 {
                     workerRuntimeToConfigMap[workerName] = workerConfig;
@@ -99,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             }
         }
 
-        internal static RpcWorkerConfig BuildWorkerConfig(WorkerConfigurationResolverOptions resolverOptions,
+        internal RpcWorkerConfig BuildWorkerConfig(WorkerConfigurationResolverOptions resolverOptions,
                                             string workerDir,
                                             JsonElement workerConfig,
                                             RpcWorkerDescription workerDescription,
@@ -136,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         CountOptions = workerProcessCount,
                     };
 
-                    ReadLanguageWorkerFile(arguments.WorkerPath, resolverOptions.IsPlaceholderModeEnabled, logger, workerRuntime);
+                    ReadLanguageWorkerFile(arguments.WorkerPath, resolverOptions.IsPlaceholderModeEnabled, workerRuntime);
 
                     logger.LogDebug("Added WorkerConfig for language: {language} with worker path: {path}", workerDescription.Language, workerDescription.DefaultWorkerPath);
 
@@ -151,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return null;
         }
 
-        private static JsonElement GetWorkerConfigJsonElement(string workerConfigPath, ILogger logger)
+        private JsonElement GetWorkerConfigJsonElement(string workerConfigPath)
         {
             ReadOnlySpan<byte> jsonSpan = File.ReadAllBytes(workerConfigPath);
 
@@ -162,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (jsonSpan.IsEmpty)
             {
-                logger.LogDebug("Worker config at '{workerConfigPath}' is empty.", workerConfigPath);
+                Logger.LogDebug("Worker config at '{workerConfigPath}' is empty.", workerConfigPath);
                 return default; // Return default JsonElement if the file is empty.
             }
 
@@ -172,10 +156,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return doc.RootElement.Clone();
         }
 
-        private static List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JsonElement profilesElement,
-                                                                    JsonSerializerOptions jsonSerializerOptions,
-                                                                    IWorkerProfileManager profileManager,
-                                                                    ILogger logger)
+        private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JsonElement profilesElement,
+                                                                    JsonSerializerOptions jsonSerializerOptions)
         {
             var profiles = profilesElement.Deserialize<IList<WorkerProfileDescriptor>>(jsonSerializerOptions);
 
@@ -194,10 +176,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                     foreach (var descriptor in profile.Conditions)
                     {
-                        if (!profileManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
+                        if (!ProfileManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
                         {
                             // Failed to resolve condition. This profile will be disabled using a mock false condition
-                            logger.LogInformation("Profile {name} is disabled. Cannot resolve the profile condition {condition}", profile.ProfileName, descriptor.Type);
+                            Logger.LogInformation("Profile {name} is disabled. Cannot resolve the profile condition {condition}", profile.ProfileName, descriptor.Type);
                             condition = new FalseCondition();
                         }
 
@@ -304,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             return true;
         }
 
-        private static void ReadLanguageWorkerFile(string workerPath, bool placeHolderModeEnabled, ILogger logger, string workerRuntime)
+        private void ReadLanguageWorkerFile(string workerPath, bool placeHolderModeEnabled, string workerRuntime)
         {
             if (!placeHolderModeEnabled
                 || string.IsNullOrWhiteSpace(workerRuntime)
@@ -336,7 +318,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Unexpected error warming up worker file: {filePath}", workerPath);
+                    Logger.LogError(ex, "Unexpected error warming up worker file: {filePath}", workerPath);
                 }
                 finally
                 {
@@ -345,21 +327,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             });
         }
 
-        internal static (RpcWorkerDescription WorkerDescription, JsonElement WorkerConfig) GetWorkerDescriptionAndConfig(
+        internal (RpcWorkerDescription WorkerDescription, JsonElement WorkerConfig) GetWorkerDescriptionAndConfig(
             string workerDirPath,
-            IWorkerProfileManager profileManager,
-            IReadOnlyDictionary<string, RpcWorkerDescription> workerDescriptionOverrides,
-            ILogger logger)
+            IReadOnlyDictionary<string, RpcWorkerDescription> workerDescriptionOverrides)
         {
             try
             {
                 var workerConfigPath = Path.Combine(workerDirPath, RpcWorkerConstants.WorkerConfigFileName);
-                if (!IsWorkerConfigPathValid(workerConfigPath, logger))
+                if (!IsWorkerConfigPathValid(workerConfigPath))
                 {
                     return (null, default);
                 }
 
-                var workerConfig = GetWorkerConfigJsonElement(workerConfigPath, logger);
+                var workerConfig = GetWorkerConfigJsonElement(workerConfigPath);
                 if (workerConfig.ValueKind == JsonValueKind.Undefined)
                 {
                     return (null, default);
@@ -373,11 +353,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 // Read the profiles from worker description and load the profile for which the conditions match
                 if (workerConfig.TryGetProperty(WorkerConstants.WorkerDescriptionProfiles, out var profiles))
                 {
-                    List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles, jsonSerializerOptions, profileManager, logger);
+                    List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles, jsonSerializerOptions);
                     if (workerDescriptionProfiles.Count > 0)
                     {
-                        profileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
-                        profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
+                        ProfileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
+                        ProfileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
                     }
                 }
 
@@ -388,13 +368,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 AddArgumentsFromAppSettings(workerDescription, workerDescriptionOverrides);
 
                 // Validate workerDescription
-                workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), logger);
+                workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), Logger);
 
                 return (workerDescription, workerConfig);
             }
             catch (Exception ex) when (!ex.IsFatal())
             {
-                logger.LogError(ex, "Failed to initialize worker provider for: {workerDir}", workerDirPath);
+                Logger.LogError(ex, "Failed to initialize worker provider for: {workerDir}", workerDirPath);
             }
 
             return (null, default);
@@ -416,15 +396,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Checks if the specified worker configuration file exists at the given path.
         /// </summary>
-        private static bool IsWorkerConfigPathValid(string workerConfigPath, ILogger logger)
+        private bool IsWorkerConfigPathValid(string workerConfigPath)
         {
             if (!File.Exists(workerConfigPath))
             {
-                logger.LogDebug("Did not find worker config file at: {workerConfigPath}", workerConfigPath);
+                Logger.LogDebug("Did not find worker config file at: {workerConfigPath}", workerConfigPath);
                 return false;
             }
 
-            logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
+            Logger.LogDebug("Found worker config: {workerConfigPath}", workerConfigPath);
 
             return true;
         }
@@ -432,11 +412,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         /// <summary>
         /// Determines if the specified worker description is disabled.
         /// </summary>
-        internal static bool IsWorkerDescriptionDisabled(RpcWorkerDescription workerDescription, ILogger logger)
+        internal bool IsWorkerDescriptionDisabled(RpcWorkerDescription workerDescription)
         {
             if (workerDescription.IsDisabled == true)
             {
-                logger.LogInformation("Skipping WorkerConfig for stack: {language} since it is disabled.", workerDescription.Language);
+                Logger.LogInformation("Skipping WorkerConfig for stack: {language} since it is disabled.", workerDescription.Language);
                 return true;
             }
 

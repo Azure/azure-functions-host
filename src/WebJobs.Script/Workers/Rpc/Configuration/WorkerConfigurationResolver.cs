@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _providers = providers ?? throw new ArgumentNullException(nameof(providers));
         }
 
-        public Dictionary<string, RpcWorkerConfig> GetWorkerConfigs()
+        public IReadOnlyDictionary<string, RpcWorkerConfig> GetWorkerConfigs()
         {
             var configs = new Dictionary<string, RpcWorkerConfig>(StringComparer.OrdinalIgnoreCase);
 
