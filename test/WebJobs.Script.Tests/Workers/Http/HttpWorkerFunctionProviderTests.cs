@@ -187,6 +187,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             var methods = (JArray)trigger1.Raw["methods"];
             Assert.Contains("get", methods.Select(m => m.ToString()), StringComparer.OrdinalIgnoreCase);
 
+            Assert.True(result[0].IsCodelessSet());
+            Assert.False(result[0].IsCodeless());
+            Assert.True(result[1].IsCodelessSet());
+            Assert.False(result[1].IsCodeless());
+
             hostMeta.Verify(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false), Times.Once);
         }
 
@@ -224,6 +229,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
 
             Assert.Single(result);
             Assert.Equal("http-handler1", result[0].Name);
+
+            Assert.True(result[0].IsCodelessSet());
+            Assert.False(result[0].IsCodeless());
 
             var errors = provider.FunctionErrors;
             Assert.True(errors.ContainsKey("http-handler2"));
@@ -268,6 +276,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             {
                 Assert.Single(result);
                 Assert.Empty(provider.FunctionErrors);
+                Assert.True(result[0].IsCodelessSet());
+                Assert.False(result[0].IsCodeless());
             }
             else
             {
