@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
                         if (workerRuntimeToConfigMap.ContainsKey(workerRuntimeDir))
                         {
-                            Logger.LogDebug("Skipping duplicate worker runtime directory '{workerRuntimeDir}' in probing path '{probingPath}'.", workerRuntimeDir, probingPath);
+                            Log.DuplicateRuntimeDirectory(Logger, workerRuntimeDir, probingPath);
                             continue;
                         }
 
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 if (WorkerResolverOptions.IgnoredWorkerVersions.TryGetValue(languageWorkerFolder, out HashSet<Version> value) && value.Contains(versionPair.Key))
                 {
-                    Logger.LogDebug("Ignoring {languageWorkerFolder} version {version} as per configuration.", languageWorkerFolder, versionPair.Key);
+                    Log.IgnoreWorkerVersion(Logger, languageWorkerFolder, versionPair.Key.ToString());
                     continue;
                 }
 
@@ -169,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
                 else
                 {
-                    Logger.LogDebug("Failed to parse worker version '{versionDir}' as a valid version.", versionDir);
+                    Log.InvalidVersion(Logger, versionDir);
                 }
             }
 
@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         {
             if (workerConfigJson.TryGetProperty(RpcWorkerConstants.HostRequirementsSectionName, out JsonElement hostRequirementsSection))
             {
-                Logger.LogDebug("Worker configuration at '{workerDirPath}' specifies host requirements {requirements}.", workerDirPath, hostRequirementsSection);
+                Log.HostRequirements(Logger, workerDirPath, hostRequirementsSection.ToString());
 
                 var hostRequirements = hostRequirementsSection.Deserialize<HashSet<string>>(JsonSerializerOptionsProvider.CaseInsensitiveJsonSerializerOptions);
 
@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (!_fileSystem.Directory.Exists(probingPath))
             {
-                Logger.LogDebug("Worker probing path directory does not exist: {probingPath}.", probingPath);
+                Log.ProbingPathNotExists(Logger, probingPath);
                 return false;
             }
 
@@ -242,10 +242,38 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         private static partial class Log
         {
-            [LoggerMessage(0, LogLevel.Debug, "Worker probing paths set to: {workerProbingPaths}")]
+            [LoggerMessage(LogLevel.Debug, "Worker probing paths set to: {workerProbingPaths}")]
             public static partial void WorkerProbingPaths(
-                ILogger logger,
-                string workerProbingPaths);
+                    ILogger logger,
+                    string workerProbingPaths);
+
+            [LoggerMessage(LogLevel.Debug, "Skipping duplicate worker runtime directory '{workerRuntimeDir}' in probing path '{probingPath}'.")]
+            public static partial void DuplicateRuntimeDirectory(
+                    ILogger logger,
+                    string workerRuntimeDir,
+                    string probingPath);
+
+            [LoggerMessage(LogLevel.Debug, "Ignoring {languageWorkerFolder} version {version} as per configuration.")]
+            public static partial void IgnoreWorkerVersion(
+                    ILogger logger,
+                    string languageWorkerFolder,
+                    string version);
+
+            [LoggerMessage(LogLevel.Debug, "Failed to parse worker version '{versionDir}' as a valid version.")]
+            public static partial void InvalidVersion(
+                    ILogger logger,
+                    string versionDir);
+
+            [LoggerMessage(LogLevel.Debug, "Worker configuration at '{workerDirPath}' specifies host requirements {requirements}.")]
+            public static partial void HostRequirements(
+                    ILogger logger,
+                    string workerDirPath,
+                    string requirements);
+
+            [LoggerMessage(LogLevel.Debug, "Worker probing path directory does not exist: {probingPath}.")]
+            public static partial void ProbingPathNotExists(
+                    ILogger logger,
+                    string probingPath);
         }
     }
 }
