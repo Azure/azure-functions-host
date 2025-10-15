@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             McpCustomerHandlerProfile,
             [
                 KeyValuePair.Create(ConfigurationPath.Combine(
-                    ConfigurationSectionNames.CustomHandler, "enableHttpProxyingRequest"), "true"),
+                    ConfigurationSectionNames.CustomHandler, ScriptConstants.EnableProxyingHttpRequest), "true"),
                 KeyValuePair.Create(ConfigurationPath.Combine(
                     ConfigurationSectionNames.Http, "routePrefix"), string.Empty),
                 KeyValuePair.Create(ConfigurationPath.Combine(

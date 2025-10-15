@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -803,7 +803,8 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             if (!cancellationToken.IsCancellationRequested)
             {
-                bool throwOnWorkerRuntimeAndPayloadMetadataMismatch = true;
+                bool throwOnWorkerRuntimeAndPayloadMetadataMismatch = !(_environment.IsLogicApp() && _environment.IsLogicAppCodefulModeEnabled());
+
                 // this dotnet isolated specific logic is temporary to ensure in-proc payload compatibility with "dotnet-isolated" as the FUNCTIONS_WORKER_RUNTIME value.
                 if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) && !_environment.IsPlaceholderModeEnabled())
                 {
