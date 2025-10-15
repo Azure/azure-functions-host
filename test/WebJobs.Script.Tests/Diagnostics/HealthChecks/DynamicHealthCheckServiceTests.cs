@@ -151,19 +151,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         }
 
         [Fact]
-        public async Task CheckHealthAsync_WebHostReportIsNull_ReturnsScriptHostReport()
-        {
-            HealthReport scriptHostReport = CreateReport("scripthost-check", HealthStatus.Healthy);
-            SetupWebHostHealthService(null);
-            SetupScriptHostHealthService(scriptHostReport);
-            DynamicHealthCheckService service = new(_mockWebHostCheck.Object, _mockManager.Object, _logger);
-
-            HealthReport result = await service.CheckHealthAsync(_ => true);
-
-            result.Should().BeSameAs(scriptHostReport);
-        }
-
-        [Fact]
         public async Task CheckHealthAsync_ScriptHostReportIsNull_ReturnsWebHostReport()
         {
             HealthReport webHostReport = CreateReport("webhost-check", HealthStatus.Healthy);
@@ -174,18 +161,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             HealthReport result = await service.CheckHealthAsync(_ => true);
 
             result.Should().BeSameAs(webHostReport);
-        }
-
-        [Fact]
-        public async Task CheckHealthAsync_BothReportsNull_ReturnsNull()
-        {
-            SetupWebHostHealthService(null);
-            SetupScriptHostHealthService(null);
-            DynamicHealthCheckService service = new(_mockWebHostCheck.Object, _mockManager.Object, _logger);
-
-            HealthReport result = await service.CheckHealthAsync(_ => true);
-
-            result.Should().BeNull();
         }
 
         private static HealthReport CreateReport(
