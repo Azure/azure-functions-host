@@ -11,11 +11,13 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -332,6 +334,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("{\"status\":\"Healthy\"}", body);
+        }
+
+        [Theory]
+        [InlineData("/admin/health?expand=true", null)]
+        [InlineData("/admin/health/live?expand=true", HealthCheckTags.Liveness)]
+        [InlineData("/admin/health/ready?expand=true", HealthCheckTags.Readiness)]
+        public async Task HealthCheck_AdminToken_ExpandSucceeds(string uri, string tag)
+        {
+            // token specified as bearer token
+            HttpRequestMessage request = new(HttpMethod.Get, uri);
+            string token = _fixture.Host.GenerateAdminJwtToken();
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // Not doing a deep validation of the response, just ensuring we get the correct tags.
+            // The full response body is validated in other tests.
+            using Stream stream = await response.Content.ReadAsStreamAsync();
+            JsonDocument json = await JsonDocument.ParseAsync(stream);
+            JsonElement entries = json.RootElement.GetProperty("entries");
+
+            if (string.IsNullOrEmpty(tag))
+            {
+                Assert.NotEmpty(entries.EnumerateObject());
+            }
+            else
+            {
+                bool atLeastOne = false;
+                foreach (JsonProperty entry in entries.EnumerateObject())
+                {
+                    atLeastOne = true;
+                    HashSet<string> tags = entry.Value.GetProperty("tags").Deserialize<HashSet<string>>();
+                    Assert.Contains(tag, tags);
+                }
+
+                Assert.True(atLeastOne, "Expected at least one entry to have the specified tag.");
+            }
         }
 
         [Theory]
