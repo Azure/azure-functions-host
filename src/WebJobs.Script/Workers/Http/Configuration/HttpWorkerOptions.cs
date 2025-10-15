@@ -10,13 +10,44 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
     public class HttpWorkerOptions : IOptionsFormatter
     {
+        private int? _port;
+
         public CustomHandlerType Type { get; set; }
 
         public HttpWorkerDescription Description { get; set; }
 
         public WorkerProcessArguments Arguments { get; set; }
 
-        public int Port { get; set; }
+        public int Port
+        {
+            get
+            {
+                if (_port is null)
+                {
+                    _port = WorkerUtilities.GetUnusedTcpPort(); // Will always be realized during Options setup.
+                    IsPortManuallySet = false;
+                }
+
+                return _port.Value;
+            }
+
+            set
+            {
+                // During dynamic allocation of port, the get method will be called before set method and _port will be assigned dynamically.
+                // Adding a check here to make sure we don't override IsPortManuallySet flag in that case.
+                if (_port != value)
+                {
+                    IsPortManuallySet = true;
+                    _port = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the <see cref="Port"/> property value is taken from configuration.
+        /// True value indicates that the host will use the configured port value rather than allocating a dynamic port.
+        /// </summary>
+        public bool IsPortManuallySet { get; private set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the host will forward the request to the worker process.
