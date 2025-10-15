@@ -74,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         internal static IEnumerable<IWorkerConfigurationProvider> GetProviders(ILoggerFactory loggerFactory,
+                                                ILogger<DynamicWorkerConfigurationProvider> dynamicLogger,
                                                 IMetricsLogger metricsLogger,
                                                 IFileSystem fileSystem,
                                                 IWorkerProfileManager workerProfileManager,
@@ -83,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return new List<IWorkerConfigurationProvider>
                 {
                     new DefaultWorkerConfigurationProvider(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
-                    new DynamicWorkerConfigurationProvider(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
+                    new DynamicWorkerConfigurationProvider(dynamicLogger, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
                     new ExplicitWorkerConfigurationProvider(loggerFactory, metricsLogger, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
                 };
         }

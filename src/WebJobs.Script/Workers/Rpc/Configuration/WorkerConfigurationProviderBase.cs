@@ -19,30 +19,29 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// </summary>
     internal abstract class WorkerConfigurationProviderBase : IWorkerConfigurationProvider
     {
-        public WorkerConfigurationProviderBase(ILoggerFactory loggerFactory,
-                                                    IMetricsLogger metricsLogger,
+        private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _resolverOptionsMonitor;
+
+        public WorkerConfigurationProviderBase(IMetricsLogger metricsLogger,
                                                     IWorkerProfileManager workerProfileManager,
                                                     ISystemRuntimeInformation systemRuntimeInformation,
                                                     IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
-            ArgumentNullException.ThrowIfNull(loggerFactory);
-            Logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
             MetricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             ProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             SystemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
-            var resolverOptionsMonitor = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
-            WorkerResolverOptions = resolverOptionsMonitor.CurrentValue ?? throw new ArgumentNullException(nameof(resolverOptionsMonitor.CurrentValue));
+            _resolverOptionsMonitor = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
+            ArgumentNullException.ThrowIfNull(_resolverOptionsMonitor.CurrentValue);
         }
 
-        protected ILogger Logger { get; }
-
-        protected WorkerConfigurationResolverOptions WorkerResolverOptions { get; }
+        protected WorkerConfigurationResolverOptions WorkerResolverOptions { get => _resolverOptionsMonitor.CurrentValue; }
 
         protected IMetricsLogger MetricsLogger { get; }
 
         protected IWorkerProfileManager ProfileManager { get; }
 
         protected ISystemRuntimeInformation SystemRuntimeInformation { get; }
+
+        public abstract ILogger Logger { get; }
 
         public abstract int Priority { get; }
 

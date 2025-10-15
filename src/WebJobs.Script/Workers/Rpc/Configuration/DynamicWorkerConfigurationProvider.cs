@@ -17,18 +17,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// This class resolves worker configurations dynamically based on the current environment and configuration settings.
     /// It searches for worker configs in specified probing paths, and returns a list of worker configurations.
     /// </summary>
-    internal sealed partial class DynamicWorkerConfigurationProvider(ILoggerFactory loggerFactory,
-                                            ILogger<DynamicWorkerConfigurationProvider> dynamicProviderlogger,
-                                            IMetricsLogger metricsLogger,
-                                            IFileSystem fileSystem,
-                                            IWorkerProfileManager workerProfileManager,
-                                            ISystemRuntimeInformation systemRuntimeInformation,
-                                            IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
-                    : WorkerConfigurationProviderBase(loggerFactory, metricsLogger, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
+    internal sealed partial class DynamicWorkerConfigurationProvider : WorkerConfigurationProviderBase
     {
-        private readonly IFileSystem _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+        private readonly IFileSystem _fileSystem;
+        private readonly ILogger<DynamicWorkerConfigurationProvider> _logger;
 
-        private readonly ILogger<DynamicWorkerConfigurationProvider> _dynamicProviderlogger = dynamicProviderlogger ?? throw new ArgumentNullException(nameof(dynamicProviderlogger));
+        public DynamicWorkerConfigurationProvider(ILogger<DynamicWorkerConfigurationProvider> logger,
+                        IMetricsLogger metricsLogger,
+                        IFileSystem fileSystem,
+                        IWorkerProfileManager workerProfileManager,
+                        ISystemRuntimeInformation systemRuntimeInformation,
+                        IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
+                        : base(metricsLogger, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
+        {
+            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        public override ILogger Logger { get => _logger; }
 
         public override int Priority { get => 3; }
 
@@ -49,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         {
             try
             {
-                Log.WorkerProbingPaths(_dynamicProviderlogger, string.Join(", ", workerProbingPaths));
+                Log.WorkerProbingPaths(Logger, string.Join(", ", workerProbingPaths));
                 string workerRuntime = WorkerResolverOptions.WorkerRuntime;
 
                 // Probing path directory structure is: "<rootPath>/<workerRuntimeDir>/<workerVersion>/worker.config.json"
@@ -67,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         // If probing paths are malformed and have duplicate directories of the same language worker (eg. due to different casing)
                         if (workerRuntimeToConfigMap.ContainsKey(workerRuntimeDir))
                         {
-                            _dynamicProviderlogger.LogDebug("Skipping duplicate worker runtime directory '{workerRuntimeDir}' in probing path '{probingPath}'.", workerRuntimeDir, probingPath);
+                            Logger.LogDebug("Skipping duplicate worker runtime directory '{workerRuntimeDir}' in probing path '{probingPath}'.", workerRuntimeDir, probingPath);
                             continue;
                         }
 
@@ -91,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 // Catching exceptions such as unauthorized access, IO exception, path too long, that can happen while searching for configs in probing paths.
                 // Logging the exception and continuing to search worker configs in the fallback path.
-                _dynamicProviderlogger.LogError(ex, "Failed to resolve worker configurations from probing paths.");
+                Logger.LogError(ex, "Failed to resolve worker configurations from probing paths.");
             }
         }
 
@@ -110,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 if (WorkerResolverOptions.IgnoredWorkerVersions.TryGetValue(languageWorkerFolder, out HashSet<Version> value) && value.Contains(versionPair.Key))
                 {
-                    _dynamicProviderlogger.LogDebug("Ignoring {languageWorkerFolder} version {version} as per configuration.", languageWorkerFolder, versionPair.Key);
+                    Logger.LogDebug("Ignoring {languageWorkerFolder} version {version} as per configuration.", languageWorkerFolder, versionPair.Key);
                     continue;
                 }
 
@@ -140,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return null;
             }
 
-            return BuildWorkerConfig(WorkerResolverOptions, resolvedWorkerVersionPath, resolvedWorkerConfig, resolvedWorkerDescription, MetricsLogger, _dynamicProviderlogger, SystemRuntimeInformation);
+            return BuildWorkerConfig(WorkerResolverOptions, resolvedWorkerVersionPath, resolvedWorkerConfig, resolvedWorkerDescription, MetricsLogger, Logger, SystemRuntimeInformation);
         }
 
         /// <summary>
@@ -163,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 }
                 else
                 {
-                    _dynamicProviderlogger.LogDebug("Failed to parse worker version '{versionDir}' as a valid version.", versionDir);
+                    Logger.LogDebug("Failed to parse worker version '{versionDir}' as a valid version.", versionDir);
                 }
             }
 
@@ -177,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         {
             if (workerConfigJson.TryGetProperty(RpcWorkerConstants.HostRequirementsSectionName, out JsonElement hostRequirementsSection))
             {
-                _dynamicProviderlogger.LogDebug("Worker configuration at '{workerDirPath}' specifies host requirements {requirements}.", workerDirPath, hostRequirementsSection);
+                Logger.LogDebug("Worker configuration at '{workerDirPath}' specifies host requirements {requirements}.", workerDirPath, hostRequirementsSection);
 
                 var hostRequirements = hostRequirementsSection.Deserialize<HashSet<string>>(JsonSerializerOptionsProvider.CaseInsensitiveJsonSerializerOptions);
 
@@ -202,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (!_fileSystem.Directory.Exists(probingPath))
             {
-                _dynamicProviderlogger.LogDebug("Worker probing path directory does not exist: {probingPath}.", probingPath);
+                Logger.LogDebug("Worker probing path directory does not exist: {probingPath}.", probingPath);
                 return false;
             }
 

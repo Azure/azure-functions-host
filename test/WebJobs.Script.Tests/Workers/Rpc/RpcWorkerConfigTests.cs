@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -693,7 +693,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 loggerFactoryMock.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(testLogger);
 
                 var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-                var providers = GetProviders(loggerFactoryMock.Object, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
+                var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
+
+                var providers = GetProviders(loggerFactoryMock.Object, dynamicProviderLogger, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
 
                 var workerConfigurationResolver = new WorkerConfigurationResolver(providers);
 
