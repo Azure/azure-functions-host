@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Extensions.Logging
 {
-    internal class ForwardingLogger : ILogger
+    internal sealed class ForwardingLogger : ILogger
     {
         // The service key to use for dependency injection to get forwarding loggers.
         public const string ServiceKey = "Forwarding";
@@ -90,7 +90,7 @@ namespace Microsoft.Extensions.Logging
     }
 
     [DebuggerDisplay("{_logger}")]
-    internal class ForwardingLogger<T> : ILogger<T>
+    internal sealed class ForwardingLogger<T> : ILogger<T>
     {
         private readonly ILogger _logger;
 
