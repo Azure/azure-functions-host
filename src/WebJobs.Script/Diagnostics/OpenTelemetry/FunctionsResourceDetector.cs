@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -39,6 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     if (azureResourceUri != null)
                     {
                         attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.CloudResourceId, azureResourceUri));
+                    }
+
+                    string slotName = Environment.GetEnvironmentVariable(OpenTelemetryConstants.AzureWebsiteSlotEnvVar);
+                    if (!string.IsNullOrEmpty(slotName))
+                    {
+                        attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.DeploymentEnvironmentName, slotName));
                     }
                 }
             }
