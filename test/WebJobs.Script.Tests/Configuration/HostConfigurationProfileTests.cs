@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             configDict.Should().HaveCount(4);
             configDict.Should().ContainKey("configurationProfile")
                 .WhoseValue.Should().Be("mcp-custom-handler");
-            configDict.Should().ContainKey("customHandler:enableHttpProxyingRequest")
+            configDict.Should().ContainKey("customHandler:enableProxyingHttpRequest")
                 .WhoseValue.Should().Be("true");
             configDict.Should().ContainKey("extensions:http:routePrefix")
                 .WhoseValue.Should().Be(string.Empty);

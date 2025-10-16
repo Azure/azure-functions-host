@@ -238,8 +238,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Refresh WorkerConfigurationResolverOptions and LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
             services.ConfigureOptionsWithChangeTokenSource<WorkerConfigurationResolverOptions, WorkerConfigurationResolverOptionsSetup, HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, HostBuiltChangeTokenSource<LanguageWorkerOptions>>();
+            services.AddSingleton(SystemRuntimeInformation.Instance);
+            services.AddSingleton<IWorkerConfigurationResolver, WorkerConfigurationResolver>();
+            services.AddSingleton<IWorkerConfigurationProvider, DefaultWorkerConfigurationProvider>();
+            services.AddSingleton<IWorkerConfigurationProvider, DynamicWorkerConfigurationProvider>();
+            services.AddSingleton<IWorkerConfigurationProvider, ExplicitWorkerConfigurationProvider>();
 
-            services.AddSingleton<IWorkerConfigurationResolver, DefaultWorkerConfigurationResolver>();
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
 

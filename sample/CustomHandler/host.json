@@ -5,6 +5,7 @@
     "description": {
       "defaultExecutablePath": "node",
       "arguments": [ "server.js" ]
-    }
+    },
+    "port": "3456"
   }
 }

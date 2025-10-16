@@ -1,8 +1,9 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -13,7 +14,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -27,6 +30,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.Tests.TestHelpers;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 {
@@ -1019,6 +1023,128 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var httpRequest = _functionsSyncManager.BuildSetTriggersRequest();
             Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
             Assert.Equal(HttpMethod.Post, httpRequest.Method);
+        }
+
+        [Fact]
+        public async Task GetSyncTriggersPayload_DeduplicatesFunctionMetadataByName_KeepsFirstOccurrence()
+        {
+            // Create two FunctionMetadata objects with the same name but different authLevels
+            var duplicateName = "DuplicateFunction";
+            var firstMetadata = new FunctionMetadata
+            {
+                Name = duplicateName,
+                ScriptFile = "file1.csx"
+            };
+            firstMetadata.Bindings.Add(new BindingMetadata
+            {
+                Name = "req",
+                Type = "httpTrigger",
+                Direction = BindingDirection.In,
+                Raw = new JObject
+                    {
+                        { "authLevel", "function" },
+                        { "type", "httpTrigger" },
+                        { "direction", "in" },
+                        { "name", "req" }
+                    }
+            });
+            firstMetadata.Bindings.Add(new BindingMetadata
+            {
+                Name = "$return",
+                Type = "http",
+                Direction = BindingDirection.Out,
+                Raw = new JObject
+                    {
+                        { "type", "http" },
+                        { "direction", "out" },
+                        { "name", "$return" }
+                    }
+            });
+
+            var secondMetadata = new FunctionMetadata
+            {
+                Name = duplicateName,
+                ScriptFile = "file2.csx"
+            };
+            secondMetadata.Bindings.Add(new BindingMetadata
+            {
+                Name = "req",
+                Type = "httpTrigger",
+                Direction = BindingDirection.In,
+                Raw = new JObject
+                    {
+                        { "authLevel", "anonymous" },
+                        { "type", "httpTrigger" },
+                        { "direction", "in" },
+                        { "name", "req" }
+                    }
+            });
+            secondMetadata.Bindings.Add(new BindingMetadata
+            {
+                Name = "$return",
+                Type = "http",
+                Direction = BindingDirection.Out,
+                Raw = new JObject
+                    {
+                        { "type", "http" },
+                        { "direction", "out" },
+                        { "name", "$return" }
+                    }
+            });
+
+            var functionMetadataManagerMock = new Mock<IFunctionMetadataManager>(MockBehavior.Strict);
+            functionMetadataManagerMock
+                .Setup(m => m.GetFunctionMetadata(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(ImmutableArray.Create(firstMetadata, secondMetadata));
+
+            var environmentMock = new Mock<IEnvironment>();
+            environmentMock.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey))
+                                .Returns("non-null value");
+            environmentMock.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled))
+                                .Returns("0");
+
+            var hostNameProviderMock = new Mock<HostNameProvider>(environmentMock.Object) { CallBase = true };
+
+            var scriptAppHostOptions = new ScriptApplicationHostOptions
+            {
+                ScriptPath = "somePath",
+                IsSelfHost = false,
+                TestDataPath = "testDataPath",
+                LogPath = "rootLogPath"
+            };
+
+            var optionsMonitorMock = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
+            optionsMonitorMock.Setup(m => m.CurrentValue).Returns(scriptAppHostOptions);
+            optionsMonitorMock.Setup(m => m.Get(It.IsAny<string>())).Returns(scriptAppHostOptions);
+
+            var hostingConfigOptions = new FunctionsHostingConfigOptions();
+            var hostingConfigOptionsMock = new Mock<IOptions<FunctionsHostingConfigOptions>>();
+            hostingConfigOptionsMock.Setup(m => m.Value).Returns(hostingConfigOptions);
+
+            var syncManager = new FunctionsSyncManager(
+                Mock.Of<IHostIdProvider>(),
+                optionsMonitorMock.Object,
+                NullLogger<FunctionsSyncManager>.Instance,
+                Mock.Of<IHttpClientFactory>(),
+                Mock.Of<ISecretManagerProvider>(),
+                Mock.Of<IScriptWebHostEnvironment>(),
+                environmentMock.Object,
+                hostNameProviderMock.Object,
+                functionMetadataManagerMock.Object,
+                Mock.Of<IAzureBlobStorageProvider>(),
+                hostingConfigOptionsMock.Object,
+                Mock.Of<IScriptHostManager>());
+
+            // Use the public GetTriggersAsync method (main change is in a private method wrapped by this)
+            var result = await syncManager.GetTriggersAsync();
+
+            var content = JObject.Parse(result.Content);
+            var triggers = content["triggers"] as JArray;
+            Assert.NotNull(triggers);
+            Assert.Single(triggers);
+            Assert.Equal(duplicateName, triggers[0]["functionName"]?.ToString());
+            // check authLevel to verify first occurrence was kept
+            Assert.Equal("function", triggers[0]["authLevel"]?.ToString());
         }
 
         private static LanguageWorkerOptions CreateLanguageWorkerConfigSettings()

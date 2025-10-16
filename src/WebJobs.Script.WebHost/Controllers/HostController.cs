@@ -518,7 +518,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [AcceptVerbs("GET", "PUT", "POST", "DELETE", "OPTIONS")]
-        [Authorize(Policy = PolicyNames.SystemKeyAuthLevel)]
+        [Authorize(Policy = PolicyNames.ExtensionWebhookInvoke)]
         [Route("runtime/webhooks/{extensionName}/{*extra}")]
         [RequiresRunningHost]
         public async Task<IActionResult> ExtensionWebHookHandler(string extensionName, CancellationToken token, [FromServices] IScriptWebHookProvider provider)

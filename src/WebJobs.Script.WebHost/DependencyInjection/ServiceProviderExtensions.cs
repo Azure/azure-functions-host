@@ -1,4 +1,4 @@
-﻿// These extensions are based on Orchard (https://github.com/OrchardCMS/OrchardCore)
+// These extensions are based on Orchard (https://github.com/OrchardCMS/OrchardCore)
 // BSD 3 - Clause License
 //  https://opensource.org/licenses/BSD-3-Clause
 //
@@ -9,8 +9,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
@@ -21,12 +23,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         /// </summary>
         private static readonly HashSet<Type> ChildContainerIgnoredTypes =
         [
-            typeof(IStartupFilter),        // This would re-add middlewares to the host pipeline
+            typeof(IStartupFilter),        // This would re-add middleware to the host pipeline
             typeof(IManagedHostedService), // These shouldn't be instantiated twice
             typeof(IHostedService),        // These shouldn't be instantiated twice
             typeof(ILoggerProvider),       // These shouldn't be instantiated twice
             typeof(ILoggerFactory),        // WebHost has a keyed implementation which will fail propagation. ScriptHost registers its own anyways.
             typeof(ILogger<>),             // Same reason as ILoggerFactory.
+            typeof(HealthCheckService),    // Child container should instantiate its own.
+            typeof(IConfigureOptions<HealthCheckServiceOptions>), // Child container should instantiate its own.
+            typeof(IPostConfigureOptions<HealthCheckServiceOptions>), // Child container should instantiate its own.
         ];
 
         /// <summary>

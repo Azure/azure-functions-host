@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -132,15 +132,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         /// <summary>
-        /// Decrypt and deserialize the specified context, and apply values from it to the
-        /// startup cache context.
+        /// Applies the values from the specified assignment request to the startup cache context,
+        /// performing any required decryption.
         /// </summary>
-        /// <param name="encryptedContext">The encrypted assignment context.</param>
-        /// <returns>The decrypted assignment context</returns>
-        public virtual HostAssignmentContext SetContext(EncryptedHostAssignmentContext encryptedContext)
+        /// <param name="hostAssignmentRequest">The Host assignment request.</param>
+        /// <returns>The assignment context applied.</returns>
+        public virtual HostAssignmentContext SetContext(HostAssignmentRequest hostAssignmentRequest)
         {
-            string decryptedContext = EncryptionHelper.Decrypt(encryptedContext.EncryptedContext, environment: _environment);
-            var hostAssignmentContext = JsonConvert.DeserializeObject<HostAssignmentContext>(decryptedContext);
+            HostAssignmentContext hostAssignmentContext = null;
+
+            // If AssignmentContext is set, use that
+            if (hostAssignmentRequest.AssignmentContext != null)
+            {
+                hostAssignmentContext = hostAssignmentRequest.AssignmentContext;
+            }
+            // Otherwise if EncryptedContext is set, use that
+            else if (!string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext))
+            {
+                string decryptedContext = EncryptionHelper.Decrypt(hostAssignmentRequest.EncryptedContext, environment: _environment);
+                hostAssignmentContext = JsonConvert.DeserializeObject<HostAssignmentContext>(decryptedContext);
+            }
 
             // Don't update StartupContext for warmup requests
             if (!hostAssignmentContext.IsWarmupRequest)
