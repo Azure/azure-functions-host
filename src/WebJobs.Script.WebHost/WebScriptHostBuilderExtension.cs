@@ -1,9 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Net.Http;
-using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -31,6 +28,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System;
+using System.Linq;
+using System.Net.Http;
+using System.Runtime.InteropServices;
 using static Microsoft.Azure.WebJobs.Script.Utility;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -90,8 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .ConfigureLogging(loggingBuilder =>
                 {
                     loggingBuilder.Services.AddSingleton<ILoggerFactory, ScriptLoggerFactory>();
-
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
+
                     if (environment.IsAzureMonitorEnabled())
                     {
                         if (environment.IsConsumptionOnLegion())
@@ -99,10 +100,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             loggingBuilder.Services.AddOptions<LoggerFilterOptions>()
                                 .Configure<IOptionsMonitor<AppServiceOptions>>((filters, options) =>
                                 {
-                                    filters.AddFilter<AzureMonitorDiagnosticLoggerProvider>((category, level) =>
+                                    if (options.CurrentValue.IsAzureMonitorLoggingEnabled)
                                     {
-                                        return options.CurrentValue.IsAzureMonitorLoggingEnabled;
-                                    });
+                                        // Remove any existing filters for AzureMonitorDiagnosticLoggerProvider that may have been added.
+                                        var providerTypeName = typeof(AzureMonitorDiagnosticLoggerProvider).FullName;
+
+                                        foreach (var rule in filters.Rules
+                                            .Where(r => r is { ProviderName: var p, LogLevel: LogLevel.None, CategoryName: null } && p == providerTypeName)
+                                            .ToList())
+                                        {
+                                            filters.Rules.Remove(rule);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // Add a filter to disable AzureMonitorDiagnosticLoggerProvider.
+                                        filters.AddFilter<AzureMonitorDiagnosticLoggerProvider>(null, LogLevel.None);
+                                    }
                                 });
                         }
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
