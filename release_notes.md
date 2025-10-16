@@ -16,3 +16,4 @@
 - Updated to version 1.5.8 of Microsoft.Azure.AppService.Middleware.Functions (#11416)
 - Enabling worker indexing for Logic Apps app kind behind an enviornment setting
 - Adding HttpWorkerFunctionProvider functions to synctrigger payload (#11430)
+- Remove the Flex-only AzureMonitorDiagnosticLoggerProvider filter (#11431)
