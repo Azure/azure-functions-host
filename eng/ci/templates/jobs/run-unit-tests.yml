@@ -45,9 +45,17 @@ jobs:
       projects: $(test_projects)
 
   - task: CopyFiles@2
-    displayName: Copy deps.json
+    displayName: Copy deps.json (net6.0)
     condition: failed()
     inputs:
-      SourceFolder: out/bin/WebJobs.Script.WebHost/debug
+      SourceFolder: out/bin/WebJobs.Script.WebHost/release_net6.0
       Contents: '**/Microsoft.Azure.WebJobs.Script.WebHost.deps.json'
-      TargetFolder: $(Build.ArtifactStagingDirectory)
+      TargetFolder: $(Build.ArtifactStagingDirectory)/net6.0
+
+  - task: CopyFiles@2
+    displayName: Copy deps.json (net8.0)
+    condition: failed()
+    inputs:
+      SourceFolder: out/bin/WebJobs.Script.WebHost/release_net8.0
+      Contents: '**/Microsoft.Azure.WebJobs.Script.WebHost.deps.json'
+      TargetFolder: $(Build.ArtifactStagingDirectory)/net8.0
