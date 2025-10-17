@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -210,20 +210,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
         }
 
         [Fact]
-        public void ResourceDetectorLocalDevelopment2()
+        public void ResourceDetector_Azure()
         {
             using var envVariables = SetupDefaultEnvironmentVariables();
 
             FunctionsResourceDetector detector = new FunctionsResourceDetector();
             Resource resource = detector.Detect();
 
-            Assert.Equal($"/subscriptions/AAAAA-AAAAA-AAAAA-AAA/resourceGroups/rg/providers/Microsoft.Web/sites/appName",
+            Assert.Equal("/subscriptions/AAAAA-AAAAA-AAAAA-AAA/resourceGroups/rg/providers/Microsoft.Web/sites/appName",
                 resource.Attributes.FirstOrDefault(a => a.Key == "cloud.resource_id").Value);
-            Assert.Equal($"EastUS", resource.Attributes.FirstOrDefault(a => a.Key == "cloud.region").Value);
+            Assert.Equal("EastUS", resource.Attributes.FirstOrDefault(a => a.Key == "cloud.region").Value);
+            Assert.Equal("staging", resource.Attributes.FirstOrDefault(a => a.Key == "deployment.environment.name").Value);
         }
 
         [Fact]
-        public void ResourceDetectorLocalDevelopment()
+        public void ResourceDetector_LocalDevelopment()
         {
             FunctionsResourceDetector detector = new FunctionsResourceDetector();
             Resource resource = detector.Detect();
@@ -299,7 +300,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
                 { "WEBSITE_SITE_NAME", "appName" },
                 { "WEBSITE_RESOURCE_GROUP", "rg" },
                 { "WEBSITE_OWNER_NAME", "AAAAA-AAAAA-AAAAA-AAA+appName-EastUSwebspace" },
-                { "REGION_NAME", "EastUS" }
+                { "REGION_NAME", "EastUS" },
+                { "WEBSITE_SLOT_NAME", "staging" }
             });
         }
     }

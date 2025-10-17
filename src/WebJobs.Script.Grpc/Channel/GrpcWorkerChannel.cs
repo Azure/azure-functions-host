@@ -1694,6 +1694,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInstance, id);
                 }
+
                 attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = id;
             }
 

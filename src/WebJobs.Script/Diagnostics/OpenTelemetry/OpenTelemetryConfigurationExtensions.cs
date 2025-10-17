@@ -152,6 +152,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                                 return false;
                             }
 
+                            // Exclude GET /admin/health
+                            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
+                                && context.Request.Path.Equals("/admin/health", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return false;
+                            }
+
                             // Allow everything else
                             return true;
                         };
