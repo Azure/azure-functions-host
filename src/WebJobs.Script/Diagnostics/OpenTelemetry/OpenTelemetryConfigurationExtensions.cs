@@ -162,7 +162,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                             // Allow everything else
                             return true;
                         };
-
                     })
                     .AddProcessor(ActivitySanitizingProcessor.Instance);
             });
