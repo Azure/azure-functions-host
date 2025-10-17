@@ -14,3 +14,4 @@
 - Enabling worker indexing for Logic Apps app kind behind an enviornment setting
 - Adding HttpWorkerFunctionProvider functions to synctrigger payload (#11430)
 - Remove the Flex-only AzureMonitorDiagnosticLoggerProvider filter (#11431)
+- Add TraceContext attributes for OTel (#11429)
