@@ -27,11 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script
         ScriptHostState State { get; }
 
         /// <summary>
-        /// Gets the services from the current script host.
-        /// </summary>
-        IServiceProvider Services { get; }
-
-        /// <summary>
         /// Gets the last host <see cref="Exception"/> that has occurred.
         /// </summary>
         Exception? LastError { get; }
