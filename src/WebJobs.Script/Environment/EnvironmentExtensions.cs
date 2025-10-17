@@ -278,6 +278,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.Equals(value, ScriptConstants.ElasticPremiumSku, StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the application is running in a Windows App Service environment.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if running in a Windows App Service app; otherwise, false.</returns>
+        public static bool IsHostedWindowsEnvironment(this IEnvironment environment)
+        {
+            return environment.IsWindowsAzureManagedHosting() || environment.IsWindowsConsumption() || environment.IsWindowsElasticPremium();
+        }
+
         public static bool IsDynamicSku(this IEnvironment environment)
         {
             return environment.IsConsumptionSku() || environment.IsWindowsElasticPremium();
@@ -694,6 +704,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return string.IsNullOrEmpty(workerRuntime) || string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Returns the Antares platform release channel specified by the environment variable.
+        /// Value of this setting could be "LATEST", "STANDARD" or "EXTENDED".
+        /// If the environment variable is not set, the method returns the default value "LATEST".
+        /// </summary>
+        public static string GetPlatformReleaseChannel(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
         }
 
         public static bool IsApplicationInsightsAgentEnabled(this IEnvironment environment)

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 {
@@ -82,8 +83,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
                 });
             }
 
-            builder.Services.AddLogging();
             builder.Services.AddMetrics();
+            builder.Services.AddLogging(b => b.AddForwardingLogger());
             builder.Services.AddSingleton<HealthCheckMetrics>();
             RegisterPublisher(builder.Services, null); // always register the default publisher
 

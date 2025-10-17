@@ -14,46 +14,36 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.Tests.WorkerConfigurationResolverTestsHelper;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class RpcWorkerConfigFactoryTests : IDisposable
+    public class WorkerConfigurationProviderBaseTests
     {
-        private IWorkerProfileManager _testWorkerProfileManager;
-        private TestSystemRuntimeInformation _testSysRuntimeInfo = new TestSystemRuntimeInformation();
-        private TestEnvironment _testEnvironment;
-
-        public RpcWorkerConfigFactoryTests()
+        public WorkerConfigurationProviderBaseTests()
         {
-            _testEnvironment = new TestEnvironment();
-            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
-            _testWorkerProfileManager = new WorkerProfileManager(workerProfileLogger, _testEnvironment);
-        }
-
-        public void Dispose()
-        {
-            _testEnvironment.Clear();
+            EnvironmentExtensions.ClearCache();
         }
 
         [Fact]
         public void DefaultLanguageWorkersDir()
         {
-            var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.Location).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
+            var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigurationProviderBase).Assembly.Location).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
-
+            var testMetricLogger = new TestMetricsLogger();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
+            var testEnvironment = new TestEnvironment();
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLoggerFactory, FileUtility.Instance, optionsMonitor);
+            var testLoggerFactory = GetTestLoggerFactory();
 
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-            string workersDirPath = workerConfigurationResolver.GetConfigurationInfo().WorkersRootDirPath;
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, testScriptHostManager.Object, null);
 
-            Assert.Equal(expectedWorkersDir, workersDirPath);
+            Assert.Equal(expectedWorkersDir, optionsMonitor.CurrentValue.WorkersRootDirPath);
         }
 
         [Theory]
@@ -61,13 +51,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData(false)]
         public void GetDefaultWorkersDirectory_Returns_Expected(bool expectedValue)
         {
-            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.Location).LocalPath);
+            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(WorkerConfigurationProviderBase).Assembly.Location).LocalPath);
             string defaultWorkersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
             var fileSystemMock = new Mock<IFileSystem>();
             var expectedWorkersDirIsCurrentDir = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
             var expectedWorkersDirIsParentDir = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
-            var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var loggerFactory = GetTestLoggerFactory();
             var trimmedAssemblyDir = assemblyLocalPath.TrimEnd(Path.DirectorySeparatorChar);
 
             var parentDirInfoMock = new Mock<DirectoryInfoBase>();
@@ -83,7 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 .Returns((string dir, string workersDirName) => Path.Combine(dir, workersDirName));
 
             var mockScriptHostManager = new Mock<IScriptHostManager>();
-            var optionsSetup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, config, mockScriptHostManager.Object, fileSystemMock.Object);
+            var env = new Mock<IEnvironment>();
+            var optionsSetup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, config, env.Object, fileSystemMock.Object, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()));
 
             if (expectedValue)
             {
@@ -108,10 +99,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
             var testScriptHostManager = new Mock<IScriptHostManager>();
             var mockLogger = new Mock<ILoggerFactory>();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(mockLogger.Object, FileUtility.Instance, optionsMonitor);
+            var testMetricLogger = new TestMetricsLogger();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
+            var testEnvironment = new TestEnvironment();
 
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, testScriptHostManager.Object, null);
 
             Assert.Equal(expectedWorkersDir, optionsMonitor.CurrentValue.WorkersRootDirPath);
         }
@@ -119,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void LanguageWorker_WorkersDir_NotSet()
         {
-            var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.Location).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
+            var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigurationProviderBase).Assembly.Location).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                    .AddInMemoryCollection(new Dictionary<string, string>
                    {
@@ -128,16 +120,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var testLoggerFactory = GetTestLoggerFactory();
             var testScriptHostManager = new Mock<IScriptHostManager>();
+            var testMetricLogger = new TestMetricsLogger();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
+            var testEnvironment = new TestEnvironment();
 
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(testLoggerFactory, FileUtility.Instance, optionsMonitor);
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, testScriptHostManager.Object, null);
 
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-            var workersDirPath = workerConfigurationResolver.GetConfigurationInfo().WorkersRootDirPath;
-
-            Assert.Equal(expectedWorkersDir, workersDirPath);
+            Assert.Equal(expectedWorkersDir, optionsMonitor.CurrentValue.WorkersRootDirPath);
         }
 
         [Fact]
@@ -148,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // The second profile will be applied since the condition is met. The second profile updates
             // the "IsDisabled" property to True and will cause the workerDescription to be skipped.
 
-            var testPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactoryTests).Assembly.Location).LocalPath);
+            var testPath = Path.GetDirectoryName(new Uri(typeof(WorkerConfigurationProviderBaseTests).Assembly.Location).LocalPath);
             var testWorkersDirectory = Path.Combine(testPath, "TestWorkers");
             var testEnvVariables = new Dictionary<string, string>
             {
@@ -159,17 +150,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testLoggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
-            _testEnvironment.SetEnvironmentVariable("ENV_VAR_BAR", "True");
+            var testLoggerFactory = GetTestLoggerFactory();
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable("ENV_VAR_BAR", "True");
+            var testMetricLogger = new TestMetricsLogger();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
 
-            var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var loggerFactory = GetTestLoggerFactory();
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object);
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, optionsMonitor);
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, testScriptHostManager.Object);
+            var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
+            var providers = GetProviders(testLoggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
 
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-
-            var workerConfigs = configFactory.GetConfigs();
+            var workerConfigurationResolver = new WorkerConfigurationResolver(providers);
+            var workerConfigs = workerConfigurationResolver.GetWorkerConfigs().Values.ToList();
             var errors = testLogger.GetLogMessages().Where(m => m.Exception != null).ToList();
             Assert.False(testLogger.GetLogMessages().Any(m => m.Exception != null), "There should not be an exception logged while executing GetConfigs method.");
             Assert.Equal(1, workerConfigs.Count);
@@ -188,33 +182,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testMetricLogger = new TestMetricsLogger();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
 
-            var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var loggerFactory = GetTestLoggerFactory();
             var testLogger = loggerFactory.CreateLogger("test");
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object);
+            var testEnvironment = new TestEnvironment();
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, testScriptHostManager.Object);
+            var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
 
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, optionsMonitor);
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-
-            var workerConfigs = configFactory.GetConfigs();
+            var workerConfigurationResolver = new WorkerConfigurationResolver(providers);
+            var workerConfigs = workerConfigurationResolver.GetWorkerConfigs().Values.ToList();
             var javaPath = workerConfigs.FirstOrDefault(c => c.Description.Language.Equals("java", StringComparison.OrdinalIgnoreCase)).Description.DefaultExecutablePath;
             Assert.DoesNotContain(@"%JAVA_HOME%", javaPath);
             Assert.Contains(@"/bin/java", javaPath);
         }
 
-        [Fact]
-        public void DefaultWorkerConfigs_Overrides_DefaultWorkerRuntimeVersion_AppSetting()
+        [Theory]
+        [InlineData("3.8", "3.8")]
+        [InlineData(null, "3.12")]
+        public void DefaultWorkerConfigs_Overrides_DefaultWorkerRuntimeVersion_AppSetting(string setting, string output)
         {
             var testEnvVariables = new Dictionary<string, string>
             {
-                { "languageWorkers:python:defaultRuntimeVersion", "3.8" }
+                { "languageWorkers:python:defaultRuntimeVersion", setting }
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                 .AddInMemoryCollection(testEnvVariables);
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
-            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Windows");
+
+            var workerProfileLogger = new TestLogger<WorkerProfileManager>();
+            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, testEnvironment);
 
             using var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables);
 
@@ -222,46 +227,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
             var testLogger = loggerFactory.CreateLogger("test");
+            var testMetricLogger = new TestMetricsLogger();
 
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, testScriptHostManager.Object, null);
+            var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, optionsMonitor);
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
 
-            var workerConfigs = configFactory.GetConfigs();
+            var workerConfigurationResolver = new WorkerConfigurationResolver(providers);
+
+            var workerConfigs = workerConfigurationResolver.GetWorkerConfigs().Values.ToList();
             var pythonWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("python", StringComparison.OrdinalIgnoreCase));
             var powershellWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase));
             Assert.Equal(5, workerConfigs.Count);
             Assert.NotNull(pythonWorkerConfig);
             Assert.NotNull(powershellWorkerConfig);
-            Assert.Equal("3.8", pythonWorkerConfig.Description.DefaultRuntimeVersion);
+            Assert.Equal(output, pythonWorkerConfig.Description.DefaultRuntimeVersion);
             Assert.Equal("7.4", powershellWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
-        [Fact]
-        public void DefaultWorkerConfigs_Overrides_VersionAppSetting()
+        [Theory]
+        [InlineData("7.4", "7.4")]
+        [InlineData("7.2", "7.2")]
+        [InlineData(null, "7.4")]
+        public void DefaultWorkerConfigs_Overrides_VersionAppSetting(string setting, string output)
         {
             var testEnvironment = new TestEnvironment();
-            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "7.4");
+            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", setting);
             testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "powerShell");
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testMetricLogger = new TestMetricsLogger();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
 
-            var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var loggerFactory = GetTestLoggerFactory();
             var testLogger = loggerFactory.CreateLogger("test");
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, testScriptHostManager.Object, null);
+            var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
-            var resolver = new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, optionsMonitor);
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, resolver);
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
 
-            var workerConfigs = configFactory.GetConfigs();
+            var resolver = new WorkerConfigurationResolver(providers);
+            var workerConfigs = resolver.GetWorkerConfigs().Values.ToList();
             var powershellWorkerConfig = workerConfigs.FirstOrDefault(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase));
             Assert.Equal(1, workerConfigs.Count);
             Assert.NotNull(powershellWorkerConfig);
-            Assert.Equal("7.4", powershellWorkerConfig.Description.DefaultRuntimeVersion);
+            Assert.Equal(output, powershellWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
         [Theory]
@@ -273,26 +287,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("python", null, true, true)]
         public void ShouldAddProvider_Returns_Expected(string workerLanguage, string workerRuntime, bool placeholderMode, bool expectedResult)
         {
+            var testEnvironment = new TestEnvironment();
+
             if (placeholderMode)
             {
-                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+                testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             }
             if (!string.IsNullOrEmpty(workerRuntime))
             {
-                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
+                testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             }
-            var config = new ConfigurationBuilder().Build();
-            var loggerFactory = WorkerConfigurationResolverTestsHelper.GetTestLoggerFactory();
+            var loggerFactory = GetTestLoggerFactory();
             var testLogger = loggerFactory.CreateLogger("test");
 
-            var testScriptHostManager = new Mock<IScriptHostManager>();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
-
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(loggerFactory, FileUtility.Instance, optionsMonitor);
-            var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-
-            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
-            Assert.Equal(expectedResult, rpcWorkerConfigFactory.ShouldAddWorkerConfig(workerLanguage));
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
+            Assert.Equal(expectedResult, WorkerConfigurationProviderBase.ShouldAddWorkerConfig(workerLanguage, placeholderMode, false, testLogger, workerRuntime));
         }
 
         [Theory]
@@ -325,22 +334,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             using var jsonDocument = JsonDocument.Parse(stream.ToArray());
             JsonElement workerConfig = jsonDocument.RootElement;
+            var testEnvironment = new TestEnvironment();
 
             if (setWorkerCountInEnv)
             {
-                _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, "7");
+                testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, "7");
             }
 
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
 
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, testScriptHostManager.Object, null);
             var mockLogger = new Mock<ILoggerFactory>();
+            var testMetricLogger = new TestMetricsLogger();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
+            var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(mockLogger.Object, FileUtility.Instance, optionsMonitor);
-            var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
-            var result = rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig);
+            var providers = GetProviders(mockLogger.Object, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
+
+            var workerConfigurationResolver = new WorkerConfigurationResolver(providers);
+
+            var result = WorkerConfigurationProviderBase.GetWorkerProcessCount(workerConfig, testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName), testEnvironment.GetEffectiveCoresCount());
 
             if (defaultWorkerConfig)
             {
@@ -364,7 +379,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 }
                 else if (setProcessCountToNumberOfCpuCores)
                 {
-                    Assert.Equal(_testEnvironment.GetEffectiveCoresCount(), result.ProcessCount);
+                    Assert.Equal(testEnvironment.GetEffectiveCoresCount(), result.ProcessCount);
                 }
             }
 
@@ -380,22 +395,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
 
+            var testEnvironment = new TestEnvironment();
             var testScriptHostManager = new Mock<IScriptHostManager>();
-            var optionsMonitor = WorkerConfigurationResolverTestsHelper.GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, testScriptHostManager.Object, null);
             var mockLogger = new Mock<ILoggerFactory>();
+            var testMetricLogger = new TestMetricsLogger();
+            var testProfileManager = new Mock<IWorkerProfileManager>();
+            var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
-            var workerConfigurationResolver = new DefaultWorkerConfigurationResolver(mockLogger.Object, FileUtility.Instance, optionsMonitor);
-            var rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), _testWorkerProfileManager, workerConfigurationResolver);
+            var providers = GetProviders(mockLogger.Object, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
 
-            var resultEx1 = Assert.Throws<ArgumentOutOfRangeException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            var workerConfigurationResolver = new WorkerConfigurationResolver(providers);
+
+            var resultEx1 = Assert.Throws<ArgumentOutOfRangeException>(() => WorkerConfigurationProviderBase.GetWorkerProcessCount(workerConfig, testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName), testEnvironment.GetEffectiveCoresCount()));
             Assert.Contains("ProcessCount must be greater than 0", resultEx1.Message);
 
             workerConfig = CreateWorkerConfig(40, 10, "00:10:00", false);
-            var resultEx2 = Assert.Throws<ArgumentException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            var resultEx2 = Assert.Throws<ArgumentException>(() => WorkerConfigurationProviderBase.GetWorkerProcessCount(workerConfig, testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName), testEnvironment.GetEffectiveCoresCount()));
             Assert.Contains("ProcessCount must not be greater than MaxProcessCount", resultEx2.Message);
 
             workerConfig = CreateWorkerConfig(10, 10, "-800", false);
-            var resultEx3 = Assert.Throws<JsonException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            var resultEx3 = Assert.Throws<JsonException>(() => WorkerConfigurationProviderBase.GetWorkerProcessCount(workerConfig, testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName), testEnvironment.GetEffectiveCoresCount()));
             Assert.Contains("value could not be converted to System.TimeSpan", resultEx3.Message);
         }
 

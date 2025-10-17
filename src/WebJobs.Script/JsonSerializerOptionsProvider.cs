@@ -19,6 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static readonly JsonSerializerOptions Options = CreateJsonOptions();
 
+        /// <summary>
+        /// Shared Json serializer with the following setting:
+        /// - PropertyNameCaseInsensitive: true.
+        /// </summary>
+        public static readonly JsonSerializerOptions CaseInsensitiveJsonSerializerOptions = CreateCaseInsensitiveJsonOptions();
+
         private static JsonSerializerOptions CreateJsonOptions()
         {
             var options = new JsonSerializerOptions
@@ -31,6 +37,11 @@ namespace Microsoft.Azure.WebJobs.Script
             options.Converters.Add(new JsonStringEnumConverter());
 
             return options;
+        }
+
+        private static JsonSerializerOptions CreateCaseInsensitiveJsonOptions()
+        {
+            return new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         }
     }
 }

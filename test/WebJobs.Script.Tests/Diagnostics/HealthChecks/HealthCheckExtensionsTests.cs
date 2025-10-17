@@ -9,6 +9,7 @@ using AwesomeAssertions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -281,6 +282,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             services.Where(x => x.ServiceType == typeof(IHealthCheckPublisher)).Should().HaveCount(tags.Length)
                 .And.AllSatisfy(x => x.Lifetime.Should().Be(ServiceLifetime.Singleton));
 
+            services.AddLogging(b => b.AddForwardingLogger());
+            services.AddMetrics();
+            services.AddSingleton(Mock.Of<IScriptHostManager>());
             ServiceProvider provider = services.BuildServiceProvider();
             IEnumerable<IHealthCheckPublisher> publishers = provider.GetServices<IHealthCheckPublisher>();
 

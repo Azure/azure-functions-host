@@ -27,6 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             typeof(IManagedHostedService), // These shouldn't be instantiated twice
             typeof(IHostedService),        // These shouldn't be instantiated twice
             typeof(ILoggerProvider),       // These shouldn't be instantiated twice
+            typeof(ILoggerFactory),        // WebHost has a keyed implementation which will fail propagation. ScriptHost registers its own anyways.
+            typeof(ILogger<>),             // Same reason as ILoggerFactory.
             typeof(HealthCheckService),    // Child container should instantiate its own.
             typeof(IConfigureOptions<HealthCheckServiceOptions>), // Child container should instantiate its own.
             typeof(IPostConfigureOptions<HealthCheckServiceOptions>), // Child container should instantiate its own.

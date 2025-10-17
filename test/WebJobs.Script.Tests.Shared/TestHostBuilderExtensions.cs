@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -84,7 +84,11 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
             services.AddSingleton<ISecretManagerProvider, TestSecretManagerProvider>();
             services.AddSingleton<IFileSystem>(FileUtility.Instance);
-            services.AddSingleton<IWorkerConfigurationResolver, DefaultWorkerConfigurationResolver>();
+            services.AddSingleton<ISystemRuntimeInformation>(SystemRuntimeInformation.Instance);
+            services.AddSingleton<IWorkerConfigurationResolver, WorkerConfigurationResolver>();
+            services.AddSingleton<IWorkerConfigurationProvider, DefaultWorkerConfigurationProvider>();
+            services.AddSingleton<IWorkerConfigurationProvider, DynamicWorkerConfigurationProvider>();
+            services.AddSingleton<IWorkerConfigurationProvider, ExplicitWorkerConfigurationProvider>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddWebJobsScriptHostRouting();
