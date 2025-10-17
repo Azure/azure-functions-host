@@ -86,6 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsTargetGroup = "FUNCTIONS_TARGET_GROUP";
         public const string WebsiteArmResourceId = "WEBSITE_ARM_RESOURCE_ID";
         public const string FunctionsDisableInProc = "FUNCTIONS_DISABLE_INPROC";
+        public const string ResourceGroup = "WEBSITE_RESOURCE_GROUP";
+        public const string WebsiteOwnerName = "WEBSITE_OWNER_NAME";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";
