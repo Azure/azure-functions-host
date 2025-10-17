@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             Func<HealthCheckRegistration, bool>? predicate,
             CancellationToken cancellationToken = default)
         {
-            HealthCheckService? scriptHostCheck = _manager.Services.GetService<HealthCheckService>();
+            HealthCheckService? scriptHostCheck = _manager.Services?.GetService<HealthCheckService>();
             if (scriptHostCheck is null)
             {
                 Log.ScriptHostNoHealthCheckService(_logger);

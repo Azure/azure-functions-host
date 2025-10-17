@@ -169,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             metadata.Bindings.Add(BindingMetadata.Create(trigger));
             metadata.Bindings.Add(BindingMetadata.Create(output));
-
+            metadata.SetIsCodeless(false);
             return metadata;
         }
     }

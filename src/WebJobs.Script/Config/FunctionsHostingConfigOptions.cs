@@ -71,6 +71,29 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets a string delimited by '|' that contains the names of the language workers available through probing paths outside of the Host.
+        /// </summary>
+        internal string WorkersAvailableForDynamicResolution
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.WorkersAvailableForDynamicResolution) ?? string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Gets a string delimited by '|' that contains the versions of language workers to be ignored during probing outside of the Host.
+        /// Example value: "Worker1Name:Version1|Worker1Name:Version2|Worker2Name:Version1|Worker3Name:Version1".
+        /// </summary>
+        internal string IgnoredWorkerVersions
+        {
+            get
+            {
+                return GetFeature(RpcWorkerConstants.IgnoredWorkerVersions) ?? string.Empty;
+            }
+        }
+
+        /// <summary>
         /// Gets a value indicating whether Linux Log Backoff is disabled in the hosting config.
         /// </summary>
         internal bool DisableLinuxAppServiceLogBackoff
