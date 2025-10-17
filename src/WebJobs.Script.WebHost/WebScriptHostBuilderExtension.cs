@@ -90,21 +90,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .ConfigureLogging(loggingBuilder =>
                 {
                     loggingBuilder.Services.AddSingleton<ILoggerFactory, ScriptLoggerFactory>();
-
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
+
                     if (environment.IsAzureMonitorEnabled())
                     {
-                        if (environment.IsConsumptionOnLegion())
-                        {
-                            loggingBuilder.Services.AddOptions<LoggerFilterOptions>()
-                                .Configure<IOptionsMonitor<AppServiceOptions>>((filters, options) =>
-                                {
-                                    filters.AddFilter<AzureMonitorDiagnosticLoggerProvider>((category, level) =>
-                                    {
-                                        return options.CurrentValue.IsAzureMonitorLoggingEnabled;
-                                    });
-                                });
-                        }
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
                     }
 
