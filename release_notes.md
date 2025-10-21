@@ -21,4 +21,3 @@
 - Add TraceContext attributes for OTel (#11429)
 - Update Microsoft.Azure.WebJobs.Extensions to 5.2.1 (#11414)
 - Update Microsoft.Azure.WebJobs.Extensions.Http to 3.2.1 (#11439)
-- Update Microsoft.Azure.WebJobs.Extensions.Timers.Storage to 1.1.0 (#11439)
