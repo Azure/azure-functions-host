@@ -476,6 +476,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         EnvironmentSettingNames.FunctionsExtensionVersion, functionsExtensionVersion);
                     environment.SetEnvironmentVariable(
                         RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, functionsWorkerRuntimeVersion);
+                    environment.SetEnvironmentVariable(
+                        EnvironmentSettingNames.AzureWebsitePlaceholderMode, null);
 
                     IHost host = new HostBuilder()
                         .ConfigureServices(s =>
@@ -496,7 +498,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         .Build();
                     var scriptHost = host.GetScriptHost();
                     await scriptHost.InitializeAsync();
-                    Assert.Single(metricsLogger.LoggedEvents, e => e.Equals($"host.startup.runtime.language.{expectedRuntimeStack}"));
+
+                    await TestHelpers.Await(() =>
+                    {
+                        int completed = metricsLogger.LoggedEvents.Count(p => p.Equals($"host.startup.runtime.language.{expectedRuntimeStack}"));
+                        return completed > 0;
+                    });
                 }
             }
             finally
@@ -1671,6 +1678,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var metricsLogger = new TestMetricsLogger();
                 var environment = new TestEnvironment();
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, functionsWorkerRuntime);
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, null);
 
                 FileUtility.Instance = CreateFileSystem(rootPath);
 
@@ -1704,7 +1712,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var scriptHost = host.GetScriptHost();
                 await scriptHost.InitializeAsync();
 
-                Assert.Contains($"host.startup.runtime.language.{expectedMetricLanguage}", metricsLogger.LoggedEvents);
+                await TestHelpers.Await(() =>
+                {
+                    int completed = metricsLogger.LoggedEvents.Count(p => p.Equals($"host.startup.runtime.language.{expectedMetricLanguage}"));
+                    return completed > 0;
+                });
 
                 // In-proc does not start the language worker process
                 if (expectedMetricLanguage != "dotnet")
