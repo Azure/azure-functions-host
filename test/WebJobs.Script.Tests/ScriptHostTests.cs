@@ -461,6 +461,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsWorkerRuntimeVersion,
             string expectedRuntimeStack)
         {
+            EnvironmentExtensions.ClearCache();
+
             try
             {
                 using (var tempDirectory = new TempDirectory())
@@ -1604,6 +1606,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null, "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)] // if FUNCTIONS_WORKER_RUNTIME is missing, assume dotnet
         public async Task Initialize_MissingWorkerRuntime_SetsCorrectRuntimeFromFunctionMetadata(string functionsWorkerRuntime, string scriptFile, string expectedMetricLanguage, string expectedMetadataLanguage)
         {
+            EnvironmentExtensions.ClearCache();
             string workersDirPath = Path.Combine(AppContext.BaseDirectory, RpcWorkerConstants.DefaultWorkersDirectoryName);
 
             IFileSystem CreateFileSystem(string rootPath)
