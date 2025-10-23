@@ -35,7 +35,7 @@ using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMeta
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class ScriptHostTests : IClassFixture<ScriptHostTests.TestFixture>
+    public class ScriptHostTests : IClassFixture<ScriptHostTests.TestFixture>, IDisposable
     {
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
         private readonly TestFixture _fixture;
@@ -461,8 +461,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsWorkerRuntimeVersion,
             string expectedRuntimeStack)
         {
-            EnvironmentExtensions.ClearCache();
-
             try
             {
                 using (var tempDirectory = new TempDirectory())
@@ -1606,7 +1604,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null, "app.dll", "dotnet", DotNetScriptTypes.DotNetAssembly)] // if FUNCTIONS_WORKER_RUNTIME is missing, assume dotnet
         public async Task Initialize_MissingWorkerRuntime_SetsCorrectRuntimeFromFunctionMetadata(string functionsWorkerRuntime, string scriptFile, string expectedMetricLanguage, string expectedMetadataLanguage)
         {
-            EnvironmentExtensions.ClearCache();
             string workersDirPath = Path.Combine(AppContext.BaseDirectory, RpcWorkerConstants.DefaultWorkersDirectoryName);
 
             IFileSystem CreateFileSystem(string rootPath)
@@ -1776,6 +1773,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Empty(diagnosticEventRepository.Events);
                 Assert.Empty(testLoggerProvider.GetAllLogMessages().Where(m => m.Level == LogLevel.Warning));
             }
+        }
+
+        public void Dispose()
+        {
+            EnvironmentExtensions.ClearCache();
         }
 
         public class AssemblyMock : Assembly
