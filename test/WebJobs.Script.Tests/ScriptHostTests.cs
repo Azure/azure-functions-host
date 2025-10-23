@@ -47,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ScriptHostTests(TestFixture fixture)
         {
+            EnvironmentExtensions.ClearCache();
             Utility.ColdStartDelayMS = 50;
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
