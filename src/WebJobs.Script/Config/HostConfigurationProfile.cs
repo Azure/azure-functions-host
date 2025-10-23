@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
     public sealed class HostConfigurationProfile
     {
-        public const string SectionKey = "configurationProfile";
+        private const string SectionKey = "configurationProfile";
 
         // note: profile name consts are intentionally private.
         // This ensures tests will fail if these values are changed without updating the test also.
@@ -24,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private static readonly Dictionary<string, string> CommonHttpCustomHandlerConfiguration = new()
         {
-            { ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, ScriptConstants.EnableProxyingHttpRequest), "true" },
-            { ConfigurationPath.Combine(ConfigurationSectionNames.Http, "routePrefix"), string.Empty },
-            { ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, "http", "routes", "0", "route"), "{*route}" },
+            [ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, ScriptConstants.EnableProxyingHttpRequest)] = "true",
+            [ConfigurationPath.Combine(ConfigurationSectionNames.Http, "routePrefix")] = string.Empty,
+            [ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, "http", "routes", "0", "route")] = "{*route}"
         };
 
         public static readonly HostConfigurationProfile Default = new(DefaultProfile, []);
