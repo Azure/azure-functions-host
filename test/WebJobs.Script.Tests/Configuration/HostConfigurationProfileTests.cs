@@ -29,15 +29,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Theory]
         [InlineData("mcp-custom-handler")]
         [InlineData("MCP-Custom-Handler")]
-        public void Get_Mcp_ReturnsExpectedProfile(string name)
+        [InlineData("web-app-Custom-Handler")]
+        [InlineData("WEB-App-Custom-Handler")]
+        public void Get_HttpBasedHandler_ReturnsExpectedProfile(string name)
         {
-            HostConfigurationProfile profile = HostConfigurationProfile.Get(name);
+            var expectedProfileName = name.ToLowerInvariant();
 
+            HostConfigurationProfile profile = HostConfigurationProfile.Get(name);
             Dictionary<string, string> configDict = new(profile.Configuration);
-            profile.Name.Should().Be("mcp-custom-handler");
+            profile.Name.Should().Be(expectedProfileName);
             configDict.Should().HaveCount(4);
             configDict.Should().ContainKey("configurationProfile")
-                .WhoseValue.Should().Be("mcp-custom-handler");
+                .WhoseValue.Should().Be(expectedProfileName);
             configDict.Should().ContainKey("customHandler:enableProxyingHttpRequest")
                 .WhoseValue.Should().Be("true");
             configDict.Should().ContainKey("extensions:http:routePrefix")
@@ -60,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             action.Should()
                 .ThrowExactly<NotSupportedException>()
-                .WithMessage("Configuration profile 'invalid' is not supported. Supported values: '', 'default', 'mcp-custom-handler'.");
+                .WithMessage("Configuration profile 'invalid' is not supported. Supported values: '', 'default', 'mcp-custom-handler', 'web-app-custom-handler'.");
         }
     }
 }
