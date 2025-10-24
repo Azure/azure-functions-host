@@ -1,47 +1,47 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Storage.Queue;
-using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
     public abstract class CosmosDBEndToEndTestsBase<TTestFixture> :
-        EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBTestFixture, new()
+        EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBEndtoEndTestFixture
     {
         public CosmosDBEndToEndTestsBase(TTestFixture fixture) : base(fixture)
         {
         }
 
+        protected async Task InitializeAsync()
+        {
+            await Fixture.InitializeAsync();
+        }
+
+        protected async Task DisposeAsync()
+        {
+            await Fixture.DisposeAsync();
+        }
+
         protected async Task CosmosDBTriggerToBlobTest()
         {
-            // CosmosDB tests need the following connection string:
-            // "ConnectionStrings:CosmosDB" -- the connection string to the account
-
             // Waiting for the Processor to acquire leases
             await Task.Delay(10000);
 
-            await Fixture.InitializeDocumentClient();
-            bool collectionsCreated = await Fixture.CreateDocumentCollections();
+            Fixture.InitializeCosmosClient();
+            bool collectionsCreated = await Fixture.CreateContainers();
             var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
             await resultBlob.DeleteIfExistsAsync();
 
             string id = Guid.NewGuid().ToString();
 
-            Document documentToTest = new Document()
-            {
-                Id = id
-            };
+            var documentToTest = new { id };
 
-            await Fixture.DocumentClient.CreateDocumentAsync(UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection"), documentToTest);
+            await Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection")
+                .CreateItemAsync(documentToTest, new PartitionKey(id));
 
             // now wait for function to be invoked
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             if (collectionsCreated)
             {
                 // cleanup collections
-                await Fixture.DeleteDocumentCollections();
+                await Fixture.DeleteContainers();
             }
 
             Assert.False(string.IsNullOrEmpty(result));
@@ -58,15 +58,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
         protected async Task CosmosDBTest()
         {
-            // DocumentDB tests need the following connection string:
-            // "ConnectionStrings:CosmosDB" -- the connection string to the account
             string id = Guid.NewGuid().ToString();
 
             await Fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
 
-            Document doc = await WaitForDocumentAsync(id);
+            dynamic doc = await WaitForItemAsync(id);
 
-            Assert.Equal(doc.Id, id);
+            Assert.Equal(doc.id, id);
 
             // Now add that Id to a Queue, in an object to test binding
             var queue = await Fixture.GetNewQueue("documentdb-input");
@@ -74,100 +72,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
             // And wait for the text to be updated
-            Document updatedDoc = await WaitForDocumentAsync(id, "This was updated!");
+            dynamic updatedDoc = await WaitForItemAsync(id, "This was updated!");
 
-            Assert.Equal(updatedDoc.Id, doc.Id);
-            Assert.NotEqual(doc.ETag, updatedDoc.ETag);
-        }
-    }
-
-    public abstract class CosmosDBTestFixture : EndToEndTestFixture
-    {
-        protected CosmosDBTestFixture(string rootPath, string testId, string language) :
-            base(rootPath, testId, language)
-        {
+            Assert.Equal(updatedDoc.id, doc.id);
+            Assert.NotEqual(doc._etag, updatedDoc._etag);
         }
 
-        public DocumentClient DocumentClient { get; private set; }
-
-        protected override ExtensionPackageReference[] GetExtensionsToInstall()
+        protected async Task<dynamic> WaitForItemAsync(string itemId, string textToMatch = null)
         {
-            return new ExtensionPackageReference[]
+            var container = Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection");
+
+            dynamic document = null;
+
+            await TestHelpers.Await(async () =>
             {
-                    new ExtensionPackageReference
+                bool result = false;
+
+                try
+                {
+                    var response = await container.ReadItemAsync<dynamic>(itemId, new PartitionKey(itemId));
+                    document = response.Resource;
+
+                    if (textToMatch != null)
                     {
-                        Id = "Microsoft.Azure.WebJobs.Extensions.CosmosDB",
-                        Version = "3.0.10"
+                        result = document.text == textToMatch;
                     }
-            };
-        }
-
-        public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
-        {
-            webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
-            {
-                o.Functions = new[]
+                    else
+                    {
+                        result = true;
+                    }
+                }
+                catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    "CosmosDBTrigger",
-                    "CosmosDBIn",
-                    "CosmosDBOut"
-                };
+                    // Document not found, continue waiting
+                    return false;
+                }
+
+                return result;
+            },
+            userMessageCallback: () =>
+            {
+                // AppVeyor only shows 4096 chars
+                var logs = string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages());
+                return logs.Length < 4096 ? logs : logs.Substring(logs.Length - 4096);
             });
-        }
 
-        public async Task InitializeDocumentClient()
-        {
-            if (DocumentClient == null)
-            {
-                var builder = new System.Data.Common.DbConnectionStringBuilder
-                {
-                    ConnectionString = TestHelpers.GetTestConfiguration().GetConnectionString("CosmosDB")
-                };
-
-                var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
-
-                DocumentClient = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
-                await DocumentClient.OpenAsync();
-            }
-        }
-
-        public async Task<bool> CreateDocumentCollections()
-        {
-            bool willCreateCollection = false;
-            Database db = new Database() { Id = "ItemDb" };
-            await DocumentClient.CreateDatabaseIfNotExistsAsync(db);
-            Uri dbUri = UriFactory.CreateDatabaseUri(db.Id);
-
-            DocumentCollection collection = new DocumentCollection() { Id = "ItemCollection" };
-            willCreateCollection = !DocumentClient.CreateDocumentCollectionQuery(dbUri).Where(x => x.Id == collection.Id).ToList().Any();
-            await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, collection,
-                new RequestOptions()
-                {
-                    OfferThroughput = 400
-                });
-
-            Documents.DocumentCollection leasesCollection = new Documents.DocumentCollection() { Id = "leases" };
-            await DocumentClient.CreateDocumentCollectionIfNotExistsAsync(dbUri, leasesCollection,
-                new RequestOptions()
-                {
-                    OfferThroughput = 400
-                });
-
-            return willCreateCollection;
-        }
-
-        public async Task DeleteDocumentCollections()
-        {
-            Uri collectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection");
-            Uri leasesCollectionsUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "leases");
-            await DocumentClient.DeleteDocumentCollectionAsync(collectionsUri);
-            await DocumentClient.DeleteDocumentCollectionAsync(leasesCollectionsUri);
-        }
-
-        public override async Task DisposeAsync()
-        {
-            await base.DisposeAsync();
-            DocumentClient?.Dispose();
+            return document;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             return CosmosDBTest();
         }
 
-        public class TestFixture : CosmosDBTestFixture
+        public class TestFixture : CosmosDBEndtoEndTestFixture
         {
             private const string ScriptRoot = @"TestScripts\CSharp";
 
