@@ -5,7 +5,6 @@
 -->
 - Emit diagnostic warning for deprecated Azure Functions Proxies usage (#11405)
 - Update Python Worker Version to [4.40.2](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.40.2)
-- Add JitTrace Files for v4.1044
 - Send `TelemetryHealthCheckPublisher` logs to ScriptHost `ILogger` (#11398)
 - Implementing a resolver that resolves worker configurations from specified probing paths (#11258)
 - Remove duplicate function names from sync triggers payload(#11371)
@@ -19,3 +18,4 @@
 - Adding HttpWorkerFunctionProvider functions to synctrigger payload (#11430)
 - Remove the Flex-only AzureMonitorDiagnosticLoggerProvider filter (#11431)
 - Add TraceContext attributes for OTel (#11429)
+- Add JitTrace Files for v4.1045
