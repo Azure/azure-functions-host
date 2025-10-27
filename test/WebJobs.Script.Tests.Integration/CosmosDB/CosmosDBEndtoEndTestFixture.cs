@@ -1,23 +1,18 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Net.Sockets;
-using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
     public abstract class CosmosDBEndtoEndTestFixture : EndToEndTestFixture
     {
         [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Well known account key for emulator. Used for testing.")]
-        public const string EmulatorKey = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-
-        private static string CosmosDBEndpoint => "https://localhost:65000/";
+        private static string CosmosDBConnection => "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
 
         protected CosmosDBEndtoEndTestFixture(string rootPath, string testId, string language) :
             base(rootPath, testId, language)
@@ -55,23 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         {
             if (CosmosClient is null)
             {
-                CosmosClient = new(
-                    accountEndpoint: CosmosDBEndpoint,
-                    authKeyOrResourceToken: EmulatorKey
-                );
+                CosmosClient = new CosmosClient(CosmosDBConnection);
             }
         }
 
         public override async Task InitializeAsync()
         {
-            if (IsEmulatorRunning())
-            {
-                await base.InitializeAsync();
-            }
-            else
-            {
-                throw new Exception("CosmosDB Emulator is not running. Skipping tests."); // TODO: review exception here
-            }
+            InitializeCosmosClient();
+            await base.InitializeAsync();
         }
 
         public override async Task DisposeAsync()
@@ -113,27 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             // Delete the "leases" container
             Container leasesContainer = database.GetContainer("leases");
             await leasesContainer.DeleteContainerAsync();
-        }
-
-        public bool IsEmulatorRunning()
-        {
-            try
-            {
-                // Parse the CosmosDBConnection variable
-                var connectionUri = new Uri(CosmosDBEndpoint);
-                string host = connectionUri.Host;
-                int port = connectionUri.Port;
-
-                // Attempt to connect to the specified host and port
-                using TcpClient client = new();
-                var connectTask = client.ConnectAsync(host, port);
-                return connectTask.Wait(TimeSpan.FromSeconds(2)); // Timeout after 2 seconds
-            }
-            catch
-            {
-                // If any exception occurs, assume the connection is unavailable
-                return false;
-            }
         }
     }
 }

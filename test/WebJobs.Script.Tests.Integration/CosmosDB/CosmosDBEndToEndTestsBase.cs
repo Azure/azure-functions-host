@@ -31,17 +31,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             // Waiting for the Processor to acquire leases
             await Task.Delay(10000);
 
-            Fixture.InitializeCosmosClient();
             bool collectionsCreated = await Fixture.CreateContainers();
             var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
             await resultBlob.DeleteIfExistsAsync();
 
             string id = Guid.NewGuid().ToString();
+            string partitionKeyValue = Guid.NewGuid().ToString();
 
-            var documentToTest = new { id };
+            var documentToTest = new { id, partitionKey = partitionKeyValue};
 
             await Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection")
-                .CreateItemAsync(documentToTest, new PartitionKey(id));
+                .CreateItemAsync(documentToTest, new PartitionKey(partitionKeyValue));
 
             // now wait for function to be invoked
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
@@ -112,9 +112,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             },
             userMessageCallback: () =>
             {
-                // AppVeyor only shows 4096 chars
                 var logs = string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages());
-                return logs.Length < 4096 ? logs : logs.Substring(logs.Length - 4096);
+                return logs;
             });
 
             return document;
