@@ -73,7 +73,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
-        private readonly IFunctionInvocationDispatcher _functionDispatcher;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
 
@@ -92,7 +91,6 @@ namespace Microsoft.Azure.WebJobs.Script
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            IFunctionInvocationDispatcherFactory functionDispatcherFactory,
             IFunctionMetadataManager functionMetadataManager,
             IFileLoggingStatusManager fileLoggingStatusManager,
             IMetricsLogger metricsLogger,
@@ -132,7 +130,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _scriptHostManager = scriptHostManager;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
             EventManager = eventManager;
-            _functionDispatcher = functionDispatcherFactory.GetFunctionDispatcher();
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
             ExtensionBundleManager = extensionBundleManager;
 
@@ -217,8 +214,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets a value indicating whether the host is in diagnostic mode.
         /// </summary>
         public virtual bool InDiagnosticMode => _debugManager.InDiagnosticMode;
-
-        internal IFunctionInvocationDispatcher FunctionDispatcher => _functionDispatcher;
 
         /// <summary>
         /// Returns true if the specified name is the name of a known function,
@@ -321,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, workerRuntime, cancellationToken);
 
                 var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
-                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
+               // await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
 
                 GenerateFunctions();
                 ScheduleFileSystemCleanup();
@@ -558,43 +553,43 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime)
         {
-            if (_environment.IsPlaceholderModeEnabled())
-            {
-                _logger.HostIsInPlaceholderMode();
-                _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
-            }
-            else if (_environment.IsMultiLanguageRuntimeEnvironment())
-            {
-                _logger.AddingDescriptorProviderForLanguage("All (Multi Language)");
+            //if (_environment.IsPlaceholderModeEnabled())
+            //{
+            //    _logger.HostIsInPlaceholderMode();
+            //    _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
+            //    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+            //}
+            //else if (_environment.IsMultiLanguageRuntimeEnvironment())
+            //{
+            //    _logger.AddingDescriptorProviderForLanguage("All (Multi Language)");
 
-                var workerOptions = _languageWorkerOptions.CurrentValue;
+            //    var workerOptions = _languageWorkerOptions.CurrentValue;
 
-                _descriptorProviders.Add(new MultiLanguageFunctionDescriptorProvider(this, workerOptions.WorkerConfigs, ScriptOptions, _bindingProviders,
-                    _functionDispatcher, _loggerFactory, _applicationLifetime, workerOptions.WorkerConfigs.Max(wc => wc.CountOptions.InitializationTimeout)));
-            }
-            else if (_isHttpWorker)
-            {
-                _logger.AddingDescriptorProviderForHttpWorker();
-                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime, _httpWorkerOptions.InitializationTimeout));
-            }
-            else if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
-            }
-            else
-            {
-                _logger.AddingDescriptorProviderForLanguage(workerRuntime);
+            //    _descriptorProviders.Add(new MultiLanguageFunctionDescriptorProvider(this, workerOptions.WorkerConfigs, ScriptOptions, _bindingProviders,
+            //        _functionDispatcher, _loggerFactory, _applicationLifetime, workerOptions.WorkerConfigs.Max(wc => wc.CountOptions.InitializationTimeout)));
+            //}
+            //else if (_isHttpWorker)
+            //{
+            //    _logger.AddingDescriptorProviderForHttpWorker();
+            //    _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime, _httpWorkerOptions.InitializationTimeout));
+            //}
+            //else if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            //{
+            //    _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
+            //    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+            //}
+            //else
+            //{
+            //    _logger.AddingDescriptorProviderForLanguage(workerRuntime);
 
-                var workerConfig = _languageWorkerOptions.CurrentValue.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
+            //    var workerConfig = _languageWorkerOptions.CurrentValue.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
 
-                // If there's no worker config, use the default (for legacy behavior; mostly for tests).
-                TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
+            //    // If there's no worker config, use the default (for legacy behavior; mostly for tests).
+            //    TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
 
-                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, workerRuntime, ScriptOptions, _bindingProviders,
-                    _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
-            }
+            //    _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, workerRuntime, ScriptOptions, _bindingProviders,
+            //        _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
+            //}
 
             // Codeless functions run side by side with regular functions.
             // In addition to descriptors already added here, we need to ensure all codeless functions
@@ -1094,7 +1089,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     subscription.Dispose();
                 }
 
-                _functionDispatcher?.Dispose();
+                //_functionDispatcher?.Dispose();
 
                 foreach (var function in Functions)
                 {
