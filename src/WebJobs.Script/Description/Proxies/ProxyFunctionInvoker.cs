@@ -1,11 +1,13 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -13,8 +15,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private ProxyClientExecutor _proxyClient;
 
-        public ProxyFunctionInvoker(ScriptHost host, ProxyFunctionMetadata proxyfunctionMetadata, ILoggerFactory loggerFactory)
-            : base(host, proxyfunctionMetadata, loggerFactory)
+        public ProxyFunctionInvoker(ProxyFunctionMetadata proxyfunctionMetadata, ScriptJobHostOptions scriptOptions, IScriptEventManager eventManager, ILoggerFactory loggerFactory)
+            : base(scriptOptions, eventManager, proxyfunctionMetadata, loggerFactory)
         {
             _proxyClient = proxyfunctionMetadata.ProxyClient;
         }

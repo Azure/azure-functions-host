@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -200,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private readonly FunctionInstanceLogger _instanceLogger;
 
             public MockInvoker(ScriptHost host, IMetricsLogger metrics, HostMetrics hostMetrics, IFunctionMetadataManager functionMetadataManager, FunctionMetadata metadata, ILoggerFactory loggerFactory)
-                : base(host, metadata, loggerFactory)
+                : base(host.ScriptOptions, host.EventManager, metadata, loggerFactory)
             {
                 _instanceLogger = new FunctionInstanceLogger(functionMetadataManager, metrics, hostMetrics);
             }

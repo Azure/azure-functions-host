@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -26,16 +27,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionInvocationDispatcher _dispatcher;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly TimeSpan _workerInitializationTimeout;
+        private readonly IScriptEventManager _eventManager;
         private readonly Regex _expressionRegex;
 
-        public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
-            : base(host, config, bindingProviders)
+        public WorkerFunctionDescriptorProvider(ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, IFunctionInvocationDispatcher dispatcher, 
+            ILoggerFactory loggerFactory, IApplicationLifetime applicationLifetime, IScriptEventManager eventManager, bool isExtensionBundleConfigured, TimeSpan workerInitializationTimeout)
+            : base(config, bindingProviders, isExtensionBundleConfigured, loggerFactory)
         {
             _dispatcher = dispatcher;
             _loggerFactory = loggerFactory;
             _applicationLifetime = applicationLifetime;
             _workerInitializationTimeout = workerInitializationTimeout;
+            _eventManager = eventManager;
             _expressionRegex = new Regex(@"{(.*?)\}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         }
 
@@ -57,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new WorkerFunctionInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, _dispatcher, _applicationLifetime, _workerInitializationTimeout);
+            return new WorkerFunctionInvoker(triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, _dispatcher, _applicationLifetime, Config, _eventManager, _workerInitializationTimeout);
         }
 
         protected override async Task<Collection<ParameterDescriptor>> GetFunctionParametersAsync(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,

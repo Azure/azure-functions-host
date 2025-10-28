@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -15,6 +16,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
@@ -22,7 +24,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public sealed class DotNetFunctionInvoker : FunctionInvokerBase
+    public sealed class DotNetFunctionInvoker : FunctionInvokerBase, IDisposable
     {
         private readonly string _triggerInputName;
         private readonly FunctionMetadata _functionMetadata;
@@ -31,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IFunctionEntryPointResolver _functionEntryPointResolver;
         private readonly ICompilationService<IDotNetCompilation> _compilationService;
         private readonly FunctionLoader<MethodInfo> _functionLoader;
+        private readonly ScriptHost _host;
         private readonly IMetricsLogger _metricsLogger;
 
         private MethodInvoker _methodInvoker;
@@ -52,8 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IMetricsLogger metricsLogger,
             ICollection<IScriptBindingProvider> bindingProviders,
             IFunctionMetadataResolver metadataResolver = null)
-            : base(host, functionMetadata, loggerFactory)
+            : base(host.ScriptOptions, host.EventManager, functionMetadata, loggerFactory)
         {
+            _host = host;
             _metricsLogger = metricsLogger;
             _functionEntryPointResolver = functionEntryPointResolver;
             _metadataResolver = metadataResolver ?? CreateMetadataResolver(host, bindingProviders, functionMetadata, FunctionLogger);
@@ -125,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             string message = "Assembly reference changes detected. Restarting host...";
             FunctionLogger.LogInformation(message);
 
-            Host.Shutdown();
+            _host.Shutdown();
         }
 
         public override void OnError(Exception ex)
@@ -182,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 (_functionSignature == null ||
                 (_functionSignature.HasLocalTypeReference || !_functionSignature.Equals(signature))))
             {
-                await Host.RestartAsync(".NET compilation.").ConfigureAwait(false);
+                await _host.RestartAsync(".NET compilation.").ConfigureAwait(false);
             }
         }
 
@@ -197,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // on the invocation path we want to log detailed logs and all compilation diagnostics
                 var properties = isInvocation ? null : PrimaryHostLogProperties;
                 FunctionLogger.Log(LogLevel.Error, 0, properties, exc, (state, ex) => "Function compilation error");
-                Utility.AddFunctionError(Host.FunctionErrors, _functionMetadata.Name, exc.ToString());
+                Utility.AddFunctionError(_host.FunctionErrors, _functionMetadata.Name, exc.ToString());
                 TraceCompilationDiagnostics(exc.Diagnostics, LogTargets.User, isInvocation);
                 throw;
             }
@@ -469,6 +473,66 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             else
             {
                 FunctionLogger.LogWarning($"You may be referencing NuGet packages incorrectly. Learn more: https://go.microsoft.com/fwlink/?linkid=2091419");
+            }
+        }
+
+        internal void TraceCompilationDiagnostics(ImmutableArray<Diagnostic> diagnostics, LogTargets logTarget = LogTargets.All, bool isInvocation = false)
+        {
+            if (logTarget == LogTargets.None)
+            {
+                return;
+            }
+
+            // build the log state based on inputs
+            Dictionary<string, object> logState = new Dictionary<string, object>();
+            if (!isInvocation)
+            {
+                // generally we only want to trace compilation diagnostics on the single primary
+                // host, to avoid duplicate log statements in the case of file save operations.
+                // however if the function is being invoked, we always want to output detailed
+                // information.
+                logState.Add(ScriptConstants.LogPropertyPrimaryHostKey, true);
+            }
+            if (!logTarget.HasFlag(LogTargets.User))
+            {
+                logState.Add(ScriptConstants.LogPropertyIsSystemLogKey, true);
+            }
+            else if (!logTarget.HasFlag(LogTargets.System))
+            {
+                logState.Add(ScriptConstants.LogPropertyIsUserLogKey, true);
+            }
+
+            // log the diagnostics
+            foreach (var diagnostic in diagnostics.Where(d => !d.IsSuppressed))
+            {
+                FunctionLogger.Log(diagnostic.Severity.ToLogLevel(), 0, logState, null, (s, e) => diagnostic.ToString());
+            }
+
+            // log structured logs
+            if (_host.InDebugMode && (_host.IsPrimary || isInvocation))
+            {
+                _host.EventManager.Publish(new StructuredLogEntryEvent(() =>
+                {
+                    var logEntry = new StructuredLogEntry("codediagnostic");
+                    logEntry.AddProperty("functionName", Metadata.Name);
+                    logEntry.AddProperty("diagnostics", diagnostics.Select(d =>
+                    {
+                        FileLinePositionSpan span = d.Location.GetMappedLineSpan();
+                        return new
+                        {
+                            code = d.Id,
+                            message = d.GetMessage(),
+                            source = Path.GetFileName(d.Location.SourceTree?.FilePath ?? span.Path ?? string.Empty),
+                            severity = d.Severity,
+                            startLineNumber = span.StartLinePosition.Line + 1,
+                            startColumn = span.StartLinePosition.Character + 1,
+                            endLine = span.EndLinePosition.Line + 1,
+                            endColumn = span.EndLinePosition.Character + 1,
+                        };
+                    }));
+
+                    return logEntry;
+                }));
             }
         }
 

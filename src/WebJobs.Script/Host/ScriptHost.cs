@@ -48,16 +48,13 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const string GeneratedTypeName = "Functions";
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHttpRoutesManager _httpRoutesManager;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
-        private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly bool _isHttpWorker;
-        private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
         private readonly IDebugStateProvider _debugManager;
@@ -65,16 +62,16 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IJobHostMetadataProvider _metadataProvider;
         private readonly List<FunctionDescriptorProvider> _descriptorProviders = new List<FunctionDescriptorProvider>();
         private readonly ILoggerFactory _loggerFactory = null;
-        private readonly string _instanceId;
         private readonly IEnvironment _environment;
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
-        private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
+        private readonly IWorkerFunctionDescriptorProviderFactory _descriptorProviderFactory;
         private readonly ILogger _logger;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
-        private static readonly int _processId = Process.GetCurrentProcess().Id;
+        private readonly bool _isExtensionBundleConfigured;
+        private static readonly int _processId = Environment.ProcessId;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
 
         private ValueStopwatch _stopwatch;
@@ -89,7 +86,6 @@ namespace Microsoft.Azure.WebJobs.Script
             IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
-            IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IFunctionInvocationDispatcherFactory functionDispatcherFactory,
@@ -108,8 +104,8 @@ namespace Microsoft.Azure.WebJobs.Script
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
-            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IWorkerFunctionDescriptorProviderFactory descriptorProviderFactory,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -117,30 +113,24 @@ namespace Microsoft.Azure.WebJobs.Script
             _typeLocator = typeLocator as ScriptTypeLocator
                 ?? throw new ArgumentException(nameof(typeLocator), $"A {nameof(ScriptTypeLocator)} instance is required.");
 
-            _instanceId = Guid.NewGuid().ToString();
-            _hostOptions = options;
             _configuration = configuration;
-            _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
             _fileLoggingStatusManager = fileLoggingStatusManager;
             _applicationLifetime = applicationLifetime;
             _hostIdProvider = hostIdProvider;
             _httpRoutesManager = httpRoutesManager;
             _isHttpWorker = httpWorkerOptions.Value.Description != null;
-            _httpWorkerOptions = httpWorkerOptions.Value;
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostManager = scriptHostManager;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
             EventManager = eventManager;
             _functionDispatcher = functionDispatcherFactory.GetFunctionDispatcher();
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
-            ExtensionBundleManager = extensionBundleManager;
+            _isExtensionBundleConfigured = extensionBundleManager.IsExtensionBundleConfigured();
 
             _metricsLogger = metricsLogger;
 
             _hostLogPath = Path.Combine(ScriptOptions.RootLogPath, "Host");
-
-            _languageWorkerOptions = languageWorkerOptions;
 
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
@@ -158,6 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _functionDataCache = functionDataCache;
             _hostingConfigOptions = hostingConfigOptions;
+            _descriptorProviderFactory = descriptorProviderFactory;
         }
 
         public event EventHandler HostInitializing;
@@ -171,8 +162,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public string InstanceId => ScriptOptions.InstanceId;
 
         public IScriptEventManager EventManager { get; }
-
-        internal IExtensionBundleManager ExtensionBundleManager { get; }
 
         public ILogger Logger { get; internal set; }
 
@@ -562,38 +551,33 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.HostIsInPlaceholderMode();
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, EventManager, _isExtensionBundleConfigured, _loggerFactory));
             }
             else if (_environment.IsMultiLanguageRuntimeEnvironment())
             {
                 _logger.AddingDescriptorProviderForLanguage("All (Multi Language)");
 
-                var workerOptions = _languageWorkerOptions.CurrentValue;
-
-                _descriptorProviders.Add(new MultiLanguageFunctionDescriptorProvider(this, workerOptions.WorkerConfigs, ScriptOptions, _bindingProviders,
-                    _functionDispatcher, _loggerFactory, _applicationLifetime, workerOptions.WorkerConfigs.Max(wc => wc.CountOptions.InitializationTimeout)));
+                var descriptorProvider = _descriptorProviderFactory.CreateMultiWorkerDescriptorProvider(_bindingProviders);
+                _descriptorProviders.Add(descriptorProvider);
             }
             else if (_isHttpWorker)
             {
                 _logger.AddingDescriptorProviderForHttpWorker();
-                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime, _httpWorkerOptions.InitializationTimeout));
+
+                var descriptorProvider = _descriptorProviderFactory.CreateHttpDescriptorProvider(_bindingProviders);
+                _descriptorProviders.Add(descriptorProvider);
             }
             else if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, EventManager, _isExtensionBundleConfigured, _loggerFactory));
             }
             else
             {
                 _logger.AddingDescriptorProviderForLanguage(workerRuntime);
 
-                var workerConfig = _languageWorkerOptions.CurrentValue.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
-
-                // If there's no worker config, use the default (for legacy behavior; mostly for tests).
-                TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
-
-                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, workerRuntime, ScriptOptions, _bindingProviders,
-                    _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
+                var descriptorProvider = _descriptorProviderFactory.CreateWorkerDescriptorProvider(workerRuntime, _bindingProviders);
+                _descriptorProviders.Add(descriptorProvider);
             }
 
             // Codeless functions run side by side with regular functions.
@@ -618,7 +602,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (functionMetadata.Any(m => m.IsProxy()))
             {
-                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
+                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(ScriptOptions, EventManager, _bindingProviders, _isExtensionBundleConfigured, _loggerFactory));
             }
 
             // If we have a non-proxy codeless function, we need to add a .NET descriptor provider. But only if it wasn't already added.
@@ -626,7 +610,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!_descriptorProviders.Any(d => d is DotNetFunctionDescriptorProvider)
                 && functionMetadata.Any(m => m.IsCodeless() && !m.IsProxy()))
             {
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, EventManager, _isExtensionBundleConfigured, _loggerFactory));
             }
         }
 

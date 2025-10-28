@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
 
@@ -14,13 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     internal sealed class ProxyFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         private static readonly Task<(bool, FunctionDescriptor)> NilCreateFunctionInvokerResult = Task.FromResult<(bool, FunctionDescriptor)>((false, null));
-
+        private readonly IScriptEventManager _eventManager;
         private readonly ILoggerFactory _loggerFactory;
 
-        public ProxyFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            ILoggerFactory loggerFactory)
-            : base(host, config, bindingProviders)
+        public ProxyFunctionDescriptorProvider(ScriptJobHostOptions config, IScriptEventManager eventManager, ICollection<IScriptBindingProvider> bindingProviders,
+             bool isExtensionBundleConfigured, ILoggerFactory loggerFactory)
+            : base(config, bindingProviders, isExtensionBundleConfigured, loggerFactory)
         {
+            _eventManager = eventManager;
             _loggerFactory = loggerFactory;
         }
 
@@ -45,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 throw new InvalidCastException($"Expected {nameof(functionMetadata)} to be of type {nameof(ProxyFunctionMetadata)}");
             }
-            return new ProxyFunctionInvoker(Host, proxyFunctionMetada, _loggerFactory);
+            return new ProxyFunctionInvoker(proxyFunctionMetada, Config, _eventManager, _loggerFactory);
         }
     }
 }

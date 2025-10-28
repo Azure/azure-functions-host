@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
@@ -20,20 +21,25 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal sealed class DotNetFunctionDescriptorProvider : FunctionDescriptorProvider, IDisposable
     {
+        private readonly ScriptHost _host;
+        private readonly IScriptEventManager _eventManager;
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILoggerFactory _loggerFactory;
         private readonly ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> _compilationServiceFactory;
         private static readonly Lazy<Regex> _taskOfUnitType = new Lazy<Regex>(() => new Regex(@"^System\.Threading\.Tasks\.Task`1\[\[Microsoft\.FSharp\.Core\.Unit, FSharp\.Core, Version=\d*\.\d*\.\d*\.\d*, Culture=.*, PublicKeyToken=b03f5f7f11d50a3a\]\]$", RegexOptions.Compiled));
 
-        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, IMetricsLogger metricsLogger, ILoggerFactory loggerFactory)
-           : this(host, config, bindingProviders, new DotNetCompilationServiceFactory(loggerFactory), metricsLogger, loggerFactory)
+        public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, IMetricsLogger metricsLogger, IScriptEventManager eventManager, bool isExtensionBundleConfigured, ILoggerFactory loggerFactory)
+           : this(host, config, bindingProviders, new DotNetCompilationServiceFactory(loggerFactory), metricsLogger, eventManager, isExtensionBundleConfigured, loggerFactory)
         {
         }
 
         public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory, IMetricsLogger metricsLogger, ILoggerFactory loggerFactory)
-            : base(host, config, bindingProviders)
+            ICompilationServiceFactory<ICompilationService<IDotNetCompilation>, IFunctionMetadataResolver> compilationServiceFactory, IMetricsLogger metricsLogger, IScriptEventManager eventManager,
+            bool isExtensionBundleConfigured, ILoggerFactory loggerFactory)
+            : base(config, bindingProviders, isExtensionBundleConfigured, loggerFactory)
         {
+            _host = host;
+            _eventManager = eventManager;
             _metricsLogger = metricsLogger;
             _loggerFactory = loggerFactory;
             _compilationServiceFactory = compilationServiceFactory;
@@ -69,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new DotNetFunctionInvoker(Host,
+            return new DotNetFunctionInvoker(_host,
                 functionMetadata,
                 inputBindings,
                 outputBindings,

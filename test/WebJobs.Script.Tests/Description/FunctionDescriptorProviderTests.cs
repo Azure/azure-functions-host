@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _scriptHost = _host.GetScriptHost();
             _scriptHost.InitializeAsync().GetAwaiter().GetResult();
             var serviceBindingProviders = _host.Services.GetService<IEnumerable<IScriptBindingProvider>>().ToArray();
-            _provider = new TestDescriptorProvider(_scriptHost, _host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value, serviceBindingProviders);
+            _provider = new TestDescriptorProvider(_host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value, serviceBindingProviders);
         }
 
         [Fact]
@@ -275,8 +276,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestDescriptorProvider : FunctionDescriptorProvider
         {
-            public TestDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders)
-                : base(host, config, bindingProviders)
+            public TestDescriptorProvider(ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders)
+                : base(config, bindingProviders, false, NullLoggerFactory.Instance)
             {
             }
 

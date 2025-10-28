@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public TestWorkerFunctionInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
         Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IApplicationLifetime applicationLifetime,
         TimeSpan initializationTimeout)
-        : base(host, bindingMetadata, functionMetadata, loggerFactory, inputBindings, outputBindings, functionDispatcher, applicationLifetime, initializationTimeout)
+        : base(bindingMetadata, functionMetadata, loggerFactory, inputBindings, outputBindings, functionDispatcher, applicationLifetime, host.ScriptOptions, host.EventManager, initializationTimeout)
         {
         }
 

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Extensions;
@@ -18,16 +19,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionDescriptorProvider
     {
-        protected FunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders)
+        private readonly bool _isExtensionBundleConfigured;
+
+        protected FunctionDescriptorProvider(ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, bool isExtensionBundleConfigured, ILoggerFactory loggerFactory)
         {
-            Host = host;
             Config = config;
             BindingProviders = bindingProviders;
+            Logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            _isExtensionBundleConfigured = isExtensionBundleConfigured;
         }
 
-        protected ScriptHost Host { get; private set; }
-
         protected ScriptJobHostOptions Config { get; private set; }
+
+        protected ILogger Logger { get; private set; }
 
         protected ICollection<IScriptBindingProvider> BindingProviders { get; private set; }
 
@@ -62,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (Exception ex)
             {
-                Host.Logger.LogDebug(ex, $"Creating function descriptor for function {functionMetadata.Name} failed");
+                Logger.LogDebug(ex, $"Creating function descriptor for function {functionMetadata.Name} failed");
                 IDisposable disposableInvoker = invoker as IDisposable;
                 if (disposableInvoker != null)
                 {
@@ -261,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private string CreateBindingError(string unresolvedBindings)
         {
-            return (Host.ExtensionBundleManager?.IsExtensionBundleConfigured() ?? false)
+            return _isExtensionBundleConfigured
                     ? $"The binding type(s) '{unresolvedBindings}' were not found in the configured extension bundle. Please ensure the type is correct and the correct version of extension bundle is configured"
                     : $"The binding type(s) '{unresolvedBindings}' are not registered. Please ensure the type is correct and the binding extension is installed.";
         }

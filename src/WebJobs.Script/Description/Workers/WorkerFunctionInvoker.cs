@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
@@ -32,10 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly TimeSpan _workerInitializationTimeout;
 
-        internal WorkerFunctionInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
+        internal WorkerFunctionInvoker(BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher,
-            IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
-            : base(host, functionMetadata, loggerFactory)
+            IApplicationLifetime applicationLifetime, ScriptJobHostOptions scriptOptions, IScriptEventManager eventManager, TimeSpan workerInitializationTimeout)
+            : base(scriptOptions, eventManager, functionMetadata, loggerFactory)
         {
             _bindingMetadata = bindingMetadata;
             _inputBindings = inputBindings;

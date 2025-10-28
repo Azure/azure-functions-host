@@ -217,8 +217,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private class TestWorkerDescriptorProvider : WorkerFunctionDescriptorProvider
         {
             public TestWorkerDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-                            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, Microsoft.AspNetCore.Hosting.IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
-                : base(host, config, bindingProviders, dispatcher, loggerFactory, applicationLifetime, workerInitializationTimeout)
+                            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, AspNetCore.Hosting.IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
+                : base(config, bindingProviders, dispatcher, loggerFactory, applicationLifetime, host.EventManager, false, workerInitializationTimeout)
             {
             }
         }

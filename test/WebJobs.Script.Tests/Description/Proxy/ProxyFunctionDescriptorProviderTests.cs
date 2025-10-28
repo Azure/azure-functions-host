@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var proxy = _proxyClient as ProxyClientExecutor;
             Assert.NotNull(proxy);
 
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<IEnumerable<IScriptBindingProvider>>().ToArray(), NullLoggerFactory.Instance);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost.ScriptOptions, _scriptHost.EventManager, _host.Services.GetService<IEnumerable<IScriptBindingProvider>>().ToArray(), false, NullLoggerFactory.Instance);
 
             var (created, functionDescriptor) = await proxyFunctionDescriptor.TryCreate(_metadataCollection[0]);
 
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ValidateProxyFunctionInvoker()
         {
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<IEnumerable<IScriptBindingProvider>>().ToArray(), NullLoggerFactory.Instance);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost.ScriptOptions, _scriptHost.EventManager, _host.Services.GetService<IEnumerable<IScriptBindingProvider>>().ToArray(), false, NullLoggerFactory.Instance);
 
             var (created, functionDescriptor) = await proxyFunctionDescriptor.TryCreate(_metadataCollection[0]);
 
