@@ -20,18 +20,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public abstract class FunctionDescriptorProvider
     {
         private readonly bool _isExtensionBundleConfigured;
+        private readonly ILogger _logger;
 
         protected FunctionDescriptorProvider(ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, bool isExtensionBundleConfigured, ILoggerFactory loggerFactory)
         {
             Config = config;
             BindingProviders = bindingProviders;
-            Logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isExtensionBundleConfigured = isExtensionBundleConfigured;
         }
 
         protected ScriptJobHostOptions Config { get; private set; }
-
-        protected ILogger Logger { get; private set; }
 
         protected ICollection<IScriptBindingProvider> BindingProviders { get; private set; }
 
@@ -66,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             catch (Exception ex)
             {
-                Logger.LogDebug(ex, $"Creating function descriptor for function {functionMetadata.Name} failed");
+                _logger.LogDebug(ex, $"Creating function descriptor for function {functionMetadata.Name} failed");
                 IDisposable disposableInvoker = invoker as IDisposable;
                 if (disposableInvoker != null)
                 {

@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IScriptEventManager _eventManager;
         private readonly Regex _expressionRegex;
 
-        public WorkerFunctionDescriptorProvider(ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, IFunctionInvocationDispatcher dispatcher, 
+        public WorkerFunctionDescriptorProvider(ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, IFunctionInvocationDispatcher dispatcher,
             ILoggerFactory loggerFactory, IApplicationLifetime applicationLifetime, IScriptEventManager eventManager, bool isExtensionBundleConfigured, TimeSpan workerInitializationTimeout)
             : base(config, bindingProviders, isExtensionBundleConfigured, loggerFactory)
         {

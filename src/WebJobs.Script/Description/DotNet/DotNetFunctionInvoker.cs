@@ -24,7 +24,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public sealed class DotNetFunctionInvoker : FunctionInvokerBase, IDisposable
+    public sealed class DotNetFunctionInvoker : FunctionInvokerBase
     {
         private readonly string _triggerInputName;
         private readonly FunctionMetadata _functionMetadata;
