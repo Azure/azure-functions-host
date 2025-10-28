@@ -1560,7 +1560,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (workerException is null || workerException is FunctionTimeoutException)
             {
-                string exceptionMessageSuffix = workerException?.Message is not null ? "Reason: " + workerException.Message : string.Empty;
+                string exceptionMessageSuffix = workerException?.Message is not null ? " Reason: " + workerException.Message : string.Empty;
                 shutdownException = new FunctionTimeoutAbortException("Worker channel is shutting down. Aborting function." + exceptionMessageSuffix, workerException);
             }
 
