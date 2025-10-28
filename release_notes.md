@@ -19,5 +19,4 @@
 - Adding HttpWorkerFunctionProvider functions to synctrigger payload (#11430)
 - Remove the Flex-only AzureMonitorDiagnosticLoggerProvider filter (#11431)
 - Add TraceContext attributes for OTel (#11429)
-- Adding a "web app" configuration profile (#11447)
 - Add JitTrace Files for v4.1045
