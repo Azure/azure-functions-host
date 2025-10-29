@@ -43,7 +43,7 @@ if ($WorkerPackageName -eq "Microsoft.Azure.Functions.PythonWorker")
     New-Item -ItemType Directory -Path $pythonPath | Out-Null
 
     Copy-Item -Path "$siteExtensionDir\tools\*" -Destination $pythonPath -Recurse -Force
-    Compress-Archive -Path $pythonPath  -DestinationPath $zipPath
+    Compress-Archive -Path $pythonPath -DestinationPath $zipPath
 } 
 else 
 {
