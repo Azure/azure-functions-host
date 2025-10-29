@@ -1,0 +1,33 @@
+parameters:
+- name: WorkerPackageName
+  displayName: Worker Package Name
+  type: string
+  
+- name: WorkerPackageVersion
+  displayName: Worker Package Version
+  type: string
+
+jobs:
+- job: WorkerSiteExtension
+  displayName: Build Worker Site Extension
+
+  pool:
+    name: 1es-pool-azfunc
+    image: 1es-windows-2022
+    os: windows
+
+  variables:
+    drop_path: $(Build.ArtifactStagingDirectory)
+
+  templateContext:
+    outputParentDirectory: $(drop_path)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish artifacts
+      path: $(drop_path)
+      artifact: drop_windows
+
+  steps:
+  - pwsh: |
+      ./eng/script/generate-site-extension.ps1 -WorkerPackageName ${{ parameters.WorkerPackageName }} -WorkerVersion ${{ parameters.WorkerPackageVersion }} -OutputDir '$(drop_path)'
+    displayName: Create site extension

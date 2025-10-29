@@ -1,0 +1,47 @@
+parameters:
+- name: WorkerPackageName
+  displayName: Worker Package Name
+  type: string
+
+- name: WorkerPackageVersion
+  displayName: Worker Package Version
+  type: string
+
+trigger: none # ensure this is not ran as a CI build
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+variables:
+- template: /eng/ci/templates/variables/build.yml@self
+- template: /ci/variables/cfs.yml@eng
+- name: buildNumber
+  value: $[ counter('build', 0) ]
+
+extends:
+  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc
+      image: 1es-windows-2022
+      os: windows
+
+    sdl:
+      suppression:
+        suppressionFile: $(Build.SourcesDirectory)/eng/sdl/.gdnsuppress
+
+    stages:
+    - stage: BuildSiteExtension
+      jobs:
+      - template: /eng/ci/templates/official/jobs/build-worker-site-extension.yml@self
+        parameters:
+          WorkerPackageName: ${{ parameters.WorkerPackageName }}
+          WorkerPackageVersion: ${{ parameters.WorkerPackageVersion }}
