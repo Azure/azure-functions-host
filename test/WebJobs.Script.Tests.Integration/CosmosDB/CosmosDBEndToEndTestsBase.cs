@@ -16,16 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         {
         }
 
-        protected async Task InitializeAsync()
-        {
-            await Fixture.InitializeAsync();
-        }
-
-        protected async Task DisposeAsync()
-        {
-            await Fixture.DisposeAsync();
-        }
-
         protected async Task CosmosDBTriggerToBlobTest()
         {
             // Waiting for the Processor to acquire leases
