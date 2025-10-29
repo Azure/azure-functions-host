@@ -7,7 +7,7 @@ parameters:
   displayName: Worker Package Version
   type: string
 
-trigger: none # ensure this is not ran as a CI build
+trigger: none # ensure this is not run as a CI build
 
 resources:
   repositories:
