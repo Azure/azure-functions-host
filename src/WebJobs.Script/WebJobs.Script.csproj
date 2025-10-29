@@ -94,4 +94,8 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Workers\Http\" />
+  </ItemGroup>
+
 </Project>

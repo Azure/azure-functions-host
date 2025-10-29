@@ -33,7 +33,6 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
@@ -304,21 +303,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
 
-                // HTTP Worker
-                services.AddSingleton<IHttpWorkerProcessFactory, HttpWorkerProcessFactory>();
-                services.AddSingleton<IHttpWorkerChannelFactory, HttpWorkerChannelFactory>();
-                services.AddSingleton<IHttpWorkerService, DefaultHttpWorkerService>();
-                // Rpc Worker
-                services.AddSingleton<IJobHostRpcWorkerChannelManager, JobHostRpcWorkerChannelManager>();
-                services.AddSingleton<IRpcFunctionInvocationDispatcherLoadBalancer, RpcFunctionInvocationDispatcherLoadBalancer>();
-
-                //Worker Function Invocation dispatcher
-                services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IFunctionProvider, ProxyFunctionProvider>());
-                services.TryAddEnumerable(ServiceDescriptor.Singleton<IFunctionProvider, HttpWorkerFunctionProvider>());
-                services.AddSingleton<IHostedService, WorkerConcurrencyManager>();
+
 
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();
@@ -339,7 +327,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<ScriptJobHostOptionsSetup>();
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 services.AddOptions<WorkerConcurrencyOptions>();
-                services.ConfigureOptions<HttpWorkerOptionsSetup>();
                 services.ConfigureOptions<ScriptHostRecycleOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
@@ -373,8 +360,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.AddSingleton<IDistributedLockManager, KubernetesDistributedLockManager>();
                 }
 
-                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
-
                 services.AddSingleton<IHostOptionsProvider, HostOptionsProvider>();
                 services.AddSingleton<IInstanceServicesProviderFactory, ScriptInstanceServicesProviderFactory>();
             });
@@ -396,13 +381,9 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
             services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
 
-            // Add Language Worker Service
-            // Need to maintain the order: Add RpcInitializationService before core script host services
-            services.AddManagedHostedService<RpcInitializationService>();
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
-            services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
-            services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
+
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);

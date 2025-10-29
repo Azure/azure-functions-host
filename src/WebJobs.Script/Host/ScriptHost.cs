@@ -31,7 +31,6 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -57,7 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _hostLogPath;
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly bool _isHttpWorker;
-        private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
         private readonly IDebugStateProvider _debugManager;
@@ -84,7 +82,6 @@ namespace Microsoft.Azure.WebJobs.Script
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
 
         public ScriptHost(IOptions<JobHostOptions> options,
-            IOptions<HttpWorkerOptions> httpWorkerOptions,
             IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
@@ -124,8 +121,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _applicationLifetime = applicationLifetime;
             _hostIdProvider = hostIdProvider;
             _httpRoutesManager = httpRoutesManager;
-            _isHttpWorker = httpWorkerOptions.Value.Description != null;
-            _httpWorkerOptions = httpWorkerOptions.Value;
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostManager = scriptHostManager;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);

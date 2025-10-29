@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
-using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -40,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public FunctionMetadataManager(
             IOptions<ScriptJobHostOptions> scriptOptions,
             IFunctionMetadataProvider functionMetadataProvider,
-            IOptions<HttpWorkerOptions> httpWorkerOptions,
             IScriptHostManager scriptHostManager,
             ILoggerFactory loggerFactory,
             IEnvironment environment,
@@ -50,7 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
-            _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
             _environment = environment;
 
             _languageOptions = languageOptions;
@@ -125,7 +122,6 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _functionMetadataMap.Clear();
 
-            _isHttpWorker = _serviceProvider.GetService<IOptions<HttpWorkerOptions>>()?.Value?.Description != null;
             _scriptOptions = _serviceProvider.GetService<IOptions<ScriptJobHostOptions>>();
 
             // Resetting the logger switches the logger scope to Script Host level,
@@ -172,11 +168,14 @@ namespace Microsoft.Azure.WebJobs.Script
             // Validate
             foreach (FunctionMetadata functionMetadata in functionMetadataList.ToList())
             {
-                if (!IsScriptFileDetermined(functionMetadata))
-                {
-                    // Exclude invalid functions
-                    functionMetadataList.Remove(functionMetadata);
-                }
+                // TODO: (OOP-Refactor) Revisit this validation logic for functions in error
+                // Commenting this for now as FunctionMetadataManager currently relies on using the
+                // HTTP worker (custom handler) types to bypass scriptFile validation.
+                //if (!IsScriptFileDetermined(functionMetadata))
+                //{
+                //    // Exclude invalid functions
+                //    functionMetadataList.Remove(functionMetadata);
+                //}
             }
             Errors = _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
@@ -197,21 +196,24 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal bool IsScriptFileDetermined(FunctionMetadata functionMetadata)
         {
-            try
-            {
-                if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy() && _servicesReset)
-                {
-                    throw new FunctionConfigurationException(FunctionConfigurationErrorMessage);
-                }
-            }
-            catch (FunctionConfigurationException exc)
-            {
-                // for functions in error, log the error and don't
-                // add to the functions collection
-                Utility.AddFunctionError(_functionErrors, functionMetadata.Name, exc.Message);
-                return false;
-            }
             return true;
+
+            // TODO: (OOP-Refactor) Revisit this validation logic for functions in error (see comment in LoadFunctionMetadata)
+            //try
+            //{
+            //    if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy() && _servicesReset)
+            //    {
+            //        throw new FunctionConfigurationException(FunctionConfigurationErrorMessage);
+            //    }
+            //}
+            //catch (FunctionConfigurationException exc)
+            //{
+            //    // for functions in error, log the error and don't
+            //    // add to the functions collection
+            //    Utility.AddFunctionError(_functionErrors, functionMetadata.Name, exc.Message);
+            //    return false;
+            //}
+            //return true;
         }
 
         private void LoadCustomProviderFunctions(List<FunctionMetadata> functionMetadataList)
