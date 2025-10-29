@@ -193,7 +193,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);
 
-            services.AddSingleton<IWorkerFunctionMetadataProvider, WorkerFunctionMetadataProvider>();
             services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
 

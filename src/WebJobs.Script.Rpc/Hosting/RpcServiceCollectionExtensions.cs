@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -43,13 +45,40 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc.Hosting
             services.ConfigureOptions<HttpWorkerOptionsSetup>();
 
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
-            services.AddManagedHostedService<RpcInitializationService>();
 
             // Add Language Worker Service
             services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
-            services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
 
             return services;
+        }
+
+        public static IServiceCollection AddCommonRpcServices(this IServiceCollection services)
+        {
+            ArgumentNullException.ThrowIfNull(services);
+
+            services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
+            services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
+            services.AddSingleton<IWorkerFunctionMetadataProvider, WorkerFunctionMetadataProvider>();
+
+            services.AddManagedHostedService<RpcInitializationService>();
+
+            AddProcessRegistry(services);
+
+            return services;
+        }
+
+        private static void AddProcessRegistry(IServiceCollection services)
+        {
+            // W3WP already manages job objects
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                && !ScriptSettingsManager.Instance.IsAppServiceEnvironment)
+            {
+                services.AddSingleton<IProcessRegistry, JobObjectRegistry>();
+            }
+            else
+            {
+                services.AddSingleton<IProcessRegistry, EmptyProcessRegistry>();
+            }
         }
     }
 }

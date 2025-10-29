@@ -382,15 +382,12 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
 
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
-            services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
 
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
-
-            AddProcessRegistry(services);
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)
@@ -535,20 +532,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.AddSingleton<IFuncAppFileProvisionerFactory, FuncAppFileProvisionerFactory>();
                     services.AddSingleton<IHostedService, FuncAppFileProvisioningService>();
                 });
-            }
-        }
-
-        private static void AddProcessRegistry(IServiceCollection services)
-        {
-            // W3WP already manages job objects
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                && !ScriptSettingsManager.Instance.IsAppServiceEnvironment)
-            {
-                services.AddSingleton<IProcessRegistry, JobObjectRegistry>();
-            }
-            else
-            {
-                services.AddSingleton<IProcessRegistry, EmptyProcessRegistry>();
             }
         }
 

@@ -89,6 +89,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
     <ProjectReference Include="..\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
+    <ProjectReference Include="..\WebJobs.Script.Rpc\WebJobs.Script.Rpc.csproj" />
   </ItemGroup>
 
 </Project>
