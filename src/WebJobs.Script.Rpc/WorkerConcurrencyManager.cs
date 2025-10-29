@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -21,7 +21,7 @@ using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    internal class WorkerConcurrencyManager : IHostedService, IDisposable
+    public class WorkerConcurrencyManager : IHostedService, IDisposable
     {
         private readonly TimeSpan _logStateInterval = TimeSpan.FromSeconds(60);
         private readonly ILogger _logger;
