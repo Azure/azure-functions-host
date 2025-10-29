@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -29,7 +30,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
-using Xunit.Abstractions;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -43,6 +43,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private int _workerProcessCount;
         private string _functionsWorkerRuntimeVersion;
         private bool _addTestSettings;
+
+        // TODO: Currently used for debugging/testing, remove later
+        [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Well known account key for emulator. Used for testing.")]
+        private static string CosmosDBConnection => "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+
 
         protected EndToEndTestFixture(
             string rootPath,
@@ -168,6 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     {
                         { "AzureWebJobsStorage", azuriteConnectionString },
                         { "ConnectionStrings:AzureWebJobsStorage", azuriteConnectionString },
+                        { "CosmosDB", CosmosDBConnection },
+                        { "ConnectionStrings:CosmosDB", CosmosDBConnection }
                     });
 
                     ConfigureScriptHost(configBuilder);

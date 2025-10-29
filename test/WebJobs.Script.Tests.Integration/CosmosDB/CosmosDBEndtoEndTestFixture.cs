@@ -1,11 +1,13 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Diagnostics.CodeAnalysis;
-using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
@@ -43,6 +45,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                     "CosmosDBIn",
                     "CosmosDBOut"
                 };
+            });
+        }
+
+        public override void ConfigureScriptHost(IConfigurationBuilder configBuilder)
+        {
+            base.ConfigureScriptHost(configBuilder);
+
+            configBuilder.AddInMemoryCollection(new Dictionary<string, string>
+            {
+                { "CosmosDB", CosmosDBConnection },
+                { "ConnectionStrings:CosmosDB", CosmosDBConnection }
             });
         }
 

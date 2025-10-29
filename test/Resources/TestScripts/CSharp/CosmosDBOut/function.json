@@ -1,4 +1,4 @@
-﻿{
+{
   "bindings": [
     {
       "type": "manualTrigger",
@@ -10,7 +10,7 @@
       "name": "relatedItems",
       "direction": "out",
       "databaseName": "ItemDb",
-      "collectionName": "ItemCollection",
+      "containerName": "ItemCollection",
       "createIfNotExists": true
     },
     {
@@ -18,7 +18,7 @@
       "name": "$return",
       "direction": "out",
       "databaseName": "ItemDb",
-      "collectionName": "ItemCollection",
+      "containerName": "ItemCollection",
       "createIfNotExists": true
     }
   ]

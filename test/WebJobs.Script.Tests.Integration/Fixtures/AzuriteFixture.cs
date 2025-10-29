@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
@@ -121,9 +121,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
 
         private Task StartAzuriteAsync()
         {
-            _blobPort = GetFreeTcpPort();
-            _queuePort = GetFreeTcpPort();
-            _tablePort = GetFreeTcpPort();
+            // TODO: For testing, remove later
+            _blobPort = 10000; // GetFreeTcpPort();
+            _queuePort = 10001; // GetFreeTcpPort();
+            _tablePort = 10002; // GetFreeTcpPort();
             GetAzuriteCommand(out string process, out string arguments);
             ProcessStartInfo startInfo = new()
             {
