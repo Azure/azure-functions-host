@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IWorkerFunctionDescriptorProviderFactory _descriptorProviderFactory;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private readonly ILogger _logger;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
@@ -105,6 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IFunctionDataCache functionDataCache,
             IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IWorkerFunctionDescriptorProviderFactory descriptorProviderFactory,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -150,6 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _functionDataCache = functionDataCache;
             _hostingConfigOptions = hostingConfigOptions;
+            _descriptorProviderFactory = descriptorProviderFactory;
         }
 
         public event EventHandler HostInitializing;
@@ -548,43 +551,38 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata, string workerRuntime)
         {
-            //if (_environment.IsPlaceholderModeEnabled())
-            //{
-            //    _logger.HostIsInPlaceholderMode();
-            //    _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
-            //    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
-            //}
-            //else if (_environment.IsMultiLanguageRuntimeEnvironment())
-            //{
-            //    _logger.AddingDescriptorProviderForLanguage("All (Multi Language)");
+            if (_environment.IsPlaceholderModeEnabled())
+            {
+                _logger.HostIsInPlaceholderMode();
+                _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+            }
+            else if (_environment.IsMultiLanguageRuntimeEnvironment())
+            {
+                _logger.AddingDescriptorProviderForLanguage("All (Multi Language)");
 
-            //    var workerOptions = _languageWorkerOptions.CurrentValue;
+                var descriptorProvider = _descriptorProviderFactory.CreateMultiWorkerDescriptorProvider(this, _bindingProviders);
+                _descriptorProviders.Add(descriptorProvider);
+            }
+            else if (_isHttpWorker)
+            {
+                _logger.AddingDescriptorProviderForHttpWorker();
 
-            //    _descriptorProviders.Add(new MultiLanguageFunctionDescriptorProvider(this, workerOptions.WorkerConfigs, ScriptOptions, _bindingProviders,
-            //        _functionDispatcher, _loggerFactory, _applicationLifetime, workerOptions.WorkerConfigs.Max(wc => wc.CountOptions.InitializationTimeout)));
-            //}
-            //else if (_isHttpWorker)
-            //{
-            //    _logger.AddingDescriptorProviderForHttpWorker();
-            //    _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime, _httpWorkerOptions.InitializationTimeout));
-            //}
-            //else if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-            //{
-            //    _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
-            //    _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
-            //}
-            //else
-            //{
-            //    _logger.AddingDescriptorProviderForLanguage(workerRuntime);
+                var descriptorProvider = _descriptorProviderFactory.CreateHttpDescriptorProvider(this, _bindingProviders);
+                _descriptorProviders.Add(descriptorProvider);
+            }
+            else if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+            }
+            else
+            {
+                _logger.AddingDescriptorProviderForLanguage(workerRuntime);
 
-            //    var workerConfig = _languageWorkerOptions.CurrentValue.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
-
-            //    // If there's no worker config, use the default (for legacy behavior; mostly for tests).
-            //    TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
-
-            //    _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, workerRuntime, ScriptOptions, _bindingProviders,
-            //        _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
-            //}
+                var descriptorProvider = _descriptorProviderFactory.CreateWorkerDescriptorProvider(this, workerRuntime, _bindingProviders);
+                _descriptorProviders.Add(descriptorProvider);
+            }
 
             // Codeless functions run side by side with regular functions.
             // In addition to descriptors already added here, we need to ensure all codeless functions
