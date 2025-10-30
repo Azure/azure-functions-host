@@ -30,7 +30,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -314,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, workerRuntime, cancellationToken);
 
                 var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
-               // await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
+                // await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
 
                 GenerateFunctions();
                 ScheduleFileSystemCleanup();
@@ -564,13 +563,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 var descriptorProvider = _descriptorProviderFactory.CreateMultiWorkerDescriptorProvider(this, _bindingProviders);
                 _descriptorProviders.Add(descriptorProvider);
             }
-            else if (_isHttpWorker)
-            {
-                _logger.AddingDescriptorProviderForHttpWorker();
-
-                var descriptorProvider = _descriptorProviderFactory.CreateHttpDescriptorProvider(this, _bindingProviders);
-                _descriptorProviders.Add(descriptorProvider);
-            }
             else if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
@@ -580,6 +572,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.AddingDescriptorProviderForLanguage(workerRuntime);
 
+                // this handles both http and grpc workers
                 var descriptorProvider = _descriptorProviderFactory.CreateWorkerDescriptorProvider(this, workerRuntime, _bindingProviders);
                 _descriptorProviders.Add(descriptorProvider);
             }
