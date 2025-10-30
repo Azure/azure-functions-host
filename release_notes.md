@@ -9,3 +9,4 @@
 - Remove packages `Microsoft.Azure.Cosmos.Table` and `Microsoft.Azure.DocumentDB.Core` (#11435)
 - Update Microsoft.Azure.WebJobs.Extensions to 5.2.1 (#11415)
 - Update Microsoft.Azure.WebJobs.Extensions.Http to 3.2.1 (#11440)
+- Add JitTrace files for v4.45
