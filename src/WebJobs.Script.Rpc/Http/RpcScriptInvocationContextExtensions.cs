@@ -13,7 +13,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    internal static class ScriptInvocationContextExtensions
+    internal static class RpcScriptInvocationContextExtensions
     {
         public static async Task<HttpScriptInvocationContext> ToHttpScriptInvocationContext(this ScriptInvocationContext scriptInvocationContext)
         {

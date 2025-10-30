@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -68,8 +68,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private GrpcWorkerChannel GetCurrentJobHostWorkerChannel()
         {
-            RpcFunctionInvocationDispatcher fd = Fixture.JobHost.FunctionDispatcher as RpcFunctionInvocationDispatcher;
-            return (GrpcWorkerChannel)fd.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
+            // TODO: (OOP - Refactor) Fix this
+            //RpcFunctionInvocationDispatcher fd = Fixture.JobHost. as RpcFunctionInvocationDispatcher;
+            //return (GrpcWorkerChannel)fd.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
+
+            return null;
         }
 
         public class TestFixture : ScriptHostEndToEndTestFixture

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             var proxyMetadataProvider = new ProxyFunctionProvider(jobHostOptionsWrapped, env, new Mock<IScriptEventManager>().Object, nullLogger);
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(jobHostOptionsWrapped, new Mock<IFunctionMetadataProvider>().Object,
-                new List<IFunctionProvider>() { proxyMetadataProvider }, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), nullLogger, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+                new List<IFunctionProvider>() { proxyMetadataProvider }, nullLogger, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             services.AddSingleton<IFunctionMetadataManager>(functionMetadataManager);
         }

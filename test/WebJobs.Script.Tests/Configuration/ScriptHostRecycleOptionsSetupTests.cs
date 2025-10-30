@@ -26,9 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .GetProperty(nameof(HttpWorkerOptions.IsPortManuallySet))!
                 .SetValue(httpWorkerOptions, isPortManuallySet);
 
-            var mockOptions = new Mock<IOptions<HttpWorkerOptions>>();
-            mockOptions.Setup(o => o.Value).Returns(httpWorkerOptions);
-
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(
                 [
@@ -36,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 ])
                 .Build();
 
-            var setup = new ScriptHostRecycleOptionsSetup(mockOptions.Object, config);
+            var setup = new ScriptHostRecycleOptionsSetup(config);
 
             var options = new ScriptHostRecycleOptions();
             setup.Configure(options);
