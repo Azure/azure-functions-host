@@ -28,6 +28,9 @@ jobs:
       artifact: drop_windows
 
   steps:
-  - pwsh: |
-      ./eng/script/generate-site-extension.ps1 -WorkerPackageName ${{ parameters.WorkerPackageName }} -WorkerVersion ${{ parameters.WorkerPackageVersion }} -OutputDir '$(drop_path)'
+  - task: DotNetCoreCLI@2
     displayName: Create site extension
+    inputs:
+      command: 'build'
+      projects: 'src/WebJobs.Script.SiteExtension/GenerateWorkerSiteExtension.csproj'
+      arguments : '-p:WorkerPackageName=${{ parameters.WorkerPackageName }} -p:WorkerPackageVersion=${{ parameters.WorkerPackageVersion }} -p:OutputDir="$(drop_path)"'

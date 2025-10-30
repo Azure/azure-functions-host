@@ -1,0 +1,128 @@
+<Project Sdk="Microsoft.Build.NoTargets">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- Parameters from pipeline -->
+    <WorkerPackageName Condition="'$(WorkerPackageName)' == ''"></WorkerPackageName>
+    <WorkerPackageVersion Condition="'$(WorkerPackageVersion)' == ''"></WorkerPackageVersion>
+    <OutputDir Condition="'$(OutputDir)' == ''">$(MSBuildProjectDirectory)\output</OutputDir>
+    
+    <!-- Internal working directories -->
+    <PackageDir>$(OutputDir)\package</PackageDir>
+    <SiteExtensionDir>$(OutputDir)\content</SiteExtensionDir>
+    <OutputZipPath>$(OutputDir)\$(WorkerPackageName)-$(WorkerPackageVersion).zip</OutputZipPath>
+    
+    <!-- Check if this is Python worker -->
+    <IsPythonWorker Condition="'$(WorkerPackageName)' == 'Microsoft.Azure.Functions.PythonWorker'">true</IsPythonWorker>
+    <IsPythonWorker Condition="'$(IsPythonWorker)' == ''">false</IsPythonWorker>
+    
+    <!-- NuGet configuration -->
+    <NuGetConfigPath>$(MSBuildProjectDirectory)\..\..\NuGet.config</NuGetConfigPath>
+    <NuGetExePath>$(PackageDir)\nuget.exe</NuGetExePath>
+  </PropertyGroup>
+
+  <!-- Main target to create the site extension -->
+  <Target Name="CreateSiteExtension" AfterTargets="Build" DependsOnTargets="ValidateParameters;PrepareDirectories;DownloadPackage;ExtractPackage;CreateZipFile;CleanupTemporaryFiles">
+    <Message Text="Site extension package created at: $(OutputZipPath)" Importance="high" />
+  </Target>
+
+  <!-- Validate required parameters -->
+  <Target Name="ValidateParameters">
+    <Error Text="WorkerPackageName parameter is required" Condition="'$(WorkerPackageName)' == ''" />
+    <Error Text="WorkerPackageVersion parameter is required" Condition="'$(WorkerPackageVersion)' == ''" />
+    <Message Text="Creating site extension for $(WorkerPackageName) version $(WorkerPackageVersion)" Importance="high" />
+  </Target>
+
+  <!-- Prepare working directories -->
+  <Target Name="PrepareDirectories">
+    <RemoveDir Directories="$(PackageDir);$(SiteExtensionDir)" Condition="Exists('$(PackageDir)') OR Exists('$(SiteExtensionDir)')" />
+    <MakeDir Directories="$(PackageDir);$(SiteExtensionDir)" />
+    <Message Text="Created working directories: $(PackageDir), $(SiteExtensionDir)" Importance="normal" />
+  </Target>
+
+  <!-- Download nuget.exe and the worker package -->
+  <Target Name="DownloadPackage" DependsOnTargets="DownloadNuGetExe">
+    <Message Text="Downloading $(WorkerPackageName) version $(WorkerPackageVersion)" Importance="high" />
+    
+    <!-- Install the package using nuget.exe -->
+    <PropertyGroup>
+      <NuGetInstallCommand>"$(NuGetExePath)" install "$(WorkerPackageName)" -Version "$(WorkerPackageVersion)" -OutputDirectory "$(PackageDir)"</NuGetInstallCommand>
+      <NuGetInstallCommand Condition="Exists('$(NuGetConfigPath)')">$(NuGetInstallCommand) -ConfigFile "$(NuGetConfigPath)"</NuGetInstallCommand>
+    </PropertyGroup>
+    
+    <Exec Command="$(NuGetInstallCommand)" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+
+  <!-- Download nuget.exe if not present -->
+  <Target Name="DownloadNuGetExe" Condition="!Exists('$(NuGetExePath)')">
+    <Message Text="Downloading nuget.exe..." Importance="normal" />
+    <DownloadFile SourceUrl="https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" 
+                  DestinationFolder="$(PackageDir)" />
+  </Target>
+
+  <!-- Extract the package contents -->
+  <Target Name="ExtractPackage" DependsOnTargets="DownloadPackage">
+    <ItemGroup>
+      <!-- Find the .nupkg file in the downloaded package directory -->
+      <NupkgFiles Include="$(PackageDir)\**\*.nupkg" />
+    </ItemGroup>
+
+    <Error Text="NuGet package not found after download." Condition="'@(NupkgFiles)' == ''" />
+    
+    <Message Text="Extracting package: @(NupkgFiles->'%(Filename)%(Extension)')" Importance="normal" />
+    
+    <!-- Unzip the .nupkg file (which is just a zip file) -->
+    <Unzip SourceFiles="@(NupkgFiles)" DestinationFolder="$(SiteExtensionDir)" />
+  </Target>
+
+  <!-- Create the final zip file with appropriate structure -->
+  <Target Name="CreateZipFile" DependsOnTargets="ExtractPackage">
+    <Delete Files="$(OutputZipPath)" Condition="Exists('$(OutputZipPath)')" />
+    
+    <!-- Handle Python worker differently -->
+    <ItemGroup Condition="'$(IsPythonWorker)' == 'true'">
+      <PythonSourceFiles Include="$(SiteExtensionDir)\tools\**\*" />
+    </ItemGroup>
+    
+    <ItemGroup Condition="'$(IsPythonWorker)' == 'false'">
+      <WorkerSourceFiles Include="$(SiteExtensionDir)\contentFiles\any\any\workers\**\*" />
+    </ItemGroup>
+
+    <!-- Create Python worker zip -->
+    <PropertyGroup Condition="'$(IsPythonWorker)' == 'true'">
+      <PythonTempDir>$(SiteExtensionDir)\python</PythonTempDir>
+    </PropertyGroup>
+    
+    <MakeDir Directories="$(PythonTempDir)" Condition="'$(IsPythonWorker)' == 'true'" />
+    
+    <Copy SourceFiles="@(PythonSourceFiles)" 
+          DestinationFiles="@(PythonSourceFiles->'$(PythonTempDir)\%(RecursiveDir)%(Filename)%(Extension)')"
+          Condition="'$(IsPythonWorker)' == 'true'" />
+    
+    <ItemGroup Condition="'$(IsPythonWorker)' == 'true'">
+      <PythonFilesToZip Include="$(PythonTempDir)\**\*" />
+    </ItemGroup>
+    
+    <ZipDirectory SourceDirectory="$(PythonTempDir)" 
+                  DestinationFile="$(OutputZipPath)"
+                  Condition="'$(IsPythonWorker)' == 'true'" />
+
+    <!-- Create other worker zip -->
+    <PropertyGroup Condition="'$(IsPythonWorker)' == 'false'">
+      <WorkersSourceDir>$(SiteExtensionDir)\contentFiles\any\any\workers</WorkersSourceDir>
+    </PropertyGroup>
+    
+    <ZipDirectory SourceDirectory="$(WorkersSourceDir)" 
+                  DestinationFile="$(OutputZipPath)"
+                  Condition="'$(IsPythonWorker)' == 'false' AND Exists('$(WorkersSourceDir)')" />
+
+    <Message Text="Created zip file: $(OutputZipPath)" Importance="high" />
+  </Target>
+
+  <!-- Cleanup temporary files -->
+  <Target Name="CleanupTemporaryFiles">
+    <RemoveDir Directories="$(PackageDir);$(SiteExtensionDir)" />
+    <Message Text="Cleaned up temporary directories" Importance="normal" />
+  </Target>
+
+</Project>
