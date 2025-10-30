@@ -37,11 +37,6 @@ internal class RpcWorkerFunctionDescriptorProviderFactory : IWorkerFunctionDescr
         _logger = _loggerFactory.CreateLogger(LogCategories.Startup);
     }
 
-    public FunctionDescriptorProvider CreateHttpDescriptorProvider(ScriptHost host, ICollection<IScriptBindingProvider> bindingProviders)
-    {
-        return new HttpFunctionDescriptorProvider(host, _scriptHostOptions, bindingProviders, _dispatcher, _loggerFactory, _applicationLifetime, _httpWorkerOptions.InitializationTimeout);
-    }
-
     public FunctionDescriptorProvider CreateMultiWorkerDescriptorProvider(ScriptHost host, ICollection<IScriptBindingProvider> bindingProviders)
     {
         var workerOptions = _languageWorkerOptionsMonitor.CurrentValue;

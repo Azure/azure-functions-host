@@ -306,7 +306,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IFunctionProvider, ProxyFunctionProvider>());
 
-
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
@@ -387,8 +386,6 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
-
-
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)

@@ -1,23 +1,22 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Host;
+using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Rpc.Hosting;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Script.Rpc.Hosting
+namespace Microsoft.Extensions.DependencyInjection
 {
     public static class RpcServiceCollectionExtensions
     {
@@ -31,30 +30,32 @@ namespace Microsoft.Azure.WebJobs.Script.Rpc.Hosting
             services.AddSingleton<IHttpWorkerService, DefaultHttpWorkerService>();
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IFunctionProvider, HttpWorkerFunctionProvider>());
 
+            //Worker Function Invocation dispatcher
+            services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
+
             // Rpc Worker
             services.AddSingleton<IJobHostRpcWorkerChannelManager, JobHostRpcWorkerChannelManager>();
             services.AddSingleton<IRpcFunctionInvocationDispatcherLoadBalancer, RpcFunctionInvocationDispatcherLoadBalancer>();
 
-            //Worker Function Invocation dispatcher
-            services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
-
             services.AddSingleton<IHostedService, WorkerConcurrencyManager>();
-                
+
             // Configuration
             services.AddSingleton<IPostConfigureOptions<ScriptHostRecycleOptions>, HttpScriptHostRecycleOptionsSetup>();
             services.ConfigureOptions<HttpWorkerOptionsSetup>();
 
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
 
-            // Add Language Worker Service
-            services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
-
+            services.AddSingleton<IWorkerFunctionDescriptorProviderFactory, RpcWorkerFunctionDescriptorProviderFactory>();
+            services.AddSingleton<IScriptHostLifetime, RpcScriptHostLifetime>();
             return services;
         }
 
         public static IServiceCollection AddCommonRpcServices(this IServiceCollection services)
         {
             ArgumentNullException.ThrowIfNull(services);
+
+            // Add Language Worker Service
+            services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
 
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
             services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();

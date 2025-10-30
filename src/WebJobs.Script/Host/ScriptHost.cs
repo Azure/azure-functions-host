@@ -30,6 +30,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -67,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IWorkerFunctionDescriptorProviderFactory _descriptorProviderFactory;
+        private readonly IScriptHostLifetime _scriptHostLifetime;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private readonly ILogger _logger;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
@@ -106,6 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             IWorkerFunctionDescriptorProviderFactory descriptorProviderFactory,
+            IScriptHostLifetime scriptHostLifetime,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -152,6 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _functionDataCache = functionDataCache;
             _hostingConfigOptions = hostingConfigOptions;
             _descriptorProviderFactory = descriptorProviderFactory;
+            _scriptHostLifetime = scriptHostLifetime;
         }
 
         public event EventHandler HostInitializing;
@@ -313,7 +317,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, workerRuntime, cancellationToken);
 
                 var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
-                // await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
+
+                await _scriptHostLifetime.InitializedAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
 
                 GenerateFunctions();
                 ScheduleFileSystemCleanup();
