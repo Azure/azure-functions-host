@@ -71,6 +71,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             builder.Verify(b => b.Add(IsRegistration<ScriptHostHealthCheck>(
                 HealthCheckNames.ScriptHostLifeCycle, HealthCheckTags.Readiness)),
                 Times.Once);
+            builder.Verify(b => b.Add(IsRegistration<WebJobsStorageHealthCheck>(
+                HealthCheckNames.WebJobsStorage, HealthCheckTags.Configuration)),
+                Times.Once);
             builder.Verify(b => b.Services, Times.AtLeastOnce);
             builder.VerifyNoOtherCalls();
 
@@ -114,6 +117,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             returned.Should().BeSameAs(builder.Object);
             builder.Verify(b => b.Add(IsRegistration<ScriptHostHealthCheck>(
                 HealthCheckNames.ScriptHostLifeCycle, HealthCheckTags.Readiness)),
+                Times.Once);
+            builder.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public void AdWebJobsStorageHealthCheck_RegistersWebJobsStorageHealthCheck()
+        {
+            // arrange
+            Mock<IHealthChecksBuilder> builder = new(MockBehavior.Strict);
+            builder.Setup(b => b.Add(It.IsAny<HealthCheckRegistration>())).Returns(builder.Object);
+
+            // act
+            IHealthChecksBuilder returned = builder.Object.AddWebJobsStorageHealthCheck();
+
+            // assert
+            returned.Should().BeSameAs(builder.Object);
+            builder.Verify(b => b.Add(IsRegistration<WebJobsStorageHealthCheck>(
+                HealthCheckNames.WebJobsStorage, HealthCheckTags.Configuration)),
                 Times.Once);
             builder.VerifyNoOtherCalls();
         }
