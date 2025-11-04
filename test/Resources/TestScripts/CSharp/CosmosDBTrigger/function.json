@@ -6,10 +6,13 @@
       "direction": "in",
       "databaseName": "ItemDb",
       "containerName": "ItemCollection",
-      "createLeaseCollectionIfNotExists": true
+      "connection": "CosmosDB",
+      "leaseContainerName": "leases",
+      "createLeaseContainerIfNotExists": true
     },
     {
       "type": "blob",
+      "connection": "AzureWebJobsStorage",
       "name": "completed",
       "direction": "out",
       "path": "test-output-csharp/cosmosdbtriggere2e-completed"

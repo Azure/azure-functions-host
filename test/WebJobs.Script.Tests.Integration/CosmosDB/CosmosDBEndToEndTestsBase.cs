@@ -10,7 +10,7 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
     public abstract class CosmosDBEndToEndTestsBase<TTestFixture> :
-        EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBEndtoEndTestFixture
+        EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBEndtoEndTestFixture, new()
     {
         public CosmosDBEndToEndTestsBase(TTestFixture fixture) : base(fixture)
         {
@@ -26,22 +26,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             await resultBlob.DeleteIfExistsAsync();
 
             string id = Guid.NewGuid().ToString();
-            string partitionKeyValue = Guid.NewGuid().ToString();
 
-            var documentToTest = new { id, partitionKey = partitionKeyValue};
+            var documentToTest = new { id };
 
             await Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection")
-                .CreateItemAsync(documentToTest, new PartitionKey(partitionKeyValue));
+                .CreateItemAsync(documentToTest, new PartitionKey(id));
 
             // now wait for function to be invoked
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
                 () => string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages()));
 
-            if (collectionsCreated)
-            {
-                // cleanup collections
-                await Fixture.DeleteContainers();
-            }
+            // cleanup collections
+            await Fixture.DeleteContainers();
 
             Assert.False(string.IsNullOrEmpty(result));
         }

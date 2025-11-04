@@ -51,12 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         public override void ConfigureScriptHost(IConfigurationBuilder configBuilder)
         {
             base.ConfigureScriptHost(configBuilder);
-
-            configBuilder.AddInMemoryCollection(new Dictionary<string, string>
-            {
-                { "CosmosDB", CosmosDBConnection },
-                { "ConnectionStrings:CosmosDB", CosmosDBConnection }
-            });
         }
 
         public void InitializeCosmosClient()
@@ -86,14 +80,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             DatabaseResponse databaseResponse = await CosmosClient.CreateDatabaseIfNotExistsAsync("ItemDb");
             Database database = databaseResponse.Database;
 
-            ContainerProperties itemCollectionProperties = new ContainerProperties("ItemCollection", "/partitionKey");
+            ContainerProperties itemCollectionProperties = new ContainerProperties("ItemCollection", "/id");
             ContainerResponse itemCollectionResponse = await database.CreateContainerIfNotExistsAsync(itemCollectionProperties, throughput: 400);
 
-            ContainerProperties leasesCollectionProperties = new ContainerProperties("leases", "/partitionKey");
+            ContainerProperties leasesCollectionProperties = new ContainerProperties("leases", "/id");
             ContainerResponse leasesCollectionResponse = await database.CreateContainerIfNotExistsAsync(leasesCollectionProperties, throughput: 400);
 
-            if (itemCollectionResponse.StatusCode == System.Net.HttpStatusCode.Created
-                && leasesCollectionResponse.StatusCode == System.Net.HttpStatusCode.Created)
+            if ((itemCollectionResponse.StatusCode == System.Net.HttpStatusCode.Created || itemCollectionResponse.StatusCode == System.Net.HttpStatusCode.OK) &&
+                (leasesCollectionResponse.StatusCode == System.Net.HttpStatusCode.Created || leasesCollectionResponse.StatusCode == System.Net.HttpStatusCode.OK))
             {
                 collectionsCreated = true;
             }

@@ -1,4 +1,4 @@
-﻿{
+{
   "bindings": [
     {
       "type": "queueTrigger",
@@ -11,7 +11,7 @@
       "name": "itemIn",
       "direction": "in",
       "databaseName": "ItemDb",
-      "collectionName": "ItemCollection",
+      "containerName": "ItemCollection",
       "id": "{documentId}"
     },
     {
@@ -19,7 +19,7 @@
       "name": "relatedItems",
       "direction": "in",
       "databaseName": "ItemDb",
-      "collectionName": "ItemCollection",
+      "containerName": "ItemCollection",
       "sqlQuery": "SELECT f.id, f.related FROM f WHERE f.related = {documentId}"
     },
     {
@@ -27,7 +27,7 @@
       "name": "itemOut",
       "direction": "out",
       "databaseName": "ItemDb",
-      "collectionName": "ItemCollection",
+      "containerName": "ItemCollection",
       "createIfNotExists": true
     }
   ]

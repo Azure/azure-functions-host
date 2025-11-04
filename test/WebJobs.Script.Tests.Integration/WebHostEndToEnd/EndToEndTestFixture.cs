@@ -1,14 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
 using Azure;
 using Azure.Data.Tables;
 using Microsoft.Azure.Storage.Blob;
@@ -29,6 +21,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
 using Xunit;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 
@@ -44,10 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private string _functionsWorkerRuntimeVersion;
         private bool _addTestSettings;
 
-        // TODO: Currently used for debugging/testing, remove later
         [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Well known account key for emulator. Used for testing.")]
-        private static string CosmosDBConnection => "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-
+        private string CosmosDBConnectionString = "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
 
         protected EndToEndTestFixture(
             string rootPath,
@@ -173,8 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     {
                         { "AzureWebJobsStorage", azuriteConnectionString },
                         { "ConnectionStrings:AzureWebJobsStorage", azuriteConnectionString },
-                        { "CosmosDB", CosmosDBConnection },
-                        { "ConnectionStrings:CosmosDB", CosmosDBConnection }
+                        { "ConnectionStrings:CosmosDB", CosmosDBConnectionString}
                     });
 
                     ConfigureScriptHost(configBuilder);
@@ -185,6 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     // Flow this env variable to out of proc workers.
                     s.Configure<FunctionsHostingConfigOptions>(o => o.Features["AzureWebJobsStorage"] = azuriteConnectionString);
+                    s.Configure<FunctionsHostingConfigOptions>(o => o.Features["ConnectionStrings:CosmosDB"] = CosmosDBConnectionString);
                     ConfigureWebHost(s);
                 },
                 configureWebHostAppConfiguration: configBuilder =>
