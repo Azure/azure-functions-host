@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Extensions;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -106,6 +105,9 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
 
         internal async Task<bool> ProcessThresholdsExceeded(ILogger logger = null)
         {
+            // remove this
+            await Task.Yield();
+
             //var dispatcher = GetDispatcherOrNull();
             //if (dispatcher != null)
             //{
