@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
                 return HealthCheckResult.Healthy();
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ex.IsFatal())
             {
                 HealthCheckData data = GetData(ex, "connectivity");
                 return HealthCheckResult.Unhealthy($"Unable to access {ConfigSection}", ex, data);
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
                     while (!cancellation.IsCancellationRequested)
                     {
                         TimeSpan delay = _context?.Registration?.Period ?? DefaultPeriod;
-                        await Task.Delay(delay);
+                        await Task.Delay(delay, cancellation);
                         _last = await CheckHealthCoreAsync(cancellation).ConfigureAwait(false);
                     }
                 })
@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
                 result = HealthCheckResult.Healthy();
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ex.IsFatal())
             {
                 client = null;
                 HealthCheckData data = GetData(ex, "configuration");

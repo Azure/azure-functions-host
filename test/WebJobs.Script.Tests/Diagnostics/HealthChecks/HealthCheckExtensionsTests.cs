@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         }
 
         [Fact]
-        public void AdWebJobsStorageHealthCheck_RegistersWebJobsStorageHealthCheck()
+        public void AddWebJobsStorageHealthCheck_RegistersWebJobsStorageHealthCheck()
         {
             // arrange
             Mock<IHealthChecksBuilder> builder = new(MockBehavior.Strict);
