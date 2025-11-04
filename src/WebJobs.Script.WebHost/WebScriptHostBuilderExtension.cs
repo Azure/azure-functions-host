@@ -56,11 +56,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.ConfigureOptions<HostEasyAuthOptionsSetup>();
                     services.ConfigureOptions<PrimaryHostCoordinatorOptionsSetup>();
                     services.ConfigureOptions<ExtensionSystemOptionsSetup>();
-
-                    services.AddRpcScriptHostServices();
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
+                    webJobsBuilder.Services.AddRpcScriptHostServices();
+
                     // Adds necessary Azure-based services to the ScriptHost, which will use the host-provided IAzureBlobStorageProvider registered below.
                     webJobsBuilder.AddAzureStorageCoreServices();
 

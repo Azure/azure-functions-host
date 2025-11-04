@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Rpc.Configuration;
 using Microsoft.Azure.WebJobs.Script.Rpc.Hosting;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -42,6 +43,8 @@ namespace Microsoft.Extensions.DependencyInjection
             // Configuration
             services.AddSingleton<IPostConfigureOptions<ScriptHostRecycleOptions>, HttpScriptHostRecycleOptionsSetup>();
             services.ConfigureOptions<HttpWorkerOptionsSetup>();
+            services.ConfigureOptions<RpcFunctionMetadataOptionsSetup>();
+            services.ConfigureOptions<RpcScriptHostRecycleOptionsSetup>();
 
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
 
@@ -59,7 +62,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
             services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
-            services.AddSingleton<IWorkerFunctionMetadataProvider, WorkerFunctionMetadataProvider>();
+            services.TryAddSingleton<IWorkerFunctionMetadataProvider, WorkerFunctionMetadataProvider>();
 
             services.AddManagedHostedService<RpcInitializationService>();
 

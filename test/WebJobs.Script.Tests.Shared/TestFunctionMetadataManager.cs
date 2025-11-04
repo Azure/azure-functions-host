@@ -32,10 +32,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static FunctionMetadataManager GetFunctionMetadataManager(IOptions<ScriptJobHostOptions> jobHostOptions, Mock<IScriptHostManager> managerMock,
             IFunctionMetadataProvider functionMetadataProvider, IList<IFunctionProvider> functionProviders, ILoggerFactory loggerFactory, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
         {
+            var metadataOptions = new OptionsWrapper<FunctionMetadataOptions>(new FunctionMetadataOptions());
+
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IEnumerable<IFunctionProvider>))).Returns(functionProviders);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptions<ScriptJobHostOptions>))).Returns(jobHostOptions);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptionsMonitor<LanguageWorkerOptions>))).Returns(languageWorkerOptions);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(ILoggerFactory))).Returns(loggerFactory);
+            managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptions<FunctionMetadataOptions>))).Returns(metadataOptions);
 
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -58,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions);
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions, metadataOptions);
         }
 
         public static FunctionMetadataManager GetFunctionMetadataManagerWithDefaultHostConfig(IOptions<ScriptJobHostOptions> jobHostOptions,
@@ -92,7 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions);
+            var metadataOptions = new OptionsWrapper<FunctionMetadataOptions>(new FunctionMetadataOptions());
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions, metadataOptions);
         }
     }
 }

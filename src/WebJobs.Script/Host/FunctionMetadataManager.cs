@@ -29,8 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageOptions;
         private IDisposable _onChangeSubscription;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
+        private IOptions<FunctionMetadataOptions> _metadataOptions;
         private ILogger _logger;
-        private bool _isHttpWorker;
         private bool _servicesReset = false;
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
@@ -42,9 +42,11 @@ namespace Microsoft.Azure.WebJobs.Script
             IScriptHostManager scriptHostManager,
             ILoggerFactory loggerFactory,
             IEnvironment environment,
-            IOptionsMonitor<LanguageWorkerOptions> languageOptions)
+            IOptionsMonitor<LanguageWorkerOptions> languageOptions,
+            IOptions<FunctionMetadataOptions> metadataOptions)
         {
             _scriptOptions = scriptOptions;
+            _metadataOptions = metadataOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
@@ -123,6 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _functionMetadataMap.Clear();
 
             _scriptOptions = _serviceProvider.GetService<IOptions<ScriptJobHostOptions>>();
+            _metadataOptions = _serviceProvider.GetService<IOptions<FunctionMetadataOptions>>();
 
             // Resetting the logger switches the logger scope to Script Host level,
             // also making the logs available to Application Insights
@@ -168,14 +171,11 @@ namespace Microsoft.Azure.WebJobs.Script
             // Validate
             foreach (FunctionMetadata functionMetadata in functionMetadataList.ToList())
             {
-                // TODO: (OOP-Refactor) Revisit this validation logic for functions in error
-                // Commenting this for now as FunctionMetadataManager currently relies on using the
-                // HTTP worker (custom handler) types to bypass scriptFile validation.
-                //if (!IsScriptFileDetermined(functionMetadata))
-                //{
-                //    // Exclude invalid functions
-                //    functionMetadataList.Remove(functionMetadata);
-                //}
+                if (!IsScriptFileDetermined(functionMetadata))
+                {
+                    // Exclude invalid functions
+                    functionMetadataList.Remove(functionMetadata);
+                }
             }
             Errors = _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
@@ -196,24 +196,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal bool IsScriptFileDetermined(FunctionMetadata functionMetadata)
         {
-            return true;
+            if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_metadataOptions.Value.SkipScriptFileValidation && !functionMetadata.IsProxy() && _servicesReset)
+            {
+                // for functions in error, log the error and don't
+                // add to the functions collection
+                Utility.AddFunctionError(_functionErrors, functionMetadata.Name, FunctionConfigurationErrorMessage);
+                return false;
+            }
 
-            // TODO: (OOP-Refactor) Revisit this validation logic for functions in error (see comment in LoadFunctionMetadata)
-            //try
-            //{
-            //    if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy() && _servicesReset)
-            //    {
-            //        throw new FunctionConfigurationException(FunctionConfigurationErrorMessage);
-            //    }
-            //}
-            //catch (FunctionConfigurationException exc)
-            //{
-            //    // for functions in error, log the error and don't
-            //    // add to the functions collection
-            //    Utility.AddFunctionError(_functionErrors, functionMetadata.Name, exc.Message);
-            //    return false;
-            //}
-            //return true;
+            return true;
         }
 
         private void LoadCustomProviderFunctions(List<FunctionMetadata> functionMetadataList)

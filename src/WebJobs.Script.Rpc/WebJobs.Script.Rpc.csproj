@@ -11,8 +11,4 @@
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Configuration\" />
-  </ItemGroup>
-
 </Project>

@@ -4,10 +4,10 @@
 using System.Collections.Generic;
 using AwesomeAssertions;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Rpc.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
-using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
@@ -37,6 +37,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var options = new ScriptHostRecycleOptions();
             setup.Configure(options);
+
+            var rpcOptionsSetup = new RpcScriptHostRecycleOptionsSetup(new OptionsWrapper<HttpWorkerOptions>(httpWorkerOptions));
+            rpcOptionsSetup.Configure(options);
 
             options.SequentialHostRestartRequired.Should().Be(output);
         }

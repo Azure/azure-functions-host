@@ -103,8 +103,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.TryAddSingleton<IServiceCollection>(services);
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
 
-            services.AddCommonRpcServices();
-
             // Metrics
             services.AddSingleton<IHostMetricsProvider, HostMetricsProvider>();
             services.AddSingleton<IHostMetrics, HostMetrics>();
@@ -193,6 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Register common services with the WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);
+            services.AddCommonRpcServices();
 
             services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();

@@ -55,7 +55,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly IOptions<JobHostOptions> _hostOptions;
-        private readonly bool _isHttpWorker;
         private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
         private readonly IDebugStateProvider _debugManager;
@@ -69,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IWorkerFunctionDescriptorProviderFactory _descriptorProviderFactory;
         private readonly IScriptHostLifetime _scriptHostLifetime;
+        private readonly IOptions<FunctionMetadataOptions> _metadataOptions;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private readonly ILogger _logger;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
@@ -109,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             IWorkerFunctionDescriptorProviderFactory descriptorProviderFactory,
             IScriptHostLifetime scriptHostLifetime,
+            IOptions<FunctionMetadataOptions> metadataOptions,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -156,6 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _hostingConfigOptions = hostingConfigOptions;
             _descriptorProviderFactory = descriptorProviderFactory;
             _scriptHostLifetime = scriptHostLifetime;
+            _metadataOptions = metadataOptions;
         }
 
         public event EventHandler HostInitializing;
@@ -804,7 +806,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-                Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker, cancellationToken, throwOnMismatch: throwOnWorkerRuntimeAndPayloadMetadataMismatch);
+                Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, workerRuntime, _environment.IsPlaceholderModeEnabled(), _metadataOptions.Value.SkipRuntimeValidation, cancellationToken, throwOnMismatch: throwOnWorkerRuntimeAndPayloadMetadataMismatch);
 
                 var inProcIndexingSupported = _environment.IsPlaceholderModeEnabled()
                                               || (_environment.IsDotNetInProcSupported()
