@@ -18,30 +18,59 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         // exposed to the HealthCheckResult through IReadOnlyDictionary.
         private readonly Dictionary<string, object> _data = [];
 
-        public string Source
+        /// <summary>
+        /// Gets or sets the area of the health check data failure.
+        /// </summary>
+        /// <remarks>
+        /// This is the area that has failed. Such as "configuration", "connectivity", etc.
+        /// </remarks>
+        public string Area
         {
             get => GetOrDefault<string>();
             set => Set(value);
         }
 
+        /// <summary>
+        /// Gets or sets the configuration section related to the health check data.
+        /// </summary>
+        /// <remarks>
+        /// Useful for when the component being checked is related to a specific configuration section.
+        /// </remarks>
         public string ConfigurationSection
         {
             get => GetOrDefault<string>();
             set => Set(value);
         }
 
+        /// <summary>
+        /// Gets or sets the status code related to the health check data.
+        /// For HTTP related related checks, this is the HTTP status code.
+        /// </summary>
         public int StatusCode
         {
             get => GetOrDefault<int>();
             set => Set(value);
         }
 
+        /// <summary>
+        /// Gets or sets the error code related to the health check data.
+        /// </summary>
+        /// <remarks>
+        /// For Azure SDK related checks, this is typically the RequestFailedException.ErrorCode value.
+        /// </remarks>
         public string ErrorCode
         {
             get => GetOrDefault<string>();
             set => Set(value);
         }
 
+        /// <summary>
+        /// Sets exception details into the health check data.
+        /// </summary>
+        /// <param name="ex">The exception to set details from.</param>
+        /// <remarks>
+        /// This will set various properties based on the type of exception.
+        /// </remarks>
         public void SetExceptionDetails(Exception ex)
         {
             ArgumentNullException.ThrowIfNull(ex);

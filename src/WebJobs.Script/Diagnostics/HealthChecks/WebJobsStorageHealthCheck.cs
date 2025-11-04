@@ -172,11 +172,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             }
         }
 
-        private static HealthCheckData GetData(Exception ex, string source)
+        private static HealthCheckData GetData(Exception ex, string area)
         {
             HealthCheckData data = new()
             {
-                Source = source,
+                Area = area,
                 ConfigurationSection = ConfigSection,
             };
 
