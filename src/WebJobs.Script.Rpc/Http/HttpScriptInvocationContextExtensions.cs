@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Http;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public static class HttpScriptInvocationContextExtensions
+    internal static class HttpScriptInvocationContextExtensions
     {
         public static HttpRequestMessage ToHttpRequestMessage(this HttpScriptInvocationContext context, string requestUri)
         {

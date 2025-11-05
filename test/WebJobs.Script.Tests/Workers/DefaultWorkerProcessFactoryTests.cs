@@ -9,7 +9,6 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
@@ -66,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
         [Theory]
         [MemberData(nameof(TestWorkerContexts))]
-        public void DefaultWorkerProcessFactory_Returns_ExpectedProcess(WorkerContext workerContext)
+        internal void DefaultWorkerProcessFactory_Returns_ExpectedProcess(WorkerContext workerContext)
         {
             Environment.SetEnvironmentVariable("TestEnv", "TestVal");
             DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_testEnvironment, _loggerFactory);
@@ -94,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
         [Theory]
         [MemberData(nameof(InvalidWorkerContexts))]
-        public void DefaultWorkerProcessFactory_InvalidWorkerContext_Throws(WorkerContext workerContext)
+        internal void DefaultWorkerProcessFactory_InvalidWorkerContext_Throws(WorkerContext workerContext)
         {
             DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_testEnvironment, _loggerFactory);
             Assert.Throws<ArgumentNullException>(() => defaultWorkerProcessFactory.CreateWorkerProcess(workerContext));

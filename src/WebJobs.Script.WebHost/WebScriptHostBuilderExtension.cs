@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
-using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -149,7 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     services.AddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IConcurrencyThrottleProvider, WorkerChannelThrottleProvider>());
 
                     // Make sure the registered IHostIdProvider is used
                     IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();

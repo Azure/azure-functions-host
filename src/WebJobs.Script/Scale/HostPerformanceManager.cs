@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             // remove this
             await Task.Yield();
 
-            var workerManager = _serviceProvider.GetScriptHostServiceOrNull<IWorkerManager>();
+            var workerManager = _serviceProvider.GetScriptHostServiceOrNull<IScriptHostWorkerManager>();
             if (workerManager != null)
             {
                 // TEMP: This call pings all the OOP workers, to ensure we include any channel latency

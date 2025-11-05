@@ -1,9 +1,9 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public enum FunctionInvocationDispatcherState
+    internal enum FunctionInvocationDispatcherState
     {
         /// <summary>
         /// The FunctionDispatcher has not yet been created

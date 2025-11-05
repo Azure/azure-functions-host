@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    public interface IRpcWorkerChannel : IWorkerChannel
+    internal interface IRpcWorkerChannel : IWorkerChannel
     {
         RpcWorkerConfig WorkerConfig { get; }
 

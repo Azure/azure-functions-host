@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    public class RpcInitializationService : IManagedHostedService
+    internal class RpcInitializationService : IManagedHostedService
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IEnvironment _environment;

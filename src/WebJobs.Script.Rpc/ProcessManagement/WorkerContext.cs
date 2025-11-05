@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     // Arguments to start a worker process
-    public abstract class WorkerContext
+    internal abstract class WorkerContext
     {
         public WorkerProcessArguments Arguments { get; set; }
 

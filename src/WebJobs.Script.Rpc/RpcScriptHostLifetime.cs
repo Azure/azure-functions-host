@@ -7,7 +7,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc;
 
-internal class RpcScriptHostLifetime : IScriptHostLifetime
+internal class RpcScriptHostLifetime : IScriptHostLifecycleService
 {
     private readonly IFunctionInvocationDispatcher _dispatcher;
 
@@ -19,5 +19,11 @@ internal class RpcScriptHostLifetime : IScriptHostLifetime
     public Task InitializedAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken)
     {
         return _dispatcher.InitializeAsync(functions, cancellationToken);
+    }
+
+    public Task StoppingAsync(CancellationToken cancellationToken)
+    {
+        _dispatcher.PreShutdown();
+        return Task.CompletedTask;
     }
 }

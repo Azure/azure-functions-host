@@ -7,7 +7,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public sealed class FunctionInvocationDispatcherShutdownManager : IHostedService
+    internal sealed class FunctionInvocationDispatcherShutdownManager : IHostedService
     {
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
 

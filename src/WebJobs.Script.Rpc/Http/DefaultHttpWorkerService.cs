@@ -19,7 +19,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
-    public class DefaultHttpWorkerService : IHttpWorkerService
+    internal class DefaultHttpWorkerService : IHttpWorkerService
     {
         private readonly HttpClient _httpClient;
         private readonly HttpWorkerOptions _httpWorkerOptions;

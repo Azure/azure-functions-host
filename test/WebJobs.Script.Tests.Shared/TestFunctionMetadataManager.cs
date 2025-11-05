@@ -13,7 +13,7 @@ using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public static class TestFunctionMetadataManager
+    internal static class TestFunctionMetadataManager
     {
         public static FunctionMetadataManager GetFunctionMetadataManager(IOptions<ScriptJobHostOptions> jobHostOptions, IFunctionMetadataProvider functionMetadataProvider, ILoggerFactory loggerFactory, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
         {

@@ -17,7 +17,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    public class WebHostRpcWorkerChannelManager : IWebHostRpcWorkerChannelManager
+    internal class WebHostRpcWorkerChannelManager : IWebHostRpcWorkerChannelManager
     {
         private readonly ILogger _logger = null;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;

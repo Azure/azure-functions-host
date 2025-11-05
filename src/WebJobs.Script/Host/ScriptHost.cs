@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IWorkerFunctionDescriptorProviderFactory _descriptorProviderFactory;
-        private readonly IScriptHostLifetime _scriptHostLifetime;
+        private readonly IEnumerable<IScriptHostLifecycleService> _scriptHostLifecycleServices;
         private readonly IOptions<FunctionMetadataOptions> _metadataOptions;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private readonly ILogger _logger;
@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             IWorkerFunctionDescriptorProviderFactory descriptorProviderFactory,
-            IScriptHostLifetime scriptHostLifetime,
+            IEnumerable<IScriptHostLifecycleService> scriptHostLifecycleServices,
             IOptions<FunctionMetadataOptions> metadataOptions,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _functionDataCache = functionDataCache;
             _hostingConfigOptions = hostingConfigOptions;
             _descriptorProviderFactory = descriptorProviderFactory;
-            _scriptHostLifetime = scriptHostLifetime;
+            _scriptHostLifecycleServices = scriptHostLifecycleServices;
             _metadataOptions = metadataOptions;
         }
 
@@ -320,7 +320,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
 
-                await _scriptHostLifetime.InitializedAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
+                await ForeachLifecycleService(_scriptHostLifecycleServices, cancellationToken, async (service, token) =>
+                {
+                    await service.InitializedAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), token);
+                });
 
                 GenerateFunctions();
                 ScheduleFileSystemCleanup();
@@ -1064,11 +1067,28 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger.ScriptHostStarted((long)_stopwatch.GetElapsedTime().TotalMilliseconds);
         }
 
+        internal async Task NotifyStoppingAsync(CancellationToken cancellationToken)
+        {
+            await ForeachLifecycleService(_scriptHostLifecycleServices, cancellationToken, async (service, token) =>
+            {
+                await service.StoppingAsync(token);
+            });
+        }
+
         protected override async Task StopAsyncCore(CancellationToken cancellationToken)
         {
             _logger.StoppingScriptHost(ScriptOptions.InstanceId);
             await base.StopAsyncCore(cancellationToken);
             _logger.StoppedScriptHost(ScriptOptions.InstanceId);
+        }
+
+        private static async Task ForeachLifecycleService(IEnumerable<IScriptHostLifecycleService> services, CancellationToken token,
+            Func<IScriptHostLifecycleService, CancellationToken, Task> operation)
+        {
+            foreach (var service in services)
+            {
+                await operation(service, token);
+            }
         }
 
         protected override void Dispose(bool disposing)

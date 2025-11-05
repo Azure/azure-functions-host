@@ -1,11 +1,11 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
-    public class HttpScriptInvocationResult
+    internal class HttpScriptInvocationResult
     {
         public object ReturnValue { get; set; }
 

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
     /// <summary>
     /// Throttle provider that monitors the health of OOP worker channels.
     /// </summary>
-    public class WorkerChannelThrottleProvider : IConcurrencyThrottleProvider
+    internal class WorkerChannelThrottleProvider : IConcurrencyThrottleProvider
     {
         private readonly IServiceProvider _serviceProvider;
 

@@ -6,7 +6,7 @@ using System.Net.Sockets;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public static class WorkerUtilities
+    internal static class WorkerUtilities
     {
         public static int GetUnusedTcpPort()
         {

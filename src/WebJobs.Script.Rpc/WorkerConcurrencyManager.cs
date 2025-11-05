@@ -9,7 +9,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -21,7 +20,7 @@ using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public class WorkerConcurrencyManager : IHostedService, IDisposable
+    internal class WorkerConcurrencyManager : IHostedService, IDisposable
     {
         private readonly TimeSpan _logStateInterval = TimeSpan.FromSeconds(60);
         private readonly ILogger _logger;

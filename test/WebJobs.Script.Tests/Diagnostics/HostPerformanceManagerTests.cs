@@ -123,11 +123,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 workerStatuses.Add(Guid.NewGuid().ToString(), workerStatus);
             }
 
-            var mockWorkerManager = new Mock<IWorkerManager>(MockBehavior.Strict);
-            mockWorkerManager.Setup(p => p.GetWorkerStatusesAsync()).ReturnsAsync(workerStatuses);
+            var mockWorkerManager = new Mock<IScriptHostWorkerManager>(MockBehavior.Strict);
+            mockWorkerManager.Setup(p => p.GetWorkerStatusesAsync()).Returns(Task.CompletedTask);
             var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var scriptHostManagerServiceProviderMock = mockScriptHostManager.As<IServiceProvider>();
-            scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IWorkerManager))).Returns(mockWorkerManager.Object);
+            scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IScriptHostWorkerManager))).Returns(mockWorkerManager.Object);
             scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IConcurrencyThrottleManager))).Returns(mockConcurrencyThrottleManager.Object);
             _serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(mockScriptHostManager.Object);
 

@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
-    public class HttpWorkerOptions : IOptionsFormatter
+    internal class HttpWorkerOptions : IOptionsFormatter
     {
         private int? _port;
 

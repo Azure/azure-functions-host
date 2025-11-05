@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    public interface IJobHostRpcWorkerChannelManager
+    internal interface IJobHostRpcWorkerChannelManager
     {
         void AddChannel(IRpcWorkerChannel channel, string language);
 

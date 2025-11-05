@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -10,7 +10,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
-    public static class HttpScriptInvocationResultExtensions
+    internal static class HttpScriptInvocationResultExtensions
     {
         public static ScriptInvocationResult ToScriptInvocationResult(this HttpScriptInvocationResult httpScriptInvocationResult, ScriptInvocationContext scriptInvocationContext)
         {

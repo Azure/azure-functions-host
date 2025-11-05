@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
     /// <summary>
     /// Route mapping for a custom handler HTTP worker.
     /// </summary>
-    public sealed class HttpWorkerRoute
+    internal sealed class HttpWorkerRoute
     {
         /// <summary>
         /// Gets or sets route template.
