@@ -128,6 +128,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             return builder;
         }
 
+        /// <summary>
+        /// Adds a health check for the WebJobs storage account.
+        /// </summary>
+        /// <param name="builder">The builder to register health checks with.</param>
+        /// <returns>The original builder, for call chaining.</returns>
         public static IHealthChecksBuilder AddWebJobsStorageHealthCheck(this IHealthChecksBuilder builder)
         {
             ArgumentNullException.ThrowIfNull(builder);

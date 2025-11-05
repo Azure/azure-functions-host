@@ -125,7 +125,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         public void AddWebJobsStorageHealthCheck_RegistersWebJobsStorageHealthCheck()
         {
             // arrange
+            ServiceCollection services = new();
             Mock<IHealthChecksBuilder> builder = new(MockBehavior.Strict);
+            builder.Setup(b => b.Services).Returns(services);
             builder.Setup(b => b.Add(It.IsAny<HealthCheckRegistration>())).Returns(builder.Object);
 
             // act
@@ -136,7 +138,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             builder.Verify(b => b.Add(IsRegistration<WebJobsStorageHealthCheck>(
                 HealthCheckNames.WebJobsStorage, HealthCheckTags.Configuration)),
                 Times.Once);
+            builder.Verify(b => b.Services, Times.AtLeastOnce);
             builder.VerifyNoOtherCalls();
+            services.Should().ContainSingle()
+                .Which.Should().Satisfy<ServiceDescriptor>(sd =>
+                {
+                    sd.Lifetime.Should().Be(ServiceLifetime.Singleton);
+                    sd.ServiceType.Should().Be<WebJobsStorageHealthCheck>();
+                    sd.ImplementationType.Should().Be<WebJobsStorageHealthCheck>();
+                });
         }
 
         [Fact]

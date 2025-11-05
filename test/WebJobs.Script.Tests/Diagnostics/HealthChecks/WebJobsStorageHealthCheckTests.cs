@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             // Assert
             result.Status.Should().Be(HealthStatus.Unhealthy);
             result.Exception.Should().Be(ex);
-            result.Data.Should().Contain("Source", "configuration");
+            result.Data.Should().Contain("Area", "configuration");
             result.Data.Should().Contain("ConfigurationSection", "AzureWebJobsStorage");
         }
 
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             result.Status.Should().Be(HealthStatus.Unhealthy);
             result.Exception.Should().Be(rfe);
             result.Description.Should().Be("Unable to access AzureWebJobsStorage");
-            result.Data.Should().Contain("Source", "connectivity");
+            result.Data.Should().Contain("Area", "connectivity");
             result.Data.Should().Contain("ConfigurationSection", "AzureWebJobsStorage");
             result.Data.Should().Contain("StatusCode", 401);
             result.Data.Should().Contain("ErrorCode", "SomeErrorCode");
