@@ -68,13 +68,12 @@ namespace System
                 var redacted = GetRedactedExceptionMessage(remoteMsg);
 
                 var innerExceptionMessage = string.IsNullOrWhiteSpace(originalMessage)
-                            ? string.Empty
-                            : Sanitizer.Sanitize(originalMessage.Replace(remoteMsg, redacted, StringComparison.Ordinal));
-
+                    ? string.Empty
+                    : Sanitizer.Sanitize(originalMessage.Replace(remoteMsg, redacted, StringComparison.Ordinal));
 
                 var detailsSanitized = string.IsNullOrWhiteSpace(formattedDetails)
-                            ? string.Empty
-                            : Sanitizer.Sanitize(formattedDetails.Replace(remoteMsg, redacted, StringComparison.Ordinal));
+                    ? string.Empty
+                    : Sanitizer.Sanitize(formattedDetails.Replace(remoteMsg, redacted, StringComparison.Ordinal));
 
                 return (innerType, innerExceptionMessage, detailsSanitized, formattedMessage);
             }

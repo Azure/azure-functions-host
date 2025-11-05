@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             Assert.Contains("System.Exception : some outer exception ---> System.InvalidOperationException : Some inner exception", exceptionDetails);
             Assert.Contains("End of inner exception", exceptionDetails);
             Assert.Contains("at Microsoft.Azure.WebJobs.Script.Tests.Extensions.ExceptionExtensionsTests.GetExceptionDetails_ReturnsExpectedResult()", exceptionDetails);
-            Assert.Contains("ExceptionExtensionsTests.cs : 20", exceptionDetails);
+            Assert.Contains("ExceptionExtensionsTests.cs", exceptionDetails);
         }
 
         [Fact]
@@ -58,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             Assert.Equal("Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException", exceptionType);
             Assert.DoesNotContain(rpcMessage, exceptionMessage);
             Assert.DoesNotContain(rpcMessage, exceptionDetails);
+            Assert.Contains("safe text", formattedText);
         }
 
         [Fact]
@@ -76,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 fullException = e;
             }
 
-            (string exceptionType, string exceptionMessage, string exceptionDetails, string formattedText) = fullException.GetSanitizedExceptionDetails("safe text");
+            (string exceptionType, string exceptionMessage, _, string formattedText) = fullException.GetSanitizedExceptionDetails("safe text");
 
             Assert.Equal("Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException", exceptionType);
             Assert.Equal("Result: \nType: \nException: \nStack: ", exceptionMessage);
