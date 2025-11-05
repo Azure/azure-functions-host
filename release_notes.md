@@ -5,3 +5,4 @@
 -->
 - Adding a "web app" configuration profile (#11447)
 - Add JitTrace Files for v4.1045
+- Adding empty remote message check in the SystemLogger (#11473)
