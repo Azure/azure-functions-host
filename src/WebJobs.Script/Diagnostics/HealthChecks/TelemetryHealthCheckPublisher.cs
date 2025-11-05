@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         public TelemetryHealthCheckPublisher(
             HealthCheckMetrics metrics,
             TelemetryHealthCheckPublisherOptions options,
-            ILogger<TelemetryHealthCheckPublisher> logger)
+            [ForwardingLogger] ILogger<TelemetryHealthCheckPublisher> logger)
         {
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
             _options = options ?? throw new ArgumentNullException(nameof(options));

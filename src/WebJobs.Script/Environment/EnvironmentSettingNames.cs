@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsAgent = "APPLICATIONINSIGHTS_ENABLE_AGENT";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
         public const string FunctionWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME";
+        public const string WorkerProbingPaths = "WORKER_PROBING_PATHS";
         public const string ContainerName = "CONTAINER_NAME";
         public const string WebsitePodName = "WEBSITE_POD_NAME";
         public const string LegionServiceHost = "LEGION_SERVICE_HOST";
@@ -85,6 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FunctionsTargetGroup = "FUNCTIONS_TARGET_GROUP";
         public const string WebsiteArmResourceId = "WEBSITE_ARM_RESOURCE_ID";
         public const string FunctionsDisableInProc = "FUNCTIONS_DISABLE_INPROC";
+        public const string ResourceGroup = "WEBSITE_RESOURCE_GROUP";
+        public const string WebsiteOwnerName = "WEBSITE_OWNER_NAME";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";
@@ -154,6 +157,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresComputerName = "COMPUTERNAME";
 
         public const string AppKind = "APP_KIND";
+
+        public const string LogicAppCodefulModeEnabled = "WORKFLOW_CODEFUL_ENABLED";
 
         public const string DrainOnApplicationStopping = "FUNCTIONS_ENABLE_DRAIN_ON_APP_STOPPING";
     }

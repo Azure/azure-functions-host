@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
@@ -33,5 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
         // AI
         internal const string AISDKPrefix = "ai.sdk.prefix";
+
+        // Deployment
+        internal const string DeploymentEnvironmentName = "deployment.environment.name";
     }
 }

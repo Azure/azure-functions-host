@@ -3,7 +3,6 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Python Worker Version to [4.40.2](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.40.2)
-- Add JitTrace Files for v4.1044
+- Adding a "web app" configuration profile (#11447)
+- Add JitTrace Files for v4.1045
 - Throw exception instead of timing out when worker channel exits before initializing gRPC (#10937)
-- Avoid emitting empty tag values for health check metrics (#11393)

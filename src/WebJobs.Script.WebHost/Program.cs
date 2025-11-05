@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -88,6 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     loggingBuilder.AddDefaultWebJobsFilters();
                     loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
+                    loggingBuilder.AddForwardingLogger();
                     loggingBuilder.Services.AddSingleton<DeferredLoggerProvider>();
                     loggingBuilder.Services.AddSingleton<ILoggerProvider>(s => s.GetRequiredService<DeferredLoggerProvider>());
                     loggingBuilder.Services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();

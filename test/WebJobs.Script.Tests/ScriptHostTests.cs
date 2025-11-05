@@ -35,7 +35,7 @@ using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMeta
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class ScriptHostTests : IClassFixture<ScriptHostTests.TestFixture>
+    public class ScriptHostTests : IClassFixture<ScriptHostTests.TestFixture>, IDisposable
     {
         private const string ID = "5a709861cab44e68bfed5d2c2fe7fc0c";
         private readonly TestFixture _fixture;
@@ -47,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ScriptHostTests(TestFixture fixture)
         {
+            EnvironmentExtensions.ClearCache();
             Utility.ColdStartDelayMS = 50;
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
@@ -1773,6 +1774,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Empty(diagnosticEventRepository.Events);
                 Assert.Empty(testLoggerProvider.GetAllLogMessages().Where(m => m.Level == LogLevel.Warning));
             }
+        }
+
+        public void Dispose()
+        {
+            EnvironmentExtensions.ClearCache();
         }
 
         public class AssemblyMock : Assembly

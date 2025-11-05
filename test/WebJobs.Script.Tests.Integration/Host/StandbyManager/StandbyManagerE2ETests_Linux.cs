@@ -70,8 +70,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(typeof(LinuxContainerLegionMetricsPublisher), webHost.Services.GetRequiredService<IMetricsPublisher>().GetType());
         }
 
-        [Fact]
-        public async Task StandbyModeE2E_LinuxContainer()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task StandbyModeE2E_LinuxContainer(bool useEncryptedPayload)
         {
             byte[] bytes = TestHelpers.GenerateKeyBytes();
             var encryptionKey = Convert.ToBase64String(bytes);
@@ -114,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await VerifyWarmupSucceeds(restart: true);
 
             // now specialize the site
-            await Assign(encryptionKey);
+            await Assign(encryptionKey, useEncryptedPayload);
 
             // immediately call a function - expect the call to block until
             // the host is fully specialized
@@ -240,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         }
 
-        private async Task Assign(string encryptionKey)
+        private async Task Assign(string encryptionKey, bool useEncryptedPayload)
         {
             // create a zip package
             var testFunctionPath = Path.Combine("TestScripts", "Node", "HttpTrigger");
@@ -260,32 +262,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string uri = "admin/instance/assign";
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
             var environment = new Dictionary<string, string>()
-                {
-                    { EnvironmentSettingNames.AzureWebsiteZipDeployment, sasUri.ToString() },
-                    { RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "~2" },
-                    { EnvironmentSettingNames.FunctionWorkerRuntime, "node" }
-                };
+            {
+                { EnvironmentSettingNames.AzureWebsiteZipDeployment, sasUri.ToString() },
+                { RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "~2" },
+                { EnvironmentSettingNames.FunctionWorkerRuntime, "node" }
+            };
             var assignmentContext = new HostAssignmentContext
             {
                 SiteId = 1234,
                 SiteName = "TestApp",
                 Environment = environment
             };
-            var encryptedAssignmentContext = CreateEncryptedContext(assignmentContext, encryptionKey);
-            string json = JsonConvert.SerializeObject(encryptedAssignmentContext);
+            var hostAssignmentRequest = CreateHostAssignmentRequest(assignmentContext, encryptionKey, useEncryptedPayload);
+            string json = JsonConvert.SerializeObject(hostAssignmentRequest);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
             var response = await _httpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         }
 
-        private static EncryptedHostAssignmentContext CreateEncryptedContext(HostAssignmentContext context, string key)
+        private static HostAssignmentRequest CreateHostAssignmentRequest(HostAssignmentContext context, string key, bool useEncryptedPayload)
         {
+            if (!useEncryptedPayload)
+            {
+                return new HostAssignmentRequest { AssignmentContext = context };
+            }
+
             string json = JsonConvert.SerializeObject(context);
             var encryptionKey = Convert.FromBase64String(key);
             string encrypted = EncryptionHelper.Encrypt(json, encryptionKey);
-
-            return new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
+            return new HostAssignmentRequest { EncryptedContext = encrypted };
         }
     }
 }
