@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    internal class FunctionInvocationDispatcherFactory : IFunctionInvocationDispatcherFactory
+    internal class FunctionInvocationDispatcherFactory : IFunctionInvocationDispatcherFactory, IDisposable
     {
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
 
@@ -65,5 +65,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         }
 
         public IFunctionInvocationDispatcher GetFunctionDispatcher() => _functionDispatcher;
+
+        public void Dispose()
+        {
+            // This is a "provider" rather than a "factory". We are responsible for disposing.
+            _functionDispatcher.Dispose();
+        }
     }
 }

@@ -1082,8 +1082,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     subscription.Dispose();
                 }
 
-                //_functionDispatcher?.Dispose();
-
                 foreach (var function in Functions)
                 {
                     (function.Invoker as IDisposable)?.Dispose();
