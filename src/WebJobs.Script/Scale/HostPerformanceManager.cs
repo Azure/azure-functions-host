@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -108,14 +109,14 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
             // remove this
             await Task.Yield();
 
-            //var dispatcher = GetDispatcherOrNull();
-            //if (dispatcher != null)
-            //{
-            //    // TEMP: This call pings all the OOP workers, to ensure we include any channel latency
-            //    // in the upstream ping result.
-            //    // Once the WorkerChannelThrottleProvider is fully implemented, this call can be removed.
-            //    await dispatcher.GetWorkerStatusesAsync();
-            //}
+            var workerManager = _serviceProvider.GetScriptHostServiceOrNull<IWorkerManager>();
+            if (workerManager != null)
+            {
+                // TEMP: This call pings all the OOP workers, to ensure we include any channel latency
+                // in the upstream ping result.
+                // Once the WorkerChannelThrottleProvider is fully implemented, this call can be removed.
+                await workerManager.GetWorkerStatusesAsync();
+            }
 
             // ThrottleManager internally consults various throttle providers that check
             // Host/Worker CPU health, ThreadPool health, as well as OOP worker channel health.
@@ -207,19 +208,5 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         {
             Dispose(true);
         }
-
-        //private IFunctionInvocationDispatcher GetDispatcherOrNull()
-        //{
-        //    var dispatcherFactory = _serviceProvider.GetScriptHostServiceOrNull<IFunctionInvocationDispatcherFactory>();
-        //    if (dispatcherFactory != null)
-        //    {
-        //        var dispatcher = dispatcherFactory.GetFunctionDispatcher();
-        //        if (dispatcher.State == FunctionInvocationDispatcherState.Initialized)
-        //        {
-        //            return dispatcher;
-        //        }
-        //    }
-        //    return null;
-        //}
     }
 }
