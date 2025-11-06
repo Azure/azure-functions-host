@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
     internal static class HealthCheckTags
     {
         private const string FuncPrefix = "azure.functions.";
-        private const string WebJobsPrefix = "azure.web_jobs.";
+        private const string WebJobsPrefix = FuncPrefix + "web_jobs.";
 
         /// <summary>
         /// The 'azure.functions.liveness' tag is used for liveness checks in the Azure Functions host.
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         public const string Connectivity = FuncPrefix + "connectivity";
 
         /// <summary>
-        /// The "azure.web_jobs.storage" tag is used for health checks related to the WebJobs storage account.
+        /// The "azure.functions.web_jobs.storage" tag is used for health checks related to the WebJobs storage account.
         /// </summary>
         public const string WebJobsStorage = WebJobsPrefix + "storage";
     }
