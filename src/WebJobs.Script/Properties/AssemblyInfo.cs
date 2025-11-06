@@ -1,8 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Reflection;
-using System.Resources;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -15,7 +13,6 @@ using System.Runtime.InteropServices;
 
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Benchmarks")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Grpc")]
-[assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Rpc")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.WebHost")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.WebHost.Core")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests")]
