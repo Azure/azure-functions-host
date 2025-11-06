@@ -1,8 +1,8 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -90,7 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         }
     }
 
-    public enum JobObjectInfoType
+    [SuppressMessage("StyleCop.CSharp.OrderingRules", "SA1201:Elements must appear in the correct order")]
+    internal enum JobObjectInfoType
     {
         AssociateCompletionPortInformation = 7,
         BasicLimitInformation = 2,
@@ -126,8 +127,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public uint SchedulingClass;
     }
 
+    [SuppressMessage("StyleCop.CSharp.NamingRules", "SA1307:Accessible fields must begin with upper-case letter")]
     [StructLayout(LayoutKind.Sequential)]
-    public struct SECURITY_ATTRIBUTES
+    internal struct SECURITY_ATTRIBUTES
     {
         public uint nLength;
         public IntPtr lpSecurityDescriptor;

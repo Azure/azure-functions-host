@@ -1,3 +1,6 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,11 +10,11 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc;
 
-internal class RpcScriptHostLifetime : IScriptHostLifecycleService
+internal class RpcScriptHostLifecycleService : IScriptHostLifecycleService
 {
     private readonly IFunctionInvocationDispatcher _dispatcher;
 
-    public RpcScriptHostLifetime(IFunctionInvocationDispatcherFactory dispatcherFactory)
+    public RpcScriptHostLifecycleService(IFunctionInvocationDispatcherFactory dispatcherFactory)
     {
         _dispatcher = dispatcherFactory.GetFunctionDispatcher();
     }

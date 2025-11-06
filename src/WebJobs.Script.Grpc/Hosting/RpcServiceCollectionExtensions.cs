@@ -52,7 +52,7 @@ public static class RpcServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
 
         services.AddSingleton<IWorkerFunctionDescriptorProviderFactory, RpcWorkerFunctionDescriptorProviderFactory>();
-        services.AddSingleton<IScriptHostLifecycleService, RpcScriptHostLifetime>();
+        services.AddSingleton<IScriptHostLifecycleService, RpcScriptHostLifecycleService>();
         services.AddSingleton<IScriptHostWorkerManager, RpcScriptHostWorkerManager>();
 
         return services;
