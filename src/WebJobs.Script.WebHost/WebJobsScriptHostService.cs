@@ -676,7 +676,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // It's important to prevent any new workers from starting on the orphaned host. The
             // only way to guarantee this is to signal to the dispatcher that it's done with process
             // creation before we begin a new host.
-            return (previousHost as ScriptHost)?.NotifyStoppingAsync(cancellationToken) ?? Task.CompletedTask;
+            var scriptHost = previousHost.Services.GetService<ScriptHost>();
+            return scriptHost?.NotifyStoppingAsync(cancellationToken) ?? Task.CompletedTask;
         }
 
         internal bool ShouldEnforceSequentialRestart(IHost host = null)
