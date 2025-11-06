@@ -706,6 +706,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public void PreShutdown()
         {
+            // It's important to prevent any new workers from starting on the orphaned host. The
+            // only way to guarantee this is to signal to the dispatcher that it's done with process
+            // creation before we begin a new host.
             _logger.LogDebug($"Preventing any new worker processes from starting during shutdown.");
             _processStartCancellationToken.Cancel();
             if (_hostingConfigOptions.Value.ShutdownWebhostWorkerChannelsOnHostShutdown && !_scriptOptions.IsStandbyConfiguration)

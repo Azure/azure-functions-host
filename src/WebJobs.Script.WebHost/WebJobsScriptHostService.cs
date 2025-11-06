@@ -673,10 +673,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // problematic to run side-by-side with the new host that is starting.
         private static Task NotifyHostStoppingAsync(IHost previousHost, CancellationToken cancellationToken)
         {
-            // It's important to prevent any new workers from starting on the orphaned host. The
-            // only way to guarantee this is to signal to the dispatcher that it's done with process
-            // creation before we begin a new host.
-            var scriptHost = previousHost.Services.GetService<ScriptHost>();
+            var scriptHost = previousHost?.Services?.GetService<ScriptHost>();
             return scriptHost?.NotifyStoppingAsync(cancellationToken) ?? Task.CompletedTask;
         }
 
