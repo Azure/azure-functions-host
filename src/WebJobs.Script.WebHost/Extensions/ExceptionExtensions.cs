@@ -63,15 +63,17 @@ namespace System
             var formattedDetails = exception.ToFormattedString();
 
             if (exception is FunctionInvocationException && baseException is RpcException { RemoteMessage: var remoteMsg }
-                && remoteMsg is not null)
+                && !string.IsNullOrWhiteSpace(remoteMsg))
             {
                 var redacted = GetRedactedExceptionMessage(remoteMsg);
 
-                var innerExceptionMessage = Sanitizer.Sanitize(
-                    originalMessage.Replace(remoteMsg, redacted, StringComparison.Ordinal));
+                var innerExceptionMessage = string.IsNullOrWhiteSpace(originalMessage)
+                    ? string.Empty
+                    : Sanitizer.Sanitize(originalMessage.Replace(remoteMsg, redacted, StringComparison.Ordinal));
 
-                var detailsSanitized = Sanitizer.Sanitize(
-                    formattedDetails.Replace(remoteMsg, redacted, StringComparison.Ordinal));
+                var detailsSanitized = string.IsNullOrWhiteSpace(formattedDetails)
+                    ? string.Empty
+                    : Sanitizer.Sanitize(formattedDetails.Replace(remoteMsg, redacted, StringComparison.Ordinal));
 
                 return (innerType, innerExceptionMessage, detailsSanitized, formattedMessage);
             }
