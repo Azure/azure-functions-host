@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             builder.Services.TryAddSingleton<WebJobsStorageHealthCheck>();
             builder.AddCheck<WebJobsStorageHealthCheck>(
                 HealthCheckNames.WebJobsStorage,
-                tags: [HealthCheckTags.Configuration, HealthCheckTags.WebJobsStorage],
+                tags: [HealthCheckTags.Configuration, HealthCheckTags.Connectivity, HealthCheckTags.WebJobsStorage],
                 timeout: TimeSpan.FromSeconds(10));
             return builder;
         }

@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             // assert
             returned.Should().BeSameAs(builder.Object);
             builder.Verify(b => b.Add(IsRegistration<WebJobsStorageHealthCheck>(
-                HealthCheckNames.WebJobsStorage, HealthCheckTags.Configuration)),
+                HealthCheckNames.WebJobsStorage, HealthCheckTags.Configuration, HealthCheckTags.Connectivity, HealthCheckTags.WebJobsStorage)),
                 Times.Once);
             builder.Verify(b => b.Services, Times.AtLeastOnce);
             builder.VerifyNoOtherCalls();
@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             VerifyDynamicHealthCheckService(services);
         }
 
-        private static HealthCheckRegistration IsRegistration<T>(string name, string tag)
+        private static HealthCheckRegistration IsRegistration<T>(string name, params string[] tags)
             where T : IHealthCheck
         {
             static bool IsType(HealthCheckRegistration registration)
@@ -304,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
 
             return Match.Create<HealthCheckRegistration>(r =>
             {
-                return r.Name == name && r.Tags.Contains(tag) && IsType(r);
+                return r.Name == name && tags.All(t => r.Tags.Contains(t)) && IsType(r);
             });
         }
 

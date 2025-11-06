@@ -36,6 +36,14 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         public const string Configuration = FuncPrefix + "configuration";
 
         /// <summary>
+        /// The 'azure.functions.connectivity' tag is used for connectivity-related health checks in the Azure Functions host.
+        /// </summary>
+        /// <remarks>
+        /// These are typically related to connectivity to external services, such as Azure Storage.
+        /// </remarks>
+        public const string Connectivity = FuncPrefix + "connectivity";
+
+        /// <summary>
         /// The "azure.web_jobs.storage" tag is used for health checks related to the WebJobs storage account.
         /// </summary>
         public const string WebJobsStorage = WebJobsPrefix + "storage";
