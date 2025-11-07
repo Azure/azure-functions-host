@@ -106,9 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
 
         internal async Task<bool> ProcessThresholdsExceeded(ILogger logger = null)
         {
-            // remove this
-            await Task.Yield();
-
             var workerManager = _serviceProvider.GetScriptHostServiceOrNull<IScriptHostWorkerManager>();
             if (workerManager != null)
             {

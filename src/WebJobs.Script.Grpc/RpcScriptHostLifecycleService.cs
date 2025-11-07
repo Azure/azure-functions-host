@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.Rpc;
 
-internal class RpcScriptHostLifecycleService : IScriptHostLifecycleService
+internal sealed class RpcScriptHostLifecycleService : IScriptHostLifecycleService
 {
     private readonly IFunctionInvocationDispatcher _dispatcher;
 

@@ -6,7 +6,9 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -20,21 +22,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestFixture Fixture { get; set; }
 
+        [Fact]
+        public async Task WorkerStatus_NewWorkerAdded()
+        {
+            RpcFunctionInvocationDispatcher fd = null;
+            IEnumerable<IRpcWorkerChannel> channels = null;
 
-        // TODO: (OOP - Refactor) - Review this
-        //[Fact]
-        //public async Task WorkerStatus_NewWorkerAdded()
-        //{
-        //    RpcFunctionInvocationDispatcher fd = null;
-        //    IEnumerable<IRpcWorkerChannel> channels = null;
-
-        //    await TestHelpers.Await(async () =>
-        //    {
-        //        fd = Fixture.JobHost.FunctionDispatcher as RpcFunctionInvocationDispatcher;
-        //        channels = await fd.GetInitializedWorkerChannelsAsync();
-        //        return channels.Count() == 2;
-        //    }, pollingInterval: 1000, timeout: 120 * 1000);
-        //}
+            await TestHelpers.Await(async () =>
+            {
+                IFunctionInvocationDispatcherFactory factory = Fixture.Host.Services.GetService<IFunctionInvocationDispatcherFactory>();
+                fd = factory.GetFunctionDispatcher() as RpcFunctionInvocationDispatcher;
+                channels = await fd.GetInitializedWorkerChannelsAsync();
+                return channels.Count() == 2;
+            }, pollingInterval: 1000, timeout: 120 * 1000);
+        }
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {
@@ -63,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 try
                 {
                     _scriptEventManager.Publish(scriptEvent);
-                } 
+                }
                 catch (ObjectDisposedException)
                 {
                     // Do no throw ObjectDisposedException
