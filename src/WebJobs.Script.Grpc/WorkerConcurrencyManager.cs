@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.AppService.Proxy.Common.Infra;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -146,7 +147,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 // don't allow background exceptions to escape
                 _logger.LogError(ex, "Error monitoring worker concurrency");
             }
-            _timer.Start();
+
+            try
+            {
+                _timer.Start();
+            }
+            catch (ObjectDisposedException)
+            {
+                // ignore this as disposal can happen while this method was running
+            }
         }
 
         private void Activate()
