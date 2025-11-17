@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly HostNameProvider _hostNameProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
         private readonly IOptions<AzureMonitorLoggingOptions> _azureMonitorLoggingOptions;
+        private readonly int _pid = Environment.ProcessId;
         private ILinuxAppServiceFileLogger _functionsExecutionEventsCategoryLogger;
         private ILinuxAppServiceFileLogger _functionsLogsCategoryLogger;
         private ILinuxAppServiceFileLogger _functionsMetricsCategoryLogger;
@@ -45,9 +46,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal ILinuxAppServiceFileLogger FunctionsDetailsCategoryLogger => _functionsDetailsCategoryLogger;
 
-        public static string TraceEventRegex { get; } = "(?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<HostName>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*)";
+        public static string TraceEventRegex { get; } = "(?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<HostName>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*),(?<ProcessId>[^,\"]*)";
 
-        public static string MetricEventRegex { get; } = "(?<SubscriptionId>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Average>\\d*),(?<Min>\\d*),(?<Max>\\d*),(?<Count>\\d*),(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<Details>[^,\"]*)";
+        public static string MetricEventRegex { get; } = "(?<SubscriptionId>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Average>\\d*),(?<Min>\\d*),(?<Max>\\d*),(?<Count>\\d*),(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<Details>[^,\"]*),(?<ProcessId>[^,\"]*)";
 
         public static string DetailsEventRegex { get; } = "(?<AppName>[^,]*),(?<FunctionName>[^,]*),\"(?<InputBindings>.*)\",\"(?<OutputBindings>.*)\",(?<ScriptType>[^,]*),(?<IsDisabled>[0|1])";
 
@@ -64,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             var hostName = _hostNameProvider.Value;
             using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
             {
-                WriteEvent(_functionsLogsCategoryLogger, $"{(int)ToEventLevel(level)},{subscriptionId},{hostName},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
+                WriteEvent(_functionsLogsCategoryLogger, $"{(int)ToEventLevel(level)},{subscriptionId},{hostName},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId},{_pid}");
             }
         }
 
@@ -72,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
             var hostVersion = ScriptHost.Version;
-            WriteEvent(_functionsMetricsCategoryLogger, $"{subscriptionId},{appName},{functionName},{eventName},{average},{minimum},{maximum},{count},{hostVersion},{eventTimestamp.ToString(EventTimestampFormat)},{data}");
+            WriteEvent(_functionsMetricsCategoryLogger, $"{subscriptionId},{appName},{functionName},{eventName},{average},{minimum},{maximum},{count},{hostVersion},{eventTimestamp.ToString(EventTimestampFormat)},{data},{_pid}");
         }
 
         public override void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings,
