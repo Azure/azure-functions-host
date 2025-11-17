@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Internal.AntiSSRF;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -221,6 +222,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private async Task<string> ValidateAzureFilesContext(string connectionString, string contentShare)
         {
+            if (!URIValidate.InAzureStorageDomain(connectionString))
+            {
+                string message = "The client URI resolves to a non Azure Storage domain.";
+                _logger.LogError(new ArgumentException(message), nameof(ValidateAzureFilesContext));
+                return message;
+            }
+
             try
             {
                 var storageAccount = CloudStorageAccount.Parse(connectionString);

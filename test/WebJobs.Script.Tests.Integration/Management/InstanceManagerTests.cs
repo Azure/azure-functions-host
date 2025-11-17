@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -339,6 +339,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             context.IsWarmupRequest = false;
             bool result = _instanceManager.StartAssignment(context);
             Assert.False(result);
+        }
+
+        [Fact]
+        public async Task ValidateContext_InvalidZipUrl_WebsiteUseZip_ReturnsError1()
+        {
+            var environmentSettings = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.AzureFilesConnectionString, "http://invalid.test/invalid/dne" }
+            };
+
+            var environment = new TestEnvironment();
+            foreach (var (key, value) in environmentSettings)
+            {
+                environment.SetEnvironmentVariable(key, value);
+            }
+
+            var scriptWebEnvironment = new ScriptWebHostEnvironment(environment);
+
+            var loggerFactory = new LoggerFactory();
+            var loggerProvider = new TestLoggerProvider();
+            loggerFactory.AddProvider(loggerProvider);
+
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.NotFound
+                });
+
+            var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(),
+                new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object);
+
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environmentSettings,
+                IsWarmupRequest = false
+            };
+
+            string error = await instanceManager.ValidateContext(assignmentContext);
+            Assert.Equal("The client URI resolves to a non Azure Storage domain.", error);
+
+            var logs = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')", p),
+                p => Assert.StartsWith($"Will be using  app setting as zip url. IsWarmup: 'False'", p),
+                p => Assert.StartsWith("ValidateAzureFilesContext", p));
         }
 
         [Fact]
