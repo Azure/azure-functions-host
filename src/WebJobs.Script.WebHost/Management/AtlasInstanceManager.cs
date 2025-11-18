@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             IPackageDownloadHandler packageDownloadHandler) : base(httpClientFactory, webHostEnvironment,
             environment, logger, metricsLogger, meshServiceClient)
         {
-            _client = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _client = httpClientFactory?.CreateClient(AntiSSRFConstants.AntiSSRFHttpClientName) ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger;
@@ -182,6 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             string error = null;
             HttpResponseMessage response = null;
             long? contentLength = null;
+
             try
             {
                 if (!string.IsNullOrEmpty(blobUri))

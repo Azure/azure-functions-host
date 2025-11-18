@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             IBashCommandHandler bashCommandHandler, IEnvironment environment, IFileSystem fileSystem, ILogger<PackageDownloadHandler> logger,
             IMetricsLogger metricsLogger)
         {
-            _httpClient = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _httpClient = httpClientFactory?.CreateClient(AntiSSRFConstants.AntiSSRFHttpClientName) ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _managedIdentityTokenProvider = managedIdentityTokenProvider ?? throw new ArgumentNullException(nameof(managedIdentityTokenProvider));
             _bashCommandHandler = bashCommandHandler ?? throw new ArgumentNullException(nameof(bashCommandHandler));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
