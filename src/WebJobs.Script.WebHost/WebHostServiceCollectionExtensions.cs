@@ -1,6 +1,10 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.IO.Abstractions;
+using System.Net.Http;
+using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
@@ -37,11 +41,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Internal.AntiSSRF;
-using System;
-using System.IO.Abstractions;
-using System.Net.Http;
-using System.Runtime.InteropServices;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
