@@ -799,7 +799,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     bool payloadMatchesWorkerRuntime = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
                     if (!payloadMatchesWorkerRuntime)
                     {
-                        UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime);
+                        UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime, _environment.IsLogicApp());
                         throwOnWorkerRuntimeAndPayloadMetadataMismatch = false; // we do not want to throw an exception in this case
                     }
                 }
@@ -860,8 +860,14 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionDescriptors;
         }
 
-        private static void UpdateFunctionMetadataLanguageForDotnetAssembly(IEnumerable<FunctionMetadata> functions, string workerRuntime)
+        private static void UpdateFunctionMetadataLanguageForDotnetAssembly(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isLogicApp)
         {
+            if (isLogicApp)
+            {
+                // For Logic Apps, we want to keep the language as DotNetAssembly to avoid breaking changes.
+                return;
+            }
+
             foreach (var function in functions)
             {
                 if (function.Language == DotNetScriptTypes.DotNetAssembly)
