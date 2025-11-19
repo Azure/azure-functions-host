@@ -17,5 +17,6 @@ using System.Runtime.InteropServices;
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.WebHost.Core")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Integration")]
+[assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.WorkersIntegration")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Shared")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

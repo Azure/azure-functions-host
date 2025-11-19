@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "Microsoft.Azure.WebJobs.Script.Tests.WorkersIntegration": {
+      "commandName": "Project"
+    }
+  }
+}
