@@ -1180,7 +1180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(true, true)]
         [InlineData(true, false)]
         [InlineData(false, false)]
-        public void VerifyFunctionsMatchSpecifiedLanguage_NoThrow_For_HttpWorkerOrPlaceholderModeOrInitTaskCancelled(bool placeholderMode, bool httpWorker)
+        public void VerifyFunctionsMatchSpecifiedLanguage_NoThrow_For_DisabledValidationOrPlaceholderModeOrInitTaskCancelled(bool placeholderMode, bool shouldValidateRuntime)
         {
             FunctionMetadata funcJS1 = new FunctionMetadata()
             {
@@ -1191,14 +1191,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1
             };
             CancellationTokenSource cts = new CancellationTokenSource();
-            if (!placeholderMode && !httpWorker)
+            if (!placeholderMode && !shouldValidateRuntime)
             {
                 cts.Cancel();
-                Assert.Throws<OperationCanceledException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, httpWorker, cts.Token));
+                Assert.Throws<OperationCanceledException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, shouldValidateRuntime, cts.Token));
             }
             else
             {
-                Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, httpWorker, cts.Token);
+                Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, shouldValidateRuntime, cts.Token);
             }
         }
 

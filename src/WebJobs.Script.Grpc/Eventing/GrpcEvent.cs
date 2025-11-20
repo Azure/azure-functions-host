@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc.Eventing
 {
-    public class GrpcEvent : ScriptEvent
+    internal class GrpcEvent : ScriptEvent
     {
         internal GrpcEvent(string workerId, StreamingMessage message, MessageOrigin origin = MessageOrigin.Host)
             : base(message.ContentCase.ToString(), EventSources.Rpc)

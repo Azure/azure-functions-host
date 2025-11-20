@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Text;
@@ -10,10 +10,8 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Host;
-using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -47,8 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .ExpectFactory<ExternalConfigurationStartupValidatorService>()
                 .ExpectFactory<IFileMonitoringService>()
                 .Expect<WorkerConsoleLogService>()
-                .Expect<FunctionInvocationDispatcherShutdownManager>()
-                .Expect<WorkerConcurrencyManager>()
+                .OptionalExternal("Microsoft.Azure.WebJobs.Script.Workers.FunctionInvocationDispatcherShutdownManager", "Microsoft.Azure.WebJobs.Script.Grpc", null)
+                .OptionalExternal("Microsoft.Azure.WebJobs.Script.Workers.WorkerConcurrencyManager", "Microsoft.Azure.WebJobs.Script.Grpc", null)
                 .Optional<FunctionAppValidationService>() // Conditionally registered.
                 .Optional<FuncAppFileProvisioningService>() // Used by powershell.
                 .Optional<JobHostService>() // Missing when host is offline.

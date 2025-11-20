@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -15,7 +15,7 @@ using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class TestFunctionRpcService
+    internal class TestFunctionRpcService
     {
         private ILogger _logger;
         private string _workerId;

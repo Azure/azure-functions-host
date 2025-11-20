@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Metadata = new Dictionary<string, object>()
             };
 
-            ScriptInvocationContextExtensions.SetRetryContext(scriptInvocationContext, testContext);
+            RpcScriptInvocationContextExtensions.SetRetryContext(scriptInvocationContext, testContext);
 
             Assert.Empty(testContext.Metadata);
         }
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Data = new Dictionary<string, object>(),
                 Metadata = new Dictionary<string, object>()
             };
-            ScriptInvocationContextExtensions.SetRetryContext(context, testContext);
+            RpcScriptInvocationContextExtensions.SetRetryContext(context, testContext);
             var retryContext = (RetryContext)testContext.Metadata["RetryContext"];
             Assert.NotNull(retryContext);
             Assert.Equal(retryContext.RetryCount, context.ExecutionContext.RetryContext.RetryCount);

@@ -16,12 +16,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly ILogger _logger;
-        private readonly IFunctionInvocationDispatcherFactory _functionInvocationDispatcherFactory;
+        private readonly IScriptHostWorkerManager _workerManager;
 
-        public WebScriptHostExceptionHandler(IApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger, IFunctionInvocationDispatcherFactory functionInvocationDispatcherFactory)
+        public WebScriptHostExceptionHandler(IApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger, IScriptHostWorkerManager workerManager)
         {
             _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
-            _functionInvocationDispatcherFactory = functionInvocationDispatcherFactory;
+            _workerManager = workerManager;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -49,13 +49,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Task ignoreTask = _hostManager.StopAsync();
             // Give the manager and all running tasks some time to shut down gracefully.
             // await Task.Delay(timeoutGracePeriod);
-            IFunctionInvocationDispatcher functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
-            if (!functionInvocationDispatcher.State.Equals(FunctionInvocationDispatcherState.Default))
+            if (!_workerManager.State.Equals(WorkerManagerState.Default))
             {
                 _logger.LogWarning($"A function timeout has occurred. Restarting worker process executing invocationId '{timeoutException.InstanceId}'.", exceptionInfo.SourceException);
 
                 // If invocation id is not found in any of the workers => worker is already disposed. No action needed.
-                await functionInvocationDispatcher.RestartWorkerWithInvocationIdAsync(timeoutException.InstanceId.ToString(), timeoutException);
+                await _workerManager.RestartWorkerWithInvocationIdAsync(timeoutException.InstanceId.ToString(), timeoutException);
 
                 _logger.LogWarning("Attempt to restart language worker process(es) completed.", exceptionInfo.SourceException);
             }

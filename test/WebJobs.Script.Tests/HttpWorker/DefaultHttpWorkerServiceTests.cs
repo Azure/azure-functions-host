@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -18,7 +18,6 @@ using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
-using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
@@ -440,7 +439,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
         [Theory]
         [MemberData(nameof(TestLogs))]
-        public void ProcessOutputLogs_Succeeds(HttpScriptInvocationResult httpScriptInvocationResult)
+        internal void ProcessOutputLogs_Succeeds(HttpScriptInvocationResult httpScriptInvocationResult)
         {
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
 
@@ -470,7 +469,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         [InlineData("someFuntionName", CustomHandlerType.None, true, "someFuntionName", "localhost/api/hello")]
         [InlineData("someFuntionName", CustomHandlerType.None, false, "someFuntionName")]
         [InlineData("someFuntionName", CustomHandlerType.None, false, "someFuntionName", "localhost/api/hello")]
-        public void TestPathValue(string functionName, CustomHandlerType type, bool enableForwardingHttpRequest, string expectedValue, string hostValue = "localhost")
+        internal void TestPathValue(string functionName, CustomHandlerType type, bool enableForwardingHttpRequest, string expectedValue, string hostValue = "localhost")
         {
             HttpRequest testHttpRequest = HttpWorkerTestUtilities.GetTestHttpRequest(hostValue);
             HttpWorkerOptions testOptions = new HttpWorkerOptions
