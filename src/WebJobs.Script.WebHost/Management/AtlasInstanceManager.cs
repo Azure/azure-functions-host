@@ -224,8 +224,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             if (!URIValidate.InAzureStorageDomain(connectionString))
             {
-                string message = "The client URI resolves to a non Azure Storage domain.";
-                _logger.LogError(new ArgumentException(message), nameof(ValidateAzureFilesContext));
+                string message = "The Azure Files connection string resolves to a non Azure Storage domain.";
+                _logger.LogError(message);
                 return message;
             }
 

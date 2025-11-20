@@ -342,7 +342,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task ValidateContext_InvalidZipUrl_WebsiteUseZip_ReturnsError1()
+        public async Task ValidateContext_InvalidAzureFilesUrl_ReturnsError()
         {
             var environmentSettings = new Dictionary<string, string>()
             {
@@ -383,13 +383,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
 
             string error = await instanceManager.ValidateContext(assignmentContext);
-            Assert.Equal("The client URI resolves to a non Azure Storage domain.", error);
+            Assert.Equal("The Azure Files connection string resolves to a non Azure Storage domain.", error);
 
             var logs = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
                 p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')", p),
                 p => Assert.StartsWith($"Will be using  app setting as zip url. IsWarmup: 'False'", p),
-                p => Assert.StartsWith("ValidateAzureFilesContext", p));
+                p => Assert.StartsWith("The Azure Files connection string resolves to a non Azure Storage domain.", p));
         }
 
         [Fact]
