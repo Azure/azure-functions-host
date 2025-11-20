@@ -21,22 +21,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AppCapabilities
         public void Configure(AppCapabilitiesOptions options)
         {
             // Read from host.json under AzureFunctionsJobHost:capabilities section
+            /* Example:
+             * {
+                   "version": "2.0",
+                  "logging": {
+                    "applicationInsights": {
+                      "samplingSettings": {
+                        "isEnabled": true,
+                        "excludedTypes": "Request"
+                      },
+                      "enableLiveMetricsFilters": true
+                    }
+                  },
+                  "appCapabilities":
+                    {
+                    "mcp": {
+                      "endpoint": "https://mcp.microsoft.com"
+                    }
+                  }
+                }
+            */
             var jobHostCapabilitiesSection = _configuration.GetSection("AzureFunctionsJobHost:appCapabilities");
             if (jobHostCapabilitiesSection.Exists())
             {
                 AddCapabilitiesFromSection(options, jobHostCapabilitiesSection, CapabilitySourceNames.ConfigSource);
             }
 
-            // Read from app settings/environment variables under AzureFunctions:Capabilities section
-            var appCapabilitiesSection = _configuration.GetSection("AzureFunctions:appCapabilities");
-            if (appCapabilitiesSection.Exists())
-            {
-                AddCapabilitiesFromSection(options, appCapabilitiesSection, CapabilitySourceNames.ConfigSource);
-            }
-
-            // Read individual environment variables with FUNCTIONS_CAPABILITY_ prefix
-            // TODO: Define how to use environment variables
-            // AddCapabilitiesFromEnvironmentVariables(options);
+            // TODO: Do we want to include environment variables here? Need a design for that (consistent prefix, managing conflicts, etc.)
         }
 
         /// <summary>
@@ -57,28 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AppCapabilities
                 var metadata = ReadMetadata(child);
 
                 AddOrUpdateCapability(options, capabilityName, source, version, metadata);
-            }
-        }
-
-        /// <summary>
-        /// Adds capabilities from environment variables with the <c>FUNCTIONS_CAPABILITY_</c> prefix.
-        /// </summary>
-        /// <param name="options">The options to add capabilities to.</param>
-        private void AddCapabilitiesFromEnvironmentVariables(AppCapabilitiesOptions options)
-        {
-            const string prefix = "FUNCTIONS_CAPABILITY_";
-
-            foreach (var kvp in _configuration.AsEnumerable())
-            {
-                if (kvp.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && kvp.Value is not null)
-                {
-                    var capabilityName = kvp.Key[prefix.Length..];
-                    AddOrUpdateCapability(
-                        options,
-                        capabilityName,
-                        CapabilitySourceNames.ConfigSource,
-                        version: kvp.Value);
-                }
             }
         }
 
