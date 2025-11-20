@@ -163,6 +163,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        [Trait(TestTraits.Group, TestTraits.WebhookTests)]
+        public async Task ExtensionWebHook_AuthorizationLevelOverride_Succeeds()
+        {
+            // configure a mock webhook handler for the "test2" extension
+            // for which we've overridden the auth level to "Anonymous"
+            Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>> mockHandler = new Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>>(MockBehavior.Strict);
+            mockHandler.Setup(p => p.ConvertAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => new HttpResponseMessage(HttpStatusCode.OK));
+            var handler = mockHandler.Object;
+            _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("test2", out handler)).Returns(true);
+
+            // Verify that if the valid system key is specified, the request succeeds
+            string uri = "runtime/webhooks/test2?code=SystemValue4";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // Verify that if an invalid system key is specified, the request also succeeds, since auth is not required
+            uri = "runtime/webhooks/test2?code=invalid";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            // No key provided, the request succeeds
+            uri = "runtime/webhooks/test2";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        [Trait(TestTraits.Group, TestTraits.WebhookTests)]
         public async Task ExtensionWebHook_Succeeds()
         {
             // configure a mock webhook handler for the "test" extension

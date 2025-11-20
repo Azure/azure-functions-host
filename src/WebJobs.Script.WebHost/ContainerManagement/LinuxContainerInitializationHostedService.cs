@@ -48,8 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             {
                 _logger.LogDebug("Applying host context");
 
-                var encryptedAssignmentContext = JsonConvert.DeserializeObject<EncryptedHostAssignmentContext>(startContext);
-                var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
+                var hostAssignmentRequest = JsonConvert.DeserializeObject<HostAssignmentRequest>(startContext);
+                var assignmentContext = _startupContextProvider.SetContext(hostAssignmentRequest);
                 await SpecializeMSISideCar(assignmentContext);
 
                 try

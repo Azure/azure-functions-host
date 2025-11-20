@@ -1560,7 +1560,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (workerException is null || workerException is FunctionTimeoutException)
             {
-                shutdownException = new FunctionTimeoutAbortException(workerException?.Message ?? "Worker channel is shutting down. Aborting function.", workerException);
+                string exceptionMessageSuffix = workerException?.Message is not null ? " Reason: " + workerException.Message : string.Empty;
+                shutdownException = new FunctionTimeoutAbortException("Worker channel is shutting down. Aborting function." + exceptionMessageSuffix, workerException);
             }
 
             foreach (var invocation in _executingInvocations?.Values)
@@ -1685,39 +1686,30 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             MapField<string, string> attributes = invocationRequest.TraceContext.Attributes;
             bool isOtelEnabled = _scriptHostOptions?.Value.TelemetryMode == TelemetryMode.OpenTelemetry;
-            bool isAIEnabled = _environment.IsApplicationInsightsAgentEnabled();
 
-            if (isOtelEnabled || isAIEnabled)
+            if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
             {
-                if (context.FunctionMetadata.Properties.TryGetValue(ScriptConstants.LogPropertyHostInstanceIdKey, out var hostInstanceIdValue))
-                {
-                    string id = Convert.ToString(hostInstanceIdValue);
+                string id = Convert.ToString(hostInstanceIdValue);
 
-                    if (isOtelEnabled)
-                    {
-                        Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInstance, id);
-                    }
-                    if (isAIEnabled)
-                    {
-                        attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = id;
-                    }
+                if (isOtelEnabled)
+                {
+                    Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInstance, id);
                 }
+
+                attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = id;
             }
 
-            if (isAIEnabled)
+            attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
+            attributes[ScriptConstants.OperationNameKey] = context.FunctionMetadata.Name;
+            string sessionId = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
+            if (!string.IsNullOrEmpty(sessionId))
             {
-                attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
-                attributes[ScriptConstants.OperationNameKey] = context.FunctionMetadata.Name;
-                string sessionId = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
-                if (!string.IsNullOrEmpty(sessionId))
-                {
-                    attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionId;
-                }
+                attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionId;
+            }
 
-                if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue))
-                {
-                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
-                }
+            if (context.FunctionMetadata.Properties.TryGetValue(LogConstants.CategoryNameKey, out var categoryNameValue))
+            {
+                attributes[LogConstants.CategoryNameKey] = Convert.ToString(categoryNameValue);
             }
 
             if (isOtelEnabled)

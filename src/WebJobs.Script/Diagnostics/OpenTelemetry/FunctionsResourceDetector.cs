@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             List<KeyValuePair<string, object>> attributeList = new(9);
             try
             {
-                string serviceName = Environment.GetEnvironmentVariable(OpenTelemetryConstants.SiteNameEnvVar);
+                string serviceName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
                 string version = typeof(ScriptHost).Assembly.GetName().Version.ToString();
 
                 attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.ServiceVersion, version));
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.CloudProvider, OpenTelemetryConstants.AzureCloudProviderValue));
                     attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.CloudPlatform, OpenTelemetryConstants.AzurePlatformValue));
 
-                    string region = Environment.GetEnvironmentVariable(OpenTelemetryConstants.RegionNameEnvVar);
+                    string region = Environment.GetEnvironmentVariable(EnvironmentSettingNames.RegionName);
                     if (!string.IsNullOrEmpty(region))
                     {
                         attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.CloudRegion, region));
@@ -39,6 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     if (azureResourceUri != null)
                     {
                         attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.CloudResourceId, azureResourceUri));
+                    }
+
+                    string slotName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName);
+                    if (!string.IsNullOrEmpty(slotName))
+                    {
+                        attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.DeploymentEnvironmentName, slotName));
                     }
                 }
             }
@@ -53,8 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
         private static string GetAzureResourceURI(string websiteSiteName)
         {
-            string websiteResourceGroup = Environment.GetEnvironmentVariable(OpenTelemetryConstants.ResourceGroupEnvVar);
-            string websiteOwnerName = Environment.GetEnvironmentVariable(OpenTelemetryConstants.OwnerNameEnvVar) ?? string.Empty;
+            string websiteResourceGroup = Environment.GetEnvironmentVariable(EnvironmentSettingNames.ResourceGroup);
+            string websiteOwnerName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.WebsiteOwnerName) ?? string.Empty;
             int idx = websiteOwnerName.IndexOf('+', StringComparison.Ordinal);
             string subscriptionId = idx > 0 ? websiteOwnerName.Substring(0, idx) : websiteOwnerName;
 

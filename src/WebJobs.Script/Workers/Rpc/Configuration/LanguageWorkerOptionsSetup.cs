@@ -4,10 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,35 +13,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class LanguageWorkerOptionsSetup : IConfigureOptions<LanguageWorkerOptions>
     {
-        private readonly IConfiguration _configuration;
-        private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly IWorkerProfileManager _workerProfileManager;
-        private readonly IScriptHostManager _scriptHostManager;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
 
-        public LanguageWorkerOptionsSetup(IConfiguration configuration,
-                                          ILoggerFactory loggerFactory,
-                                          IEnvironment environment,
+        public LanguageWorkerOptionsSetup(IEnvironment environment,
                                           IMetricsLogger metricsLogger,
-                                          IWorkerProfileManager workerProfileManager,
-                                          IScriptHostManager scriptHostManager,
                                           IWorkerConfigurationResolver workerConfigurationResolver)
         {
-            if (loggerFactory is null)
-            {
-                throw new ArgumentNullException(nameof(loggerFactory));
-            }
-
-            _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
-            _workerProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
-
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
         }
 
         public void Configure(LanguageWorkerOptions options)
@@ -60,23 +40,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            // Use the latest configuration from the ScriptHostManager if available.
-            // After specialization, the ScriptHostManager will have the latest IConfiguration reflecting additional configuration entries added during specialization.
-            var configuration = _configuration;
-            if (_scriptHostManager is IServiceProvider scriptHostManagerServiceProvider)
+            using (_metricsLogger.LatencyEvent(MetricEventNames.GetConfigs))
             {
-                var latestConfiguration = scriptHostManagerServiceProvider.GetService<IConfiguration>();
-                if (latestConfiguration is not null)
-                {
-                    configuration = new ConfigurationBuilder()
-                        .AddConfiguration(_configuration)
-                        .AddConfiguration(latestConfiguration)
-                        .Build();
-                }
+                var workerDescriptionDictionary = _workerConfigurationResolver.GetWorkerConfigs();
+                options.WorkerConfigs = workerDescriptionDictionary.Values.ToList();
             }
-
-            var configFactory = new RpcWorkerConfigFactory(configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger, _workerProfileManager, _workerConfigurationResolver);
-            options.WorkerConfigs = configFactory.GetConfigs();
         }
     }
 

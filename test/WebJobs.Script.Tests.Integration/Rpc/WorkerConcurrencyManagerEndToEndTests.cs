@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -6,7 +6,9 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -28,7 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await TestHelpers.Await(async () =>
             {
-                fd = Fixture.JobHost.FunctionDispatcher as RpcFunctionInvocationDispatcher;
+                IFunctionInvocationDispatcherFactory factory = Fixture.Host.Services.GetService<IFunctionInvocationDispatcherFactory>();
+                fd = factory.GetFunctionDispatcher() as RpcFunctionInvocationDispatcher;
                 channels = await fd.GetInitializedWorkerChannelsAsync();
                 return channels.Count() == 2;
             }, pollingInterval: 1000, timeout: 120 * 1000);
@@ -61,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 try
                 {
                     _scriptEventManager.Publish(scriptEvent);
-                } 
+                }
                 catch (ObjectDisposedException)
                 {
                     // Do no throw ObjectDisposedException

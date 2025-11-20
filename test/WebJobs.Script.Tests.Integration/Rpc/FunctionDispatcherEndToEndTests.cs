@@ -1,13 +1,13 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private GrpcWorkerChannel GetCurrentJobHostWorkerChannel()
         {
-            RpcFunctionInvocationDispatcher fd = Fixture.JobHost.FunctionDispatcher as RpcFunctionInvocationDispatcher;
+            RpcFunctionInvocationDispatcher fd = Fixture.Host.Services.GetService<IFunctionInvocationDispatcherFactory>().GetFunctionDispatcher() as RpcFunctionInvocationDispatcher;
             return (GrpcWorkerChannel)fd.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
         }
 

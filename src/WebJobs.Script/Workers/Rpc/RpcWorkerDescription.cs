@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal void FormatWorkerPathIfNeeded(ISystemRuntimeInformation systemRuntimeInformation, IEnvironment environment, ILogger logger)
+        internal void FormatWorkerPathIfNeeded(ISystemRuntimeInformation systemRuntimeInformation, string workerRuntime, string version, ILogger logger)
         {
             if (string.IsNullOrEmpty(DefaultWorkerPath))
             {
@@ -192,8 +192,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             OSPlatform os = systemRuntimeInformation.GetOSPlatform();
             Architecture architecture = systemRuntimeInformation.GetOSArchitecture();
-            string workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            string version = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
             logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName}: {version}");
 
             // Only over-write DefaultRuntimeVersion if workerRuntime matches language for the worker config

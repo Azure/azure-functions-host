@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -17,7 +17,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    public class GrpcWorkerChannelFactory : IRpcWorkerChannelFactory
+    internal class GrpcWorkerChannelFactory : IRpcWorkerChannelFactory
     {
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcWorkerProcessFactory _rpcWorkerProcessFactory = null;

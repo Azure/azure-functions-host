@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.Tracing;
 using System.Net.Http;
-using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
 using Microsoft.Azure.WebJobs.Host;
@@ -30,9 +29,9 @@ using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
@@ -303,21 +302,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
 
-                // HTTP Worker
-                services.AddSingleton<IHttpWorkerProcessFactory, HttpWorkerProcessFactory>();
-                services.AddSingleton<IHttpWorkerChannelFactory, HttpWorkerChannelFactory>();
-                services.AddSingleton<IHttpWorkerService, DefaultHttpWorkerService>();
-                // Rpc Worker
-                services.AddSingleton<IJobHostRpcWorkerChannelManager, JobHostRpcWorkerChannelManager>();
-                services.AddSingleton<IRpcFunctionInvocationDispatcherLoadBalancer, RpcFunctionInvocationDispatcherLoadBalancer>();
-
-                //Worker Function Invocation dispatcher
-                services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IFunctionProvider, ProxyFunctionProvider>());
-                services.TryAddEnumerable(ServiceDescriptor.Singleton<IFunctionProvider, HttpWorkerFunctionProvider>());
-                services.AddSingleton<IHostedService, WorkerConcurrencyManager>();
 
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();
@@ -338,7 +325,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<ScriptJobHostOptionsSetup>();
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 services.AddOptions<WorkerConcurrencyOptions>();
-                services.ConfigureOptions<HttpWorkerOptionsSetup>();
+                services.ConfigureOptions<ScriptHostRecycleOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
                     .Configure<IConfiguration>((o, c) =>
@@ -371,8 +358,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.AddSingleton<IDistributedLockManager, KubernetesDistributedLockManager>();
                 }
 
-                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
-
                 services.AddSingleton<IHostOptionsProvider, HostOptionsProvider>();
                 services.AddSingleton<IInstanceServicesProviderFactory, ScriptInstanceServicesProviderFactory>();
             });
@@ -394,20 +379,13 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
             services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
 
-            // Add Language Worker Service
-            // Need to maintain the order: Add RpcInitializationService before core script host services
-            services.AddManagedHostedService<RpcInitializationService>();
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
-            services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
-            services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
-            services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
+
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
-
-            AddProcessRegistry(services);
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)
@@ -479,39 +457,48 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Initialize ScriptTelemetryInitializer before any other telemetry initializers.
                 // This will allow HostInstanceId to be removed as part of MetricsCustomDimensionOptimization.
                 builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
-                builder.AddApplicationInsightsWebJobs(o =>
-                {
-                    o.InstrumentationKey = appInsightsInstrumentationKey;
-                    o.ConnectionString = appInsightsConnectionString;
+                builder.AddApplicationInsightsWebJobs(
+                    o =>
+                    {
+                        o.InstrumentationKey = appInsightsInstrumentationKey;
+                        o.ConnectionString = appInsightsConnectionString;
 
-                    if (!string.IsNullOrEmpty(eventLogLevel))
-                    {
-                        if (Enum.TryParse(eventLogLevel, ignoreCase: true, out EventLevel level))
+                        if (!string.IsNullOrEmpty(eventLogLevel))
                         {
-                            o.DiagnosticsEventListenerLogLevel = level;
+                            if (Enum.TryParse(eventLogLevel, ignoreCase: true, out EventLevel level))
+                            {
+                                o.DiagnosticsEventListenerLogLevel = level;
+                            }
+                            else
+                            {
+                                throw new InvalidEnumArgumentException($"Invalid `{EnvironmentSettingNames.AppInsightsEventListenerLogLevel}`.");
+                            }
                         }
-                        else
+                        if (!string.IsNullOrEmpty(authString))
                         {
-                            throw new InvalidEnumArgumentException($"Invalid `{EnvironmentSettingNames.AppInsightsEventListenerLogLevel}`.");
+                            o.TokenCredentialOptions = TokenCredentialOptions.ParseAuthenticationString(authString);
                         }
-                    }
-                    if (!string.IsNullOrEmpty(authString))
+                    },
+                    t =>
                     {
-                        o.TokenCredentialOptions = TokenCredentialOptions.ParseAuthenticationString(authString);
-                    }
-                }, t =>
-                {
-                    if (t.TelemetryChannel is ServerTelemetryChannel channel)
-                    {
-                        channel.TransmissionStatusEvent += TransmissionStatusHandler.Handler;
-                    }
+                        if (t.TelemetryChannel is ServerTelemetryChannel channel)
+                        {
+                            channel.TransmissionStatusEvent += TransmissionStatusHandler.Handler;
+                        }
 
-                    t.TelemetryProcessorChainBuilder.Use(next => new WorkerTraceFilterTelemetryProcessor(next));
-                    t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next));
-                });
+                        t.TelemetryProcessorChainBuilder.Use(next => new WorkerTraceFilterTelemetryProcessor(next));
+                        t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next));
+                    });
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
+
+                // Configure the meter listener, so we publish Meter API based metrics to application insights.
+                builder.Services.AddSingleton<ITelemetryModule, ApplicationInsightsMetricExporter>();
+                builder.Services.Configure<ApplicationInsightsMetricExporterOptions>(o =>
+                {
+                    o.Meters.Add(HostMetrics.FaasMeterName);
+                });
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
                 {
@@ -543,20 +530,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.AddSingleton<IFuncAppFileProvisionerFactory, FuncAppFileProvisionerFactory>();
                     services.AddSingleton<IHostedService, FuncAppFileProvisioningService>();
                 });
-            }
-        }
-
-        private static void AddProcessRegistry(IServiceCollection services)
-        {
-            // W3WP already manages job objects
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                && !ScriptSettingsManager.Instance.IsAppServiceEnvironment)
-            {
-                services.AddSingleton<IProcessRegistry, JobObjectRegistry>();
-            }
-            else
-            {
-                services.AddSingleton<IProcessRegistry, EmptyProcessRegistry>();
             }
         }
 

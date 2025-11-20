@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using NuGet.Versioning;
 
@@ -133,6 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableWebHostLogForwarding = "DisableWebHostLogForwarding";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
+        public const string FeatureFlagDisableDynamicWorkerResolution = "DisableDynamicWorkerResolution";
         public const string FeatureFlagEnableDebugTracing = "EnableDebugTracing";
         public const string FeatureFlagEnableProxies = "EnableProxies";
         public const string FeatureFlagStrictHISModeEnabled = "StrictHISModeEnabled";
@@ -152,6 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ScmSiteUriFormat = "https://{0}.scm.azurewebsites.net";
         public const string SiteUriFormat = "https://{0}.azurewebsites.net";
         public const string AppServiceCoreUri = "https://appservice.core.azurewebsites.net";
+        public const string LegionCoreUri = "https://legion.core.azurewebsites.net";
 
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
         public const string HttpMethodConstraintName = "httpMethod";
@@ -241,6 +244,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HostDiagnosticSourceDebugEventNamePrefix = "debug-";
         public const string DiagnosticSourceAssemblyContext = HostDiagnosticSourcePrefix + "AssemblyContext";
 
+        public const string HostEventSourcePrefix = "Azure-Functions-Host-";
+
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
         public static readonly string HostUserAgent = $"azure-functions-host/{ScriptHost.Version}";
@@ -248,6 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly long DefaultMaxRequestBodySize = 104857600;
 
         public static readonly ImmutableArray<string> SystemLogCategoryPrefixes = ImmutableArray.Create("Microsoft.Azure.WebJobs.", "Function.", "Worker.", "Host.");
+        public static readonly IReadOnlySet<string> HostCapabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public static readonly string FunctionMetadataDirectTypeKey = "DirectType";
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
@@ -263,6 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string HttpProxyCorrelationHeader = "x-ms-invocation-id";
         public static readonly string HttpProxyTask = "HttpProxyTask";
         public static readonly string HttpProxyScriptInvocationContext = "HttpProxyScriptInvocationContext";
+        public static readonly string EnableProxyingHttpRequest = "enableProxyingHttpRequest";
 
         public static readonly string OperationNameKey = "OperationName";
 

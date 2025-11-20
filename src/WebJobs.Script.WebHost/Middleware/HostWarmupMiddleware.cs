@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensions;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Diagnostics.JitTrace;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
     public class HostWarmupMiddleware
     {
-        private readonly IWebHostRpcWorkerChannelManager _webHostRpcWorkerChannelManager;
+        private readonly IWebHostWorkerManager _workerManager;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly RequestDelegate _next;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
@@ -38,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             IEnvironment environment,
             IScriptHostManager hostManager,
             ILogger<HostWarmupMiddleware> logger,
-            IWebHostRpcWorkerChannelManager rpcWorkerChannelManager,
+            IWebHostWorkerManager workerManager,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _next = next;
@@ -47,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _hostManager = hostManager;
             _logger = logger;
             _assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath);
-            _webHostRpcWorkerChannelManager = rpcWorkerChannelManager ?? throw new ArgumentNullException(nameof(rpcWorkerChannelManager));
+            _workerManager = workerManager ?? throw new ArgumentNullException(nameof(workerManager));
             _hostingConfigOptions = hostingConfigOptions;
         }
 
@@ -88,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private async Task WorkerWarmupAsync()
         {
-            await _webHostRpcWorkerChannelManager.WorkerWarmupAsync();
+            await _workerManager.WorkerWarmupAsync();
         }
 
         internal void ReadRuntimeAssemblyFiles()

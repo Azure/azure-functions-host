@@ -1,17 +1,26 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ScriptJobHostOptions
+    public class ScriptJobHostOptions : IOptionsFormatter
     {
+        private static readonly JsonSerializerOptions _serializerOptions = new()
+        {
+            Converters = { new ScriptJobHostOptionsConverter() },
+            WriteIndented = true,
+        };
+
         private string _rootScriptPath;
         private ImmutableArray<string> _directorySnapshot;
 
@@ -145,5 +154,30 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets a value indicating the timeout duration for the function metadata provider.
         /// </summary>
         public TimeSpan MetadataProviderTimeout { get; set; } = TimeSpan.Zero;
+
+        public string Format()
+        {
+            return JsonSerializer.Serialize(this, _serializerOptions);
+        }
+
+        private class ScriptJobHostOptionsConverter : JsonConverter<ScriptJobHostOptions>
+        {
+            public override ScriptJobHostOptions Read(
+                ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(
+                Utf8JsonWriter writer, ScriptJobHostOptions value, JsonSerializerOptions options)
+            {
+                writer.WriteStartObject();
+                writer.WriteBoolean(nameof(value.FileWatchingEnabled), value.FileWatchingEnabled);
+                writer.WriteString(nameof(value.FileLoggingMode), value.FileLoggingMode.ToString());
+                writer.WriteString(nameof(value.FunctionTimeout), value.FunctionTimeout?.ToString());
+                writer.WriteString(nameof(value.TelemetryMode), value.TelemetryMode.ToString());
+                writer.WriteEndObject();
+            }
+        }
     }
 }

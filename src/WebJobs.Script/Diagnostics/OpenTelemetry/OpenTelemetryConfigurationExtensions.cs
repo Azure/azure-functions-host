@@ -8,6 +8,7 @@ using System.Linq;
 using Azure.Core;
 using Azure.Identity;
 using Azure.Monitor.OpenTelemetry.Exporter;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.Configuration;
@@ -122,7 +123,45 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                                 Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, template?.RouteTemplate);
                             }
                         };
-                        o.Filter = context => !context.Request.Host.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase);
+                        o.Filter = context =>
+                        {
+                            // Exclude localhost calls
+                            if (context.Request.Host.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return false;
+                            }
+
+                            // Exclude POST /admin/host/synctriggers
+                            if (string.Equals(context.Request.Method, HttpMethods.Post, StringComparison.OrdinalIgnoreCase)
+                                && context.Request.Path.Equals("/admin/host/synctriggers", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return false;
+                            }
+
+                            // Exclude GET admin/warmup
+                            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
+                                && context.Request.Path.Equals("/admin/warmup", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return false;
+                            }
+
+                            // Exclude GET admin/host/status
+                            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
+                                && context.Request.Path.Equals("/admin/host/status", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return false;
+                            }
+
+                            // Exclude GET /admin/health
+                            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
+                                && context.Request.Path.Equals("/admin/health", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return false;
+                            }
+
+                            // Allow everything else
+                            return true;
+                        };
                     })
                     .AddProcessor(ActivitySanitizingProcessor.Instance);
             });

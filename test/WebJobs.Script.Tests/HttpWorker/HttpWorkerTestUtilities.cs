@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -20,7 +20,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 {
-    public class HttpWorkerTestUtilities
+    internal class HttpWorkerTestUtilities
     {
         public const string QueryParamString = "?id=149656222&name=Ink%20And%20Toner";
         public const string UTF8AcceptCharset = "UTF-8";

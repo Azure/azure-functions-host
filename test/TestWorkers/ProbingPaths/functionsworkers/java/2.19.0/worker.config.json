@@ -1,0 +1,11 @@
+{
+    "description": {
+        "language": "java",
+        "extensions": [".jar"],
+        "defaultExecutablePath": "%JAVA_HOME%/bin/java",
+        "defaultWorkerPath": "worker.config.json",
+        "arguments": []
+    },
+    "hostRequirements": [],
+    "profiles": []
+}

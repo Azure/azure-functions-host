@@ -20,7 +20,6 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
@@ -28,7 +27,6 @@ using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -630,7 +628,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         // If we are running in development mode with core tools, do not overlap the restarts.
                         // Overlapping restarts are problematic when language worker processes are listening
                         // to the same debug port
-                        if (ShouldEnforceSequentialRestart())
+                        if (ShouldEnforceSequentialRestart(previousHost))
                         {
                             stopTask = Orphan(previousHost, cancellationToken);
                             await stopTask;
@@ -638,7 +636,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
                         else
                         {
-                            NotifyHostStopping(previousHost);
+                            await NotifyHostStoppingAsync(previousHost, cancellationToken);
                             startTask = UnsynchronizedStartHostAsync(activeOperation);
                             stopTask = Orphan(previousHost, cancellationToken);
                         }
@@ -673,26 +671,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // Because we fire-and-forget the host disposal, we cannot be guaranteed when it will be stopped
         // or disposed. Use this method to explicitly stop any services in the host that may be
         // problematic to run side-by-side with the new host that is starting.
-        private static void NotifyHostStopping(IHost previousHost)
+        private static Task NotifyHostStoppingAsync(IHost previousHost, CancellationToken cancellationToken)
         {
-            // It's important to prevent any new workers from starting on the orphaned host. The
-            // only way to guarantee this is to signal to the dispatcher that it's done with process
-            // creation before we begin a new host.
-            var dispatcherFactory = previousHost?.Services?.GetService<IFunctionInvocationDispatcherFactory>();
-            IFunctionInvocationDispatcher dispatcher = dispatcherFactory?.GetFunctionDispatcher();
-            dispatcher?.PreShutdown();
+            var scriptHost = previousHost?.Services?.GetService<ScriptHost>();
+            return scriptHost?.NotifyStoppingAsync(cancellationToken) ?? Task.CompletedTask;
         }
 
-        internal bool ShouldEnforceSequentialRestart()
+        internal bool ShouldEnforceSequentialRestart(IHost host = null)
         {
-            var sequentialRestartSetting = _config.GetSection(ConfigurationSectionNames.SequentialJobHostRestart);
-            if (sequentialRestartSetting != null)
-            {
-                bool.TryParse(sequentialRestartSetting.Value, out bool enforceSequentialOrder);
-                return enforceSequentialOrder;
-            }
-
-            return false;
+            var options = host?.Services?.GetService<IOptions<ScriptHostRecycleOptions>>().Value;
+            options ??= ScriptHostRecycleOptions.Create(_config);
+            return options.SequentialHostRestartRequired;
         }
 
         private void OnHostInitializing(object sender, EventArgs e)

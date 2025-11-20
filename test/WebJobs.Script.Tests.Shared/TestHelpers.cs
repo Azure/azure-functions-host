@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -653,6 +653,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ScriptHostState IScriptHostManager.State => throw new NotImplementedException();
 
             Exception IScriptHostManager.LastError => throw new NotImplementedException();
+
+            IServiceProvider IScriptHostManager.Services => this;
 
             public void OnActiveHostChanged()
             {

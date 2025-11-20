@@ -629,11 +629,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker, CancellationToken cancellationToken, bool throwOnMismatch = true)
+        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool shouldSkipValidation, CancellationToken cancellationToken, bool throwOnMismatch = true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (isPlaceholderMode || isHttpWorker)
+            if (isPlaceholderMode || shouldSkipValidation)
             {
                 return;
             }
@@ -1034,7 +1034,8 @@ namespace Microsoft.Azure.WebJobs.Script
         // WORKER_INDEXING_DISABLED contains the customers app name worker indexing is then disabled for that customer only
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, FunctionsHostingConfigOptions functionsHostingConfigOptions)
         {
-            if (environment.IsLogicApp())
+            // NOTE: Enabling the worker indexing for Logic Apps with codeful mode enabled.
+            if (environment.IsLogicApp() && !environment.IsLogicAppCodefulModeEnabled())
             {
                 return false;
             }

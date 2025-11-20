@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -46,24 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             newET.Timestamp = originalItem.Timestamp;
 
             return newET;
-        }
-
-        /// <summary>
-        /// Returns true if the feature flag for surfacing user code exceptions was set by the worker,
-        /// and false if not.
-        /// </summary>
-        /// <param name="ex">The <see cref="Exception"/> instance.</param>
-        private bool EnableUserExceptionFeatureFlag(Exception ex)
-        {
-            try
-            {
-                string value = (string)ex.Data[RpcWorkerConstants.EnableUserCodeException];
-                return bool.Parse(value);
-            }
-            catch
-            {
-                return false;
-            }
         }
     }
 }

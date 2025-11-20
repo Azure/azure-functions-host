@@ -13,7 +13,7 @@
     <PackageVersion Include="Azure.Identity" Version="1.14.2" />
     <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.6.0" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.19.1" />
-    <PackageVersion Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.5.7" />
+    <PackageVersion Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.5.8" />
     <PackageVersion Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.3.20240307.67" />
     <PackageVersion Include="Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption" Version="1.0.5" />
     <PackageVersion Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
@@ -49,7 +49,7 @@
     <PackageVersion Include="Microsoft.Azure.WebJobs" Version="3.0.42" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.1" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Rpc.Core" Version="3.0.37" />
-    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions" Version="5.2.0-12287" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions" Version="5.2.1" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Timers.Storage" Version="1.0.0-beta.1" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.4-preview" />
