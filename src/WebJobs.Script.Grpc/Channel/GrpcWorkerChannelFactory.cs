@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -28,11 +29,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ISharedMemoryManager _sharedMemoryManager = null;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IOptions<AppCapabilitiesOptions> _appCapabilityOptions;
         private readonly IHttpProxyService _httpProxyService;
 
         public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IScriptHostManager hostManager, IEnvironment environment, ILoggerFactory loggerFactory,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager,
-            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IHttpProxyService httpProxyService)
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, 
+            IOptions<AppCapabilitiesOptions> appCapabilityOptions, IHttpProxyService httpProxyService)
         {
             _eventManager = eventManager;
             _hostManager = hostManager;
@@ -43,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _sharedMemoryManager = sharedMemoryManager;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _hostingConfigOptions = hostingConfigOptions;
+            _appCapabilityOptions = appCapabilityOptions;
             _httpProxyService = httpProxyService;
         }
 
@@ -59,12 +63,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
 
             return CreateInternal(workerId, _eventManager, _hostManager, languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger, attemptCount,
-                _environment, _applicationHostOptions, _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions, _httpProxyService);
+                _environment, _applicationHostOptions, _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions, _appCapabilityOptions, _httpProxyService);
         }
 
         internal virtual IRpcWorkerChannel CreateInternal(string workerId, IScriptEventManager eventManager, IScriptHostManager hostManager, RpcWorkerConfig languageWorkerConfig, IWorkerProcess rpcWorkerProcess,
             ILogger workerLogger, IMetricsLogger metricsLogger, int attemptCount, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-            ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IHttpProxyService httpProxyService)
+            ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, 
+            IOptions<AppCapabilitiesOptions> appCapabilitiesOptions, IHttpProxyService httpProxyService)
         {
             return new GrpcWorkerChannel(
                          workerId,
@@ -80,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                          sharedMemoryManager,
                          workerConcurrencyOptions,
                          hostingConfigOptions,
+                         appCapabilitiesOptions,
                          httpProxyService);
         }
     }

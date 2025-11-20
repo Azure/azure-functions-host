@@ -18,6 +18,7 @@ using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -93,6 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private System.Timers.Timer _timer;
         private bool _functionMetadataRequestSent = false;
         private IOptions<ScriptJobHostOptions> _scriptHostOptions;
+        private IOptions<AppCapabilitiesOptions> _appCapabilitiesOptions;
 
         internal GrpcWorkerChannel(
             string workerId,
@@ -108,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IOptions<AppCapabilitiesOptions> appCapabilitiesOptions,
             IHttpProxyService httpProxyService)
         {
             _workerId = workerId;
@@ -535,6 +538,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _state = _state | RpcWorkerChannelState.Initialized;
 
             ApplyCapabilities(_initMessage.Capabilities);
+            RegisterAppCapabilities(_initMessage.AppCapabilities);
 
             _workerInitTask.TrySetResult(true);
         }
@@ -607,6 +611,69 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     HandleWorkerInitError(ex);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Registers app capabilities from the worker init response into the AppCapabilitiesOptions.
+        /// </summary>
+        /// <param name="appCapabilities">The app capabilities map from the worker.</param>
+        private void RegisterAppCapabilities(MapField<string, string> appCapabilities)
+        {
+            if (_appCapabilitiesOptions is null || appCapabilities is null || appCapabilities.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                _workerChannelLogger.LogDebug("Registering {count} app capabilities from worker '{workerId}')",
+                    appCapabilities.Count, _workerId);
+
+                foreach (var capability in appCapabilities)
+                {
+                    var metadata = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+                    if (!string.IsNullOrEmpty(capability.Value))
+                    {
+                        try
+                        {
+                            var capabilityMetadataParsed = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
+                                capability.Value,
+                                new System.Text.Json.JsonSerializerOptions
+                                {
+                                    PropertyNameCaseInsensitive = true
+                                });
+
+                            if (capabilityMetadataParsed is not null)
+                            {
+                                foreach (var (key, value) in capabilityMetadataParsed)
+                                {
+                                    metadata[key] = value;
+                                }
+                            }
+                        }
+                        catch (System.Text.Json.JsonException ex)
+                        {
+                            _workerChannelLogger.LogWarning(ex, "Failed to parse capability metadata for '{capabilityName}' from worker '{workerId}'",
+                                capability.Key, _workerId);
+                        }
+                    }
+
+                    AppCapabilityHelpers.AddOrUpdateCapability(
+                        _appCapabilitiesOptions.Value.Capabilities,
+                        capability.Key,
+                        CapabilitySourceNames.WorkerSource,
+                        version: null,
+                        metadata);
+
+                    _workerChannelLogger.LogDebug("Registered app capability '{capabilityName}' from worker '{workerId}'",
+                        capability.Key, _workerId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _workerChannelLogger.LogWarning(ex, "Failed to register app capabilities from worker '{workerId}'", _workerId);
             }
         }
 

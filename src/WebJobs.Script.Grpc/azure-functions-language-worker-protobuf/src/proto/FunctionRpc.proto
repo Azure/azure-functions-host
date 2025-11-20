@@ -135,6 +135,9 @@ message WorkerInitResponse {
   // A map of worker supported features/capabilities
   map<string, string> capabilities = 2;
 
+  // A map of function app capabilities
+  map<string, string> app_capabilities = 5;
+
   // Status of the response
   StatusResult result = 3;
 
