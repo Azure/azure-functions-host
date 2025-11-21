@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         private const string HttpTrigger = "httpTrigger";
         private const string EventGridTrigger = "eventGridTrigger";
         private const string SignalRTrigger = "signalRTrigger";
+        private const string WebPubSubTrigger = "webPubSubTrigger";
         public const string AssistantSkillTrigger = "assistantSkillTrigger";
         private const string BlobTrigger = "blobTrigger";
 
@@ -24,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             EventGridTrigger,
             SignalRTrigger,
             AssistantSkillTrigger,
+            WebPubSubTrigger,
         };
 
         private static readonly HashSet<string> DurableTriggers = new(StringComparer.OrdinalIgnoreCase)
@@ -40,11 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// <returns><c>true</c> if an HTTP trigger, <c>false</c> otherwise.</returns>
         public static bool IsHttpTrigger(this BindingMetadata binding)
         {
-            if (binding is null)
-            {
-                throw new ArgumentNullException(nameof(binding));
-            }
-
+            ArgumentNullException.ThrowIfNull(binding);
             return string.Equals(HttpTrigger, binding.Type, StringComparison.OrdinalIgnoreCase);
         }
 
@@ -58,11 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// </remarks>
         public static bool IsWebHookTrigger(this BindingMetadata binding)
         {
-            if (binding is null)
-            {
-                throw new ArgumentNullException(nameof(binding));
-            }
-
+            ArgumentNullException.ThrowIfNull(binding);
             return WebHookTriggers.Contains(binding.Type);
         }
 
@@ -73,11 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// <returns><c>true</c> if a durable trigger, <c>false</c> otherwise.</returns>
         public static bool IsDurableTrigger(this BindingMetadata binding)
         {
-            if (binding is null)
-            {
-                throw new ArgumentNullException(nameof(binding));
-            }
-
+            ArgumentNullException.ThrowIfNull(binding);
             return DurableTriggers.Contains(binding.Type);
         }
 
@@ -88,11 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         /// <returns><c>true</c> if a EventGrid sourced blob trigger, <c>false</c> otherwise.</returns>
         public static bool IsEventGridBlobTrigger(this BindingMetadata binding)
         {
-            if (binding is null)
-            {
-                throw new ArgumentNullException(nameof(binding));
-            }
-
+            ArgumentNullException.ThrowIfNull(binding);
             if (string.Equals(BlobTrigger, binding.Type, StringComparison.OrdinalIgnoreCase))
             {
                 if (binding.Raw is { } obj)
