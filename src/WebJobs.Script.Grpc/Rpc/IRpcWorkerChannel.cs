@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    internal interface IRpcWorkerChannel : IWorkerChannel
+    public interface IRpcWorkerChannel : IWorkerChannel
     {
         RpcWorkerConfig WorkerConfig { get; }
 
@@ -33,5 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         bool IsExecutingInvocation(string invocationId);
 
         void Shutdown(Exception workerException);
+
+        Task<IDictionary<string, string>> GetWorkerCapabilitiesAsync();
     }
 }

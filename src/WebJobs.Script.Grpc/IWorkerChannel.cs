@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    internal interface IWorkerChannel
+    public interface IWorkerChannel
     {
         string Id { get; }
 

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -29,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private RpcWorkerChannelState _state;
         private List<Task> _executionContexts;
         private HashSet<string> _executingInvocations;
+        private GrpcCapabilities _workerCapabilities;
         private bool _isDisposed;
 
         public TestRpcWorkerChannel(string workerId, string runtime = null, IScriptEventManager eventManager = null, ILogger testLogger = null,
@@ -105,6 +107,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 { "test", "testSupported" }
             };
+            _workerCapabilities = new GrpcCapabilities(_testLogger);
+            _workerCapabilities.UpdateCapabilities(workerCapabilities, GrpcCapabilitiesUpdateStrategy.Replace);
             _state = _state | RpcWorkerChannelState.Initialized;
         }
 
@@ -170,6 +174,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _testLogger.LogInformation("SendWorkerWarmupRequest called");
             return;
+        }
+
+        public async Task<IDictionary<string, string>> GetWorkerCapabilitiesAsync()
+        {
+            return _workerCapabilities.AllCapabilities;
         }
     }
 }

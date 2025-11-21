@@ -18,6 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        public IDictionary<string, string> AllCapabilities => _capabilities;
+
         public string GetCapabilityState(string capability)
         {
             if (_capabilities.TryGetValue(capability, out string state))

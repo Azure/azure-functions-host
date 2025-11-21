@@ -1719,6 +1719,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
+        public async Task<IDictionary<string, string>> GetWorkerCapabilitiesAsync()
+        {
+            return _workerCapabilities.AllCapabilities;
+        }
+
         private sealed class ExecutingInvocation : IDisposable
         {
             public ExecutingInvocation(ScriptInvocationContext context, IInvocationMessageDispatcher dispatcher)
