@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
-using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -30,8 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageOptions;
         private IDisposable _onChangeSubscription;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
+        private IOptions<FunctionMetadataOptions> _metadataOptions;
         private ILogger _logger;
-        private bool _isHttpWorker;
         private bool _servicesReset = false;
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
@@ -40,17 +39,17 @@ namespace Microsoft.Azure.WebJobs.Script
         public FunctionMetadataManager(
             IOptions<ScriptJobHostOptions> scriptOptions,
             IFunctionMetadataProvider functionMetadataProvider,
-            IOptions<HttpWorkerOptions> httpWorkerOptions,
             IScriptHostManager scriptHostManager,
             ILoggerFactory loggerFactory,
             IEnvironment environment,
-            IOptionsMonitor<LanguageWorkerOptions> languageOptions)
+            IOptionsMonitor<LanguageWorkerOptions> languageOptions,
+            IOptions<FunctionMetadataOptions> metadataOptions)
         {
             _scriptOptions = scriptOptions;
+            _metadataOptions = metadataOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
-            _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
             _environment = environment;
 
             _languageOptions = languageOptions;
@@ -125,8 +124,8 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _functionMetadataMap.Clear();
 
-            _isHttpWorker = _serviceProvider.GetService<IOptions<HttpWorkerOptions>>()?.Value?.Description != null;
             _scriptOptions = _serviceProvider.GetService<IOptions<ScriptJobHostOptions>>();
+            _metadataOptions = _serviceProvider.GetService<IOptions<FunctionMetadataOptions>>();
 
             // Resetting the logger switches the logger scope to Script Host level,
             // also making the logs available to Application Insights
@@ -197,20 +196,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal bool IsScriptFileDetermined(FunctionMetadata functionMetadata)
         {
-            try
-            {
-                if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy() && _servicesReset)
-                {
-                    throw new FunctionConfigurationException(FunctionConfigurationErrorMessage);
-                }
-            }
-            catch (FunctionConfigurationException exc)
+            if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_metadataOptions.Value.SkipScriptFileValidation && !functionMetadata.IsProxy() && _servicesReset)
             {
                 // for functions in error, log the error and don't
                 // add to the functions collection
-                Utility.AddFunctionError(_functionErrors, functionMetadata.Name, exc.Message);
+                Utility.AddFunctionError(_functionErrors, functionMetadata.Name, FunctionConfigurationErrorMessage);
                 return false;
             }
+
             return true;
         }
 

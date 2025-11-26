@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -24,7 +24,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
-using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
@@ -104,35 +103,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                      .AddFilter<TestLoggerProvider>("Azure.Core", LogLevel.Warning);
                 })
                 .ConfigureServices(services =>
-                  {
-                      services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
-                      services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), sp =>
-                      {
-                          _hostOptions.RootServiceProvider = sp;
-                          return new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions);
-                      }, ServiceLifetime.Singleton));
-                      services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), sp =>
-                      {
-                          _hostOptions.RootServiceProvider = sp;
-                          return TestHelpers.CreateOptionsMonitor(_hostOptions);
-                      }, ServiceLifetime.Singleton));
-                      services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
-                      services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataManager), sp =>
-                      {
-                          var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
-                          var scriptManager = sp.GetService<IScriptHostManager>();
-                          var loggerFactory = sp.GetService<ILoggerFactory>();
-                          var environment = sp.GetService<IEnvironment>();
+                {
+                    services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
+                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), sp =>
+                    {
+                        _hostOptions.RootServiceProvider = sp;
+                        return new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions);
+                    }, ServiceLifetime.Singleton));
+                    services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), sp =>
+                    {
+                        _hostOptions.RootServiceProvider = sp;
+                        return TestHelpers.CreateOptionsMonitor(_hostOptions);
+                    }, ServiceLifetime.Singleton));
+                    services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
+                    services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataManager), sp =>
+                    {
+                        var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+                        var scriptManager = sp.GetService<IScriptHostManager>();
+                        var loggerFactory = sp.GetService<ILoggerFactory>();
+                        var environment = sp.GetService<IEnvironment>();
 
-                          return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
-                      }, ServiceLifetime.Singleton));
+                        return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
+                    }, ServiceLifetime.Singleton));
 
-                      services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
-                      services.SkipDependencyValidation();
+                    services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
+                    services.SkipDependencyValidation();
 
-                      // Allows us to configure services as the last step, thereby overriding anything
-                      services.AddSingleton(new PostConfigureServices(configureWebHostServices));
-                  })
+                    // Allows us to configure services as the last step, thereby overriding anything
+                    services.AddSingleton(new PostConfigureServices(configureWebHostServices));
+                })
                 .ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
                 {
                     /// REVIEW THIS
@@ -507,12 +506,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockOptions.Setup(o => o.CurrentValue).Returns(workerOptions);
             mockOptions.Setup(o => o.OnChange(It.IsAny<Action<LanguageWorkerOptions, string>>())).Returns(Mock.Of<IDisposable>());
 
+            var metadataOptions = new OptionsWrapper<FunctionMetadataOptions>(new FunctionMetadataOptions());
+
             var managerServiceProvider = manager as IServiceProvider;
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), SystemEnvironment.Instance);
             var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
-            var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), defaultProvider,
-                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, environment, mockOptions.Object);
+            var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), defaultProvider, manager, factory, environment, mockOptions.Object, metadataOptions);
 
             return metadataManager;
         }

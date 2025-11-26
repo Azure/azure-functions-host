@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Razor.Runtime" Version="2.2.0" />
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.39" />
+    <PackageReference Include="Microsoft.AspNetCore.Razor.Runtime" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" />
   </ItemGroup>
 
 </Project>

@@ -19,25 +19,9 @@ namespace WebJobs.Script.Tests
             Directory.CreateDirectory(path);
         }
 
-        ~TempDirectory()
-        {
-            Dispose(false);
-        }
-
         public string Path { get; }
 
         public void Dispose()
-        {
-            GC.SuppressFinalize(this);
-            Dispose(true);
-        }
-
-        private void Dispose(bool disposing)
-        {
-            DeleteDirectory();
-        }
-
-        private void DeleteDirectory()
         {
             try
             {

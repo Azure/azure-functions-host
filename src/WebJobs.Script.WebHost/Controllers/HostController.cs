@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> GetWorkerProcesses([FromServices] IScriptHostManager scriptHostManager)
         {
-            if (!Utility.TryGetHostService(scriptHostManager, out IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager))
+            if (!Utility.TryGetHostService(scriptHostManager, out IWebHostWorkerManager webHostWorkerManager))
             {
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
@@ -142,38 +142,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             string workerRuntime = _environment.GetFunctionsWorkerRuntime();
 
-            List<IRpcWorkerChannel> channels = null;
-            if (Utility.TryGetHostService(scriptHostManager, out IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager))
+            IEnumerable<WorkerProcessInfo> workerProcesses = null;
+            if (Utility.TryGetHostService(scriptHostManager, out IScriptHostWorkerManager scriptHostWorkerManager))
             {
-                channels = jobHostLanguageWorkerChannelManager.GetChannels(workerRuntime).ToList();
+                workerProcesses = await scriptHostWorkerManager.GetWorkerProcessInfoAsync(workerRuntime);
             }
 
-            var webhostChannelDictionary = webHostLanguageWorkerChannelManager.GetChannels(workerRuntime);
-
-            List<Task<IRpcWorkerChannel>> webHostchannelTasks = new List<Task<IRpcWorkerChannel>>();
-            if (webhostChannelDictionary is not null)
+            foreach (var workerProcess in workerProcesses)
             {
-                foreach (var pair in webhostChannelDictionary)
+                processes.Add(new FunctionProcesses.FunctionProcessInfo()
                 {
-                    var workerChannel = pair.Value.Task;
-                    webHostchannelTasks.Add(workerChannel);
-                }
-            }
-
-            var webHostchannels = await Task.WhenAll(webHostchannelTasks);
-            channels = channels ?? new List<IRpcWorkerChannel>();
-            channels.AddRange(webHostchannels);
-
-            foreach (var channel in channels)
-            {
-                var processInfo = new FunctionProcesses.FunctionProcessInfo()
-                {
-                    ProcessId = channel.WorkerProcess.Process.Id,
-                    ProcessName = channel.WorkerProcess.Process.ProcessName,
-                    DebugEngine = Utility.GetDebugEngineInfo(channel.WorkerConfig, workerRuntime),
+                    ProcessId = workerProcess.ProcessId,
+                    ProcessName = workerProcess.ProcessName,
+                    DebugEngine = workerProcess.DebugEngine,
                     IsEligibleForOpenInBrowser = false
-                };
-                processes.Add(processInfo);
+                });
             }
 
             var functionProcesses = new FunctionProcesses()

@@ -1,0 +1,37 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove(Directory.Packages.props, $(MSBuildThisFileDirectory)..))" />
+
+  <PropertyGroup>
+    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Build.Framework" Version="15.3.409" />
+    <PackageVersion Include="Microsoft.Build.Utilities.Core" Version="15.3.409" />
+    <PackageVersion Include="Mono.Cecil" Version="0.11.4" />
+  </ItemGroup>
+
+  <!-- Testing Packages -->
+  <ItemGroup>
+    <PackageVersion Include="FluentAssertions" Version="5.9.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.Testing" Version="8.1.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.4.1" />
+    <PackageVersion Include="Moq" Version="4.18.4" />
+    <PackageVersion Include="System.IO.Abstractions.TestingHelpers" Version="2.1.0.227" />
+    <PackageVersion Include="xunit" Version="2.4.1" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <!-- Test Resource Project Dependencies -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Azure.Functions.Extensions" Version="1.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Razor.Runtime" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- TODO: add back in and address warnings. -->
+    <GlobalPackageReference Remove="StyleCop.Analyzers" />
+  </ItemGroup>
+
+</Project>

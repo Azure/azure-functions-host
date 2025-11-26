@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.Metrics;
 using System.IO.Abstractions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
@@ -104,7 +103,12 @@ namespace Microsoft.WebJobs.Script.Tests
             var rootProvider = services.BuildServiceProvider();
 
             builder
-                .AddWebScriptHost(rootProvider, services, webHostOptions, configureWebJobs)
+                .AddWebScriptHost(rootProvider, services, webHostOptions,
+                    webJobsBuilder =>
+                    {
+                        configureWebJobs?.Invoke(webJobsBuilder);
+                        webJobsBuilder.Services.AddCommonRpcServices();
+                    })
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddTestSettings();

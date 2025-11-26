@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -88,12 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
                 new EventId(413, nameof(ScriptHostStarted)),
                 "Host started ({ms}ms)");
 
-        private static readonly Action<ILogger, Exception> _addingDescriptorProviderForHttpWorker =
-           LoggerMessage.Define(
-               LogLevel.Debug,
-               new EventId(414, nameof(AddingDescriptorProviderForHttpWorker)),
-               "Adding Function descriptor provider for HttpWorker.");
-
         private static readonly Action<ILogger, string, Exception> _stoppingScriptHost =
             LoggerMessage.Define<string>(
                 LogLevel.Debug,
@@ -156,11 +150,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void AddingDescriptorProviderForLanguage(this ILogger logger, string workerRuntime)
         {
             _addingDescriptorProviderForLanguage(logger, workerRuntime, null);
-        }
-
-        public static void AddingDescriptorProviderForHttpWorker(this ILogger logger)
-        {
-            _addingDescriptorProviderForHttpWorker(logger, null);
         }
 
         public static void CreatingDescriptors(this ILogger logger)

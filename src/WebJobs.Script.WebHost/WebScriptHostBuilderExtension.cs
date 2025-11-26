@@ -3,7 +3,6 @@
 
 using System;
 using System.Net.Http;
-using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -18,20 +17,17 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
-using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using static Microsoft.Azure.WebJobs.Script.Utility;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -62,6 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
+                    webJobsBuilder.Services.AddRpcScriptHostServices();
+
                     // Adds necessary Azure-based services to the ScriptHost, which will use the host-provided IAzureBlobStorageProvider registered below.
                     webJobsBuilder.AddAzureStorageCoreServices();
 
@@ -150,7 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     services.AddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IConcurrencyThrottleProvider, WorkerChannelThrottleProvider>());
 
                     // Make sure the registered IHostIdProvider is used
                     IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();

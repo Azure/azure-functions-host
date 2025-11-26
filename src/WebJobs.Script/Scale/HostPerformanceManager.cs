@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -106,13 +106,13 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
 
         internal async Task<bool> ProcessThresholdsExceeded(ILogger logger = null)
         {
-            var dispatcher = GetDispatcherOrNull();
-            if (dispatcher != null)
+            var workerManager = _serviceProvider.GetScriptHostServiceOrNull<IScriptHostWorkerManager>();
+            if (workerManager != null)
             {
                 // TEMP: This call pings all the OOP workers, to ensure we include any channel latency
                 // in the upstream ping result.
                 // Once the WorkerChannelThrottleProvider is fully implemented, this call can be removed.
-                await dispatcher.GetWorkerStatusesAsync();
+                await workerManager.GetWorkerStatusesAsync();
             }
 
             // ThrottleManager internally consults various throttle providers that check
@@ -204,20 +204,6 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         public void Dispose()
         {
             Dispose(true);
-        }
-
-        private IFunctionInvocationDispatcher GetDispatcherOrNull()
-        {
-            var dispatcherFactory = _serviceProvider.GetScriptHostServiceOrNull<IFunctionInvocationDispatcherFactory>();
-            if (dispatcherFactory != null)
-            {
-                var dispatcher = dispatcherFactory.GetFunctionDispatcher();
-                if (dispatcher.State == FunctionInvocationDispatcherState.Initialized)
-                {
-                    return dispatcher;
-                }
-            }
-            return null;
         }
     }
 }

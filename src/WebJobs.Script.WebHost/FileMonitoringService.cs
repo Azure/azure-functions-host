@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -14,7 +14,6 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.IO;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -178,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         /// <summary>
         /// Initializes the file and directory monitoring that does not need to happen as part of a Host startup
-        /// These watchers can be started after a delay to avoid startup performance issue
+        /// These watchers can be started after a delay to avoid startup performance issue.
         /// </summary>
         private void InitializeSecondaryFileWatchers()
         {
@@ -246,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         /// <summary>
-        /// Whenever the debug sentinel file changes we update our debug timeout
+        /// Whenever the debug sentinel file changes we update our debug timeout.
         /// </summary>
         private void OnDebugModeFileChanged(object sender, FileSystemEventArgs e)
         {
@@ -257,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         /// <summary>
-        /// Whenever the diagnostic sentinel file changes we update our debug timeout
+        /// Whenever the diagnostic sentinel file changes we update our debug timeout.
         /// </summary>
         private void OnDiagnosticModeFileChanged(object sender, FileSystemEventArgs e)
         {

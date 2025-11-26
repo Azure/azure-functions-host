@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.MobileServices;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -278,43 +277,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await TestHelpers.ClearContainerAsync(container);
             }
             return container;
-        }
-
-        protected async Task<JToken> WaitForMobileTableRecordAsync(string tableName, string itemId, string textToMatch = null)
-        {
-            // We know the tests are using the default INameResolver and this setting.
-            var mobileAppUri = _nameResolver.Resolve("AzureWebJobs_TestMobileUri");
-            var client = new MobileServiceClient(new Uri(mobileAppUri));
-            JToken item = null;
-            var table = client.GetTable(tableName);
-            await TestHelpers.Await(() =>
-            {
-                bool result = false;
-                try
-                {
-                    item = Task.Run(() => table.LookupAsync(itemId)).Result;
-                    if (textToMatch != null)
-                    {
-                        result = item["Text"].ToString() == textToMatch;
-                    }
-                    else
-                    {
-                        result = true;
-                    }
-                }
-                catch (AggregateException aggEx)
-                {
-                    var ex = (MobileServiceInvalidOperationException)aggEx.InnerException;
-                    if (ex.Response.StatusCode != HttpStatusCode.NotFound)
-                    {
-                        throw;
-                    }
-                }
-
-                return result;
-            });
-
-            return item;
         }
 
         protected async Task<Document> WaitForDocumentAsync(string itemId, string textToMatch = null)

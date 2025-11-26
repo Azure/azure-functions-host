@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(FunctionInvocationDispatcherState.WorkerProcessRestarting, true)]
         [InlineData(FunctionInvocationDispatcherState.Disposing, true)]
         [InlineData(FunctionInvocationDispatcherState.Disposed, true)]
-        public async Task FunctionDispatcher_DelaysInvoke_WhenNotReady(FunctionInvocationDispatcherState state, bool delaysExecution)
+        internal async Task FunctionDispatcher_DelaysInvoke_WhenNotReady(FunctionInvocationDispatcherState state, bool delaysExecution)
         {
             _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(state);
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(2));

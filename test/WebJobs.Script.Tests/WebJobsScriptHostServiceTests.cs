@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -592,7 +592,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockScriptWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             Mock<IConfigurationRoot> mockConfiguration = new Mock<IConfigurationRoot>();
             var mockEnvironment = new Mock<IEnvironment>();
-            Mock<IWebHostRpcWorkerChannelManager> mockLanguageWorkerChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
+            Mock<IWebHostWorkerManager> mockLanguageWorkerChannelManager = new Mock<IWebHostWorkerManager>();
             ILogger<StandbyManager> testLogger = new Logger<StandbyManager>(_loggerFactory);
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();

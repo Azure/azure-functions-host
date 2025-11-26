@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -14,7 +14,7 @@ using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class TestRpcWorkerChannelManager : IWebHostRpcWorkerChannelManager
+    internal class TestRpcWorkerChannelManager : IWebHostRpcWorkerChannelManager
     {
         private IScriptEventManager _eventManager;
         private ILogger _testLogger;

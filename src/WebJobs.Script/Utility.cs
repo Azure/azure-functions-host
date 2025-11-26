@@ -629,11 +629,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker, CancellationToken cancellationToken, bool throwOnMismatch = true)
+        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool shouldSkipValidation, CancellationToken cancellationToken, bool throwOnMismatch = true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (isPlaceholderMode || isHttpWorker)
+            if (isPlaceholderMode || shouldSkipValidation)
             {
                 return;
             }
