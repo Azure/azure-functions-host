@@ -43,7 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             JObject bindingJObject = JObject.Parse(rawJson);
             var bindingMetadata = BindingMetadata.Create(bindingJObject);
             bool result = bindingMetadata.SkipDeferredBinding();
-            Assert.Equal(expectedResult, result);
             result.Should().Be(expectedResult);
         }
 
