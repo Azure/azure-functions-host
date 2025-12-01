@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     .AddSource("Microsoft.Azure.WebJobs")
                     .AddSource("WebJobs.Extensions.DurableTask")
                     .AddSource("DurableTask.*")
-                    .SetSampler(getSampler(configuration))
+                    .SetSampler(GetSampler(configuration))
                     .AddAspNetCoreInstrumentation(o =>
                     {
                         o.EnrichWithHttpResponse = (activity, httpResponse) =>
@@ -169,13 +169,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             });
         }
 
-        private static Sampler getSampler(IConfiguration configuration)
+        private static Sampler GetSampler(IConfiguration configuration)
         {
             var otlpTracesSampler = GetConfigurationValue(EnvironmentSettingNames.OtlpTracesSampler, configuration);
             var otlpTracesSamplerArg = GetConfigurationValue(EnvironmentSettingNames.OtlpTracesSamplerArg, configuration);
             double otlpTracesSamplerArgVal = 1.0;
             double.TryParse(otlpTracesSamplerArg, out otlpTracesSamplerArgVal);
-            var samplerOptions = new Dictionary<string, Sampler> //https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
+            var samplerOptions = new Dictionary<string, Sampler> // https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
             {
                 {"always_on", new AlwaysOnSampler() },
                 {"always_off", new AlwaysOffSampler() },
