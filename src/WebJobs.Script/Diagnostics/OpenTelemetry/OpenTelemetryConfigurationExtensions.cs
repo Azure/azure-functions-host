@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Linq;
@@ -47,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 .ConfigureExporters(context.Configuration, enableOtlp, enableAzureMonitor, azMonConnectionString, telemetryMode)
                 .ConfigureResource(r => ConfigureResource(r))
                 .ConfigureMetrics()
-                .ConfigureTracing()
+                .ConfigureTracing(context.Configuration)
                 .ConfigureEventLogLevel(context.Configuration);
 
             // Azure SDK instrumentation is experimental.
@@ -92,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             });
         }
 
-        private static IOpenTelemetryBuilder ConfigureTracing(this IOpenTelemetryBuilder builder)
+        private static IOpenTelemetryBuilder ConfigureTracing(this IOpenTelemetryBuilder builder, IConfiguration configuration)
         {
             return builder.WithTracing(builder =>
             {
@@ -104,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     .AddSource("Microsoft.Azure.WebJobs")
                     .AddSource("WebJobs.Extensions.DurableTask")
                     .AddSource("DurableTask.*")
+                    .SetSampler(getSampler(configuration))
                     .AddAspNetCoreInstrumentation(o =>
                     {
                         o.EnrichWithHttpResponse = (activity, httpResponse) =>
@@ -165,6 +167,28 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     })
                     .AddProcessor(ActivitySanitizingProcessor.Instance);
             });
+        }
+
+        private static Sampler getSampler(IConfiguration configuration)
+        {
+            var otlpTracesSampler = GetConfigurationValue(EnvironmentSettingNames.OtlpTracesSampler, configuration);
+            var otlpTracesSamplerArg = GetConfigurationValue(EnvironmentSettingNames.OtlpTracesSamplerArg, configuration);
+            double otlpTracesSamplerArgVal = 1.0;
+            double.TryParse(otlpTracesSamplerArg, out otlpTracesSamplerArgVal);
+            var samplerOptions = new Dictionary<string, Sampler> //https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
+            {
+                {"always_on", new AlwaysOnSampler() },
+                {"always_off", new AlwaysOffSampler() },
+                {"traceidratio", new TraceIdRatioBasedSampler(otlpTracesSamplerArgVal) },
+                {"parentbased_always_on", new ParentBasedSampler(new AlwaysOnSampler()) },
+                {"parentbased_always_off", new ParentBasedSampler(new AlwaysOffSampler()) },
+                {"parentbased_traceidratio", new ParentBasedSampler(new TraceIdRatioBasedSampler(otlpTracesSamplerArgVal)) },
+            };
+            if (!string.IsNullOrEmpty(otlpTracesSampler) && samplerOptions.ContainsKey(otlpTracesSampler))
+            {
+                return samplerOptions[otlpTracesSampler];
+            }
+            return new AlwaysOnSampler(); // Otel default
         }
 
         private static ILoggingBuilder ConfigureLogging(this ILoggingBuilder builder)
