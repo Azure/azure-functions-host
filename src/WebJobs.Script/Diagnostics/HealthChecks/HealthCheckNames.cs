@@ -21,8 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         public const string ScriptHostLifeCycle = Prefix + "script_host.lifecycle";
 
         /// <summary>
-        /// The 'azure.functions.web_jobs.storage' check monitors connectivity to the WebJobs storage account.
+        /// The 'azure.functions.webjobs.storage' check monitors connectivity to the WebJobs storage account.
         /// </summary>
-        public const string WebJobsStorage = Prefix + "web_jobs.storage";
+        public const string WebJobsStorage = Prefix + "webjobs.storage";
     }
 }
