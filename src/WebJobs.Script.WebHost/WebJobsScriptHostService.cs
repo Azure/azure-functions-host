@@ -328,6 +328,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private async Task UnsynchronizedStartHostAsync(ScriptHostStartupOperation activeOperation, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
         {
+            // We may be started from a variety of contexts, some of which may carry AsyncLocal state (such as Activity). We do not want any of this
+            // to flow into the host startup logic, so we suppress the flow of the ExecutionContext.
+            using AsyncFlowControl flow = System.Threading.ExecutionContext.SuppressFlow();
             await CheckFileSystemAsync();
             if (ShutdownRequested)
             {
