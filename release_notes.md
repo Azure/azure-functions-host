@@ -8,3 +8,4 @@
 - Throw exception instead of timing out when worker channel exits before initializing gRPC (#10937)
 - Adding empty remote message check in the SystemLogger (#11473)
 - Add support for trace sampling (#11497)
+- Fix `webPubSubTrigger`'s for Flex consumption sku (#11489)
