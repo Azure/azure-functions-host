@@ -1,10 +1,4 @@
-﻿#r "Microsoft.Azure.DocumentDB.Core"
-
-using Microsoft.Azure.Documents;
-using System.Collections.Generic;
-using System;
-
-public static void Run(IReadOnlyList<Document> input, out string completed)
+public static void Run(IReadOnlyList<dynamic> input, out string completed)
 {
-    completed = input[0].Id;
+    completed = input[0].id;
 }

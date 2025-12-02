@@ -480,6 +480,18 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Microsoft.Azure.Cosmos.Client",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Cosmos.Core",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Cosmos.Direct",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption",
       "resolutionPolicy": "private"
     },
@@ -946,7 +958,7 @@
     {
       "name": "OpenTelemetry.Api.ProviderBuilderExtensions",
       "resolutionPolicy": "private"
-    },   
+    },
     {
       "name": "OpenTelemetry.Exporter.OpenTelemetryProtocol",
       "resolutionPolicy": "private"

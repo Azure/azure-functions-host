@@ -12,7 +12,7 @@
       "direction": "in",
       "databaseName": "ItemDb",
       "containerName": "ItemCollection",
-      "id": "{documentId}"
+      "id": "{testId}"
     },
     {
       "type": "cosmosDB",
@@ -20,7 +20,7 @@
       "direction": "in",
       "databaseName": "ItemDb",
       "containerName": "ItemCollection",
-      "sqlQuery": "SELECT f.id, f.related FROM f WHERE f.related = {documentId}"
+      "sqlQuery": "SELECT f.id, f.related FROM f WHERE f.related = {testId}"
     },
     {
       "type": "cosmosDB",

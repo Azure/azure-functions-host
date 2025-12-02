@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
             VerifyInitialized();
             IEnumerable<(string Key, string Value)> properties =
                 [
-                    ("DefaultEndpointsProtocol", Uri.UriSchemeHttps),
+                    ("DefaultEndpointsProtocol", Uri.UriSchemeHttp),
                     ("AccountName", AccountName),
                     ("AccountKey", AccountKey),
                     ("BlobEndpoint", GetBlobEndpoint()),
