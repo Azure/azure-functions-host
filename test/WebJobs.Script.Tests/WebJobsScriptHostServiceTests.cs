@@ -201,12 +201,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await _hostService.StartAsync(CancellationToken.None);
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
 
-            Thread restartHostThread = new Thread(new ThreadStart(RestartHost));
-            Thread specializeHostThread = new Thread(new ThreadStart(SpecializeHost));
-            restartHostThread.Start();
-            specializeHostThread.Start();
-            restartHostThread.Join();
-            specializeHostThread.Join();
+            Task restartHost = _hostService.RestartHostAsync("test", default);
+            Task specializeHost = SpecializeHostAsync();
+            await Task.WhenAll(restartHost, specializeHost).TestWaitAsync(TimeSpan.FromSeconds(60)); // this is a slow test for some reason.
 
             var logMessages = _webHostLoggerProvider.GetAllLogMessages().Where(m => m.FormattedMessage.Contains("Restarting host."));
             Assert.Equal(2, logMessages.Count());
@@ -215,9 +212,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task HostRestart_DuringInitializationWithError_Recovers()
         {
-            SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
-            await semaphore.WaitAsync();
-            bool waitingInHostBuilder = false;
+            TaskCompletionSource startBlock = new();
+            TaskCompletionSource initialStart = new();
             var metricsLogger = new TestMetricsLogger();
 
             // Have the first host start, but pause. We'll issue a restart, then let
@@ -227,8 +223,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
                 .Returns(async () =>
                 {
-                    waitingInHostBuilder = true;
-                    await semaphore.WaitAsync();
+                    initialStart.SetResult();
+                    await startBlock.Task;
                     throw new InvalidOperationException("Something happened at startup!");
                 });
 
@@ -237,17 +233,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
                 .Returns(() => Task.CompletedTask);
 
-            var hostBuilder = new Mock<IScriptHostBuilder>();
-            hostBuilder.SetupSequence(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
-                .Returns(hostA.Object)
-                .Returns(hostB.Object);
+            OrderedScriptHostBuilder hostBuilder = new(hostA.Object, hostB.Object);
 
             _webHostLoggerProvider = new TestLoggerProvider();
             _loggerFactory = new LoggerFactory();
             _loggerFactory.AddProvider(_webHostLoggerProvider);
 
             _hostService = new WebJobsScriptHostService(
-                _monitor, hostBuilder.Object, _loggerFactory,
+                _monitor, hostBuilder, _loggerFactory,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
@@ -256,20 +249,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
             TestLoggerProvider hostBLogger = hostB.Object.GetTestLoggerProvider();
 
-            Task initialStart = _hostService.StartAsync(CancellationToken.None);
-
-            Thread restartHostThread = new Thread(new ThreadStart(RestartHost));
-            restartHostThread.Start();
-            await TestHelpers.Await(() => waitingInHostBuilder);
+            Task firstStart = _hostService.StartAsync(CancellationToken.None);
+            await initialStart.Task.TestWaitAsync();
+            Task restartTask = _hostService.RestartHostAsync("test", default);
 
             // Now let the first host continue. It will throw, which should be correctly handled.
-            semaphore.Release();
+            startBlock.SetResult();
 
-            await TestHelpers.Await(() => _hostService.State == ScriptHostState.Running);
+            await restartTask;
+            Assert.Equal(ScriptHostState.Running, _hostService.State);
 
-            restartHostThread.Join();
-
-            await initialStart;
+            await firstStart;
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
 
             // Make sure the error was logged to the correct logger
@@ -291,21 +281,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task HostRestart_DuringInitialization_Cancels()
         {
-            SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
-            await semaphore.WaitAsync();
-            bool waitingInHostBuilder = false;
+            TaskCompletionSource startBlock = new();
+            TaskCompletionSource initialStart = new();
             var metricsLogger = new TestMetricsLogger();
 
             // Have the first host start, but pause. We'll issue a restart, then
-            // let this first host continue and see the cancelation token has fired.
+            // let this first host continue and see the cancellation token has fired.
             var hostA = CreateMockHost();
             hostA
                 .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
                 .Returns<CancellationToken>(async ct =>
                 {
-                    waitingInHostBuilder = true;
-                    await semaphore.WaitAsync();
-                    ct.ThrowIfCancellationRequested();
+                    initialStart.SetResult();
+                    await startBlock.Task.WaitAsync(ct);
                 });
 
             var hostB = CreateMockHost();
@@ -313,39 +301,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
                 .Returns(() => Task.CompletedTask);
 
-            var hostBuilder = new Mock<IScriptHostBuilder>();
-            hostBuilder.SetupSequence(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
-                .Returns(hostA.Object)
-                .Returns(hostB.Object);
+            OrderedScriptHostBuilder hostBuilder = new(hostA.Object, hostB.Object);
 
             _webHostLoggerProvider = new TestLoggerProvider();
             _loggerFactory = new LoggerFactory();
             _loggerFactory.AddProvider(_webHostLoggerProvider);
 
             _hostService = new WebJobsScriptHostService(
-                _monitor, hostBuilder.Object, _loggerFactory,
+                _monitor, hostBuilder, _loggerFactory,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
                 _mockConfig, new TestScriptEventManager(), _hostMetrics, _functionsHostingConfigOptions, _hostBuiltChangeTokenSource, _hostBuiltChangeTokenSourceResolverOptions);
 
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
+            Task firstStart = _hostService.StartAsync(default);
+            await initialStart.Task.TestWaitAsync();
+            Task restartTask = _hostService.RestartHostAsync("test", default);
 
-            Task initialStart = _hostService.StartAsync(CancellationToken.None);
+            await restartTask;
+            Assert.Equal(ScriptHostState.Running, _hostService.State);
 
-            Thread restartHostThread = new Thread(new ThreadStart(RestartHost));
-            restartHostThread.Start();
-            await TestHelpers.Await(() => waitingInHostBuilder);
-            await TestHelpers.Await(() => _webHostLoggerProvider.GetLog().Contains("Restart requested."));
-
-            // Now let the first host continue. It will see that startup is canceled.
-            semaphore.Release();
-
-            await TestHelpers.Await(() => _hostService.State == ScriptHostState.Running);
-
-            restartHostThread.Join();
-
-            await initialStart;
+            await firstStart;
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
 
             // Make sure the error was logged to the correct logger
@@ -593,12 +570,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await listenerTask;
         }
 
-        public void RestartHost()
-        {
-            _hostService.RestartHostAsync("test", CancellationToken.None).Wait();
-        }
-
-        public void SpecializeHost()
+        public Task SpecializeHostAsync()
         {
             var mockScriptWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             Mock<IConfigurationRoot> mockConfiguration = new Mock<IConfigurationRoot>();
@@ -611,7 +583,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var hostNameProvider = new HostNameProvider(mockEnvironment.Object);
             var mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
             var manager = new StandbyManager(_hostService, mockLanguageWorkerChannelManager.Object, mockConfiguration.Object, mockScriptWebHostEnvironment.Object, mockEnvironment.Object, _monitor, testLogger, hostNameProvider, mockApplicationLifetime.Object, new TestMetricsLogger());
-            manager.SpecializeHostAsync().Wait();
+            return manager.SpecializeHostAsync();
         }
 
         private bool AreRequiredMetricsGenerated(TestMetricsLogger testMetricsLogger)
@@ -655,6 +627,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
 
                 return null;
+            }
+        }
+
+        // Moq SetupSequence doesn't work with execution context suppression.
+        private class OrderedScriptHostBuilder(params IHost[] hosts) : IScriptHostBuilder
+        {
+            private readonly Queue<IHost> _hosts = new(hosts);
+
+            public IHost BuildHost(bool skipHostStartup, bool skipHostConfigurationParsing)
+            {
+                return _hosts.Dequeue();
             }
         }
     }
