@@ -346,6 +346,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private async Task UnsynchronizedStartHostCoreAsync(ScriptHostStartupOperation activeOperation, int attemptCount, JobHostStartupMode startupMode)
         {
+            await Task.Yield(); // ensure any async context is properly suppressed.
             await CheckFileSystemAsync();
             if (ShutdownRequested)
             {

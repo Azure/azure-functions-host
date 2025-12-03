@@ -105,6 +105,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task StartAsync_Succeeds()
         {
             var hostBuilder = new Mock<IScriptHostBuilder>();
+            _host.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Callback(() =>
+                {
+                    if (Activity.Current != null)
+                    {
+                        throw new InvalidOperationException("Activity flowed into host start.");
+                    }
+                })
+                .Returns(Task.CompletedTask);
             hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>())).Returns(_host.Object);
 
             _webHostLoggerProvider = new TestLoggerProvider();
@@ -124,6 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _hostBuiltChangeTokenSource,
                 _hostBuiltChangeTokenSourceResolverOptions);
 
+            using Activity activity = new("TestActivity_ShouldNotFlowIntoHostStart");
+            activity.Start();
             await _hostService.StartAsync(CancellationToken.None);
 
             // add general post startup validations here
