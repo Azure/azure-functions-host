@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="$(DotnetIsolatedVersion)" />
+    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" VersionOverride="$(DotnetIsolatedVersion)" />
   </ItemGroup>
 
   <Target Name="PrintDotnetIsolatedVersion" BeforeTargets="Restore;Build">

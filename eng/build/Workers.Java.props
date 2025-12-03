@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="$(JavaVersion)" />
+    <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" VersionOverride="$(JavaVersion)" />
   </ItemGroup>
 
   <Target Name="PrintJavaVersion" BeforeTargets="Restore;Build">

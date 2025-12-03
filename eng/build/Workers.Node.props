@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="$(NodeVersion)" />
+    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" VersionOverride="$(NodeVersion)" />
   </ItemGroup>
 
 

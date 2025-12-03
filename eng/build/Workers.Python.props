@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="$(PythonVersion)" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" VersionOverride="$(PythonVersion)" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
   </ItemGroup>
 
   <Target Name="PrintPythonVersion" BeforeTargets="Restore;Build">
