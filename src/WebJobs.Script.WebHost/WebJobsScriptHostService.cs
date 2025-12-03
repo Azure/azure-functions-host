@@ -326,11 +326,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// before calling this method. Host starts and restarts must be synchronous to prevent orphaned
         /// hosts or an incorrect ActiveHost.
         /// </summary>
-        private async Task UnsynchronizedStartHostAsync(ScriptHostStartupOperation activeOperation, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
+        private Task UnsynchronizedStartHostAsync(ScriptHostStartupOperation activeOperation, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
         {
             // We may be started from a variety of contexts, some of which may carry AsyncLocal state (such as Activity). We do not want any of this
             // to flow into the host startup logic, so we suppress the flow of the ExecutionContext.
-            using AsyncFlowControl flow = System.Threading.ExecutionContext.SuppressFlow();
+            Task start;
+            using (System.Threading.ExecutionContext.SuppressFlow())
+            {
+                start = UnsynchronizedStartHostCoreAsync(activeOperation, attemptCount, startupMode);
+            }
+
+            return start;
+        }
+
+        /// <summary>
+        /// Starts the host without taking a lock. Callers must take a lock on _hostStartSemaphore
+        /// before calling this method. Host starts and restarts must be synchronous to prevent orphaned
+        /// hosts or an incorrect ActiveHost.
+        /// </summary>
+        private async Task UnsynchronizedStartHostCoreAsync(ScriptHostStartupOperation activeOperation, int attemptCount, JobHostStartupMode startupMode)
+        {
             await CheckFileSystemAsync();
             if (ShutdownRequested)
             {
