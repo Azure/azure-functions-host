@@ -1,8 +1,16 @@
 <Project>
 
+  <PropertyGroup>
+    <PythonVersion>4.40.2</PythonVersion>
+    <PythonVersion Condition="'$(WorkerName)' == 'python' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</PythonVersion>
+  </PropertyGroup>
+
   <ItemGroup>
-    <!-- Python worker does not ship with the host for windows. -->
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" VersionOverride="4.40.2" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="$(PythonVersion)" Condition="!$(RuntimeIdentifier.StartsWith('win'))" />
   </ItemGroup>
+
+  <Target Name="PrintPythonVersion" BeforeTargets="Restore;Build">
+    <Message Importance="High" Text="PythonVersion=$(PythonVersion)" />
+  </Target>
 
 </Project>

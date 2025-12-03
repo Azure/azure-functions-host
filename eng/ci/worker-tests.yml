@@ -1,17 +1,22 @@
-trigger: none # ensure this is not ran as a CI build
+parameters:
+- name: WorkerName
+  displayName: Worker Name
+  type: string
 
-pr:
-  branches:
-    include:
-    - dev
-    - in-proc
-    - release/*
+- name: WorkerVersion
+  displayName: Worker Version
+  type: string
+
+trigger: none # ensure this is not ran as a CI build
 
 resources:
   repositories:
   - repository: 1es
     type: git
     name: 1ESPipelineTemplates/1ESPipelineTemplates
+    parameters:
+      settings:
+        networkIsolationPolicy: Permissive
     ref: refs/tags/release
   - repository: eng
     type: git
@@ -27,10 +32,13 @@ variables:
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
+    settings:
+        networkIsolationPolicy: Permissive
     pool:
       name: 1es-pool-azfunc
       image: 1es-windows-2022
       os: windows
+
 
     sdl:
       suppression:
@@ -39,5 +47,7 @@ extends:
     stages:
     - stage: Test
       jobs:
-      - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
       - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
+        parameters:
+          WorkerName: ${{ parameters.WorkerName }}
+          WorkerVersion: ${{ parameters.WorkerVersion }}

@@ -1,7 +1,17 @@
 <Project>
 
+  <PropertyGroup>
+    <NodeVersion>3.12.0</NodeVersion>
+    <NodeVersion Condition="'$(WorkerName)' == 'node' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</NodeVersion>
+  </PropertyGroup>
+
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" VersionOverride="3.12.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="$(NodeVersion)" />
   </ItemGroup>
+
+
+  <Target Name="PrintNodeVersion" BeforeTargets="Restore;Build">
+    <Message Importance="High" Text="NodeVersion=$(NodeVersion)" />
+  </Target>
 
 </Project>

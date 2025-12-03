@@ -1,0 +1,92 @@
+parameters:
+- name: WorkerPackageName
+  displayName: Worker Package Name
+  type: string
+  
+- name: WorkerPackageVersion
+  displayName: Worker Package Version
+  type: string
+
+jobs:
+- job: WorkerSiteExtension
+  displayName: Build Worker Site Extension
+
+  pool:
+    name: 1es-pool-azfunc
+    image: 1es-windows-2022
+    os: windows
+
+  variables:
+    drop_path: $(Build.ArtifactStagingDirectory)
+
+  templateContext:
+    outputParentDirectory: $(drop_path)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish artifacts
+      path: $(drop_path)
+      artifact: drop_windows
+
+  
+    - stage: ValidateWithHost
+      displayName: Validate with Host Repository
+      dependsOn: Build
+      
+      jobs:
+      - job: TriggerHostPipeline
+        displayName: Trigger Host Repository Pipeline
+        
+        steps:
+        - task: PowerShell@2
+          displayName: 'Trigger Host Integration Pipeline via REST API'
+          inputs:
+            targetType: 'inline'
+            script: |
+              $personalAccessToken = "$(System.AccessToken)"
+              $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$personalAccessToken"))
+              $pipelineId = 1670
+              $uri = "$(System.CollectionUri)$(System.TeamProject)/_apis/pipelines/$pipelineId/runs?api-version=7.0-preview.1"
+              $branch = "refs/heads/surgupta/worker-site-ext"
+              $repo = "azure-functions-host"
+              $bodyObj = @{ resources = @{ repositories = @{ $repo = @{ refName = $branch } } } }
+              $body = $bodyObj | ConvertTo-Json -Depth 5
+              $response = Invoke-RestMethod -Uri $uri -Method Post -Headers @{Authorization = "Basic $base64AuthInfo"} -Body $body -ContentType "application/json"
+              $runId = $response.id
+              Write-Host "Triggered pipeline run: $runId"
+
+              # Poll for pipeline run status
+              $statusUri = "https://dev.azure.com/azfunc/internal/_apis/build/builds/${runId}?api-version=7.1"
+              $maxAttempts = 60  # Wait up to 30 minutes (60*30s)
+              $attempt = 0
+              $waitSeconds = 60
+              do {
+                Start-Sleep -Seconds $waitSeconds
+                $attempt++
+                $runStatus = Invoke-RestMethod -Uri $statusUri -Method Get -Headers @{Authorization = "Basic $base64AuthInfo"}
+                $state = $runStatus.state
+                $result = $runStatus.result
+                $stat = $runStatus.status
+                Write-Host "Pipeline run state: $state, result: $result (attempt $attempt) status: $stat"
+              } while ($stat -ne 'completed' -and $attempt -lt $maxAttempts)
+
+              if ($stat -ne 'completed') {
+                Write-Error "Timed out waiting for pipeline run to complete."
+                exit 1
+              }
+              if ($result -ne 'succeeded') {
+                Write-Error "Triggered pipeline run failed with result: $result"
+                exit 1
+              }
+              Write-Host "Triggered pipeline run succeeded."
+          env:
+            SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+
+        - task: DotNetCoreCLI@2
+          displayName: Create site extension
+          dependsOn: 
+          - ValidateWithHost
+          inputs:
+            command: 'build'
+            projects: 'src/WebJobs.Script.SiteExtension/GenerateWorkerSiteExtension.csproj'
+            arguments : '-p:WorkerPackageName=${{ parameters.WorkerPackageName }} -p:WorkerPackageVersion=${{ parameters.WorkerPackageVersion }} -p:OutputDir="$(drop_path)"'

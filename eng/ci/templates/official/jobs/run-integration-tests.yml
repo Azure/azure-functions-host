@@ -1,3 +1,12 @@
+parameters:
+- name: WorkerName
+  displayName: Worker Name
+  type: string
+
+- name: WorkerVersion
+  displayName: Worker Version
+  type: string
+
 jobs:
 - job: RunIntegrationTests
   displayName: Run Integration Tests
@@ -82,14 +91,14 @@ jobs:
     inputs:
       command: custom
       custom: restore
-      arguments: -v m
+      arguments: -v m -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
     displayName: Build
     inputs:
       command: build
-      arguments: -v m -c release --no-restore
+      arguments: -v m -c release --no-restore -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -97,7 +106,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: C# end to end tests
-      arguments: '--filter "Group=CSharpEndToEndTests" $(test_args)'
+      arguments: '--filter "Group=CSharpEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -106,7 +115,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Node end to end tests
-      arguments: '--filter "Group=NodeEndToEndTests" $(test_args)'
+      arguments: '--filter "Group=NodeEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -115,7 +124,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Direct load end to end tests
-      arguments: '--filter "Group=DirectLoadEndToEndTests" $(test_args)'
+      arguments: '--filter "Group=DirectLoadEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -124,7 +133,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: F# end to end tests
-      arguments: '--filter "Group=FSharpEndToEndTests" $(test_args)'
+      arguments: '--filter "Group=FSharpEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -133,7 +142,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Language worker end to end tests
-      arguments: '--filter "Group=LanguageWorkerSelectionEndToEndTests" $(test_args)'
+      arguments: '--filter "Group=LanguageWorkerSelectionEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -142,7 +151,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Node script host end to end tests
-      arguments: '--filter "Group=NodeScriptHostTests" $(test_args)'
+      arguments: '--filter "Group=NodeScriptHostTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -151,7 +160,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Raw assembly end to end tests
-      arguments: '--filter "Group=RawAssemblyEndToEndTests" $(test_args)'
+      arguments: '--filter "Group=RawAssemblyEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -160,7 +169,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Samples end to end tests
-      arguments: '--filter "Group=SamplesEndToEndTests" $(test_args)'
+      arguments: '--filter "Group=SamplesEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -169,7 +178,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Drain mode end to end tests
-      arguments: '--filter "Group=DrainModeEndToEndTests" $(test_args)'
+      arguments: '--filter "Group=DrainModeEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -178,7 +187,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Standby mode end to end tests Windows
-      arguments: '--filter "Group=StandbyModeEndToEndTests_Windows" $(test_args)'
+      arguments: '--filter "Group=StandbyModeEndToEndTests_Windows" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   # Disabled to unblock in 202401. Will fix shortly.
@@ -197,7 +206,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Linux container end to end tests Windows
-      arguments: '--filter "Group=ContainerInstanceTests" $(test_args)'
+      arguments: '--filter "Group=ContainerInstanceTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
@@ -206,7 +215,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Release verification tests
-      arguments: '--filter "Group=ReleaseTests" $(test_args)'
+      arguments: '--filter "Group=ReleaseTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
       projects: $(test_projects)
 
   - task: AzurePowerShell@5

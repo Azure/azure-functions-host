@@ -1,5 +1,5 @@
 parameters:
-- name: project
+- name: cfv
   type: string
   default: src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.csproj
 - name: publishDir
