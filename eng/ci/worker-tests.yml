@@ -2,10 +2,12 @@ parameters:
 - name: WorkerName
   displayName: Worker Name
   type: string
+  default: "default"
 
 - name: WorkerVersion
   displayName: Worker Version
   type: string
+  default: "default"
 
 trigger: none # ensure this is not ran as a CI build
 
