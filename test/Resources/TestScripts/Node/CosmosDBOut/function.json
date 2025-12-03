@@ -7,14 +7,6 @@
     },
     {
       "type": "cosmosDB",
-      "name": "relatedItems",
-      "direction": "out",
-      "databaseName": "ItemDb",
-      "containerName": "ItemCollection",
-      "createIfNotExists": true
-    },
-    {
-      "type": "cosmosDB",
       "name": "item",
       "direction": "out",
       "databaseName": "ItemDb",

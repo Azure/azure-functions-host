@@ -22,7 +22,7 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6" NoWarn="NU1701" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.1" />
 
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version ="3.54.0" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.54.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="8.0.2" />
@@ -60,6 +60,12 @@
 
   <ItemGroup>
     <None Include="../Resources/TestScripts/**" CopyToOutputDirectory="PreserveNewest" LinkBase="TestScripts" />
+    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBIn\function.json" />
+    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBIn\run.csx" />
+    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBOut\function.json" />
+    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBOut\run.csx" />
+    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBTrigger\function.json" />
+    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBTrigger\run.csx" />
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Management/Payload/DurableMsSQLProviderPayload.json" CopyToOutputDirectory="PreserveNewest" />

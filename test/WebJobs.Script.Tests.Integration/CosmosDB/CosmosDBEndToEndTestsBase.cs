@@ -50,11 +50,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             dynamic doc = await WaitForItemAsync(id);
 
-            Assert.Equal(doc.id, id);
+            Assert.Equal((string)doc.id, id);
 
-            // Now add that Id to a Queue, in an object to test binding
             var queue = await Fixture.GetNewQueue("documentdb-input");
-            string messageContent = string.Format("{{ \"documentId\": \"{0}\" }}", id);
+            string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
             await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
             // And wait for the text to be updated

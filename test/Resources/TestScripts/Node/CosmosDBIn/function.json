@@ -12,15 +12,8 @@
       "direction": "in",
       "databaseName": "ItemDb",
       "containerName": "ItemCollection",
-      "id": "{testId}"
-    },
-    {
-      "type": "cosmosDB",
-      "name": "relatedItems",
-      "direction": "in",
-      "databaseName": "ItemDb",
-      "containerName": "ItemCollection",
-      "sqlQuery": "SELECT f.id, f.related FROM f WHERE f.related = {testId}"
+      "partitionKey": "{id}",
+      "id": "{id}"
     },
     {
       "type": "cosmosDB",
@@ -28,7 +21,8 @@
       "direction": "out",
       "databaseName": "ItemDb",
       "containerName": "ItemCollection",
-      "createIfNotExists": true
+      "createIfNotExists": true,
+      "partitionKey": "{id}"
     }
   ]
 }
