@@ -23,7 +23,6 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Exceptions;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
@@ -367,19 +366,39 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public bool IsChannelReadyForInvocations()
         {
-            return !_disposing && !_disposed && _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
+            return !_disposing && !_disposed
+                && _state.HasFlag(
+                    RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
         }
 
         public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
-            RegisterCallbackForNextGrpcMessage(MsgType.StartStream, _workerConfig.CountOptions.ProcessStartupTimeout, 1, SendWorkerInitRequest, HandleWorkerStartStreamError);
-            // note: it is important that the ^^^ StartStream is in place *before* we start process the loop, otherwise we get a race condition
+            RegisterCallbackForNextGrpcMessage(
+                MsgType.StartStream,
+                _workerConfig.CountOptions.ProcessStartupTimeout,
+                count: 1,
+                SendWorkerInitRequest,
+                HandleWorkerStartStreamError);
+
+            // note: it is important that the ^^^ StartStream is in place *before* we start process the loop,
+            // otherwise we get a race condition
             _ = ProcessInbound();
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
-            await _rpcWorkerProcess.StartProcessAsync();
-            _state = _state | RpcWorkerChannelState.Initializing;
-            await _workerInitTask.Task;
+            await _rpcWorkerProcess.StartProcessAsync(cancellationToken);
+            _state |= RpcWorkerChannelState.Initializing;
+            Task<int> exited = _rpcWorkerProcess.WaitForExitAsync(cancellationToken);
+            Task winner = await Task.WhenAny(_workerInitTask.Task, exited).WaitAsync(cancellationToken);
+            await winner;
+
+            if (winner == exited)
+            {
+                // Process exited without throwing. We need to throw to indicate process is not running.
+                throw new WorkerProcessExitException("Worker process exited before initializing.")
+                {
+                    ExitCode = await exited,
+                };
+            }
         }
 
         public async Task<WorkerStatus> GetWorkerStatusAsync()
@@ -1560,7 +1579,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (workerException is null || workerException is FunctionTimeoutException)
             {
-                shutdownException = new FunctionTimeoutAbortException(workerException?.Message ?? "Worker channel is shutting down. Aborting function.", workerException);
+                string exceptionMessageSuffix = workerException?.Message is not null ? " Reason: " + workerException.Message : string.Empty;
+                shutdownException = new FunctionTimeoutAbortException("Worker channel is shutting down. Aborting function." + exceptionMessageSuffix, workerException);
             }
 
             foreach (var invocation in _executingInvocations?.Values)

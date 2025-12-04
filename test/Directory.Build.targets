@@ -1,7 +1,6 @@
 <Project>
 
-  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory)../, $(_DirectoryBuildTargetsFile)))/$(_DirectoryBuildTargetsFile)"
-    Condition=" '$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory)../, $(_DirectoryBuildTargetsFile)))' != '' " />
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../'))" />
 
   <!--see https://github.com/grpc/grpc/issues/12154#issuecomment-327006312 -->
   <Target Name="RemoveGrpcFromTestDir" AfterTargets="_CopyFilesMarkedCopyLocal">

@@ -2,10 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -259,6 +258,65 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Exception ex = traces.Single().Exception;
             Assert.IsType<InvalidOperationException>(ex);
+        }
+
+        [Fact]
+        public async Task WorkerProcess_WaitForExit_NotStarted_Throws()
+        {
+            using var rpcWorkerProcess = GetRpcWorkerConfigProcess(
+                TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().ElementAt(0));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => rpcWorkerProcess.WaitForExitAsync());
+        }
+
+        [Fact]
+        public async Task WorkerProcess_WaitForExit_Success_TaskCompletes()
+        {
+            // arrange
+            using Process process = GetProcess(exitCode: 0);
+            _hostProcessMonitorMock.Setup(m => m.RegisterChildProcess(process));
+            _hostProcessMonitorMock.Setup(m => m.UnregisterChildProcess(process));
+            _workerProcessFactory.Setup(m => m.CreateWorkerProcess(It.IsNotNull<WorkerContext>())).Returns(process);
+            using var rpcWorkerProcess = GetRpcWorkerConfigProcess(
+                TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().ElementAt(0));
+
+            // act
+            await rpcWorkerProcess.StartProcessAsync();
+
+            // assert
+            await rpcWorkerProcess.WaitForExitAsync();
+        }
+
+        [Fact]
+        public async Task WorkerProcess_WaitForExit_Error_Rethrows()
+        {
+            // arrange
+            using Process process = GetProcess(exitCode: -1);
+            _hostProcessMonitorMock.Setup(m => m.RegisterChildProcess(process));
+            _hostProcessMonitorMock.Setup(m => m.UnregisterChildProcess(process));
+            _workerProcessFactory.Setup(m => m.CreateWorkerProcess(It.IsNotNull<WorkerContext>())).Returns(process);
+            using var rpcWorkerProcess = GetRpcWorkerConfigProcess(
+                TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().ElementAt(0));
+
+            // act
+            await rpcWorkerProcess.StartProcessAsync();
+
+            // assert
+            await Assert.ThrowsAnyAsync<WorkerProcessExitException>(() => rpcWorkerProcess.WaitForExitAsync());
+        }
+
+        private static Process GetProcess(int exitCode)
+        {
+            return new()
+            {
+                StartInfo = new()
+                {
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    FileName = OperatingSystem.IsWindows() ? "cmd" : "bash",
+                    Arguments = OperatingSystem.IsWindows() ? $"/C exit {exitCode}" : $"-c \"exit {exitCode}\"",
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                }
+            };
         }
     }
 }

@@ -193,11 +193,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
             });
 
-            var environment = SystemEnvironment.Instance;
+            TestEnvironment environment = new();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
 
-            var workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(optionsMonitor, logger, SystemEnvironment.Instance,
-                                                    mockWebHostRpcWorkerChannelManager.Object, mockScriptHostManager.Object);
+            var workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(
+                optionsMonitor, logger, environment, mockWebHostRpcWorkerChannelManager.Object, mockScriptHostManager.Object);
             await workerFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, false);
 
             var traces = logger.GetLogMessages();

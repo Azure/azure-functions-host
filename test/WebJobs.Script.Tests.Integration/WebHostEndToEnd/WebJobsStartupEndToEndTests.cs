@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -148,10 +149,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 // Check that we continuously retry this (it will backoff).
                 var logMessages = fixture.Host.GetWebHostLogMessages();
                 var buildingMessageCount = logMessages.Count(p => p.FormattedMessage != null && p.FormattedMessage.Contains("Building host: version spec: ~4, startup suppressed: 'False'"));
-                Assert.True(buildingMessageCount > 1, $"Expected more than one host restart. Actual: {buildingMessageCount}.");
+                Assert.True(buildingMessageCount > 1, $"Expected more than one host restart. Actual: {buildingMessageCount}.{Environment.NewLine}{fixture.Host.GetLog()}");
 
                 var diagnosticEventCount = logMessages.Count(p => p.Category == LogCategories.Startup && p.State?.Any(k => k.Key == ScriptConstants.DiagnosticEventKey) == true);
-                Assert.True(diagnosticEventCount > 1, $"Expected more than one diagnostic event. Actual: {diagnosticEventCount}.");
+                Assert.True(diagnosticEventCount > 1, $"Expected more than one diagnostic event. Actual: {diagnosticEventCount}.{Environment.NewLine}{fixture.Host.GetLog()}");
             }
             finally
             {

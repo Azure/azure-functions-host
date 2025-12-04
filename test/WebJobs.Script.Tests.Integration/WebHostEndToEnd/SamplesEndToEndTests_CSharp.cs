@@ -867,7 +867,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -898,7 +898,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1007,7 +1007,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1029,7 +1029,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1100,7 +1100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName},
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName },
                 { EnvironmentSettingNames.FunctionsAdminIsolationEnabled, "1" }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
@@ -1138,7 +1138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1161,7 +1161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1226,7 +1226,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1252,8 +1252,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName},
-                { "WEBSITE_AUTH_ENABLED", "TRUE"}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName },
+                { "WEBSITE_AUTH_ENABLED", "TRUE" }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1277,8 +1277,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName},
-                { "WEBSITE_AUTH_ENABLED", "TRUE"}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName },
+                { "WEBSITE_AUTH_ENABLED", "TRUE" }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -1300,8 +1300,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName},
-                { "WEBSITE_AUTH_ENABLED", "FALSE"}
+                { EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName },
+                { "WEBSITE_AUTH_ENABLED", "FALSE" }
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {

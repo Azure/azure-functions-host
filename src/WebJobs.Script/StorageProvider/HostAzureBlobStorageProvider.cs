@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
 using System;
@@ -78,11 +78,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public virtual bool TryCreateBlobServiceClientFromConnection(string connection, out BlobServiceClient client)
         {
-            var connectionToUse = connection ?? ConnectionStringNames.Storage;
-
             try
             {
-                client = _blobServiceClientProvider.Create(connectionToUse, Configuration);
+                client = CreateBlobServiceClient(connection);
                 return true;
             }
             catch (Exception e)
@@ -91,6 +89,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 client = default;
                 return false;
             }
+        }
+
+        public virtual BlobServiceClient CreateBlobServiceClient(string connection)
+        {
+            if (string.IsNullOrWhiteSpace(connection))
+            {
+                connection = ConnectionStringNames.Storage;
+            }
+
+            return _blobServiceClientProvider.Create(connection, Configuration);
         }
     }
 }

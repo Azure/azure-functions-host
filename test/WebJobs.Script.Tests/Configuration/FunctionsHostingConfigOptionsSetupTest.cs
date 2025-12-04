@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void Configure_DoesNotSet_Options_IfFileDoesNotExist()
         {
-            string fileName = Path.Combine("C://settings.txt");
+            string fileName = Path.Combine(Path.GetTempPath(), "settings.txt");
             IConfiguration configuraton = GetConfiguration(fileName, string.Empty);
             FunctionsHostingConfigOptionsSetup setup = new FunctionsHostingConfigOptionsSetup(configuraton);
             FunctionsHostingConfigOptions options = new FunctionsHostingConfigOptions();

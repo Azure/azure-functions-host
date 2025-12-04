@@ -18,24 +18,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
     {
         private readonly Mock<IApplicationLifetime> _mockApplicationLifetime;
         private readonly Mock<ILogger<WebScriptHostExceptionHandler>> _mockLogger;
-        private readonly Mock<IFunctionInvocationDispatcherFactory> _mockDispatcherFactory;
-        private readonly Mock<IFunctionInvocationDispatcher> _mockDispatcher;
+        private readonly Mock<IScriptHostWorkerManager> _mockWorkerManager;
         private readonly WebScriptHostExceptionHandler _exceptionHandler;
 
         public WebScriptHostExceptionHandlerTests()
         {
-            _mockApplicationLifetime = new Mock<IApplicationLifetime>();
+            _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
             _mockLogger = new Mock<ILogger<WebScriptHostExceptionHandler>>();
-            _mockDispatcherFactory = new Mock<IFunctionInvocationDispatcherFactory>();
-            _mockDispatcher = new Mock<IFunctionInvocationDispatcher>();
-
-            _mockDispatcherFactory.Setup(f => f.GetFunctionDispatcher())
-                .Returns(_mockDispatcher.Object);
+            _mockWorkerManager = new Mock<IScriptHostWorkerManager>(MockBehavior.Strict);
 
             _exceptionHandler = new WebScriptHostExceptionHandler(
                 _mockApplicationLifetime.Object,
                 _mockLogger.Object,
-                _mockDispatcherFactory.Object);
+                _mockWorkerManager.Object);
         }
 
         [Fact]
@@ -46,14 +41,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             var exceptionInfo = ExceptionDispatchInfo.Capture(timeoutException);
             var timeoutGracePeriod = TimeSpan.FromSeconds(5);
 
-            _mockDispatcher.Setup(d => d.State)
-                .Returns(FunctionInvocationDispatcherState.Initialized);
-            _mockDispatcher.Setup(d => d.RestartWorkerWithInvocationIdAsync(It.IsAny<string>(), It.IsAny<Exception>()))
+            _mockWorkerManager
+                .Setup(d => d.State)
+                .Returns(WorkerManagerState.Initialized);
+
+            _mockWorkerManager
+                .Setup(d => d.RestartWorkerWithInvocationIdAsync(It.IsAny<string>(), It.IsAny<Exception>()))
                 .Returns(Task.FromResult(true));
 
             await _exceptionHandler.OnTimeoutExceptionAsync(exceptionInfo, timeoutGracePeriod);
 
-            _mockDispatcher.Verify(d => d.RestartWorkerWithInvocationIdAsync(
+            _mockWorkerManager.Verify(d => d.RestartWorkerWithInvocationIdAsync(
                 It.IsAny<string>(),
                 timeoutException), Times.Once);
         }
@@ -68,9 +66,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             var exceptionInfo = ExceptionDispatchInfo.Capture(timeoutException);
             var timeoutGracePeriod = TimeSpan.FromMilliseconds(100); // Short grace period
 
-            _mockDispatcher.Setup(d => d.State)
-                .Returns(FunctionInvocationDispatcherState.Initialized);
-            _mockDispatcher.Setup(d => d.RestartWorkerWithInvocationIdAsync(It.IsAny<string>(), It.IsAny<Exception>()))
+            _mockWorkerManager
+                .Setup(d => d.State)
+                .Returns(WorkerManagerState.Initialized);
+
+            _mockWorkerManager
+                .Setup(d => d.RestartWorkerWithInvocationIdAsync(It.IsAny<string>(), It.IsAny<Exception>()))
                 .Returns(Task.FromResult(true));
 
             // Don't complete the task to simulate it not finishing within the grace period
@@ -79,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             await _exceptionHandler.OnTimeoutExceptionAsync(exceptionInfo, timeoutGracePeriod);
 
             // Assert
-            _mockDispatcher.Verify(d => d.RestartWorkerWithInvocationIdAsync(
+            _mockWorkerManager.Verify(d => d.RestartWorkerWithInvocationIdAsync(
                 It.IsAny<string>(),
                 timeoutException), Times.Once);
         }

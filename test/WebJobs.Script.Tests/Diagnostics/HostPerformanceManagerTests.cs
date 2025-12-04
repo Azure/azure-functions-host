@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -123,14 +123,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 workerStatuses.Add(Guid.NewGuid().ToString(), workerStatus);
             }
 
-            var mockDispatcher = new Mock<IFunctionInvocationDispatcher>(MockBehavior.Strict);
-            mockDispatcher.SetupGet(p => p.State).Returns(FunctionInvocationDispatcherState.Initialized);
-            mockDispatcher.Setup(p => p.GetWorkerStatusesAsync()).ReturnsAsync(workerStatuses);
-            var mockDispatcherFactory = new Mock<IFunctionInvocationDispatcherFactory>(MockBehavior.Strict);
-            mockDispatcherFactory.Setup(p => p.GetFunctionDispatcher()).Returns(mockDispatcher.Object);
+            var mockWorkerManager = new Mock<IScriptHostWorkerManager>(MockBehavior.Strict);
+            mockWorkerManager.Setup(p => p.GetWorkerStatusesAsync()).Returns(Task.CompletedTask);
             var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var scriptHostManagerServiceProviderMock = mockScriptHostManager.As<IServiceProvider>();
-            scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IFunctionInvocationDispatcherFactory))).Returns(mockDispatcherFactory.Object);
+            scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IScriptHostWorkerManager))).Returns(mockWorkerManager.Object);
             scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IConcurrencyThrottleManager))).Returns(mockConcurrencyThrottleManager.Object);
             _serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(mockScriptHostManager.Object);
 
@@ -138,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             bool result = await _performanceManager.ProcessThresholdsExceeded(_logger);
             Assert.Equal(expected, result);
 
-            mockDispatcher.VerifyAll();
+            mockWorkerManager.VerifyAll();
         }
 
         [Theory]

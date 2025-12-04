@@ -39,9 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private static string _expectedSystemLogMessage = "Random system log message";
         private static string _expectedLoadMsgPartial = "Sending FunctionLoadRequest for ";
 
-        private readonly Mock<IWorkerProcess> _mockrpcWorkerProcess = new Mock<IWorkerProcess>();
+        private readonly Mock<IWorkerProcess> _mockRpcWorkerProcess = new Mock<IWorkerProcess>();
         private readonly string _workerId = "testWorkerId";
-        private readonly string _scriptRootPath = "c:\testdir";
+        private readonly string _scriptRootPath = "c:\\testdir";
         private readonly IScriptEventManager _eventManager = new ScriptEventManager();
         private readonly Mock<IScriptHostManager> _mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
         private readonly TestMetricsLogger _metricsLogger = new TestMetricsLogger();
@@ -57,7 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _hostOptionsMonitor;
         private readonly IMemoryMappedFileAccessor _mapAccessor;
         private readonly ISharedMemoryManager _sharedMemoryManager;
-        private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly ITestOutputHelper _testOutput;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
@@ -76,24 +75,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testWorkerConfig.CountOptions.InitializationTimeout = TimeSpan.FromSeconds(5);
             _testWorkerConfig.CountOptions.EnvironmentReloadTimeout = TimeSpan.FromSeconds(5);
 
-            _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
-            _mockrpcWorkerProcess.Setup(m => m.Id).Returns(910);
+            _mockRpcWorkerProcess.Setup(m => m.StartProcessAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+            TaskCompletionSource<int> tcs = new();
+            _mockRpcWorkerProcess.Setup(m => m.WaitForExitAsync(It.IsAny<CancellationToken>())).Returns(tcs.Task);
+            _mockRpcWorkerProcess.Setup(m => m.Id).Returns(910);
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
             _workerConcurrencyOptions = Options.Create(new WorkerConcurrencyOptions());
             _workerConcurrencyOptions.Value.CheckInterval = TimeSpan.FromSeconds(1);
 
-            ILogger<MemoryMappedFileAccessor> mmapAccessorLogger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            ILogger<MemoryMappedFileAccessor> mMapAccessorLogger = NullLogger<MemoryMappedFileAccessor>.Instance;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                _mapAccessor = new MemoryMappedFileAccessorWindows(mmapAccessorLogger);
+                _mapAccessor = new MemoryMappedFileAccessorWindows(mMapAccessorLogger);
             }
             else
             {
-                _mapAccessor = new MemoryMappedFileAccessorUnix(mmapAccessorLogger, _testEnvironment);
+                _mapAccessor = new MemoryMappedFileAccessorUnix(mMapAccessorLogger, _testEnvironment);
             }
             _sharedMemoryManager = new SharedMemoryManager(_loggerFactory, _mapAccessor);
-            _functionDataCache = new FunctionDataCache(_sharedMemoryManager, _loggerFactory, _testEnvironment);
 
             var hostOptions = new ScriptApplicationHostOptions
             {
@@ -127,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _eventManager,
                _mockScriptHostManager.Object,
                _testWorkerConfig,
-               _mockrpcWorkerProcess.Object,
+               _mockRpcWorkerProcess.Object,
                _logger,
                _metricsLogger,
                0,
@@ -183,6 +184,77 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task StartWorkerProcessAsync_ProcessExits_Throws()
+        {
+            _mockRpcWorkerProcess.Setup(m => m.WaitForExitAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(0);
+            await CreateDefaultWorkerChannel(autoStart: false);
+
+            WorkerProcessExitException ex = await Assert.ThrowsAsync<WorkerProcessExitException>(
+                () => _workerChannel.StartWorkerProcessAsync(default))
+                    .WaitAsync(TimeSpan.FromMilliseconds(100));
+            Assert.Equal(0, ex.ExitCode);
+            Assert.Equal("Worker process exited before initializing.", ex.Message);
+        }
+
+        [Fact]
+        public async Task StartWorkerProcessAsync_ProcessFaults_Throws()
+        {
+            WorkerProcessExitException expected = new("Process has faulted.") { ExitCode = -1 };
+            _mockRpcWorkerProcess.Setup(m => m.WaitForExitAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(expected);
+            await CreateDefaultWorkerChannel(autoStart: false);
+
+            WorkerProcessExitException actual = await Assert.ThrowsAsync<WorkerProcessExitException>(
+                () => _workerChannel.StartWorkerProcessAsync(default))
+                    .WaitAsync(TimeSpan.FromMilliseconds(100));
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public async Task StartWorkerProcessAsync_TimesOut()
+        {
+            await CreateDefaultWorkerChannel(autoStart: false); // suppress for timeout
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            await Assert.ThrowsAsync<TimeoutException>(async () => await initTask);
+        }
+
+        [Fact]
+        public async Task StartWorkerProcessAsync_WorkerProcess_Throws()
+        {
+            // note: uses custom worker channel
+            Mock<IWorkerProcess> mockrpcWorkerProcessThatThrows = new Mock<IWorkerProcess>();
+            mockrpcWorkerProcessThatThrows.Setup(m => m.StartProcessAsync(default)).Throws<FileNotFoundException>();
+
+            _workerChannel = new GrpcWorkerChannel(
+               _workerId,
+               _eventManager,
+               _mockScriptHostManager.Object,
+               _testWorkerConfig,
+               mockrpcWorkerProcessThatThrows.Object,
+               _logger,
+               _metricsLogger,
+               0,
+               _testEnvironment,
+               _hostOptionsMonitor,
+               _sharedMemoryManager,
+               _workerConcurrencyOptions,
+               _hostingConfigOptions,
+               _httpProxyService);
+            await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task StartWorkerProcessAsync_Invoked_SetupFunctionBuffers_Verify_ReadyForInvocation()
+        {
+            await CreateDefaultWorkerChannel();
+            _mockRpcWorkerProcess.Verify(m => m.StartProcessAsync(default), Times.Once);
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            Assert.True(_workerChannel.IsChannelReadyForInvocations());
+        }
+
+        [Fact]
         public async Task WorkerChannel_Dispose_With_WorkerTerminateCapability()
         {
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HandlesWorkerTerminateMessage, "1" } });
@@ -222,16 +294,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task StartWorkerProcessAsync_Invoked_SetupFunctionBuffers_Verify_ReadyForInvocation()
-        {
-            await CreateDefaultWorkerChannel();
-            _mockrpcWorkerProcess.Verify(m => m.StartProcessAsync(), Times.Once);
-            Assert.False(_workerChannel.IsChannelReadyForInvocations());
-            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
-            Assert.True(_workerChannel.IsChannelReadyForInvocations());
-        }
-
-        [Fact]
         public async Task DisposingChannel_NotReadyForInvocation()
         {
             try
@@ -260,14 +322,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task StartWorkerProcessAsync_TimesOut()
-        {
-            await CreateDefaultWorkerChannel(autoStart: false); // suppress for timeout
-            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
-            await Assert.ThrowsAsync<TimeoutException>(async () => await initTask);
-        }
-
-        [Fact]
         public async Task SendEnvironmentReloadRequest_Generates_ExpectedMetrics()
         {
             await CreateDefaultWorkerChannel();
@@ -281,31 +335,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Task reloadRequestResponse = _workerChannel.SendFunctionEnvironmentReloadRequest().ContinueWith(t => { });
             await Task.WhenAny(reloadRequestResponse, waitForMetricsTask, Task.Delay(5000));
             Assert.True(_metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationEnvironmentReloadRequestResponse));
-        }
-
-        [Fact]
-        public async Task StartWorkerProcessAsync_WorkerProcess_Throws()
-        {
-            // note: uses custom worker channel
-            Mock<IWorkerProcess> mockrpcWorkerProcessThatThrows = new Mock<IWorkerProcess>();
-            mockrpcWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
-
-            _workerChannel = new GrpcWorkerChannel(
-               _workerId,
-               _eventManager,
-               _mockScriptHostManager.Object,
-               _testWorkerConfig,
-               mockrpcWorkerProcessThatThrows.Object,
-               _logger,
-               _metricsLogger,
-               0,
-               _testEnvironment,
-               _hostOptionsMonitor,
-               _sharedMemoryManager,
-               _workerConcurrencyOptions,
-               _hostingConfigOptions,
-               _httpProxyService);
-            await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
         }
 
         [Fact]
@@ -547,7 +576,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _eventManager,
                _mockScriptHostManager.Object,
                _testWorkerConfig,
-               _mockrpcWorkerProcess.Object,
+               _mockRpcWorkerProcess.Object,
                _logger,
                _metricsLogger,
                0,
@@ -1256,7 +1285,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _eventManager,
                _mockScriptHostManager.Object,
                config,
-               _mockrpcWorkerProcess.Object,
+               _mockRpcWorkerProcess.Object,
                _logger,
                _metricsLogger,
                0,
@@ -1297,7 +1326,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _eventManager,
                _mockScriptHostManager.Object,
                config,
-               _mockrpcWorkerProcess.Object,
+               _mockRpcWorkerProcess.Object,
                _logger,
                _metricsLogger,
                0,

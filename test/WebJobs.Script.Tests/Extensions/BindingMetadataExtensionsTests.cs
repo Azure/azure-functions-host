@@ -1,7 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
+using AwesomeAssertions;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Newtonsoft.Json.Linq;
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             JObject bindingJObject = JObject.Parse(rawJson);
             var bindingMetadata = BindingMetadata.Create(bindingJObject);
             bool result = bindingMetadata.SupportsDeferredBinding();
-            Assert.Equal(expectedResult, result);
+            result.Should().Be(expectedResult);
         }
 
         [Fact]
@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             JObject bindingJObject = JObject.Parse("{\"name\":\"book\",\"direction\":\"In\",\"type\":\"blobTrigger\",\"blobPath\":\"expression-trigger\",\"connection\":\"AzureWebJobsStorage\",\"properties\":{\"skipDeferredBinding\":\"blah\"}}");
             var bindingMetadata = BindingMetadata.Create(bindingJObject);
             bool result = bindingMetadata.SupportsDeferredBinding();
-            Assert.False(result);
+            result.Should().BeFalse();
         }
 
         [Theory]
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             JObject bindingJObject = JObject.Parse(rawJson);
             var bindingMetadata = BindingMetadata.Create(bindingJObject);
             bool result = bindingMetadata.SkipDeferredBinding();
-            Assert.Equal(expectedResult, result);
+            result.Should().Be(expectedResult);
         }
 
         [Fact]
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             JObject bindingJObject = JObject.Parse("{\"name\":\"book\",\"direction\":\"In\",\"type\":\"blobTrigger\",\"blobPath\":\"expression-trigger\",\"connection\":\"AzureWebJobsStorage\",\"properties\":{\"skipDeferredBinding\":\"blah\"}}");
             var bindingMetadata = BindingMetadata.Create(bindingJObject);
             bool result = bindingMetadata.SkipDeferredBinding();
-            Assert.False(result);
+            result.Should().BeFalse();
         }
 
         [Theory]
@@ -67,13 +67,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 Type = type,
             };
 
-            Assert.Equal(expected, bindingMetadata.IsHttpTrigger());
+            bindingMetadata.IsHttpTrigger().Should().Be(expected);
         }
 
         [Theory]
         [InlineData("eventGridTrigger", true)]
         [InlineData("signalRTrigger", true)]
         [InlineData("assistantSkillTrigger", true)]
+        [InlineData("webPubSubTrigger", true)]
         [InlineData("blobTrigger", false, "eventGrid")]
         [InlineData("blobTrigger", false, "other")]
         [InlineData("httpTrigger", false)]
@@ -93,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 };
             }
 
-            Assert.Equal(expected, bindingMetadata.IsWebHookTrigger());
+            bindingMetadata.IsWebHookTrigger().Should().Be(expected);
         }
 
         [Theory]
@@ -109,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 Type = type,
             };
 
-            Assert.Equal(expected, bindingMetadata.IsDurableTrigger());
+            bindingMetadata.IsDurableTrigger().Should().Be(expected);
         }
 
         [Theory]
@@ -134,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 };
             }
 
-            Assert.Equal(expected, bindingMetadata.IsEventGridBlobTrigger());
+            bindingMetadata.IsEventGridBlobTrigger().Should().Be(expected);
         }
     }
 }

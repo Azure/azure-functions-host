@@ -9,7 +9,6 @@
     <PackageId>Microsoft.Azure.WebJobs.Script.WebHost</PackageId>
     <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
     <TieredCompilation>false</TieredCompilation>
-    <IdentityDependencyVersion>6.35.0</IdentityDependencyVersion>
     <UserSecretsId>dc316708-c8c1-4ef1-90b3-19eb512d96f3</UserSecretsId>
   </PropertyGroup>
 
@@ -50,40 +49,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
-    <PackageReference Include="Azure.Data.Tables" Version="12.8.3" />
-    <PackageReference Include="Azure.Identity" Version="1.14.2" />
-    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.6.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.22.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.22.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.22.0" />
-    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.8" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.5.8" />
-    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.3.20240307.67" />
-    <PackageReference Include="Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption" Version="1.0.5" />
-    <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
-
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.42" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.1" />
-    <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
-    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="$(IdentityDependencyVersion)" />
-    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="$(IdentityDependencyVersion)" />
-    <PackageReference Include="Microsoft.Security.Utilities" Version="1.3.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="all" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="$(IdentityDependencyVersion)" />
-
-    <!--
-      System.IO.FileSystem.AccessControl/5.0.0 pinned to avoid an unintended downgrade to 4.7.0.
-      See https://github.com/Azure/azure-functions-host/pull/10002
-    -->
-    <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
-    <PackageReference Include="System.Memory.Data" Version="8.0.1" />
-    <PackageReference Include="System.Net.NameResolution" Version="4.3.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client"/>
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.Client" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" />
+    <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" />
+    <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" />
+    <PackageReference Include="Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption" />
+    <PackageReference Include="Microsoft.Azure.Storage.File" />
+    <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" />
+    <PackageReference Include="Microsoft.Security.Utilities" />
+    <PackageReference Include="System.Net.NameResolution" />
   </ItemGroup>
 
   <ItemGroup>

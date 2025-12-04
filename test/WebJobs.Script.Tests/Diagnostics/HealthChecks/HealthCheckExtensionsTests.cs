@@ -71,6 +71,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             builder.Verify(b => b.Add(IsRegistration<ScriptHostHealthCheck>(
                 HealthCheckNames.ScriptHostLifeCycle, HealthCheckTags.Readiness)),
                 Times.Once);
+            builder.Verify(b => b.Add(IsRegistration<WebJobsStorageHealthCheck>(
+                HealthCheckNames.WebJobsStorage, HealthCheckTags.Configuration)),
+                Times.Once);
             builder.Verify(b => b.Services, Times.AtLeastOnce);
             builder.VerifyNoOtherCalls();
 
@@ -116,6 +119,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
                 HealthCheckNames.ScriptHostLifeCycle, HealthCheckTags.Readiness)),
                 Times.Once);
             builder.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public void AddWebJobsStorageHealthCheck_RegistersWebJobsStorageHealthCheck()
+        {
+            // arrange
+            ServiceCollection services = new();
+            Mock<IHealthChecksBuilder> builder = new(MockBehavior.Strict);
+            builder.Setup(b => b.Services).Returns(services);
+            builder.Setup(b => b.Add(It.IsAny<HealthCheckRegistration>())).Returns(builder.Object);
+
+            // act
+            IHealthChecksBuilder returned = builder.Object.AddWebJobsStorageHealthCheck();
+
+            // assert
+            returned.Should().BeSameAs(builder.Object);
+            builder.Verify(b => b.Add(IsRegistration<WebJobsStorageHealthCheck>(
+                HealthCheckNames.WebJobsStorage, HealthCheckTags.Configuration, HealthCheckTags.Connectivity, HealthCheckTags.WebJobsStorage)),
+                Times.Once);
+            builder.Verify(b => b.Services, Times.AtLeastOnce);
+            builder.VerifyNoOtherCalls();
+            services.Should().ContainSingle()
+                .Which.Should().Satisfy<ServiceDescriptor>(sd =>
+                {
+                    sd.Lifetime.Should().Be(ServiceLifetime.Singleton);
+                    sd.ServiceType.Should().Be<WebJobsStorageHealthCheck>();
+                    sd.ImplementationType.Should().Be<WebJobsStorageHealthCheck>();
+                });
         }
 
         [Fact]
@@ -258,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             VerifyDynamicHealthCheckService(services);
         }
 
-        private static HealthCheckRegistration IsRegistration<T>(string name, string tag)
+        private static HealthCheckRegistration IsRegistration<T>(string name, params string[] tags)
             where T : IHealthCheck
         {
             static bool IsType(HealthCheckRegistration registration)
@@ -273,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
 
             return Match.Create<HealthCheckRegistration>(r =>
             {
-                return r.Name == name && r.Tags.Contains(tag) && IsType(r);
+                return r.Name == name && tags.All(t => r.Tags.Contains(t)) && IsType(r);
             });
         }
 

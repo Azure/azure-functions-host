@@ -36,29 +36,37 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly IExtensionBundleManager _extensionBundleManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly Lazy<IEnumerable<Type>> _startupTypes;
+        private readonly IEnvironment _environment;
         private readonly IOptions<ExtensionRequirementOptions> _extensionRequirementOptions;
+        private readonly Lazy<IEnumerable<Type>> _startupTypes;
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
-        public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager,
-            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger, IOptions<ExtensionRequirementOptions> extensionRequirementOptions)
+        public ScriptStartupTypeLocator(
+            string rootScriptPath,
+            ILogger<ScriptStartupTypeLocator> logger,
+            IExtensionBundleManager extensionBundleManager,
+            IFunctionMetadataManager functionMetadataManager,
+            IMetricsLogger metricsLogger,
+            IEnvironment environment,
+            IOptions<ExtensionRequirementOptions> extensionRequirementOptions)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
             _logger = logger;
             _functionMetadataManager = functionMetadataManager;
             _metricsLogger = metricsLogger;
-            _startupTypes = new Lazy<IEnumerable<Type>>(() => GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult());
+            _environment = environment;
             _extensionRequirementOptions = extensionRequirementOptions;
+            _startupTypes = new Lazy<IEnumerable<Type>>(() => GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult());
         }
 
         private static string[] GetBuiltinExtensionAssemblies()
         {
-            return new[]
-            {
+            return
+            [
                 typeof(WebJobs.Extensions.Http.HttpWebJobsStartup).Assembly.GetName().Name,
                 typeof(WebJobs.Extensions.ExtensionsWebJobsStartup).Assembly.GetName().Name
-            };
+            ];
         }
 
         public Type[] GetStartupTypes()
@@ -102,11 +110,11 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
             }
 
-            bool isDotnetIsolatedApp = Utility.IsDotnetIsolatedApp(SystemEnvironment.Instance, functionMetadataCollection);
+            bool isDotnetIsolatedApp = Utility.IsDotnetIsolatedApp(_environment, functionMetadataCollection);
             bool isDotnetApp = isPrecompiledFunctionApp || isDotnetIsolatedApp;
-            var isLogicApp = SystemEnvironment.Instance.IsLogicApp();
+            var isLogicApp = _environment.IsLogicApp();
 
-            if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+            if (_environment.IsPlaceholderModeEnabled())
             {
                 // Do not move this.
                 // Calling this log statement in the placeholder mode to avoid jitting during specialization

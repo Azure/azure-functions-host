@@ -2,4 +2,8 @@
 
   <Import Project="$(EngBuildRoot)Engineering.targets" />
 
+  <PropertyGroup>
+    <VSTestResultsDirectory>$(ArtifactsPath)/log/$(ArtifactsProjectName)/tests_$(ArtifactsPivots)/</VSTestResultsDirectory>
+  </PropertyGroup>
+
 </Project>

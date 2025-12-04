@@ -14,16 +14,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
     public class EnvironmentExtensionsTests
     {
         [Fact]
-        public void GetEffectiveCoresCount_ReturnsExpectedResult()
+        public void GetEffectiveCoresCount_NoSku_ReturnsExpectedResult()
         {
-            TestEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             Assert.Equal(Environment.ProcessorCount, EnvironmentExtensions.GetEffectiveCoresCount(env));
+        }
 
-            env.Clear();
+        [Fact]
+        public void GetEffectiveCoresCount_DynamicSku_ReturnsExpectedResult()
+        {
+            TestEnvironment env = new();
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
             Assert.Equal(1, EnvironmentExtensions.GetEffectiveCoresCount(env));
+        }
 
-            env.Clear();
+        [Fact]
+        public void GetEffectiveCoresCount_DynamicSkuWithInstanceId_ReturnsExpectedResult()
+        {
+            TestEnvironment env = new();
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
             env.SetEnvironmentVariable(EnvironmentSettingNames.RoleInstanceId, "dw0SmallDedicatedWebWorkerRole_hr0HostRole-0-VM-1");
             Assert.Equal(Environment.ProcessorCount, EnvironmentExtensions.GetEffectiveCoresCount(env));
@@ -33,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [Trait(TestTraits.Group, TestTraits.AdminIsolationTests)]
         public void IsAdminIsolationEnabled_ReturnsExpectedResult()
         {
-            TestEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             Assert.False(EnvironmentExtensions.IsAdminIsolationEnabled(env));
 
             env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, "0");
@@ -47,9 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("dw0SmallDedicatedWebWorkerRole_hr0HostRole-0-VM-1", true)]
         [InlineData(null, false)]
         [InlineData("", false)]
-        public void IsVMSS_RetrunsExpectedResult(string roleInstanceId, bool expected)
+        public void IsVMSS_ReturnsExpectedResult(string roleInstanceId, bool expected)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             if (roleInstanceId != null)
             {
                 env.SetEnvironmentVariable(EnvironmentSettingNames.RoleInstanceId, roleInstanceId);
@@ -67,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("Foo,Bar", false)]
         public void IsAzureMonitorEnabled_ReturnsExpectedResult(string value, bool expected)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             if (value != null)
             {
                 env.SetEnvironmentVariable(EnvironmentSettingNames.AzureMonitorCategories, value);
@@ -82,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(null, "")]
         public void GetAntaresComputerName_ReturnsExpectedResult(string computerName, string expectedComputerName)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             if (!string.IsNullOrEmpty(expectedComputerName))
             {
                 env.SetEnvironmentVariable(EnvironmentSettingNames.AntaresComputerName, computerName);
@@ -102,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(false, "", null, "")]
         public void GetInstanceId_ReturnsExpectedResult(bool isLinuxConsumption, string containerName, string websiteInstanceId, string expectedValue)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             if (isLinuxConsumption)
             {
                 if (!string.IsNullOrEmpty(containerName))
@@ -133,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(false, false, "89.0.7.73", null, "")]
         public void GetAntaresVersion_ReturnsExpectedResult(bool isLinuxConsumption, bool isLinuxAppService, string platformVersionLinux, string platformVersionWindows, string expectedValue)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             if (isLinuxConsumption)
             {
                 env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
@@ -166,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(true, true, false, true)]
         public void IsConsumptionSku_ReturnsExpectedResult(bool isLinuxConsumption, bool isWindowsConsumption, bool isFlexConsumption, bool expectedValue)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             if (isLinuxConsumption)
             {
                 env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
@@ -197,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("", "", "", "", false)]
         public void IsFlexConsumptionSku_ReturnsExpectedResult(string sku, string websiteInstanceId, string containerName, string legionServiceHost, bool expected)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId);
             env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, containerName);
@@ -218,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("RandomContainerName", null, null, true, null, false)] // Managed App Environment
         public void IsAnyLinuxConsumption_ReturnsExpectedResult(string containerName, string podName, string legionServiceHostName, bool isManagedAppEnvironment, string sku, bool expectedValue)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             if (!string.IsNullOrEmpty(containerName))
             {
                 env.SetEnvironmentVariable(ContainerName, containerName);
@@ -253,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(false, false, false)]
         public void IsAnyKubernetesEnvironment_ReturnsExpectedResult(bool isKubernetesManagedHosting, bool isManagedAppEnvironment, bool expectedValue)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             if (isKubernetesManagedHosting)
             {
                 env.SetEnvironmentVariable(KubernetesServiceHost, "10.0.0.1");
@@ -273,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(false, false)]
         public void IsManagedAppEnvironment_ReturnsExpectedResult(bool isManagedAppEnvironment, bool expectedValue)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
             if (isManagedAppEnvironment)
             {
                 env.SetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment, "true");
@@ -295,7 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("RandomPodName", "RandomLegionServiceHostName", ScriptConstants.DynamicSku, null, true)]
         public void IsLinuxConsumptionOnLegion_ReturnsExpectedResult(string websitePodName, string legionServiceHostName, string websiteSku, string websiteSkuName, bool expectedValue)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
 
             if (!string.IsNullOrEmpty(websitePodName))
             {
@@ -330,7 +338,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(null, null, false)]
         public void IsV2CompatMode(string extensionVersion, string compatMode, bool expected)
         {
-            IEnvironment env = new TestEnvironment();
+            TestEnvironment env = new();
 
             if (extensionVersion != null)
             {
@@ -353,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("k8se-apps", "10.0.0.1", true, false)]
         public void IsKubernetesManagedHosting_ReturnsExpectedResult(string podNamespace, string kubernetesServiceHost, bool isManagedAppEnvironment, bool expected)
         {
-            var environment = new TestEnvironment();
+            TestEnvironment environment = new();
             environment.SetEnvironmentVariable(KubernetesServiceHost, kubernetesServiceHost);
             environment.SetEnvironmentVariable(PodNamespace, podNamespace);
             if (isManagedAppEnvironment)
@@ -374,7 +382,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("", "")]
         public void Returns_WorkerRuntime(string workerRuntime, string expectedWorkerRuntime)
         {
-            var environment = new TestEnvironment();
+            TestEnvironment environment = new();
             environment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
             Assert.Equal(expectedWorkerRuntime, environment.GetFunctionsWorkerRuntime());
         }
@@ -388,9 +396,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("", "")]
         public void Returns_FunctionsExtensionVersion(string functionsExtensionVersion, string functionsExtensionVersionExpected)
         {
-            var enviroment = new TestEnvironment();
-            enviroment.SetEnvironmentVariable(FunctionsExtensionVersion, functionsExtensionVersion);
-            Assert.Equal(functionsExtensionVersionExpected, enviroment.GetFunctionsExtensionVersion());
+            TestEnvironment environment = new();
+            environment.SetEnvironmentVariable(FunctionsExtensionVersion, functionsExtensionVersion);
+            Assert.Equal(functionsExtensionVersionExpected, environment.GetFunctionsExtensionVersion());
         }
 
         [Theory]
@@ -407,7 +415,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("", false, false, false)]
         public void Returns_SupportsAzureFileShareMount(string workerRuntime, bool useLowerCase, bool useUpperCase, bool supportsAzureFileShareMount)
         {
-            var environment = new TestEnvironment();
+            TestEnvironment environment = new();
             if (useLowerCase && !useUpperCase)
             {
                 workerRuntime = workerRuntime.ToLowerInvariant();
@@ -427,7 +435,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("", "")]
         public void Returns_GetHttpLeaderEndpoint(string httpLeaderEndpoint, string expected)
         {
-            var environment = new TestEnvironment();
+            TestEnvironment environment = new();
 
             if (!string.IsNullOrEmpty(httpLeaderEndpoint))
             {
@@ -448,7 +456,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("10.0.0.1", null, true)]
         public void IsDrainOnApplicationStopping_ReturnsExpectedResult(string serviceHostValue, string drainOnStoppingValue, bool expected)
         {
-            var environment = new TestEnvironment();
+            TestEnvironment environment = new();
             environment.SetEnvironmentVariable(KubernetesServiceHost, serviceHostValue);
             environment.SetEnvironmentVariable(DrainOnApplicationStopping, drainOnStoppingValue);
             Assert.Equal(expected, environment.DrainOnApplicationStoppingEnabled());
@@ -461,7 +469,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("true", null, true)]
         public void IsWorkerDynamicConcurrencyEnabled_ReturnsExpectedResult(string concurrencyEnabledValue, string processCountValue, bool expected)
         {
-            var environment = new TestEnvironment();
+            TestEnvironment environment = new();
             environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, concurrencyEnabledValue);
             environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, processCountValue);
             Assert.Equal(expected, environment.IsWorkerDynamicConcurrencyEnabled());
@@ -476,7 +484,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("node", "", "node")]
         public void GetLanguageWorkerListToStartInPlaceholder_ReturnsExpectedResult(string workerRuntime, string workerRuntimeList, string expected)
         {
-            var environment = new TestEnvironment();
+            TestEnvironment environment = new();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName, workerRuntimeList);
             var resultSet = environment.GetLanguageWorkerListToStartInPlaceholder();
@@ -496,7 +504,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("test", "test", true)]
         public void AzureFilesAppSettingsExist_ReturnsExpectedResult(string connectionString, string contentShare, bool expected)
         {
-            var environment = new TestEnvironment();
+            TestEnvironment environment = new();
             environment.SetEnvironmentVariable(AzureFilesConnectionString, connectionString);
             environment.SetEnvironmentVariable(AzureFilesContentShare, contentShare);
             Assert.Equal(expected, environment.AzureFilesAppSettingsExist());
@@ -512,7 +520,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("node", false)]
         public void IsInProc_ReturnsExpectedResult(string value, bool expected)
         {
-            var environment = new TestEnvironment();
+            TestEnvironment environment = new();
             if (value != null)
             {
                 environment.SetEnvironmentVariable(FunctionWorkerRuntime, value);
@@ -530,7 +538,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData("node", false)]
         public void IsInProc_WithRuntimeParameter_ReturnsExpectedResult(string value, bool expected)
         {
-            var environment = new TestEnvironment();
+            TestEnvironment environment = new();
             Assert.Equal(expected, environment.IsInProc(value));
         }
 

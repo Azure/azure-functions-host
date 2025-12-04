@@ -27,12 +27,19 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="8.0.2" />
 
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.5-11874" />
     <PackageReference Include="Microsoft.Azure.Mobile.Client" Version="4.0.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.9.4" />
     <PackageReference Include="Moq" Version="4.18.4" />
     <PackageReference Include="xunit" Version="2.4.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.3" PrivateAssets="all" />
+
+    <PackageReference Include="Microsoft.AspNet.WebApi.Core" NoWarn="NU1701" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -60,15 +67,14 @@
 
   <ItemGroup>
     <None Include="../Resources/TestScripts/**" CopyToOutputDirectory="PreserveNewest" LinkBase="TestScripts" />
-    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBIn\function.json" />
-    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBIn\run.csx" />
-    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBOut\function.json" />
-    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBOut\run.csx" />
-    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBTrigger\function.json" />
-    <None Remove="..\Resources\TestScripts\CSharp\CosmosDBTrigger\run.csx" />
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Management/Payload/DurableMsSQLProviderPayload.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- TODO: add back in and address warnings. -->
+    <GlobalPackageReference Remove="StyleCop.Analyzers" />
   </ItemGroup>
 
 </Project>

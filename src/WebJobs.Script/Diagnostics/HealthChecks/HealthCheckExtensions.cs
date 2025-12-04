@@ -1,10 +1,11 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             builder
                 .AddWebHostHealthCheck()
                 .AddScriptHostHealthCheck()
+                .AddWebJobsStorageHealthCheck()
                 .AddTelemetryPublisher(HealthCheckTags.Liveness, HealthCheckTags.Readiness)
                 .UseDynamicHealthCheckService();
             return builder;
@@ -123,6 +125,24 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             ArgumentNullException.ThrowIfNull(builder);
             builder.AddCheck<ScriptHostHealthCheck>(
                 HealthCheckNames.ScriptHostLifeCycle, tags: [HealthCheckTags.Readiness]);
+            return builder;
+        }
+
+        /// <summary>
+        /// Adds a health check for the WebJobs storage account.
+        /// </summary>
+        /// <param name="builder">The builder to register health checks with.</param>
+        /// <returns>The original builder, for call chaining.</returns>
+        public static IHealthChecksBuilder AddWebJobsStorageHealthCheck(this IHealthChecksBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+
+            // Ensure singleton as this health check refreshes in the background.
+            builder.Services.TryAddSingleton<WebJobsStorageHealthCheck>();
+            builder.AddCheck<WebJobsStorageHealthCheck>(
+                HealthCheckNames.WebJobsStorage,
+                tags: [HealthCheckTags.Configuration, HealthCheckTags.Connectivity, HealthCheckTags.WebJobsStorage],
+                timeout: TimeSpan.FromSeconds(10));
             return builder;
         }
 
