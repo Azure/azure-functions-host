@@ -791,15 +791,15 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             if (!cancellationToken.IsCancellationRequested)
             {
-                bool throwOnWorkerRuntimeAndPayloadMetadataMismatch = !(_environment.IsLogicApp() && _environment.IsLogicAppCodefulModeEnabled());
+                bool throwOnWorkerRuntimeAndPayloadMetadataMismatch = !_environment.IsLogicApp();
 
                 // this dotnet isolated specific logic is temporary to ensure in-proc payload compatibility with "dotnet-isolated" as the FUNCTIONS_WORKER_RUNTIME value.
-                if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) && !_environment.IsPlaceholderModeEnabled())
+                if (!_environment.IsLogicApp() && string.Equals(workerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName, StringComparison.OrdinalIgnoreCase) && !_environment.IsPlaceholderModeEnabled())
                 {
                     bool payloadMatchesWorkerRuntime = ValidateAndLogRuntimeMismatch(functions, workerRuntime, _hostingConfigOptions, _logger);
                     if (!payloadMatchesWorkerRuntime)
                     {
-                        UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime, _environment.IsLogicApp());
+                        UpdateFunctionMetadataLanguageForDotnetAssembly(functions, workerRuntime);
                         throwOnWorkerRuntimeAndPayloadMetadataMismatch = false; // we do not want to throw an exception in this case
                     }
                 }
@@ -860,14 +860,8 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionDescriptors;
         }
 
-        private static void UpdateFunctionMetadataLanguageForDotnetAssembly(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isLogicApp)
+        private static void UpdateFunctionMetadataLanguageForDotnetAssembly(IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {
-            if (isLogicApp)
-            {
-                // For Logic Apps, we want to keep the language as DotNetAssembly to avoid breaking changes.
-                return;
-            }
-
             foreach (var function in functions)
             {
                 if (function.Language == DotNetScriptTypes.DotNetAssembly)
