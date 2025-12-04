@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <JavaVersion>2.19.2</JavaVersion>
-    <JavaVersion Condition="'$(WorkerName)' == 'java' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</JavaVersion>
+    <JavaVersion Condition="'$(WorkerName)' == 'Microsoft.Azure.Functions.JavaWorker' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</JavaVersion>
   </PropertyGroup>
 
   <ItemGroup>

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <NodeVersion>3.12.0</NodeVersion>
-    <NodeVersion Condition="'$(WorkerName)' == 'node' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</NodeVersion>
+    <NodeVersion Condition="'$(WorkerName)' == 'Microsoft.Azure.Functions.NodeJsWorker' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</NodeVersion>
   </PropertyGroup>
 
   <ItemGroup>

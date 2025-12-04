@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PythonVersion>4.40.2</PythonVersion>
-    <PythonVersion Condition="'$(WorkerName)' == 'python' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</PythonVersion>
+    <PythonVersion Condition="'$(WorkerName)' == 'Microsoft.Azure.Functions.PythonWorker' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</PythonVersion>
   </PropertyGroup>
 
   <ItemGroup>

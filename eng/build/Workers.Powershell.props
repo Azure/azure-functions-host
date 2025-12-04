@@ -1,11 +1,11 @@
 <Project>
 
   <PropertyGroup>
-    <WorkerPackageVersion70 Condition="'$(WorkerName)' == 'powershell70' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</WorkerPackageVersion70>
+    <WorkerPackageVersion70 Condition="'$(WorkerName)' == 'Microsoft.Azure.Functions.PowerShellWorker.PS7.0' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</WorkerPackageVersion70>
     <WorkerPackageVersion70 Condition="'$(WorkerPackageVersion70)' == ''">4.0.3148</WorkerPackageVersion70>
-    <WorkerPackageVersion72 Condition="'$(WorkerName)' == 'powershell72' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</WorkerPackageVersion72>
+    <WorkerPackageVersion72 Condition="'$(WorkerName)' == 'Microsoft.Azure.Functions.PowerShellWorker.PS7.2' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</WorkerPackageVersion72>
     <WorkerPackageVersion72 Condition="'$(WorkerPackageVersion72)' == ''">4.0.4025</WorkerPackageVersion72>
-    <WorkerPackageVersion74 Condition="'$(WorkerName)' == 'powershell74' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</WorkerPackageVersion74>
+    <WorkerPackageVersion74 Condition="'$(WorkerName)' == 'Microsoft.Azure.Functions.PowerShellWorker.PS7.4' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</WorkerPackageVersion74>
     <WorkerPackageVersion74 Condition="'$(WorkerPackageVersion74)' == ''">4.0.4581</WorkerPackageVersion74>
   </PropertyGroup>
 

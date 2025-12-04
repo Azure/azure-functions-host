@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <DotnetIsolatedVersion>1.0.13</DotnetIsolatedVersion>
-    <DotnetIsolatedVersion Condition="'$(WorkerName)' == 'dotnet-isolated' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</DotnetIsolatedVersion>
+    <DotnetIsolatedVersion Condition="'$(WorkerName)' == 'Microsoft.Azure.Functions.DotNetIsolatedNativeHost' AND '$(WorkerVersion)' != ''">$(WorkerVersion)</DotnetIsolatedVersion>
   </PropertyGroup>
 
   <ItemGroup>
