@@ -163,5 +163,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
             return new HealthReport(newEntries, result.TotalDuration);
         }
+
+        /// <summary>
+        /// Tries to get the error code from a health report entry.
+        /// </summary>
+        /// <param name="entry">The entry to get the error code from.</param>
+        /// <param name="errorCode">The error code, if found.</param>
+        /// <returns><c>true</c> if the error code was found; otherwise, <c>false</c>.</returns>
+        public static bool TryGetErrorCode(this HealthReportEntry entry, out object errorCode)
+        {
+            return entry.Data.TryGetValue(nameof(HealthCheckData.ErrorCode), out errorCode);
+        }
     }
 }
