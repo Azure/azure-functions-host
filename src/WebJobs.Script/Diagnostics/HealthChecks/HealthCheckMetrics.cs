@@ -57,6 +57,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
                 _ => throw new NotSupportedException($"Unexpected HealthStatus value: {status}"),
             };
 
+        private static TagList CreateTagList(string key, object? value)
+        {
+            // CI has an old dotnet SDK which doesn't support the params ctor.
+            // This helper is to workaround that.
+            return new(default) { Tag(key, value) };
+        }
+
         public static class Constants
         {
             private const string Prefix = "azure.functions.";
@@ -80,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             private static TagList GetTags(string? tag)
             {
                 return string.IsNullOrWhiteSpace(tag)
-                    ? default : new(Tag(Constants.HealthCheckTagTag, tag));
+                    ? default : CreateTagList(Constants.HealthCheckTagTag, tag);
             }
         }
 
@@ -96,7 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
             private static TagList GetTags(string name, HealthReportEntry entry, string? tag)
             {
-                TagList tags = new(Tag(Constants.HealthCheckNameTag, name));
+                TagList tags = CreateTagList(Constants.HealthCheckNameTag, name);
+
                 if (!string.IsNullOrWhiteSpace(tag))
                 {
                     tags.Add(Tag(Constants.HealthCheckTagTag, tag));
