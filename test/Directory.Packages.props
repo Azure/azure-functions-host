@@ -18,7 +18,7 @@
   <!-- Supporting Packages -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6" />
-    <PackageVersion Include="Microsoft.Azure.DocumentDB.Core" Version="2.11.2" />
+    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.54.0" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.5-11874" />
     <PackageVersion Include="Microsoft.Azure.Storage.Blob" Version="11.2.3" />
   </ItemGroup>
