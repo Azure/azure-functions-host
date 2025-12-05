@@ -34,11 +34,6 @@ jobs:
       npm install -g azurite
     displayName: Install Azurite
 
-  - pwsh: |
-      Import-Module "$env:ProgramFiles\Azure Cosmos DB Emulator\PSModules\Microsoft.Azure.CosmosDB.Emulator"
-      Start-CosmosDbEmulator -NoFirewall -NoUI
-    displayName: Start Cosmos DB Emulator
-
   - task: PowerShell@2
     displayName: Install Az.Storage Powershell module
     inputs:

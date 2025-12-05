@@ -33,6 +33,11 @@ jobs:
       targetType: inline
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
+  - pwsh: |
+      Import-Module "$env:ProgramFiles\Azure Cosmos DB Emulator\PSModules\Microsoft.Azure.CosmosDB.Emulator"
+      Start-CosmosDbEmulator -NoFirewall -NoUI
+    displayName: Start Cosmos DB Emulator
+
   - task: AzurePowerShell@5
     displayName: Checkout secrets
     inputs:
