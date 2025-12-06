@@ -25,18 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             InitializeProcess();
 
-            var host = BuildWebHost(args);
+            var host = CreateWebHostBuilder(args);
 
             host.RunAsync()
                 .Wait();
         }
 
-        public static IWebHost BuildWebHost(string[] args)
-        {
-            return CreateWebHostBuilder(args).UseIIS().Build();
-        }
-
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args = null)
+        public static WebApplication CreateWebHostBuilder(string[] args = null)
         {
             // Setting this env variable to test placeholder scenarios locally.
 #if PLACEHOLDER_SIMULATION
@@ -44,19 +39,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "0");
 #endif
 
-            return AspNetCore.WebHost.CreateDefaultBuilder(args)
-                .ConfigureKestrel(o =>
-                {
-                    o.Limits.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
-                })
+            var builder = WebApplication.CreateBuilder(args);
+
+            builder.WebHost
+                .ConfigureKestrel(o => { o.Limits.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize; })
                 .UseSetting(WebHostDefaults.EnvironmentKey, Environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey))
-                .ConfigureServices(services =>
-                {
-                    services.Configure<IISServerOptions>(o =>
-                    {
-                        o.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
-                    });
-                })
                 .ConfigureAppConfiguration((builderContext, config) =>
                 {
                     // replace the default environment source with our own
@@ -97,7 +84,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         loggingBuilder.AddConsole();
                     }
                 })
-                .UseStartup<Startup>();
+                .UseStartup<Startup>()
+                .UseIIS();
+
+            builder.Services.Configure<IISServerOptions>(o =>
+            {
+                o.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
+            });
+
+            return builder.Build();
         }
 
         /// <summary>
