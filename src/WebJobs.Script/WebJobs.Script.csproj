@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <PackageId>Microsoft.Azure.WebJobs.Script</PackageId>
     <AssemblyName>Microsoft.Azure.WebJobs.Script</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script</RootNamespace>
@@ -29,7 +29,6 @@
     <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" />
     <PackageReference Include="Azure.Storage.Blobs" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" NoWarn="NU1701" />
     <PackageReference Include="Microsoft.Azure.WebJobs" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" />
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" />
@@ -42,7 +41,6 @@
     <PackageReference Include="Microsoft.Extensions.Azure" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" />
     <PackageReference Include="Microsoft.Extensions.Telemetry.Abstractions" />
-    <PackageReference Include="Mono.Posix.NETStandard" />
     <PackageReference Include="NuGet.ProjectModel" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />

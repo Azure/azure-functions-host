@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <FunctionsEnableWorkerIndexing>True</FunctionsEnableWorkerIndexing>
     <RunAnalyzers>false</RunAnalyzers>
+    <NoWarn>NETSDK1138</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

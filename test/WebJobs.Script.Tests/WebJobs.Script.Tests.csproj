@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</RootNamespace>

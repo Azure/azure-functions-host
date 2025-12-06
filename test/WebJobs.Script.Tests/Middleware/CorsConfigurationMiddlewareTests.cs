@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -71,13 +72,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 SupportCredentials = true,
             };
 
-            var builder = new WebHostBuilder()
-                .Configure(app =>
+            var host = new HostBuilder()
+                .ConfigureWebHost(webHostBuilder =>
                 {
-                    app.UseMiddleware<JobHostPipelineMiddleware>();
-                    app.Run(async context =>
+                    webHostBuilder.Configure(app =>
                     {
-                        await context.Response.WriteAsync("Hello world");
+                        app.UseMiddleware<JobHostPipelineMiddleware>();
+                        app.Run(async context =>
+                        {
+                            await context.Response.WriteAsync("Hello world");
+                        });
                     });
                 })
                 .ConfigureServices(services =>
@@ -89,9 +93,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                     services.AddCors();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
                     services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
-                });
+                })
+                .Build();
 
-            var server = new TestServer(builder);
+            await host.StartAsync();
+
+            var server = host.GetTestServer();
 
             var client = server.CreateClient();
             client.DefaultRequestHeaders.Add("Origin", testOrigin);
