@@ -123,9 +123,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         using (var response = await noTimeoutClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
                         using (var reader = new StreamReader(await response.Content.ReadAsStreamAsync()))
                         {
-                            while (!reader.EndOfStream && !_disposed)
+                            while (!_disposed)
                             {
-                                reader.ReadLine(); // Read the line-json update
+                                if (await reader.ReadLineAsync() is null) // Read the line-json update
+                                {
+                                    // Reached the end of the stream
+                                    break;
+                                }
+
                                 _watchCallback?.Invoke();
                             }
                         }
@@ -297,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var privateChain = new X509Chain();
                 privateChain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
 
-                var caCert = new X509Certificate2(CaFile);
+                var caCert = X509CertificateLoader.LoadCertificateFromFile(CaFile);
                 // https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509chainpolicy?view=netcore-2.2
                 // Add CA cert to the chain store to include it in the chain check.
                 privateChain.ChainPolicy.ExtraStore.Add(caCert);
