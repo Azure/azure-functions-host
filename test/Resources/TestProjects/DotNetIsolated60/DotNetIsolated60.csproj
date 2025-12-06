@@ -10,6 +10,7 @@
     <FunctionsAutoRegisterGeneratedMetadataProvider>True</FunctionsAutoRegisterGeneratedMetadataProvider>
     <FunctionsEnableExecutorSourceGen>True</FunctionsEnableExecutorSourceGen>
     <RunAnalyzers>false</RunAnalyzers>
+    <NoWarn>NETSDK1138</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

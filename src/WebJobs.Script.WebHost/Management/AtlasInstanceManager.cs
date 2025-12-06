@@ -6,8 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.File;
+using Azure.Storage.Files.Shares;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
@@ -238,13 +237,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             try
             {
-                var storageAccount = CloudStorageAccount.Parse(connectionString);
-                var fileClient = storageAccount.CreateCloudFileClient();
-                var share = fileClient.GetShareReference(contentShare);
+                var shareServiceClient = new ShareServiceClient(connectionString);
+                var shareClient = shareServiceClient.GetShareClient(contentShare);
 
-                if (!share.Exists())
+                if (!shareClient.Exists())
                 {
-                    await share.CreateIfNotExistsAsync();
+                    await shareClient.CreateIfNotExistsAsync();
                 }
 
                 return null;
