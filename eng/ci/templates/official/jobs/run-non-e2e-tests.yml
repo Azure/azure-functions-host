@@ -33,7 +33,7 @@ jobs:
       targetType: inline
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
-  - task: PowerShell@5
+  - task: AzurePowerShell@5
     displayName: Start CosmosDB Emulator
     inputs:
       targetType: inline
