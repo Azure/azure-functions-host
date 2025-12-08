@@ -9,6 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         internal const string ServiceName = "service.name";
         internal const string ServiceVersion = "service.version";
         internal const string ServiceInstanceId = "service.instance.id";
+        internal const string ServiceNameEnvVar = "OTEL_SERVICE_NAME";
+        internal const string ServiceVersionEnvVar = "OTEL_SERVICE_VERSION";
 
         // Cloud
         internal const string CloudProvider = "cloud.provider";
