@@ -1,11 +1,10 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using OpenTelemetry.Resources;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Xml.Linq;
+using OpenTelemetry.Resources;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
@@ -20,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             try
             {
                 // Determine service name with override hierarchy: OTEL_SERVICE_NAME > AzureWebsiteName > AssemblyName
-                string serviceName = string.Empty; // GetServiceName();
+                string serviceName = GetServiceName();
 
                 // Determine service version with override hierarchy: OTEL_SERVICE_VERSION > AssemblyVersion
                 string serviceVersion = GetServiceVersion();
