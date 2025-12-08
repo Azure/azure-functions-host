@@ -686,7 +686,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var scriptSettingsManager = new ScriptSettingsManager(config);
                 var workerProfileManager = new Mock<IWorkerProfileManager>();
                 var testMetricLogger = new TestMetricsLogger();
-                var workerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
                 var testScriptHostManager = new Mock<IScriptHostManager>();
                 var loggerFactory = GetTestLoggerFactory();
 

@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly OptionsWrapper<FunctionsHostingConfigOptions> _functionsHostingConfigOptions = new(new FunctionsHostingConfigOptions());
         private readonly WorkerConfigCacheInvalidator _workerConfigCacheInvalidator;
 
+        private readonly Mock<IWorkerRuntimeResolver> _mockWorkerRuntimeResolver;
         private WebJobsScriptHostService _hostService;
         private ScriptApplicationHostOptionsMonitor _monitor;
         private TestLoggerProvider _webHostLoggerProvider = new TestLoggerProvider();
@@ -44,6 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Mock<IScriptWebHostEnvironment> _mockScriptWebHostEnvironment;
         private Mock<IEnvironment> _mockEnvironment;
         private Mock<IWorkerRuntimeResolver> _mockWorkerRuntimeResolver;
+        private HostBuiltChangeTokenSource<LanguageWorkerOptions> _hostBuiltChangeTokenSource = new();
+        private HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions> _hostBuiltChangeTokenSourceResolverOptions = new();
         private IConfiguration _mockConfig;
         private OptionsWrapper<HostHealthMonitorOptions> _healthMonitorOptions;
         private HostPerformanceManager _hostPerformanceManager;

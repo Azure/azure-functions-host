@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -33,12 +34,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 return _resolvedWorkerRuntime;
             }
 
-            if (string.Equals(_scriptJobHostOptionsMonitor.CurrentValue.ConfigurationProfile, "mcp-custom-handler"))
-            {
-                return _resolvedWorkerRuntime = "custom";
-            }
-
-            if (string.Equals(_scriptJobHostOptionsMonitor.CurrentValue.ConfigurationProfile, "web-app-custom-handler"))
+            if (string.Equals(_scriptJobHostOptionsMonitor.CurrentValue.ConfigurationProfile,
+                              HostConfigurationProfile.McpCustomHandlerProfile,
+                              StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_scriptJobHostOptionsMonitor.CurrentValue.ConfigurationProfile,
+                                 HostConfigurationProfile.WebAppCustomHandlerProfile,
+                                 StringComparison.OrdinalIgnoreCase))
             {
                 return _resolvedWorkerRuntime = "custom";
             }
