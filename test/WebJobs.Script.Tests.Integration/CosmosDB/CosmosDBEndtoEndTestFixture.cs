@@ -43,7 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                 {
                     "CosmosDBTrigger",
                     "CosmosDBIn",
-                    "CosmosDBOut"
+                    "CosmosDBOut",
+                    "CosmosDBInMultiple",
+                    "CosmosDBOutMultiple"
                 };
             });
         }

@@ -1,0 +1,17 @@
+{
+  "bindings": [
+    {
+      "type": "manualTrigger",
+      "name": "input",
+      "direction": "in"
+    },
+    {
+      "type": "cosmosDB",
+      "name": "items",
+      "direction": "out",
+      "databaseName": "ItemDb",
+      "containerName": "ItemCollection",
+      "createIfNotExists": true
+    }
+  ]
+}

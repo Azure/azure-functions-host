@@ -1,0 +1,25 @@
+{
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "name": "input",
+      "queueName": "documentdb-input-node",
+      "direction": "in"
+    },
+    {
+        "name": "items",
+        "type": "cosmosDB",
+        "direction": "in",
+        "databaseName": "ItemDb",
+        "containerName": "ItemCollection",
+        "sqlQuery": "SELECT * from c where c.text = {id}"
+    },
+    {
+      "type": "blob",
+      "name": "blob",
+      "connection": "AzureWebJobsStorage",
+      "direction": "out",
+      "path": "test-output-node/cosmosdbin-multiple-e2e-completed"
+    }
+  ]
+}

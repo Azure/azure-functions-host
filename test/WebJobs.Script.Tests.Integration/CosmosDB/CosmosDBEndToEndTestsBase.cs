@@ -44,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
         protected async Task CosmosDBTest()
         {
+            bool collectionsCreated = await Fixture.CreateContainers();
             string id = Guid.NewGuid().ToString();
 
             await Fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
@@ -61,6 +62,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             Assert.Equal(updatedDoc.id, doc.id);
             Assert.NotEqual(doc._etag, updatedDoc._etag);
+
+            // cleanup collections
+            await Fixture.DeleteContainers();
+        }
+
+        protected async Task CosmosDBMultipleItemsTest()
+        {
+            bool collectionsCreated = await Fixture.CreateContainers();
+            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbin-multiple-e2e-completed");
+            await resultBlob.DeleteIfExistsAsync();
+
+            string id = Guid.NewGuid().ToString();
+
+            await Fixture.Host.BeginFunctionAsync("CosmosDBOutMultiple", id);
+
+            var testId = id + "-0";
+            dynamic doc = await WaitForItemAsync(testId);
+
+            var queue = await Fixture.GetNewQueue("documentdb-input");
+            string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
+            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
+
+            // now wait for function to be invoked
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
+                () => string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages()));
+
+            // cleanup collections
+            await Fixture.DeleteContainers();
+
+            Assert.False(string.IsNullOrEmpty(result));
         }
 
         protected async Task<dynamic> WaitForItemAsync(string itemId, string textToMatch = null)

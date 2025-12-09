@@ -26,6 +26,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             return CosmosDBTest();
         }
 
+        [Fact]
+        public Task CosmosDBMultipleItems()
+        {
+            return CosmosDBMultipleItemsTest();
+        }
+
         public class TestFixture : CosmosDBEndtoEndTestFixture
         {
             private const string ScriptRoot = @"TestScripts\Node";
