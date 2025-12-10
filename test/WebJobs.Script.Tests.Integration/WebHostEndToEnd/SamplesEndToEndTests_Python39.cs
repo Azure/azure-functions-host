@@ -16,12 +16,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Python : IClassFixture<SamplesEndToEndTests_Python.TestFixture>
+    public class SamplesEndToEndTests_Python39 : IClassFixture<SamplesEndToEndTests_Python39.TestFixture>
     {
         private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;
 
-        public SamplesEndToEndTests_Python(TestFixture fixture)
+        public SamplesEndToEndTests_Python39(TestFixture fixture)
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
