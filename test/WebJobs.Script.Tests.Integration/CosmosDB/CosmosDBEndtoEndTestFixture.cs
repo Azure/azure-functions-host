@@ -72,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         public override async Task DisposeAsync()
         {
             await base.DisposeAsync();
+            await DeleteDatabase();
             CosmosClient?.Dispose();
         }
 
@@ -95,6 +96,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             }
 
             return collectionsCreated;
+        }
+
+        public async Task DeleteDatabase()
+        {
+            Database database = CosmosClient.GetDatabase("ItemDb");
+            await database.DeleteAsync();
         }
 
         public async Task DeleteContainers()

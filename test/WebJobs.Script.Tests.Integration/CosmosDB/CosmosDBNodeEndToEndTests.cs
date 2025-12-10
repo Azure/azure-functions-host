@@ -5,8 +5,13 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using System.Threading.Tasks;
 using Xunit;
 
+// Add this outside the namespace or at the top of the file
+[CollectionDefinition("CosmosDBNodeEndToEndTests", DisableParallelization = true)]
+public class CosmosDBNodeEndToEndTestsCollection { }
+
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
+    [Collection("CosmosDBNodeEndToEndTests")]
     public class CosmosDBNodeEndToEndTests :
         CosmosDBEndToEndTestsBase<CosmosDBNodeEndToEndTests.TestFixture>
     {
