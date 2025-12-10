@@ -485,13 +485,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _postConfigure?.ConfigureServices(services);
             }
 
-            public void Configure(IApplicationBuilder app, IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, ILoggerFactory loggerFactory)
+            public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
             {
                 // This middleware is only added when env.IsLinuxConsumption()
                 // It should be a no-op for most tests
                 app.UseMiddleware<AppServiceHeaderFixupMiddleware>();
 
-                _startup.Configure(app, applicationLifetime, env, loggerFactory);
+                _startup.Configure(app, env, loggerFactory);
             }
         }
 
