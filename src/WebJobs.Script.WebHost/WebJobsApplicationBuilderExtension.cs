@@ -19,12 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class WebJobsApplicationBuilderExtension
     {
-        public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, IApplicationLifetime applicationLifetime)
+        public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder)
         {
-            return UseWebJobsScriptHost(builder, applicationLifetime, null);
+            return UseWebJobsScriptHost(builder, null);
         }
 
-        public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, IApplicationLifetime applicationLifetime, Action<WebJobsRouteBuilder> routes)
+        public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, Action<WebJobsRouteBuilder> routes)
         {
             IEnvironment environment = builder.ApplicationServices.GetService<IEnvironment>() ?? SystemEnvironment.Instance;
             IOptionsMonitor<StandbyOptions> standbyOptionsMonitor = builder.ApplicationServices.GetService<IOptionsMonitor<StandbyOptions>>();
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMvc();
 
             // Ensure the HTTP binding routing is registered after all middleware
-            builder.UseHttpBindingRouting(applicationLifetime, routes);
+            builder.UseHttpBindingRouting(routes);
 
             return builder;
         }

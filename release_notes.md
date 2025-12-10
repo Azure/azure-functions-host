@@ -12,3 +12,4 @@
 - Add AzureWebJobsStorage health check (#11471)
 - Add `ErrorCode` to health check telemetry (#11505)
 - Update Python Worker Version to [4.41.2](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.41.2)
+- Updated Microsoft.Azure.WebJobs.Http 3.3.0 and removed use of deprecated APIs (#11518)

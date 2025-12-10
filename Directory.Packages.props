@@ -24,8 +24,8 @@
   <!-- AspNetCore Packages -->
   <ItemGroup>
     <PackageVersion Include="Grpc.AspNetCore" Version="2.55.0" />
-    <PackageVersion Include="Microsoft.AspNet.WebApi.Client" Version="5.2.8" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.2.0" />
+    <PackageVersion Include="Microsoft.AspNet.WebApi.Client" Version="5.2.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.3.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.1" />
   </ItemGroup>
@@ -50,7 +50,7 @@
     <PackageVersion Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.2" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Rpc.Core" Version="3.0.44" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions" Version="5.2.1" />
-    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.3.0" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions.Timers.Storage" Version="1.0.0-beta.1" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.4-preview" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.44" />
