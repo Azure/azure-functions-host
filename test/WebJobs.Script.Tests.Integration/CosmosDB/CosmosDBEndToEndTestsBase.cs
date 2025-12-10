@@ -94,6 +94,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             Assert.False(string.IsNullOrEmpty(result));
         }
 
+        protected async Task TestConnectToEmulator()
+        {
+            bool collectionsCreated = await Fixture.CreateContainers();
+
+            var container = Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection");
+
+            string id = Guid.NewGuid().ToString();
+            var documentToTest = new { id, text = "connect to emulator test" };
+
+            await container.CreateItemAsync(documentToTest, new PartitionKey(id));
+            dynamic doc = await WaitForItemAsync(id);
+
+            Assert.Equal((string)doc.id, id);
+            Assert.Equal((string)doc.text, "connect to emulator test");
+        }
+        
+
         protected async Task<dynamic> WaitForItemAsync(string itemId, string textToMatch = null)
         {
             var container = Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection");
