@@ -11,5 +11,4 @@
 - Suppress execution context flow into script host start (#11498)
 - Add AzureWebJobsStorage health check (#11471)
 - Add `ErrorCode` to health check telemetry (#11505)
-
 - Update Python Worker Version to [4.41.1](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.41.1)
