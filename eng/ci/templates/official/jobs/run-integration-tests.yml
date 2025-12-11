@@ -64,9 +64,10 @@ jobs:
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
-      targetType: inline
+      targetType: 'inline'
       pwsh: true
-      inlineScript: |
+      script: |
+          Write-Host "print 1"
           function AcquireLease($blob) {
             try {
               return $blob.ICloudBlob.AcquireLease($null, $null, $null, $null, $null)
@@ -75,6 +76,7 @@ jobs:
               return $null
             } 
           }
+          Write-Host "print 2"
 
           # use this for tracking metadata in lease blobs
           $buildName = "3.0." + $env:buildNumber + "_" + $env:SYSTEM_JOBDISPLAYNAME
