@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -118,6 +119,77 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 new ScriptHostWorkerRuntimeResolver(environment, null));
 
             Assert.Equal("scriptJobHostOptionsMonitor", exception.ParamName);
+        }
+
+        [Theory]
+        [InlineData(null, "node", true)]  // Environment variable lookup
+        [InlineData("mcp-custom-handler", "custom", false)]  // Custom handler profile
+        [InlineData("web-app-custom-handler", "custom", false)]  // Custom handler profile
+        public async Task GetWorkerRuntime_IsThreadSafe_WhenCalledConcurrently(string configurationProfile, string expectedRuntime, bool shouldCallEnvironment)
+        {
+            // Arrange
+            var environmentCallCount = 0;
+            var environmentMock = new Mock<IEnvironment>(MockBehavior.Strict);
+
+            if (shouldCallEnvironment)
+            {
+                environmentMock
+                    .Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
+                    .Returns(() =>
+                    {
+                        System.Threading.Interlocked.Increment(ref environmentCallCount);
+                        // Simulate some work to increase chance of race condition
+                        System.Threading.Thread.Sleep(10);
+                        return expectedRuntime;
+                    });
+            }
+            else
+            {
+                // Environment should never be called for custom handler profiles
+                environmentMock
+                    .Setup(e => e.GetEnvironmentVariable(It.IsAny<string>()))
+                    .Throws(new InvalidOperationException("Environment should not be accessed for custom handler profiles"));
+            }
+
+            var scriptJobHostOptions = CreateOptionsMonitor(configurationProfile);
+            var resolver = new ScriptHostWorkerRuntimeResolver(environmentMock.Object, scriptJobHostOptions);
+
+            const int taskCount = 10;
+
+            // Create multiple tasks that will call GetWorkerRuntime concurrently
+            var tasks = new Task<string>[taskCount];
+            for (int i = 0; i < taskCount; i++)
+            {
+                tasks[i] = Task.Run(() => resolver.GetWorkerRuntime());
+            }
+
+            var results = await Task.WhenAll(tasks);
+
+            // All tasks should get the same result
+            Assert.All(results, result => Assert.Equal(expectedRuntime, result));
+
+            if (shouldCallEnvironment)
+            {
+                // The environment variable should be read at least once, but due to thread-safety,
+                // it might be read a few times if multiple threads enter the initialization path
+                // before the first one completes. However, it should be significantly less than
+                // the number of tasks if caching is working.
+                Assert.InRange(environmentCallCount, 1, taskCount);
+
+                int environmentVariableCallCountFinal = environmentCallCount;
+
+                // Verify that subsequent calls use the cached value
+                var cachedResult = resolver.GetWorkerRuntime();
+                Assert.Equal(expectedRuntime, cachedResult);
+
+                // Environment call count should not increase after caching is done
+                Assert.Equal(environmentVariableCallCountFinal, environmentCallCount);
+            }
+            else
+            {
+                // Verify environment was never accessed for custom handler profiles
+                environmentMock.Verify(e => e.GetEnvironmentVariable(It.IsAny<string>()), Times.Never);
+            }
         }
 
         private static IOptionsMonitor<ScriptJobHostOptions> CreateOptionsMonitor(string configurationProfile)

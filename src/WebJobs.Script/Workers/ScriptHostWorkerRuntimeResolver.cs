@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -29,11 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public string GetWorkerRuntime(string defaultValue = null)
         {
-            if (_resolvedWorkerRuntime is not null)
+            var cachedRuntime = _resolvedWorkerRuntime;
+            if (cachedRuntime is not null)
             {
-                return _resolvedWorkerRuntime;
+                return cachedRuntime;
             }
 
+            string workerRuntime;
             if (string.Equals(_scriptJobHostOptionsMonitor.CurrentValue.ConfigurationProfile,
                               HostConfigurationProfile.McpCustomHandlerProfile,
                               StringComparison.OrdinalIgnoreCase)
@@ -41,10 +44,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                                  HostConfigurationProfile.WebAppCustomHandlerProfile,
                                  StringComparison.OrdinalIgnoreCase))
             {
-                return _resolvedWorkerRuntime = "custom";
+                workerRuntime = "custom";
+            }
+            else
+            {
+                workerRuntime = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.FunctionWorkerRuntime, defaultValue);
             }
 
-            return _resolvedWorkerRuntime = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.FunctionWorkerRuntime, defaultValue);
+            var existing = Interlocked.CompareExchange(ref _resolvedWorkerRuntime, workerRuntime, comparand: null);
+            return existing ?? workerRuntime;
         }
     }
 }

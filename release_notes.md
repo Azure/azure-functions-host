@@ -18,4 +18,4 @@
 - Fix `webPubSubTrigger`'s for Flex consumption sku (#11489)
 - Suppress execution context flow into script host start (#11498)
 - Add AzureWebJobsStorage health check (#11471)
-- Refactor functions worker runtime retrieval to use `IWorkerRuntimeResolver` abstraction (11511)
+- Refactor functions worker runtime retrieval to use `IWorkerRuntimeResolver` abstraction (#11511)
