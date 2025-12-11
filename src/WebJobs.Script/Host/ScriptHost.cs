@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
 
-                string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                string workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
                 _logger.FunctionsWorkerRuntimeValue(Sanitizer.Sanitize(workerRuntime));
 
                 if (workerRuntime is null)
