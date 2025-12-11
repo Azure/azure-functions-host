@@ -9,7 +9,13 @@ parameters:
   type: string
   default: "default"
 
-trigger: none # ensure this is not ran as a CI build
+# This is an intermediate repository. We cannot use 'self', as that points to the triggering repo.
+# We also cannot use relative paths, as that will point to the 1es repo we extend.
+# Instead, we need to re-use the alias defines us with. We will default to 'eng' for now.
+# This is a hack to workaround a gap in AzDevOps' template system.
+- name: repositoryAlias
+  type: string
+  default: host
 
 resources:
   repositories:
@@ -26,7 +32,7 @@ resources:
     ref: refs/tags/release
 
 variables:
-- template: /eng/ci/templates/variables/build.yml@self
+- template: /eng/ci/templates/variables/build.yml@${{ parameters.repositoryAlias }}
 - template: /ci/variables/cfs.yml@eng
 - name: buildNumber
   value: $[ counter('build', 0) ]
@@ -49,7 +55,7 @@ extends:
     stages:
     - stage: Test
       jobs:
-      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
+      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@${{ parameters.repositoryAlias }}
         parameters:
           WorkerName: ${{ parameters.WorkerName }}
           WorkerVersion: ${{ parameters.WorkerVersion }}

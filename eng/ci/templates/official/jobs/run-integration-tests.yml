@@ -7,6 +7,14 @@ parameters:
   displayName: Worker Version
   type: string
 
+# This is an intermediate repository. We cannot use 'self', as that points to the triggering repo.
+# We also cannot use relative paths, as that will point to the 1es repo we extend.
+# Instead, we need to re-use the alias defines us with. We will default to 'eng' for now.
+# This is a hack to workaround a gap in AzDevOps' template system.
+- name: repositoryAlias
+  type: string
+  default: host
+
 jobs:
 - job: RunIntegrationTests
   displayName: Run Integration Tests
@@ -22,7 +30,7 @@ jobs:
     test_args: -c release --no-build
 
   steps:
-  - template: /eng/ci/templates/install-dotnet.yml@self
+  - template: /eng/ci/templates/install-dotnet.yml@${{ parameters.repositoryAlias }}
 
   - task: UseNode@1
     inputs:
