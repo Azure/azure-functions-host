@@ -8,6 +8,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
     internal static partial class WebHostWorkerRuntimeResolverLoggerExtensions
     {
         [LoggerMessage(
+            EventId = 700,
+            Level = LogLevel.Debug,
+            Message = "Script host worker resolver resolved successfully.")]
+        public static partial void ScriptHostWorkerResolverResolvedSuccessfully(this ILogger logger);
+
+        [LoggerMessage(
             EventId = 701,
             Level = LogLevel.Debug,
             Message = "Script host worker resolver cached.")]

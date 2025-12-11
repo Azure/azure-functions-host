@@ -38,21 +38,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         {
             EnsureSubscribedToHostManagerStateChange();
 
-            var jobHostResolver = _cachedHostResolver;
+            var scriptHostResolver = _cachedHostResolver;
 
-            if (jobHostResolver is null)
+            if (scriptHostResolver is null)
             {
                 var scriptHostWorkerResolver = _rootProvider.GetScriptHostServiceOrNull<IWorkerRuntimeResolver>();
                 if (scriptHostWorkerResolver is not null)
                 {
-                    _logger.LogDebug("Script host worker resolver resolved successfully.");
+                    _logger.ScriptHostWorkerResolverResolvedSuccessfully();
 
                     var existing = Interlocked.CompareExchange(
                         ref _cachedHostResolver,
                         scriptHostWorkerResolver,
                         comparand: null);
 
-                    jobHostResolver = existing ?? scriptHostWorkerResolver;
+                    scriptHostResolver = existing ?? scriptHostWorkerResolver;
 
                     if (existing is null)
                     {
@@ -61,9 +61,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 }
             }
 
-            if (jobHostResolver is not null)
+            if (scriptHostResolver is not null)
             {
-                return jobHostResolver.GetWorkerRuntime(defaultValue);
+                return scriptHostResolver.GetWorkerRuntime(defaultValue);
             }
 
             // Fallback to read from environment when Job Host scoped resolver is not available yet
