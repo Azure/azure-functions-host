@@ -65,7 +65,7 @@ jobs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
       pwsh: true
-      ScriptPath: eng/script/checkout-secrets.ps1
+      ScriptPath: $(Build.SourcesDirectory)/eng/script/checkout-secrets.ps1
 
   - task: AzureKeyVault@1
     inputs:
