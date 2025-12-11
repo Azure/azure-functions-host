@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         public override async Task InitializeAsync()
         {
             InitializeCosmosClient();
+            await CreateContainers();
             await base.InitializeAsync();
         }
 
