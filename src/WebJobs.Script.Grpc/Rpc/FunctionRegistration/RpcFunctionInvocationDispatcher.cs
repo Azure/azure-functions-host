@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             IHostMetrics hostMetrics,
-            IWorkerRuntimeResolver workerRunimeResolver)
+            IWorkerRuntimeResolver workerRuntimeResolver)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
             _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
-            _workerRuntime = workerRunimeResolver.GetWorkerRuntime();
+            _workerRuntime = workerRuntimeResolver.GetWorkerRuntime();
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _hostingConfigOptions = hostingConfigOptions;
