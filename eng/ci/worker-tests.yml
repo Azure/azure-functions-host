@@ -17,45 +17,10 @@ parameters:
   type: string
   default: host
 
-resources:
-  repositories:
-  - repository: 1es
-    type: git
-    name: 1ESPipelineTemplates/1ESPipelineTemplates
-    parameters:
-      settings:
-        networkIsolationPolicy: Permissive
-    ref: refs/tags/release
-  - repository: eng
-    type: git
-    name: engineering
-    ref: refs/tags/release
-
-variables:
-- template: /eng/ci/templates/variables/build.yml@${{ parameters.repositoryAlias }}
-- template: /ci/variables/cfs.yml@eng
-- name: buildNumber
-  value: $[ counter('build', 0) ]
-
-extends:
-  template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
-  parameters:
-    settings:
-        networkIsolationPolicy: Permissive
-    pool:
-      name: 1es-pool-azfunc
-      image: 1es-windows-2022
-      os: windows
-
-
-    sdl:
-      suppression:
-        suppressionFile: $(Build.SourcesDirectory)/eng/sdl/.gdnsuppress
-
-    stages:
-    - stage: Test
-      jobs:
-      - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@${{ parameters.repositoryAlias }}
-        parameters:
-          WorkerName: ${{ parameters.WorkerName }}
-          WorkerVersion: ${{ parameters.WorkerVersion }}
+  stages:
+  - stage: Test
+    jobs:
+    - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@${{ parameters.repositoryAlias }}
+      parameters:
+        WorkerName: ${{ parameters.WorkerName }}
+        WorkerVersion: ${{ parameters.WorkerVersion }}
