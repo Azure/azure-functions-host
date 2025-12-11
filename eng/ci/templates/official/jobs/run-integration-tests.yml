@@ -32,6 +32,8 @@ jobs:
   steps:
   - checkout: self
     persistCredentials: true
+  - checkout: ${{ parameters.repositoryAlias }}
+    persistCredentials: true
   - template: /eng/ci/templates/install-dotnet.yml@${{ parameters.repositoryAlias }}
 
   - task: UseNode@1
@@ -65,7 +67,7 @@ jobs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
       pwsh: true
-      ScriptPath: $(Build.SourcesDirectory)/host/eng/script/checkout-secrets.ps1
+      ScriptPath: $(Build.SourcesDirectory)/${{ parameters.repositoryAlias }}/eng/script/checkout-secrets.ps1
 
   - task: AzureKeyVault@1
     inputs:
