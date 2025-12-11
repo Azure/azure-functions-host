@@ -17,10 +17,9 @@ parameters:
   type: string
   default: host
 
-  stages:
-  - stage: Test
-    jobs:
-    - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@${{ parameters.repositoryAlias }}
-      parameters:
-        WorkerName: ${{ parameters.WorkerName }}
-        WorkerVersion: ${{ parameters.WorkerVersion }}
+
+jobs:
+- template: /eng/ci/templates/official/jobs/run-integration-tests.yml@${{ parameters.repositoryAlias }}
+  parameters:
+    WorkerName: ${{ parameters.WorkerName }}
+    WorkerVersion: ${{ parameters.WorkerVersion }}
