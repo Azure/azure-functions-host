@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         private IWorkerRuntimeResolver _cachedHostResolver;
         private IScriptHostManager _hostManager;
         private IEnvironment _environment;
-        private bool _disposed;
+        private int _disposed; // 0 = false, 1 = true
 
         public WebHostWorkerRuntimeResolverAdapter(
             IServiceProvider rootProvider,
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public void Dispose()
         {
-            if (_disposed)
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
             {
                 return;
             }
@@ -89,8 +89,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             _cachedHostResolver = null;
             _environment = null;
-
-            _disposed = true;
         }
 
         private void EnsureSubscribedToHostManagerStateChange()
