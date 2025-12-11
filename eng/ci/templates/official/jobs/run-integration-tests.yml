@@ -30,6 +30,8 @@ jobs:
     test_args: -c release --no-build
 
   steps:
+  - checkout: ${{ parameters.repositoryAlias }}
+    persistCredentials: true
   - template: /eng/ci/templates/install-dotnet.yml@${{ parameters.repositoryAlias }}
 
   - task: UseNode@1
