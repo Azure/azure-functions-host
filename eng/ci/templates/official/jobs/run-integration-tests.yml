@@ -64,6 +64,7 @@ jobs:
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
       azurePowerShellVersion: 'LatestVersion'
+      targetType: inline
       pwsh: true
       inlineScript: |
           function AcquireLease($blob) {
