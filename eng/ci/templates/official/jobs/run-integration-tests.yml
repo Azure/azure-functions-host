@@ -57,12 +57,6 @@ jobs:
       targetType: inline
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
-  - task: Npm@1
-    displayName: npm ci
-    inputs:
-      command: ci
-      workingDir: sample/CustomHandlerRetry
-
   - task: AzurePowerShell@5
     displayName: Checkout secrets
     inputs:
