@@ -5,7 +5,6 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Storage.Queue;
 using System;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
@@ -23,10 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         protected async Task CosmosDBTriggerToBlobTest()
         {
             // Waiting for the Processor to acquire leases
-            await Task.Delay(5000);
+            await Task.Delay(10000);
 
             var dbName = "TriggerItemDb";
-            await SetUpTriggerListener();
 
             var resultBlob = _fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
             await resultBlob.DeleteIfExistsAsync();
@@ -44,14 +42,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             Assert.False(string.IsNullOrEmpty(result));
 
-            await _fixture.DeleteCosmosDbResources(dbName);
+            await resultBlob.DeleteIfExistsAsync();
         }
 
         protected async Task CosmosDBTest()
         {
             var dbName = "InOutItemDb";
             await _fixture.CreateContainers(dbName);
-            await SetUpTriggerListener();
 
             string id = Guid.NewGuid().ToString();
             await _fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
@@ -76,7 +73,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         {
             var dbName = "MultipleInOutItemDb";
             await _fixture.CreateContainers(dbName);
-            await SetUpTriggerListener();
 
             string id = Guid.NewGuid().ToString();
             await _fixture.Host.BeginFunctionAsync("CosmosDBOutMultiple", id);
@@ -132,19 +128,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             });
 
             return document;
-        }
-
-        // Regardless of which function is being tested, the trigger listener needs to be set up or the test host fails
-        private async Task SetUpTriggerListener()
-        {
-            var dbName = "TriggerItemDb";
-            bool collectionsCreated = await _fixture.CreateContainers(dbName);
-        }
-
-        private async Task RemoveTriggerDb()
-        {
-            var dbName = "TriggerItemDb";
-            await _fixture.DeleteCosmosDbResources(dbName);
         }
     }
 }

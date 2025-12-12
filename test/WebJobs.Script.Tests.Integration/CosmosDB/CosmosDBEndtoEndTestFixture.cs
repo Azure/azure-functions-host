@@ -65,12 +65,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         public override async Task InitializeAsync()
         {
             InitializeCosmosClient();
+            await SetUpTriggerListener();
             await base.InitializeAsync();
         }
 
         public override async Task DisposeAsync()
         {
             await base.DisposeAsync();
+            await RemoveTriggerDb();
             CosmosClient?.Dispose();
         }
 
@@ -109,6 +111,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             await leasesContainer.DeleteContainerAsync();
 
             await database.DeleteAsync();
+        }
+
+        // Regardless of which function is being tested, the trigger listener needs to be set up or the test host fails
+        private async Task SetUpTriggerListener()
+        {
+            var dbName = "TriggerItemDb";
+            bool collectionsCreated = await CreateContainers(dbName);
+        }
+
+        private async Task RemoveTriggerDb()
+        {
+            var dbName = "TriggerItemDb";
+            await DeleteCosmosDbResources(dbName);
         }
     }
 }
