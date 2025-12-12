@@ -33,6 +33,26 @@ jobs:
   steps:
   - checkout: self
     persistCredentials: true
+  - task: PowerShell@2
+    displayName: Print checkout path
+    inputs:
+      targetType: inline
+      pwsh: true
+      script: |
+        Write-Host "Checked out repo path: $(Build.SourcesDirectory)"
+  - task: PowerShell@2
+    displayName: List Build.SourcesDirectory recursively
+    inputs:
+      targetType: inline
+      pwsh: true
+      script: |
+        $src = '$(Build.SourcesDirectory)'
+        Write-Host ("Listing files under Build.SourcesDirectory: {0}" -f $src)
+        if (Test-Path $src) {
+          Get-ChildItem -Path $src -Recurse | Select-Object FullName | ForEach-Object { Write-Host $_.FullName }
+        } else {
+          Write-Host ("Path not found: {0}" -f $src)
+        }
   - template: /eng/ci/templates/install-dotnet.yml@${{ parameters.repositoryAlias }}
 
   - task: UseNode@1
