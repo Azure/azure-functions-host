@@ -1,17 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Xunit;
-
-// Add this outside the namespace or at the top of the file
-[CollectionDefinition("CosmosDBNodeEndToEndTests", DisableParallelization = true)]
-public class CosmosDBNodeEndToEndTestsCollection { }
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
-    [Collection("CosmosDBNodeEndToEndTests")]
     public class CosmosDBNodeEndToEndTests :
         CosmosDBEndToEndTestsBase<CosmosDBNodeEndToEndTests.TestFixture>
     {

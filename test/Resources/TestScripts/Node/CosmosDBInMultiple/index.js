@@ -6,7 +6,10 @@ module.exports = function (context, input) {
        throw Error("Expected 2 documents. Found " + context.bindings.items.length);
     }
 
-    context.bindings.blob = input.id;
+    context.bindings.itemOut = {
+        id: input.id,
+        text: "Hello from Node with multiple input bindings!"
+    };
 
     context.done();
 }

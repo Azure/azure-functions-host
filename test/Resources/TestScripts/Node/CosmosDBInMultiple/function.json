@@ -15,11 +15,12 @@
         "sqlQuery": "SELECT * from c where c.text = {id}"
     },
     {
-      "type": "blob",
-      "name": "blob",
-      "connection": "AzureWebJobsStorage",
+      "type": "cosmosDB",
+      "name": "itemOut",
       "direction": "out",
-      "path": "test-output-node/cosmosdbin-multiple-e2e-completed"
+      "databaseName": "ItemDb",
+      "containerName": "ItemCollection",
+      "createIfNotExists": true
     }
   ]
 }

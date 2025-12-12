@@ -44,9 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private string _functionsWorkerRuntimeVersion;
         private bool _addTestSettings;
 
-        [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Well known account key for emulator. Used for testing.")]
-        private string CosmosDBConnectionString = "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-
         protected EndToEndTestFixture(
             string rootPath,
             string testId,
@@ -170,8 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     configBuilder.AddInMemoryCollection(new Dictionary<string, string>
                     {
                         { "AzureWebJobsStorage", azuriteConnectionString },
-                        { "ConnectionStrings:AzureWebJobsStorage", azuriteConnectionString },
-                        { "ConnectionStrings:CosmosDB", CosmosDBConnectionString}
+                        { "ConnectionStrings:AzureWebJobsStorage", azuriteConnectionString }
                     });
 
                     ConfigureScriptHost(configBuilder);
@@ -182,7 +178,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     // Flow this env variable to out of proc workers.
                     s.Configure<FunctionsHostingConfigOptions>(o => o.Features["AzureWebJobsStorage"] = azuriteConnectionString);
-                    s.Configure<FunctionsHostingConfigOptions>(o => o.Features["ConnectionStrings:CosmosDB"] = CosmosDBConnectionString);
                     ConfigureWebHost(s);
                 },
                 configureWebHostAppConfiguration: configBuilder =>

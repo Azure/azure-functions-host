@@ -36,8 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
                 () => string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages()));
 
-            // cleanup collections
-            await Fixture.DeleteContainers();
+            if (collectionsCreated)
+            {
+                // cleanup collections
+                await Fixture.DeleteContainers();
+            }
 
             Assert.False(string.IsNullOrEmpty(result));
         }
@@ -62,9 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             Assert.Equal(updatedDoc.id, doc.id);
             Assert.NotEqual(doc._etag, updatedDoc._etag);
-
-            // cleanup collections
-            await Fixture.DeleteContainers();
         }
 
         protected async Task CosmosDBMultipleItemsTest()
@@ -84,14 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
             await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
-            // now wait for function to be invoked
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
-                () => string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages()));
-
-            // cleanup collections
-            await Fixture.DeleteContainers();
-
-            Assert.False(string.IsNullOrEmpty(result));
+            // And wait for the text to be updated
+            dynamic updatedDoc = await WaitForItemAsync(id, "Hello from Node with multiple input bindings!");
         }
 
         protected async Task TestConnectToEmulator()
