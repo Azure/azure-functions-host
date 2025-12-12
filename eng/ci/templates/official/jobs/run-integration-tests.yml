@@ -59,6 +59,7 @@ jobs:
       azureSubscription: Azure-Functions-Host-CI-internal
       scriptType: ps
       scriptLocation: inlineScript
+      addSpnToEnvironment: true
       inlineScript: |
         az account show | Out-String | Write-Host
         Write-Host "Azure CLI login established for subsequent scripts."
@@ -77,12 +78,25 @@ jobs:
       targetType: 'inline'
       pwsh: true
       script: |
+        # Ensure Azure CLI is logged in using service connection credentials
+        if (-not (az account show 2>$null)) {
+          if ($env:servicePrincipalId -and $env:servicePrincipalKey -and $env:tenantId) {
+            az login --service-principal -u $env:servicePrincipalId -p $env:servicePrincipalKey --tenant $env:tenantId | Out-Null
+            Write-Host "Azure CLI service-principal login completed."
+          } else {
+            Write-Host "Warning: SPN env vars not present; Azure CLI may not be logged in."
+          }
+        }
+
         # Bind Azure CLI login to Az.Accounts for PowerShell cmdlets
         try {
           $token = az account get-access-token --resource https://management.azure.com/ | ConvertFrom-Json
           if ($token -and $token.accessToken -and $token.tenant -and $token.user -and $token.user.name) {
             Connect-AzAccount -AccessToken $token.accessToken -Tenant $token.tenant -AccountId $token.user.name | Out-Null
             Write-Host "Connected to Azure via Az.Accounts using Azure CLI token."
+          } elseif ($token -and $token.accessToken -and $env:tenantId -and $env:servicePrincipalId) {
+            Connect-AzAccount -AccessToken $token.accessToken -Tenant $env:tenantId -AccountId $env:servicePrincipalId | Out-Null
+            Write-Host "Connected to Azure via Az.Accounts using SPN account id."
           } else {
             Write-Host "Warning: Unable to retrieve Azure CLI token fields. Proceeding without Connect-AzAccount binding."
           }
