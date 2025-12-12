@@ -3,14 +3,14 @@
     {
       "type": "queueTrigger",
       "name": "input",
-      "queueName": "documentdb-input-node",
+      "queueName": "cosmosdb-input-multiple-node",
       "direction": "in"
     },
     {
         "name": "items",
         "type": "cosmosDB",
         "direction": "in",
-        "databaseName": "ItemDb",
+        "databaseName": "MultipleInOutItemDb",
         "containerName": "ItemCollection",
         "sqlQuery": "SELECT * from c where c.text = {id}"
     },
@@ -18,7 +18,7 @@
       "type": "cosmosDB",
       "name": "itemOut",
       "direction": "out",
-      "databaseName": "ItemDb",
+      "databaseName": "MultipleInOutItemDb",
       "containerName": "ItemCollection",
       "createIfNotExists": true
     }

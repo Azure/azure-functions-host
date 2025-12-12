@@ -4,7 +4,7 @@
         "type": "cosmosDBTrigger",
         "name": "input",
         "direction": "in",
-        "databaseName": "ItemDb",
+        "databaseName": "TriggerItemDb",
         "containerName": "ItemCollection",
         "connection": "CosmosDB",
         "leaseContainerName": "leases",

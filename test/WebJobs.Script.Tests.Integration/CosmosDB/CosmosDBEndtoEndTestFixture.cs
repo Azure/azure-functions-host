@@ -65,22 +65,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         public override async Task InitializeAsync()
         {
             InitializeCosmosClient();
-            await CreateContainers();
             await base.InitializeAsync();
         }
 
         public override async Task DisposeAsync()
         {
             await base.DisposeAsync();
-            await DeleteDatabase();
             CosmosClient?.Dispose();
         }
 
-        public async Task<bool> CreateContainers()
+        public async Task<bool> CreateContainers(string dbName)
         {
             bool collectionsCreated = false;
 
-            DatabaseResponse databaseResponse = await CosmosClient.CreateDatabaseIfNotExistsAsync("ItemDb");
+            DatabaseResponse databaseResponse = await CosmosClient.CreateDatabaseIfNotExistsAsync(dbName);
             Database database = databaseResponse.Database;
 
             ContainerProperties itemCollectionProperties = new ContainerProperties("ItemCollection", "/id");
@@ -98,15 +96,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             return collectionsCreated;
         }
 
-        public async Task DeleteDatabase()
+        public async Task DeleteCosmosDbResources(string dbName)
         {
-            Database database = CosmosClient.GetDatabase("ItemDb");
-            await database.DeleteAsync();
-        }
-
-        public async Task DeleteContainers()
-        {
-            Database database = CosmosClient.GetDatabase("ItemDb");
+            Database database = CosmosClient.GetDatabase(dbName);
 
             // Delete the "ItemCollection" container
             Container itemCollectionContainer = database.GetContainer("ItemCollection");
@@ -115,6 +107,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             // Delete the "leases" container
             Container leasesContainer = database.GetContainer("leases");
             await leasesContainer.DeleteContainerAsync();
+
+            await database.DeleteAsync();
         }
     }
 }

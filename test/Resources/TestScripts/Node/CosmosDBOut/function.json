@@ -9,7 +9,7 @@
       "type": "cosmosDB",
       "name": "item",
       "direction": "out",
-      "databaseName": "ItemDb",
+      "databaseName": "InOutItemDb",
       "containerName": "ItemCollection",
       "createIfNotExists": true
     }

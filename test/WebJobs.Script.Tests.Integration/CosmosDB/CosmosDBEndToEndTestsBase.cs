@@ -1,10 +1,11 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Storage.Queue;
+using System;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
@@ -12,102 +13,89 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
     public abstract class CosmosDBEndToEndTestsBase<TTestFixture> :
         EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBEndtoEndTestFixture, new()
     {
+        private CosmosDBEndtoEndTestFixture _fixture;
+
         public CosmosDBEndToEndTestsBase(TTestFixture fixture) : base(fixture)
         {
+            _fixture = fixture;
         }
 
         protected async Task CosmosDBTriggerToBlobTest()
         {
             // Waiting for the Processor to acquire leases
-            await Task.Delay(10000);
+            await Task.Delay(5000);
 
-            bool collectionsCreated = await Fixture.CreateContainers();
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
+            var dbName = "TriggerItemDb";
+            await SetUpTriggerListener();
+
+            var resultBlob = _fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
             await resultBlob.DeleteIfExistsAsync();
 
             string id = Guid.NewGuid().ToString();
 
             var documentToTest = new { id };
 
-            await Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection")
+            await _fixture.CosmosClient.GetContainer(dbName, "ItemCollection")
                 .CreateItemAsync(documentToTest, new PartitionKey(id));
 
             // now wait for function to be invoked
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
-                () => string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages()));
-
-            if (collectionsCreated)
-            {
-                // cleanup collections
-                await Fixture.DeleteContainers();
-            }
+                () => string.Join(Environment.NewLine, _fixture.Host.GetScriptHostLogMessages()));
 
             Assert.False(string.IsNullOrEmpty(result));
+
+            await _fixture.DeleteCosmosDbResources(dbName);
         }
 
         protected async Task CosmosDBTest()
         {
-            bool collectionsCreated = await Fixture.CreateContainers();
+            var dbName = "InOutItemDb";
+            await _fixture.CreateContainers(dbName);
+            await SetUpTriggerListener();
+
             string id = Guid.NewGuid().ToString();
+            await _fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
 
-            await Fixture.Host.BeginFunctionAsync("CosmosDBOut", id);
-
-            dynamic doc = await WaitForItemAsync(id);
-
+            dynamic doc = await WaitForItemAsync(id, dbName);
             Assert.Equal((string)doc.id, id);
 
-            var queue = await Fixture.GetNewQueue("documentdb-input");
+            var queue = await _fixture.GetNewQueue("cosmosdb-input");
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
             await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
             // And wait for the text to be updated
-            dynamic updatedDoc = await WaitForItemAsync(id, "This was updated!");
+            dynamic updatedDoc = await WaitForItemAsync(id, dbName, "This was updated!");
 
             Assert.Equal(updatedDoc.id, doc.id);
             Assert.NotEqual(doc._etag, updatedDoc._etag);
+
+            await _fixture.DeleteCosmosDbResources(dbName);
         }
 
         protected async Task CosmosDBMultipleItemsTest()
         {
-            bool collectionsCreated = await Fixture.CreateContainers();
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbin-multiple-e2e-completed");
-            await resultBlob.DeleteIfExistsAsync();
+            var dbName = "MultipleInOutItemDb";
+            await _fixture.CreateContainers(dbName);
+            await SetUpTriggerListener();
 
             string id = Guid.NewGuid().ToString();
-
-            await Fixture.Host.BeginFunctionAsync("CosmosDBOutMultiple", id);
-
+            await _fixture.Host.BeginFunctionAsync("CosmosDBOutMultiple", id);
             var testId = id + "-0";
-            dynamic doc = await WaitForItemAsync(testId);
+            dynamic doc = await WaitForItemAsync(testId, dbName);
 
-            var queue = await Fixture.GetNewQueue("documentdb-input");
+            var queue = await _fixture.GetNewQueue("cosmosdb-input-multiple");
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
             await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
             // And wait for the text to be updated
-            dynamic updatedDoc = await WaitForItemAsync(id, "Hello from Node with multiple input bindings!");
+            dynamic updatedDoc = await WaitForItemAsync(id, dbName, "Hello from Node with multiple input bindings!");
+
+            await _fixture.DeleteCosmosDbResources(dbName);
         }
 
-        protected async Task TestConnectToEmulator()
+        protected async Task<dynamic> WaitForItemAsync(string itemId, string itemDb, string textToMatch = null)
         {
-            bool collectionsCreated = await Fixture.CreateContainers();
-
-            var container = Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection");
-
-            string id = Guid.NewGuid().ToString();
-            var documentToTest = new { id, text = "connect to emulator test" };
-
-            await container.CreateItemAsync(documentToTest, new PartitionKey(id));
-            dynamic doc = await WaitForItemAsync(id);
-
-            Assert.Equal((string)doc.id, id);
-            Assert.Equal((string)doc.text, "connect to emulator test");
-        }
-        
-
-        protected async Task<dynamic> WaitForItemAsync(string itemId, string textToMatch = null)
-        {
-            var container = Fixture.CosmosClient.GetContainer("ItemDb", "ItemCollection");
+            var container = _fixture.CosmosClient.GetContainer(itemDb, "ItemCollection");
 
             dynamic document = null;
 
@@ -139,11 +127,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             },
             userMessageCallback: () =>
             {
-                var logs = string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages());
+                var logs = string.Join(Environment.NewLine, _fixture.Host.GetScriptHostLogMessages());
                 return logs;
             });
 
             return document;
+        }
+
+        // Regardless of which function is being tested, the trigger listener needs to be set up or the test host fails
+        private async Task SetUpTriggerListener()
+        {
+            var dbName = "TriggerItemDb";
+            bool collectionsCreated = await _fixture.CreateContainers(dbName);
+        }
+
+        private async Task RemoveTriggerDb()
+        {
+            var dbName = "TriggerItemDb";
+            await _fixture.DeleteCosmosDbResources(dbName);
         }
     }
 }
