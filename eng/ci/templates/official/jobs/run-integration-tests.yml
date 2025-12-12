@@ -53,13 +53,23 @@ jobs:
       npm install -g azurite
     displayName: Install Azurite
 
+  - task: AzureCLI@2
+    displayName: Azure login
+    inputs:
+      azureSubscription: Azure-Functions-Host-CI-internal
+      scriptType: ps
+      scriptLocation: inlineScript
+      inlineScript: |
+        az account show | Out-String | Write-Host
+        Write-Host "Azure CLI login established for subsequent scripts."
+
   - task: PowerShell@2
     displayName: Install Az.Storage Powershell module
     inputs:
       targetType: inline
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
-  - task: AzurePowerShell@5
+  - task: PowerShell@2
     displayName: Checkout secrets
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal
@@ -67,6 +77,19 @@ jobs:
       targetType: 'inline'
       pwsh: true
       script: |
+        # Bind Azure CLI login to Az.Accounts for PowerShell cmdlets
+        try {
+          $token = az account get-access-token --resource https://management.azure.com/ | ConvertFrom-Json
+          if ($token -and $token.accessToken -and $token.tenant -and $token.user -and $token.user.name) {
+            Connect-AzAccount -AccessToken $token.accessToken -Tenant $token.tenant -AccountId $token.user.name | Out-Null
+            Write-Host "Connected to Azure via Az.Accounts using Azure CLI token."
+          } else {
+            Write-Host "Warning: Unable to retrieve Azure CLI token fields. Proceeding without Connect-AzAccount binding."
+          }
+        } catch {
+          Write-Host "Warning: Connect-AzAccount binding failed: $_"
+        }
+
         Write-Host "print 1"
         function AcquireLease($blob) {
           try {
