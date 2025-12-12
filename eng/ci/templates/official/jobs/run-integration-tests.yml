@@ -59,11 +59,9 @@ jobs:
       targetType: inline
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
 
-  - task: AzurePowerShell@5
-    displayName: Checkout secrets
+  - task: PowerShell@2
+    displayName: 'Checkout secrets'
     inputs:
-      azureSubscription: Azure-Functions-Host-CI-internal
-      azurePowerShellVersion: 'LatestVersion'
       targetType: 'inline'
       pwsh: true
       script: |
