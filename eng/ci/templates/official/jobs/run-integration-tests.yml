@@ -26,6 +26,7 @@ jobs:
 
   variables:
     test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
+    test_projects_full: $(Build.SourcesDirectory)/$(test_projects)
     is_release: $[contains(variables['Build.SourceBranch'], 'release/')]
     test_args: -c release --no-build
 
@@ -86,20 +87,37 @@ jobs:
       AzureWebJobsEventHubSenderSecretMap: $(EventHub)
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
 
+  - task: PowerShell@2
+    displayName: Diagnose project paths
+    inputs:
+      targetType: inline
+      pwsh: true
+      script: |
+        Write-Host "Build.SourcesDirectory=$(Build.SourcesDirectory)"
+        Write-Host "System.DefaultWorkingDirectory=$(System.DefaultWorkingDirectory)"
+        $projRel = '$(test_projects)'
+        $projAbs = '$(test_projects_full)'
+        Write-Host "test_projects=$projRel"
+        Write-Host "test_projects_full=$projAbs"
+        Write-Host ("Exists (rel): {0}" -f (Test-Path $projRel))
+        Write-Host ("Exists (abs): {0}" -f (Test-Path $projAbs))
+        Write-Host "Listing csproj in integration tests directory:"
+        Get-ChildItem -Path "$(Build.SourcesDirectory)/test/WebJobs.Script.Tests.Integration" -Recurse -Filter *.csproj | ForEach-Object { Write-Host $_.FullName }
+
   - task: DotNetCoreCLI@2
     displayName: Restore
     inputs:
       command: custom
       custom: restore
       arguments: -v m -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: Build
     inputs:
       command: build
       arguments: -v m -c release --no-restore -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: C# end to end tests
@@ -107,7 +125,7 @@ jobs:
       command: test
       testRunTitle: C# end to end tests
       arguments: '--filter "Group=CSharpEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: Node end to end tests
@@ -116,7 +134,7 @@ jobs:
       command: test
       testRunTitle: Node end to end tests
       arguments: '--filter "Group=NodeEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: Direct load end to end tests
@@ -125,7 +143,7 @@ jobs:
       command: test
       testRunTitle: Direct load end to end tests
       arguments: '--filter "Group=DirectLoadEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: F# end to end tests
@@ -134,7 +152,7 @@ jobs:
       command: test
       testRunTitle: F# end to end tests
       arguments: '--filter "Group=FSharpEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: Language worker end to end tests
@@ -143,7 +161,7 @@ jobs:
       command: test
       testRunTitle: Language worker end to end tests
       arguments: '--filter "Group=LanguageWorkerSelectionEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: Node script host end to end tests
@@ -152,7 +170,7 @@ jobs:
       command: test
       testRunTitle: Node script host end to end tests
       arguments: '--filter "Group=NodeScriptHostTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: Raw assembly end to end tests
@@ -161,7 +179,7 @@ jobs:
       command: test
       testRunTitle: Raw assembly end to end tests
       arguments: '--filter "Group=RawAssemblyEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: Samples end to end tests
@@ -170,7 +188,7 @@ jobs:
       command: test
       testRunTitle: Samples end to end tests
       arguments: '--filter "Group=SamplesEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: Drain mode end to end tests
@@ -179,7 +197,7 @@ jobs:
       command: test
       testRunTitle: Drain mode end to end tests
       arguments: '--filter "Group=DrainModeEndToEndTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: Standby mode end to end tests Windows
@@ -188,7 +206,7 @@ jobs:
       command: test
       testRunTitle: Standby mode end to end tests Windows
       arguments: '--filter "Group=StandbyModeEndToEndTests_Windows" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   # Disabled to unblock in 202401. Will fix shortly.
   # - task: DotNetCoreCLI@2
@@ -207,7 +225,7 @@ jobs:
       command: test
       testRunTitle: Linux container end to end tests Windows
       arguments: '--filter "Group=ContainerInstanceTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: DotNetCoreCLI@2
     displayName: Release verification tests
@@ -216,7 +234,7 @@ jobs:
       command: test
       testRunTitle: Release verification tests
       arguments: '--filter "Group=ReleaseTests" $(test_args) -p:WorkerVersion=${{ parameters.WorkerVersion }} -p:WorkerName=${{ parameters.WorkerName }}'
-      projects: $(test_projects)
+      projects: $(test_projects_full)
 
   - task: AzurePowerShell@5
     condition: always()
