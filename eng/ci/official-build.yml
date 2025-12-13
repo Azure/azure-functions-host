@@ -30,11 +30,6 @@ resources:
     type: git
     name: engineering
     ref: refs/tags/release
-  - repository: host
-    type: git
-    name: Azure/azure-functions-host
-    ref: refs/heads/surgupta/worker-tests-yml
-    endpoint: Azure-Functions-Host-CI-internal
 
 variables:
 - template: /eng/ci/templates/variables/build.yml@self
