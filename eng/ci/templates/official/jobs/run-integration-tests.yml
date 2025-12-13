@@ -31,8 +31,11 @@ jobs:
     test_args: -c release --no-build
 
   steps:
-  - checkout: self
+  - checkout: azure.azure-functions-host
     persistCredentials: true
+    clean: true
+    fetchDepth: 0
+    ref: refs/heads/surgupta/worker-tests-yml
   - task: PowerShell@2
     displayName: Print checkout path
     inputs:
