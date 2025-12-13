@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
     {
         [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Well known account key for emulator. Used for testing.")]
         private static string CosmosDBConnection => "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+        private const string _triggerDbName = "TriggerItemDb";
 
         protected CosmosDBEndtoEndTestFixture(string rootPath, string testId, string language) :
             base(rootPath, testId, language)
@@ -116,14 +117,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         // Regardless of which function is being tested, the trigger listener needs to be set up or the test host fails
         private async Task SetUpTriggerListener()
         {
-            var dbName = "TriggerItemDb";
-            bool collectionsCreated = await CreateContainers(dbName);
+            bool collectionsCreated = await CreateContainers(_triggerDbName);
         }
 
         private async Task RemoveTriggerDb()
         {
-            var dbName = "TriggerItemDb";
-            await DeleteCosmosDbResources(dbName);
+            await DeleteCosmosDbResources(_triggerDbName);
         }
     }
 }

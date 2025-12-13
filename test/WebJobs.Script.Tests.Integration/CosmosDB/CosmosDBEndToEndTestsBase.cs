@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         {
             // Waiting for the Processor to acquire leases
             await Task.Delay(10000);
+            _fixture.AssertNoScriptHostErrors();
 
             var dbName = "TriggerItemDb";
 
@@ -47,6 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
         protected async Task CosmosDBTest()
         {
+            _fixture.AssertNoScriptHostErrors();
+
             var dbName = "InOutItemDb";
             await _fixture.CreateContainers(dbName);
 
@@ -71,6 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
         protected async Task CosmosDBMultipleItemsTest()
         {
+            _fixture.AssertNoScriptHostErrors();
+
             var dbName = "MultipleInOutItemDb";
             await _fixture.CreateContainers(dbName);
 
