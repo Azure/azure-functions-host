@@ -18,14 +18,6 @@ parameters:
   default: host
 
 
-resources:
-  repositories:
-  - repository: host
-    type: git
-    name: Azure/azure-functions-host
-    ref: refs/heads/surgupta/worker-tests-yml
-    endpoint: Azure-Functions-Host-CI-internal
-
 stages:
 - stage: Test
   jobs:

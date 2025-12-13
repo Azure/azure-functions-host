@@ -33,8 +33,6 @@ jobs:
   steps:
   - checkout:  ${{ parameters.repositoryAlias }}
     persistCredentials: true
-    clean: true
-    fetchDepth: 0
   - task: PowerShell@2
     displayName: Print checkout path
     inputs:
