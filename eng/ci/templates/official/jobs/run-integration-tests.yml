@@ -31,7 +31,7 @@ jobs:
     test_args: -c release --no-build
 
   steps:
-  - checkout: azure.azure-functions-host
+  - checkout:  ${{ parameters.repositoryAlias }}
     persistCredentials: true
     clean: true
     fetchDepth: 0
