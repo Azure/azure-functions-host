@@ -1,14 +1,4 @@
 parameters:
-- name: WorkerName
-  displayName: Worker Name
-  type: string
-  default: "default"
-
-- name: WorkerVersion
-  displayName: Worker Version
-  type: string
-  default: "default"
-
 # This is an intermediate repository. We cannot use 'self', as that points to the triggering repo.
 # We also cannot use relative paths, as that will point to the 1es repo we extend.
 # Instead, we need to re-use the alias defines us with. We will default to 'eng' for now.
@@ -22,6 +12,3 @@ stages:
 - stage: Test
   jobs:
   - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@${{ parameters.repositoryAlias }}
-    parameters:
-      WorkerName: ${{ parameters.WorkerName }}
-      WorkerVersion: ${{ parameters.WorkerVersion }}
