@@ -653,6 +653,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariableOrDefault(FunctionWorkerRuntime, string.Empty);
         }
 
+        public static string GetFunctionsSiteUpdateId(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(FunctionsSiteUpdateId, string.Empty);
+        }
+
         /// <summary>
         /// Gets a value indicating whether AzureFileShare should be mounted when specializing Linux Consumption workers.
         /// </summary>

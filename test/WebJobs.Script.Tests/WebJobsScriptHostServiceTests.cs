@@ -595,6 +595,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionExtensionVersion = "~4";
             string websiteSku = "Dynamic";
             string featureFlags = "EnableWorkerIndexing";
+            string functionsSiteUpdateId = "1767996105";
 
             mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(functionWorkerRuntime);
             mockEnvironment.Setup(e => e.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName)).Returns(functionsWorkerRuntimeVersion);
@@ -603,6 +604,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)).Returns(featureFlags);
             mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated)).Returns("1");
             mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled)).Returns("1");
+            mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsSiteUpdateId)).Returns(functionsSiteUpdateId);
 
             mockScriptWebHostEnvironment.Setup(e => e.InStandbyMode).Returns(false);
 
@@ -630,6 +632,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(result.GetProperty("UsePlaceholderDotNetIsolated").GetBoolean());
             Assert.Equal(websiteSku, result.GetProperty("WebSiteSku").GetString());
             Assert.Equal(featureFlags, result.GetProperty("FeatureFlags").GetString());
+            Assert.Equal(functionsSiteUpdateId, result.GetProperty("FunctionsSiteUpdateId").GetString());
 
             var hostingConfig = result.GetProperty("HostingConfig");
             Assert.Equal("TestValue1", hostingConfig.GetProperty("TestFeature1").GetString());

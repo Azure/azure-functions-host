@@ -816,6 +816,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var featureFlags = environment.GetEnvironmentVariable(AzureWebJobsFeatureFlags);
             var hostingConfigDict = hostingConfigOptions.Features;
             var adminIsolationEnabled = environment.IsAdminIsolationEnabled();
+            var functionsSiteUpdateId = environment.GetFunctionsSiteUpdateId();
 
             string hisMode = "Disabled";
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagStrictHISModeEnabled))
@@ -832,7 +833,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             logger.LogHostInitializationSettings(originalFunctionsWorkerRuntime, functionWorkerRuntime, originalFunctionsWorkerRuntimeVersion, functionWorkerRuntimeVersion,
-                functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict, hisMode, adminIsolationEnabled);
+                functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict, hisMode, adminIsolationEnabled,
+                functionsSiteUpdateId);
         }
 
         private void OnHostHealthCheckTimer(object state)
