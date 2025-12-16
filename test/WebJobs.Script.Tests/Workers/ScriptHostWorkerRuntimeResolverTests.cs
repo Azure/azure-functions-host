@@ -122,9 +122,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         }
 
         [Theory]
-        [InlineData(null, "node", true)]  // Environment variable lookup
-        [InlineData("mcp-custom-handler", "custom", false)]  // Custom handler profile
-        [InlineData("web-app-custom-handler", "custom", false)]  // Custom handler profile
+        [InlineData(null, "node", true)] // Environment variable lookup
+        [InlineData("mcp-custom-handler", "custom", false)] // Custom handler profile
+        [InlineData("web-app-custom-handler", "custom", false)] // Custom handler profile
         public async Task GetWorkerRuntime_IsThreadSafe_WhenCalledConcurrently(string configurationProfile, string expectedRuntime, bool shouldCallEnvironment)
         {
             // Arrange
