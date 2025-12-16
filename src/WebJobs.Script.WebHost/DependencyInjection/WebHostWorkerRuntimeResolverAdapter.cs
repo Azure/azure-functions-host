@@ -5,7 +5,6 @@ using System;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -20,21 +19,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
     {
         private readonly IServiceProvider _rootProvider;
         private readonly ILogger<WebHostWorkerRuntimeResolverAdapter> _logger;
-        private readonly IConfiguration _configuration;
+        private readonly IEnvironment _environment;
         private IWorkerRuntimeResolver _cachedHostResolver;
         private IScriptHostManager _hostManager;
-        private string _cachedConfigValue;
+        private string _cachedEnvironmentValue;
         private int _disposed; // 0 = false, 1 = true
 
         public WebHostWorkerRuntimeResolverAdapter(
             IServiceProvider rootProvider,
-            IConfiguration configuration,
+            IEnvironment environment,
             ILogger<WebHostWorkerRuntimeResolverAdapter> logger)
         {
             ArgumentNullException.ThrowIfNull(rootProvider);
+            ArgumentNullException.ThrowIfNull(environment);
             ArgumentNullException.ThrowIfNull(logger);
             _rootProvider = rootProvider;
-            _configuration = configuration;
+            _environment = environment;
             _logger = logger;
         }
 
@@ -70,16 +70,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 return scriptHostResolver.GetWorkerRuntime(defaultValue);
             }
 
-            // Fallback to configuration when Job Host scoped resolver is not available yet
-            var cachedValue = _cachedConfigValue;
+            // Fallback to environment when Job Host scoped resolver is not available yet
+            var cachedValue = _cachedEnvironmentValue;
             if (cachedValue is null)
             {
-                var valueFromConfig = _configuration[EnvironmentSettingNames.FunctionWorkerRuntime];
+                var valueFromEnvironment = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
-                if (!string.IsNullOrEmpty(valueFromConfig))
+                if (!string.IsNullOrEmpty(valueFromEnvironment))
                 {
-                    var existing = Interlocked.CompareExchange(ref _cachedConfigValue, valueFromConfig, comparand: null);
-                    return existing ?? valueFromConfig;
+                    var existing = Interlocked.CompareExchange(ref _cachedEnvironmentValue, valueFromEnvironment, comparand: null);
+                    return existing ?? valueFromEnvironment;
                 }
 
                 return defaultValue;
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             }
 
             _cachedHostResolver = null;
-            _cachedConfigValue = null;
+            _cachedEnvironmentValue = null;
         }
 
         private void EnsureSubscribedToHostManagerStateChange()
