@@ -55,7 +55,7 @@ jobs:
         displayName: Publish artifacts
         path: $(traceDirectory)
         artifact: AzFunc_$(Build.BuildNumber)_${{ parameters.os }}_${{ parameters.functionAppName }}
-        condition:: always()
+        condition: always()
 
   steps:
 
