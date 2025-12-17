@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -14,7 +14,7 @@ using Yarp.ReverseProxy.Forwarder;
 
 namespace Microsoft.Azure.WebJobs.Script.Http
 {
-    internal class DefaultHttpProxyService : IHttpProxyService, IDisposable
+    public class DefaultHttpProxyService : IHttpProxyService, IDisposable
     {
         private readonly SocketsHttpHandler _handler;
         private readonly IHttpForwarder _httpForwarder;

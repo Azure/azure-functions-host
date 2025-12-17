@@ -58,7 +58,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
-                    webJobsBuilder.Services.AddRpcScriptHostServices();
+                    // TODO:
+                    // webJobsBuilder.Services.AddRpcScriptHostServices();
+                    webJobsBuilder.Services.AddWorkerModelScriptHostServices();
 
                     // Adds necessary Azure-based services to the ScriptHost, which will use the host-provided IAzureBlobStorageProvider registered below.
                     webJobsBuilder.AddAzureStorageCoreServices();

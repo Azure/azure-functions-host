@@ -1,7 +1,8 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Immutable;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -13,5 +14,10 @@ namespace Microsoft.Azure.WebJobs.Script
         ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyAllowlist = true, bool includeCustomProviders = true);
 
         bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh = false);
+    }
+
+    public interface IFunctionMetadataManagerEx : IFunctionMetadataManager
+    {
+        Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(bool forceRefresh = false, bool applyAllowlist = true, bool includeCustomProviders = true);
     }
 }

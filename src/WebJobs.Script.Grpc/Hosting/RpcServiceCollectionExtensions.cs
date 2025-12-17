@@ -64,10 +64,12 @@ public static class RpcServiceCollectionExtensions
 
         // Add Language Worker Service
         services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
-
+        services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
         services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
         services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
         services.TryAddSingleton<IWorkerFunctionMetadataProvider, WorkerFunctionMetadataProvider>();
+        services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
+        services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
         services.AddSingleton<IScriptHostWorkerManager, RpcScriptHostWorkerManager>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IConcurrencyThrottleProvider, WorkerChannelThrottleProvider>());
         services.AddSingleton<IWebHostWorkerManager, RpcWebHostWorkerManager>();

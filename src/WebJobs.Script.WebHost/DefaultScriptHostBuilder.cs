@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public sealed class DefaultScriptHostBuilder : IScriptHostBuilder
+    public sealed class DefaultScriptHostBuilder : IScriptHostBuilderEx
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IServiceProvider _rootServiceProvider;
@@ -24,6 +24,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         public IHost BuildHost(bool skipHostStartup, bool skipHostConfigurationParsing)
+        {
+            return BuildHost(skipHostStartup, skipHostConfigurationParsing, null);
+        }
+
+        public IHost BuildHost(bool skipHostStartup, bool skipHostConfigurationParsing, Action<IServiceCollection> configureServices)
         {
             var builder = new HostBuilder();
 
@@ -55,6 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.Remove(jobHostService);
                 });
             }
+
+            builder.ConfigureServices(services =>
+            {
+                configureServices?.Invoke(services);
+            });
 
             return builder.Build();
         }

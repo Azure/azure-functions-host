@@ -15,7 +15,6 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -101,7 +100,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
             services.TryAddSingleton<IStandbyManager, StandbyManager>();
             services.TryAddSingleton<IServiceCollection>(services);
-            services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
+            services.AddSingleton<DefaultScriptHostBuilder>();
+            services.TryAddSingleton<IScriptHostBuilder>(s => s.GetRequiredService<DefaultScriptHostBuilder>());
+            services.TryAddSingleton<IScriptHostBuilderEx>(s => s.GetRequiredService<DefaultScriptHostBuilder>());
 
             // Metrics
             services.AddSingleton<IHostMetricsProvider, HostMetricsProvider>();
@@ -141,7 +142,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Management services
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
-            services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddHttpClient();
             services.AddBundlesHttpClient();
@@ -186,19 +186,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IFunctionDataCache, FunctionDataCache>();
 
             // Grpc
-            services.AddScriptGrpc();
+            // services.AddScriptGrpc();
 
             // Register common services with the WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);
-            services.AddCommonRpcServices();
-
-            services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
-            services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
+            //services.AddCommonRpcServices();
+            services.AddWorkerModelCommonServices();
 
             // Core script host services
             services.AddSingleton<WebJobsScriptHostService>();
-            services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
+            //services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
 
             // Performs function assembly analysis to generete log use of unoptimized assemblies.
             services.AddSingleton<IHostedService, AssemblyAnalyzer.AssemblyAnalysisService>();
@@ -252,6 +250,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Add health checks
             services.AddMetrics();
             services.AddHealthChecks().AddWebJobsScriptHealthChecks();
+
+            services.AddWorkerModelWebHostServices();
+            services.AddInstanceManagerScriptHostServices();
         }
 
         internal static void AddHostingConfigOptions(this IServiceCollection services, IConfiguration configuration)

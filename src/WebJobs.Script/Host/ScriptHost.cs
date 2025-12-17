@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IDistributedLockManager _distributedLockManager;
-        private readonly IFunctionMetadataManager _functionMetadataManager;
+        private readonly IFunctionMetadataManagerEx _functionMetadataManager;
         private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHttpRoutesManager _httpRoutesManager;
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            IFunctionMetadataManager functionMetadataManager,
+            IFunctionMetadataManagerEx functionMetadataManager,
             IFileLoggingStatusManager fileLoggingStatusManager,
             IMetricsLogger metricsLogger,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
@@ -281,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
                 // Generate Functions
-                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
+                IEnumerable<FunctionMetadata> functionMetadataList = await GetFunctionsMetadataAsync();
 
                 string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
                 _logger.FunctionsWorkerRuntimeValue(Sanitizer.Sanitize(workerRuntime));
@@ -371,9 +371,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets metadata collection of functions and proxies configured.
         /// </summary>
         /// <returns>A metadata collection of functions and proxies configured.</returns>
-        private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
+        private async Task<IEnumerable<FunctionMetadata>> GetFunctionsMetadataAsync()
         {
-            ImmutableArray<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false);
+            ImmutableArray<FunctionMetadata> functionMetadata = await _functionMetadataManager.GetFunctionMetadataAsync(forceRefresh: false);
             foreach (var error in _functionMetadataManager.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value);

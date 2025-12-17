@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     /// <summary>
     /// Defines an interface for providing worker configurations.
     /// </summary>
-    internal interface IWorkerConfigurationProvider
+    public interface IWorkerConfigurationProvider
     {
         /// <summary>
         /// Gets the priority of configuration provider. Higher value indicate higher priority.

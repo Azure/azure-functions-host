@@ -80,10 +80,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
 
             // This middleware must be registered before we establish the request service provider.
-            builder.UseWhen(context => !context.Request.IsAdminRequest(), config =>
-            {
-                config.UseMiddleware<HostAvailabilityCheckMiddleware>();
-            });
+            //builder.UseWhen(context => !context.Request.IsAdminRequest(), config =>
+            //{
+            //    config.UseMiddleware<HostAvailabilityCheckMiddleware>();
+            //});
 
             builder.UseWhen(context => HostWarmupMiddleware.IsWarmUpRequest(context.Request, standbyOptions.InStandbyMode, environment), config =>
             {

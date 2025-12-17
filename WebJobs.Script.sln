@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36623.8 d17.14
+VisualStudioVersion = 17.14.36623.8
 MinimumVisualStudioVersion = 15.0.0.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}"
 EndProject
@@ -66,6 +66,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.Shared", "test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.csproj", "{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetCustomHandler", "test\Resources\TestProjects\DotNetCustomHandler\DotNetCustomHandler.csproj", "{276857C1-88C8-994D-593E-AE6FA9B14556}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Azure.Functions.WorkerModel", "src\Azure.Functions.WorkerModel\Azure.Functions.WorkerModel.csproj", "{BD5C1F56-3AFF-C7E1-7D52-7B603F423291}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Azure.Functions.InstanceManager", "src\Azure.Functions.InstanceManager\Azure.Functions.InstanceManager.csproj", "{5A815E12-224A-4292-8854-7D5C17168CAC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -151,6 +155,14 @@ Global
 		{276857C1-88C8-994D-593E-AE6FA9B14556}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{276857C1-88C8-994D-593E-AE6FA9B14556}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{276857C1-88C8-994D-593E-AE6FA9B14556}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD5C1F56-3AFF-C7E1-7D52-7B603F423291}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD5C1F56-3AFF-C7E1-7D52-7B603F423291}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD5C1F56-3AFF-C7E1-7D52-7B603F423291}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD5C1F56-3AFF-C7E1-7D52-7B603F423291}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A815E12-224A-4292-8854-7D5C17168CAC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A815E12-224A-4292-8854-7D5C17168CAC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A815E12-224A-4292-8854-7D5C17168CAC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A815E12-224A-4292-8854-7D5C17168CAC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -178,6 +190,8 @@ Global
 		{3746E49F-DD26-4CBD-B961-0ADF6EA84909} = {B2312621-6D0A-429F-9A45-06B45CE69691}
 		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{276857C1-88C8-994D-593E-AE6FA9B14556} = {B2312621-6D0A-429F-9A45-06B45CE69691}
+		{BD5C1F56-3AFF-C7E1-7D52-7B603F423291} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
+		{5A815E12-224A-4292-8854-7D5C17168CAC} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}

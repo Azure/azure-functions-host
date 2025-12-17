@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
     /// <summary>
     /// Base class for worker configuration resolvers.
     /// </summary>
-    internal abstract class WorkerConfigurationProviderBase : IWorkerConfigurationProvider
+    public abstract class WorkerConfigurationProviderBase : IWorkerConfigurationProvider
     {
         private readonly IOptionsMonitor<WorkerConfigurationResolverOptions> _resolverOptionsMonitor;
 
@@ -47,14 +47,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public abstract void PopulateWorkerConfigs(Dictionary<string, RpcWorkerConfig> configs);
 
-        internal void AddProvider(WorkerConfigurationResolverOptions resolverOptions,
+        protected void AddProvider(WorkerConfigurationResolverOptions resolverOptions,
                                     string workerName,
                                     string workerDirPath,
                                     Dictionary<string, RpcWorkerConfig> workerRuntimeToConfigMap)
         {
             using (MetricsLogger.LatencyEvent(string.Format(MetricEventNames.AddProvider, workerDirPath)))
             {
-                if (workerRuntimeToConfigMap.ContainsKey(workerName))
+                if (workerName is not null && workerRuntimeToConfigMap.ContainsKey(workerName))
                 {
                     return;
                 }
@@ -77,6 +77,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 var workerConfig = BuildWorkerConfig(resolverOptions, workerDirPath, workerConfigJson, workerDescription, MetricsLogger, Logger, SystemRuntimeInformation);
                 if (workerConfig is not null)
                 {
+                    if (string.IsNullOrWhiteSpace(workerName))
+                    {
+                        workerName = workerDescription.Language;
+                    }
+
                     workerRuntimeToConfigMap[workerName] = workerConfig;
                 }
             }
