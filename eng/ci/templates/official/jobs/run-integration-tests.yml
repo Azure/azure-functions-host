@@ -18,12 +18,52 @@ jobs:
     os: windows
 
   variables:
-    test_projects: Microsoft.Azure.WebJobs.Script.Tests.WorkersIntegration\Microsoft.Azure.WebJobs.Script.Tests.WorkersIntegration.csproj
+    test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
     is_release: $[contains(variables['Build.SourceBranch'], 'release/')]
     test_args: -c release --no-build
 
   steps:
   - checkout: host
+
+  - task: PowerShell@2
+    displayName: Print checkout path
+    inputs:
+      targetType: inline
+      pwsh: true
+      script: |
+        Write-Host "Checked out repo path: $(Build.SourcesDirectory)"
+
+  - task: PowerShell@2
+    displayName: List Build.SourcesDirectory recursively
+    inputs:
+      targetType: inline
+      pwsh: true
+      script: |
+        $src = '$(Build.SourcesDirectory)'
+        Write-Host ("Listing files under Build.SourcesDirectory: {0}" -f $src)
+        if (Test-Path $src) {
+          Get-ChildItem -Path $src -Recurse | Select-Object FullName | ForEach-Object { Write-Host $_.FullName }
+        } else {
+          Write-Host ("Path not found: {0}" -f $src)
+        }
+
+  - task: PowerShell@2
+    displayName: Diagnose project paths
+    inputs:
+      targetType: inline
+      pwsh: true
+      script: |
+        Write-Host "Build.SourcesDirectory=$(Build.SourcesDirectory)"
+        Write-Host "System.DefaultWorkingDirectory=$(System.DefaultWorkingDirectory)"
+        $projRel = '$(test_projects)'
+        $projAbs = '$(test_projects_full)'
+        Write-Host "test_projects=$projRel"
+        Write-Host "test_projects_full=$projAbs"
+        Write-Host ("Exists (rel): {0}" -f (Test-Path $projRel))
+        Write-Host ("Exists (abs): {0}" -f (Test-Path $projAbs))
+        Write-Host "Listing csproj in integration tests directory:"
+        Get-ChildItem -Path "$(Build.SourcesDirectory)/test/WebJobs.Script.Tests.Integration" -Recurse -Filter *.csproj | ForEach-Object { Write-Host $_.FullName }
+
   - template: /eng/ci/templates/install-dotnet.yml@${{ parameters.repositoryAlias }}
 
   - task: DotNetCoreCLI@2
