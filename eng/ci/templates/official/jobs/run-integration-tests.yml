@@ -23,5 +23,5 @@ jobs:
     test_args: -c release --no-build
 
   steps:
-  - checkout: ${{ parameters.repositoryAlias }}
+  - checkout: resources.repositories.host
   - template: /eng/ci/templates/install-dotnet.yml@${{ parameters.repositoryAlias }}
