@@ -12,6 +12,14 @@ schedules:
       - dev
     always: true
 
+parameters:
+
+# Crank arguments customization.
+- name: crankAdditionalArguments
+  displayName: Additional Crank arguments. For collecting perf trace, add --hostruntime.dotnetTrace true
+  type: string
+  default: '--variable duration=180 --variable warmup=60'
+
 resources:
   repositories:
   - repository: 1es
@@ -54,11 +62,10 @@ extends:
       - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
         parameters:
           functionAppName: HelloHttpNet9NoProxy
-
       # LINUX
       - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
         parameters:
-          functionAppName: HelloHttpNet9 
+          functionAppName: HelloHttpNet9
           os: Linux
       - template: /eng/ci/templates/official/jobs/setup-benchmark-agents.yml@self
         parameters:
@@ -74,10 +81,12 @@ extends:
         parameters:
           description: .NET9 Web Application
           functionAppName: HelloHttpNet9  # App with ASP.NET Integration
+          crankAdditionalArguments: ${{ parameters.crankAdditionalArguments }}
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
           description: .NET9 Worker Application
           functionAppName: HelloHttpNet9NoProxy # App without ASP.NET Integration
+          crankAdditionalArguments: ${{ parameters.crankAdditionalArguments }}
 
       # LINUX
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
@@ -85,8 +94,10 @@ extends:
           description: .NET9 Web Application
           functionAppName: HelloHttpNet9  
           os: Linux
+          crankAdditionalArguments: ${{ parameters.crankAdditionalArguments }}
       - template: /eng/ci/templates/official/jobs/run-benchmarks.yml@self
         parameters:
           description: .NET9 Worker Application
           functionAppName: HelloHttpNet9NoProxy 
           os: Linux
+          crankAdditionalArguments: ${{ parameters.crankAdditionalArguments }}
