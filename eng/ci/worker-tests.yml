@@ -11,5 +11,4 @@ parameters:
 stages:
 - stage: Test
   jobs:
-  - checkout: ${{ parameters.repositoryAlias }}
   - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@${{ parameters.repositoryAlias }}
