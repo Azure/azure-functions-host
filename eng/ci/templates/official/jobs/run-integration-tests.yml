@@ -66,6 +66,68 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@${{ parameters.repositoryAlias }}
 
+  - task: UseNode@1
+    inputs:
+      version: 22.x
+
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.13'
+      addToPath: true
+
+  - task: JavaToolInstaller@0
+    inputs:
+      versionSpec: '11'
+      jdkArchitectureOption: x64
+      jdkSourceOption: PreInstalled
+
+  - script: |
+      npm install -g azurite
+    displayName: Install Azurite
+
+  - task: PowerShell@2
+    displayName: Install Az.Storage Powershell module
+    inputs:
+      targetType: inline
+      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
+
+  - task: Npm@1
+    displayName: npm ci
+    inputs:
+      command: ci
+      workingDir: sample/CustomHandlerRetry
+
+  - task: AzurePowerShell@5
+    displayName: Checkout secrets
+    inputs:
+      azureSubscription: Azure-Functions-Host-CI-internal
+      azurePowerShellVersion: 'LatestVersion'
+      pwsh: true
+      ScriptPath: eng/script/checkout-secrets.ps1
+
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: Azure-Functions-Host-CI-internal
+      keyVaultName: azure-functions-host-$(LeaseBlob)
+      secretsFilter: '*'
+
+  - task: PowerShell@2
+    displayName: Set environment variables
+    inputs:
+      targetType: inline
+      script: |
+        Write-Host "##vso[task.setvariable variable=ConnectionStrings__CosmosDB]$env:CosmosDbSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubSender]$env:AzureWebJobsEventHubSenderSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubReceiver]$env:AzureWebJobsEventHubReceiverSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubPath]testhub"
+    env:
+      AzureWebJobsStorageSecretMap: $(Storage)
+      AzureWebJobsSecondaryStorageSecretMap: $(SecondaryStorage)
+      CosmosDbSecretMap: $(CosmosDb)
+      AzureWebJobsEventHubSenderSecretMap: $(EventHub)
+      AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
+
   - task: DotNetCoreCLI@2
     displayName: Restore
     inputs:
