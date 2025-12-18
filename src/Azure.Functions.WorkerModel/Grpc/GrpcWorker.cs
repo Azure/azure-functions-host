@@ -38,7 +38,7 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
 
     private ImmutableDictionary<string, TaskCompletionSource> _loadedFunctions;
 
-    private Uri? _httpProxyEndpoint;
+    private Uri _httpProxyEndpoint;
     private IHttpProxyService _httpProxyService;
     private ImmutableArray<FunctionMetadata> _functions;
 
@@ -77,7 +77,7 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
         {
             while (await _channel.HostMessageReader.WaitToReadAsync(readLoopToken))
             {
-                while (_channel.HostMessageReader.TryRead(out MessageFromWorker? message))
+                while (_channel.HostMessageReader.TryRead(out MessageFromWorker message))
                 {
                     DispatchMessage(message.Message);
                 }
@@ -488,7 +488,7 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
             {
                 _httpProxyEndpoint = new Uri(httpUri);
             }
-            catch (Exception ex)
+            catch
             {
                 // HandleWorkerInitError(ex);
             }
@@ -543,7 +543,7 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
         }));
     }
 
-    internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions? managedDependencyOptions)
+    internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
     {
         FunctionLoadRequest request = new FunctionLoadRequest()
         {

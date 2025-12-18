@@ -29,7 +29,7 @@ internal class JobHostManager(IScriptHostBuilderEx hostBuilder, ILogger<JobHostM
         return Task.FromResult(jobHost);
     }
 
-    public Task<bool> TryGetJobHostAsync(ApplicationDefinition appDefinition, out JobHost? jobHost)
+    public Task<bool> TryGetJobHostAsync(ApplicationDefinition appDefinition, out JobHost jobHost)
     {
         return Task.FromResult(_jobHosts.TryGetValue(appDefinition, out jobHost));
     }
@@ -115,7 +115,7 @@ internal interface IJobHostManager
     // gets or starts a new JobHost for this specific applicationId
     Task<JobHost> GetOrAddJobHostAsync(ApplicationDefinition appDefinition, Action<IServiceCollection> configureJobHost);
 
-    Task<bool> TryGetJobHostAsync(ApplicationDefinition appDefinition, out JobHost? jobHost);
+    Task<bool> TryGetJobHostAsync(ApplicationDefinition appDefinition, out JobHost jobHost);
 
     Task RemoveJobHostAsync(ApplicationDefinition appDefinition);
 

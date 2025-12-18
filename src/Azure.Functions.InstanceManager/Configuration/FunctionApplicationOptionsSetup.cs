@@ -18,7 +18,7 @@ internal class FunctionApplicationOptionsSetup : IConfigureOptions<FunctionAppli
         options.ApplicationRoot = _configuration.GetValue<string>("AzureWebJobsScriptRoot") ?? string.Empty;
     }
 
-    public ValidateOptionsResult Validate(string? name, FunctionApplicationOptions options)
+    public ValidateOptionsResult Validate(string name, FunctionApplicationOptions options)
     {
         if (string.IsNullOrWhiteSpace(options.FunctionsWorkerRuntime))
         {

@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         protected bool Disposing { get; private set; }
 
-        public int Id => Process.Id;
+        public int Id => Process?.Id ?? 0;
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     Process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
                     Process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
-                    Process.Exited += (sender, e) => OnProcessExited(sender, e);
+                    Process.Exited += (sender, e) => OnProcessExited(sender!, e);
                     Process.EnableRaisingEvents = true;
                     string sanitizedArguments = Sanitizer.Sanitize(Process.StartInfo.Arguments);
 

@@ -12,7 +12,7 @@ internal class DefaultWorkerResolver(IWorkerManager workerManager) : IWorkerReso
     private int _lastWorkerIndex = -1;
     private readonly object _lock = new();
 
-    public IWorker? ResolveWorker(string context)
+    public IWorker ResolveWorker(string context)
     {
         var workers = workerManager.GetWorkers()
             .Where(w => w.Status == WorkerStatus.Running)
@@ -35,7 +35,7 @@ internal class PlaceholderWorkerResolver(IWorkerManager workerManager) : IWorker
 {
     private readonly IWorker _worker = new AggregateWorker(workerManager);
 
-    public IWorker? ResolveWorker(string context) => _worker;
+    public IWorker ResolveWorker(string context) => _worker;
 
     private class AggregateWorker(IWorkerManager workerManager) : IWorker
     {

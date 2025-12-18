@@ -18,13 +18,13 @@ internal class RpcInitializationService : IManagedHostedService
     private readonly ILogger _logger;
     private readonly GrpcServerOptions _grpcOptions;
     private readonly GrpcWorkerStreamFactory _streamFactory;
-    private readonly int _rpcServerShutdownTimeoutInMilliseconds;
-    private HashSet<string> _placeholderLanguageWorkersList = new HashSet<string>();
+    // private readonly int _rpcServerShutdownTimeoutInMilliseconds;
+    // private HashSet<string> _placeholderLanguageWorkersList = new HashSet<string>();
 
     public RpcInitializationService(GrpcWorkerStreamFactory streamFactory, IOptions<GrpcServerOptions> grpcOptions, ILogger<RpcInitializationService> logger)
     {
         _logger = logger;
-        _rpcServerShutdownTimeoutInMilliseconds = 5000;
+        // _rpcServerShutdownTimeoutInMilliseconds = 5000;
         _grpcOptions = grpcOptions.Value;
         _streamFactory = streamFactory;
     }

@@ -54,7 +54,7 @@ internal sealed class WorkerProcessOptionsSetup : IConfigureOptions<WorkerProces
     public bool IsFlexConsumptionSku()
     {
         // SKU is part of Flex Consumption placeholder environment vars, so should always be present
-        string? value = _configuration.GetValue<string>(EnvironmentSettingNames.AzureWebsiteSku);
+        string value = _configuration.GetValue<string>(EnvironmentSettingNames.AzureWebsiteSku);
         if (string.Equals(value, ScriptConstants.FlexConsumptionSku, StringComparison.OrdinalIgnoreCase))
         {
             return true;
@@ -75,7 +75,7 @@ internal sealed class WorkerProcessOptionsSetup : IConfigureOptions<WorkerProces
 
     private bool WebsiteSkuIsDynamic()
     {
-        string? value = _configuration.GetValue<string>(EnvironmentSettingNames.AzureWebsiteSku);
+        string value = _configuration.GetValue<string>(EnvironmentSettingNames.AzureWebsiteSku);
         if (string.Equals(value, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase))
         {
             return true;

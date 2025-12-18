@@ -34,7 +34,7 @@ internal sealed class WorkerModelFunctionMetadataManager : IFunctionMetadataMana
         // TODO: Right now everything is default-named
         DefaultApplicationDefinition ??= new ApplicationDefinition(_appOptions.Value.DefaultApplicationId, _appOptions.Value.DefaultApplicationVersion);
 
-        if (!(await _jobHostManager.TryGetJobHostAsync(DefaultApplicationDefinition, out OutOfProcModel.Mock.JobHost? host))
+        if (!(await _jobHostManager.TryGetJobHostAsync(DefaultApplicationDefinition, out OutOfProcModel.Mock.JobHost host))
             || host is null)
         {
             throw new InvalidOperationException($"JobHost for ApplicationId '{_appOptions.Value.DefaultApplicationId}' not found.");

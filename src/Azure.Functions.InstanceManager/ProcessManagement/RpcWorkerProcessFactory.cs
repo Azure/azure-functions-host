@@ -15,15 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         private readonly IWorkerProcessFactory _workerProcessFactory;
         private readonly IProcessRegistry _processRegistry;
-        private readonly ILoggerFactory _loggerFactory = null;
-        private readonly IScriptEventManager _eventManager = null;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly IScriptEventManager _eventManager;
         private readonly GrpcServerOptions _rpcServer;
         private readonly IWorkerConsoleLogSource _consoleLogSource;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IServiceProvider _serviceProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IOptions<WorkerProcessOptions> _processOptions;
-        private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions;
 
         public RpcWorkerProcessFactory(IOptions<GrpcServerOptions> rpcServer,

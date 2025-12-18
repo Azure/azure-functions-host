@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // }
 
             var triggerParameterIndex = 0;
-            var cancellationTokenParameterIndex = 4;
+            // var cancellationTokenParameterIndex = 4;
             var bindingData = context.Binder.BindingData;
             object triggerValue = TransformInput(parameters[triggerParameterIndex], bindingData);
             var triggerInput = (_bindingMetadata.Name, _bindingMetadata.DataType ?? DataType.String, triggerValue);
@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _logger.LogTrace("Sending invocation id: '{id}", invocationId);
             // await _functionDispatcher.InvokeAsync(invocationContext);
 
-            var worker = _workerResolver.ResolveWorker(string.Empty);
+            var worker = _workerResolver.ResolveWorker(string.Empty) ?? throw new InvalidOperationException("No worker is available to process the function invocation.");
             await worker.InvokeAsync(invocationContext);
 
             try

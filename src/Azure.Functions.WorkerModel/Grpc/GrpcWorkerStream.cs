@@ -24,13 +24,13 @@ internal class GrpcWorkerStream
 
     //private readonly ChannelRouter _channelRouter;
     private readonly FunctionApplicationOptions _appOptions;
-    private Task? _readTask;
+    private Task _readTask;
 
-    IWorkerState? _worker;
+    IWorkerState _worker;
 
     // Keep these separate for better tracking of state
-    private WorkerState? _workerState;
-    private WorkerState? _placeholderWorkerState;
+    private WorkerState _workerState;
+    private WorkerState _placeholderWorkerState;
 
     public GrpcWorkerStream(IJobHostManager jobHostManager, IOptions<FunctionApplicationOptions> appOptions)
     {
@@ -274,14 +274,14 @@ internal class GrpcWorkerStream
         var appDef = new ApplicationDefinition(appId, appVersion);
         var workerDef = new WorkerDefinition(id, appDef, capabilities, stack);
 
-        //if (environment.IsPlaceholder)
-        //{
-        //    _placeholderWorkerState = new WorkerState(workerDef);
-        //}
-        //else
-        //{
-        //    _workerState = new WorkerState(workerDef);
-        //}
+        if (workerDef.Stack.IsPlaceholder)
+        {
+            _placeholderWorkerState = new WorkerState(workerDef);
+        }
+        else
+        {
+            _workerState = new WorkerState(workerDef);
+        }
 
         StreamState = ChangeState(WorkerAction.WorkerInitResponse);
 
@@ -294,7 +294,6 @@ internal class GrpcWorkerStream
 
         var context = new WorkerCreationContext(workerDef);
         _worker = await jobHost.CreateWorkerAsync(context);
-        _workerState = new(workerDef);
 
         _ = ReadJobHostStreamAsync(_worker.Channel.WorkerMessageReader);
 

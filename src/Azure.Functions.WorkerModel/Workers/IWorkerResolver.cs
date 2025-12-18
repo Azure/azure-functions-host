@@ -2,5 +2,5 @@ namespace OutOfProcModel.Abstractions.Worker;
 
 internal interface IWorkerResolver
 {
-    IWorker? ResolveWorker(string context);
+    IWorker ResolveWorker(string context);
 }
