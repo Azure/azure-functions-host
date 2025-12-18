@@ -16,8 +16,8 @@ internal class WorkerEventProcessor(IWorkerResolver workerResolver) : IEventProc
             throw new InvalidOperationException("No worker available");
         }
 
-        // what is T going to be here? 
-        // Should it be some kind of "Result" object? What if we go to process it, but it's suddenly 
+        // what is T going to be here?
+        // Should it be some kind of "Result" object? What if we go to process it, but it's suddenly
         // now draining... (a race between resolving and processing) should we resolve another worker and try again?
         var result = await worker.InvokeAsync(null!); // TODO: is any of this needed?
 

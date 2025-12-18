@@ -4,6 +4,21 @@ using OutOfProcModel.Abstractions.Worker;
 
 namespace OutOfProcModel.Abstractions.Mock;
 
+internal class WorkerState(WorkerDefinition initialDefinition)
+{
+    public WorkerDefinition Definition { get; } = initialDefinition;
+
+    public WorkerStatus Status { get; set; } = WorkerStatus.Created;
+
+    public WorkerState Specialize(ApplicationDefinition application, Dictionary<string, string> capabilities)
+    {
+        return new WorkerState(Definition.Specialize(application, capabilities))
+        {
+            Status = Status
+        };
+    }
+}
+
 internal record WorkerDefinition(
     string WorkerId,
     ApplicationDefinition Application,
@@ -28,20 +43,5 @@ internal record WorkerDefinition(
             Application: application,
             Capabilities: capabilities,
             Stack: newRuntimeEnvironment);
-    }
-}
-
-internal class WorkerState(WorkerDefinition initialDefinition)
-{
-    public WorkerDefinition Definition { get; } = initialDefinition;
-
-    public WorkerStatus Status { get; set; } = WorkerStatus.Created;
-
-    public WorkerState Specialize(ApplicationDefinition application, Dictionary<string, string> capabilities)
-    {
-        return new WorkerState(Definition.Specialize(application, capabilities))
-        {
-            Status = Status
-        };
     }
 }

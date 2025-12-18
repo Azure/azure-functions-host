@@ -10,6 +10,19 @@ using OutOfProcModel.FunctionsHost.Grpc;
 
 namespace OutOfProcModel.Mock;
 
+internal interface IJobHostManager
+{
+    // gets or starts a new JobHost for this specific applicationId
+    Task<JobHost> GetOrAddJobHostAsync(ApplicationDefinition appDefinition, Action<IServiceCollection> configureJobHost);
+
+    Task<bool> TryGetJobHostAsync(ApplicationDefinition appDefinition, out JobHost jobHost);
+
+    Task RemoveJobHostAsync(ApplicationDefinition appDefinition);
+
+    // Sends a message to the appropriate JobHost
+    Task HandleMessageAsync(MessageFromWorker message);
+}
+
 // mocking out to manage child containers
 internal class JobHostManager(IScriptHostBuilderEx hostBuilder, ILogger<JobHostManager> logger) : IJobHostManager
 {
@@ -69,22 +82,6 @@ internal class JobHostManager(IScriptHostBuilderEx hostBuilder, ILogger<JobHostM
         //}
     }
 
-    class Worker
-    {
-        public string Id { get; set; } = string.Empty;
-
-        public string Status { get; set; } = string.Empty;
-    }
-
-    class AppState(string appId, string appVersion)
-    {
-        public string ApplicationId { get; set; } = appId;
-
-        public string ApplicationVersion { get; set; } = appVersion;
-
-        public List<Worker> Workers { get; } = [];
-    }
-
     public string GetState()
     {
         List<AppState> jobHosts = [];
@@ -104,21 +101,22 @@ internal class JobHostManager(IScriptHostBuilderEx hostBuilder, ILogger<JobHostM
             }
         }
 
-        new ConcurrentDictionary<string, string>();
-
         return JsonSerializer.Serialize(new { JobHosts = jobHosts }, new JsonSerializerOptions { WriteIndented = true });
     }
-}
 
-internal interface IJobHostManager
-{
-    // gets or starts a new JobHost for this specific applicationId
-    Task<JobHost> GetOrAddJobHostAsync(ApplicationDefinition appDefinition, Action<IServiceCollection> configureJobHost);
+    private class Worker
+    {
+        public string Id { get; set; } = string.Empty;
 
-    Task<bool> TryGetJobHostAsync(ApplicationDefinition appDefinition, out JobHost jobHost);
+        public string Status { get; set; } = string.Empty;
+    }
 
-    Task RemoveJobHostAsync(ApplicationDefinition appDefinition);
+    private class AppState(string appId, string appVersion)
+    {
+        public string ApplicationId { get; set; } = appId;
 
-    // Sends a message to the appropriate JobHost
-    Task HandleMessageAsync(MessageFromWorker message);
+        public string ApplicationVersion { get; set; } = appVersion;
+
+        public List<Worker> Workers { get; } = [];
+    }
 }

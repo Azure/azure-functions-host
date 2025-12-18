@@ -4,16 +4,6 @@ using OutOfProcModel.Abstractions.Mock;
 
 namespace OutOfProcModel.Abstractions.Worker;
 
-// Stuff the WebHost can interact with
-internal interface IWorkerState
-{
-    WorkerDefinition Definition { get; }
-
-    WorkerStatus Status { get; }
-
-    IExternalWorkerChannel Channel { get; }
-}
-
 internal interface IWorker : IWorkerState
 {
     // would messages from grpc call this also?
@@ -25,14 +15,12 @@ internal interface IWorker : IWorkerState
     Task DrainAsync(TimeSpan timeout);
 }
 
-internal enum WorkerStatus
+// Stuff the WebHost can interact with
+internal interface IWorkerState
 {
-    Created = 0,
-    Initializing = 1,
-    Initialized = 2,
-    Running = 3,
-    Draining = 4,
-    Drained = 5,
-    Stopping = 6,
-    Stopped = 7
+    WorkerDefinition Definition { get; }
+
+    WorkerStatus Status { get; }
+
+    IExternalWorkerChannel Channel { get; }
 }

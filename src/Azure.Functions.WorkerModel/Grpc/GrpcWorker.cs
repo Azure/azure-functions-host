@@ -26,7 +26,6 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
     private readonly BidirectionalChannel _channel;
     private readonly FunctionApplicationOptions _appOptions;
     private readonly Task _readLoopTask;
-    private ConcurrentDictionary<string, ExecutingInvocation> _executingInvocations = new();
     private readonly TaskCompletionSource<ImmutableArray<FunctionMetadata>> _functionMetadataTcs = new();
     private readonly TaskCompletionSource<ImmutableArray<FunctionMetadata>> _functionLoadTcs = new();
     private readonly CancellationTokenSource _readLoopCancellationSource = new();
@@ -36,6 +35,7 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
     private readonly WaitCallback _processInbound;
     private readonly ISharedMemoryManager _sharedMemoryManager;
 
+    private ConcurrentDictionary<string, ExecutingInvocation> _executingInvocations = new();
     private ImmutableDictionary<string, TaskCompletionSource> _loadedFunctions;
 
     private Uri _httpProxyEndpoint;
@@ -122,7 +122,6 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
                 break;
         }
     }
-
 
     private void ProcessItem(StreamingMessage msg)
     {

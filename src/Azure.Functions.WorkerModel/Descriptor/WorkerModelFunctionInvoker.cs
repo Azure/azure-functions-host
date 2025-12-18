@@ -27,8 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         // private readonly IApplicationLifetime _applicationLifetime;
         // private readonly TimeSpan _workerInitializationTimeout;
 
-        public ILogger FunctionLogger => throw new NotImplementedException();
-
         internal WorkerModelFunctionInvoker(BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
             Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IWorkerResolver workerResolver)
         {
@@ -52,6 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 _handleScriptReturnValue = HandleOutputDictionary;
             }
         }
+
+        public ILogger FunctionLogger => throw new NotImplementedException();
 
         public Task<object> Invoke(object[] parameters)
         {

@@ -13,7 +13,7 @@ internal sealed class WorkerModelFunctionMetadataManager : IFunctionMetadataMana
     private readonly IJobHostManager _jobHostManager;
     private readonly IOptions<FunctionApplicationOptions> _appOptions;
 
-    private static ApplicationDefinition DefaultApplicationDefinition = default!;
+    private static ApplicationDefinition _defaultApplicationDefinition = default!;
     private ImmutableArray<FunctionMetadata> _metadata;
 
     public WorkerModelFunctionMetadataManager(IJobHostManager jobHostManager, IOptions<FunctionApplicationOptions> appOptions)
@@ -32,9 +32,9 @@ internal sealed class WorkerModelFunctionMetadataManager : IFunctionMetadataMana
     public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(bool forceRefresh = false, bool applyAllowlist = true, bool includeCustomProviders = true)
     {
         // TODO: Right now everything is default-named
-        DefaultApplicationDefinition ??= new ApplicationDefinition(_appOptions.Value.DefaultApplicationId, _appOptions.Value.DefaultApplicationVersion);
+        _defaultApplicationDefinition ??= new ApplicationDefinition(_appOptions.Value.DefaultApplicationId, _appOptions.Value.DefaultApplicationVersion);
 
-        if (!(await _jobHostManager.TryGetJobHostAsync(DefaultApplicationDefinition, out OutOfProcModel.Mock.JobHost host))
+        if (!(await _jobHostManager.TryGetJobHostAsync(_defaultApplicationDefinition, out OutOfProcModel.Mock.JobHost host))
             || host is null)
         {
             throw new InvalidOperationException($"JobHost for ApplicationId '{_appOptions.Value.DefaultApplicationId}' not found.");

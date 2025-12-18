@@ -8,8 +8,8 @@ namespace Microsoft.Azure.Functions.WorkerModel.Workers;
 
 internal class WorkerModelFunctionMetadataProvider : IFunctionMetadataProvider
 {
-    Lazy<Task<ImmutableArray<FunctionMetadata>>> _functionMetadataLazy;
     private readonly IWorkerManager _workerManager;
+    private Lazy<Task<ImmutableArray<FunctionMetadata>>> _functionMetadataLazy;
 
     public WorkerModelFunctionMetadataProvider(IWorkerManager workerManager)
     {

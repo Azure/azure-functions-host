@@ -7,10 +7,11 @@
     <PackageId>Microsoft.Azure.Functions.WorkerModel</PackageId>
     <AssemblyName>Microsoft.Azure.Functions.WorkerModel</AssemblyName>
     <RootNamespace>Microsoft.Azure.Functions.WorkerModel</RootNamespace>
+    <NoWarn>$(NoWarn);SA1633</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.55.0" />
+    <PackageReference Include="Grpc.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>

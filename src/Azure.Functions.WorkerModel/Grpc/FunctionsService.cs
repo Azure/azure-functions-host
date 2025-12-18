@@ -8,13 +8,13 @@ internal sealed class FunctionsService : FunctionRpc.FunctionRpcBase
 {
     private readonly GrpcWorkerStreamFactory _streamFactory;
 
+    // TODO -- should this be here?
+    private readonly IList<GrpcWorkerStream> _activeStreams = [];
+
     public FunctionsService(GrpcWorkerStreamFactory streamFactory)
     {
         _streamFactory = streamFactory;
     }
-
-    // TODO -- should this be here?
-    private readonly IList<GrpcWorkerStream> _activeStreams = [];
 
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
     {

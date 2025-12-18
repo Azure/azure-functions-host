@@ -124,7 +124,6 @@ internal class RpcInitializationService : IManagedHostedService
         var app = builder.Build();
         app.MapGrpcService<FunctionsService>();
 
-
         return app;
     }
 }

@@ -1,6 +1,7 @@
 using System.Threading.Channels;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.Functions.WorkerModel.Configuration;
+using Microsoft.Azure.Functions.WorkerModel.Grpc;
 using Microsoft.Azure.Functions.WorkerModel.JobHost;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -26,7 +27,7 @@ internal class GrpcWorkerStream
     private readonly FunctionApplicationOptions _appOptions;
     private Task _readTask;
 
-    IWorkerState _worker;
+    private IWorkerState _worker;
 
     // Keep these separate for better tracking of state
     private WorkerState _workerState;
@@ -40,6 +41,8 @@ internal class GrpcWorkerStream
     }
 
     public StreamState StreamState { get; private set; } = StreamState.None;
+
+    private bool IsPlaceholder => GetCurrentWorkerState() == _placeholderWorkerState;
 
     private WorkerState GetCurrentWorkerState()
     {
@@ -85,7 +88,7 @@ internal class GrpcWorkerStream
             var completed = await Task.WhenAny(Task.Delay(5000), _readTask);
             if (completed != _readTask)
             {
-                // If the read task didn't complete in time, we cancel it            
+                // If the read task didn't complete in time, we cancel it
                 _stopTokenSource.Cancel();
             }
         }
@@ -208,8 +211,6 @@ internal class GrpcWorkerStream
                 _ => throw new InvalidOperationException($"Unknown message type: {messageType}")
             };
     }
-
-    private bool IsPlaceholder => GetCurrentWorkerState() == _placeholderWorkerState;
 
     private void ThrowIfInvalidState(WorkerAction action)
     {
@@ -370,26 +371,4 @@ internal class GrpcWorkerStream
         _workerState = null; //TODO: _placeholderWorkerState.Specialize(rpc.Properties["ApplicationId"], rpc.Properties["ApplicationVersion"], capabilities);
         await StartNewJobHostAsync(_workerState.Definition, _jobHostManager);
     }
-}
-
-internal enum StreamState
-{
-    None,
-    Connected,
-    Initialized,
-    RunningAsPlaceholder,
-    Specializing,
-    Running,
-    Draining,
-    Stopped
-}
-
-internal enum WorkerAction
-{
-    StartStream,
-    WorkerInitResponse,
-    MetadataResponse,
-    InvocationResponse,
-    Specialize,
-    EnvironmentReloadResponse,
 }

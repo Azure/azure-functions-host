@@ -9,8 +9,9 @@ namespace OutOfProcModel.Workers;
 
 internal class DefaultWorkerResolver(IWorkerManager workerManager) : IWorkerResolver
 {
-    private int _lastWorkerIndex = -1;
     private readonly object _lock = new();
+
+    private int _lastWorkerIndex = -1;
 
     public IWorker ResolveWorker(string context)
     {

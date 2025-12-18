@@ -2,9 +2,7 @@ using System.Threading.Channels;
 
 namespace OutOfProcModel.Abstractions.Worker;
 
-
-
-internal interface IInternalWorkerChannel
+internal interface IWorkerChannel
 {
     ChannelReader<MessageFromWorker> HostMessageReader { get; }
 

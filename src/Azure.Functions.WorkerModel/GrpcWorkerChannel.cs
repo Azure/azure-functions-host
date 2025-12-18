@@ -4,7 +4,7 @@ using OutOfProcModel.Abstractions.Worker;
 
 namespace OutOfProcModel.FunctionsHost.Grpc;
 
-internal class GrpcWorkerChannel : IInternalWorkerChannel, IAsyncDisposable
+internal class GrpcWorkerChannel : IWorkerChannel, IAsyncDisposable
 {
     private readonly BidirectionalChannel _channel = new();
 
@@ -43,7 +43,7 @@ internal class GrpcWorkerChannel : IInternalWorkerChannel, IAsyncDisposable
 }
 
 // a class to hold the endpoints of our bidirectional channels
-internal class BidirectionalChannel : IInternalWorkerChannel, IExternalWorkerChannel
+internal class BidirectionalChannel : IWorkerChannel, IExternalWorkerChannel
 {
     // for messages going from Worker -> Host
     private readonly Channel<MessageFromWorker> _hostMessageChannel = Channel.CreateUnbounded<MessageFromWorker>();

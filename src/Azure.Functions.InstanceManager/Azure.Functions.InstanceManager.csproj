@@ -7,10 +7,11 @@
     <PackageId>Microsoft.Azure.Functions.InstanceManager</PackageId>
     <AssemblyName>Microsoft.Azure.Functions.InstanceManager</AssemblyName>
     <RootNamespace>Microsoft.Azure.Functions.InstanceManager</RootNamespace>
+    <NoWarn>$(NoWarn);SA1633</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>

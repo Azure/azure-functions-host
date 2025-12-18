@@ -10,12 +10,12 @@ internal class DefaultWorkerManager : IWorkerManager, IScriptHostWorkerManager, 
 
     private readonly IWorkerFactory _workerFactory;
 
-    public WorkerManagerState State => throw new NotImplementedException();
-
     public DefaultWorkerManager(IWorkerFactory workerFactory)
     {
         _workerFactory = workerFactory;
     }
+
+    public WorkerManagerState State => throw new NotImplementedException();
 
     // Create a worker and return a way for callers to monitor its state
     public async ValueTask<IWorkerState> CreateWorkerAsync(WorkerCreationContext workerCreationContext)
@@ -29,8 +29,6 @@ internal class DefaultWorkerManager : IWorkerManager, IScriptHostWorkerManager, 
     /// <summary>
     /// Removes the worker from load balancing...
     /// </summary>
-    /// <param name="worker"></param>
-    /// <returns></returns>
     public async Task<bool> RemoveWorkerAsync(string workerId)
     {
         var worker = _workers.FirstOrDefault(w => w.Definition.WorkerId == workerId);
