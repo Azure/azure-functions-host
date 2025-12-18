@@ -21,13 +21,11 @@ resources:
     type: git
     name: engineering
     ref: refs/tags/release
-  pipelines:
-  - pipeline: workerBuild
-    source: dotnet-host.official  # This current pipeline
-    trigger:
-      branches:
-        include:
-          - "*"
+  - repository: host
+    type: git
+    name: azure.azure-functions-host-tests
+    ref: surgupta/testfiles2
+    alias: host
 
 variables:
 - template: /eng/ci/templates/variables/build.yml@self
@@ -46,8 +44,13 @@ extends:
     sdl:
       suppression:
         suppressionFile: $(Build.SourcesDirectory)/eng/sdl/.gdnsuppress
+      sourceRepositoriesToScan:
+        include:
+          - repository: host
 
     stages:
+    - template: /eng/ci/integration-tests.yml@host
+    
     - stage: BuildSiteExtension
       jobs:
       - template: /eng/ci/templates/official/jobs/build-worker-site-ext.yml@self
