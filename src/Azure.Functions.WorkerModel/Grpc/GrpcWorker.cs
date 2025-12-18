@@ -143,7 +143,7 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
                     _ = InvokeResponse(msg.InvocationResponse);
                     break;
                 case StreamingMessage.ContentOneofCase.FunctionMetadataResponse:
-                    _ = HandleFunctionMetadataResponse(msg.FunctionMetadataResponse);
+                    HandleFunctionMetadataResponse(msg.FunctionMetadataResponse);
                     break;
                 case StreamingMessage.ContentOneofCase.FunctionLoadResponse:
                     HandleFunctionLoadResponse(msg.FunctionLoadResponse);
@@ -262,7 +262,7 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
         return _functionMetadataTcs.Task;
     }
 
-    private async Task HandleFunctionMetadataResponse(FunctionMetadataResponse functionMetadataResponse)
+    private void HandleFunctionMetadataResponse(FunctionMetadataResponse functionMetadataResponse)
     {
         var functions = new List<RawFunctionMetadata>();
 

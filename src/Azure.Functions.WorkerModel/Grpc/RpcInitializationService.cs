@@ -55,8 +55,10 @@ internal class RpcInitializationService : IManagedHostedService
         return Task.CompletedTask;
     }
 
-    public async Task OuterStopAsync(CancellationToken cancellationToken)
+    public Task OuterStopAsync(CancellationToken cancellationToken)
     {
+        return Task.CompletedTask;
+
         //_logger.LogDebug("Shutting down Rpc Channels Manager");
         //await _webHostRpcWorkerChannelManager.ShutdownChannelsAsync();
 
