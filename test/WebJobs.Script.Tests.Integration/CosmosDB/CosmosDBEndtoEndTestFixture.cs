@@ -1,7 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Diagnostics.CodeAnalysis;
+using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -12,10 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
     public abstract class CosmosDBEndtoEndTestFixture : EndToEndTestFixture
     {
-        [SuppressMessage("Microsoft.Security", "CS002:SecretInNextLine", Justification = "Well known account key for emulator. Used for testing.")]
-        private static string CosmosDBConnection => "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
-        private const string _triggerDbName = "TriggerItemDb";
-
         protected CosmosDBEndtoEndTestFixture(string rootPath, string testId, string language) :
             base(rootPath, testId, language)
         {
@@ -55,25 +51,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             base.ConfigureScriptHost(configBuilder);
         }
 
-        public void InitializeCosmosClient()
+        public async Task InitializeCosmosClient()
         {
             if (CosmosClient is null)
             {
-                CosmosClient = new CosmosClient(CosmosDBConnection);
+                CosmosClient = new CosmosClient(TestHelpers.GetTestConfiguration().GetConnectionString("CosmosDB"));
             }
+
+            // Check connection to the Cosmos DB emulator by listing databases
+            try
+            {
+                using (var iterator = CosmosClient.GetDatabaseQueryIterator<DatabaseProperties>())
+                {
+                    await iterator.ReadNextAsync();
+                }
+            }
+            catch (CosmosException ex)
+            {
+                throw new InvalidOperationException("Failed to connect to the Cosmos DB emulator. Please ensure the emulator is running and accessible.", ex);
+            }
+
+            // this is needed for every test run due to how the TestHost is set up (all functions are loaded, and a listener needs to be started for the trigger)
+            await SetUpTriggerContainers();
         }
 
         public override async Task InitializeAsync()
         {
-            InitializeCosmosClient();
-            await SetUpTriggerListener();
+            await InitializeCosmosClient();
             await base.InitializeAsync();
         }
 
         public override async Task DisposeAsync()
         {
             await base.DisposeAsync();
-            await RemoveTriggerDb();
             CosmosClient?.Dispose();
         }
 
@@ -102,27 +112,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         public async Task DeleteCosmosDbResources(string dbName)
         {
             Database database = CosmosClient.GetDatabase(dbName);
-
-            // Delete the "ItemCollection" container
-            Container itemCollectionContainer = database.GetContainer("ItemCollection");
-            await itemCollectionContainer.DeleteContainerAsync();
-
-            // Delete the "leases" container
-            Container leasesContainer = database.GetContainer("leases");
-            await leasesContainer.DeleteContainerAsync();
-
             await database.DeleteAsync();
         }
 
-        // Regardless of which function is being tested, the trigger listener needs to be set up or the test host fails
-        private async Task SetUpTriggerListener()
+        private async Task SetUpTriggerContainers()
         {
-            bool collectionsCreated = await CreateContainers(_triggerDbName);
-        }
-
-        private async Task RemoveTriggerDb()
-        {
-            await DeleteCosmosDbResources(_triggerDbName);
+            string dbName = "TriggerItemDb";
+            await CreateContainers(dbName);
         }
     }
 }

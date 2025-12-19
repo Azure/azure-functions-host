@@ -1,10 +1,10 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Storage.Queue;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Storage.Queue;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
@@ -31,7 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             await resultBlob.DeleteIfExistsAsync();
 
             string id = Guid.NewGuid().ToString();
-
             var documentToTest = new { id };
 
             await _fixture.CosmosClient.GetContainer(dbName, "ItemCollection")
@@ -92,21 +91,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             dynamic updatedDoc = await WaitForItemAsync(id, dbName, "Hello from Node with multiple input bindings!");
 
             await _fixture.DeleteCosmosDbResources(dbName);
-        }
-
-        protected async Task TestConnectionToEmulator()
-        {
-            var dbName = "ConnectionTestDb";
-
-            var cosmosClient = new CosmosClient("AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==");
-            await cosmosClient.CreateDatabaseIfNotExistsAsync(dbName);
-            var container = await cosmosClient.GetDatabase(dbName).CreateContainerIfNotExistsAsync("ItemCollection", "/id");
-
-            string id = Guid.NewGuid().ToString();
-            var documentToTest = new { id, text = "Connection test" };
-            await container.Container.CreateItemAsync(documentToTest, new PartitionKey(id));
-            var response = await container.Container.ReadItemAsync<dynamic>(id, new PartitionKey(id));
-            Assert.Equal((string)response.Resource.id, id);
         }
 
         protected async Task<dynamic> WaitForItemAsync(string itemId, string itemDb, string textToMatch = null)
