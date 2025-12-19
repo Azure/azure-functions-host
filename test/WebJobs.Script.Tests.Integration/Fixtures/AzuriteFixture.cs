@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
             VerifyInitialized();
             IEnumerable<(string Key, string Value)> properties =
                 [
-                    ("DefaultEndpointsProtocol", Uri.UriSchemeHttp),
+                    ("DefaultEndpointsProtocol", Uri.UriSchemeHttps),
                     ("AccountName", AccountName),
                     ("AccountKey", AccountKey),
                     ("BlobEndpoint", GetBlobEndpoint()),
@@ -121,10 +121,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
 
         private Task StartAzuriteAsync()
         {
-            // TODO: For testing, remove later
-            _blobPort = 10000; // GetFreeTcpPort();
-            _queuePort = 10001; // GetFreeTcpPort();
-            _tablePort = 10002; // GetFreeTcpPort();
+            _blobPort = GetFreeTcpPort();
+            _queuePort = GetFreeTcpPort();
+            _tablePort = GetFreeTcpPort();
             GetAzuriteCommand(out string process, out string arguments);
             ProcessStartInfo startInfo = new()
             {

@@ -10,9 +10,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
-    public abstract class CosmosDBEndtoEndTestFixture : EndToEndTestFixture
+    public abstract class CosmosDBEndToEndTestFixture : EndToEndTestFixture
     {
-        protected CosmosDBEndtoEndTestFixture(string rootPath, string testId, string language) :
+        protected CosmosDBEndToEndTestFixture(string rootPath, string testId, string language) :
             base(rootPath, testId, language)
         {
         }
@@ -44,11 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                     "CosmosDBOutMultiple"
                 };
             });
-        }
-
-        public override void ConfigureScriptHost(IConfigurationBuilder configBuilder)
-        {
-            base.ConfigureScriptHost(configBuilder);
         }
 
         public async Task InitializeCosmosClient()

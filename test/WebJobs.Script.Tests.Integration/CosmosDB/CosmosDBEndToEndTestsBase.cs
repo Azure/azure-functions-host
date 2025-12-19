@@ -10,9 +10,9 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 {
     public abstract class CosmosDBEndToEndTestsBase<TTestFixture> :
-        EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBEndtoEndTestFixture, new()
+        EndToEndTestsBase<TTestFixture> where TTestFixture : CosmosDBEndToEndTestFixture, new()
     {
-        private CosmosDBEndtoEndTestFixture _fixture;
+        private readonly CosmosDBEndToEndTestFixture _fixture;
 
         public CosmosDBEndToEndTestsBase(TTestFixture fixture) : base(fixture)
         {
@@ -81,14 +81,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             string id = Guid.NewGuid().ToString();
             await _fixture.Host.BeginFunctionAsync("CosmosDBOutMultiple", id);
             var testId = id + "-0";
-            dynamic doc = await WaitForItemAsync(testId, dbName);
+            await WaitForItemAsync(testId, dbName);
 
             var queue = await _fixture.GetNewQueue("cosmosdb-input-multiple");
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
             await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
 
             // And wait for the text to be updated
-            dynamic updatedDoc = await WaitForItemAsync(id, dbName, "Hello from Node with multiple input bindings!");
+            await WaitForItemAsync(id, dbName, "Hello from Node with multiple input bindings!");
 
             await _fixture.DeleteCosmosDbResources(dbName);
         }
@@ -108,14 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                     var response = await container.ReadItemAsync<dynamic>(itemId, new PartitionKey(itemId));
                     document = response.Resource;
 
-                    if (textToMatch != null)
-                    {
-                        result = document.text == textToMatch;
-                    }
-                    else
-                    {
-                        result = true;
-                    }
+                    result = textToMatch is null || document.text == textToMatch;
                 }
                 catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {

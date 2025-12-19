@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
             return CosmosDBMultipleItemsTest();
         }
 
-        public class TestFixture : CosmosDBEndtoEndTestFixture
+        public class TestFixture : CosmosDBEndToEndTestFixture
         {
             private const string ScriptRoot = @"TestScripts\Node";
 
