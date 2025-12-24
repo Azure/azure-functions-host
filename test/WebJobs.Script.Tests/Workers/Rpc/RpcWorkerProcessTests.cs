@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly Mock<IWorkerConsoleLogSource> _languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
         private readonly TestEnvironment _testEnv = new TestEnvironment();
         private readonly Mock<IServiceProvider> _serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
-        private readonly TestOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions = new TestOptionsMonitor<ScriptApplicationHostOptions>();
+        private readonly TestOptionsMonitor<ScriptApplicationHostOptions> _scriptApplicationHostOptions = new TestOptionsMonitor<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions());
         private Mock<IHostProcessMonitor> _hostProcessMonitorMock = new Mock<IHostProcessMonitor>(MockBehavior.Strict);
 
         public RpcWorkerProcessTests()
@@ -57,7 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 _serviceProviderMock.Object,
                 _functionsHostingConfigOptions,
                 _testEnv,
-                _scriptApplicationHostOptions,
                 new LoggerFactory());
         }
 
