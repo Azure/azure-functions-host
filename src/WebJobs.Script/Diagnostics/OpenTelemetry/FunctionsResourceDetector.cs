@@ -55,6 +55,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     {
                         attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.DeploymentEnvironmentName, slotName));
                     }
+
+                    string appVersion = Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionAppVersion);
+                    if (!string.IsNullOrEmpty(appVersion))
+                    {
+                        attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.AppDeploymentId, appVersion));
+                    }
                 }
             }
             catch

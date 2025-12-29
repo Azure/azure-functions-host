@@ -38,5 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
         // Deployment
         internal const string DeploymentEnvironmentName = "deployment.environment.name";
+        internal const string AppDeploymentId = "azure.functions.deployment.id";
     }
 }
