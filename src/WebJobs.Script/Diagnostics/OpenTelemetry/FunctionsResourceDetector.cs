@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
                 // Add version and SDK prefix attributes
                 attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.ServiceVersion, serviceVersion));
-                attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.AISDKPrefix, $"{OpenTelemetryConstants.SDKPrefix}:{serviceVersion}"));
+                attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.AISDKPrefix, $"{OpenTelemetryConstants.SDKPrefix}:{_assemblyVersion}"));
                 attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.ProcessId, _processId));
                 attributeList.Add(new KeyValuePair<string, object>(ResourceSemanticConventions.ServiceName, serviceName));
 
