@@ -2,3 +2,6 @@ variables:
 # This controls how many cold start samples are collected for each app+OS combination.
 - name: runInstances
   value: "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20"
+# Reduced instance count for JIT trace generation to minimize YAML size
+- name: jitReleaseInstances
+  value: "1,2,3"
