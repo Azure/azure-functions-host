@@ -41,10 +41,6 @@ parameters:
   displayName: Create Jit trace (Ensure "Collect DotNet trace" is set to true)
   type: boolean
   default: false
-- name: useReducedInstancesForJitTrace
-  displayName: Use reduced instances (3) for JIT trace generation (reduces YAML size for releases)
-  type: boolean
-  default: false
 
 - name: collectPerfViewProfileOnWindows
   displayName: Collect PerfView Profile (on Windows)
@@ -75,7 +71,7 @@ variables:
     ${{ if ne(variables['Build.Reason'], 'Schedule') }}:
       value: ${{ parameters.collectPerfViewProfileOnWindows }}
   - name: effectiveRunInstances
-    ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.useReducedInstancesForJitTrace, true)) }}:
+    ${{ if eq(parameters.createJitTrace, true) }}:
       value: ${{ variables.jitReleaseInstances }}
     ${{ else }}:
       value: ${{ variables.runInstances }}
