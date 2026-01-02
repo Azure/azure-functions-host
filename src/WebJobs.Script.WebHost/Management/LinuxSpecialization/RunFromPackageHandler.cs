@@ -45,13 +45,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         {
             try
             {
+                var localSitePackagesEnv = _environment.GetEnvironmentVariable(EnvironmentSettingNames.LocalSitePackages);
+                _logger.LogInformation($"Environment variable '{EnvironmentSettingNames.LocalSitePackages}' value: '{localSitePackagesEnv}'");
+
                 // If Azure Files are mounted, /home will point to a shared remote dir
                 // So extracting to /home/site/wwwroot can interfere with other running instances
                 // Instead extract to localSitePackagesPath and bind to /home/site/wwwroot
                 // home will continue to point to azure file share
-                var localSitePackagesEnv = _environment.GetEnvironmentVariable(EnvironmentSettingNames.LocalSitePackages);
-                _logger.LogInformation($"Environment variable '{EnvironmentSettingNames.LocalSitePackages}' value: '{localSitePackagesEnv}'");
-
                 var resolvedLocalSitePackages = localSitePackagesEnv ?? EnvironmentSettingNames.DefaultLocalSitePackagesPath;
                 var localSitePackagesPath = azureFilesMounted ? resolvedLocalSitePackages : string.Empty;
 
