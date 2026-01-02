@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -49,10 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 // So extracting to /home/site/wwwroot can interfere with other running instances
                 // Instead extract to localSitePackagesPath and bind to /home/site/wwwroot
                 // home will continue to point to azure file share
-                var localSitePackagesPath = azureFilesMounted
-                    ? _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.LocalSitePackages,
-                        EnvironmentSettingNames.DefaultLocalSitePackagesPath)
-                    : string.Empty;
+                var localSitePackagesEnv = _environment.GetEnvironmentVariable(EnvironmentSettingNames.LocalSitePackages);
+                _logger.LogInformation($"Environment variable '{EnvironmentSettingNames.LocalSitePackages}' value: '{localSitePackagesEnv}'");
+
+                var resolvedLocalSitePackages = localSitePackagesEnv ?? EnvironmentSettingNames.DefaultLocalSitePackagesPath;
+                var localSitePackagesPath = azureFilesMounted ? resolvedLocalSitePackages : string.Empty;
 
                 // download zip
                 string filePath = await _packageDownloadHandler.Download(pkgContext);
