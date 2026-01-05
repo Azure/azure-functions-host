@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                         {
                             if (Activity.Current is not null)
                             {
-                                Activity.Current.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.HttpTriggerType);
+                                Activity.Current.AddTag(ResourceSemConventions.FaaSTrigger, OpenTelemetryConstants.HttpTriggerType);
 
                                 var routingFeature = httpResponse.HttpContext.Features.Get<IRoutingFeature>();
                                 if (routingFeature is null)
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
                                 var template = routingFeature.RouteData.Routers.FirstOrDefault(r => r is Route) as Route;
                                 Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {template?.RouteTemplate}";
-                                Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, template?.RouteTemplate);
+                                Activity.Current.AddTag(ResourceSemConventions.HttpRoute, template?.RouteTemplate);
                             }
                         };
                         o.Filter = context =>
