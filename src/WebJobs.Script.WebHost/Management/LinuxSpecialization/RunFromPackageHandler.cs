@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 // home will continue to point to azure file share
                 var localSitePackagesEnvValue = _environment.GetEnvironmentVariable(EnvironmentSettingNames.LocalSitePackages);
                 var resolvedLocalSitePackagesPath = localSitePackagesEnvValue ?? EnvironmentSettingNames.DefaultLocalSitePackagesPath;
-                _logger.LogInformation($"Environment variable '{EnvironmentSettingNames.LocalSitePackages}' value: '{localSitePackagesEnvValue}'. Resolved path: '{resolvedLocalSitePackagesPath}'");
+                _logger.LogInformation("Environment variable '{LocalSitePackagesEnvVarName}' value: '{LocalSitePackagesEnvValue}'. Resolved path: '{ResolvedLocalSitePackagesPath}'", EnvironmentSettingNames.LocalSitePackages, localSitePackagesEnvValue, resolvedLocalSitePackagesPath);
 
                 var localSitePackagesPath = azureFilesMounted ? resolvedLocalSitePackagesPath : string.Empty;
 
