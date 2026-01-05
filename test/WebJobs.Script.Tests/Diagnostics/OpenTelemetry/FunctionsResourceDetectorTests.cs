@@ -210,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             {
                 { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
                 { EnvironmentSettingNames.ResourceGroup, "my-rg" },
-                { EnvironmentSettingNames.WebsiteOwnerName, "" }
+                { EnvironmentSettingNames.WebsiteOwnerName, string.Empty }
             });
 
             var resource = _detector.Detect();
