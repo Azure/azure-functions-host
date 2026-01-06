@@ -4,12 +4,13 @@
 #nullable enable
 
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost;
 
 internal static class ActivityExtensions
 {
-    private static readonly ActivitySource _source = new("Microsoft.Azure.Functions.Host");
+    private static readonly ActivitySource _source = new(OpenTelemetryConstants.HostActivitySourceName, OpenTelemetryConstants.HostActivitySourceVersion);
 
     /// <summary>
     /// Starts a specialization activity (kind: Internal) using the parent Activity's context.
@@ -21,7 +22,7 @@ internal static class ActivityExtensions
     {
         var parentContext = parentActivity?.Context ?? default;
 
-        return _source.StartActivity("init", ActivityKind.Internal, parentContext);
+        return _source.StartActivity(OpenTelemetryConstants.SpecializationOperationName, ActivityKind.Internal, parentContext);
     }
 
     /// <summary>
@@ -31,7 +32,7 @@ internal static class ActivityExtensions
     /// <param name="activity">The activity to tag.</param>
     internal static void SetColdStartTag(this Activity? activity)
     {
-        activity?.SetTag("faas.coldstart", true);
+        activity?.SetTag(ResourceSemanticConventions.FaaSColdStart, true);
     }
 
     /// <summary>
@@ -41,6 +42,6 @@ internal static class ActivityExtensions
     /// <param name="activity">The activity to tag.</param>
     internal static void SetColdStartImpactedTag(this Activity? activity)
     {
-        activity?.SetTag("azure.functions.coldstart_impacted", true);
+        activity?.SetTag(ResourceSemanticConventions.FunctionsColdStartImpacted, true);
     }
 }
