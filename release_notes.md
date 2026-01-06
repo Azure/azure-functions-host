@@ -10,3 +10,4 @@
 - Fix `webPubSubTrigger`'s for Flex consumption sku (#11489)
 - Suppress execution context flow into script host start (#11498)
 - Add AzureWebJobsStorage health check (#11471)
+- Adding support for OTEL_SERVICE_NAME env variable (#11506)
