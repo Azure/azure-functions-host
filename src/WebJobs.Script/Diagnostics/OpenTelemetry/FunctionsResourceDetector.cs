@@ -26,19 +26,18 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 };
 
                 string? azureWebsiteName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
+                string? resourceAttributes = Environment.GetEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar);
 
                 // Priority: OTEL_SERVICE_NAME > OTEL_RESOURCE_ATTRIBUTES[service.name] > AzureWebsiteName > AssemblyName
-                // Only add service.name if not already configured
-                if (!IsServiceAttributeConfigured(ResourceSemConventions.ServiceName,
-                                               ResourceSemConventions.ServiceNameEnvVar))
+                if (!IsServiceNameConfigured(resourceAttributes))
                 {
                     attributes.Add(new(ResourceSemConventions.ServiceName, azureWebsiteName ?? typeof(ScriptHost).Assembly.GetName().Name ?? "unknown"));
                 }
 
-                // Priority: OTEL_SERVICE_Version > OTEL_RESOURCE_ATTRIBUTES[service.version] > AssemblyVersion
-                // Only add service.version if not already configured
-                if (!IsServiceAttributeConfigured(ResourceSemConventions.ServiceVersion,
-                                               ResourceSemConventions.ServiceVersionEnvVar))
+                // Priority: OTEL_RESOURCE_ATTRIBUTES[service.version] > AssemblyVersion
+                // OTel decided to not have OTEL_SERVICE_VERSION, so we only check OTEL_RESOURCE_ATTRIBUTES
+                // https://github.com/open-telemetry/semantic-conventions/issues/2669
+                if (!IsResourceAttributeConfigured(ResourceSemConventions.ServiceVersion, resourceAttributes))
                 {
                     attributes.Add(new(ResourceSemConventions.ServiceVersion, AssemblyVersion));
                 }
@@ -103,25 +102,37 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             return $"/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.Web/sites/{siteName}";
         }
 
-        private static bool IsServiceAttributeConfigured(string key, string envVar)
+        private static bool IsServiceNameConfigured(string? resourceAttributes)
         {
-            if (Environment.GetEnvironmentVariable(envVar) is { Length: > 0 })
+            // Check OTEL_SERVICE_NAME first
+            if (Environment.GetEnvironmentVariable(ResourceSemConventions.ServiceNameEnvVar) is { Length: > 0 })
             {
                 return true;
             }
 
-            if (Environment.GetEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar) is not { Length: > 0 } raw)
+            // Fall back to checking OTEL_RESOURCE_ATTRIBUTES
+            return IsResourceAttributeConfigured(ResourceSemConventions.ServiceName, resourceAttributes);
+        }
+
+        private static bool IsResourceAttributeConfigured(string key, string? resourceAttributes)
+        {
+            if (resourceAttributes is not { Length: > 2 })
             {
                 return false;
             }
 
-            foreach (var segment in raw.Split(','))
+            foreach (var segment in resourceAttributes.Split(','))
             {
                 var trimmed = segment.AsSpan().Trim();
+                var equalsIndex = trimmed.IndexOf('=');
 
-                if (trimmed.StartsWith(key, StringComparison.OrdinalIgnoreCase))
+                if (equalsIndex > 0)
                 {
-                    return true;
+                    var attributeKey = trimmed[..equalsIndex];
+                    if (attributeKey.Equals(key, StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
                 }
             }
 

@@ -7,344 +7,411 @@ using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
+namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry;
+
+public class FunctionsResourceDetectorTests
 {
-    public class FunctionsResourceDetectorTests
+    private readonly FunctionsResourceDetector _detector = new();
+
+    [Fact]
+    public void Detect_ReturnsResource_WithServiceNameFromAssembly_WhenNoEnvironmentVariablesSet()
     {
-        private readonly FunctionsResourceDetector _detector = new();
+        using var envVariables = SetupCleanEnvironment();
 
-        [Fact]
-        public void Detect_ReturnsResource_WithServiceNameFromAssembly_WhenNoEnvironmentVariablesSet()
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceName));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceVersion));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.ProcessId));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.AISDKPrefix));
+    }
+
+    [Fact]
+    public void Detect_DoesNotIncludeServiceName_WhenOtelServiceNameEnvVarIsSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ServiceNameEnvVar, "CustomServiceName");
+
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceName));
+    }
+
+    [Fact]
+    public void Detect_DoesNotIncludeServiceName_WhenServiceNameInResourceAttributes()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar, "service.name=CustomService,other=value");
+
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceName));
+    }
+
+    [Fact]
+    public void Detect_DoesNotIncludeServiceName_WhenServiceNameInResourceAttributes_CaseSensitive()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar, "Service.Name=CustomService,other=value");
+
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceName));
+    }
+
+    [Fact]
+    public void Detect_ReturnsServiceName_FromAzureWebsiteName_WhenOtelServiceNameNotSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp");
+
+        var resource = _detector.Detect();
+
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
+
+        Assert.Equal("MyFunctionApp", serviceName);
+    }
+
+    [Fact]
+    public void Detect_OtelServiceName_TakesPrecedence_OverAzureWebsiteName()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = SetupCleanEnvironment();
+            { ResourceSemConventions.ServiceNameEnvVar, "OtelServiceName" },
+            { EnvironmentSettingNames.AzureWebsiteName, "AzureWebsiteName" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceName));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceVersion));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.ProcessId));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.AISDKPrefix));
-        }
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceName));
+    }
 
-        [Fact]
-        public void Detect_DoesNotIncludeServiceName_WhenOtelServiceNameEnvVarIsSet()
+    [Fact]
+    public void Detect_DoesNotIncludeServiceVersion_WhenServiceVersionInResourceAttributes()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar, "service.version=1.0.0,other=value");
+
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceVersion));
+    }
+
+    [Fact]
+    public void Detect_IncludesAzureCloudAttributes_WhenAzureWebsiteNameIsSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp");
+
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.Equal(OpenTelemetryConstants.AzureCloudProviderValue, attributes[ResourceSemConventions.CloudProvider]);
+        Assert.Equal(OpenTelemetryConstants.AzurePlatformValue, attributes[ResourceSemConventions.CloudPlatform]);
+    }
+
+    [Fact]
+    public void Detect_DoesNotIncludeAzureCloudAttributes_WhenAzureWebsiteNameIsNotSet()
+    {
+        using var envVariables = SetupCleanEnvironment();
+
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudProvider));
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudPlatform));
+    }
+
+    [Fact]
+    public void Detect_IncludesCloudRegion_WhenRegionNameIsSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ServiceNameEnvVar, "CustomServiceName");
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
+            { EnvironmentSettingNames.RegionName, "eastus" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var region = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.CloudRegion, StringComparison.Ordinal)).Value;
 
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceName));
-        }
+        Assert.Equal("eastus", region);
+    }
 
-        [Fact]
-        public void Detect_DoesNotIncludeServiceName_WhenServiceNameInResourceAttributes()
+    [Fact]
+    public void Detect_DoesNotIncludeCloudRegion_WhenRegionNameIsNotSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp");
+
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudRegion));
+    }
+
+    [Fact]
+    public void Detect_IncludesCloudResourceId_WhenResourceGroupAndSubscriptionAreSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar, "service.name=CustomService,other=value");
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
+            { EnvironmentSettingNames.ResourceGroup, "my-rg" },
+            { EnvironmentSettingNames.WebsiteOwnerName, "sub-id-123+my-rg-westeurope" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var resourceId = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.CloudResourceId, StringComparison.Ordinal)).Value;
 
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceName));
-        }
+        Assert.Equal("/subscriptions/sub-id-123/resourceGroups/my-rg/providers/Microsoft.Web/sites/MyFunctionApp", resourceId);
+    }
 
-        [Fact]
-        public void Detect_DoesNotIncludeServiceName_WhenServiceNameInResourceAttributes_CaseInsensitive()
+    [Fact]
+    public void Detect_DoesNotIncludeCloudResourceId_WhenResourceGroupIsNotSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar, "Service.Name=CustomService,other=value");
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
+            { EnvironmentSettingNames.WebsiteOwnerName, "sub-id-123+my-rg-westeurope" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceName));
-        }
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudResourceId));
+    }
 
-        [Fact]
-        public void Detect_ReturnsServiceName_FromAzureWebsiteName_WhenOtelServiceNameNotSet()
+    [Fact]
+    public void Detect_DoesNotIncludeCloudResourceId_WhenSubscriptionIdCannotBeParsed()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp");
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
+            { EnvironmentSettingNames.ResourceGroup, "my-rg" },
+            { EnvironmentSettingNames.WebsiteOwnerName, string.Empty }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-            Assert.Equal("MyFunctionApp", serviceName);
-        }
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudResourceId));
+    }
 
-        [Fact]
-        public void Detect_OtelServiceName_TakesPrecedence_OverAzureWebsiteName()
+    [Fact]
+    public void Detect_IncludesDeploymentEnvironmentName_WhenSlotNameIsSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
-            {
-                { ResourceSemConventions.ServiceNameEnvVar, "OtelServiceName" },
-                { EnvironmentSettingNames.AzureWebsiteName, "AzureWebsiteName" }
-            });
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
+            { EnvironmentSettingNames.AzureWebsiteSlotName, "staging" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var slotName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.DeploymentEnvironmentName, StringComparison.Ordinal)).Value;
 
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceName));
-        }
+        Assert.Equal("staging", slotName);
+    }
 
-        [Fact]
-        public void Detect_DoesNotIncludeServiceVersion_WhenOtelServiceVersionEnvVarIsSet()
+    [Fact]
+    public void Detect_DoesNotIncludeDeploymentEnvironmentName_WhenSlotNameIsNotSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp");
+
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.DeploymentEnvironmentName));
+    }
+
+    [Fact]
+    public void Detect_IncludesAppDeploymentId_WhenFunctionAppVersionIsSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ServiceVersionEnvVar, "1.2.3");
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
+            { EnvironmentSettingNames.FunctionAppVersion, "abc123" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var appVersion = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.SiteUpdateId, StringComparison.Ordinal)).Value;
 
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceVersion));
-        }
+        Assert.Equal("abc123", appVersion);
+    }
 
-        [Fact]
-        public void Detect_DoesNotIncludeServiceVersion_WhenServiceVersionInResourceAttributes()
+    [Fact]
+    public void Detect_DoesNotIncludeAppDeploymentId_WhenFunctionAppVersionIsNotSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp");
+
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.False(attributes.ContainsKey(ResourceSemConventions.SiteUpdateId));
+    }
+
+    [Fact]
+    public void Detect_IncludesProcessId()
+    {
+        using var envVariables = SetupCleanEnvironment();
+
+        var resource = _detector.Detect();
+
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.True(attributes.TryGetValue(ResourceSemConventions.ProcessId, out var processId));
+        Assert.IsType<long>(processId);
+    }
+
+    [Fact]
+    public void Detect_IncludesAISDKPrefix_WithCorrectFormat()
+    {
+        using var envVariables = SetupCleanEnvironment();
+
+        var resource = _detector.Detect();
+
+        var sdkPrefix = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.AISDKPrefix, StringComparison.Ordinal)).Value?.ToString();
+
+        Assert.NotNull(sdkPrefix);
+        Assert.StartsWith($"{OpenTelemetryConstants.SDKPrefix}:", sdkPrefix, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Detect_ReturnsAllAzureAttributes_WhenAllEnvironmentVariablesAreSet()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar, "service.version=1.0.0,other=value");
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
+            { EnvironmentSettingNames.RegionName, "eastus" },
+            { EnvironmentSettingNames.ResourceGroup, "my-rg" },
+            { EnvironmentSettingNames.WebsiteOwnerName, "sub-id+my-rg-region" },
+            { EnvironmentSettingNames.AzureWebsiteSlotName, "production" },
+            { EnvironmentSettingNames.FunctionAppVersion, "v1.0.0" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceVersion));
-        }
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceName));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceVersion));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.ProcessId));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.AISDKPrefix));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudProvider));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudPlatform));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudRegion));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudResourceId));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.DeploymentEnvironmentName));
+        Assert.True(attributes.ContainsKey(ResourceSemConventions.SiteUpdateId));
+    }
 
-        [Fact]
-        public void Detect_IncludesAzureCloudAttributes_WhenAzureWebsiteNameIsSet()
+    private static IDisposable SetupCleanEnvironment()
+    {
+        return new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp");
+            { ResourceSemConventions.ServiceNameEnvVar, null },
+            { ResourceSemConventions.ServiceVersionEnvVar, null },
+            { ResourceSemConventions.ResourceAttributeEnvVar, null },
+            { EnvironmentSettingNames.AzureWebsiteName, null },
+            { EnvironmentSettingNames.RegionName, null },
+            { EnvironmentSettingNames.ResourceGroup, null },
+            { EnvironmentSettingNames.WebsiteOwnerName, null },
+            { EnvironmentSettingNames.AzureWebsiteSlotName, null },
+            { EnvironmentSettingNames.FunctionAppVersion, null }
+        });
+    }
 
-            var resource = _detector.Detect();
-
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            Assert.Equal(OpenTelemetryConstants.AzureCloudProviderValue, attributes[ResourceSemConventions.CloudProvider]);
-            Assert.Equal(OpenTelemetryConstants.AzurePlatformValue, attributes[ResourceSemConventions.CloudPlatform]);
-        }
-
-        [Fact]
-        public void Detect_DoesNotIncludeAzureCloudAttributes_WhenAzureWebsiteNameIsNotSet()
+    [Fact]
+    public void Detect_IncludesServiceName_WhenOtelServiceNameEnvVarIsNull()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = SetupCleanEnvironment();
+            { ResourceSemConventions.ServiceNameEnvVar, null },
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
 
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudProvider));
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudPlatform));
-        }
+        Assert.Equal("MyFunctionApp", serviceName);
+    }
 
-        [Fact]
-        public void Detect_IncludesCloudRegion_WhenRegionNameIsSet()
+    [Fact]
+    public void Detect_IncludesServiceName_WhenOtelServiceNameEnvVarIsEmpty()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
-                { EnvironmentSettingNames.RegionName, "eastus" }
-            });
+            { ResourceSemConventions.ServiceNameEnvVar, string.Empty },
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var region = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.CloudRegion, StringComparison.Ordinal)).Value;
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
 
-            Assert.Equal("eastus", region);
-        }
+        Assert.Equal("MyFunctionApp", serviceName);
+    }
 
-        [Fact]
-        public void Detect_DoesNotIncludeCloudRegion_WhenRegionNameIsNotSet()
+    [Fact]
+    public void Detect_IncludesServiceName_WhenResourceAttributeEnvVarIsNull()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp");
+            { ResourceSemConventions.ResourceAttributeEnvVar, null },
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
 
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudRegion));
-        }
+        Assert.Equal("MyFunctionApp", serviceName);
+    }
 
-        [Fact]
-        public void Detect_IncludesCloudResourceId_WhenResourceGroupAndSubscriptionAreSet()
+    [Fact]
+    public void Detect_IncludesServiceName_WhenResourceAttributeEnvVarIsEmpty()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
-                { EnvironmentSettingNames.ResourceGroup, "my-rg" },
-                { EnvironmentSettingNames.WebsiteOwnerName, "sub-id-123+my-rg-westeurope" }
-            });
+            { ResourceSemConventions.ResourceAttributeEnvVar, string.Empty },
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var resourceId = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.CloudResourceId, StringComparison.Ordinal)).Value;
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
 
-            Assert.Equal("/subscriptions/sub-id-123/resourceGroups/my-rg/providers/Microsoft.Web/sites/MyFunctionApp", resourceId);
-        }
+        Assert.Equal("MyFunctionApp", serviceName);
+    }
 
-        [Fact]
-        public void Detect_DoesNotIncludeCloudResourceId_WhenResourceGroupIsNotSet()
+    [Fact]
+    public void Detect_IncludesServiceName_WhenResourceAttributeEnvVarDoesNotContainServiceName()
+    {
+        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
-                { EnvironmentSettingNames.WebsiteOwnerName, "sub-id-123+my-rg-westeurope" }
-            });
+            { ResourceSemConventions.ResourceAttributeEnvVar, "other=value,another=test" },
+            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
+        });
 
-            var resource = _detector.Detect();
+        var resource = _detector.Detect();
 
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
 
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudResourceId));
-        }
-
-        [Fact]
-        public void Detect_DoesNotIncludeCloudResourceId_WhenSubscriptionIdCannotBeParsed()
-        {
-            using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
-                { EnvironmentSettingNames.ResourceGroup, "my-rg" },
-                { EnvironmentSettingNames.WebsiteOwnerName, string.Empty }
-            });
-
-            var resource = _detector.Detect();
-
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudResourceId));
-        }
-
-        [Fact]
-        public void Detect_IncludesDeploymentEnvironmentName_WhenSlotNameIsSet()
-        {
-            using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
-                { EnvironmentSettingNames.AzureWebsiteSlotName, "staging" }
-            });
-
-            var resource = _detector.Detect();
-
-            var slotName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.DeploymentEnvironmentName, StringComparison.Ordinal)).Value;
-
-            Assert.Equal("staging", slotName);
-        }
-
-        [Fact]
-        public void Detect_DoesNotIncludeDeploymentEnvironmentName_WhenSlotNameIsNotSet()
-        {
-            using var envVariables = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp");
-
-            var resource = _detector.Detect();
-
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.DeploymentEnvironmentName));
-        }
-
-        [Fact]
-        public void Detect_IncludesAppDeploymentId_WhenFunctionAppVersionIsSet()
-        {
-            using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
-                { EnvironmentSettingNames.FunctionAppVersion, "abc123" }
-            });
-
-            var resource = _detector.Detect();
-
-            var appVersion = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.SiteUpdateId, StringComparison.Ordinal)).Value;
-
-            Assert.Equal("abc123", appVersion);
-        }
-
-        [Fact]
-        public void Detect_DoesNotIncludeAppDeploymentId_WhenFunctionAppVersionIsNotSet()
-        {
-            using var envVariables = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp");
-
-            var resource = _detector.Detect();
-
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            Assert.False(attributes.ContainsKey(ResourceSemConventions.SiteUpdateId));
-        }
-
-        [Fact]
-        public void Detect_IncludesProcessId()
-        {
-            using var envVariables = SetupCleanEnvironment();
-
-            var resource = _detector.Detect();
-
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            Assert.True(attributes.TryGetValue(ResourceSemConventions.ProcessId, out var processId));
-            Assert.IsType<long>(processId);
-        }
-
-        [Fact]
-        public void Detect_IncludesAISDKPrefix_WithCorrectFormat()
-        {
-            using var envVariables = SetupCleanEnvironment();
-
-            var resource = _detector.Detect();
-
-            var sdkPrefix = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.AISDKPrefix, StringComparison.Ordinal)).Value?.ToString();
-
-            Assert.NotNull(sdkPrefix);
-            Assert.StartsWith($"{OpenTelemetryConstants.SDKPrefix}:", sdkPrefix, StringComparison.Ordinal);
-        }
-
-        [Fact]
-        public void Detect_ReturnsAllAzureAttributes_WhenAllEnvironmentVariablesAreSet()
-        {
-            using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
-                { EnvironmentSettingNames.RegionName, "eastus" },
-                { EnvironmentSettingNames.ResourceGroup, "my-rg" },
-                { EnvironmentSettingNames.WebsiteOwnerName, "sub-id+my-rg-region" },
-                { EnvironmentSettingNames.AzureWebsiteSlotName, "production" },
-                { EnvironmentSettingNames.FunctionAppVersion, "v1.0.0" }
-            });
-
-            var resource = _detector.Detect();
-
-            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceName));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceVersion));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.ProcessId));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.AISDKPrefix));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudProvider));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudPlatform));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudRegion));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudResourceId));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.DeploymentEnvironmentName));
-            Assert.True(attributes.ContainsKey(ResourceSemConventions.SiteUpdateId));
-        }
-
-        private static IDisposable SetupCleanEnvironment()
-        {
-            return new TestScopedEnvironmentVariable(new Dictionary<string, string>
-            {
-                { ResourceSemConventions.ServiceNameEnvVar, null },
-                { ResourceSemConventions.ServiceVersionEnvVar, null },
-                { ResourceSemConventions.ResourceAttributeEnvVar, null },
-                { EnvironmentSettingNames.AzureWebsiteName, null },
-                { EnvironmentSettingNames.RegionName, null },
-                { EnvironmentSettingNames.ResourceGroup, null },
-                { EnvironmentSettingNames.WebsiteOwnerName, null },
-                { EnvironmentSettingNames.AzureWebsiteSlotName, null },
-                { EnvironmentSettingNames.FunctionAppVersion, null }
-            });
-        }
+        Assert.Equal("MyFunctionApp", serviceName);
     }
 }
