@@ -5,3 +5,4 @@
 -->
 - Add JitTrace Files for v4.1046
 - Update Java Worker Version to [2.19.4](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.19.4)
+- Logging environment value of LocalSitePackagesPath in RunFromPackageHandler (#11541)
