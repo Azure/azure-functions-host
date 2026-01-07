@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -364,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void LogHostInitializationSettings(this ILogger logger, string originalFunctionWorkerRuntime, string functionWorkerRuntime,
             string originalFunctionWorkerRuntimeVersion, string functionsWorkerRuntimeVersion, string functionExtensionVersion, string hostDirectory,
             bool inStandbyMode, bool hasBeenSpecialized, bool usePlaceholderDotNetIsolated, string websiteSku, string featureFlags,
-            IDictionary<string, string> hostingConfig, string hisMode)
+            IDictionary<string, string> hostingConfig, string hisMode, bool adminIsolationEnabled)
         {
             // This is a dump of values for telemetry right now, but eventually we will refactor this
             // into a proper Options object
@@ -382,7 +382,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 WebSiteSku = websiteSku,
                 FeatureFlags = featureFlags,
                 HostingConfig = hostingConfig,
-                HISMode = hisMode
+                HISMode = hisMode,
+                AdminIsolationEnabled = adminIsolationEnabled
             };
 
             var options = new JsonSerializerOptions { WriteIndented = true };

@@ -5,8 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -568,6 +570,73 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             done = true;
             await listenerTask;
+        }
+
+        [Fact]
+        public void LogInitializationSettings_LogsExpectedSettings()
+        {
+            using var loggerProvider = new TestLoggerProvider();
+            using var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+            var logger = loggerFactory.CreateLogger(LogCategories.Startup);
+
+            var mockMetricsLogger = new Mock<IMetricsLogger>();
+            var mockEnvironment = new Mock<IEnvironment>();
+            var mockScriptWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
+
+            var hostingConfigOptions = new FunctionsHostingConfigOptions();
+            hostingConfigOptions.Features["TestFeature1"] = "TestValue1";
+            hostingConfigOptions.Features["TestFeature2"] = "TestValue2";
+
+            string originalFunctionWorkerRuntime = "node";
+            string functionWorkerRuntime = "node";
+            string originalFunctionWorkerRuntimeVersion = "18";
+            string functionsWorkerRuntimeVersion = "20";
+            string functionExtensionVersion = "~4";
+            string websiteSku = "Dynamic";
+            string featureFlags = "EnableWorkerIndexing";
+
+            mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(functionWorkerRuntime);
+            mockEnvironment.Setup(e => e.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName)).Returns(functionsWorkerRuntimeVersion);
+            mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion)).Returns(functionExtensionVersion);
+            mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(websiteSku);
+            mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)).Returns(featureFlags);
+            mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated)).Returns("1");
+            mockEnvironment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled)).Returns("1");
+
+            mockScriptWebHostEnvironment.Setup(e => e.InStandbyMode).Returns(false);
+
+            WebJobsScriptHostService.LogInitializationSettings(logger, mockMetricsLogger.Object, mockEnvironment.Object, mockScriptWebHostEnvironment.Object,
+                hostingConfigOptions, true, originalFunctionWorkerRuntime, originalFunctionWorkerRuntimeVersion);
+
+            var logMessages = loggerProvider.GetAllLogMessages();
+            var initializationLogMessage = logMessages.SingleOrDefault(m => m.EventId.Id == 530);
+
+            Assert.NotNull(initializationLogMessage);
+            Assert.Equal(LogLevel.Debug, initializationLogMessage.Level);
+            Assert.Equal("LogHostInitializationSettings", initializationLogMessage.EventId.Name);
+
+            // Deserialize the JSON log message
+            var result = JsonSerializer.Deserialize<JsonElement>(initializationLogMessage.FormattedMessage);
+
+            Assert.Equal(originalFunctionWorkerRuntime, result.GetProperty("OriginalFunctionWorkerRuntime").GetString());
+            Assert.Equal(functionWorkerRuntime, result.GetProperty("FunctionsWorkerRuntime").GetString());
+            Assert.Equal(originalFunctionWorkerRuntimeVersion, result.GetProperty("OriginalFunctionWorkerRuntimeVersion").GetString());
+            Assert.Equal(functionsWorkerRuntimeVersion, result.GetProperty("FunctionsWorkerRuntimeVersion").GetString());
+            Assert.Equal(functionExtensionVersion, result.GetProperty("FunctionsExtensionVesion").GetString());
+            Assert.NotNull(result.GetProperty("HostDirectory").GetString());
+            Assert.False(result.GetProperty("InStandbyMode").GetBoolean());
+            Assert.True(result.GetProperty("HasBeenSpecialized").GetBoolean());
+            Assert.True(result.GetProperty("UsePlaceholderDotNetIsolated").GetBoolean());
+            Assert.Equal(websiteSku, result.GetProperty("WebSiteSku").GetString());
+            Assert.Equal(featureFlags, result.GetProperty("FeatureFlags").GetString());
+
+            var hostingConfig = result.GetProperty("HostingConfig");
+            Assert.Equal("TestValue1", hostingConfig.GetProperty("TestFeature1").GetString());
+            Assert.Equal("TestValue2", hostingConfig.GetProperty("TestFeature2").GetString());
+
+            Assert.Equal("Disabled", result.GetProperty("HISMode").GetString());
+            Assert.True(result.GetProperty("AdminIsolationEnabled").GetBoolean());
         }
 
         public Task SpecializeHostAsync()

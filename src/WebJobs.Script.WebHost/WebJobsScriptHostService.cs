@@ -798,34 +798,41 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 logger.InStandByMode(operationId);
             }
 
+            LogInitializationSettings(logger, _metricsLogger, _environment, _scriptWebHostEnvironment, _hostingConfigOptions.Value, _originalStandbyModeValue, _originalFunctionsWorkerRuntime, _originalFunctionsWorkerRuntimeVersion);
+        }
+
+        internal static void LogInitializationSettings(ILogger logger, IMetricsLogger metricsLogger, IEnvironment environment, IScriptWebHostEnvironment scriptWebHostEnvironment, FunctionsHostingConfigOptions hostingConfigOptions, bool originalStandbyModeValue,
+            string originalFunctionsWorkerRuntime, string originalFunctionsWorkerRuntimeVersion)
+        {
             // Log settings
-            var functionWorkerRuntime = _environment.GetEnvironmentVariable(FunctionWorkerRuntime);
-            var functionWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
-            var functionExtensionVersion = _environment.GetEnvironmentVariable(FunctionsExtensionVersion);
+            var functionWorkerRuntime = environment.GetEnvironmentVariable(FunctionWorkerRuntime);
+            var functionWorkerRuntimeVersion = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+            var functionExtensionVersion = environment.GetEnvironmentVariable(FunctionsExtensionVersion);
             var currentDirectory = Directory.GetCurrentDirectory();
-            var inStandbyMode = _scriptWebHostEnvironment.InStandbyMode;
-            var hasBeenSpecialized = _originalStandbyModeValue && !inStandbyMode;
-            var usePlaceholderDotNetIsolated = _environment.UsePlaceholderDotNetIsolated();
-            var websiteSku = _environment.GetEnvironmentVariable(AzureWebsiteSku);
-            var featureFlags = _environment.GetEnvironmentVariable(AzureWebJobsFeatureFlags);
-            var hostingConfigDict = _hostingConfigOptions.Value.Features;
+            var inStandbyMode = scriptWebHostEnvironment.InStandbyMode;
+            var hasBeenSpecialized = originalStandbyModeValue && !inStandbyMode;
+            var usePlaceholderDotNetIsolated = environment.UsePlaceholderDotNetIsolated();
+            var websiteSku = environment.GetEnvironmentVariable(AzureWebsiteSku);
+            var featureFlags = environment.GetEnvironmentVariable(AzureWebJobsFeatureFlags);
+            var hostingConfigDict = hostingConfigOptions.Features;
+            var adminIsolationEnabled = environment.IsAdminIsolationEnabled();
 
             string hisMode = "Disabled";
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagStrictHISModeEnabled))
             {
                 hisMode = "Strict";
-                _metricsLogger.LogEvent(MetricEventNames.HISStrictModeEnabled);
-                _logger.LogDebug($"HIS Strict mode enabled.");
+                metricsLogger.LogEvent(MetricEventNames.HISStrictModeEnabled);
+                logger.LogDebug($"HIS Strict mode enabled.");
             }
             else if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagStrictHISModeWarn))
             {
                 hisMode = "Warn";
-                _metricsLogger.LogEvent(MetricEventNames.HISStrictModeWarn);
-                _logger.LogDebug($"HIS Warn mode enabled.");
+                metricsLogger.LogEvent(MetricEventNames.HISStrictModeWarn);
+                logger.LogDebug($"HIS Warn mode enabled.");
             }
 
-            logger.LogHostInitializationSettings(_originalFunctionsWorkerRuntime, functionWorkerRuntime, _originalFunctionsWorkerRuntimeVersion, functionWorkerRuntimeVersion,
-                functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict, hisMode);
+            logger.LogHostInitializationSettings(originalFunctionsWorkerRuntime, functionWorkerRuntime, originalFunctionsWorkerRuntimeVersion, functionWorkerRuntimeVersion,
+                functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict, hisMode, adminIsolationEnabled);
         }
 
         private void OnHostHealthCheckTimer(object state)
