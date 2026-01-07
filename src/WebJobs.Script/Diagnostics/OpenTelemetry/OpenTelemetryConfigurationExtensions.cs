@@ -78,9 +78,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
         private static IOpenTelemetryBuilder ConfigureMetrics(this IOpenTelemetryBuilder builder)
         {
-            return builder.WithMetrics(builder =>
+            return builder.WithMetrics(meterProviderBuilder =>
             {
-                builder.AddAspNetCoreInstrumentation()
+                meterProviderBuilder.AddAspNetCoreInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddProcessInstrumentation()
                     .AddMeter(HostMetrics.FaasMeterName)
@@ -94,9 +94,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
         private static IOpenTelemetryBuilder ConfigureTracing(this IOpenTelemetryBuilder builder)
         {
-            return builder.WithTracing(builder =>
+            return builder.WithTracing(traceProviderBuilder =>
             {
-                builder
+                traceProviderBuilder
                     .AddSource("Azure.Messaging.ServiceBus.ServiceBusProcessor")
                     .AddSource("Azure.Messaging.EventHubs.EventProcessor")
                     .AddSource("Azure.Functions.Extensions.Mcp")
@@ -131,30 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                                 return false;
                             }
 
-                            // Exclude POST /admin/host/synctriggers
-                            if (string.Equals(context.Request.Method, HttpMethods.Post, StringComparison.OrdinalIgnoreCase)
-                                && context.Request.Path.Equals("/admin/host/synctriggers", StringComparison.OrdinalIgnoreCase))
-                            {
-                                return false;
-                            }
-
-                            // Exclude GET /admin/warmup
-                            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
-                                && context.Request.Path.Equals("/admin/warmup", StringComparison.OrdinalIgnoreCase))
-                            {
-                                return false;
-                            }
-
-                            // Exclude GET /admin/host/status
-                            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
-                                && context.Request.Path.Equals("/admin/host/status", StringComparison.OrdinalIgnoreCase))
-                            {
-                                return false;
-                            }
-
-                            // Exclude GET /admin/health and its sub-paths
-                            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
-                                && context.Request.Path.StartsWithSegments("/admin/health", StringComparison.OrdinalIgnoreCase))
+                            // Skip every request under /admin
+                            if (context.Request.Path.StartsWithSegments("/admin", StringComparison.OrdinalIgnoreCase))
                             {
                                 return false;
                             }
