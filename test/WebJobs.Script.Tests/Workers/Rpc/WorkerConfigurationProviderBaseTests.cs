@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("3.8", "3.8")]
+        [InlineData("3.9", "3.9")]
         [InlineData(null, "3.12")]
         public void DefaultWorkerConfigs_Overrides_DefaultWorkerRuntimeVersion_AppSetting(string setting, string output)
         {

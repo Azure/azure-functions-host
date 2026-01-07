@@ -138,23 +138,23 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                                 return false;
                             }
 
-                            // Exclude GET admin/warmup
+                            // Exclude GET /admin/warmup
                             if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
                                 && context.Request.Path.Equals("/admin/warmup", StringComparison.OrdinalIgnoreCase))
                             {
                                 return false;
                             }
 
-                            // Exclude GET admin/host/status
+                            // Exclude GET /admin/host/status
                             if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
                                 && context.Request.Path.Equals("/admin/host/status", StringComparison.OrdinalIgnoreCase))
                             {
                                 return false;
                             }
 
-                            // Exclude GET /admin/health
+                            // Exclude GET /admin/health and its sub-paths
                             if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
-                                && context.Request.Path.Equals("/admin/health", StringComparison.OrdinalIgnoreCase))
+                                && context.Request.Path.StartsWithSegments("/admin/health", StringComparison.OrdinalIgnoreCase))
                             {
                                 return false;
                             }

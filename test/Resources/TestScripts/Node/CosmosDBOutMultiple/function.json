@@ -7,9 +7,9 @@
     },
     {
       "type": "cosmosDB",
-      "name": "item",
+      "name": "items",
       "direction": "out",
-      "databaseName": "InOutItemDb",
+      "databaseName": "MultipleInOutItemDb",
       "containerName": "ItemCollection",
       "createIfNotExists": true
     }

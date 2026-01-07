@@ -117,6 +117,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
                     writer.WriteStartObject();
                     writer.WriteString("status", entry.Status.ToString());
                     writer.WriteString("description", entry.Description);
+
+                    if (entry.TryGetErrorCode(out object errorCode))
+                    {
+                        writer.WriteString("errorCode", errorCode?.ToString());
+                    }
+
                     writer.WriteEndObject();
                 }
 

@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
         private static partial class Log
         {
-            [LoggerMessage(0, LogLevel.Debug, "Script host does not have a health check service. Skipping script host health checks.")]
+            [LoggerMessage(0, LogLevel.Trace, "Script host does not have a health check service. Skipping script host health checks.")]
             public static partial void ScriptHostNoHealthCheckService(ILogger logger);
 
             [LoggerMessage(1, LogLevel.Warning, "Duplicate health check entry '{HealthCheck}' found when merging health check reports. Keeping the first entry.")]

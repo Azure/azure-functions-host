@@ -1,0 +1,26 @@
+{
+  "bindings": [
+    {
+      "type": "queueTrigger",
+      "name": "input",
+      "queueName": "cosmosdb-input-multiple-node",
+      "direction": "in"
+    },
+    {
+        "name": "items",
+        "type": "cosmosDB",
+        "direction": "in",
+        "databaseName": "MultipleInOutItemDb",
+        "containerName": "ItemCollection",
+        "sqlQuery": "SELECT * from c where c.text = {id}"
+    },
+    {
+      "type": "cosmosDB",
+      "name": "itemOut",
+      "direction": "out",
+      "databaseName": "MultipleInOutItemDb",
+      "containerName": "ItemCollection",
+      "createIfNotExists": true
+    }
+  ]
+}

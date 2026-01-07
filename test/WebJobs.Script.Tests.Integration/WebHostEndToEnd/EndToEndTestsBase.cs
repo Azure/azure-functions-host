@@ -1,15 +1,12 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Azure.Data.Tables;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host;
@@ -277,55 +274,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await TestHelpers.ClearContainerAsync(container);
             }
             return container;
-        }
-
-        protected async Task<Document> WaitForDocumentAsync(string itemId, string textToMatch = null)
-        {
-            var docUri = UriFactory.CreateDocumentUri("ItemDb", "ItemCollection", itemId);
-
-            // We know the tests are using the default connection string.
-            var connectionString = _configuration.GetConnectionString("CosmosDB");
-            var builder = new DbConnectionStringBuilder
-            {
-                ConnectionString = connectionString
-            };
-            var serviceUri = new Uri(builder["AccountEndpoint"].ToString());
-            var client = new DocumentClient(serviceUri, builder["AccountKey"].ToString());
-
-            Document doc = null;
-            await TestHelpers.Await(async () =>
-            {
-                bool result = false;
-
-                try
-                {
-                    var response = await client.ReadDocumentAsync(docUri);
-                    doc = response.Resource;
-                }
-                catch (DocumentClientException ex) when (ex.Error.Code == "NotFound")
-                {
-                    return false;
-                }
-
-                if (textToMatch != null)
-                {
-                    result = doc.GetPropertyValue<string>("text") == textToMatch;
-                }
-                else
-                {
-                    result = true;
-                }
-
-                return result;
-            },
-            userMessageCallback: () =>
-            {
-                // AppVeyor only shows 4096 chars
-                var s = string.Join(Environment.NewLine, Fixture.Host.GetScriptHostLogMessages());
-                return s.Length < 4096 ? s : s.Substring(s.Length - 4096);
-            });
-
-            return doc;
         }
 
         protected static bool VerifyNotificationHubExceptionMessage(Exception exception)

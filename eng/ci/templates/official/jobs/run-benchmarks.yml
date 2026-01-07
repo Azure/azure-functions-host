@@ -9,6 +9,8 @@ parameters:
   values:
     - Windows
     - Linux
+- name: crankAdditionalArguments
+  type: string
 
 jobs:
 - job: ${{ parameters.functionAppName }}_${{ parameters.os }}
@@ -30,13 +32,15 @@ jobs:
     functionApp: ${{ parameters.functionAppName }}
     benchmarkArtifactName: benchmark_results_$(Agent.OS)_$(functionApp)
     functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
-    benchmarkResultsJsonPath: $(Build.ArtifactStagingDirectory)/BenchmarkResults/$(Build.BuildNumber)_$(functionApp).json
+    traceDirectory: $(Build.ArtifactStagingDirectory)/out
+    benchmarkResultsJsonPath: $(traceDirectory)/BenchmarkResults/$(Build.BuildNumber)_$(functionApp).json
     functionsWorkerRuntime: 'dotnet-isolated'
     configFilePath: "./eng/perf/http.benchmarks.yml"
     hostLocation: "./../../"
     baselineBenchmarkResultFilePath: ''
     baselineBenchmarkResultsDownloadDir: $(Pipeline.Workspace)/BenchmarkBaselineResult
     appAgentHostName: ''
+    crankExtraArguments: ${{ parameters.crankAdditionalArguments }}
 
   templateContext:
     inputs:
@@ -45,12 +49,13 @@ jobs:
       pipeline: BaselineResult
       targetPath: $(baselineBenchmarkResultsDownloadDir)
 
-    outputParentDirectory: $(Build.ArtifactStagingDirectory)
+    outputParentDirectory: $(traceDirectory)
     outputs:
-    - output: pipelineArtifact
-      displayName: Publish benchmark results
-      path: $(benchmarkResultsJsonPath)
-      artifact: $(benchmarkArtifactName)
+      - output: pipelineArtifact
+        displayName: Publish artifacts
+        path: $(traceDirectory)
+        artifact: AzFunc_$(Build.BuildNumber)_${{ parameters.os }}_${{ parameters.functionAppName }}
+        condition: always()
 
   steps:
 
@@ -61,6 +66,10 @@ jobs:
 
   - script: dotnet tool install -g Microsoft.Crank.Controller --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Controller tool
+
+  - pwsh: |
+      New-Item -ItemType Directory -Path $(traceDirectory)
+    displayName: Create artifact directories
 
   - ${{ if eq(parameters.os, 'Windows') }}:
     - pwsh: Start-Process powershell -ArgumentList '-NoExit', '-Command', 'crank-agent'
@@ -112,8 +121,9 @@ jobs:
       scriptLocation: inlineScript
       inlineScript: |
         $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(Build.SourceVersion) --property buildNumber=$(Build.BuildNumber) --property buildId=$(Build.BuildId) --property sourceBranch=$(Build.SourceBranch) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
+        $crankArgs += " --hostruntime.options.traceOutput $(traceDirectory)/$(Build.BuildNumber)_$(functionApp)_$(Agent.OS)"
         $crankArgs += " --variable CrankAgentAppVm=$(appAgentHostName) --variable CrankAgentLoadVm=localhost --variable AspNetUrls=http://$(appAgentHostName):5000"
-        $crankArgs += " $(AdditionalCrankArguments)"
+        $crankArgs += " $(crankExtraArguments)"
         $command = "crank $crankArgs"
         if ('$(storeBenchmarkResultsInDatabase)' -eq 'true') {
             $command += " --table HttpBenchmarks --sql `"$(BenchmarkResultsSqlConnectionString)`""
