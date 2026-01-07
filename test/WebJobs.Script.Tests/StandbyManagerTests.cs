@@ -149,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Specialize_StartSpecializationActivity()
         {
             using var testListener = new ActivityTestListener("Microsoft.Azure.Functions.Host");
-            Activity activity = new Activity("TestActivity");
+            using Activity activity = new Activity("TestActivity");
             activity.Start();
 
             TestMetricsLogger metricsLogger = new TestMetricsLogger();
@@ -162,8 +162,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(initActivity);
             Assert.Equal(true, (bool?)activity.GetTagItem("faas.coldstart"));
             Assert.Equal(true, (bool?)activity.GetTagItem("azure.functions.coldstart_impacted"));
-
-            activity.Stop();
         }
 
         [Fact]
@@ -216,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Specialize_StartSpecializationActivity_WithParentActivity_SetsParent()
         {
             using var testListener = new ActivityTestListener("Microsoft.Azure.Functions.Host");
-            Activity parentActivity = new Activity("ParentActivity");
+            using Activity parentActivity = new Activity("ParentActivity");
             parentActivity.Start();
 
             TestMetricsLogger metricsLogger = new TestMetricsLogger();
@@ -227,8 +225,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var initActivity = testListener.Activities.FirstOrDefault(a => string.Equals(a.OperationName, "init", StringComparison.Ordinal));
             Assert.NotNull(initActivity);
-
-            parentActivity.Stop();
         }
     }
 
