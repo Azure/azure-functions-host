@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var initActivity = testListener.Activities.FirstOrDefault(a => string.Equals(a.OperationName, "init", StringComparison.Ordinal));
             Assert.NotNull(initActivity);
             Assert.Equal(true, (bool?)activity.GetTagItem("faas.coldstart"));
-            Assert.Equal(true, (bool?)activity.GetTagItem("azure.functions.coldstart_impacted"));
+            Assert.Equal(true, (bool?)activity.GetTagItem("azure.functions.coldstart.impacted"));
         }
 
         [Fact]
@@ -225,6 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var initActivity = testListener.Activities.FirstOrDefault(a => string.Equals(a.OperationName, "init", StringComparison.Ordinal));
             Assert.NotNull(initActivity);
+            Assert.Equal(parentActivity.Id, initActivity.ParentId);
         }
     }
 
