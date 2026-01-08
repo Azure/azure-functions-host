@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
             var environment = new TestEnvironment(_settings);
             var webHostBuilder = await CreateWebHostBuilderAsync("Windows", environment);
-            IWebHost host = webHostBuilder.Build();
+            var host = webHostBuilder.Build();
 
             await host.StartAsync();
 
@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Directly configure a bad placeholder mode host ID record.
             // Before the fix for this bug, such records were being generated
             // as part of a specialization race condition.
-            var serviceProvider = _httpServer.Host.Services;
+            var serviceProvider = _webHost.Services;
             var blobStorageProvider = serviceProvider.GetService<IAzureBlobStorageProvider>();
             Assert.True(blobStorageProvider.TryCreateHostingBlobContainerClient(out var blobContainerClient));
             await blobContainerClient.CreateIfNotExistsAsync();
@@ -286,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // We cannot create and run a full test host as there's no way to issue
             // requests to the TestServer before initialization has occurred.
             var webHostBuilder = await CreateWebHostBuilderAsync("Windows", environment);
-            IWebHost host = webHostBuilder.Build();
+            var host = webHostBuilder.Build();
 
             // Pull the service out of the built host. If it were easier to construct, we'd do that instead.
             var standbyManager = host.Services.GetService<IStandbyManager>();

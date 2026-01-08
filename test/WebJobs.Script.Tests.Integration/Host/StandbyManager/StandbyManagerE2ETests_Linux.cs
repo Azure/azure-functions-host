@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await InitializeTestHostAsync("Linux", environment);
 
             // Check that the filesystem is not read-only before specialization.
-            var options = _httpServer.Host.Services.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+            var options = _webHost.Services.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
             Assert.False(options.CurrentValue.IsFileSystemReadOnly);
 
             // verify only the Warmup function is present
@@ -129,8 +129,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // now that the host is initialized, send a valid key
             // and expect success
-            var secretManager = _httpServer.Host.Services.GetService<ISecretManagerProvider>().Current;
-            var fd = _httpServer.Host.Services.GetService<IFunctionInvocationDispatcherFactory>();
+            var secretManager = _webHost.Services.GetService<ISecretManagerProvider>().Current;
+            var fd = _webHost.Services.GetService<IFunctionInvocationDispatcherFactory>();
             var keys = await secretManager.GetFunctionSecretsAsync("HttpTrigger");
             string key = keys.First().Value;
             request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger?code={key}");
@@ -252,12 +252,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.CreateContentZip(contentRoot, zipFilePath, testFunctionPath);
 
             // upload the blob and get a SAS uri
-            var configuration = _httpServer.Host.Services.GetService<IConfiguration>();
+            var configuration = _webHost.Services.GetService<IConfiguration>();
             string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             var sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "azure-functions-test", "appcontents.zip");
 
             // Now specialize the host by invoking assign
-            var secretManager = _httpServer.Host.Services.GetService<ISecretManagerProvider>().Current;
+            var secretManager = _webHost.Services.GetService<ISecretManagerProvider>().Current;
             var masterKey = (await secretManager.GetHostSecretsAsync()).MasterKey;
             string uri = "admin/instance/assign";
             var request = new HttpRequestMessage(HttpMethod.Post, uri);

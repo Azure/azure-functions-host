@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 using System;
 using System.IO;
@@ -27,14 +27,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public HttpClient HttpClient { get; set; }
 
-        public TestServer HttpServer { get; set; }
+        public IHost Host { get; set; }
 
         protected virtual void ConfigureWebHostBuilder(IWebHostBuilder webHostBuilder) { }
 
         public void Dispose()
         {
-            HttpServer?.Dispose();
-            HttpClient?.Dispose();
+            Host?.Dispose();
         }
 
         public virtual async Task InitializeAsync()
@@ -42,7 +41,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             _config = new HttpConfiguration();
             _settingsManager = ScriptSettingsManager.Instance;
 
-            var webHostBuilder = new WebHostBuilder()
+            var webHostBuilder = new HostBuilder()
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+
+                    ConfigureWebHostBuilder(webBuilder);
+                })
                 .ConfigureServices(services =>
                 {
                     services.AddSingleton<IDiagnosticEventRepository, DiagnosticEventNullRepository>();
@@ -66,21 +71,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                         IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsAnyLinuxConsumption()
                     });
                 })
-                .UseStartup<Startup>()
                 .ConfigureAppConfiguration(c => c.AddEnvironmentVariables());
 
-            ConfigureWebHostBuilder(webHostBuilder);
+            
 
-            HttpServer = new TestServer(webHostBuilder);
-            HttpClient = HttpServer.CreateClient();
+            Host = webHostBuilder.Build();
+            HttpClient = Host.GetTestClient();
             HttpClient.BaseAddress = new Uri("https://localhost/");
 
-            var manager = HttpServer.Host.Services.GetService<IScriptHostManager>();
+            var manager = Host.Services.GetService<IScriptHostManager>();
             await manager.DelayUntilHostReadyAsync();
         }
 
         public Task DisposeAsync()
-        {
+        { 
             return Task.CompletedTask;
         }
     }
