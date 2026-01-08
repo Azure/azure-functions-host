@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -21,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
     public class CustomHttpHeadersMiddlewareTests
     {
         private bool _nextInvoked = false;
-        private IWebHost _host;
+        private IHost _host;
 
         [Fact]
         public async Task Invoke_hasCustomHeaders_AddsResponseHeaders()
@@ -64,27 +65,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             }
         }
 
-        private IWebHost GetTestHost(Action<CustomHttpHeadersOptions> configureOptions = null)
+        private IHost GetTestHost(Action<CustomHttpHeadersOptions> configureOptions = null)
         {
             // The custom middleware relies on the host starting the request (thus invoking OnStarting),
             // so we need to create a test host to flow through the entire pipeline.
-            _host = new WebHostBuilder()
-                .UseTestServer()
+            _host = new HostBuilder()
+                .ConfigureWebHostDefaults(webHostBuilder =>
+                {
+                    webHostBuilder.UseTestServer();
+                    webHostBuilder.Configure(app =>
+                    {
+                        app.UseMiddleware<JobHostPipelineMiddleware>();
+                        app.Run((context) =>
+                        {
+                            _nextInvoked = true;
+                            context.Response.StatusCode = (int)HttpStatusCode.Accepted;
+                            return Task.CompletedTask;
+                        });
+                    });
+                })
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
                     s.AddSingleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>();
                     s.AddOptions<CustomHttpHeadersOptions>().Configure(o => configureOptions?.Invoke(o));
-                })
-                .Configure(app =>
-                {
-                    app.UseMiddleware<JobHostPipelineMiddleware>();
-                    app.Run((context) =>
-                    {
-                        _nextInvoked = true;
-                        context.Response.StatusCode = (int)HttpStatusCode.Accepted;
-                        return Task.CompletedTask;
-                    });
                 })
                 .Build();
 

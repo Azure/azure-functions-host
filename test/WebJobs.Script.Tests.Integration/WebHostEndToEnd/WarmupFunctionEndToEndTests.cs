@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -75,8 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : IDisposable
         {
-            private readonly TestServer _testServer;
             private readonly string _testHome;
+            private readonly IHost _host;
 
             public TestFixture()
             {
@@ -109,34 +110,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
                 _ = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), mockWorkerRuntimeResolver.Object);
 
-                var builder = AspNetCore.WebHost.CreateDefaultBuilder()
-                   .UseStartup<Startup>()
-                   .ConfigureServices(services =>
-                   {
-                       services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions)));
-                       services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
-                       services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
+                var builder = new HostBuilder()
+                    .ConfigureWebHost(webhostBuilder =>
+                    {
 
-                       services.SkipDependencyValidation();
+                        webhostBuilder.UseStartup<Startup>();
+                    })
+                    .ConfigureServices(services =>
+                    {
+                        services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions)));
+                        services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
+                        services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
 
-                       services.PostConfigure<ScriptApplicationHostOptions>(o =>
-                       {
-                           o.IsSelfHost = true;
-                           o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "csharp");
-                           o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
-                           o.SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets");
-                           o.HasParentScope = true;
+                        services.SkipDependencyValidation();
 
-                           HostOptions = o;
-                       });
-                   });
+                        services.PostConfigure<ScriptApplicationHostOptions>(o =>
+                        {
+                            o.IsSelfHost = true;
+                            o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "csharp");
+                            o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
+                            o.SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets");
+                            o.HasParentScope = true;
 
-                // TODO: https://github.com/Azure/azure-functions-host/issues/4876
-                _testServer = new TestServer(builder);
-                HostOptions.RootServiceProvider = _testServer.Host.Services;
-                var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;
+                            HostOptions = o;
+                        });
+                    });
 
-                HttpClient = _testServer.CreateClient();
+                _host = builder.Build();
+                HostOptions.RootServiceProvider = _host.Services;
+                var scriptConfig = _host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;
+
+                HttpClient = _host.GetTestClient();
                 HttpClient.BaseAddress = new Uri("https://localhost/");
 
                 TestHelpers.WaitForWebHost(HttpClient);
@@ -144,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public async Task<string> GetFunctionSecretAsync(string functionName)
             {
-                var secretManager = _testServer.Host.Services.GetService<ISecretManagerProvider>().Current;
+                var secretManager = _host.Services.GetService<ISecretManagerProvider>().Current;
                 var secrets = await secretManager.GetFunctionSecretsAsync(functionName);
                 return secrets.First().Value;
             }
@@ -157,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public void Dispose()
             {
-                _testServer?.Dispose();
+                _host.Dispose();
                 HttpServer?.Dispose();
                 HttpClient?.Dispose();
 

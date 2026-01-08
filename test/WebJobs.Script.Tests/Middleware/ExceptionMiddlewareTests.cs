@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         {
             var ex = new HttpException(StatusCodes.Status502BadGateway);
 
-            using (var server = GetTestServer(_ => throw ex))
+            using (var server = await GetTestServer(_ => throw ex))
             {
                 var client = server.CreateClient();
                 HttpResponseMessage response = await client.GetAsync(string.Empty);
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         {
             var ex = new Exception("Kaboom!");
 
-            using (var server = GetTestServer(_ => throw ex))
+            using (var server = await GetTestServer(_ => throw ex))
             {
                 var client = server.CreateClient();
                 HttpResponseMessage response = await client.GetAsync(string.Empty);
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         {
             var ex = new FunctionInvocationException("Kaboom!");
 
-            using (var server = GetTestServer(_ => throw ex))
+            using (var server = await GetTestServer(_ => throw ex))
             {
                 var client = server.CreateClient();
                 HttpResponseMessage response = await client.GetAsync(string.Empty);
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 throw ex;
             }
 
-            using (var server = GetTestServer(c => WriteThenThrow(c)))
+            using (var server = await GetTestServer(c => WriteThenThrow(c)))
             {
                 var client = server.CreateClient();
                 HttpResponseMessage response = await client.GetAsync(string.Empty);
@@ -111,40 +111,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             }
         }
 
-        private TestServer GetTestServer(Func<HttpContext, Task> callback)
+        private async Task<TestServer> GetTestServer(Func<HttpContext, Task> callback)
         {
             // The custom middleware relies on the host starting the request (thus invoking OnStarting),
             // so we need to create a test host to flow through the entire pipeline.
-            var builder = new WebHostBuilder()
+            var builder = new HostBuilder()
+                .ConfigureWebHostDefaults(webHostBuilder =>
+                {
+                    webHostBuilder.UseTestServer();
+                    webHostBuilder.Configure(app =>
+                    {
+                        app.Use(async (httpContext, next) =>
+                        {
+                            try
+                            {
+                                await next();
+                            }
+                            catch (InvalidOperationException)
+                            {
+                                // The TestServer cannot handle exceptions after the
+                                // host has started.
+                            }
+                        });
+
+                        app.UseMiddleware<ExceptionMiddleware>();
+
+                        app.Run((context) =>
+                        {
+                            return callback(context);
+                        });
+                    });
+                })
                 .ConfigureLogging(b =>
                 {
                     b.AddProvider(_loggerProvider);
                     b.SetMinimumLevel(LogLevel.Debug);
-                })
-                .Configure(app =>
-                {
-                    app.Use(async (httpContext, next) =>
-                    {
-                        try
-                        {
-                            await next();
-                        }
-                        catch (InvalidOperationException)
-                        {
-                            // The TestServer cannot handle exceptions after the
-                            // host has started.
-                        }
-                    });
-
-                    app.UseMiddleware<ExceptionMiddleware>();
-
-                    app.Run((context) =>
-                    {
-                        return callback(context);
-                    });
                 });
 
-            return new TestServer(builder);
+            var host = builder.Build();
+
+            await host.StartAsync();
+
+            return host.GetTestServer();
         }
     }
 }

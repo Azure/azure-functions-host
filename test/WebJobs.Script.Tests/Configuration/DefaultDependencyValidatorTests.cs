@@ -1,14 +1,11 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -19,6 +16,13 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
@@ -76,32 +80,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             LogMessage invalidServicesMessage = null;
             TestLoggerProvider loggerProvider = new();
 
-            var builder = Program.CreateWebHostBuilder(null)
-                    .ConfigureLogging(b =>
+            var builder = new HostBuilder().
+                ConfigureWebHostDefaults(webhostBuilder =>
+                {
+                    webhostBuilder.Configure(app =>
                     {
-                        b.AddProvider(loggerProvider);
-                    })
-                    .ConfigureServices(s =>
-                    {
-                        string uniqueTestRootPath = Path.Combine(Path.GetTempPath(), "FunctionsTest", "DependencyValidatorTests");
-                        s.PostConfigureAll<ScriptApplicationHostOptions>(o =>
+                        app.Run(async context =>
                         {
-                            o.IsSelfHost = true;
-                            o.LogPath = Path.Combine(uniqueTestRootPath, "logs");
-                            o.SecretsPath = Path.Combine(uniqueTestRootPath, "secrets");
-                            o.ScriptPath = uniqueTestRootPath;
+                            await context.Response.WriteAsync("Hello world");
                         });
+                    });
 
-                        configureWebHost?.Invoke(s);
-                    })
-                    .ConfigureScriptHostLogging(b =>
+                    webhostBuilder.ConfigureLogging(b =>
                     {
                         b.AddProvider(loggerProvider);
-                    })
-                    .ConfigureScriptHostServices(b =>
-                    {
-                        configureJobHost?.Invoke(b);
                     });
+
+                    webhostBuilder.UseTestServer();
+                })
+                .ConfigureServices(s =>
+                {
+                    string uniqueTestRootPath = Path.Combine(Path.GetTempPath(), "FunctionsTest", "DependencyValidatorTests");
+                    s.PostConfigureAll<ScriptApplicationHostOptions>(o =>
+                    {
+                        o.IsSelfHost = true;
+                        o.LogPath = Path.Combine(uniqueTestRootPath, "logs");
+                        o.SecretsPath = Path.Combine(uniqueTestRootPath, "secrets");
+                        o.ScriptPath = uniqueTestRootPath;
+                    });
+
+                    configureWebHost?.Invoke(s);
+                })
+                .ConfigureScriptHostLogging(b =>
+                {
+                    b.AddProvider(loggerProvider);
+                })
+                .ConfigureScriptHostServices(b =>
+                {
+                    configureJobHost?.Invoke(b);
+                });
 
             using (var host = builder.Build())
             {
