@@ -41,29 +41,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment(settings);
             var loggerProvider = new TestLoggerProvider();
 
-            var builder = Program.CreateWebHostBuilder()
-                .ConfigureLogging(b =>
+            var builder = new HostBuilder()
+                .ConfigureWebHost(webhostBuilder =>
                 {
-                    b.AddProvider(loggerProvider);
-                })
-                .ConfigureAppConfiguration(c =>
-                {
-                    c.AddInMemoryCollection(new Dictionary<string, string>
+                    webhostBuilder.ConfigureLogging(b =>
                     {
-                        { scriptRootConfigPath, specializedScriptRoot }
-                    });
-                })
-                .ConfigureServices((bc, s) =>
-                {
-                    s.AddSingleton<IEnvironment>(environment);
-
-                    // Simulate the environment becoming specialized after these options have been 
-                    // initialized with standby paths.
-                    s.AddOptions<ScriptApplicationHostOptions>()
-                        .PostConfigure<IEnvironment>((o, e) =>
+                        b.AddProvider(loggerProvider);
+                    })
+                    .ConfigureAppConfiguration(c =>
+                    {
+                        c.AddInMemoryCollection(new Dictionary<string, string>
                         {
-                            Specialize(e);
+                        { scriptRootConfigPath, specializedScriptRoot }
                         });
+                    })
+                    .ConfigureServices((bc, s) =>
+                    {
+                        s.AddSingleton<IEnvironment>(environment);
+
+                        // Simulate the environment becoming specialized after these options have been 
+                        // initialized with standby paths.
+                        s.AddOptions<ScriptApplicationHostOptions>()
+                            .PostConfigure<IEnvironment>((o, e) =>
+                            {
+                                Specialize(e);
+                            });
+                    });
                 })
                 .ConfigureScriptHostServices(s =>
                 {
@@ -72,17 +75,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         // Only load the function we care about, but not during standby
                         if (o.RootScriptPath != standbyPath)
                         {
-                            o.Functions = new[]
-                            {
+                            o.Functions =
+                            [
                                 "HttpTrigger-Dynamic"
-                            };
+                            ];
                         }
                     });
                 });
 
-            // TODO: https://github.com/Azure/azure-functions-host/issues/4876
-            var server = new TestServer(builder);
-            var client = server.CreateClient();
+            var host = builder.Build();
+            await host.StartAsync();
+            var client = host.GetTestClient();
 
             // Force the specialization middleware to run       
             HttpResponseMessage response = await InvokeFunction(client);
@@ -93,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("Starting host specialization", log);
 
             // Make sure this was registered.
-            var hostedServices = server.Host.Services.GetServices<IHostedService>();
+            var hostedServices = host.Services.GetServices<IHostedService>();
             Assert.Contains(hostedServices, p => p is StandbyInitializationService);
         }
 
