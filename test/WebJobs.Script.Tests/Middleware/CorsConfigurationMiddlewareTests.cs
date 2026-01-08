@@ -83,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                             await context.Response.WriteAsync("Hello world");
                         });
                     });
+                    webHostBuilder.UseTestServer();
                 })
                 .ConfigureServices(services =>
                 {
@@ -133,29 +134,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 SupportCredentials = true,
             };
 
-            var builder = new WebHostBuilder()
-                .Configure(app =>
+            var builder = new HostBuilder().ConfigureWebHostDefaults(webHostBuilder =>
+            {
+                webHostBuilder.Configure(app =>
                 {
                     app.UseMiddleware<JobHostPipelineMiddleware>();
                     app.Run(async context =>
                     {
                         await context.Response.WriteAsync("Hello world");
                     });
-                })
-                .ConfigureServices(services =>
-                {
-                    services.AddTransient<IEnvironment>(factory => testEnv);
-                    services.ConfigureOptions<CorsOptionsSetup>();
-                    services.AddTransient<IConfigureOptions<HostCorsOptions>>(factory => new TestHostCorsOptionsSetup(hostCorsOptions));
-                    services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
-                    services.AddCors();
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
-                    services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
                 });
 
-            var server = new TestServer(builder);
+                webHostBuilder.UseTestServer();
+            });
 
-            var client = server.CreateClient();
+            builder.ConfigureServices(services =>
+            {
+                services.AddTransient<IEnvironment>(factory => testEnv);
+                services.ConfigureOptions<CorsOptionsSetup>();
+                services.AddTransient<IConfigureOptions<HostCorsOptions>>(factory => new TestHostCorsOptionsSetup(hostCorsOptions));
+                services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
+                services.AddCors();
+                services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
+                services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
+            });
+
+            var host = builder.Build();
+
+            await host.StartAsync();
+
+            var client = host.GetTestClient();
             client.DefaultRequestHeaders.Add("Origin", badOrigin);
 
             var response = await client.GetAsync(string.Empty);
@@ -189,29 +197,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 SupportCredentials = true,
             };
 
-            var builder = new WebHostBuilder()
-                .Configure(app =>
+            var builder = new HostBuilder().ConfigureWebHostDefaults(webHostBuilder =>
                 {
-                    app.UseMiddleware<JobHostPipelineMiddleware>();
-                    app.Run(async context =>
+                    webHostBuilder.Configure(app =>
                     {
-                        await context.Response.WriteAsync("Hello world");
+                        app.UseMiddleware<JobHostPipelineMiddleware>();
+                        app.Run(async context =>
+                        {
+                            await context.Response.WriteAsync("Hello world");
+                        });
                     });
-                })
-                .ConfigureServices(services =>
-                {
-                    services.AddTransient<IEnvironment>(factory => testEnv);
-                    services.ConfigureOptions<CorsOptionsSetup>();
-                    services.AddTransient<IConfigureOptions<HostCorsOptions>>(factory => new TestHostCorsOptionsSetup(hostCorsOptions));
-                    services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
-                    services.AddCors();
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
-                    services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
+                    webHostBuilder.UseTestServer();
                 });
 
-            var server = new TestServer(builder);
+            builder.ConfigureServices(services =>
+            {
+                services.AddTransient<IEnvironment>(factory => testEnv);
+                services.ConfigureOptions<CorsOptionsSetup>();
+                services.AddTransient<IConfigureOptions<HostCorsOptions>>(factory => new TestHostCorsOptionsSetup(hostCorsOptions));
+                services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
+                services.AddCors();
+                services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
+                services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
+            });
 
-            var client = server.CreateClient();
+            var host = builder.Build();
+
+            await host.StartAsync();
+
+            var client = host.GetTestClient();
             client.DefaultRequestHeaders.Add("Origin", testOrigin);
             client.DefaultRequestHeaders.Add("Access-Control-Request-Method", HttpMethod.Post.ToString());
 
