@@ -40,6 +40,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             result.Status.Should().Be(expected);
             result.Exception.Should().BeNull();
             result.Description.Should().Be(description);
+
+            if (expected == HealthStatus.Healthy)
+            {
+                result.Data.Should().BeNullOrEmpty();
+            }
+            else
+            {
+                result.Data.Should().Contain(nameof(HealthCheckData.Area), HealthCheckData.Areas.Lifecycle);
+                result.Data.Should().Contain(nameof(HealthCheckData.ErrorCode), state.ToString());
+            }
         }
 
         private static IHostApplicationLifetime CreateLifetime(
