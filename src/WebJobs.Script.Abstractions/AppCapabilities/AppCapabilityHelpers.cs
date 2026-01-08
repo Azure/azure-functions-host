@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     /// <summary>
     /// Shared helper methods for capability management.
     /// </summary>
-    internal static class AppCapabilityHelpers
+    public static class AppCapabilityHelpers
     {
         /// <summary>
         /// Gets the precedence value for a capability source.
@@ -52,9 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             }
 
             var merged = new Dictionary<string, object?>(existing, StringComparer.OrdinalIgnoreCase);
-            foreach (var (k, v) in incoming)
+            foreach (var item in incoming)
             {
-                merged[k] = v;
+                merged[item.Key] = item.Value;
             }
 
             return merged;

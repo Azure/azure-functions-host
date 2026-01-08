@@ -6,6 +6,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     /// <summary>
     /// Defines precedence values for known capability sources.
     /// Higher values indicate higher precedence.
+    /// TODO: FINALIZE ORDER OF PRECEDENCE - THIS WAS JUST RANDOMLY DONE FOR POC
     /// </summary>
     public static class CapabilitySourcePrecedence
     {

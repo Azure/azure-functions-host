@@ -36,7 +36,6 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Timers.Storage" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
     <PackageReference Include="Microsoft.Extensions.Azure" />
@@ -53,6 +52,10 @@
     <PackageReference Include="System.Reactive.Linq" />
     <PackageReference Include="System.Reactive.Core" />
     <PackageReference Include="Yarp.ReverseProxy" />
+  </ItemGroup>
+
+  <ItemGroup>
+      <ProjectReference Include="..\WebJobs.Script.Abstractions\WebJobs.Script.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
