@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -29,6 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         public async Task Invoke(HttpContext context)
         {
             var requestId = SetRequestId(context.Request);
+
+            // Log incoming request headers
+            var headers = string.Join(", ", context.Request.Headers.Select(h => $"{h.Key}={h.Value}"));
+            _logger.LogInformation("Request headers: {Headers}", headers);
 
             var sw = ValueStopwatch.StartNew();
             string userAgent = context.Request.GetHeaderValueOrDefault("User-Agent");

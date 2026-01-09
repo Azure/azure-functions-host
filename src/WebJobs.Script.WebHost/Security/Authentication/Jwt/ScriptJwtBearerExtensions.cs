@@ -43,18 +43,28 @@ namespace Microsoft.Extensions.DependencyInjection
             {
                 OnMessageReceived = c =>
                 {
+                    var loggerFactory = c.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
+                    var logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostAuthentication);
+                    logger.LogInformation("JWT OnMessageReceived: Checking for bearer token in request headers");
+
                     // By default, tokens are passed via the standard Authorization Bearer header. However we also support
                     // passing tokens via the x-ms-site-token header.
                     if (c.Request.Headers.TryGetValue(ScriptConstants.SiteTokenHeaderName, out StringValues values))
                     {
                         // the token we set here will be the one used - Authorization header won't be checked.
                         c.Token = values.FirstOrDefault();
+                        logger.LogInformation("JWT OnMessageReceived: Found token in x-ms-site-token header");
+                    }
+                    else if (c.Request.Headers.ContainsKey("Authorization"))
+                    {
+                        logger.LogInformation("JWT OnMessageReceived: Found Authorization header");
                     }
 
                     // Temporary: Tactical fix to address specialization issues. This should likely be moved to a token validator
                     // TODO: DI (FACAVAL) This will be fixed once the permanent fix is in place
                     if (_specialized == 0 && !SystemEnvironment.Instance.IsPlaceholderModeEnabled() && Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
                     {
+                        logger.LogInformation("JWT OnMessageReceived: Creating token validation parameters after specialization");
                         options.TokenValidationParameters = CreateTokenValidationParameters();
                     }
 
@@ -62,6 +72,10 @@ namespace Microsoft.Extensions.DependencyInjection
                 },
                 OnTokenValidated = c =>
                 {
+                    var loggerFactory = c.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
+                    var logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostAuthentication);
+                    logger.LogInformation("JWT OnTokenValidated: Token successfully validated. Issuer={Issuer}", c.SecurityToken.Issuer);
+
                     var claims = new List<Claim>
                     {
                         new Claim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Admin.ToString())
@@ -79,6 +93,8 @@ namespace Microsoft.Extensions.DependencyInjection
 
                     c.Principal.AddIdentity(new ClaimsIdentity(claims));
                     c.Success();
+
+                    logger.LogInformation("JWT OnTokenValidated: Added {ClaimCount} claims to principal", claims.Count);
 
                     return Task.CompletedTask;
                 },
@@ -140,7 +156,9 @@ namespace Microsoft.Extensions.DependencyInjection
 
         public static TokenValidationParameters CreateTokenValidationParameters()
         {
+            System.Diagnostics.Trace.WriteLine($"[{ScriptConstants.LogCategoryHostAuthentication}] CreateTokenValidationParameters: Starting token validation parameter creation");
             var signingKeys = SecretsUtility.GetTokenIssuerSigningKeys();
+            System.Diagnostics.Trace.WriteLine($"[{ScriptConstants.LogCategoryHostAuthentication}] CreateTokenValidationParameters: Retrieved {signingKeys.Length} signing keys");
 
             // There are two separate CodeQL alerts for the same issue. The double comment on same line is intentional.
             // CodeQL [SM04555] this handler does not verify AAD tokens. It verifies tokens issued by the platform. // CodeQL [SM04554] this handler does not verify AAD tokens. It verifies tokens issued by the platform.
@@ -165,27 +183,33 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static string IssuerValidator(string issuer, SecurityToken securityToken, TokenValidationParameters validationParameters)
         {
+            System.Diagnostics.Trace.WriteLine($"[{ScriptConstants.LogCategoryHostAuthentication}] IssuerValidator: Validating issuer '{issuer}'");
             if (!validationParameters.ValidIssuers.Any(p => string.Equals(issuer, p, StringComparison.OrdinalIgnoreCase)))
             {
+                System.Diagnostics.Trace.WriteLine($"[{ScriptConstants.LogCategoryHostAuthentication}] IssuerValidator: Issuer validation FAILED for '{issuer}'");
                 throw new SecurityTokenInvalidIssuerException("IDX10205: Issuer validation failed.")
                 {
                     InvalidIssuer = issuer,
                 };
             }
 
+            System.Diagnostics.Trace.WriteLine($"[{ScriptConstants.LogCategoryHostAuthentication}] IssuerValidator: Issuer validation SUCCEEDED");
             return issuer;
         }
 
         private static bool AudienceValidator(IEnumerable<string> audiences, SecurityToken securityToken, TokenValidationParameters validationParameters)
         {
+            System.Diagnostics.Trace.WriteLine($"[{ScriptConstants.LogCategoryHostAuthentication}] AudienceValidator: Validating {audiences.Count()} audience(s)");
             foreach (string audience in audiences)
             {
                 if (validationParameters.ValidAudiences.Any(p => string.Equals(audience, p, StringComparison.OrdinalIgnoreCase)))
                 {
+                    System.Diagnostics.Trace.WriteLine($"[{ScriptConstants.LogCategoryHostAuthentication}] AudienceValidator: Audience validation SUCCEEDED for '{audience}'");
                     return true;
                 }
             }
 
+            System.Diagnostics.Trace.WriteLine($"[{ScriptConstants.LogCategoryHostAuthentication}] AudienceValidator: Audience validation FAILED");
             return false;
         }
 
