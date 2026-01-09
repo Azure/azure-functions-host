@@ -96,9 +96,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task RunWatcher()
         {
+            // watch API requests terminate after 4 minutes
             while (!_disposed)
             {
-                // watch API requests terminate after 4 minutes
                 await RunWatcherInternal();
             }
         }
@@ -125,9 +125,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         {
                             while (!_disposed)
                             {
-                                if (await reader.ReadLineAsync() is null) // Read the line-json update
+                                // Have we reached the end of the stream?
+                                if (await reader.ReadLineAsync() is null)
                                 {
-                                    // Reached the end of the stream
                                     break;
                                 }
 

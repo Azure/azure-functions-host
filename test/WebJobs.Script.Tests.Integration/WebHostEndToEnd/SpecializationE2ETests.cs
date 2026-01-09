@@ -855,14 +855,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestDataFunction");
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var client = testServer.CreateClient();
+            var client = host.GetTestClient();
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
             // Validate that the channel is set up with native worker
-            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var webChannelManager = host.Services.GetService<IWebHostRpcWorkerChannelManager>();
 
             var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
             Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
@@ -897,9 +897,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestDataFunction");
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var client = testServer.CreateClient();
+            var client = host.GetTestClient();
+
             client.DefaultRequestHeaders.Add("Accept-Encoding", acceptEncodingRequestHeaderValue);
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
@@ -907,7 +908,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Null(value);
 
             // Validate that the channel is set up with native worker
-            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var webChannelManager = host.Services.GetService<IWebHostRpcWorkerChannelManager>();
             var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
 
             // Ensure we are in placeholder mode
@@ -939,9 +940,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(path, _loggerProvider);
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var standbyManager = testServer.Services.GetService<IStandbyManager>();
+            var standbyManager = host.Services.GetService<IStandbyManager>();
             Assert.NotNull(standbyManager);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
@@ -952,7 +953,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await standbyManager.SpecializeHostAsync();
 
             // Assert: Verify that the host has specialized
-            var scriptHostManager = testServer.Services.GetService<IScriptHostManager>();
+            var scriptHostManager = host.Services.GetService<IScriptHostManager>();
             Assert.NotNull(scriptHostManager);
             Assert.Equal(ScriptHostState.Running, scriptHostManager.State);
 
@@ -985,9 +986,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 services.Configure<FunctionsHostingConfigOptions>(o => o.Features["WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION"] = "node");
             });
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var standbyManager = testServer.Services.GetService<IStandbyManager>();
+            var standbyManager = host.Services.GetService<IStandbyManager>();
             Assert.NotNull(standbyManager);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
@@ -1012,7 +1013,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await standbyManager.SpecializeHostAsync();
 
             // Assert: Verify that the host has specialized
-            var scriptHostManager = testServer.Services.GetService<IScriptHostManager>();
+            var scriptHostManager = host.Services.GetService<IScriptHostManager>();
             Assert.NotNull(scriptHostManager);
             Assert.Equal(ScriptHostState.Running, scriptHostManager.State);
 
@@ -1086,9 +1087,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 c.AddInMemoryCollection(inMemorySettings);
             });
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var standbyManager = testServer.Services.GetService<IStandbyManager>();
+            var standbyManager = host.Services.GetService<IStandbyManager>();
             Assert.NotNull(standbyManager);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
@@ -1116,16 +1117,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // specialization
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestFunction");
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var client = testServer.CreateClient();
+            var client = host.GetTestClient();
+
             client.Timeout = TimeSpan.FromSeconds(10);
 
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
             // Validate that the channel is set up with native worker
-            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var webChannelManager = host.Services.GetService<IWebHostRpcWorkerChannelManager>();
 
             var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
             Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
@@ -1250,9 +1252,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestDataFunction", "QueueFunction");
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var client = testServer.CreateClient();
+            var client = host.GetTestClient();
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
@@ -1263,7 +1265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
 
-            var scriptHostManager = testServer.Services.GetService<IScriptHostManager>();
+            var scriptHostManager = host.Services.GetService<IScriptHostManager>();
 
             scriptHostManager.ActiveHostChanged += (object sender, ActiveHostChangedEventArgs e) =>
             {
@@ -1296,7 +1298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return completed > 10;
             });
 
-            await testServer.Host.StopAsync();
+            await host.StopAsync();
 
             keepRunning = false;
             await messageTask;
@@ -1327,13 +1329,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestDataFunction", "QueueFunction");
             var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var client = testServer.CreateClient();
+            var client = host.GetTestClient();
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
-            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var webChannelManager = host.Services.GetService<IWebHostRpcWorkerChannelManager>();
             var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
             var process = placeholderChannel.WorkerProcess as WorkerProcess;
             process.BuildAndLogConsoleLog("Fake console out from placeholder", LogLevel.Information);
@@ -1368,14 +1370,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // remove WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, null);
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var client = testServer.CreateClient();
+            var client = host.GetTestClient();
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
             // Validate that the channel is set up with native worker
-            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var webChannelManager = host.Services.GetService<IWebHostRpcWorkerChannelManager>();
 
             var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
             Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
@@ -1456,42 +1458,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Debug);
                         b.AddFilter<TestLoggerProvider>("Worker", LogLevel.Debug);
                         b.AddFilter<TestLoggerProvider>("Host.LanguageWorkerConfig", LogLevel.Trace);
-                    })
-                    .ConfigureAppConfiguration(c =>
-                    {
-                        c.AddInMemoryCollection(new Dictionary<string, string>
+                    });
+                })
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddInMemoryCollection(new Dictionary<string, string>
                         {
                         { _scriptRootConfigPath, _specializedScriptRoot }
                         });
-                    })
-                    .ConfigureServices((bc, s) =>
+                })
+                .ConfigureServices((bc, s) =>
+                {
+                    s.AddSingleton<IEnvironment>(_environment);
+
+                    // Ensure that we don't have a race between the timer and the 
+                    // request for triggering specialization.
+                    s.AddSingleton<IStandbyManager, InfiniteTimerStandbyManager>();
+
+                    s.AddSingleton<IScriptHostBuilder, PausingScriptHostBuilder>();
+                })
+                .ConfigureScriptHostServices(s =>
+                {
+                    s.AddLogging(logging =>
                     {
-                        s.AddSingleton<IEnvironment>(_environment);
-
-                        // Ensure that we don't have a race between the timer and the 
-                        // request for triggering specialization.
-                        s.AddSingleton<IStandbyManager, InfiniteTimerStandbyManager>();
-
-                        s.AddSingleton<IScriptHostBuilder, PausingScriptHostBuilder>();
-                    })
-                    .ConfigureScriptHostServices(s =>
-                    {
-                        s.AddLogging(logging =>
-                        {
-                            logging.AddProvider(loggerProvider);
-                        });
-
-                        s.PostConfigure<ScriptJobHostOptions>(o =>
-                        {
-                            // Only load the function we care about, but not during standby
-                            if (o.RootScriptPath != _standbyPath)
-                            {
-                                o.Functions = functions;
-                            }
-                        });
-
-                        _customizeScriptHostServices?.Invoke(s);
+                        logging.AddProvider(loggerProvider);
                     });
+
+                    s.PostConfigure<ScriptJobHostOptions>(o =>
+                    {
+                        // Only load the function we care about, but not during standby
+                        if (o.RootScriptPath != _standbyPath)
+                        {
+                            o.Functions = functions;
+                        }
+                    });
+
+                    _customizeScriptHostServices?.Invoke(s);
                 });
 
             return builder;
