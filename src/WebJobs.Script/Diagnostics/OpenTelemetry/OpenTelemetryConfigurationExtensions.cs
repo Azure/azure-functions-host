@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+#nullable enable
+
 using System;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
@@ -52,6 +54,89 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
             // Azure SDK instrumentation is experimental.
             AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
+        }
+
+        internal static bool HttpFilter(HttpContext context)
+        {
+            if (context is null)
+            {
+                return true;
+            }
+
+            // Exclude localhost calls
+            if (context.Request.Host.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // Exclude POST /admin/host/synctriggers
+            if (string.Equals(context.Request.Method, HttpMethods.Post, StringComparison.OrdinalIgnoreCase)
+                && context.Request.Path.Equals("/admin/host/synctriggers", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // Exclude GET /admin/warmup
+            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
+                && context.Request.Path.Equals("/admin/warmup", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // Exclude GET /admin/host/status
+            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
+                && context.Request.Path.Equals("/admin/host/status", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // Exclude GET /admin/health and its sub-paths
+            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
+                && context.Request.Path.StartsWithSegments("/admin/health", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // Exclude GET /admin/ping
+            if (string.Equals(context.Request.Method, HttpMethods.Get, StringComparison.OrdinalIgnoreCase)
+                && context.Request.Path.Equals("/admin/host/ping", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // Allow everything else
+            return true;
+        }
+
+        internal static void EnrichHttpResponse(Activity? activity, HttpResponse httpResponse)
+        {
+            if (activity is null || httpResponse is null)
+            {
+                return;
+            }
+
+            activity.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.HttpTriggerType);
+
+            var routingFeature = httpResponse.HttpContext.Features.Get<IRoutingFeature>();
+            if (routingFeature is null)
+            {
+                return;
+            }
+
+            var template = routingFeature.RouteData?.Routers.FirstOrDefault(r => r is Route) as Route;
+
+            var routeTemplate = template?.RouteTemplate;
+
+            if (string.IsNullOrEmpty(routeTemplate))
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(template?.RouteTemplate))
+            {
+                activity.DisplayName = $"{activity.DisplayName} {routeTemplate}";
+                activity.AddTag(ResourceSemanticConventions.HttpRoute, routeTemplate);
+            }
         }
 
         private static IOpenTelemetryBuilder ConfigureExporters(this IOpenTelemetryBuilder builder, IConfiguration configuration, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TelemetryMode telemetryMode)
@@ -106,40 +191,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                     .AddSource("DurableTask.*")
                     .AddAspNetCoreInstrumentation(o =>
                     {
-                        o.EnrichWithHttpResponse = (activity, httpResponse) =>
-                        {
-                            if (Activity.Current is not null)
-                            {
-                                Activity.Current.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.HttpTriggerType);
-
-                                var routingFeature = httpResponse.HttpContext.Features.Get<IRoutingFeature>();
-                                if (routingFeature is null)
-                                {
-                                    return;
-                                }
-
-                                var template = routingFeature.RouteData.Routers.FirstOrDefault(r => r is Route) as Route;
-                                Activity.Current.DisplayName = $"{Activity.Current.DisplayName} {template?.RouteTemplate}";
-                                Activity.Current.AddTag(ResourceSemanticConventions.HttpRoute, template?.RouteTemplate);
-                            }
-                        };
-                        o.Filter = context =>
-                        {
-                            // Exclude localhost calls
-                            if (context.Request.Host.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
-                            {
-                                return false;
-                            }
-
-                            // Skip every request under /admin
-                            if (context.Request.Path.StartsWithSegments("/admin", StringComparison.OrdinalIgnoreCase))
-                            {
-                                return false;
-                            }
-
-                            // Allow everything else
-                            return true;
-                        };
+                        o.EnrichWithHttpResponse = EnrichHttpResponse;
+                        o.Filter = HttpFilter;
                     })
                     .AddProcessor(ActivitySanitizingProcessor.Instance);
             });
