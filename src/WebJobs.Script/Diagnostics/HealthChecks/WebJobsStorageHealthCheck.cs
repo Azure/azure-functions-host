@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             }
             catch (Exception ex) when (!ex.IsFatal())
             {
-                HealthCheckData data = GetData(ex, "connectivity");
+                HealthCheckData data = GetData(ex, HealthCheckData.Areas.Connectivity);
                 return HealthCheckResult.Unhealthy($"Unable to access {ConfigSection}", ex, data);
             }
         }
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             catch (Exception ex) when (!ex.IsFatal())
             {
                 client = null;
-                HealthCheckData data = GetData(ex, "configuration");
+                HealthCheckData data = GetData(ex, HealthCheckData.Areas.Configuration);
                 result = HealthCheckResult.Unhealthy($"Unable to create client for {ConfigSection}", ex, data);
                 return false;
             }

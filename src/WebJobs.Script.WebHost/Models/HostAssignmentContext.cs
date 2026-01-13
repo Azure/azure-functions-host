@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -23,6 +23,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         [JsonProperty("lastModifiedTime")]
         public DateTime LastModifiedTime { get; set; }
+
+        [JsonProperty("siteUpdateId")]
+        public long SiteUpdateId { get; set; }
 
         [JsonProperty("MSISpecializationPayload")]
         public MSIContext MSIContext { get; set; }
@@ -164,6 +167,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                 }
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.EasyAuthClientId, EasyAuthSettings.SiteAuthClientId);
             }
+
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsSiteUpdateId, SiteUpdateId.ToString());
         }
     }
 }
