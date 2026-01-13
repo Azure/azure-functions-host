@@ -110,6 +110,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
             return defaultValue;
         }
+
+        public static class Areas
+        {
+            public const string Configuration = "configuration";
+            public const string Connectivity = "connectivity";
+            public const string Lifecycle = "lifecycle";
+        }
     }
 
     // Partial class down here to separate IReadOnlyDictionary implementation details.

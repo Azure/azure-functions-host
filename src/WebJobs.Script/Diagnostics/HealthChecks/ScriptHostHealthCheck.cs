@@ -20,22 +20,22 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             Task.FromResult(HealthCheckResult.Healthy());
 
         private static readonly Task<HealthCheckResult> _unhealthyNoScriptHost =
-            Task.FromResult(HealthCheckResult.Unhealthy("No script host available"));
+            CreateUnhealthyResult("No script host available", "NoScriptHost");
 
         private static readonly Task<HealthCheckResult> _unhealthyNotStarted =
-            Task.FromResult(HealthCheckResult.Unhealthy("Script host not started"));
+            CreateUnhealthyResult("Script host not started", "Starting");
 
         private static readonly Task<HealthCheckResult> _unhealthyStopping =
-            Task.FromResult(HealthCheckResult.Unhealthy("Script host stopping"));
+            CreateUnhealthyResult("Script host stopping", "Stopping");
 
         private static readonly Task<HealthCheckResult> _unhealthyStopped =
-            Task.FromResult(HealthCheckResult.Unhealthy("Script host stopped"));
+            CreateUnhealthyResult("Script host stopped", "Stopped");
 
         private static readonly Task<HealthCheckResult> _unhealthyOffline =
-            Task.FromResult(HealthCheckResult.Unhealthy("Script host offline"));
+            CreateUnhealthyResult("Script host offline", "Offline");
 
         private static readonly Task<HealthCheckResult> _unhealthyUnknown =
-            Task.FromResult(HealthCheckResult.Unhealthy("Script host in unknown state"));
+            CreateUnhealthyResult("Script host in unknown state", "Unknown");
 
         /// <inheritdoc />
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
@@ -52,6 +52,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             };
 
         private static Task<HealthCheckResult> UnhealthyError(Exception ex)
-            => Task.FromResult(HealthCheckResult.Unhealthy($"Script host in error state: {Environment.NewLine}{ex.Message}", ex));
+        {
+            HealthCheckData data = new() { Area = HealthCheckData.Areas.Lifecycle, ErrorCode = "Faulted" };
+            return Task.FromResult(HealthCheckResult.Unhealthy(
+                $"Script host in error state: {Environment.NewLine}{ex.Message}", ex, data));
+        }
+
+        private static Task<HealthCheckResult> CreateUnhealthyResult(string reason, string errorCode)
+        {
+            return Task.FromResult(HealthCheckResult.Unhealthy(
+                reason, data: new HealthCheckData() { Area = HealthCheckData.Areas.Lifecycle, ErrorCode = errorCode }));
+        }
     }
 }
