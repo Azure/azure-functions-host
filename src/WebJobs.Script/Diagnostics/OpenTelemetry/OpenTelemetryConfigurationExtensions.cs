@@ -1,8 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-#nullable enable
-
 using System;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
@@ -108,13 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             return true;
         }
 
-        internal static void EnrichHttpResponse(Activity? activity, HttpResponse httpResponse)
+        internal static void EnrichHttpResponse(Activity activity, HttpResponse httpResponse)
         {
-            if (activity is null || httpResponse is null)
-            {
-                return;
-            }
-
             activity.AddTag(ResourceSemanticConventions.FaaSTrigger, OpenTelemetryConstants.HttpTriggerType);
 
             var routingFeature = httpResponse.HttpContext.Features.Get<IRoutingFeature>();

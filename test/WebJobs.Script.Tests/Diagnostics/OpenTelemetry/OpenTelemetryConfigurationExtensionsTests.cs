@@ -344,28 +344,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
         }
 
         [Fact]
-        public void EnrichHttpResponse_DoesNothing_When_Activity_Is_Null()
-        {
-            var ctx = new DefaultHttpContext();
-
-            OpenTelemetryConfigurationExtensions.EnrichHttpResponse(null, ctx.Response);
-
-            // Passes if no exception; no further assertion required
-        }
-
-        [Fact]
-        public void EnrichHttpResponse_DoesNothing_When_Response_Is_Null()
-        {
-            using var activity = new Activity("HTTP GET");
-            activity.Start();
-
-            OpenTelemetryConfigurationExtensions.EnrichHttpResponse(activity, null);
-
-            Assert.Empty(activity.Tags);
-            Assert.Equal("HTTP GET", activity.DisplayName);
-        }
-
-        [Fact]
         public void EnrichHttpResponse_AddsOnlyFaasTrigger_When_RoutingFeature_Is_Null()
         {
             using var activity = new Activity("HTTP GET");
