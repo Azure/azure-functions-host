@@ -10,19 +10,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost;
 
 internal static class ActivityExtensions
 {
-    private static readonly ActivitySource _source = new(OpenTelemetryConstants.HostActivitySourceName, OpenTelemetryConstants.HostActivitySourceVersion);
+    private static readonly ActivitySource _source = new(OpenTelemetryConstants.ActivitySourceNames.Host, OpenTelemetryConstants.HostActivitySourceVersion);
 
     /// <summary>
-    /// Starts a specialization activity (kind: Internal) using the parent Activity's context.
-    /// If the parent activity is null, the new activity becomes a root span.
+    /// Starts a specialization activity (kind: Internal).
+    /// If the Activity.Current is null, the new activity becomes a root span.
     /// </summary>
-    /// <param name="parentActivity">The parent Activity whose context should be used.</param>
     /// <returns>The started Activity, or null if the activity is not sampled.</returns>
-    internal static Activity? StartSpecializationActivity(this Activity? parentActivity)
+    internal static Activity? StartSpecializationActivity()
     {
-        var parentContext = parentActivity?.Context ?? default;
-
-        return _source.StartActivity(OpenTelemetryConstants.SpecializationOperationName, ActivityKind.Internal, parentContext);
+        return _source.StartActivity(OpenTelemetryConstants.SpecializationOperationName, ActivityKind.Internal);
     }
 
     /// <summary>

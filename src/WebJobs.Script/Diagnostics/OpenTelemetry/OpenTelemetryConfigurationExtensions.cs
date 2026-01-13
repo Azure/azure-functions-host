@@ -96,15 +96,20 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         {
             return builder.WithTracing(builder =>
             {
+                ReadOnlySpan<string> sources =
+                [
+                    OpenTelemetryConstants.ActivitySourceNames.ServiceBusProcessor,
+                    OpenTelemetryConstants.ActivitySourceNames.EventHubsProcessor,
+                    OpenTelemetryConstants.ActivitySourceNames.Mcp,
+                    OpenTelemetryConstants.ActivitySourceNames.WebJobsExtensions,
+                    OpenTelemetryConstants.ActivitySourceNames.WebJobs,
+                    OpenTelemetryConstants.ActivitySourceNames.DurableTask,
+                    OpenTelemetryConstants.ActivitySourceNames.DurableTaskWildcard,
+                    OpenTelemetryConstants.ActivitySourceNames.Host
+                ];
+
                 builder
-                    .AddSource("Azure.Messaging.ServiceBus.ServiceBusProcessor")
-                    .AddSource("Azure.Messaging.EventHubs.EventProcessor")
-                    .AddSource("Azure.Functions.Extensions.Mcp")
-                    .AddSource("Microsoft.Azure.WebJobs.Extensions.*")
-                    .AddSource("Microsoft.Azure.WebJobs")
-                    .AddSource("WebJobs.Extensions.DurableTask")
-                    .AddSource("DurableTask.*")
-                    .AddSource("Microsoft.Azure.Functions.Host")
+                    .AddSources(sources)
                     .AddAspNetCoreInstrumentation(o =>
                     {
                         o.EnrichWithHttpResponse = (activity, httpResponse) =>
@@ -247,6 +252,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             {
                 options.Credential = credential;
             }
+        }
+
+        private static TracerProviderBuilder AddSources(this TracerProviderBuilder builder, ReadOnlySpan<string> sources)
+        {
+            foreach (var source in sources)
+            {
+                builder.AddSource(source);
+            }
+            return builder;
         }
     }
 }

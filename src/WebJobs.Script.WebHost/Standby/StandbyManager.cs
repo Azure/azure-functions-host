@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             await Task.Yield();
 
             // Start a new activity for specialization
-            using var initActivity = activity.StartSpecializationActivity();
+            using var initActivity = ActivityExtensions.StartSpecializationActivity();
 
             ApplyMcpCustomHandlerSettings();
 
