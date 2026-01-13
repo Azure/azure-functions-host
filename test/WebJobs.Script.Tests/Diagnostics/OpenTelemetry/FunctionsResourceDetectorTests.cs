@@ -22,46 +22,46 @@ public class FunctionsResourceDetectorTests
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceName));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceVersion));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.ProcessId));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.AISDKPrefix));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.ServiceVersion));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.ProcessId));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.AISDKPrefix));
     }
 
     [Fact]
     public void Detect_DoesNotIncludeServiceName_WhenOtelServiceNameEnvVarIsSet()
     {
-        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ServiceNameEnvVar, "CustomServiceName");
+        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ServiceNameEnvVar, "CustomServiceName");
 
         var resource = _detector.Detect();
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceName));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
     }
 
     [Fact]
     public void Detect_DoesNotIncludeServiceName_WhenServiceNameInResourceAttributes()
     {
-        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar, "service.name=CustomService,other=value");
+        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar, "service.name=CustomService,other=value");
 
         var resource = _detector.Detect();
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceName));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
     }
 
     [Fact]
     public void Detect_DoesNotIncludeServiceName_WhenServiceNameInResourceAttributes_CaseSensitive()
     {
-        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar, "Service.Name=CustomService,other=value");
+        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar, "Service.Name=CustomService,other=value");
 
         var resource = _detector.Detect();
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceName));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class FunctionsResourceDetectorTests
 
         var resource = _detector.Detect();
 
-        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.ServiceName, StringComparison.Ordinal)).Value;
 
         Assert.Equal("MyFunctionApp", serviceName);
     }
@@ -81,7 +81,7 @@ public class FunctionsResourceDetectorTests
     {
         using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            { ResourceSemConventions.ServiceNameEnvVar, "OtelServiceName" },
+            { ResourceSemanticConventions.ServiceNameEnvVar, "OtelServiceName" },
             { EnvironmentSettingNames.AzureWebsiteName, "AzureWebsiteName" }
         });
 
@@ -89,19 +89,19 @@ public class FunctionsResourceDetectorTests
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceName));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
     }
 
     [Fact]
     public void Detect_DoesNotIncludeServiceVersion_WhenServiceVersionInResourceAttributes()
     {
-        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar, "service.version=1.0.0,other=value");
+        using var envVariables = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar, "service.version=1.0.0,other=value");
 
         var resource = _detector.Detect();
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.ServiceVersion));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.ServiceVersion));
     }
 
     [Fact]
@@ -113,8 +113,8 @@ public class FunctionsResourceDetectorTests
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.Equal(OpenTelemetryConstants.AzureCloudProviderValue, attributes[ResourceSemConventions.CloudProvider]);
-        Assert.Equal(OpenTelemetryConstants.AzurePlatformValue, attributes[ResourceSemConventions.CloudPlatform]);
+        Assert.Equal(OpenTelemetryConstants.AzureCloudProviderValue, attributes[ResourceSemanticConventions.CloudProvider]);
+        Assert.Equal(OpenTelemetryConstants.AzurePlatformValue, attributes[ResourceSemanticConventions.CloudPlatform]);
     }
 
     [Fact]
@@ -126,8 +126,8 @@ public class FunctionsResourceDetectorTests
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudProvider));
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudPlatform));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.CloudProvider));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.CloudPlatform));
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class FunctionsResourceDetectorTests
 
         var resource = _detector.Detect();
 
-        var region = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.CloudRegion, StringComparison.Ordinal)).Value;
+        var region = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.CloudRegion, StringComparison.Ordinal)).Value;
 
         Assert.Equal("eastus", region);
     }
@@ -155,7 +155,7 @@ public class FunctionsResourceDetectorTests
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudRegion));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.CloudRegion));
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class FunctionsResourceDetectorTests
 
         var resource = _detector.Detect();
 
-        var resourceId = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.CloudResourceId, StringComparison.Ordinal)).Value;
+        var resourceId = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.CloudResourceId, StringComparison.Ordinal)).Value;
 
         Assert.Equal("/subscriptions/sub-id-123/resourceGroups/my-rg/providers/Microsoft.Web/sites/MyFunctionApp", resourceId);
     }
@@ -188,7 +188,7 @@ public class FunctionsResourceDetectorTests
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudResourceId));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.CloudResourceId));
     }
 
     [Fact]
@@ -205,7 +205,7 @@ public class FunctionsResourceDetectorTests
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.CloudResourceId));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.CloudResourceId));
     }
 
     [Fact]
@@ -219,7 +219,7 @@ public class FunctionsResourceDetectorTests
 
         var resource = _detector.Detect();
 
-        var slotName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.DeploymentEnvironmentName, StringComparison.Ordinal)).Value;
+        var slotName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.DeploymentEnvironmentName, StringComparison.Ordinal)).Value;
 
         Assert.Equal("staging", slotName);
     }
@@ -233,7 +233,7 @@ public class FunctionsResourceDetectorTests
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.DeploymentEnvironmentName));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.DeploymentEnvironmentName));
     }
 
     [Fact]
@@ -242,12 +242,12 @@ public class FunctionsResourceDetectorTests
         using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
             { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" },
-            { EnvironmentSettingNames.FunctionAppVersion, "abc123" }
+            { EnvironmentSettingNames.FunctionsSiteUpdateId, "abc123" }
         });
 
         var resource = _detector.Detect();
 
-        var appVersion = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.SiteUpdateId, StringComparison.Ordinal)).Value;
+        var appVersion = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.SiteUpdateId, StringComparison.Ordinal)).Value;
 
         Assert.Equal("abc123", appVersion);
     }
@@ -261,7 +261,7 @@ public class FunctionsResourceDetectorTests
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.False(attributes.ContainsKey(ResourceSemConventions.SiteUpdateId));
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.SiteUpdateId));
     }
 
     [Fact]
@@ -273,7 +273,7 @@ public class FunctionsResourceDetectorTests
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.True(attributes.TryGetValue(ResourceSemConventions.ProcessId, out var processId));
+        Assert.True(attributes.TryGetValue(ResourceSemanticConventions.ProcessId, out var processId));
         Assert.IsType<long>(processId);
     }
 
@@ -284,7 +284,7 @@ public class FunctionsResourceDetectorTests
 
         var resource = _detector.Detect();
 
-        var sdkPrefix = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.AISDKPrefix, StringComparison.Ordinal)).Value?.ToString();
+        var sdkPrefix = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.AISDKPrefix, StringComparison.Ordinal)).Value?.ToString();
 
         Assert.NotNull(sdkPrefix);
         Assert.StartsWith($"{OpenTelemetryConstants.SDKPrefix}:", sdkPrefix, StringComparison.Ordinal);
@@ -300,38 +300,37 @@ public class FunctionsResourceDetectorTests
             { EnvironmentSettingNames.ResourceGroup, "my-rg" },
             { EnvironmentSettingNames.WebsiteOwnerName, "sub-id+my-rg-region" },
             { EnvironmentSettingNames.AzureWebsiteSlotName, "production" },
-            { EnvironmentSettingNames.FunctionAppVersion, "v1.0.0" }
+            { EnvironmentSettingNames.FunctionsSiteUpdateId, "v1.0.0" }
         });
 
         var resource = _detector.Detect();
 
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceName));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.ServiceVersion));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.ProcessId));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.AISDKPrefix));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudProvider));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudPlatform));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudRegion));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.CloudResourceId));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.DeploymentEnvironmentName));
-        Assert.True(attributes.ContainsKey(ResourceSemConventions.SiteUpdateId));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.ServiceVersion));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.ProcessId));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.AISDKPrefix));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.CloudProvider));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.CloudPlatform));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.CloudRegion));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.CloudResourceId));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.DeploymentEnvironmentName));
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.SiteUpdateId));
     }
 
     private static IDisposable SetupCleanEnvironment()
     {
         return new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            { ResourceSemConventions.ServiceNameEnvVar, null },
-            { ResourceSemConventions.ServiceVersionEnvVar, null },
-            { ResourceSemConventions.ResourceAttributeEnvVar, null },
+            { ResourceSemanticConventions.ServiceNameEnvVar, null },
+            { ResourceSemanticConventions.ResourceAttributeEnvVar, null },
             { EnvironmentSettingNames.AzureWebsiteName, null },
             { EnvironmentSettingNames.RegionName, null },
             { EnvironmentSettingNames.ResourceGroup, null },
             { EnvironmentSettingNames.WebsiteOwnerName, null },
             { EnvironmentSettingNames.AzureWebsiteSlotName, null },
-            { EnvironmentSettingNames.FunctionAppVersion, null }
+            { EnvironmentSettingNames.FunctionsSiteUpdateId, null }
         });
     }
 
@@ -340,13 +339,13 @@ public class FunctionsResourceDetectorTests
     {
         using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            { ResourceSemConventions.ServiceNameEnvVar, null },
+            { ResourceSemanticConventions.ServiceNameEnvVar, null },
             { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
         });
 
         var resource = _detector.Detect();
 
-        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.ServiceName, StringComparison.Ordinal)).Value;
 
         Assert.Equal("MyFunctionApp", serviceName);
     }
@@ -356,13 +355,13 @@ public class FunctionsResourceDetectorTests
     {
         using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            { ResourceSemConventions.ServiceNameEnvVar, string.Empty },
+            { ResourceSemanticConventions.ServiceNameEnvVar, string.Empty },
             { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
         });
 
         var resource = _detector.Detect();
 
-        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.ServiceName, StringComparison.Ordinal)).Value;
 
         Assert.Equal("MyFunctionApp", serviceName);
     }
@@ -372,13 +371,13 @@ public class FunctionsResourceDetectorTests
     {
         using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            { ResourceSemConventions.ResourceAttributeEnvVar, null },
+            { ResourceSemanticConventions.ResourceAttributeEnvVar, null },
             { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
         });
 
         var resource = _detector.Detect();
 
-        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.ServiceName, StringComparison.Ordinal)).Value;
 
         Assert.Equal("MyFunctionApp", serviceName);
     }
@@ -388,13 +387,13 @@ public class FunctionsResourceDetectorTests
     {
         using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            { ResourceSemConventions.ResourceAttributeEnvVar, string.Empty },
+            { ResourceSemanticConventions.ResourceAttributeEnvVar, string.Empty },
             { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
         });
 
         var resource = _detector.Detect();
 
-        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.ServiceName, StringComparison.Ordinal)).Value;
 
         Assert.Equal("MyFunctionApp", serviceName);
     }
@@ -404,13 +403,13 @@ public class FunctionsResourceDetectorTests
     {
         using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
         {
-            { ResourceSemConventions.ResourceAttributeEnvVar, "other=value,another=test" },
+            { ResourceSemanticConventions.ResourceAttributeEnvVar, "other=value,another=test" },
             { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
         });
 
         var resource = _detector.Detect();
 
-        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemConventions.ServiceName, StringComparison.Ordinal)).Value;
+        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.ServiceName, StringComparison.Ordinal)).Value;
 
         Assert.Equal("MyFunctionApp", serviceName);
     }

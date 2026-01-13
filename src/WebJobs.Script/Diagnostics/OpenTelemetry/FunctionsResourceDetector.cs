@@ -21,25 +21,25 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             {
                 var attributes = new List<KeyValuePair<string, object>>(capacity: 10)
                 {
-                    new(ResourceSemConventions.AISDKPrefix, $"{OpenTelemetryConstants.SDKPrefix}:{AssemblyVersion}"),
-                    new(ResourceSemConventions.ProcessId, ProcessId)
+                    new(ResourceSemanticConventions.AISDKPrefix, $"{OpenTelemetryConstants.SDKPrefix}:{AssemblyVersion}"),
+                    new(ResourceSemanticConventions.ProcessId, ProcessId)
                 };
 
                 string? azureWebsiteName = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
-                string? resourceAttributes = Environment.GetEnvironmentVariable(ResourceSemConventions.ResourceAttributeEnvVar);
+                string? resourceAttributes = Environment.GetEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar);
 
                 // Priority: OTEL_SERVICE_NAME > OTEL_RESOURCE_ATTRIBUTES[service.name] > AzureWebsiteName > AssemblyName
                 if (!IsServiceNameConfigured(resourceAttributes))
                 {
-                    attributes.Add(new(ResourceSemConventions.ServiceName, azureWebsiteName ?? typeof(ScriptHost).Assembly.GetName().Name ?? "unknown"));
+                    attributes.Add(new(ResourceSemanticConventions.ServiceName, azureWebsiteName ?? typeof(ScriptHost).Assembly.GetName().Name ?? "unknown"));
                 }
 
                 // Priority: OTEL_RESOURCE_ATTRIBUTES[service.version] > AssemblyVersion
                 // OTel decided to not have OTEL_SERVICE_VERSION, so we only check OTEL_RESOURCE_ATTRIBUTES
                 // https://github.com/open-telemetry/semantic-conventions/issues/2669
-                if (!IsResourceAttributeConfigured(ResourceSemConventions.ServiceVersion, resourceAttributes))
+                if (!IsResourceAttributeConfigured(ResourceSemanticConventions.ServiceVersion, resourceAttributes))
                 {
-                    attributes.Add(new(ResourceSemConventions.ServiceVersion, AssemblyVersion));
+                    attributes.Add(new(ResourceSemanticConventions.ServiceVersion, AssemblyVersion));
                 }
 
                 // Only add Azure-specific attributes if WEBSITE_SITE_NAME is defined
@@ -47,28 +47,28 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 {
                     attributes.AddRange(
                     [
-                        new(ResourceSemConventions.CloudProvider, OpenTelemetryConstants.AzureCloudProviderValue),
-                        new(ResourceSemConventions.CloudPlatform, OpenTelemetryConstants.AzurePlatformValue)
+                        new(ResourceSemanticConventions.CloudProvider, OpenTelemetryConstants.AzureCloudProviderValue),
+                        new(ResourceSemanticConventions.CloudPlatform, OpenTelemetryConstants.AzurePlatformValue)
                     ]);
 
                     if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.RegionName) is { Length: > 0 } region)
                     {
-                        attributes.Add(new(ResourceSemConventions.CloudRegion, region));
+                        attributes.Add(new(ResourceSemanticConventions.CloudRegion, region));
                     }
 
                     if (GetAzureResourceUri(azureWebsiteName) is { } uri)
                     {
-                        attributes.Add(new(ResourceSemConventions.CloudResourceId, uri));
+                        attributes.Add(new(ResourceSemanticConventions.CloudResourceId, uri));
                     }
 
                     if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName) is { Length: > 0 } slot)
                     {
-                        attributes.Add(new(ResourceSemConventions.DeploymentEnvironmentName, slot));
+                        attributes.Add(new(ResourceSemanticConventions.DeploymentEnvironmentName, slot));
                     }
 
-                    if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionAppVersion) is { Length: > 0 } appVersion)
+                    if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsSiteUpdateId) is { Length: > 0 } appVersion)
                     {
-                        attributes.Add(new(ResourceSemConventions.SiteUpdateId, appVersion));
+                        attributes.Add(new(ResourceSemanticConventions.SiteUpdateId, appVersion));
                     }
                 }
 
@@ -105,13 +105,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         private static bool IsServiceNameConfigured(string? resourceAttributes)
         {
             // Check OTEL_SERVICE_NAME first
-            if (Environment.GetEnvironmentVariable(ResourceSemConventions.ServiceNameEnvVar) is { Length: > 0 })
+            if (Environment.GetEnvironmentVariable(ResourceSemanticConventions.ServiceNameEnvVar) is { Length: > 0 })
             {
                 return true;
             }
 
             // Fall back to checking OTEL_RESOURCE_ATTRIBUTES
-            return IsResourceAttributeConfigured(ResourceSemConventions.ServiceName, resourceAttributes);
+            return IsResourceAttributeConfigured(ResourceSemanticConventions.ServiceName, resourceAttributes);
         }
 
         private static bool IsResourceAttributeConfigured(string key, string? resourceAttributes)

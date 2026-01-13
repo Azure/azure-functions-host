@@ -1712,7 +1712,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 if (isOtelEnabled)
                 {
-                    Activity.Current?.AddTag(ResourceSemConventions.FaaSInstance, id);
+                    Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInstance, id);
                 }
 
                 attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = id;
@@ -1733,8 +1733,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (isOtelEnabled)
             {
-                Activity.Current?.AddTag(ResourceSemConventions.FaaSName, context.FunctionMetadata.Name);
-                Activity.Current?.AddTag(ResourceSemConventions.FaaSInvocationId, invocationRequest.InvocationId);
+                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
+                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInvocationId, invocationRequest.InvocationId);
             }
         }
 

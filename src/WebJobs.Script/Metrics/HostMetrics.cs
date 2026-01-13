@@ -54,12 +54,12 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
                 Version = "1.0.0",
                 Tags = new TagList()
                 {
-                    { ResourceSemConventions.CloudProvider, cloudName },
-                    { ResourceSemConventions.CloudPlatform, CloudPlatformName },
-                    { ResourceSemConventions.CloudRegion, region },
-                    { ResourceSemConventions.CloudResourceId, armResourceId },
-                    { ResourceSemConventions.ServiceInstanceId, instanceId },
-                    { ResourceSemConventions.ServiceName, appName }
+                    { ResourceSemanticConventions.CloudProvider, cloudName },
+                    { ResourceSemanticConventions.CloudPlatform, CloudPlatformName },
+                    { ResourceSemanticConventions.CloudRegion, region },
+                    { ResourceSemanticConventions.CloudResourceId, armResourceId },
+                    { ResourceSemanticConventions.ServiceInstanceId, instanceId },
+                    { ResourceSemanticConventions.ServiceName, appName }
                 }
             };
             var meter = meterFactory.Create(hostMeterOptions);
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
         {
             var tags = new TagList()
             {
-                { ResourceSemConventions.FaaSName, functionName }
+                { ResourceSemanticConventions.FaaSName, functionName }
             };
             _faasInvokeDuration.Record(duration, tags);
         }

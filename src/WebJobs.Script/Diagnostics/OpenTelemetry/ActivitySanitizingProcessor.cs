@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
     internal class ActivitySanitizingProcessor : BaseProcessor<Activity>
     {
-        private static readonly IReadOnlyCollection<string> TagsToSanitize = new HashSet<string> { ResourceSemConventions.QueryUrl, ResourceSemConventions.FullUrl };
+        private static readonly IReadOnlyCollection<string> TagsToSanitize = new HashSet<string> { ResourceSemanticConventions.QueryUrl, ResourceSemanticConventions.FullUrl };
 
         private ActivitySanitizingProcessor() { }
 

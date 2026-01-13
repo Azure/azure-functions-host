@@ -3,14 +3,13 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 {
-    internal static class ResourceSemConventions
+    internal static class ResourceSemanticConventions
     {
         // Service
         internal const string ServiceName = "service.name";
         internal const string ServiceVersion = "service.version";
         internal const string ServiceInstanceId = "service.instance.id";
         internal const string ServiceNameEnvVar = "OTEL_SERVICE_NAME";
-        internal const string ServiceVersionEnvVar = "OTEL_SERVICE_VERSION";
         internal const string ResourceAttributeEnvVar = "OTEL_RESOURCE_ATTRIBUTES";
 
         // Cloud
@@ -39,6 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
         // Deployment
         internal const string DeploymentEnvironmentName = "deployment.environment.name";
-        internal const string SiteUpdateId = "azure.functions.siteUpdateId";
+        internal const string SiteUpdateId = "azure.functions.site.update_id";
     }
 }
