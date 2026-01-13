@@ -22,6 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 
         public string? Version { get; set; }
 
-        public Dictionary<string, object?> Metadata { get; set; } = new();
+        public Dictionary<string, string> Metadata { get; set; } = new();
     }
 }

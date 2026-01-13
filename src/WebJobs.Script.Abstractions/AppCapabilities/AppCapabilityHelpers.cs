@@ -42,16 +42,16 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// <summary>
         /// Merges metadata dictionaries, with incoming values overriding existing ones.
         /// </summary>
-        public static Dictionary<string, object?> MergeMetadata(
-            IDictionary<string, object?> existing,
-            IReadOnlyDictionary<string, object?>? incoming)
+        public static Dictionary<string, string> MergeMetadata(
+            IDictionary<string, string> existing,
+            IReadOnlyDictionary<string, string>? incoming)
         {
             if (incoming is null || incoming.Count == 0)
             {
-                return new Dictionary<string, object?>(existing);
+                return new Dictionary<string, string>(existing);
             }
 
-            var merged = new Dictionary<string, object?>(existing, StringComparer.OrdinalIgnoreCase);
+            var merged = new Dictionary<string, string>(existing, StringComparer.OrdinalIgnoreCase);
             foreach (var item in incoming)
             {
                 merged[item.Key] = item.Value;
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             string name,
             string source,
             string? version = null,
-            IReadOnlyDictionary<string, object?>? metadata = null)
+            IReadOnlyDictionary<string, string>? metadata = null)
         {
             if (!capabilities.TryGetValue(name, out var current))
             {
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
                     Source = source,
                     Version = version,
                     Metadata = metadata?.ToDictionary(kv => kv.Key, kv => kv.Value)
-                              ?? new Dictionary<string, object?>()
+                              ?? new Dictionary<string, string>()
                 };
                 return;
             }

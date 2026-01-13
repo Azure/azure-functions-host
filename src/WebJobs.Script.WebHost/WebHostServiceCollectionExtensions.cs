@@ -7,9 +7,11 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -18,7 +20,6 @@ using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
-using Microsoft.Azure.WebJobs.Script.WebHost.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -147,10 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddHttpClient();
             services.AddBundlesHttpClient();
 
-            // App Capabilities Services
-            services.AddFunctionAppCapabilities();
-            services.ConfigureOptions<ConfigurationProvidedAppCapabilitiesSetup>();
-
             services.AddSingleton<StartupContextProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
@@ -257,6 +254,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Add health checks
             services.AddMetrics();
             services.AddHealthChecks().AddWebJobsScriptHealthChecks();
+
+            AddAppCapabilitiesConfigOptions(services, configuration);
+        }
+
+        internal static void AddAppCapabilitiesConfigOptions(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddOptions<AppCapabilitiesOptions>();
+            services.ConfigureOptions<AppCapabilitiesManager>();
         }
 
         internal static void AddHostingConfigOptions(this IServiceCollection services, IConfiguration configuration)

@@ -10,9 +10,10 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
-    internal sealed class ConfigurationProvidedAppCapabilitiesSetup(IConfiguration configuration) : IConfigureOptions<AppCapabilitiesOptions>
+    internal sealed class AppCapabilitiesManager(IConfiguration configuration) : IConfigureOptions<AppCapabilitiesOptions>
     {
         private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        private readonly string configSectionName = "azureFunctionsJobHost:appCapabilities";
 
         /// <summary>
         /// Configures the <see cref="AppCapabilitiesOptions"/> by reading from all available configuration sources.
@@ -20,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// <param name="options">The options instance to configure.</param>
         public void Configure(AppCapabilitiesOptions options)
         {
-            // Read from host.json under AzureFunctionsJobHost:capabilities section
+            // Read from host.json under appCapabilities
             /* Example:
              * {
                    "version": "2.0",
@@ -41,13 +42,11 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
                   }
                 }
             */
-            var jobHostCapabilitiesSection = _configuration.GetSection("AzureFunctionsJobHost:appCapabilities");
+            var jobHostCapabilitiesSection = _configuration.GetSection(configSectionName);
             if (jobHostCapabilitiesSection.Exists())
             {
                 AddCapabilitiesFromSection(options, jobHostCapabilitiesSection, CapabilitySourceNames.ConfigSource);
             }
-
-            // TODO: Do we want to include environment variables here? Need a design for that (consistent prefix, managing conflicts, etc.)
         }
 
         /// <summary>
@@ -76,9 +75,9 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// </summary>
         /// <param name="section">The configuration section containing metadata.</param>
         /// <returns>A dictionary containing the metadata key-value pairs.</returns>
-        private static System.Collections.Generic.Dictionary<string, object?> ReadMetadata(IConfigurationSection section)
+        private static Dictionary<string, string> ReadMetadata(IConfigurationSection section)
         {
-            var metadata = new System.Collections.Generic.Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var metadataChild in section.GetChildren())
             {
@@ -88,36 +87,12 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             return metadata;
         }
 
-        /// <summary>
-        /// Merges metadata dictionaries, with incoming values overriding existing ones.
-        /// </summary>
-        /// <param name="existing">The existing metadata dictionary.</param>
-        /// <param name="incoming">The incoming metadata dictionary (optional).</param>
-        /// <returns>A merged dictionary containing all metadata.</returns>
-        private static System.Collections.Generic.Dictionary<string, object?> MergeMetadata(
-            System.Collections.Generic.IDictionary<string, object?> existing,
-            System.Collections.Generic.Dictionary<string, object?>? incoming)
-        {
-            if (incoming is null || incoming.Count == 0)
-            {
-                return new System.Collections.Generic.Dictionary<string, object?>(existing);
-            }
-
-            var merged = new System.Collections.Generic.Dictionary<string, object?>(existing, StringComparer.OrdinalIgnoreCase);
-            foreach (var (k, v) in incoming)
-            {
-                merged[k] = v;
-            }
-
-            return merged;
-        }
-
-        private static void AddOrUpdateCapability(
+        internal static void AddOrUpdateCapability(
             AppCapabilitiesOptions options,
             string name,
             string source,
             string? version = null,
-            Dictionary<string, object?>? metadata = null)
+            Dictionary<string, string>? metadata = null)
         {
             AppCapabilityHelpers.AddOrUpdateCapability(
                 options.Capabilities,

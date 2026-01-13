@@ -135,14 +135,19 @@ message WorkerInitResponse {
   // A map of worker supported features/capabilities
   map<string, string> capabilities = 2;
 
-  // A map of function app capabilities
-  map<string, string> app_capabilities = 5;
-
   // Status of the response
   StatusResult result = 3;
 
   // Worker metadata captured for telemetry purposes
   WorkerMetadata worker_metadata = 4;
+
+  // App capabilities or features (different from worker capabilities above)
+  map<string, AppCapabilityMetadata> app_capabilities = 5;
+}
+
+message AppCapabilityMetadata
+{
+  map<string, string> metadata_dictionary = 1;
 }
 
 message WorkerMetadata {

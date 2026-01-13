@@ -130,6 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _httpProxyService = httpProxyService;
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
+            _appCapabilitiesOptions = appCapabilitiesOptions;
 
             if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
             {
@@ -618,7 +619,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// Registers app capabilities from the worker init response into the AppCapabilitiesOptions.
         /// </summary>
         /// <param name="appCapabilities">The app capabilities map from the worker.</param>
-        private void RegisterAppCapabilities(MapField<string, string> appCapabilities)
+        private void RegisterAppCapabilities(MapField<string, AppCapabilityMetadata> appCapabilities)
         {
             if (_appCapabilitiesOptions is null || appCapabilities is null || appCapabilities.Count == 0)
             {
@@ -632,36 +633,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 foreach (var capability in appCapabilities)
                 {
-                    var metadata = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                    var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-                    if (!string.IsNullOrEmpty(capability.Value))
+                    if (capability.Value?.MetadataDictionary != null)
                     {
-                        try
+                        foreach (var item in capability.Value.MetadataDictionary)
                         {
-                            var capabilityMetadataParsed = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
-                                capability.Value,
-                                new System.Text.Json.JsonSerializerOptions
-                                {
-                                    PropertyNameCaseInsensitive = true
-                                });
-
-                            if (capabilityMetadataParsed is not null)
-                            {
-                                foreach (var (key, value) in capabilityMetadataParsed)
-                                {
-                                    metadata[key] = value;
-                                }
-                            }
-                        }
-                        catch (System.Text.Json.JsonException ex)
-                        {
-                            _workerChannelLogger.LogWarning(ex, "Failed to parse capability metadata for '{capabilityName}' from worker '{workerId}'",
-                                capability.Key, _workerId);
+                            metadata[item.Key] = item.Value;
                         }
                     }
 
-                    AppCapabilityHelpers.AddOrUpdateCapability(
-                        _appCapabilitiesOptions.Value.Capabilities,
+                    AppCapabilitiesManager.AddOrUpdateCapability(
+                        _appCapabilitiesOptions.Value,
                         capability.Key,
                         CapabilitySourceNames.WorkerSource,
                         version: null,
