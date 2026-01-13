@@ -29,7 +29,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
-using Xunit.Abstractions;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -167,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     configBuilder.AddInMemoryCollection(new Dictionary<string, string>
                     {
                         { "AzureWebJobsStorage", azuriteConnectionString },
-                        { "ConnectionStrings:AzureWebJobsStorage", azuriteConnectionString },
+                        { "ConnectionStrings:AzureWebJobsStorage", azuriteConnectionString }
                     });
 
                     ConfigureScriptHost(configBuilder);

@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         }
 
         [Theory]
-        [InlineData("Node", "node", "HttpTrigger", 33)]
+        [InlineData("Node", "node", "HttpTrigger", 35)]
         [InlineData("NoFunction", "node", null, 0)]
         public async Task CodelessFunction_DoesNot_ListFunctions(string path, string workerRuntime, string allowedList, int listCount)
         {

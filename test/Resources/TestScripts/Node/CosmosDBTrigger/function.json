@@ -1,16 +1,19 @@
-﻿{
+{
     "bindings": [
       {
         "type": "cosmosDBTrigger",
         "name": "input",
         "direction": "in",
-        "databaseName": "ItemDb",
-        "collectionName": "ItemCollection",
-        "createLeaseCollectionIfNotExists": true
+        "databaseName": "TriggerItemDb",
+        "containerName": "ItemCollection",
+        "connection": "CosmosDB",
+        "leaseContainerName": "leases",
+        "createLeaseContainerIfNotExists": true
       },
       {
         "type": "blob",
         "name": "blob",
+        "connection": "AzureWebJobsStorage",
         "direction": "out",
         "path": "test-output-node/cosmosdbtriggere2e-completed"
       }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
 
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "Python"), "samples", RpcWorkerConstants.PythonLanguageWorkerName, 1, "3.7")
+                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "Python"), "samples", RpcWorkerConstants.PythonLanguageWorkerName, 1, "3.13")
             {
             }
 

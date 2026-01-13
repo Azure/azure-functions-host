@@ -70,6 +70,11 @@ variables:
       value: true
     ${{ if ne(variables['Build.Reason'], 'Schedule') }}:
       value: ${{ parameters.collectPerfViewProfileOnWindows }}
+  - name: effectiveRunInstances
+    ${{ if eq(parameters.createJitTrace, true) }}:
+      value: ${{ variables.jitReleaseInstances }}
+    ${{ else }}:
+      value: ${{ variables.runInstances }}
 
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
@@ -83,7 +88,7 @@ extends:
     - stage: RunWindows
       displayName: Record latency(Windows)
       jobs:
-      - ${{ each appId in split(variables.runInstances, ',') }}:
+      - ${{ each appId in split(variables.effectiveRunInstances, ',') }}:
         - ${{ if eq(parameters.includeHelloHttpNet9, true) }}:
           - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
             parameters:
@@ -129,28 +134,28 @@ extends:
             functionAppName: HelloHttpNet9
             description: .NET9 Web Application
             runInstances: 
-              items: ${{ split(variables.runInstances, ',') }}
+              items: ${{ split(variables.effectiveRunInstances, ',') }}
       - ${{ if eq(parameters.includeHelloHttpNet9NoProxy, true) }}:
         - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
           parameters:
             functionAppName: HelloHttpNet9NoProxy
             description: .NET9 Worker Application
             runInstances: 
-              items: ${{ split(variables.runInstances, ',') }}
+              items: ${{ split(variables.effectiveRunInstances, ',') }}
       - ${{ if eq(parameters.includeHelloHttpNode, true) }}:
         - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
           parameters:
             functionAppName: HelloHttpNode
             description: Node Application
             runInstances: 
-              items: ${{ split(variables.runInstances, ',') }}
+              items: ${{ split(variables.effectiveRunInstances, ',') }}
 
 # # LINUX
     - stage: RunLinux
       dependsOn: []
       displayName:  Record latency(Linux)
       jobs:
-      - ${{ each appId in split(variables.runInstances, ',') }}:
+      - ${{ each appId in split(variables.effectiveRunInstances, ',') }}:
         - ${{ if eq(parameters.includeHelloHttpNet9, true) }}:
           - template: /eng/ci/templates/official/jobs/run-coldstart.yml@self
             parameters:
@@ -194,7 +199,7 @@ extends:
             description: .NET9 Web Application
             os: Linux
             runInstances: 
-              items: ${{ split(variables.runInstances, ',') }}
+              items: ${{ split(variables.effectiveRunInstances, ',') }}
       - ${{ if eq(parameters.includeHelloHttpNet9NoProxy, true) }}:
         - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
           parameters:
@@ -202,7 +207,7 @@ extends:
             description: .NET9 Worker Application
             os: Linux
             runInstances: 
-              items: ${{ split(variables.runInstances, ',') }}
+              items: ${{ split(variables.effectiveRunInstances, ',') }}
       - ${{ if eq(parameters.includeHelloHttpNode, true) }}:
         - template: /eng/ci/templates/official/jobs/process-coldstart.yml@self
           parameters:
@@ -210,7 +215,7 @@ extends:
             description: Node Application
             os: Linux
             runInstances: 
-              items: ${{ split(variables.runInstances, ',') }}
+              items: ${{ split(variables.effectiveRunInstances, ',') }}
 
 # Merge JIT traces from different function apps and dedupe.
     - stage: MergeWindowsJitTraceFiles

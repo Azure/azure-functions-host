@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;
-using System.Drawing.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AwesomeAssertions;
@@ -67,10 +66,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             },
             {
                 CreateOptions(true, null),
-                [HealthStatus.Healthy, (HealthStatus.Unhealthy, "some.tag")],
+                [HealthStatus.Healthy, (HealthStatus.Unhealthy, "some.tag", "ExampleCode")],
                 1,
                 "Process reporting unhealthy: Unhealthy. Health check entries are " +
-                @"{""id0"":{""status"":""Healthy"",""description"":""desc0""},""id1"":{""status"":""Unhealthy"",""description"":""desc1""}}",
+                @"{""id0"":{""status"":""Healthy"",""description"":""desc0""},""id1"":{""status"":""Unhealthy"",""description"":""desc1"",""errorCode"":""ExampleCode""}}",
                 LogLevel.Warning,
                 0
             },
@@ -259,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             foreach (CheckDescriptor check in checks)
             {
                 IEnumerable<string> tags = check.Tag is null ? [] : [check.Tag];
-                HealthReportEntry entry = new(check.Status, $"desc{index}", TimeSpan.Zero, null, null, tags);
+                HealthReportEntry entry = new(check.Status, $"desc{index}", TimeSpan.Zero, null, check.GetData(), tags);
                 healthStatusRecords.Add(GetKey(index), entry);
                 index++;
             }
@@ -285,11 +284,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
                 _ => throw new NotSupportedException($"Unexpected HealthStatus value: {status}"),
             };
 
-        public record CheckDescriptor(HealthStatus Status, string Tag)
+        public record CheckDescriptor(HealthStatus Status, string Tag, string ErrorCode)
         {
-            public static implicit operator CheckDescriptor(HealthStatus status) => new(status, null);
+            public static implicit operator CheckDescriptor(HealthStatus status)
+                => new(status, null, null);
 
-            public static implicit operator CheckDescriptor((HealthStatus Status, string Tag) tuple) => new(tuple.Status, tuple.Tag);
+            public static implicit operator CheckDescriptor((HealthStatus Status, string Tag) tuple)
+                => new(tuple.Status, tuple.Tag, null);
+
+            public static implicit operator CheckDescriptor((HealthStatus Status, string Tag, string ErrorCode) tuple)
+                => new(tuple.Status, tuple.Tag, tuple.ErrorCode);
+
+            public Dictionary<string, object> GetData()
+            {
+                if (ErrorCode == null)
+                {
+                    return null;
+                }
+
+                return new() { [nameof(ErrorCode)] = ErrorCode };
+            }
         }
     }
 }

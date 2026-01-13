@@ -1,8 +1,9 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -56,6 +57,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
                 _ => throw new NotSupportedException($"Unexpected HealthStatus value: {status}"),
             };
 
+        private static TagList CreateTagList(string key, object? value)
+        {
+            // CI has an old dotnet SDK which doesn't support the params ctor.
+            // This helper is to workaround that.
+            return new(default) { Tag(key, value) };
+        }
+
         public static class Constants
         {
             private const string Prefix = "azure.functions.";
@@ -63,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             public const string UnhealthyMetricName = Prefix + "health_check.unhealthy_checks";
             public const string HealthCheckTagTag = Prefix + "health_check.tag"; // Yes, tag tag. A metric tag with 'tag' in the name.
             public const string HealthCheckNameTag = Prefix + "health_check.name";
+            public const string HealthCheckErrorCodeTag = Prefix + "health_check.error_code";
         }
 
         public class HealthCheckReportHistogram(Meter meter)
@@ -70,18 +79,15 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             private readonly Histogram<double> _histogram
                 = meter.CreateHistogram<double>(Constants.ReportMetricName);
 
-            public void Record(HealthReport report)
-                => _histogram.Record(ToMetricValue(report.Status));
-
-            public void Record(HealthReport report, string tag)
+            public void Record(HealthReport report, string? tag = null)
             {
-                if (string.IsNullOrWhiteSpace(tag))
-                {
-                    Record(report);
-                    return;
-                }
+                _histogram.Record(ToMetricValue(report.Status), GetTags(tag));
+            }
 
-                _histogram.Record(ToMetricValue(report.Status), Tag(Constants.HealthCheckTagTag, tag));
+            private static TagList GetTags(string? tag)
+            {
+                return string.IsNullOrWhiteSpace(tag)
+                    ? default : CreateTagList(Constants.HealthCheckTagTag, tag);
             }
         }
 
@@ -90,21 +96,26 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             private readonly Histogram<double> _histogram
                 = meter.CreateHistogram<double>(Constants.UnhealthyMetricName);
 
-            public void Record(string name, HealthReportEntry entry)
-                => _histogram.Record(ToMetricValue(entry.Status), Tag(Constants.HealthCheckNameTag, name));
-
-            public void Record(string name, HealthReportEntry entry, string tag)
+            public void Record(string name, HealthReportEntry entry, string? tag = null)
             {
-                if (string.IsNullOrWhiteSpace(tag))
+                _histogram.Record(ToMetricValue(entry.Status), GetTags(name, entry, tag));
+            }
+
+            private static TagList GetTags(string name, HealthReportEntry entry, string? tag)
+            {
+                TagList tags = CreateTagList(Constants.HealthCheckNameTag, name);
+
+                if (!string.IsNullOrWhiteSpace(tag))
                 {
-                    Record(name, entry);
-                    return;
+                    tags.Add(Tag(Constants.HealthCheckTagTag, tag));
                 }
 
-                _histogram.Record(
-                    ToMetricValue(entry.Status),
-                    Tag(Constants.HealthCheckNameTag, name),
-                    Tag(Constants.HealthCheckTagTag, tag));
+                if (entry.TryGetErrorCode(out object errorCode))
+                {
+                    tags.Add(Tag(Constants.HealthCheckErrorCodeTag, errorCode));
+                }
+
+                return tags;
             }
         }
     }
