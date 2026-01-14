@@ -232,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             FunctionsResourceDetector detector = new FunctionsResourceDetector();
             Resource resource = detector.Detect();
 
-            Assert.Equal(3, resource.Attributes.Count());
+            Assert.Equal(4, resource.Attributes.Count());
         }
 
         [Fact]
