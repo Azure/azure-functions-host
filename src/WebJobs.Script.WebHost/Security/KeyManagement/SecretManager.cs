@@ -90,6 +90,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     HostSecrets hostSecrets;
                     try
                     {
+                        // Double-check after acquiring lock
+                        if (_hostSecrets is not null)
+                        {
+                            return _hostSecrets;
+                        }
+
                         _logger.LogDebug("Loading host secrets");
 
                         hostSecrets = await LoadSecretsAsync<HostSecrets>();
@@ -178,6 +184,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     try
                     {
+                        // Double-check after acquiring lock
+                        if (_functionSecrets.TryGetValue(functionName, out functionSecrets))
+                        {
+                            return functionSecrets;
+                        }
+
                         _logger.LogDebug($"Loading secrets for function '{functionName}'");
 
                         FunctionSecrets secrets = await LoadFunctionSecretsAsync(functionName);
