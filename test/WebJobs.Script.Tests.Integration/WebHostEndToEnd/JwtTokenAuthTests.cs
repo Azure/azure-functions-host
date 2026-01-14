@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Category == ScriptConstants.LogCategoryHostAuthentication && p.Level == LogLevel.Debug);
             Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
             Assert.Equal("Token validation failed.", validationError.FormattedMessage);
-            Assert.True(validationError.Exception.Message.StartsWith("IDX10503: Signature validation failed."));
+            Assert.True(validationError.Exception.Message.StartsWith("IDX10517: Signature validation failed."));
         }
 
         [Fact]
