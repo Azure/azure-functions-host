@@ -852,11 +852,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                         tasks.Add(secretManager.GetFunctionSecretsAsync(functionName));
                     }
 
-                    await Task.WhenAll(tasks);
+                    var results = await Task.WhenAll(tasks);
 
                     // Verify all calls return the same result
-                    var defaultKey = tasks.First().Result["default"];
-                    Assert.True(tasks.Select(p => p.Result).All(q => q["default"] == defaultKey));
+                    var defaultKey = results.First()["default"];
+                    Assert.True(results.All(q => q["default"] == defaultKey));
 
                     // Verify that "Loading secrets for function" was logged only once due to double-check locking
                     var loadingLogs = _loggerProvider.GetAllLogMessages()
