@@ -643,7 +643,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         }
                     }
 
-                    AppCapabilitiesManager.AddOrUpdateCapability(
+                    AppCapabilitiesOptionsSetup.AddOrUpdateCapability(
                         _appCapabilitiesOptions.Value,
                         capability.Key,
                         CapabilitySourceNames.WorkerSource,

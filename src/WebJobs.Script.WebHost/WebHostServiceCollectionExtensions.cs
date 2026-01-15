@@ -261,7 +261,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal static void AddAppCapabilitiesConfigOptions(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddOptions<AppCapabilitiesOptions>();
-            services.ConfigureOptions<AppCapabilitiesManager>();
+            services.ConfigureOptions<AppCapabilitiesOptionsSetup>();
+            services.ConfigureOptionsWithChangeTokenSource<AppCapabilitiesOptions, AppCapabilitiesOptionsSetup, HostBuiltChangeTokenSource<AppCapabilitiesOptions>>();
         }
 
         internal static void AddHostingConfigOptions(this IServiceCollection services, IConfiguration configuration)

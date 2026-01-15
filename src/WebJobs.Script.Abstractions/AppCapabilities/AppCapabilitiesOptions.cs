@@ -10,18 +10,13 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
     public sealed class AppCapabilitiesOptions
     {
-        // Map: capability name -> definition
-        // case-insensitive to avoid issues collecting from multiple sources/components
-        public Dictionary<string, CapabilityDefinition> Capabilities { get; set; }
-            = new(StringComparer.OrdinalIgnoreCase);
-    }
+        private readonly Dictionary<string, string> _capabilities;
 
-    public sealed class CapabilityDefinition
-    {
-        public string? Source { get; set; } // "host" | "worker:<lang>" | "extension:<pkg>" | "config" | "environment"
+        public AppCapabilitiesOptions()
+        {
+            _capabilities = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
 
-        public string? Version { get; set; }
-
-        public Dictionary<string, string> Metadata { get; set; } = new();
+        public Dictionary<string, string> Capabilities => _capabilities;
     }
 }

@@ -24,20 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult GetCapabilities()
         {
-            var capabilities = _capabilitiesOptions.Capabilities;
-
-            var response = new
-            {
-                capabilities = capabilities.Select(kvp => new
-                {
-                    name = kvp.Key,
-                    source = kvp.Value.Source,
-                    version = kvp.Value.Version,
-                    metadata = kvp.Value.Metadata
-                })
-            };
-
-            return new OkObjectResult(response);
+            return new OkObjectResult(_capabilitiesOptions.Capabilities);
         }
 
         [HttpGet]
@@ -54,15 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return new NotFoundResult();
             }
 
-            var response = new
-            {
-                name = capability.Key,
-                source = capability.Value.Source,
-                version = capability.Value.Version,
-                metadata = capability.Value.Metadata
-            };
-
-            return new OkObjectResult(response);
+            return new OkObjectResult(capability.Value);
         }
     }
 }

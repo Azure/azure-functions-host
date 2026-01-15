@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
-    internal sealed class AppCapabilitiesManager(IConfiguration configuration) : IConfigureOptions<AppCapabilitiesOptions>
+    internal sealed class AppCapabilitiesOptionsSetup(IConfiguration configuration) : IConfigureOptions<AppCapabilitiesOptions>
     {
         private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         private readonly string configSectionName = "azureFunctionsJobHost:appCapabilities";
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             var jobHostCapabilitiesSection = _configuration.GetSection(configSectionName);
             if (jobHostCapabilitiesSection.Exists())
             {
-                AddCapabilitiesFromSection(options, jobHostCapabilitiesSection, CapabilitySourceNames.ConfigSource);
+                AddCapabilitiesFromSection(options, jobHostCapabilitiesSection);
             }
         }
 
@@ -54,52 +54,17 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// </summary>
         /// <param name="options">The options to add capabilities to.</param>
         /// <param name="section">The configuration section containing capability definitions.</param>
-        /// <param name="source">The source name for these capabilities.</param>
         private void AddCapabilitiesFromSection(
             AppCapabilitiesOptions options,
-            IConfigurationSection section,
-            string source)
+            IConfigurationSection section)
         {
             foreach (var child in section.GetChildren())
             {
                 var capabilityName = child.Key;
-                var version = child["version"];
-                var metadata = ReadMetadata(child);
+                var capabilityValue = child.Value;
 
-                AddOrUpdateCapability(options, capabilityName, source, version, metadata);
+                options.Capabilities[capabilityName] = capabilityValue ?? string.Empty;
             }
-        }
-
-        /// <summary>
-        /// Reads metadata from a configuration section.
-        /// </summary>
-        /// <param name="section">The configuration section containing metadata.</param>
-        /// <returns>A dictionary containing the metadata key-value pairs.</returns>
-        private static Dictionary<string, string> ReadMetadata(IConfigurationSection section)
-        {
-            var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var metadataChild in section.GetChildren())
-            {
-                metadata[metadataChild.Key] = metadataChild.Value;
-            }
-
-            return metadata;
-        }
-
-        internal static void AddOrUpdateCapability(
-            AppCapabilitiesOptions options,
-            string name,
-            string source,
-            string? version = null,
-            Dictionary<string, string>? metadata = null)
-        {
-            AppCapabilityHelpers.AddOrUpdateCapability(
-                options.Capabilities,
-                name,
-                source,
-                version,
-                metadata);
         }
     }
 }
