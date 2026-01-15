@@ -823,8 +823,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     await Task.WhenAll(tasks);
 
                     // Verify all calls return the same result
-                    var masterKey = tasks.First().Result.MasterKey;
-                    Assert.True(tasks.Select(p => p.Result).All(q => q.MasterKey == masterKey));
+                    var hostSecrets = tasks.Select(p => p.Result).ToList();
+                    var masterKey = hostSecrets.First().MasterKey;
+                    Assert.True(hostSecrets.All(q => q.MasterKey == masterKey));
 
                     // Verify that "Loading host secrets" was logged only once due to double-check locking
                     var loadingLogs = _loggerProvider.GetAllLogMessages()
