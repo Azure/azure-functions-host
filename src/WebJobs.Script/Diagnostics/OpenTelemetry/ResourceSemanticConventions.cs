@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         internal const string DeploymentEnvironmentName = "deployment.environment.name";
 
         // Functions
-        internal const string FunctionsColdStartImpacted = "azure.functions.coldstart.impacted";      
+        internal const string FunctionsColdStartImpacted = "azure.functions.coldstart.impacted";
         internal const string SiteUpdateId = "azure.functions.site.update_id";
     }
 }
