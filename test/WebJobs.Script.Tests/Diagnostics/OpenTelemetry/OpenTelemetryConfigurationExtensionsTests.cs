@@ -5,9 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using AwesomeAssertions;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
@@ -290,6 +293,161 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             Assert.Null(loggerProvider);
         }
 
+        [Fact]
+        public void HttpFilter_Excludes_Localhost_127001()
+        {
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Scheme = "http";
+            ctx.Request.Host = new HostString("127.0.0.1");
+            ctx.Request.Path = "/api/test";
+
+            var result = OpenTelemetryConfigurationExtensions.HttpFilter(ctx);
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void HttpFilter_Excludes_GET_Admin_Health_SubPath()
+        {
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Scheme = "http";
+            ctx.Request.Host = new HostString("example.com");
+            ctx.Request.Method = HttpMethods.Get;
+            ctx.Request.Path = "/admin/health/ready";
+
+            var result = OpenTelemetryConfigurationExtensions.HttpFilter(ctx);
+
+            Assert.False(result);
+        }
+
+        [Theory]
+        [InlineData("/admin/host/synctriggers", "POST", false)]
+        [InlineData("/admin/warmup", "GET", false)]
+        [InlineData("/admin/host/status", "GET", false)]
+        [InlineData("/admin/health", "GET", false)]
+        [InlineData("/admin/health/a", "GET", false)]
+        [InlineData("/admin/host/ping", "GET", false)]
+        [InlineData("/api/myfunction", "GET", true)]
+        [InlineData("/api/myfunction", "POST", true)]
+        [InlineData("/admin/extensions", "GET", true)]
+        public void HttpFilter_ReturnsExpectedResult_ForVariousEndpoints(string path, string method, bool expectedResult)
+        {
+            var ctx = new DefaultHttpContext();
+            ctx.Request.Scheme = "http";
+            ctx.Request.Host = new HostString("example.com");
+            ctx.Request.Method = method;
+            ctx.Request.Path = path;
+
+            var result = OpenTelemetryConfigurationExtensions.HttpFilter(ctx);
+
+            Assert.Equal(expectedResult, result);
+        }
+
+        [Fact]
+        public void EnrichHttpResponse_AddsOnlyFaasTrigger_When_RoutingFeature_Is_Null()
+        {
+            using var activity = new Activity("HTTP GET");
+            activity.Start();
+
+            var ctx = new DefaultHttpContext();
+
+            OpenTelemetryConfigurationExtensions.EnrichHttpResponse(activity, ctx.Response);
+
+            var faasTrigger = activity.Tags.Single(t => t.Key == ResourceSemanticConventions.FaaSTrigger).Value;
+            Assert.Equal(OpenTelemetryConstants.HttpTriggerType, faasTrigger);
+
+            Assert.DoesNotContain(activity.Tags, t => t.Key == ResourceSemanticConventions.HttpRoute);
+            Assert.Equal("HTTP GET", activity.DisplayName);
+        }
+
+        [Fact]
+        public void EnrichHttpResponse_DoesNotSetRoute_When_Template_Is_NullOrEmpty()
+        {
+            using var activity = new Activity("HTTP GET");
+            activity.Start();
+
+            var ctx = new DefaultHttpContext();
+
+            var routeData = new RouteData();
+            var route = new Route(
+                    target: new RouteHandler(_ => Task.CompletedTask),
+                    routeName: "empty",
+                    routeTemplate: string.Empty,       // empty template
+                    defaults: null,
+                    constraints: null,
+                    dataTokens: null,
+                    inlineConstraintResolver: new DummyInlineConstraintResolver());
+
+            routeData.Routers.Add(route);
+
+            var routingFeature = new RoutingFeature { RouteData = routeData };
+            ctx.Features.Set<IRoutingFeature>(routingFeature);
+
+            OpenTelemetryConfigurationExtensions.EnrichHttpResponse(activity, ctx.Response);
+
+            var faasTrigger = activity.Tags.Single(t => t.Key == ResourceSemanticConventions.FaaSTrigger).Value;
+            Assert.Equal(OpenTelemetryConstants.HttpTriggerType, faasTrigger);
+
+            Assert.DoesNotContain(activity.Tags, t => t.Key == ResourceSemanticConventions.HttpRoute);
+            Assert.Equal("HTTP GET", activity.DisplayName);
+        }
+
+        [Fact]
+        public void EnrichHttpResponse_DoesNotSetRoute_When_Route_Is_NullOrEmpty()
+        {
+            using var activity = new Activity("HTTP GET");
+            activity.Start();
+
+            var ctx = new DefaultHttpContext();
+
+            var routeData = new RouteData();
+
+            var routingFeature = new RoutingFeature { RouteData = routeData };
+            ctx.Features.Set<IRoutingFeature>(routingFeature);
+
+            OpenTelemetryConfigurationExtensions.EnrichHttpResponse(activity, ctx.Response);
+
+            var faasTrigger = activity.Tags.Single(t => t.Key == ResourceSemanticConventions.FaaSTrigger).Value;
+            Assert.Equal(OpenTelemetryConstants.HttpTriggerType, faasTrigger);
+
+            Assert.DoesNotContain(activity.Tags, t => t.Key == ResourceSemanticConventions.HttpRoute);
+            Assert.Equal("HTTP GET", activity.DisplayName);
+        }
+
+        [Fact]
+        public void EnrichHttpResponse_Sets_Tags_And_DisplayName_For_Valid_Template()
+        {
+            using var activity = new Activity("HTTP GET");
+            activity.Start();
+
+            var ctx = new DefaultHttpContext();
+
+            var routeData = new RouteData();
+            var route = new Route(
+                target: new RouteHandler(_ => Task.CompletedTask),
+                routeName: "hello",
+                routeTemplate: "/api/hello/{name}",
+                defaults: null,
+                constraints: null,
+                dataTokens: null,
+                inlineConstraintResolver: new DummyInlineConstraintResolver());
+
+            routeData.Routers.Add(route);
+
+            var routingFeature = new RoutingFeature { RouteData = routeData };
+            ctx.Features.Set<IRoutingFeature>(routingFeature);
+
+            OpenTelemetryConfigurationExtensions.EnrichHttpResponse(activity, ctx.Response);
+
+            var faasTrigger = activity.Tags.Single(t => t.Key == ResourceSemanticConventions.FaaSTrigger).Value;
+            Assert.Equal(OpenTelemetryConstants.HttpTriggerType, faasTrigger);
+
+            var httpRoute = activity.Tags.Single(t => t.Key == ResourceSemanticConventions.HttpRoute).Value;
+            Assert.Equal("/api/hello/{name}", httpRoute);
+
+            Assert.Contains("/api/hello/{name}", activity.DisplayName);
+        }
+
         // The OpenTelemetryEventListener is fine because it's a no-op if there are no otel events to listen to
         private bool HasOtelServices(IServiceCollection sc) => sc.Any(sd => sd.ServiceType != typeof(OpenTelemetryEventListener) && sd.ServiceType.FullName.Contains("OpenTelemetry"));
 
@@ -303,6 +461,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
                 { "REGION_NAME", "EastUS" },
                 { "WEBSITE_SLOT_NAME", "staging" }
             });
+        }
+
+        private sealed class DummyInlineConstraintResolver : IInlineConstraintResolver
+        {
+            public IRouteConstraint ResolveConstraint(string inlineConstraint)
+            {
+                // For tests, you probably don't use constraints at all.
+                // Returning a no-op or throwing is fine as long as your code never calls this.
+                throw new NotImplementedException("Constraints are not used in tests.");
+            }
         }
     }
 }

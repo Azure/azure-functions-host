@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -141,6 +143,114 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     && metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize) && metricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize)
                     && metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationRestartHost) && metricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationRestartHost)
                     && metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationDelayUntilHostReady) && metricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationDelayUntilHostReady);
+        }
+
+        [Fact]
+        public async Task Specialize_StartSpecializationActivity()
+        {
+            using var testListener = new ActivityTestListener("Microsoft.Azure.Functions.Host");
+            using Activity activity = new Activity("TestActivity");
+            activity.Start();
+
+            TestMetricsLogger metricsLogger = new TestMetricsLogger();
+            var hostNameProvider = new HostNameProvider(_testEnvironment);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);
+
+            await manager.SpecializeHostAsync();
+
+            var initActivity = testListener.Activities.FirstOrDefault(a => string.Equals(a.OperationName, "init", StringComparison.Ordinal));
+            Assert.NotNull(initActivity);
+            Assert.Equal(true, (bool?)activity.GetTagItem("faas.coldstart"));
+            Assert.Equal(true, (bool?)activity.GetTagItem("azure.functions.coldstart.impacted"));
+        }
+
+        [Fact]
+        public async Task Specialize_StartSpecializationActivity_SetsOperationName()
+        {
+            using var testListener = new ActivityTestListener("Microsoft.Azure.Functions.Host");
+
+            TestMetricsLogger metricsLogger = new TestMetricsLogger();
+            var hostNameProvider = new HostNameProvider(_testEnvironment);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);
+
+            await manager.SpecializeHostAsync();
+
+            Assert.Single(testListener.Activities.Where(a => string.Equals(a.OperationName, "init", StringComparison.Ordinal)));
+        }
+
+        [Fact]
+        public async Task Specialize_StartSpecializationActivity_ActivityIsRecorded()
+        {
+            using var testListener = new ActivityTestListener("Microsoft.Azure.Functions.Host");
+
+            TestMetricsLogger metricsLogger = new TestMetricsLogger();
+            var hostNameProvider = new HostNameProvider(_testEnvironment);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);
+
+            await manager.SpecializeHostAsync();
+
+            var initActivity = testListener.Activities.FirstOrDefault(a => string.Equals(a.OperationName, "init", StringComparison.Ordinal));
+            Assert.NotNull(initActivity);
+            Assert.True(initActivity.Recorded);
+        }
+
+        [Fact]
+        public async Task Specialize_StartSpecializationActivity_NoParentActivity_CreatesActivity()
+        {
+            using var testListener = new ActivityTestListener("Microsoft.Azure.Functions.Host");
+
+            TestMetricsLogger metricsLogger = new TestMetricsLogger();
+            var hostNameProvider = new HostNameProvider(_testEnvironment);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);
+
+            await manager.SpecializeHostAsync();
+
+            var initActivity = testListener.Activities.FirstOrDefault(a => string.Equals(a.OperationName, "init", StringComparison.Ordinal));
+            Assert.NotNull(initActivity);
+            Assert.Null(initActivity.Parent);
+        }
+
+        [Fact]
+        public async Task Specialize_StartSpecializationActivity_WithParentActivity_SetsParent()
+        {
+            using var testListener = new ActivityTestListener("Microsoft.Azure.Functions.Host");
+            using Activity parentActivity = new Activity("ParentActivity");
+            parentActivity.Start();
+
+            TestMetricsLogger metricsLogger = new TestMetricsLogger();
+            var hostNameProvider = new HostNameProvider(_testEnvironment);
+            var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);
+
+            await manager.SpecializeHostAsync();
+
+            var initActivity = testListener.Activities.FirstOrDefault(a => string.Equals(a.OperationName, "init", StringComparison.Ordinal));
+            Assert.NotNull(initActivity);
+            Assert.Equal(parentActivity.Id, initActivity.ParentId);
+        }
+    }
+
+    internal sealed class ActivityTestListener : IDisposable
+    {
+        private readonly ActivityListener _listener;
+
+        public ActivityTestListener(string sourceName)
+        {
+            _listener = new ActivityListener
+            {
+                ShouldListenTo = s => s.Name == sourceName,
+                Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+                ActivityStarted = activity => Activities.Add(activity),
+                ActivityStopped = _ => { }
+            };
+
+            ActivitySource.AddActivityListener(_listener);
+        }
+
+        public List<Activity> Activities { get; } = new List<Activity>();
+
+        public void Dispose()
+        {
+            _listener.Dispose();
         }
     }
 }

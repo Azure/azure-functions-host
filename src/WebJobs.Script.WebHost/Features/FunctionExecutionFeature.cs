@@ -60,9 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
                 {
                     coldStartData.Add("dispatchDuration", dispatchStopwatch.GetElapsedTime().TotalMilliseconds);
                 }
-
-                // Add tag for cold start
-                Activity.Current?.AddTag(ResourceSemanticConventions.FaaSColdStart, true);
             }
 
             var sw = ValueStopwatch.StartNew();
