@@ -121,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 return false;
             }
 
+            // TODO: Replace manual parsing with MemoryExtensions.Split when we upgrade to .NET 10
             var remaining = resourceAttributes.AsSpan();
 
             while (remaining.Length > 0)

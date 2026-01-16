@@ -432,7 +432,7 @@ public class FunctionsResourceDetectorTests
     [InlineData(null, null, "Microsoft.Azure.WebJobs.Script")] // Replace with actual assembly name
     [InlineData("", "", "Microsoft.Azure.WebJobs.Script")]
     [InlineData(" ", "", "Microsoft.Azure.WebJobs.Script")]
-    public void Detect_IncludesServiceName_WhenServiceNameNotConfigured(string? resourceAttributes, string? websiteName, string expectedServiceName)
+    public void Detect_IncludesServiceName_WhenServiceNameNotConfigured(string resourceAttributes, string websiteName, string expectedServiceName)
     {
         using var resourceAttrVar = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar, resourceAttributes);
         using var websiteNameVar = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, websiteName);
@@ -463,7 +463,8 @@ public class FunctionsResourceDetectorTests
     [InlineData("service.name=ABC", true, false)]
     [InlineData("other=value", true, true)] // Not configured
     [InlineData(null, true, true)] // Not configured
-    public void Detect_HandlesServiceVersion(string? resourceAttributes, bool shouldIncludeVersion, bool shouldIncludeName)
+    [InlineData("", true, true)] // Not configured
+    public void Detect_HandlesServiceVersion(string resourceAttributes, bool shouldIncludeVersion, bool shouldIncludeName)
     {
         using var envVar = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar, resourceAttributes);
 
@@ -488,6 +489,27 @@ public class FunctionsResourceDetectorTests
         var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
         Assert.Equal(expectedUri, attributes[ResourceSemanticConventions.CloudResourceId]);
+    }
+
+    [Theory]
+    [InlineData("my-app", "", "")]
+    [InlineData("", "", "")]
+    [InlineData("my-app", "", "B")]
+    [InlineData("my-app", "A", "")]
+    [InlineData(null, null, null)]
+    [InlineData("my-app", null, null)]
+    [InlineData("my-app", "A", null)]
+    [InlineData("my-app", null, "B")]
+    public void Detect_IncludesAzureResourceUri_WhenEnvironmentVariablesAreNotSet(string websiteName, string resourceGroup, string owner)
+    {
+        using var websiteNameVar = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, websiteName);
+        using var resourceGroupVar = new TestScopedEnvironmentVariable(EnvironmentSettingNames.ResourceGroup, resourceGroup);
+        using var ownerVar = new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebsiteOwnerName, owner);
+
+        var resource = _detector.Detect();
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.CloudResourceId));
     }
 
     [Theory]
