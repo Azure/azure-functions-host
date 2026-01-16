@@ -398,19 +398,110 @@ public class FunctionsResourceDetectorTests
         Assert.Equal("MyFunctionApp", serviceName);
     }
 
-    [Fact]
-    public void Detect_IncludesServiceName_WhenResourceAttributeEnvVarDoesNotContainServiceName()
+    [Theory]
+    [InlineData("otel-service")]
+    [InlineData("service.name=attr-service")]
+    public void Detect_DoesNotIncludeServiceName_WhenServiceNameIsConfigured(string resourceAttributesOrServiceName)
     {
-        using var envVariables = new TestScopedEnvironmentVariable(new Dictionary<string, string>
+        // Test with OTEL_SERVICE_NAME
+        if (!resourceAttributesOrServiceName.Contains('='))
         {
-            { ResourceSemanticConventions.ResourceAttributeEnvVar, "other=value,another=test" },
-            { EnvironmentSettingNames.AzureWebsiteName, "MyFunctionApp" }
-        });
+            using var serviceNameVar = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ServiceNameEnvVar, resourceAttributesOrServiceName);
+
+            var resource = _detector.Detect();
+            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            Assert.False(attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
+        }
+        // Test with OTEL_RESOURCE_ATTRIBUTES
+        else
+        {
+            using var resourceAttrVar = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar, resourceAttributesOrServiceName);
+
+            var resource = _detector.Detect();
+            var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            Assert.False(attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
+        }
+    }
+
+    [Theory]
+    [InlineData(null, "my-function-app", "my-function-app")]
+    [InlineData("", "my-function-app", "my-function-app")]
+    [InlineData(" ", "my-function-app", "my-function-app")]
+    [InlineData(null, null, "Microsoft.Azure.WebJobs.Script")] // Replace with actual assembly name
+    [InlineData("", "", "Microsoft.Azure.WebJobs.Script")]
+    [InlineData(" ", "", "Microsoft.Azure.WebJobs.Script")]
+    public void Detect_IncludesServiceName_WhenServiceNameNotConfigured(string? resourceAttributes, string? websiteName, string expectedServiceName)
+    {
+        using var resourceAttrVar = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar, resourceAttributes);
+        using var websiteNameVar = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, websiteName);
 
         var resource = _detector.Detect();
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-        var serviceName = resource.Attributes.FirstOrDefault(a => string.Equals(a.Key, ResourceSemanticConventions.ServiceName, StringComparison.Ordinal)).Value;
+        Assert.True(attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
+        Assert.Equal(expectedServiceName, attributes[ResourceSemanticConventions.ServiceName]);
+    }
 
-        Assert.Equal("MyFunctionApp", serviceName);
+    [Fact]
+    public void Detect_DoesNotIncludeServiceName_WhenOtelServiceNameTakesPrecedence()
+    {
+        using var serviceNameVar = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ServiceNameEnvVar, "otel-service");
+        using var resourceAttrVar = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar, "service.name=attr-service");
+
+        var resource = _detector.Detect();
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        // When OTEL_SERVICE_NAME is set, detector doesn't add service.name (SDK handles it)
+        Assert.False(attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
+    }
+
+    [Theory]
+    [InlineData("service.version=2.0.0", false, true)] // Configured in resource attributes
+    [InlineData("service.version=2.0.0,service.name=ABC", false, false)]
+    [InlineData("service.name=ABC", true, false)]
+    [InlineData("other=value", true, true)] // Not configured
+    [InlineData(null, true, true)] // Not configured
+    public void Detect_HandlesServiceVersion(string? resourceAttributes, bool shouldIncludeVersion, bool shouldIncludeName)
+    {
+        using var envVar = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar, resourceAttributes);
+
+        var resource = _detector.Detect();
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.Equal(shouldIncludeVersion, attributes.ContainsKey(ResourceSemanticConventions.ServiceVersion));
+        Assert.Equal(shouldIncludeName, attributes.ContainsKey(ResourceSemanticConventions.ServiceName));
+    }
+
+    [Theory]
+    [InlineData("my-app", "my-rg", "sub-123+extra", "/subscriptions/sub-123/resourceGroups/my-rg/providers/Microsoft.Web/sites/my-app")]
+    [InlineData("my-app", "my-rg", "sub-456", "/subscriptions/sub-456/resourceGroups/my-rg/providers/Microsoft.Web/sites/my-app")] // No plus sign
+    [InlineData("different-app", "different-rg", "sub-789+data", "/subscriptions/sub-789/resourceGroups/different-rg/providers/Microsoft.Web/sites/different-app")]
+    public void Detect_IncludesAzureResourceUri_WhenEnvironmentVariablesAreSet(string websiteName, string resourceGroup, string owner, string expectedUri)
+    {
+        using var websiteNameVar = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, websiteName);
+        using var resourceGroupVar = new TestScopedEnvironmentVariable(EnvironmentSettingNames.ResourceGroup, resourceGroup);
+        using var ownerVar = new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebsiteOwnerName, owner);
+
+        var resource = _detector.Detect();
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.Equal(expectedUri, attributes[ResourceSemanticConventions.CloudResourceId]);
+    }
+
+    [Theory]
+    [InlineData(EnvironmentSettingNames.RegionName, "eastus", ResourceSemanticConventions.CloudRegion)]
+    [InlineData(EnvironmentSettingNames.AzureWebsiteSlotName, "staging", ResourceSemanticConventions.DeploymentEnvironmentName)]
+    [InlineData(EnvironmentSettingNames.FunctionsSiteUpdateId, "v123", ResourceSemanticConventions.SiteUpdateId)]
+    public void Detect_IncludesOptionalAzureAttribute_WhenSet(string envVarName, string envVarValue, string expectedAttributeKey)
+    {
+        using var websiteName = new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "my-app");
+        using var optionalVar = new TestScopedEnvironmentVariable(envVarName, envVarValue);
+
+        var resource = _detector.Detect();
+        var attributes = resource.Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        Assert.Equal(envVarValue, attributes[expectedAttributeKey]);
     }
 }

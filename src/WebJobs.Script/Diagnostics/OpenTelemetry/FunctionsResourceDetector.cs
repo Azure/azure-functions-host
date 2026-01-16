@@ -121,9 +121,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 return false;
             }
 
-            foreach (var segment in resourceAttributes.Split(','))
+            var remaining = resourceAttributes.AsSpan();
+
+            while (remaining.Length > 0)
             {
-                var trimmed = segment.AsSpan().Trim();
+                var commaIndex = remaining.IndexOf(',');
+                var segment = commaIndex >= 0
+                    ? remaining[..commaIndex]
+                    : remaining;
+
+                var trimmed = segment.Trim();
                 var equalsIndex = trimmed.IndexOf('=');
 
                 if (equalsIndex > 0)
@@ -134,6 +141,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                         return true;
                     }
                 }
+
+                if (commaIndex < 0)
+                {
+                    break;
+                }
+
+                remaining = remaining[(commaIndex + 1)..];
             }
 
             return false;
