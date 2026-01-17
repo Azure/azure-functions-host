@@ -4,16 +4,23 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 #nullable enable
 
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
-    internal sealed class AppCapabilitiesOptionsSetup(IConfiguration configuration) : IConfigureOptions<AppCapabilitiesOptions>
+    internal sealed class AppCapabilitiesOptionsSetup : IConfigureOptions<AppCapabilitiesOptions>
     {
-        private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        private readonly IConfiguration _configuration;
         private readonly string configSectionName = "azureFunctionsJobHost:appCapabilities";
+
+        public AppCapabilitiesOptionsSetup(
+            IConfiguration configuration)
+        {
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        }
 
         /// <summary>
         /// Configures the <see cref="AppCapabilitiesOptions"/> by reading from all available configuration sources.
@@ -21,27 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// <param name="options">The options instance to configure.</param>
         public void Configure(AppCapabilitiesOptions options)
         {
-            // Read from host.json under appCapabilities
-            /* Example:
-             * {
-                   "version": "2.0",
-                  "logging": {
-                    "applicationInsights": {
-                      "samplingSettings": {
-                        "isEnabled": true,
-                        "excludedTypes": "Request"
-                      },
-                      "enableLiveMetricsFilters": true
-                    }
-                  },
-                  "appCapabilities":
-                    {
-                    "mcp": {
-                      "endpoint": "https://mcp.microsoft.com"
-                    }
-                  }
-                }
-            */
             var jobHostCapabilitiesSection = _configuration.GetSection(configSectionName);
             if (jobHostCapabilitiesSection.Exists())
             {

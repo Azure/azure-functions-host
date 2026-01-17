@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private System.Timers.Timer _timer;
         private bool _functionMetadataRequestSent = false;
         private IOptions<ScriptJobHostOptions> _scriptHostOptions;
-        private IOptions<AppCapabilitiesOptions> _appCapabilitiesOptions;
+        private IAppCapabilitiesProvider _appCapabilitiesProvider;
 
         internal GrpcWorkerChannel(
             string workerId,
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            IOptions<AppCapabilitiesOptions> appCapabilitiesOptions,
+            IAppCapabilitiesProvider appCapabilitiesProvider,
             IHttpProxyService httpProxyService)
         {
             _workerId = workerId;
@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _httpProxyService = httpProxyService;
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
-            _appCapabilitiesOptions = appCapabilitiesOptions;
+            _appCapabilitiesProvider = appCapabilitiesProvider;
 
             if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
             {
@@ -619,9 +619,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// Registers app capabilities from the worker init response into the AppCapabilitiesOptions.
         /// </summary>
         /// <param name="appCapabilities">The app capabilities map from the worker.</param>
-        private void RegisterAppCapabilities(MapField<string, AppCapabilityMetadata> appCapabilities)
+        private void RegisterAppCapabilities(MapField<string, string> appCapabilities)
         {
-            if (_appCapabilitiesOptions is null || appCapabilities is null || appCapabilities.Count == 0)
+            if (appCapabilities is null || appCapabilities.Count == 0)
             {
                 return;
             }
@@ -633,25 +633,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 foreach (var capability in appCapabilities)
                 {
-                    var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-                    if (capability.Value?.MetadataDictionary != null)
-                    {
-                        foreach (var item in capability.Value.MetadataDictionary)
-                        {
-                            metadata[item.Key] = item.Value;
-                        }
-                    }
-
-                    AppCapabilitiesOptionsSetup.AddOrUpdateCapability(
-                        _appCapabilitiesOptions.Value,
-                        capability.Key,
-                        CapabilitySourceNames.WorkerSource,
-                        version: null,
-                        metadata);
-
-                    _workerChannelLogger.LogDebug("Registered app capability '{capabilityName}' from worker '{workerId}'",
-                        capability.Key, _workerId);
+                    _appCapabilitiesProvider.SetCapability(capability.Key, capability.Value);
                 }
             }
             catch (Exception ex)

@@ -255,14 +255,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddMetrics();
             services.AddHealthChecks().AddWebJobsScriptHealthChecks();
 
-            AddAppCapabilitiesConfigOptions(services, configuration);
-        }
-
-        internal static void AddAppCapabilitiesConfigOptions(this IServiceCollection services, IConfiguration configuration)
-        {
-            services.AddOptions<AppCapabilitiesOptions>();
-            services.ConfigureOptions<AppCapabilitiesOptionsSetup>();
-            services.ConfigureOptionsWithChangeTokenSource<AppCapabilitiesOptions, AppCapabilitiesOptionsSetup, HostBuiltChangeTokenSource<AppCapabilitiesOptions>>();
+            // App Capabilities Provider
+            services.AddSingleton<IAppCapabilitiesProvider, DefaultAppCapabilitiesProvider>();
         }
 
         internal static void AddHostingConfigOptions(this IServiceCollection services, IConfiguration configuration)
