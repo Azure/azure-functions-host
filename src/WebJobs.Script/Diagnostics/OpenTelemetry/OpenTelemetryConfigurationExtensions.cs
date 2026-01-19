@@ -148,7 +148,19 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             if (enableAzureMonitor)
             {
                 TokenCredential credential = GetTokenCredential(configuration);
-                builder.UseAzureMonitorExporter(options => ConfigureAzureMonitorOptions(options, azMonConnectionString, credential));
+
+                // Use defaults for AzureMonitorExporterOptions
+                builder.UseAzureMonitorExporter();
+
+                // Set credential and connection string explicitly
+                builder.Services.Configure<AzureMonitorExporterOptions>(options =>
+                {
+                    options.ConnectionString = azMonConnectionString;
+                    if (credential is not null)
+                    {
+                        options.Credential = credential;
+                    }
+                });
             }
 
             return builder;
@@ -267,15 +279,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             }
 
             return null;
-        }
-
-        private static void ConfigureAzureMonitorOptions(AzureMonitorExporterOptions options, string connectionString, TokenCredential credential)
-        {
-            options.ConnectionString = connectionString;
-            if (credential is not null)
-            {
-                options.Credential = credential;
-            }
         }
 
         private static TracerProviderBuilder AddSources(this TracerProviderBuilder builder, ReadOnlySpan<string> sources)
