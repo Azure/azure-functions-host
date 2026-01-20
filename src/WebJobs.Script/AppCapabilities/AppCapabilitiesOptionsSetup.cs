@@ -1,11 +1,13 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 #nullable enable
 
@@ -15,11 +17,14 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     {
         private readonly IConfiguration _configuration;
         private readonly string configSectionName = "azureFunctionsJobHost:appCapabilities";
+        private readonly ILogger<AppCapabilitiesOptionsSetup> _logger;
 
         public AppCapabilitiesOptionsSetup(
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<AppCapabilitiesOptionsSetup> logger)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -44,7 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             AppCapabilitiesOptions options,
             IConfigurationSection section)
         {
-            foreach (var child in section.GetChildren())
+            var children = section.GetChildren();
+            _logger.LogDebug("Loading App Capabilities from configuration section '{sectionName}' with {count} entries.",
+                section.Path, children.Count());
+
+            foreach (var child in children)
             {
                 var capabilityName = child.Key;
                 var capabilityValue = child.Value;
