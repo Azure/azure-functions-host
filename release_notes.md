@@ -10,3 +10,4 @@
 - Stop collecting telemetry from admin endpoint requests (#11544)
 - Add area & error code to script & web host health checks (#11552)
 - Log siteUpdateId during initialization to track rolling update progress (#11527)
+- Updating OTel related packages to latest stable versions (#11568)
