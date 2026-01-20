@@ -10,3 +10,7 @@
 - Stop collecting telemetry from admin endpoint requests (#11544)
 - Add area & error code to script & web host health checks (#11552)
 - Log siteUpdateId during initialization to track rolling update progress (#11527)
+- Update `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` to `1.0.14` (#11569)
+    - [Remove net6.0 prelaunch app.](https://github.com/Azure/azure-functions-dotnet-worker/pull/3299)
+    - [Add net10.0 prelaunch app.](https://github.com/Azure/azure-functions-dotnet-worker/pull/3297)
+    - [Build Linux artifacts using ubuntu 24.](https://github.com/Azure/azure-functions-dotnet-worker/pull/3285)
