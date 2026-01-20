@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         }
 
         /// <summary>
-        /// Configures the <see cref="AppCapabilitiesOptions"/> by reading from all available configuration sources.
+        /// Configures the <see cref="AppCapabilitiesOptions"/> by reading from known configuration sources.
         /// </summary>
         /// <param name="options">The options instance to configure.</param>
         public void Configure(AppCapabilitiesOptions options)

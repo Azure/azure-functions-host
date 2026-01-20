@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             // Get capabilities from provider (worker)
             var providerCapabilities = appCapabilitiesProvider?.GetCapabilities() ?? new Dictionary<string, string>();
 
-            // Merge: worker/provider wins on collision
+            // Merge: worker provider wins on collision
             var merged = optionsCapabilities
                 .Concat(providerCapabilities)
                 .GroupBy(kvp => kvp.Key, System.StringComparer.OrdinalIgnoreCase)
@@ -47,18 +47,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/capabilities/{name}")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [RequiresRunningHost]
-        public IActionResult Get(string name)
+        public IActionResult Get(string name, [FromServices] IAppCapabilitiesProvider appCapabilitiesProvider)
         {
-            var capabilities = _capabilitiesOptions.Capabilities;
+            // check worker provider first
+            var providerCapabilities = appCapabilitiesProvider?.GetCapabilities();
+            var providerCapability = providerCapabilities?.FirstOrDefault(kvp => string.Equals(kvp.Key, name, System.StringComparison.OrdinalIgnoreCase));
 
-            var capability = capabilities.FirstOrDefault(kvp => string.Equals(kvp.Key, name, System.StringComparison.OrdinalIgnoreCase));
-
-            if (capability.Key is null)
+            if (providerCapability is KeyValuePair<string, string> kvp && kvp.Key is not null)
             {
-                return new NotFoundResult();
+                return new OkObjectResult(kvp.Value);
             }
 
-            return new OkObjectResult(capability.Value);
+            // check options
+            var optionsCapabilities = _capabilitiesOptions.Capabilities;
+            var optionCapability = optionsCapabilities.FirstOrDefault(kvp => string.Equals(kvp.Key, name, System.StringComparison.OrdinalIgnoreCase));
+
+            if (optionCapability.Key is not null)
+            {
+                return new OkObjectResult(optionCapability.Value);
+            }
+
+            return new NotFoundResult();
         }
     }
 }

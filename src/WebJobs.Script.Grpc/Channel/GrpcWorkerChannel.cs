@@ -616,7 +616,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         /// <summary>
-        /// Registers app capabilities from the worker init response into the AppCapabilitiesOptions.
+        /// Registers app capabilities from the worker init response into the AppCapabilitiesProvider.
         /// </summary>
         /// <param name="appCapabilities">The app capabilities map from the worker.</param>
         private void RegisterAppCapabilities(MapField<string, string> appCapabilities)
