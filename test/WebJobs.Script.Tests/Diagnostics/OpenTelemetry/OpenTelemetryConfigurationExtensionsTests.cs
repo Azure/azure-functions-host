@@ -480,7 +480,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
 
         [Theory]
         [InlineData(OpenTelemetryConstants.FixedPercentageSampler, "-1")]
-        [InlineData(OpenTelemetryConstants.FixedPercentageSampler, "-1")]
         [InlineData(OpenTelemetryConstants.FixedPercentageSampler, "2")]
         [InlineData(OpenTelemetryConstants.RateLimitedSampler, "-5")]
         public void ConfigureAzureMonitorOptions_InvalidValues_ThrowsArgumentException(string samplerType, string samplerArg)
@@ -546,12 +545,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
         public void ConfigureAzureMonitorOptions_SamplerCases_Throw_ArgumentException(string samplerType, string samplerArg)
         {
             // Arrange
-            var env = new Dictionary<string, string>();
-
-            env[OpenTelemetryConstants.OtelTracesSampler] = samplerType;
-            env[OpenTelemetryConstants.OtelTracesSamplerArg] = samplerArg;
-
-            using var _ = new TestScopedEnvironmentVariable(env);
+            using var scope = new TestScopedEnvironmentVariable(
+                new Dictionary<string, string>
+                {
+                    { OpenTelemetryConstants.OtelTracesSampler, samplerType },
+                    { OpenTelemetryConstants.OtelTracesSamplerArg, samplerArg }
+                });
 
             var options = new AzureMonitorExporterOptions();
             var credential = new Mock<TokenCredential>().Object;
