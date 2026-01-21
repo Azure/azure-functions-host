@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
+using System.Globalization;
 using System.Linq;
 using Azure.Core;
 using Azure.Identity;
@@ -130,6 +131,26 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 activity.DisplayName = $"{activity.DisplayName} {routeTemplate}";
                 activity.AddTag(ResourceSemanticConventions.HttpRoute, routeTemplate);
             }
+        }
+
+        internal static void ConfigureAzureMonitorOptions(AzureMonitorExporterOptions options, string connectionString, TokenCredential credential)
+        {
+            options.ConnectionString = connectionString;
+
+            if (credential is not null)
+            {
+                options.Credential = credential;
+            }
+
+            var samplerArgs = GetConfigurationValue(OpenTelemetryConstants.OtelTracesSamplerArg);
+            var samplerType = GetConfigurationValue(OpenTelemetryConstants.OtelTracesSampler)?.Trim();
+
+            if (samplerArgs is null || samplerType is null)
+            {
+                return;
+            }
+
+            ConfigureSamplingOptions(samplerType.ToLower(), samplerArgs, options);
         }
 
         private static IOpenTelemetryBuilder ConfigureExporters(this IOpenTelemetryBuilder builder, IConfiguration configuration, bool enableOtlp, bool enableAzureMonitor, string azMonConnectionString, TelemetryMode telemetryMode)
@@ -269,15 +290,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             return null;
         }
 
-        private static void ConfigureAzureMonitorOptions(AzureMonitorExporterOptions options, string connectionString, TokenCredential credential)
-        {
-            options.ConnectionString = connectionString;
-            if (credential is not null)
-            {
-                options.Credential = credential;
-            }
-        }
-
         private static TracerProviderBuilder AddSources(this TracerProviderBuilder builder, ReadOnlySpan<string> sources)
         {
             foreach (var source in sources)
@@ -286,5 +298,52 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             }
             return builder;
         }
+
+        private static void ConfigureSamplingOptions(string samplerType, string samplerArgValue, AzureMonitorExporterOptions options)
+        {
+            Action<string, AzureMonitorExporterOptions> config = samplerType switch
+            {
+                OpenTelemetryConstants.RateLimitedSampler => ConfigureRateLimitedSampling,
+                OpenTelemetryConstants.FixedPercentageSampler => ConfigureFixedPercentageSampling,
+                _ => throw new ArgumentException("Invalid type value for environment variable '{OpenTelemetryConstants.OtelTracesSampler}'")
+            };
+
+            config(samplerArgValue, options);
+        }
+
+        private static void ConfigureRateLimitedSampling(string value, AzureMonitorExporterOptions options)
+        {
+            var tracesPerSecond = ParseDouble(value, OpenTelemetryConstants.RateLimitedSampler);
+
+            ArgumentOutOfRangeException.ThrowIfNegative(tracesPerSecond, nameof(tracesPerSecond));
+
+            options.TracesPerSecond = tracesPerSecond;
+        }
+
+        private static void ConfigureFixedPercentageSampling(string value, AzureMonitorExporterOptions options)
+        {
+            var ratio = ParseDouble(value, OpenTelemetryConstants.FixedPercentageSampler);
+
+            if (ratio < 0.0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(ratio),
+                    $"Environment variable '{OpenTelemetryConstants.OtelTracesSamplerArg}' must be >= 0.");
+            }
+
+            if (ratio > 1.0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(ratio),
+                    $"Environment variable '{OpenTelemetryConstants.OtelTracesSamplerArg}' must be <= 1.");
+            }
+
+            options.SamplingRatio = (float)ratio;
+            options.TracesPerSecond = null;
+        }
+
+        private static double ParseDouble(string value, string samplerType) =>
+            double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var result)
+                ? result
+                : throw new ArgumentException(
+                    $"Invalid numeric value for environment variable '{OpenTelemetryConstants.OtelTracesSamplerArg}'");
     }
 }

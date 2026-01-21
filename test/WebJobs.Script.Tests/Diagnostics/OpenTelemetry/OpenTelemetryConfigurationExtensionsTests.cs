@@ -7,6 +7,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using AwesomeAssertions;
+using Azure.Core;
+using Azure.Monitor.OpenTelemetry.Exporter;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http;
@@ -19,6 +21,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -446,6 +449,116 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             Assert.Equal("/api/hello/{name}", httpRoute);
 
             Assert.Contains("/api/hello/{name}", activity.DisplayName);
+        }
+
+        [Theory]
+        [InlineData(OpenTelemetryConstants.FixedPercentageSampler, "1", 1.0f, null)]
+        [InlineData(OpenTelemetryConstants.FixedPercentageSampler, "0.5", 0.5f, null)]
+        [InlineData(OpenTelemetryConstants.RateLimitedSampler, "5", 1, 5.0)]
+        public void ConfigureAzureMonitorOptions_ConfiguresSamplingCorrectly(string samplerType, string samplerArg, float? expectedRatio, double? expectedTracesPerSecond)
+        {
+            using var scope = new TestScopedEnvironmentVariable(
+                new Dictionary<string, string>
+                {
+                    { OpenTelemetryConstants.OtelTracesSampler, samplerType },
+                    { OpenTelemetryConstants.OtelTracesSamplerArg, samplerArg }
+                });
+
+            var options = new AzureMonitorExporterOptions();
+            var credential = new Mock<TokenCredential>().Object;
+
+            OpenTelemetryConfigurationExtensions.ConfigureAzureMonitorOptions(options, "InstrumentationKey=abc123", credential);
+
+            // Assert connection string + credential always set
+            Assert.Equal("InstrumentationKey=abc123", options.ConnectionString);
+            Assert.Equal(credential, options.Credential);
+
+            // Assert sampling behavior
+            Assert.Equal(expectedRatio, options.SamplingRatio);
+            Assert.Equal(expectedTracesPerSecond, options.TracesPerSecond);
+        }
+
+        [Theory]
+        [InlineData(OpenTelemetryConstants.FixedPercentageSampler, "-1")]
+        [InlineData(OpenTelemetryConstants.FixedPercentageSampler, "-1")]
+        [InlineData(OpenTelemetryConstants.FixedPercentageSampler, "2")]
+        [InlineData(OpenTelemetryConstants.RateLimitedSampler, "-5")]
+        public void ConfigureAzureMonitorOptions_InvalidValues_ThrowsArgumentException(string samplerType, string samplerArg)
+        {
+            using var scope = new TestScopedEnvironmentVariable(
+                new Dictionary<string, string>
+                {
+                    { OpenTelemetryConstants.OtelTracesSampler, samplerType },
+                    { OpenTelemetryConstants.OtelTracesSamplerArg, samplerArg }
+                });
+
+            var options = new AzureMonitorExporterOptions();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                OpenTelemetryConfigurationExtensions.ConfigureAzureMonitorOptions(options, "conn", null));
+        }
+
+        [Fact]
+        public void ConfigureAzureMonitorOptions_InvalidValues_ThrowsArgumentExcepCaseInsensitive()
+        {
+            using var scope = new TestScopedEnvironmentVariable(
+                new Dictionary<string, string>
+                {
+                    { OpenTelemetryConstants.OtelTracesSampler, $" {OpenTelemetryConstants.RateLimitedSampler.ToUpper()}" },
+                    { OpenTelemetryConstants.OtelTracesSamplerArg, "1" }
+                });
+
+            var options = new AzureMonitorExporterOptions();
+
+            // Act
+            OpenTelemetryConfigurationExtensions.ConfigureAzureMonitorOptions(options, "conn", null);
+
+            // Assert
+            Assert.Equal(1, options.SamplingRatio);
+        }
+
+        [Theory]
+        [InlineData(null, "1")]
+        [InlineData("", "1")]
+        [InlineData(OpenTelemetryConstants.FixedPercentageSampler, "")]
+        [InlineData(OpenTelemetryConstants.FixedPercentageSampler, null)]
+        public void ConfigureAzureMonitorOptions_SamplerCases_WorkAsExpected(string samplerType, string samplerArg)
+        {
+            // Arrange
+            using var scope = new TestScopedEnvironmentVariable(
+                new Dictionary<string, string>
+                {
+                    { OpenTelemetryConstants.OtelTracesSampler, samplerType },
+                    { OpenTelemetryConstants.OtelTracesSamplerArg, samplerArg }
+                });
+
+            var options = new AzureMonitorExporterOptions();
+            var credential = new Mock<TokenCredential>().Object;
+
+            // Act
+            OpenTelemetryConfigurationExtensions.ConfigureAzureMonitorOptions(options, "conn", null);
+        }
+
+        [Theory]
+        [InlineData("fixed", "1")]
+        [InlineData(OpenTelemetryConstants.FixedPercentageSampler, "abc")]
+        [InlineData(OpenTelemetryConstants.FixedPercentageSampler, " ")]
+        public void ConfigureAzureMonitorOptions_SamplerCases_Throw_ArgumentException(string samplerType, string samplerArg)
+        {
+            // Arrange
+            var env = new Dictionary<string, string>();
+
+            env[OpenTelemetryConstants.OtelTracesSampler] = samplerType;
+            env[OpenTelemetryConstants.OtelTracesSamplerArg] = samplerArg;
+
+            using var _ = new TestScopedEnvironmentVariable(env);
+
+            var options = new AzureMonitorExporterOptions();
+            var credential = new Mock<TokenCredential>().Object;
+
+            // Act
+            Assert.Throws<ArgumentException>(() =>
+                OpenTelemetryConfigurationExtensions.ConfigureAzureMonitorOptions(options, "conn", null));
         }
 
         // The OpenTelemetryEventListener is fine because it's a no-op if there are no otel events to listen to
