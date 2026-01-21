@@ -187,11 +187,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(WorkerProcessUtilities.IsConsoleLog(msg));
         }
 
-        [Fact]
-        public void HandleWorkerProcessExitError_PublishesWorkerRestartEvent_OnIntentionalRestartExitCode()
+        [Theory]
+        [InlineData(WorkerConstants.IntentionalRestartExitCode)]
+        [InlineData(WorkerConstants.SuccessExitCode)]
+        public async Task HandleWorkerProcessExit_PublishesWorkerRestartEvent(int exitCode)
         {
-            var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
-            rpcWorkerProcess.HandleWorkerProcessRestart();
+            // arrange
+            using Process process = GetProcess(exitCode);
+            _hostProcessMonitorMock.Setup(m => m.RegisterChildProcess(process));
+            _hostProcessMonitorMock.Setup(m => m.UnregisterChildProcess(process));
+            _workerProcessFactory.Setup(m => m.CreateWorkerProcess(It.IsNotNull<WorkerContext>())).Returns(process);
+            using var rpcWorkerProcess = GetRpcWorkerConfigProcess(
+                TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().ElementAt(0));
+
+            // act
+            await rpcWorkerProcess.StartProcessAsync();
+
+            // assert
+            await rpcWorkerProcess.WaitForExitAsync();
 
             _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerRestartEvent>()), Times.Once());
             _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerErrorEvent>()), Times.Never());
