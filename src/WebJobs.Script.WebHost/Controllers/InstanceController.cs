@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -39,64 +40,81 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/instance/assign")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> Assign([FromBody] HostAssignmentRequest hostAssignmentRequest)
+        public async Task<IActionResult> Assign()
         {
-            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationAssign))
+            Request.EnableBuffering();
+
+            using (var reader = new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: true))
             {
-                if (hostAssignmentRequest == null)
-                {
-                    return BadRequest($"{nameof(hostAssignmentRequest)} cannot be null.");
-                }
+                var body = await reader.ReadToEndAsync();
+                _logger.LogDebug("Raw request body: {body}", body);
+                Request.Body.Position = 0;
+            }
 
-                if (string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext) &&
-                    hostAssignmentRequest.AssignmentContext is null)
-                {
-                    return BadRequest($"At least one of {nameof(HostAssignmentRequest.AssignmentContext)} or {nameof(HostAssignmentRequest.EncryptedContext)} must be provided.");
-                }
+            using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
+            {
+                var body = await reader.ReadToEndAsync();
 
-                if (!string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext) &&
-                    hostAssignmentRequest.AssignmentContext is not null)
-                {
-                    return BadRequest($"Only one of {nameof(HostAssignmentRequest.AssignmentContext)} or {nameof(HostAssignmentRequest.EncryptedContext)} may be set.");
-                }
+                var hostAssignmentRequest = JsonConvert.DeserializeObject<HostAssignmentRequest>(body);
 
-                if (!string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext))
+                using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationAssign))
                 {
-                    _logger.LogDebug("Starting container assignment. ContextLength is {ContextLength}", hostAssignmentRequest.EncryptedContext.Length);
-                }
-                else
-                {
-                    if (!User.HasClaim(SecurityConstants.AssignUnencryptedClaimType, "true"))
+                    if (hostAssignmentRequest == null)
                     {
-                        _logger.LogWarning("Required claims missing for invoking unencrypted assignment");
-                        return Forbid();
+                        return BadRequest($"{nameof(hostAssignmentRequest)} cannot be null.");
                     }
-                    _logger.LogDebug("Starting container assignment.");
+
+                    if (string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext) &&
+                        hostAssignmentRequest.AssignmentContext is null)
+                    {
+                        return BadRequest($"At least one of {nameof(HostAssignmentRequest.AssignmentContext)} or {nameof(HostAssignmentRequest.EncryptedContext)} must be provided.");
+                    }
+
+                    if (!string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext) &&
+                        hostAssignmentRequest.AssignmentContext is not null)
+                    {
+                        return BadRequest($"Only one of {nameof(HostAssignmentRequest.AssignmentContext)} or {nameof(HostAssignmentRequest.EncryptedContext)} may be set.");
+                    }
+
+                    if (!string.IsNullOrEmpty(hostAssignmentRequest.EncryptedContext))
+                    {
+                        _logger.LogDebug("Starting container assignment. ContextLength is {ContextLength}", hostAssignmentRequest.EncryptedContext.Length);
+                    }
+                    else
+                    {
+                        if (!User.HasClaim(SecurityConstants.AssignUnencryptedClaimType, "true"))
+                        {
+                            _logger.LogWarning("Required claims missing for invoking unencrypted assignment");
+                            return Forbid();
+                        }
+                        _logger.LogDebug("Starting container assignment.");
+                    }
+
+                    var assignmentContext = _startupContextProvider.SetContext(hostAssignmentRequest);
+
+                    // before starting the assignment we want to perform as much
+                    // up front validation on the context as possible
+                    string error = await _instanceManager.ValidateContext(assignmentContext);
+                    if (error != null)
+                    {
+                        return StatusCode(StatusCodes.Status400BadRequest, error);
+                    }
+
+                    // Wait for Sidecar specialization to complete before returning ok.
+                    // This shouldn't take too long so ok to do this sequentially.
+                    error = await _instanceManager.SpecializeMSISidecar(assignmentContext);
+                    if (error != null)
+                    {
+                        return StatusCode(StatusCodes.Status500InternalServerError, error);
+                    }
+
+                    var succeeded = _instanceManager.StartAssignment(assignmentContext);
+
+                    return succeeded
+                        ? Accepted()
+                        : StatusCode(StatusCodes.Status409Conflict, "Instance already assigned");
                 }
-
-                var assignmentContext = _startupContextProvider.SetContext(hostAssignmentRequest);
-
-                // before starting the assignment we want to perform as much
-                // up front validation on the context as possible
-                string error = await _instanceManager.ValidateContext(assignmentContext);
-                if (error != null)
-                {
-                    return StatusCode(StatusCodes.Status400BadRequest, error);
-                }
-
-                // Wait for Sidecar specialization to complete before returning ok.
-                // This shouldn't take too long so ok to do this sequentially.
-                error = await _instanceManager.SpecializeMSISidecar(assignmentContext);
-                if (error != null)
-                {
-                    return StatusCode(StatusCodes.Status500InternalServerError, error);
-                }
-
-                var succeeded = _instanceManager.StartAssignment(assignmentContext);
-
-                return succeeded
-                    ? Accepted()
-                    : StatusCode(StatusCodes.Status409Conflict, "Instance already assigned");
+              
             }
         }
 
