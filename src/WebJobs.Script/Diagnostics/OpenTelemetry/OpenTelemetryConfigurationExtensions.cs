@@ -344,6 +344,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var result)
                 ? result
                 : throw new ArgumentException(
-                    $"Invalid numeric value for environment variable '{OpenTelemetryConstants.OtelTracesSamplerArg}'");
+                    $"Invalid numeric value for environment variable '{samplerType}'");
     }
 }
