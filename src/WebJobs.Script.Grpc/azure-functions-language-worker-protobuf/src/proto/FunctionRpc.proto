@@ -442,6 +442,8 @@ message InvocationResponse {
 
   // Status of the invocation (success/failure/canceled)
   StatusResult result = 3;
+
+  RpcTraceContext trace_context = 5;
 }
 
 message WorkerWarmupRequest {

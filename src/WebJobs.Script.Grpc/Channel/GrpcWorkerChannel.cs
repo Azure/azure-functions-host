@@ -1141,6 +1141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
 
                     LogSharedMemoryUsage(invokeResponse);
+                    AddWorkerTraceAttributes(invokeResponse, context);
 
                     if (invokeResponse.Result.IsInvocationSuccess())
                     {
@@ -1735,6 +1736,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInvocationId, invocationRequest.InvocationId);
+            }
+        }
+
+        private void AddWorkerTraceAttributes(InvocationResponse invocationResponse, ScriptInvocationContext context)
+        {
+            var attributes = invocationResponse.TraceContext?.Attributes;
+
+            if (attributes != null)
+            {
+                foreach (var kvp in attributes)
+                {
+                    Activity.Current?.AddTag(kvp.Key, kvp.Value);
+                }
             }
         }
 
