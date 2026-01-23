@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reactive.Linq;
 using System.Threading;
@@ -72,6 +73,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public Task SpecializeHostAsync()
         {
             IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationSpecializeHost);
+
+            // Tag concurrent callers as impacted by cold start
+            Activity.Current.SetColdStartImpactedTag();
+
             return _specializationTask.Value.ContinueWith(t =>
             {
                 if (t.IsFaulted)
@@ -87,9 +92,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task SpecializeHostCoreAsync()
         {
+            Activity activity = Activity.Current;
+            activity.SetColdStartTag();
+
             // Go async immediately to ensure that any async context from
             // the PlaceholderSpecializationMiddleware is properly suppressed.
             await Task.Yield();
+
+            // Start a new activity for specialization
+            using var initActivity = ActivityExtensions.StartSpecializationActivity();
 
             ApplyMcpCustomHandlerSettings();
 
