@@ -1741,15 +1741,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void AddWorkerTraceAttributes(InvocationResponse invocationResponse, ScriptInvocationContext context)
         {
-            var attributes = invocationResponse.TraceContext?.Attributes;
-
-            if (attributes != null)
+            System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, static state =>
             {
-                foreach (var kvp in attributes)
+                var (invocationResponse, _) = ((InvocationResponse, ScriptInvocationContext))state;
+                var attributes = invocationResponse.TraceContext?.Attributes;
+                if (attributes != null)
                 {
-                    Activity.Current?.AddTag(kvp.Key, kvp.Value);
+                    foreach (var kvp in attributes)
+                    {
+                        Activity.Current?.AddTag(kvp.Key, kvp.Value);
+                    }
                 }
-            }
+            }, (invocationResponse, context));
         }
 
         private sealed class ExecutingInvocation : IDisposable
