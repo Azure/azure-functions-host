@@ -1747,6 +1747,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
 
+            if (context.AsyncExecutionContext is null)
+            {
+                return;
+            }
+
             System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, static state =>
             {
                 var attrs = (IDictionary<string, string>)state;
