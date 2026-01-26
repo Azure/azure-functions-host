@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -6,7 +6,7 @@ using System.Threading;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
+namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
     public sealed class HostBuiltChangeTokenSource<TOptions> : IOptionsChangeTokenSource<TOptions>, IDisposable
     {

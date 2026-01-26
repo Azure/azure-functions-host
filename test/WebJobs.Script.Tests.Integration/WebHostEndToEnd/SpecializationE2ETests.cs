@@ -459,7 +459,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var newProcessId = channel.WorkerProcess.Process.Id;
             Assert.Contains("--max-old-space-size=1272", channel.WorkerProcess.Process.StartInfo.Arguments);
             Assert.NotEqual(processId, newProcessId);
+
+            // Verify the custom arguments were applied
+            var workerStartLogs = _loggerProvider.GetAllLogMessages()
+                .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Starting worker process with FileName:"))
+                .ToArray();
+
+            Assert.Equal(2, workerStartLogs.Length);
         }
+
+        [Fact]
+        public async Task StartWorkerWithWorkerArguments()
+        {
+            _environment.Clear();
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder(_loggerProvider, "HttpTriggerNoAuth");
+            string isFileSystemReadOnly = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.IsFileSystemReadOnly));
+
+            builder.ConfigureAppConfiguration(config =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, Path.GetFullPath(@"TestScripts\NodeWithBundles") }
+                });
+            });
+
+            // Use an actual env var here as it will be refreshed in config after specialization
+            using var envVars = new TestScopedEnvironmentVariable("languageWorkers:node:arguments", "--max-old-space-size=1272");
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+
+            var response = await client.GetAsync("api/HttpTriggerNoAuth");
+            response.EnsureSuccessStatusCode();
+
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            var newProcessId = channel.WorkerProcess.Process.Id;
+            Assert.Contains("--max-old-space-size=1272", channel.WorkerProcess.Process.StartInfo.Arguments);
+
+            // Verify the custom arguments were applied
+            var workerStartLogs = _loggerProvider.GetAllLogMessages()
+                .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Starting worker process with FileName:"))
+                .ToArray();
+
+            Assert.Equal(1, workerStartLogs.Length);
+        }
+
 
         [Fact]
         public async Task Specialization_GCMode()
@@ -918,7 +968,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags , ScriptConstants.FeatureFlagEnableResponseCompression);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableResponseCompression);
 
             response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
