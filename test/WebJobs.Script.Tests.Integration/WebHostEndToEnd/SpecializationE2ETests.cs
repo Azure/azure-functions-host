@@ -506,7 +506,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertLanguageWorkerOptionsSetupCount(1);
         }
 
-
         [Fact]
         public async Task Specialization_GCMode()
         {
