@@ -1556,7 +1556,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private void AssertLanguageWorkerOptionsSetupCount(int expected)
         {
-            // Verify only two LanguageWorkerOptions setup
+            // Verify LanguageWorkerOptions setup count
             var workerConfigLogs = _loggerProvider.GetAllLogMessages()
                 .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Workers Directory set to:"))
                 .ToArray();
