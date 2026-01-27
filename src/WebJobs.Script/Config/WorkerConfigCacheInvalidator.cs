@@ -50,14 +50,14 @@ public class WorkerConfigCacheInvalidator
 
     private void InvalidateCache()
     {
-        if (_workerConfigResolverOptionsChangeTokenSource is RefreshWorkerOptionsChangeTokenSource<WorkerConfigurationResolverOptions> { } hostBuiltChangeTokenResolverOptions)
+        if (_workerConfigResolverOptionsChangeTokenSource is RefreshWorkerOptionsChangeTokenSource<WorkerConfigurationResolverOptions> { } refreshWorkerConfigResolverOptions)
         {
-            hostBuiltChangeTokenResolverOptions.TriggerChange();
+            refreshWorkerConfigResolverOptions.TriggerChange();
         }
 
-        if (_languageWorkerOptionsChangeTokenSource is RefreshWorkerOptionsChangeTokenSource<LanguageWorkerOptions> { } hostBuiltChangeTokenSource)
+        if (_languageWorkerOptionsChangeTokenSource is RefreshWorkerOptionsChangeTokenSource<LanguageWorkerOptions> { } refreshLanguageWorkerOptions)
         {
-            hostBuiltChangeTokenSource.TriggerChange();
+            refreshLanguageWorkerOptions.TriggerChange();
         }
     }
 }
