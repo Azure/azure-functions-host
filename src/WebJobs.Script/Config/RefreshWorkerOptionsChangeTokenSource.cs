@@ -8,7 +8,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
-    public sealed class HostBuiltChangeTokenSource<TOptions> : IOptionsChangeTokenSource<TOptions>, IDisposable
+    public sealed class RefreshWorkerOptionsChangeTokenSource<TOptions> : IOptionsChangeTokenSource<TOptions>, IDisposable
     {
         private CancellationTokenSource _cts = new();
 

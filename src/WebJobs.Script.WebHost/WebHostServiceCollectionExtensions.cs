@@ -223,7 +223,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
             services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsChangeTokenSource>();
             services.ConfigureOptions<StandbyOptionsSetup>();
-            services.ConfigureOptions<LanguageWorkerOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<ResponseCompressionOptions, ResponseCompressionOptionsSetup, SpecializationChangeTokenSource<ResponseCompressionOptions>>();
@@ -235,8 +234,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<ExtensionRequirementOptionsSetup>();
 
             // Refresh WorkerConfigurationResolverOptions and LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
-            services.ConfigureOptionsWithChangeTokenSource<WorkerConfigurationResolverOptions, WorkerConfigurationResolverOptionsSetup, HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions>>();
-            services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, HostBuiltChangeTokenSource<LanguageWorkerOptions>>();
+            services.ConfigureOptionsWithChangeTokenSource<WorkerConfigurationResolverOptions, WorkerConfigurationResolverOptionsSetup, RefreshWorkerOptionsChangeTokenSource<WorkerConfigurationResolverOptions>>();
+            services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, RefreshWorkerOptionsChangeTokenSource<LanguageWorkerOptions>>();
             services.AddSingleton<WorkerConfigCacheInvalidator>();
             services.AddSingleton(SystemRuntimeInformation.Instance);
             services.AddSingleton<IWorkerConfigurationResolver, WorkerConfigurationResolver>();

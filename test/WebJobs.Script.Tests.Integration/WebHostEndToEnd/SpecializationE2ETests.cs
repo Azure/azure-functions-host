@@ -63,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
+        private readonly TestMetricsLogger _testMetricsLogger = new();
 
         private readonly ITestOutputHelper _testOutputHelper;
 
@@ -460,16 +461,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("--max-old-space-size=1272", channel.WorkerProcess.Process.StartInfo.Arguments);
             Assert.NotEqual(processId, newProcessId);
 
-            // Verify the custom arguments were applied
-            var workerStartLogs = _loggerProvider.GetAllLogMessages()
-                .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Starting worker process with FileName:"))
-                .ToArray();
+            AssertWorkerProcessStartupCount(2);
 
-            Assert.Equal(2, workerStartLogs.Length);
+            AssertLanguageWorkerOptionsSetupCount(2);
         }
 
         [Fact]
-        public async Task StartWorkerWithWorkerArguments()
+        // This test doesn't specialize, but is here to compare behavior with the other Arguments test above
+        public async Task NoSpecialization_StartWorkerWithWorkerArguments()
         {
             _environment.Clear();
 
@@ -502,12 +501,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var newProcessId = channel.WorkerProcess.Process.Id;
             Assert.Contains("--max-old-space-size=1272", channel.WorkerProcess.Process.StartInfo.Arguments);
 
-            // Verify the custom arguments were applied
-            var workerStartLogs = _loggerProvider.GetAllLogMessages()
-                .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Starting worker process with FileName:"))
-                .ToArray();
+            AssertWorkerProcessStartupCount(1);
 
-            Assert.Equal(1, workerStartLogs.Length);
+            AssertLanguageWorkerOptionsSetupCount(1);
         }
 
 
@@ -939,6 +935,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
+
+            AssertWorkerProcessStartupCount(1);
+
+            // non-bundle languages (dotnet-isolated) require the worker options to be refreshed so that
+            // JobHost configuration can be considered
+            AssertLanguageWorkerOptionsSetupCount(2);
         }
 
         [Theory]
@@ -1256,6 +1258,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '7.0'. Match: False", log);
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
+
+            AssertWorkerProcessStartupCount(2);
+
+            // non-bundle languages (dotnet-isolated) require the worker options to be refreshed so that
+            // JobHost configuration can be considered
+            AssertLanguageWorkerOptionsSetupCount(2);
         }
 
         [Fact]
@@ -1545,6 +1553,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
             return builder;
+        }
+
+        private void AssertLanguageWorkerOptionsSetupCount(int expected)
+        {
+            // Verify only two LanguageWorkerOptions setup
+            var workerConfigLogs = _loggerProvider.GetAllLogMessages()
+                .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Workers Directory set to:"))
+                .ToArray();
+            Assert.Equal(expected, workerConfigLogs.Length);
+        }
+
+        private void AssertWorkerProcessStartupCount(int expected)
+        {
+            var workerStartLogs = _loggerProvider.GetAllLogMessages()
+                .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Starting worker process with FileName:"))
+                .ToArray();
+            Assert.Equal(expected, workerStartLogs.Length);
         }
 
         private class InfiniteTimerStandbyManager : StandbyManager

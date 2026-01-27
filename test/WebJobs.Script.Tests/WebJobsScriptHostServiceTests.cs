@@ -42,8 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private ILoggerFactory _loggerFactory;
         private Mock<IScriptWebHostEnvironment> _mockScriptWebHostEnvironment;
         private Mock<IEnvironment> _mockEnvironment;
-        private HostBuiltChangeTokenSource<LanguageWorkerOptions> _hostBuiltChangeTokenSource = new();
-        private HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions> _hostBuiltChangeTokenSourceResolverOptions = new();
+        private RefreshWorkerOptionsChangeTokenSource<LanguageWorkerOptions> _hostBuiltChangeTokenSource = new();
+        private RefreshWorkerOptionsChangeTokenSource<WorkerConfigurationResolverOptions> _hostBuiltChangeTokenSourceResolverOptions = new();
         private IConfiguration _mockConfig;
         private OptionsWrapper<HostHealthMonitorOptions> _healthMonitorOptions;
         private HostPerformanceManager _hostPerformanceManager;

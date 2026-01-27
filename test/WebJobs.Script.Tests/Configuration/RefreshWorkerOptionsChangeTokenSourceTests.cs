@@ -8,12 +8,12 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
-    public sealed class HostBuiltChangeTokenSourceTests
+    public sealed class RefreshWorkerOptionsChangeTokenSourceTests
     {
         [Fact]
         public void GetChangeToken_ReturnsValidToken()
         {
-            var changeTokenSource = new HostBuiltChangeTokenSource<object>();
+            var changeTokenSource = new RefreshWorkerOptionsChangeTokenSource<object>();
 
             IChangeToken changeToken = changeTokenSource.GetChangeToken();
 
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void TriggerChange_SignalsChange()
         {
-            var changeTokenSource = new HostBuiltChangeTokenSource<object>();
+            var changeTokenSource = new RefreshWorkerOptionsChangeTokenSource<object>();
             IChangeToken changeToken = changeTokenSource.GetChangeToken();
 
             changeTokenSource.TriggerChange();
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void TriggerChange_CreatesNewToken()
         {
-            var changeTokenSource = new HostBuiltChangeTokenSource<object>();
+            var changeTokenSource = new RefreshWorkerOptionsChangeTokenSource<object>();
             IChangeToken initialToken = changeTokenSource.GetChangeToken();
 
             changeTokenSource.TriggerChange();
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void Dispose_DisposesTokenSource()
         {
-            var changeTokenSource = new HostBuiltChangeTokenSource<object>();
+            var changeTokenSource = new RefreshWorkerOptionsChangeTokenSource<object>();
 
             changeTokenSource.Dispose();
 
