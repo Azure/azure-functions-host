@@ -497,7 +497,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
             var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
-            var newProcessId = channel.WorkerProcess.Process.Id;
             Assert.Contains("--max-old-space-size=1272", channel.WorkerProcess.Process.StartInfo.Arguments);
 
             AssertWorkerProcessStartupCount(1);
