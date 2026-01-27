@@ -476,7 +476,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
 
             var builder = CreateStandbyHostBuilder(_loggerProvider, "HttpTriggerNoAuth");
-            string isFileSystemReadOnly = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.IsFileSystemReadOnly));
 
             builder.ConfigureAppConfiguration(config =>
             {
