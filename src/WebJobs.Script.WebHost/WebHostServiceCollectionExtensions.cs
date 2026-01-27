@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddHostingConfigOptions(configuration);
             services.ConfigureOptions<ExtensionRequirementOptionsSetup>();
 
-            // Refresh WorkerConfigurationResolverOptions and LanguageWorkerOptions when HostBuiltChangeTokenSource is triggered.
+            // Refresh WorkerConfigurationResolverOptions and LanguageWorkerOptions when RefreshWorkerOptionsChangeTokenSource is triggered.
             services.ConfigureOptionsWithChangeTokenSource<WorkerConfigurationResolverOptions, WorkerConfigurationResolverOptionsSetup, RefreshWorkerOptionsChangeTokenSource<WorkerConfigurationResolverOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, RefreshWorkerOptionsChangeTokenSource<LanguageWorkerOptions>>();
             services.AddSingleton<WorkerConfigCacheInvalidator>();
