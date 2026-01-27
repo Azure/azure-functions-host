@@ -4,7 +4,6 @@
 using System;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
-using System.Globalization;
 using System.Linq;
 using Azure.Core;
 using Azure.Identity;

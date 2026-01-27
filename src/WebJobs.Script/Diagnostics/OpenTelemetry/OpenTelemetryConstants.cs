@@ -13,10 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         internal const string WebJobsActivitySourceVersion = "1.0.0";
         internal const string HostActivitySourceVersion = "1.0.0";
         internal const string SpecializationOperationName = "init";
-        internal const string RateLimitedSampler = "microsoft.rate_limited";
-        internal const string FixedPercentageSampler = "microsoft.fixed.percentage";
-        internal const string OtelTracesSampler = "OTEL_TRACES_SAMPLER";
-        internal const string OtelTracesSamplerArg = "OTEL_TRACES_SAMPLER_ARG";
 
         internal static class ActivitySourceNames
         {
