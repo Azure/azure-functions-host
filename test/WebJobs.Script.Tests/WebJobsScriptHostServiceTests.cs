@@ -18,7 +18,6 @@ using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -35,21 +34,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class WebJobsScriptHostServiceTests
     {
         private readonly OptionsWrapper<FunctionsHostingConfigOptions> _functionsHostingConfigOptions = new(new FunctionsHostingConfigOptions());
+        private readonly WorkerConfigCacheInvalidator _workerConfigCacheInvalidator;
+
         private WebJobsScriptHostService _hostService;
         private ScriptApplicationHostOptionsMonitor _monitor;
         private TestLoggerProvider _webHostLoggerProvider = new TestLoggerProvider();
-        private TestLoggerProvider _jobHostLoggerProvider = new TestLoggerProvider();
         private ILoggerFactory _loggerFactory;
         private Mock<IScriptWebHostEnvironment> _mockScriptWebHostEnvironment;
         private Mock<IEnvironment> _mockEnvironment;
-        private readonly RefreshWorkerOptionsChangeTokenSource<LanguageWorkerOptions> _hostBuiltChangeTokenSource = new();
-        private readonly RefreshWorkerOptionsChangeTokenSource<WorkerConfigurationResolverOptions> _hostBuiltChangeTokenSourceResolverOptions = new();
         private IConfiguration _mockConfig;
         private OptionsWrapper<HostHealthMonitorOptions> _healthMonitorOptions;
         private HostPerformanceManager _hostPerformanceManager;
         private Mock<IHost> _host;
         private IHostMetrics _hostMetrics;
-        private readonly WorkerConfigCacheInvalidator _workerConfigCacheInvalidator;
 
         public WebJobsScriptHostServiceTests()
         {
