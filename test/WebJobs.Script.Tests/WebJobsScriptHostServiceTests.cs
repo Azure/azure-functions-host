@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private HostPerformanceManager _hostPerformanceManager;
         private Mock<IHost> _host;
         private IHostMetrics _hostMetrics;
-        private WorkerConfigCacheInvalidator _workerConfigCacheInvalidator;
+        private readonly WorkerConfigCacheInvalidator _workerConfigCacheInvalidator;
 
         public WebJobsScriptHostServiceTests()
         {
