@@ -1741,7 +1741,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void AddWorkerTraceAttributes(InvocationResponse invocationResponse, ScriptInvocationContext context)
         {
-            var attributes = invocationResponse.TraceContext?.Attributes;
+            var attributes = invocationResponse.TraceContextAttributes;
             if (attributes is null)
             {
                 return;
