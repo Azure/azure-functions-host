@@ -806,6 +806,68 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
+        public async Task GetHostSecretsAsync_ConcurrentCalls_OnlyLoadsSecretsOnce()
+        {
+            using (var directory = new TempDirectory())
+            {
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.EncryptionKey);
+
+                using (var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, setStaleValue: false))
+                {
+                    var tasks = new List<Task<HostSecretsInfo>>();
+                    for (int i = 0; i < 10; i++)
+                    {
+                        tasks.Add(secretManager.GetHostSecretsAsync());
+                    }
+
+                    await Task.WhenAll(tasks);
+
+                    // Verify all calls return the same result
+                    var hostSecrets = tasks.Select(p => p.Result).ToList();
+                    var masterKey = hostSecrets.First().MasterKey;
+                    Assert.True(hostSecrets.All(q => q.MasterKey == masterKey));
+
+                    // Verify that "Loading host secrets" was logged only once due to double-check locking
+                    var loadingLogs = _loggerProvider.GetAllLogMessages()
+                        .Where(m => m.FormattedMessage == "Loading host secrets")
+                        .ToList();
+                    Assert.Single(loadingLogs);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task GetFunctionSecretsAsync_ConcurrentCalls_OnlyLoadsSecretsOnce()
+        {
+            using (var directory = new TempDirectory())
+            {
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.EncryptionKey);
+                string functionName = "TestFunction";
+
+                using (var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, setStaleValue: false))
+                {
+                    var tasks = new List<Task<IDictionary<string, string>>>();
+                    for (int i = 0; i < 10; i++)
+                    {
+                        tasks.Add(secretManager.GetFunctionSecretsAsync(functionName));
+                    }
+
+                    var results = await Task.WhenAll(tasks);
+
+                    // Verify all calls return the same result
+                    var defaultKey = results.First()["default"];
+                    Assert.True(results.All(q => q["default"] == defaultKey));
+
+                    // Verify that "Loading secrets for function" was logged only once due to double-check locking
+                    var loadingLogs = _loggerProvider.GetAllLogMessages()
+                        .Where(m => m.FormattedMessage == $"Loading secrets for function '{functionName.ToLowerInvariant()}'")
+                        .ToList();
+                    Assert.Single(loadingLogs);
+                }
+            }
+        }
+
+        [Fact]
         public async Task GetHostSecrets_WhenNoHostSecretFileExists_GeneratesSecretsAndPersistsFiles()
         {
             using (var directory = new TempDirectory())

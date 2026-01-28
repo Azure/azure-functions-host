@@ -5,3 +5,4 @@
 -->
 
 - Restart worker process if not disposed (shutting down) and exited with code 0 (#11576)
+- Fix race condition in SecretManager secret caching with double-check locking pattern (#11560)
