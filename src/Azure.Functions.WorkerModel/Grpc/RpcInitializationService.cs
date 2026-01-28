@@ -104,7 +104,7 @@ internal class RpcInitializationService : IManagedHostedService
 
     internal IHost CreateFunctionsGrpcHost()
     {
-        var builder = WebApplication.CreateBuilder();
+        var builder = WebApplication.CreateSlimBuilder();
 
         builder.WebHost.ConfigureKestrel(options =>
         {
