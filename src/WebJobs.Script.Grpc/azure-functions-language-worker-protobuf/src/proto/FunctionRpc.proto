@@ -445,6 +445,7 @@ message InvocationResponse {
 
   // Enables propagation of tags from worker -> host.
   map<string, string> trace_context_attributes = 5;
+
 }
 
 message WorkerWarmupRequest {
