@@ -9,3 +9,4 @@
 - Stop collecting telemetry from admin endpoint requests (#11544)
 - Add area & error code to script & web host health checks (#11552)
 - Log siteUpdateId during initialization to track rolling update progress (#11527)
+- Add support for propagating tags from the worker to the host and update the protobuf version to `v1.12.0-protofile` (#11575)
