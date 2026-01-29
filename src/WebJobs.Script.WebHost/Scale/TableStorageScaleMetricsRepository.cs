@@ -28,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const string SampleTimestampPropertyName = "SampleTimestamp";
         private const int MetricsPurgeDelaySeconds = 30;
         private const int DefaultTableCreationRetries = 3;
+        private const int DefaultOperationRetries = 5;
+        private static readonly TimeSpan DefaultOperationRetryInterval = TimeSpan.FromSeconds(1);
 
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IAzureTableStorageProvider _azureTableStorageProvider;
@@ -190,26 +192,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal async Task ExecuteBatchSafeAsync(List<TableTransactionAction> batch, DateTime? now = null)
         {
             var metricsTable = GetMetricsTable(now);
-            if (metricsTable != null && batch.Any())
+            if (metricsTable is null || !batch.Any())
+            {
+                return;
+            }
+
+            bool tableCreated = false;
+            await Utility.InvokeWithRetriesWhenAsync(async () =>
             {
                 try
                 {
-                    // TODO: handle paging and errors
                     await metricsTable.SubmitTransactionAsync(batch);
                 }
-                catch (RequestFailedException e)
+                catch (RequestFailedException e) when (IsTableNotFound(e) && !tableCreated)
                 {
-                    if (IsTableNotFound(e))
-                    {
-                        // create the table and retry
-                        await CreateIfNotExistsAsync(metricsTable);
-                        await metricsTable.SubmitTransactionAsync(batch);
-                        return;
-                    }
-
-                    throw;
+                    // create the table and retry
+                    await CreateIfNotExistsAsync(metricsTable);
+                    tableCreated = true;
+                    await metricsTable.SubmitTransactionAsync(batch);
                 }
-            }
+            },
+            DefaultOperationRetries,
+            DefaultOperationRetryInterval,
+            e => e is RequestFailedException rfe && IsTransientStorageError(rfe));
         }
 
         internal async Task CreateIfNotExistsAsync(TableClient table, int retryDelayMS = 1000)
@@ -261,26 +266,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal async Task<IEnumerable<TableEntity>> ExecuteQuerySafeAsync(TableClient metricsTable, string query)
         {
-            try
+            List<TableEntity> results = null;
+
+            await Utility.InvokeWithRetriesWhenAsync(async () =>
             {
-                List<TableEntity> results = new List<TableEntity>();
-
-                await foreach (var result in metricsTable.QueryAsync<TableEntity>(query))
+                results = [];
+                try
                 {
-                    results.Add(result);
+                    await foreach (var result in metricsTable.QueryAsync<TableEntity>(query))
+                    {
+                        results.Add(result);
+                    }
                 }
-
-                return results;
-            }
-            catch (RequestFailedException e)
-            {
-                if (IsTableNotFound(e))
+                catch (RequestFailedException e) when (IsTableNotFound(e))
                 {
-                    return Enumerable.Empty<TableEntity>();
+                    results = [];
                 }
+            },
+            DefaultOperationRetries,
+            DefaultOperationRetryInterval,
+            e => e is RequestFailedException rfe && IsTransientStorageError(rfe));
 
-                throw;
-            }
+            return results;
         }
 
         internal async Task<IEnumerable<TableEntity>> ReadRecentMetrics(TableClient metricsTable)
@@ -346,6 +353,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return exception.ErrorCode == "TableNotFound";
+        }
+
+        /// <summary>
+        /// Determines whether the specified <see cref="RequestFailedException"/> represents
+        /// a transient storage error that should be retried.
+        /// </summary>
+        /// <param name="exception">The exception to evaluate.</param>
+        /// <returns><c>true</c> if the error is transient; otherwise, <c>false</c>.</returns>
+        internal static bool IsTransientStorageError(RequestFailedException exception)
+        {
+            ArgumentNullException.ThrowIfNull(exception);
+
+            // HTTP 429 (Too Many Requests) - throttling
+            // HTTP 500 (Internal Server Error) - transient server error
+            // HTTP 503 (Service Unavailable) - server busy or temporarily unavailable
+            // HTTP 504 (Gateway Timeout) - timeout that may succeed on retry
+            return exception.Status is
+                (int)HttpStatusCode.TooManyRequests or
+                (int)HttpStatusCode.InternalServerError or
+                (int)HttpStatusCode.ServiceUnavailable or
+                (int)HttpStatusCode.GatewayTimeout;
         }
     }
 }
