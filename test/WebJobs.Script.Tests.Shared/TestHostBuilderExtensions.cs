@@ -91,7 +91,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IWorkerConfigurationProvider, ExplicitWorkerConfigurationProvider>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
-            services.AddSingleton(_ => new WorkerConfigCacheInvalidator(null, null));
+            services.AddSingleton(_ => new WorkerConfigCacheInvalidator(null, null, new TestEnvironment()));
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
             services.AddFunctionMetadataManager();

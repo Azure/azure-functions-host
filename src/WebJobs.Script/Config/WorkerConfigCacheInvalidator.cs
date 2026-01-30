@@ -11,16 +11,19 @@ public class WorkerConfigCacheInvalidator
 {
     private readonly IOptionsChangeTokenSource<WorkerConfigurationResolverOptions> _workerConfigResolverOptionsChangeTokenSource;
     private readonly IOptionsChangeTokenSource<LanguageWorkerOptions> _languageWorkerOptionsChangeTokenSource;
+    private readonly IEnvironment _environment;
 
     private bool _usingBundles = false;
     private bool _firstRun = true;
 
     public WorkerConfigCacheInvalidator(
         IOptionsChangeTokenSource<WorkerConfigurationResolverOptions> workerConfigResolverOptionsChangeTokenSource,
-        IOptionsChangeTokenSource<LanguageWorkerOptions> languageWorkerOptionsChangeTokenSource)
+        IOptionsChangeTokenSource<LanguageWorkerOptions> languageWorkerOptionsChangeTokenSource,
+        IEnvironment environment)
     {
         _workerConfigResolverOptionsChangeTokenSource = workerConfigResolverOptionsChangeTokenSource;
         _languageWorkerOptionsChangeTokenSource = languageWorkerOptionsChangeTokenSource;
+        _environment = environment;
     }
 
     public void InvalidateCacheForBundles()
@@ -39,7 +42,7 @@ public class WorkerConfigCacheInvalidator
 
     public void InvalidateCacheIfNotUsingBundles()
     {
-        if (!_usingBundles)
+        if (!_usingBundles || Utility.IsDotnetIsolatedApp(_environment, null))
         {
             InvalidateCache();
         }

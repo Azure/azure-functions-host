@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockConfig = new Mock<IConfiguration>().Object;
             _hostMetrics = _host.Object.Services.GetService<IHostMetrics>();
 
-            _workerConfigCacheInvalidator = new(null, null);
+            _workerConfigCacheInvalidator = new(null, null, new TestEnvironment());
         }
 
         private Mock<IHost> CreateMockHost(SemaphoreSlim disposedSemaphore = null)
