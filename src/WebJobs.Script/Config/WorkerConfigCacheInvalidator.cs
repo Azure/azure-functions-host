@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration;
 /// properly refreshed when needed, particularly during host specialization in consumption plans.
 /// </para>
 /// </remarks>
-public class WorkerConfigCacheInvalidator
+public sealed class WorkerConfigCacheInvalidator
 {
     private readonly IOptionsChangeTokenSource<WorkerConfigurationResolverOptions> _workerConfigResolverOptionsChangeTokenSource;
     private readonly IOptionsChangeTokenSource<LanguageWorkerOptions> _languageWorkerOptionsChangeTokenSource;
