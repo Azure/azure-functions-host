@@ -141,6 +141,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
             else
             {
+                _workerConfigCacheInvalidator.EnableInvalidationForNextBuild();
+
                 extensionsMetadataPath = Path.Combine(_rootScriptPath, "bin");
                 if (Utility.TryResolveExtensionsMetadataPath(_rootScriptPath, out string resolvedPath, out baseProbingPath))
                 {

@@ -394,7 +394,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _ = Task.Run(() => deferredLogProvider.ProcessBufferedLogsAsync(selectedProviders));
                     }
                 }
-                _workerConfigCacheInvalidator.InvalidateCacheIfNotUsingBundles();
+                _workerConfigCacheInvalidator.InvalidateCachePostBuildIfEnabled();
 
                 var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();
                 if (scriptHost != null)
