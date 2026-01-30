@@ -96,6 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             ImmutableArray<FunctionMetadata> functionMetadataCollection = ImmutableArray<FunctionMetadata>.Empty;
             if (bundleConfigured)
             {
+                // refresh the cache immediately before we attempt to start a worker and get metadata for bundles
                 _workerConfigCacheInvalidator.InvalidateCacheForBundles();
 
                 ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
@@ -141,6 +142,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
             else
             {
+                // we now know that we're not going to be using bundles, so we need to invalidate the worker
+                // configuration cache the next time we build the host
                 _workerConfigCacheInvalidator.EnableInvalidationForNextBuild();
 
                 extensionsMetadataPath = Path.Combine(_rootScriptPath, "bin");
