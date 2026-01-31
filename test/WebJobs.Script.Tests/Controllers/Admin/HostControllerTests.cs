@@ -365,9 +365,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             scriptHostManagerMock.Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             
             // Setup drain mode to return true initially, then false after restart
-            var drainModeSequence = drainModeManager.SetupSequence(x => x.IsDrainModeEnabled);
-            drainModeSequence.Returns(true);  // First check - before restart
-            drainModeSequence.Returns(false); // Second check - after restart
+            drainModeManager.SetupSequence(x => x.IsDrainModeEnabled)
+                .Returns(true)  // First check - before restart
+                .Returns(false); // Second check - after restart
 
             var expectedBody = new ResumeStatus { State = ScriptHostState.Running };
             var result = (OkObjectResult)await _hostController.Resume(scriptHostManagerMock.Object, default);
@@ -441,16 +441,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
             
             // Setup state sequence: Running before check, Stopping after restart
-            var stateSequence = scriptHostManagerMock.SetupSequence(p => p.State);
-            stateSequence.Returns(ScriptHostState.Running);  // Initial check
-            stateSequence.Returns(ScriptHostState.Stopping); // After restart
+            scriptHostManagerMock.SetupSequence(p => p.State)
+                .Returns(ScriptHostState.Running)  // Initial check
+                .Returns(ScriptHostState.Stopping); // After restart
             
             scriptHostManagerMock.Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             
             // Setup drain mode to return true initially, then false after restart
-            var drainModeSequence = drainModeManager.SetupSequence(x => x.IsDrainModeEnabled);
-            drainModeSequence.Returns(true);  // First check - before restart
-            drainModeSequence.Returns(false); // Second check - after restart
+            drainModeManager.SetupSequence(x => x.IsDrainModeEnabled)
+                .Returns(true)  // First check - before restart
+                .Returns(false); // Second check - after restart
 
             var result = await _hostController.Resume(scriptHostManagerMock.Object, default);
             
