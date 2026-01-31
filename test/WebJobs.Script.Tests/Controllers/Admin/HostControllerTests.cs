@@ -363,7 +363,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
             scriptHostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
             scriptHostManagerMock.Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-            drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(true);
+            
+            // Setup drain mode to return true initially, then false after restart
+            var drainModeSequence = drainModeManager.SetupSequence(x => x.IsDrainModeEnabled);
+            drainModeSequence.Returns(true);  // First check - before restart
+            drainModeSequence.Returns(false); // Second check - after restart
 
             var expectedBody = new ResumeStatus { State = ScriptHostState.Running };
             var result = (OkObjectResult)await _hostController.Resume(scriptHostManagerMock.Object, default);
@@ -400,6 +404,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             cts.Cancel();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _hostController.Resume(scriptHostManagerMock.Object, cts.Token));
             scriptHostManagerMock.Verify(p => p.RestartHostAsync("test", It.IsAny<CancellationToken>()), Times.Never());
+        }
+
+        [Fact]
+        public async Task ResumeHost_RestartAborted_DrainModeStillEnabled_Returns409Conflict()
+        {
+            // Simulates race condition where ApplicationStopping is triggered during restart
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            var restartReason = "Resuming from drain mode.";
+
+            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
+            scriptHostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
+            scriptHostManagerMock.Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            
+            // Drain mode remains enabled after restart (restart was aborted)
+            drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(true);
+
+            var result = await _hostController.Resume(scriptHostManagerMock.Object, default);
+            
+            var conflictResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status409Conflict, conflictResult.StatusCode);
+            scriptHostManagerMock.Verify(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Once());
+        }
+
+        [Fact]
+        public async Task ResumeHost_RestartAborted_HostStateNotRunning_Returns409Conflict()
+        {
+            // Simulates race condition where ApplicationStopping changes host state during restart
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            var restartReason = "Resuming from drain mode.";
+
+            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
+            
+            // Setup state sequence: Running before check, Stopping after restart
+            var stateSequence = scriptHostManagerMock.SetupSequence(p => p.State);
+            stateSequence.Returns(ScriptHostState.Running);  // Initial check
+            stateSequence.Returns(ScriptHostState.Stopping); // After restart
+            
+            scriptHostManagerMock.Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            
+            // Setup drain mode to return true initially, then false after restart
+            var drainModeSequence = drainModeManager.SetupSequence(x => x.IsDrainModeEnabled);
+            drainModeSequence.Returns(true);  // First check - before restart
+            drainModeSequence.Returns(false); // Second check - after restart
+
+            var result = await _hostController.Resume(scriptHostManagerMock.Object, default);
+            
+            var conflictResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status409Conflict, conflictResult.StatusCode);
+            scriptHostManagerMock.Verify(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Once());
         }
     }
 }
