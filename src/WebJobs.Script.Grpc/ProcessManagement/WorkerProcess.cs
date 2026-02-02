@@ -126,6 +126,52 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             throw new InvalidOperationException("Process has not been started yet.");
         }
 
+        public void WaitForProcessExitInMilliSeconds(int waitTime)
+        {
+            try
+            {
+                if (!Process.HasExited)
+                {
+                    Process.WaitForExit(waitTime);
+                }
+            }
+            catch (Exception ex)
+            {
+                _workerProcessLogger.LogDebug(ex, "An exception was thrown while waiting for a worker process to exit. It is possible that the process had already exited and this can be ignored.");
+            }
+        }
+
+        public void Dispose()
+        {
+            Disposing = true;
+            // best effort process disposal
+
+            ProcessWaitingForTermination.SetResult(false);
+
+            try
+            {
+                _eventSubscription?.Dispose();
+
+                if (Process != null)
+                {
+                    if (!Process.HasExited)
+                    {
+                        Process.Kill();
+                        if (!Process.WaitForExit(processExitTimeoutInMilliseconds))
+                        {
+                            _workerProcessLogger.LogWarning("Worker process {processId} has not exited despite waiting for {processExitTimeoutInMilliseconds} ms", Process?.Id, processExitTimeoutInMilliseconds);
+                        }
+                    }
+                    Process.Dispose();
+                }
+            }
+            catch (Exception exc)
+            {
+                _workerProcessLogger?.LogDebug(exc, "Exception on worker disposal.");
+                //ignore
+            }
+        }
+
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
             if (e.Data != null)
@@ -185,13 +231,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 ThrowIfExitError();
 
                 exit = Process.ExitCode;
-                if (Process.ExitCode == WorkerConstants.SuccessExitCode)
+                if (exit is WorkerConstants.IntentionalRestartExitCode or WorkerConstants.SuccessExitCode)
                 {
                     Process.WaitForExit();
                     Process.Close();
-                }
-                else if (Process.ExitCode == WorkerConstants.IntentionalRestartExitCode)
-                {
                     HandleWorkerProcessRestart();
                 }
             }
@@ -273,52 +316,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         internal abstract void HandleWorkerProcessExitError(WorkerProcessExitException langExc);
 
         internal abstract void HandleWorkerProcessRestart();
-
-        public void WaitForProcessExitInMilliSeconds(int waitTime)
-        {
-            try
-            {
-                if (!Process.HasExited)
-                {
-                    Process.WaitForExit(waitTime);
-                }
-            }
-            catch (Exception ex)
-            {
-                _workerProcessLogger.LogDebug(ex, "An exception was thrown while waiting for a worker process to exit. It is possible that the process had already exited and this can be ignored.");
-            }
-        }
-
-        public void Dispose()
-        {
-            Disposing = true;
-            // best effort process disposal
-
-            ProcessWaitingForTermination.SetResult(false);
-
-            try
-            {
-                _eventSubscription?.Dispose();
-
-                if (Process != null)
-                {
-                    if (!Process.HasExited)
-                    {
-                        Process.Kill();
-                        if (!Process.WaitForExit(processExitTimeoutInMilliseconds))
-                        {
-                            _workerProcessLogger.LogWarning("Worker process {processId} has not exited despite waiting for {processExitTimeoutInMilliseconds} ms", Process?.Id, processExitTimeoutInMilliseconds);
-                        }
-                    }
-                    Process.Dispose();
-                }
-            }
-            catch (Exception exc)
-            {
-                _workerProcessLogger?.LogDebug(exc, "Exception on worker disposal.");
-                //ignore
-            }
-        }
 
         internal void OnHostStart(HostStartEvent evt)
         {
