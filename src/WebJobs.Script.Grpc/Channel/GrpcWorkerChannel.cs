@@ -1757,6 +1757,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 var attrs = (IDictionary<string, string>)state;
                 foreach (var kvp in attrs)
                 {
+                    // this will override any existing tags with the same key
                     Activity.Current?.AddTag(kvp.Key, kvp.Value);
                 }
             }, attributes);
