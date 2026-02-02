@@ -3,14 +3,14 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
-    <IdentityDependencyVersion>6.35.0</IdentityDependencyVersion>
+    <IdentityDependencyVersion>8.14.0</IdentityDependencyVersion>
   </PropertyGroup>
 
   <!-- Azure packages -->
   <ItemGroup>
-    <PackageVersion Include="Azure.Core" Version="1.47.1" />
+    <PackageVersion Include="Azure.Core" Version="1.50.0" />
     <PackageVersion Include="Azure.Data.Tables" Version="12.8.3" />
-    <PackageVersion Include="Azure.Identity" Version="1.14.2" />
+    <PackageVersion Include="Azure.Identity" Version="1.17.1" />
     <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.6.0" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.22.1" />
     <PackageVersion Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.5.8" />
@@ -18,7 +18,7 @@
     <PackageVersion Include="Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption" Version="1.0.5" />
     <PackageVersion Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
     <PackageVersion Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
-    <PackageVersion Include="Microsoft.Extensions.Azure" Version="1.12.0" />
+    <PackageVersion Include="Microsoft.Extensions.Azure" Version="1.13.1" />
   </ItemGroup>
 
   <!-- AspNetCore Packages -->

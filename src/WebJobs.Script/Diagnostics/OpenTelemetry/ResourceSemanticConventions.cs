@@ -9,6 +9,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
         internal const string ServiceName = "service.name";
         internal const string ServiceVersion = "service.version";
         internal const string ServiceInstanceId = "service.instance.id";
+        internal const string ServiceNameEnvVar = "OTEL_SERVICE_NAME";
+        internal const string ResourceAttributeEnvVar = "OTEL_RESOURCE_ATTRIBUTES";
 
         // Cloud
         internal const string CloudProvider = "cloud.provider";
@@ -39,5 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
 
         // Functions
         internal const string FunctionsColdStartImpacted = "azure.functions.coldstart.impacted";
+        internal const string SiteUpdateId = "azure.functions.site.update_id";
     }
 }
