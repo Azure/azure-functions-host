@@ -1717,7 +1717,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var attributes = new Dictionary<string, string>
             {
                 { "customKey1", "customValue1" },
-                { "customKey2", "customValue2" }
+                { "customKey2", "customValue2" },
+                { "faas.trigger", "customTrigger" }
             };
             var invocationResponse = new InvocationResponse
             {
@@ -1732,6 +1733,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Assert
             Assert.Equal("customValue1", Activity.Current.GetTagItem("customKey1"));
             Assert.Equal("customValue2", Activity.Current.GetTagItem("customKey2"));
+            Assert.Equal("customTrigger", Activity.Current.GetTagItem("faas.trigger"));
 
             activity.Stop();
         }
