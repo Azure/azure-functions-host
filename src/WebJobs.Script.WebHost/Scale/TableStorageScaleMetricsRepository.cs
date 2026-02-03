@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -32,17 +32,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const int DefaultTableCreationRetries = 3;
         private const int DefaultOperationRetries = 5;
 
-        private static readonly AsyncRetryPolicy StorageRetryPolicy = Policy
-            .Handle<RequestFailedException>()
-            .WaitAndRetryAsync(
-                retryCount: DefaultOperationRetries,
-                sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)));
-
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IAzureTableStorageProvider _azureTableStorageProvider;
         private readonly ScaleOptions _scaleOptions;
         private readonly ILogger _logger;
         private readonly int _tableCreationRetries;
+        private readonly AsyncRetryPolicy _storageRetryPolicy;
         private TableServiceClient _tableServiceClient;
 
         public TableStorageScaleMetricsRepository(IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory, IAzureTableStorageProvider azureTableStorageProvider)
@@ -58,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _scaleOptions = scaleOptions.Value;
             _logger = loggerFactory.CreateLogger<TableStorageScaleMetricsRepository>();
             _tableCreationRetries = tableCreationRetries;
+            _storageRetryPolicy = CreateRetryPolicy();
         }
 
         internal TableServiceClient TableServiceClient
@@ -205,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             bool tableCreated = false;
-            await StorageRetryPolicy.ExecuteAsync(async () =>
+            await _storageRetryPolicy.ExecuteAsync(async () =>
             {
                 try
                 {
@@ -272,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             List<TableEntity> results = null;
 
-            await StorageRetryPolicy.ExecuteAsync(async () =>
+            await _storageRetryPolicy.ExecuteAsync(async () =>
             {
                 results = [];
                 try
@@ -354,6 +350,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return exception.ErrorCode == "TableNotFound";
+        }
+
+        /// <summary>
+        /// Determines whether the specified <see cref="RequestFailedException"/> represents
+        /// a transient storage error that should be retried.
+        /// </summary>
+        /// <param name="exception">The exception to evaluate.</param>
+        /// <returns><c>true</c> if the error is transient; otherwise, <c>false</c>.</returns>
+        internal static bool IsTransientStorageError(RequestFailedException exception)
+        {
+            ArgumentNullException.ThrowIfNull(exception);
+
+            // HTTP 429 (Too Many Requests) - throttling
+            // HTTP 500 (Internal Server Error) - transient server error
+            // HTTP 503 (Service Unavailable) - server busy or temporarily unavailable
+            // HTTP 504 (Gateway Timeout) - timeout that may succeed on retry
+            return exception.Status is
+                (int)HttpStatusCode.TooManyRequests or
+                (int)HttpStatusCode.InternalServerError or
+                (int)HttpStatusCode.ServiceUnavailable or
+                (int)HttpStatusCode.GatewayTimeout;
+        }
+
+        /// <summary>
+        /// Creates a Polly retry policy for transient Azure Table Storage errors
+        /// with exponential backoff.
+        /// </summary>
+        /// <returns>An async retry policy configured for transient storage errors.</returns>
+        private AsyncRetryPolicy CreateRetryPolicy()
+        {
+            return Policy
+                .Handle<RequestFailedException>(IsTransientStorageError)
+                .WaitAndRetryAsync(
+                    retryCount: DefaultOperationRetries,
+                    sleepDurationProvider: attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)),
+                    onRetry: (exception, delay, attempt, context) =>
+                    {
+                        _logger.LogWarning(
+                            exception,
+                            "Transient storage error during scale metrics operation. Status: {StatusCode}, Attempt: {Attempt}. Retrying after {DelayMs}ms.",
+                            ((RequestFailedException)exception).Status,
+                            attempt,
+                            delay.TotalMilliseconds);
+                    });
         }
     }
 }
