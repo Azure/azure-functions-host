@@ -200,9 +200,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return;
             }
 
-            bool tableCreated = false;
             await _storageRetryPolicy.ExecuteAsync(async () =>
             {
+                bool tableCreated = false;
                 try
                 {
                     await metricsTable.SubmitTransactionAsync(batch);
@@ -266,7 +266,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal async Task<IEnumerable<TableEntity>> ExecuteQuerySafeAsync(TableClient metricsTable, string query)
         {
-            List<TableEntity> results = null;
+            List<TableEntity> results = [];
 
             await _storageRetryPolicy.ExecuteAsync(async () =>
             {
