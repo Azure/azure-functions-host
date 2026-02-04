@@ -1,14 +1,11 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Channels;
-using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -19,6 +16,13 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
@@ -77,12 +81,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             TestLoggerProvider loggerProvider = new();
 
             var builder = new HostBuilder().
-                ConfigureWebHost(webhostBuilder =>
+                ConfigureWebHostDefaults(webhostBuilder =>
                 {
+                    webhostBuilder.Configure(app =>
+                    {
+                        app.Run(async context =>
+                        {
+                            await context.Response.WriteAsync("Hello world");
+                        });
+                    });
+
                     webhostBuilder.ConfigureLogging(b =>
                     {
                         b.AddProvider(loggerProvider);
                     });
+
+                    webhostBuilder.UseTestServer();
                 })
                 .ConfigureServices(s =>
                 {

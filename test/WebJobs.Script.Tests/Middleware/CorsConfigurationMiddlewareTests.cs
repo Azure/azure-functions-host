@@ -83,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                             await context.Response.WriteAsync("Hello world");
                         });
                     });
+                    webHostBuilder.UseTestServer();
                 })
                 .ConfigureServices(services =>
                 {
@@ -134,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             };
 
             var builder = new HostBuilder().ConfigureWebHostDefaults(webHostBuilder =>
+            {
                 webHostBuilder.Configure(app =>
                 {
                     app.UseMiddleware<JobHostPipelineMiddleware>();
@@ -141,7 +143,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                     {
                         await context.Response.WriteAsync("Hello world");
                     });
-                }));
+                });
+
+                webHostBuilder.UseTestServer();
+            });
 
             builder.ConfigureServices(services =>
             {
@@ -155,6 +160,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             });
 
             var host = builder.Build();
+
+            await host.StartAsync();
 
             var client = host.GetTestClient();
             client.DefaultRequestHeaders.Add("Origin", badOrigin);
@@ -191,14 +198,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             };
 
             var builder = new HostBuilder().ConfigureWebHostDefaults(webHostBuilder =>
-                webHostBuilder.Configure(app =>
                 {
-                    app.UseMiddleware<JobHostPipelineMiddleware>();
-                    app.Run(async context =>
+                    webHostBuilder.Configure(app =>
                     {
-                        await context.Response.WriteAsync("Hello world");
+                        app.UseMiddleware<JobHostPipelineMiddleware>();
+                        app.Run(async context =>
+                        {
+                            await context.Response.WriteAsync("Hello world");
+                        });
                     });
-                }));
+                    webHostBuilder.UseTestServer();
+                });
 
             builder.ConfigureServices(services =>
             {
@@ -212,6 +222,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             });
 
             var host = builder.Build();
+
+            await host.StartAsync();
 
             var client = host.GetTestClient();
             client.DefaultRequestHeaders.Add("Origin", testOrigin);

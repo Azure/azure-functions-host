@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         {
             var ex = new HttpException(StatusCodes.Status502BadGateway);
 
-            using (var server = GetTestServer(_ => throw ex))
+            using (var server = await GetTestServer(_ => throw ex))
             {
                 var client = server.CreateClient();
                 HttpResponseMessage response = await client.GetAsync(string.Empty);
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         {
             var ex = new Exception("Kaboom!");
 
-            using (var server = GetTestServer(_ => throw ex))
+            using (var server = await GetTestServer(_ => throw ex))
             {
                 var client = server.CreateClient();
                 HttpResponseMessage response = await client.GetAsync(string.Empty);
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         {
             var ex = new FunctionInvocationException("Kaboom!");
 
-            using (var server = GetTestServer(_ => throw ex))
+            using (var server = await GetTestServer(_ => throw ex))
             {
                 var client = server.CreateClient();
                 HttpResponseMessage response = await client.GetAsync(string.Empty);
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 throw ex;
             }
 
-            using (var server = GetTestServer(c => WriteThenThrow(c)))
+            using (var server = await GetTestServer(c => WriteThenThrow(c)))
             {
                 var client = server.CreateClient();
                 HttpResponseMessage response = await client.GetAsync(string.Empty);
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             }
         }
 
-        private TestServer GetTestServer(Func<HttpContext, Task> callback)
+        private async Task<TestServer> GetTestServer(Func<HttpContext, Task> callback)
         {
             // The custom middleware relies on the host starting the request (thus invoking OnStarting),
             // so we need to create a test host to flow through the entire pipeline.
@@ -149,6 +149,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 });
 
             var host = builder.Build();
+
+            await host.StartAsync();
+
             return host.GetTestServer();
         }
     }
