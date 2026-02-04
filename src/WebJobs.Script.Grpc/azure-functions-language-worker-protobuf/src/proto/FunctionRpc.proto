@@ -406,6 +406,9 @@ message RpcTraceContext {
 
   // This corresponds to Activity.Current?.Tags
   map<string, string> attributes = 3;
+
+  // This corresponds to Activity.Current?.Baggage
+  map<string, string> baggage = 4;
 }
 
 // Host sends retry context for a function invocation

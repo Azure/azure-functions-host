@@ -1737,6 +1737,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInvocationId, invocationRequest.InvocationId);
             }
+
+            var test = Activity.Current?.AddBaggage("baggageKey", "baggageValue");
+
+            foreach (var b in Activity.Current?.Baggage)
+            {
+                invocationRequest.TraceContext.Baggage.Add(b.Key, b.Value);
+            }
         }
 
         private void AddWorkerTraceAttributes(InvocationResponse invocationResponse, ScriptInvocationContext context)
