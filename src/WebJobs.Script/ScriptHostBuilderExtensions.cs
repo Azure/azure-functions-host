@@ -230,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script
             builder.ConfigureWebJobs((context, webJobsBuilder) =>
             {
                 webJobsBuilder.Services.AddSingleton<IActivitySourceAbstraction>(provider =>
-                  new ActivitySourceWrapper(OpenTelemetryConstants.HostActivitySourceName, OpenTelemetryConstants.HostActivitySourceVersion));
+                  new ActivitySourceWrapper(OpenTelemetryConstants.ActivitySourceNames.WebJobs, OpenTelemetryConstants.WebJobsActivitySourceVersion));
 
                 // Built in binding registrations
                 webJobsBuilder.AddExecutionContextBinding(o =>

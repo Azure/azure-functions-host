@@ -15,9 +15,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
     internal class WebHostHealthCheck(IHostApplicationLifetime lifetime) : IHealthCheck
     {
         private static readonly Task<HealthCheckResult> _healthy = Task.FromResult(HealthCheckResult.Healthy());
-        private static readonly Task<HealthCheckResult> _unhealthyNotStarted = Task.FromResult(HealthCheckResult.Unhealthy("Not Started"));
-        private static readonly Task<HealthCheckResult> _unhealthyStopping = Task.FromResult(HealthCheckResult.Unhealthy("Stopping"));
-        private static readonly Task<HealthCheckResult> _unhealthyStopped = Task.FromResult(HealthCheckResult.Unhealthy("Stopped"));
+        private static readonly Task<HealthCheckResult> _unhealthyNotStarted = CreateUnhealthyResult("Not Started", "NotStarted");
+        private static readonly Task<HealthCheckResult> _unhealthyStopping = CreateUnhealthyResult("Stopping", "Stopping");
+        private static readonly Task<HealthCheckResult> _unhealthyStopped = CreateUnhealthyResult("Stopped", "Stopped");
 
         /// <inheritdoc />
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
@@ -41,6 +41,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             }
 
             return _healthy;
+        }
+
+        private static Task<HealthCheckResult> CreateUnhealthyResult(string reason, string errorCode)
+        {
+            return Task.FromResult(HealthCheckResult.Unhealthy(
+                reason, data: new HealthCheckData() { Area = HealthCheckData.Areas.Lifecycle, ErrorCode = errorCode }));
         }
     }
 }

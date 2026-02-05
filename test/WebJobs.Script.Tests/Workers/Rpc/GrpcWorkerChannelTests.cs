@@ -1687,6 +1687,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
+        [Fact]
+        public async Task InvokeResponse_AddsTraceAttributesToCurrentActivity()
+        {
+            await CreateDefaultWorkerChannel();
+
+            // Arrange
+            var invocationId = Guid.NewGuid();
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+
+            using var activity = new Activity("test-activity");
+            activity.Start();
+
+            ScriptInvocationContext scriptInvocationContext = null;
+            // Capture the ExecutionContext while the Activity is current
+            System.Threading.ExecutionContext.Run(
+                System.Threading.ExecutionContext.Capture(),
+                _ =>
+                {
+                    scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, logger: _logger);
+                    scriptInvocationContext.AsyncExecutionContext = System.Threading.ExecutionContext.Capture();
+                },
+                null);
+
+            // Register the invocation so that InvokeResponse can find it
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+
+            // Prepare InvocationResponse with custom TraceContextAttributes
+            var attributes = new Dictionary<string, string>
+            {
+                { "customKey1", "customValue1" },
+                { "customKey2", "customValue2" },
+                { "faas.trigger", "customTrigger" }
+            };
+            var invocationResponse = new InvocationResponse
+            {
+                InvocationId = invocationId.ToString(),
+                Result = new StatusResult { Status = StatusResult.Types.Status.Success },
+                TraceContextAttributes = { attributes }
+            };
+
+            // Act
+            await _workerChannel.InvokeResponse(invocationResponse);
+
+            // Assert
+            Assert.Equal("customValue1", Activity.Current.GetTagItem("customKey1"));
+            Assert.Equal("customValue2", Activity.Current.GetTagItem("customKey2"));
+            Assert.Equal("customTrigger", Activity.Current.GetTagItem("faas.trigger"));
+
+            activity.Stop();
+        }
+
         public async Task Ensure_Failure_Status_On_CurrentActivity_WhenInvocationFailed()
         {
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HttpUri, "http://localhost:1234" } });

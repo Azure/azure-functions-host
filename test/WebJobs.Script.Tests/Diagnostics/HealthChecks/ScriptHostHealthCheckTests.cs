@@ -37,6 +37,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             result.Status.Should().Be(status);
             result.Description.Should().Be(description);
             result.Exception.Should().BeNull();
+
+            if (status == HealthStatus.Healthy)
+            {
+                result.Data.Should().BeNullOrEmpty();
+            }
+            else
+            {
+                result.Data.Should().Contain(nameof(HealthCheckData.Area), HealthCheckData.Areas.Lifecycle);
+                result.Data.Should().Contain(nameof(HealthCheckData.ErrorCode), GetErrorCode(state));
+            }
         }
 
         [Fact]
@@ -56,6 +66,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             result.Status.Should().Be(HealthStatus.Unhealthy);
             result.Description.Should().Be($"Script host in error state: {Environment.NewLine}{error.Message}");
             result.Exception.Should().Be(error);
+            result.Data.Should().Contain(nameof(HealthCheckData.Area), HealthCheckData.Areas.Lifecycle);
+            result.Data.Should().Contain(nameof(HealthCheckData.ErrorCode), "Faulted");
         }
+
+        private static string GetErrorCode(ScriptHostState state) => state switch
+        {
+            ScriptHostState.Default => "NoScriptHost",
+            ScriptHostState.Starting => "Starting",
+            ScriptHostState.Initialized or ScriptHostState.Running => null,
+            ScriptHostState.Stopping => "Stopping",
+            ScriptHostState.Stopped => "Stopped",
+            ScriptHostState.Offline => "Offline",
+            _ => "Unknown",
+        };
     }
 }
