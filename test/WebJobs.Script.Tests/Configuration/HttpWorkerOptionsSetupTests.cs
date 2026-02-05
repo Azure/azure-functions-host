@@ -441,8 +441,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
             finally
             {
-                Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:defaultWorkerPath", string.Empty);
-                Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:arguments", string.Empty);
+                Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:defaultWorkerPath", null);
+                Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:arguments", null);
             }
         }
 

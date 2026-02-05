@@ -87,6 +87,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public void Dispose()
         {
+            TestHost.WebHost.StopAsync().GetAwaiter().GetResult();
+            TestHost.WebHost.Dispose();
             TestHost?.Dispose();
             HttpClient?.Dispose();
 

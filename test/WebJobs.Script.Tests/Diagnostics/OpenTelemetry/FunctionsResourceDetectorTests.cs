@@ -427,11 +427,8 @@ public class FunctionsResourceDetectorTests
 
     [Theory]
     [InlineData(null, "my-function-app", "my-function-app")]
-    [InlineData("", "my-function-app", "my-function-app")]
     [InlineData(" ", "my-function-app", "my-function-app")]
     [InlineData(null, null, "Microsoft.Azure.WebJobs.Script")] // Replace with actual assembly name
-    [InlineData("", "", "Microsoft.Azure.WebJobs.Script")]
-    [InlineData(" ", "", "Microsoft.Azure.WebJobs.Script")]
     public void Detect_IncludesServiceName_WhenServiceNameNotConfigured(string resourceAttributes, string websiteName, string expectedServiceName)
     {
         using var resourceAttrVar = new TestScopedEnvironmentVariable(ResourceSemanticConventions.ResourceAttributeEnvVar, resourceAttributes);

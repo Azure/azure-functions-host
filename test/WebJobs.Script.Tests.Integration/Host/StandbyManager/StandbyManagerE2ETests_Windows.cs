@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment(_settings);
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
 
-            await InitializeTestHostAsync("Windows", environment);
+            var host = await InitializeTestHostAsync("Windows", environment);
 
             await VerifyWarmupSucceeds();
 
@@ -118,6 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Ensure no warning logs are present.
             var warningLogEntries = _loggerProvider.GetAllLogMessages().Where(a => a.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
             Assert.True(!warningLogEntries.Any(), $"Warnings found in logs: {string.Join(Environment.NewLine, warningLogEntries.Select(e => e.FormattedMessage))}");
+            await host.StopAsync();
+            host.Dispose();
         }
 
         [Theory]

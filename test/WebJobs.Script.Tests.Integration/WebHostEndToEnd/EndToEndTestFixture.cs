@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
@@ -301,9 +302,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public virtual Task DisposeAsync()
+        public virtual async Task DisposeAsync()
         {
-            Host?.Dispose();
+            if (Host is not null)
+            {
+                var fileMonitoringService = Host.JobHostServices?.GetService<IFileMonitoringService>();
+                if (fileMonitoringService is not null)
+                {
+                    await fileMonitoringService.StopAsync(default);
+                }
+
+                Host.Dispose();
+            }
 
             // Clean up all but the last 5 directories for debugging failures.
             var directoriesToDelete = Directory.EnumerateDirectories(Path.GetDirectoryName(_copiedRootPath))
@@ -322,10 +332,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             }
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, string.Empty);
-            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, string.Empty);
-            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, string.Empty);
-            return _azurite.DisposeAsync();
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, null);
+            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, null);
+            await _azurite.DisposeAsync();
         }
 
         public void AssertNoScriptHostErrors()
