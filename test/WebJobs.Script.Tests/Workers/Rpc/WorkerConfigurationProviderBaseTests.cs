@@ -248,6 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
+        [InlineData("7.6", "7.6")]
         [InlineData("7.4", "7.4")]
         [InlineData("7.2", "7.2")]
         [InlineData(null, "7.4")]
