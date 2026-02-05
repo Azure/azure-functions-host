@@ -2,13 +2,29 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 using Azure;
+using Azure.Data.Tables;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
 {
+    /// <summary>
+    /// Unit tests for <see cref="TableStorageScaleMetricsRepository"/>.
+    /// Integration tests that verify end-to-end behavior with real Azure Storage
+    /// are in the WebJobs.Script.Tests.Integration project.
+    /// </summary>
     public class TableStorageScaleMetricsRepositoryTests
     {
         [Theory]
@@ -24,21 +40,261 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
         [InlineData((int)HttpStatusCode.RequestTimeout, false)]  // 408 - not in transient list
         public void IsTransientStorageError_ReturnsExpectedResult(int statusCode, bool expectedResult)
         {
-            // Arrange
             var exception = new RequestFailedException(statusCode, "Test error message", "TestErrorCode", null);
 
-            // Act
             var result = TableStorageScaleMetricsRepository.IsTransientStorageError(exception);
 
-            // Assert
             Assert.Equal(expectedResult, result);
         }
 
         [Fact]
         public void IsTransientStorageError_WithNullException_ThrowsArgumentNullException()
         {
-            // Act & Assert
             Assert.Throws<ArgumentNullException>(() => TableStorageScaleMetricsRepository.IsTransientStorageError(null));
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.TooManyRequests, "The server is busy")]
+        [InlineData(HttpStatusCode.ServiceUnavailable, "Service is temporarily unavailable")]
+        [InlineData(HttpStatusCode.InternalServerError, "Internal server error")]
+        [InlineData(HttpStatusCode.GatewayTimeout, "Gateway timeout")]
+        public void IsTransientStorageError_TransientStatusCodes_ReturnsTrue(HttpStatusCode statusCode, string message)
+        {
+            var exception = new RequestFailedException((int)statusCode, message);
+
+            var result = TableStorageScaleMetricsRepository.IsTransientStorageError(exception);
+
+            Assert.True(result, $"Expected {statusCode} to be identified as transient");
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.BadRequest)]
+        [InlineData(HttpStatusCode.NotFound)]
+        [InlineData(HttpStatusCode.Forbidden)]
+        [InlineData(HttpStatusCode.Conflict)]
+        [InlineData(HttpStatusCode.PreconditionFailed)]
+        public void IsTransientStorageError_NonTransientStatusCodes_ReturnsFalse(HttpStatusCode statusCode)
+        {
+            var exception = new RequestFailedException((int)statusCode, "Error");
+
+            var result = TableStorageScaleMetricsRepository.IsTransientStorageError(exception);
+
+            Assert.False(result, $"Expected {statusCode} to NOT be identified as transient");
+        }
+    }
+
+    /// <summary>
+    /// Tests for retry behavior in <see cref="TableStorageScaleMetricsRepository"/>.
+    /// These tests verify that transient errors trigger retries with appropriate logging.
+    /// </summary>
+    public class TableStorageScaleMetricsRepositoryRetryTests
+    {
+        private readonly TestLoggerProvider _loggerProvider;
+        private readonly Mock<IHostIdProvider> _hostIdProviderMock;
+        private readonly Mock<IAzureTableStorageProvider> _storageProviderMock;
+        private readonly Mock<TableServiceClient> _tableServiceClientMock;
+        private readonly Mock<TableClient> _tableClientMock;
+        private readonly ScaleOptions _scaleOptions;
+
+        public TableStorageScaleMetricsRepositoryRetryTests()
+        {
+            _loggerProvider = new TestLoggerProvider();
+            _hostIdProviderMock = new Mock<IHostIdProvider>(MockBehavior.Strict);
+            _hostIdProviderMock.Setup(p => p.GetHostIdAsync(It.IsAny<CancellationToken>())).ReturnsAsync("testhostid");
+
+            _tableClientMock = new Mock<TableClient>();
+            _tableServiceClientMock = new Mock<TableServiceClient>();
+            _tableServiceClientMock.Setup(s => s.GetTableClient(It.IsAny<string>())).Returns(_tableClientMock.Object);
+
+            _storageProviderMock = new Mock<IAzureTableStorageProvider>();
+            TableServiceClient outClient = _tableServiceClientMock.Object;
+            _storageProviderMock.Setup(p => p.TryCreateHostingTableServiceClient(out outClient)).Returns(true);
+
+            _scaleOptions = new ScaleOptions { MetricsPurgeEnabled = false };
+        }
+
+        private TableStorageScaleMetricsRepository CreateRepository()
+        {
+            ILoggerFactory loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(_loggerProvider);
+            return new TableStorageScaleMetricsRepository(
+                _hostIdProviderMock.Object,
+                new OptionsWrapper<ScaleOptions>(_scaleOptions),
+                loggerFactory,
+                _storageProviderMock.Object);
+        }
+
+        [Fact]
+        public async Task ExecuteBatchSafeAsync_NoErrors_SucceedsWithoutRetry()
+        {
+            _tableClientMock
+                .Setup(c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Response.FromValue(
+                    new List<Response>() as IReadOnlyList<Response>,
+                    Mock.Of<Response>()));
+
+            var repository = CreateRepository();
+            var batch = new List<TableTransactionAction>
+            {
+                new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("pk", "rk"))
+            };
+
+            await repository.ExecuteBatchSafeAsync(batch);
+
+            _tableClientMock.Verify(
+                c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            var logs = _loggerProvider.GetAllLogMessages();
+            var retryLog = logs.FirstOrDefault(l => l.FormattedMessage.Contains("Transient storage error"));
+            Assert.Null(retryLog);
+        }
+
+        [Fact]
+        public async Task ExecuteBatchSafeAsync_TransientError_RetriesAndLogsWarning()
+        {
+            int callCount = 0;
+            _tableClientMock
+                .Setup(c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() =>
+                {
+                    callCount++;
+                    if (callCount == 1)
+                    {
+                        // First call throws transient error
+                        throw new RequestFailedException(503, "The server is busy");
+                    }
+                    // Subsequent calls succeed
+                    return Response.FromValue(
+                        new List<Response>() as IReadOnlyList<Response>,
+                        Mock.Of<Response>());
+                });
+
+            var repository = CreateRepository();
+            var batch = new List<TableTransactionAction>
+            {
+                new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("pk", "rk"))
+            };
+
+            await repository.ExecuteBatchSafeAsync(batch);
+
+            _tableClientMock.Verify(
+                c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Exactly(2));
+
+            var logs = _loggerProvider.GetAllLogMessages();
+            var retryLog = logs.FirstOrDefault(l => l.FormattedMessage.Contains("Transient storage error during scale metrics operation"));
+            Assert.NotNull(retryLog);
+            Assert.Equal(LogLevel.Warning, retryLog.Level);
+            Assert.Contains("Status: 503", retryLog.FormattedMessage);
+            Assert.Contains("Attempt: 1", retryLog.FormattedMessage);
+        }
+
+        [Fact]
+        public async Task ExecuteBatchSafeAsync_NonTransientError_DoesNotRetry()
+        {
+            _tableClientMock
+                .Setup(c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new RequestFailedException(400, "Bad request"));
+
+            var repository = CreateRepository();
+            var batch = new List<TableTransactionAction>
+            {
+                new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("pk", "rk"))
+            };
+
+            await Assert.ThrowsAsync<RequestFailedException>(() => repository.ExecuteBatchSafeAsync(batch));
+
+            // Should only be called once - no retry for non-transient errors
+            _tableClientMock.Verify(
+                c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            // No retry warning should be logged
+            var logs = _loggerProvider.GetAllLogMessages();
+            var retryLog = logs.FirstOrDefault(l => l.FormattedMessage.Contains("Transient storage error"));
+            Assert.Null(retryLog);
+        }
+
+        [Fact]
+        public async Task ExecuteBatchSafeAsync_MultipleTransientErrors_RetriesMultipleTimes()
+        {
+            int callCount = 0;
+            _tableClientMock
+                .Setup(c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() =>
+                {
+                    callCount++;
+                    if (callCount <= 3)
+                    {
+                        // First 3 calls throw transient errors
+                        throw new RequestFailedException(429, "Too many requests");
+                    }
+                    return Response.FromValue(
+                        new List<Response>() as IReadOnlyList<Response>,
+                        Mock.Of<Response>());
+                });
+
+            var repository = CreateRepository();
+            var batch = new List<TableTransactionAction>
+            {
+                new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("pk", "rk"))
+            };
+
+            await repository.ExecuteBatchSafeAsync(batch);
+
+            _tableClientMock.Verify(
+                c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Exactly(4));
+
+            var logs = _loggerProvider.GetAllLogMessages();
+            var retryLogs = logs.Where(l => l.FormattedMessage.Contains("Transient storage error")).ToList();
+            Assert.Equal(3, retryLogs.Count);
+        }
+
+        [Fact]
+        public async Task ExecuteBatchSafeAsync_ExceedsMaxRetries_ThrowsException()
+        {
+            _tableClientMock
+                .Setup(c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new RequestFailedException(503, "The server is busy"));
+
+            var repository = CreateRepository();
+            var batch = new List<TableTransactionAction>
+            {
+                new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("pk", "rk"))
+            };
+
+            await Assert.ThrowsAsync<RequestFailedException>(() => repository.ExecuteBatchSafeAsync(batch));
+
+            // DefaultOperationRetries is 5, so we expect 6 total calls (1 initial + 5 retries)
+            _tableClientMock.Verify(
+                c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Exactly(6));
+
+            var logs = _loggerProvider.GetAllLogMessages();
+            var retryLogs = logs.Where(l => l.FormattedMessage.Contains("Transient storage error")).ToList();
+            Assert.Equal(5, retryLogs.Count);
         }
     }
 }
