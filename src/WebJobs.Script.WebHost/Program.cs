@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
+using ExtensionsHost = Microsoft.Extensions.Hosting.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -25,13 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             InitializeProcess();
 
-            var host = CreateWebHostBuilder(args);
+            var host = BuildHost(args);
 
             host.RunAsync()
                 .Wait();
         }
 
-        public static WebApplication CreateWebHostBuilder(string[] args = null)
+        public static IHost BuildHost(string[] args)
+        {
+            return CreateHostBuilder(args)
+                .Build();
+        }
+
+        public static IHostBuilder CreateHostBuilder(string[] args = null)
         {
             // Setting this env variable to test placeholder scenarios locally.
 #if PLACEHOLDER_SIMULATION
@@ -39,60 +46,70 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "0");
 #endif
 
-            var builder = WebApplication.CreateBuilder(args);
-
-            builder.WebHost
-                .ConfigureKestrel(o => { o.Limits.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize; })
-                .UseSetting(WebHostDefaults.EnvironmentKey, Environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey))
-                .ConfigureAppConfiguration((builderContext, config) =>
+            return ExtensionsHost.CreateDefaultBuilder(args ?? Array.Empty<string>())
+                .UseDefaultServiceProvider((context, options) =>
                 {
-                    // replace the default environment source with our own
-                    IConfigurationSource envVarsSource = config.Sources.OfType<EnvironmentVariablesConfigurationSource>().FirstOrDefault();
-                    if (envVarsSource != null)
-                    {
-                        config.Sources.Remove(envVarsSource);
-                    }
-
-                    config.Add(new ScriptEnvironmentVariablesConfigurationSource());
-
-                    config.Add(new WebScriptHostConfigurationSource
-                    {
-                        IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppService(),
-                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsAnyLinuxConsumption(),
-                        IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppService()
-                    });
-                    config.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
-
-                    var hostingEnvironmentConfigFilePath = SystemEnvironment.Instance.GetFunctionsHostingEnvironmentConfigFilePath();
-                    if (!string.IsNullOrEmpty(hostingEnvironmentConfigFilePath))
-                    {
-                        config.AddJsonFile(hostingEnvironmentConfigFilePath, optional: true, reloadOnChange: false);
-                    }
+                    options.ValidateScopes = false;
+                    options.ValidateOnBuild = false;
                 })
-                .ConfigureLogging((context, loggingBuilder) =>
+                .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    loggingBuilder.ClearProviders();
+                    webBuilder
+                        .ConfigureKestrel(o =>
+                        {
+                            o.Limits.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
+                        })
+                        .UseSetting(WebHostDefaults.EnvironmentKey, Environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey))
+                        .ConfigureServices(services =>
+                        {
+                            services.Configure<IISServerOptions>(o =>
+                            {
+                                o.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
+                            });
+                        })
+                        .ConfigureAppConfiguration((builderContext, config) =>
+                        {
+                            // replace the default environment source with our own
+                            IConfigurationSource envVarsSource = config.Sources.OfType<EnvironmentVariablesConfigurationSource>().FirstOrDefault();
+                            if (envVarsSource != null)
+                            {
+                                config.Sources.Remove(envVarsSource);
+                            }
 
-                    loggingBuilder.AddDefaultWebJobsFilters();
-                    loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
-                    loggingBuilder.AddForwardingLogger();
-                    loggingBuilder.Services.AddSingleton<DeferredLoggerProvider>();
-                    loggingBuilder.Services.AddSingleton<ILoggerProvider>(s => s.GetRequiredService<DeferredLoggerProvider>());
-                    loggingBuilder.Services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
-                    if (context.HostingEnvironment.IsDevelopment())
-                    {
-                        loggingBuilder.AddConsole();
-                    }
-                })
-                .UseStartup<Startup>()
-                .UseIIS();
+                            config.Add(new ScriptEnvironmentVariablesConfigurationSource());
 
-            builder.Services.Configure<IISServerOptions>(o =>
-            {
-                o.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
-            });
+                            config.Add(new WebScriptHostConfigurationSource
+                            {
+                                IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppService(),
+                                IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsAnyLinuxConsumption(),
+                                IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppService()
+                            });
+                            config.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
 
-            return builder.Build();
+                            var hostingEnvironmentConfigFilePath = SystemEnvironment.Instance.GetFunctionsHostingEnvironmentConfigFilePath();
+                            if (!string.IsNullOrEmpty(hostingEnvironmentConfigFilePath))
+                            {
+                                config.AddJsonFile(hostingEnvironmentConfigFilePath, optional: true, reloadOnChange: false);
+                            }
+                        })
+                        .ConfigureLogging((context, loggingBuilder) =>
+                        {
+                            loggingBuilder.ClearProviders();
+
+                            loggingBuilder.AddDefaultWebJobsFilters();
+                            loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
+                            loggingBuilder.AddForwardingLogger();
+                            loggingBuilder.Services.AddSingleton<DeferredLoggerProvider>();
+                            loggingBuilder.Services.AddSingleton<ILoggerProvider>(s => s.GetRequiredService<DeferredLoggerProvider>());
+                            loggingBuilder.Services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
+                            if (context.HostingEnvironment.IsDevelopment())
+                            {
+                                loggingBuilder.AddConsole();
+                            }
+                        })
+                        .UseStartup<Startup>()
+                        .UseIIS();
+                });
         }
 
         /// <summary>

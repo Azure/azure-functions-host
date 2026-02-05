@@ -1,12 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
             string testDataPath = Path.Combine(Path.GetTempPath(), @"FunctionsData");
-            _host = new TestFunctionHost(_hostPath, logPath, testDataPath, _ => { });
+            _host = new TestFunctionHost(_hostPath, logPath, testDataPath, configureWebHostServices: _ => { });
 
             // Ping the status endpoint to ensure we see the exception
             HostStatus status = await _host.GetHostStatusAsync();
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             // we have a host running and watching for file changes.
             await TestHelpers.Await(() =>
             {
-                return _host.GetLog().Contains("[Microsoft.Extensions.Hosting.Internal.Host] Hosting started");
+                return _host.GetLog().Contains("File event source initialized.");
             });
 
             // Now update the file and make sure it auto-restarts.
@@ -68,6 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         {
             try
             {
+                try { _host.WebHost.StopAsync().GetAwaiter().GetResult(); } catch { }
+                try { _host.WebHost.Dispose(); } catch { }
                 _host.Dispose();
                 Directory.Delete(_hostPath, true);
             }

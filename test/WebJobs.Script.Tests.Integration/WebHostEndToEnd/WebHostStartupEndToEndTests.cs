@@ -78,6 +78,7 @@ public class WebHostStartupEndToEndTests
         var builder = CreateHostBuilder(loggerProvider, "FunctionExecutionContext");
 
         using var host = builder.Build();
+        await host.StartAsync();
         var client = host.GetTestClient();
 
         var response = await client.GetAsync("api/functionexecutioncontext");
@@ -110,15 +111,10 @@ public class WebHostStartupEndToEndTests
             { EnvironmentSettingNames.AzureWebsiteContainerReady, "1" },
         });
 
-        return new HostBuilder()
+        return Program.CreateHostBuilder()
             .ConfigureWebHost(webHostBuilder =>
             {
                 webHostBuilder.UseTestServer();
-                webHostBuilder.ConfigureLogging(b =>
-                {
-                    b.AddProvider(loggerProvider);
-                    b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Debug);
-                });
             })
             .ConfigureAppConfiguration(c =>
             {
@@ -126,6 +122,11 @@ public class WebHostStartupEndToEndTests
                 {
                     { _scriptRootConfigPath, @"TestScripts\CSharp" }
                 });
+            })
+            .ConfigureLogging(b =>
+            {
+                b.AddProvider(loggerProvider);
+                b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Debug);
             })
             .ConfigureServices((bc, s) =>
             {

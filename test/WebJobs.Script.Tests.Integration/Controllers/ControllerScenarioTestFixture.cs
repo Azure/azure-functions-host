@@ -9,9 +9,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
@@ -33,7 +31,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public void Dispose()
         {
-            Host?.Dispose();
+            HttpClient?.Dispose();
+
+            if (Host is not null)
+            {
+                try
+                {
+                    Host.StopAsync().GetAwaiter().GetResult();
+                }
+                catch
+                {
+                }
+
+                Host.Dispose();
+            }
         }
 
         public virtual async Task InitializeAsync()
@@ -41,10 +52,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             _config = new HttpConfiguration();
             _settingsManager = ScriptSettingsManager.Instance;
 
-            var webHostBuilder = new HostBuilder()
-                .ConfigureWebHostDefaults(webBuilder =>
+            var webHostBuilder = Program.CreateHostBuilder()
+                .ConfigureWebHost(webBuilder =>
                 {
-                    webBuilder.UseStartup<Startup>();
+                    webBuilder.UseTestServer();
 
                     ConfigureWebHostBuilder(webBuilder);
                 })
@@ -56,26 +67,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                     {
                         o.IsSelfHost = true;
                         o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "csharp");
-                        o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
+                        o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions", "ControllerScenarioTests");
                         o.SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets");
                         o.HasParentScope = true;
 
                         HostOptions = o;
                     });
-                })
-                .ConfigureAppConfiguration((builderContext, config) =>
-                {
-                    config.Add(new WebScriptHostConfigurationSource
-                    {
-                        IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppService(),
-                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsAnyLinuxConsumption()
-                    });
-                })
-                .ConfigureAppConfiguration(c => c.AddEnvironmentVariables());
-
-            
+                });
 
             Host = webHostBuilder.Build();
+            await Host.StartAsync();
+
             HttpClient = Host.GetTestClient();
             HttpClient.BaseAddress = new Uri("https://localhost/");
 
