@@ -262,5 +262,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             return match.Value;
         }
+
+        internal void FormatWorkingDirectoryIfNeeded()
+        {
+            ExecutableWorkingDirectory = ExecutableWorkingDirectory?.Replace(RpcWorkerConstants.WorkerDirectoryPath, WorkerDirectory);
+        }
     }
 }
