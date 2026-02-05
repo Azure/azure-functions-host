@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
             string specializedScriptRoot = @"TestScripts\CSharp";
             string scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
+            string logPathConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.LogPath));
 
             var settings = new Dictionary<string, string>()
             {
@@ -41,32 +42,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment(settings);
             var loggerProvider = new TestLoggerProvider();
 
-            var builder = new HostBuilder()
-                .ConfigureWebHost(webhostBuilder =>
+            var builder = Program.CreateHostBuilder()
+                .ConfigureWebHost(webHostBuilder =>
                 {
-                    webhostBuilder.ConfigureLogging(b =>
+                    webHostBuilder.UseTestServer();
+                })
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddInMemoryCollection(new Dictionary<string, string>
                     {
-                        b.AddProvider(loggerProvider);
-                    })
-                    .ConfigureAppConfiguration(c =>
-                    {
-                        c.AddInMemoryCollection(new Dictionary<string, string>
-                        {
-                        { scriptRootConfigPath, specializedScriptRoot }
-                        });
-                    })
-                    .ConfigureServices((bc, s) =>
-                    {
-                        s.AddSingleton<IEnvironment>(environment);
-
-                        // Simulate the environment becoming specialized after these options have been 
-                        // initialized with standby paths.
-                        s.AddOptions<ScriptApplicationHostOptions>()
-                            .PostConfigure<IEnvironment>((o, e) =>
-                            {
-                                Specialize(e);
-                            });
+                        { scriptRootConfigPath, specializedScriptRoot },
+                        { logPathConfigPath, Path.Combine(Path.GetTempPath(), "Functions", "StandbyInitializationTests") }
                     });
+                })
+                .ConfigureLogging(b =>
+                {
+                    b.AddProvider(loggerProvider);
+                })
+                .ConfigureServices((bc, s) =>
+                {
+                    s.AddSingleton<IEnvironment>(environment);
+
+                    // Simulate the environment becoming specialized after these options have been
+                    // initialized with standby paths.
+                    s.AddOptions<ScriptApplicationHostOptions>()
+                        .PostConfigure<IEnvironment>((o, e) =>
+                        {
+                            Specialize(e);
+                        });
                 })
                 .ConfigureScriptHostServices(s =>
                 {
@@ -84,20 +87,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
             var host = builder.Build();
-            await host.StartAsync();
-            var client = host.GetTestClient();
+            try
+            {
+                await host.StartAsync();
+                var client = host.GetTestClient();
 
-            // Force the specialization middleware to run       
-            HttpResponseMessage response = await InvokeFunction(client);
-            response.EnsureSuccessStatusCode();
+                // Force the specialization middleware to run       
+                HttpResponseMessage response = await InvokeFunction(client);
+                response.EnsureSuccessStatusCode();
 
-            string log = loggerProvider.GetLog();
-            Assert.Contains("Creating StandbyMode placeholder function directory", log);
-            Assert.Contains("Starting host specialization", log);
+                string log = loggerProvider.GetLog();
+                Assert.Contains("Creating StandbyMode placeholder function directory", log);
+                Assert.Contains("Starting host specialization", log);
 
-            // Make sure this was registered.
-            var hostedServices = host.Services.GetServices<IHostedService>();
-            Assert.Contains(hostedServices, p => p is StandbyInitializationService);
+                // Make sure this was registered.
+                var hostedServices = host.Services.GetServices<IHostedService>();
+                Assert.Contains(hostedServices, p => p is StandbyInitializationService);
+            }
+            finally
+            {
+                await host.StopAsync();
+                host.Dispose();
+            }
         }
 
         private static void Specialize(IEnvironment environment)

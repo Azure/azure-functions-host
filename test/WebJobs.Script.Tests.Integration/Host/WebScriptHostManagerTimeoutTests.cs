@@ -32,8 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                 Assert.DoesNotContain(messages, t => t.FormattedMessage.StartsWith("Done"));
                 Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
                 Assert.Contains(messages, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
-            }
 
+                host.WebHost.Dispose();
+            }
+            
             // Validates a bug where WebHost services were not being disposed on a function timeout
             Assert.True(_disposedService.IsDisposed, "Expected services to be disposed");
         }
@@ -60,18 +62,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
         public async Task OnTimeoutException_OOP_HasExpectedLogs()
         {
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
-            using (var host = await RunTimeoutExceptionTest(handleCancellation: false, timeoutFunctionName: "TimeoutSync", path: @"TestScripts\Node"))
+            try
             {
-                var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
+                using (var host = await RunTimeoutExceptionTest(handleCancellation: false, timeoutFunctionName: "TimeoutSync", path: @"TestScripts\Node"))
+                {
+                    var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
 
-                // wait a few seconds to make sure the manager doesn't die
-                await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(jobHostManager.State == ScriptHostState.Running),
-                timeout: 3000, throwWhenDebugging: true, userMessageCallback: () => "Expected host manager not to die"));
+                    // wait a few seconds to make sure the manager doesn't die
+                    await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(jobHostManager.State == ScriptHostState.Running),
+                    timeout: 3000, throwWhenDebugging: true, userMessageCallback: () => "Expected host manager not to die"));
 
-                var messages = host.GetScriptHostLogMessages().Where(t => t?.FormattedMessage != null);
-                Assert.Contains(messages, t => t.FormattedMessage.StartsWith("A function timeout has occurred. Restarting worker process executing invocationId "));
-                Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Restarting channel"));
-                Assert.Contains(messages, t => t.FormattedMessage == "Attempt to restart language worker process(es) completed.");
+                    var messages = host.GetScriptHostLogMessages().Where(t => t?.FormattedMessage != null);
+                    Assert.Contains(messages, t => t.FormattedMessage.StartsWith("A function timeout has occurred. Restarting worker process executing invocationId "));
+                    Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Restarting channel"));
+                    Assert.Contains(messages, t => t.FormattedMessage == "Attempt to restart language worker process(es) completed.");
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
             }
         }
 
