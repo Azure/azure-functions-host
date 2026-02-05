@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -429,7 +429,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
 
             _loggerProvider.ClearAllLogMessages();
             var batch = new List<TableTransactionAction>();
-            batch.Add(new TableTransactionAction(TableTransactionActionType.Add,new TableEntity("testpk", "testrk")));
+            batch.Add(new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("testpk", "testrk")));
             try
             {
                 await table.SubmitTransactionAsync(batch);
@@ -488,7 +488,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
 
         private async Task EmptyTableAsync(TableClient table, TableServiceClient tableClient)
         {
-            if(!await TableStorageHelpers.TableExistAsync(table, tableClient))
+            if (!await TableStorageHelpers.TableExistAsync(table, tableClient))
             {
                 return;
             }
