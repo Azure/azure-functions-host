@@ -1,19 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
@@ -27,6 +20,15 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using OpenTelemetry;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -1736,6 +1738,67 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal("customTrigger", Activity.Current.GetTagItem("faas.trigger"));
 
             activity.Stop();
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_PropagatesBaggageCurrentToInvocationRequest()
+        {
+            //Arrange
+            var invocationId = Guid.NewGuid();
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            var functionMetadata = BuildFunctionMetadataForTimerTrigger("TestFunction");
+            var logger = _logger;
+
+            // Set up OpenTelemetry baggage
+            Baggage.ClearBaggage();
+            Baggage.SetBaggage("key1", "value1");
+            Baggage.SetBaggage("key2", "value2");
+            Baggage.SetBaggage("key1", "value3"); // duplicate key to test that the last value is used
+
+            // Set TelemetryMode to OpenTelemetry in ScriptJobHostOptions
+            var jobHostOptions = new ScriptJobHostOptions
+            {
+                RootScriptPath = _scriptRootPath,
+                TelemetryMode = TelemetryMode.OpenTelemetry
+            };
+            var options = new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions);
+            _mockScriptHostManager.As<IServiceProvider>()
+                .Setup(p => p.GetService(typeof(IOptions<ScriptJobHostOptions>)))
+                .Returns(options);
+
+            // Explicitly enable OpenTelemetry for the worker channel
+            _testEnvironment.SetEnvironmentVariable("AzureWebJobsTelemetryMode", "OpenTelemetry");
+
+            // Create worker channel with OpenTelemetry enabled
+            await CreateDefaultWorkerChannel(autoStart: false, capabilities: new Dictionary<string, string>
+            {
+                { RpcWorkerConstants.WorkerOpenTelemetryEnabled, "true" }
+            });
+
+            InvocationRequest invocationRequest = null;
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.InvocationRequest, evt =>
+            {
+                invocationRequest = evt.Message.InvocationRequest;
+            });
+
+            // Act
+            var invocationContext = GetTestScriptInvocationContext(
+                invocationId,
+                resultSource,
+                logger: _logger,
+                scriptRootPath: _scriptRootPath);
+
+            await _workerChannel.SendInvocationRequest(invocationContext);
+            await Task.Delay(500); // allow async event to fire
+
+            // Assert
+            Assert.NotNull(invocationRequest);
+            Assert.True(invocationRequest.TraceContext.Baggage.ContainsKey("key1"));
+            Assert.True(invocationRequest.TraceContext.Baggage.ContainsKey("key2"));
+            Assert.Equal("value3", invocationRequest.TraceContext.Baggage["key1"]);
+            Assert.Equal("value2", invocationRequest.TraceContext.Baggage["key2"]);
+
+            Baggage.ClearBaggage();
         }
 
         public async Task Ensure_Failure_Status_On_CurrentActivity_WhenInvocationFailed()
