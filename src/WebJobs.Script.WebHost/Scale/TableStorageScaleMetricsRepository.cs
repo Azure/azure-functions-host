@@ -200,9 +200,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return;
             }
 
+            bool tableCreated = false;
             await _storageRetryPolicy.ExecuteAsync(async () =>
             {
-                bool tableCreated = false;
                 try
                 {
                     await metricsTable.SubmitTransactionAsync(batch);
@@ -267,20 +267,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal async Task<IEnumerable<TableEntity>> ExecuteQuerySafeAsync(TableClient metricsTable, string query)
         {
             List<TableEntity> results = [];
+            string continuationToken = null;
 
             await _storageRetryPolicy.ExecuteAsync(async () =>
             {
                 results = [];
+                continuationToken = null;
                 try
                 {
-                    await foreach (var result in metricsTable.QueryAsync<TableEntity>(query))
+                    await foreach (var page in metricsTable.QueryAsync<TableEntity>(query).AsPages(continuationToken))
                     {
-                        results.Add(result);
+                        results.AddRange(page.Values);
+                        continuationToken = page.ContinuationToken;
                     }
                 }
                 catch (RequestFailedException e) when (IsTableNotFound(e))
                 {
                     results = [];
+                    continuationToken = null;
                 }
             });
 
