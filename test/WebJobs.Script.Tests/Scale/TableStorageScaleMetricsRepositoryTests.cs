@@ -296,5 +296,65 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             var retryLogs = logs.Where(l => l.FormattedMessage.Contains("Transient storage error")).ToList();
             Assert.Equal(5, retryLogs.Count);
         }
+
+        [Fact]
+        public async Task ExecuteBatchSafeAsync_TableNotFound_CreatesTableOnlyOnce()
+        {
+            // This test verifies that when table doesn't exist and is created,
+            // subsequent retries due to transient errors don't try to create the table again.
+            int submitCallCount = 0;
+            int createTableCallCount = 0;
+
+            _tableClientMock
+                .Setup(c => c.SubmitTransactionAsync(
+                    It.IsAny<IEnumerable<TableTransactionAction>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() =>
+                {
+                    submitCallCount++;
+                    if (submitCallCount == 1)
+                    {
+                        // First call: table doesn't exist
+                        throw new RequestFailedException(404, "Table not found", "TableNotFound", null);
+                    }
+                    if (submitCallCount == 2)
+                    {
+                        // Second call (after table creation): transient error
+                        throw new RequestFailedException(503, "The server is busy");
+                    }
+                    // Third call: success
+                    return Response.FromValue(
+                        new List<Response>() as IReadOnlyList<Response>,
+                        Mock.Of<Response>());
+                });
+
+            _tableClientMock
+                .Setup(c => c.CreateIfNotExistsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() =>
+                {
+                    createTableCallCount++;
+                    return Mock.Of<Response<TableItem>>();
+                });
+
+            var repository = CreateRepository();
+            var batch = new List<TableTransactionAction>
+            {
+                new TableTransactionAction(TableTransactionActionType.Add, new TableEntity("pk", "rk"))
+            };
+
+            await repository.ExecuteBatchSafeAsync(batch);
+
+            // Table creation should only be called once, not on subsequent retry
+            Assert.Equal(1, createTableCallCount);
+
+            // We expect: 1st call (table not found) -> create table -> 2nd call (transient error) -> retry -> 3rd call (success)
+            Assert.Equal(3, submitCallCount);
+
+            // Verify retry logging for the transient error
+            var logs = _loggerProvider.GetAllLogMessages();
+            var retryLog = logs.FirstOrDefault(l => l.FormattedMessage.Contains("Transient storage error"));
+            Assert.NotNull(retryLog);
+            Assert.Contains("Status: 503", retryLog.FormattedMessage);
+        }
     }
 }
