@@ -49,9 +49,9 @@ jobs:
           # Assign the issue
           gh api -X POST -H "Accept: application/vnd.github+json" \
             /repos/$REPO/issues/$ISSUE_NUMBER/assignees \
-            -f assignees[]="$assignee" >/dev/null
+            -f assignees[]="$assignee"
 
           # Persist updated index back to the repo variable
           gh api -X PATCH -H "Accept: application/vnd.github+json" \
             /repos/$REPO/actions/variables/RR_LAST_INDEX \
-            -f name="RR_LAST_INDEX" -f value="$next_index" >/dev/null
+            -f name="RR_LAST_INDEX" -f value="$next_index"

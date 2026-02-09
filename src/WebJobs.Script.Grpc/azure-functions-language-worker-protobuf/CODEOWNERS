@@ -11,4 +11,4 @@
 # include the following people in the PRs.
 # Language owners should get notified of any new changes to the proto file.
 
-src/proto/FunctionRpc.proto @vrdmr @gavin-aguiar @YunchuWang @surgupta-msft @satvu @ejizba @alrod @anatolib @kaibocai @shreyas-gopalakrishna @amamounelsayed @Francisco-Gamino
+src/proto/FunctionRpc.proto @vrdmr @gavin-aguiar @YunchuWang @surgupta-msft @satvu @alrod @anatolib @kaibocai @shreyas-gopalakrishna @amamounelsayed @Francisco-Gamino

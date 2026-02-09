@@ -1141,6 +1141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
 
                     LogSharedMemoryUsage(invokeResponse);
+                    AddWorkerTraceAttributes(invokeResponse, context);
 
                     if (invokeResponse.Result.IsInvocationSuccess())
                     {
@@ -1736,6 +1737,30 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSName, context.FunctionMetadata.Name);
                 Activity.Current?.AddTag(ResourceSemanticConventions.FaaSInvocationId, invocationRequest.InvocationId);
             }
+        }
+
+        private void AddWorkerTraceAttributes(InvocationResponse invocationResponse, ScriptInvocationContext context)
+        {
+            var attributes = invocationResponse.TraceContextAttributes;
+            if (attributes is null)
+            {
+                return;
+            }
+
+            if (context.AsyncExecutionContext is null)
+            {
+                return;
+            }
+
+            System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, static state =>
+            {
+                var attrs = (IDictionary<string, string>)state;
+                foreach (var kvp in attrs)
+                {
+                    // this will override any existing tags with the same key
+                    Activity.Current?.AddTag(kvp.Key, kvp.Value);
+                }
+            }, attributes);
         }
 
         private sealed class ExecutingInvocation : IDisposable

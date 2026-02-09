@@ -437,11 +437,15 @@ message InvocationResponse {
   // Output binding data
   repeated ParameterBinding output_data = 2;
 
+  // Status of the invocation (success/failure/canceled)
+  StatusResult result = 3;
+
   // data returned from Function (for $return and triggers with return support)
   TypedData return_value = 4;
 
-  // Status of the invocation (success/failure/canceled)
-  StatusResult result = 3;
+  // Enables propagation of tags from worker -> host.
+  map<string, string> trace_context_attributes = 5;
+
 }
 
 message WorkerWarmupRequest {
