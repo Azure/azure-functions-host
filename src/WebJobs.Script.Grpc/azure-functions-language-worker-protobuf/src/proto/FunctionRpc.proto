@@ -407,7 +407,7 @@ message RpcTraceContext {
   // This corresponds to Activity.Current?.Tags
   map<string, string> attributes = 3;
 
-  // This corresponds to Activity.Current?.Baggage
+  // This is populated from OpenTelemetry.Baggage.Current
   map<string, string> baggage = 4;
 }
 
