@@ -1740,7 +1740,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 foreach (var b in Baggage.Current)
                 {
-                    invocationRequest.TraceContext.Baggage.Add(b.Key, b.Value);
+                    // if there are duplicates, last one wins
+                    invocationRequest.TraceContext.Baggage[b.Key] = b.Value;
                 }
             }
         }
