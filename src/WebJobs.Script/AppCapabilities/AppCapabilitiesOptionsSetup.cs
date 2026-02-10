@@ -1,13 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 #nullable enable
 
@@ -16,7 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     internal sealed class AppCapabilitiesOptionsSetup : IConfigureOptions<AppCapabilitiesOptions>
     {
         private readonly IConfiguration _configuration;
-        private readonly string configSectionName = "azureFunctionsJobHost:appCapabilities";
         private readonly ILogger<AppCapabilitiesOptionsSetup> _logger;
 
         public AppCapabilitiesOptionsSetup(
@@ -33,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// <param name="options">The options instance to configure.</param>
         public void Configure(AppCapabilitiesOptions options)
         {
-            var jobHostCapabilitiesSection = _configuration.GetSection(configSectionName);
+            var jobHostCapabilitiesSection = _configuration.GetSection(ConfigurationSectionNames.AppCapabilities);
             if (jobHostCapabilitiesSection.Exists())
             {
                 AddCapabilitiesFromSection(options, jobHostCapabilitiesSection);
@@ -55,10 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 
             foreach (var child in children)
             {
-                var capabilityName = child.Key;
-                var capabilityValue = child.Value;
-
-                options.Capabilities[capabilityName] = capabilityValue ?? string.Empty;
+                options.Capabilities[child.Key] = child.Value ?? string.Empty;
             }
         }
     }

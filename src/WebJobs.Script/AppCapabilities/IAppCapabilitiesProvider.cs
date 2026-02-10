@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
     public interface IAppCapabilitiesProvider
     {
-        Dictionary<string, string> GetCapabilities();
+        IReadOnlyDictionary<string, string> GetCapabilities();
 
         void SetCapability(string capability, string value);
     }

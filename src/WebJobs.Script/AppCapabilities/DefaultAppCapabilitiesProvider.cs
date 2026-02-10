@@ -1,15 +1,16 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
     internal class DefaultAppCapabilitiesProvider : IAppCapabilitiesProvider
     {
-        private readonly Dictionary<string, string> _capabilities = new Dictionary<string, string>();
+        private readonly ConcurrentDictionary<string, string> _capabilities = new ConcurrentDictionary<string, string>();
 
-        public Dictionary<string, string> GetCapabilities()
+        public IReadOnlyDictionary<string, string> GetCapabilities()
         {
             return _capabilities;
         }

@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
-    public class AppCapabilitiesController
+    public class AppCapabilitiesController : Controller
     {
         private readonly AppCapabilitiesOptions _capabilitiesOptions;
 

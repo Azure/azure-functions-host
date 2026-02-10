@@ -10,13 +10,6 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
     public sealed class AppCapabilitiesOptions
     {
-        private readonly Dictionary<string, string> _capabilities;
-
-        public AppCapabilitiesOptions()
-        {
-            _capabilities = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        }
-
-        public Dictionary<string, string> Capabilities => _capabilities;
+        public Dictionary<string, string> Capabilities { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 }
