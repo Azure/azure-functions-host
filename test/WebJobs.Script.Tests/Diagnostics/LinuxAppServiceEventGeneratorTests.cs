@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
         private readonly LinuxAppServiceEventGenerator _generator;
         private readonly List<string> _events;
+        private readonly int _pid = Environment.ProcessId;
         private IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
         private IOptions<AzureMonitorLoggingOptions> _azureMonitorOptions;
 
@@ -66,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
-            Assert.Equal(17, match.Groups.Count);
+            Assert.Equal(18, match.Groups.Count);
 
             DateTime dt;
             var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
@@ -86,7 +87,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(exceptionMessage, LinuxContainerEventGeneratorTests.UnNormalize(p)),
                 p => Assert.Equal(functionInvocationId, p),
                 p => Assert.Equal(hostInstanceId, p),
-                p => Assert.Equal(activityId, p));
+                p => Assert.Equal(activityId, p),
+                p => Assert.Equal(_pid.ToString(), p));
         }
 
         [Theory]

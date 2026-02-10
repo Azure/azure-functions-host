@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -11,13 +11,13 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.ExtensionRequirements;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly IEnvironment _environment;
         private readonly IOptions<ExtensionRequirementOptions> _extensionRequirementOptions;
         private readonly Lazy<IEnumerable<Type>> _startupTypes;
+        private readonly WorkerConfigCacheInvalidator _workerConfigCacheInvalidator;
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
         public ScriptStartupTypeLocator(
@@ -48,7 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             IFunctionMetadataManager functionMetadataManager,
             IMetricsLogger metricsLogger,
             IEnvironment environment,
-            IOptions<ExtensionRequirementOptions> extensionRequirementOptions)
+            IOptions<ExtensionRequirementOptions> extensionRequirementOptions,
+            WorkerConfigCacheInvalidator workerConfigCacheInvalidator)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
@@ -58,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             _environment = environment;
             _extensionRequirementOptions = extensionRequirementOptions;
             _startupTypes = new Lazy<IEnumerable<Type>>(() => GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult());
+            _workerConfigCacheInvalidator = workerConfigCacheInvalidator ?? throw new ArgumentNullException(nameof(workerConfigCacheInvalidator));
         }
 
         private static string[] GetBuiltinExtensionAssemblies()
@@ -93,6 +96,9 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             ImmutableArray<FunctionMetadata> functionMetadataCollection = ImmutableArray<FunctionMetadata>.Empty;
             if (bundleConfigured)
             {
+                // refresh the cache immediately before we attempt to start a worker and get metadata for bundles
+                _workerConfigCacheInvalidator.InvalidateCacheForBundles();
+
                 ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
                 ValidateBundleRequirements(bundleDetails, extensionRequirements);
 
@@ -136,6 +142,10 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
             else
             {
+                // we now know that we're not going to be using bundles, so we need to invalidate the worker
+                // configuration cache the next time we build the host
+                _workerConfigCacheInvalidator.EnableInvalidationForNextBuild();
+
                 extensionsMetadataPath = Path.Combine(_rootScriptPath, "bin");
                 if (Utility.TryResolveExtensionsMetadataPath(_rootScriptPath, out string resolvedPath, out baseProbingPath))
                 {

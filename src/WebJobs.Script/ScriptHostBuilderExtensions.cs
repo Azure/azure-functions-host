@@ -130,7 +130,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Pre-build configuration here to load bundles and to store for later validation.
                 IConfigurationRoot config = configBuilder.Build();
-                ExtensionBundleOptions extensionBundleOptions = GetExtensionBundleOptions(config);
+                var environment = applicationOptions.RootServiceProvider.GetService<IEnvironment>();
+                ExtensionBundleOptions extensionBundleOptions = GetExtensionBundleOptions(config, environment);
                 FunctionsHostingConfigOptions configOption = new();
                 FunctionsHostingConfigOptionsSetup optionsSetup = new(config);
                 optionsSetup.Configure(configOption);
@@ -140,6 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var httpClientFactory = applicationOptions.RootServiceProvider.GetService<IHttpClientFactory>();
                 var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption, httpClientFactory);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
+                var workerConfigCacheInvalidator = applicationOptions.RootServiceProvider.GetService<WorkerConfigCacheInvalidator>();
 
                 var locator = new ScriptStartupTypeLocator(
                     applicationOptions.ScriptPath,
@@ -147,8 +149,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     bundleManager,
                     metadataServiceManager,
                     metricsLogger,
-                    SystemEnvironment.Instance,
-                    extensionRequirementOptions);
+                    environment,
+                    extensionRequirementOptions,
+                    workerConfigCacheInvalidator);
 
                 // The locator (and thus the bundle manager) need to be created now in order to configure app configuration.
                 // Store them so they do not need to be re-created later when configuring services.
@@ -513,10 +516,10 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal static ExtensionBundleOptions GetExtensionBundleOptions(IConfiguration configuration)
+        internal static ExtensionBundleOptions GetExtensionBundleOptions(IConfiguration configuration, IEnvironment environment)
         {
             var options = new ExtensionBundleOptions();
-            var optionsSetup = new ExtensionBundleConfigurationHelper(configuration, SystemEnvironment.Instance);
+            var optionsSetup = new ExtensionBundleConfigurationHelper(configuration, environment);
             configuration.Bind(options);
             optionsSetup.Configure(options);
             return options;

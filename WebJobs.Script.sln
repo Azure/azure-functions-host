@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36623.8 d17.14
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11222.15 d18.0
 MinimumVisualStudioVersion = 15.0.0.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}"
 EndProject
@@ -66,6 +66,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.Shared", "test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.csproj", "{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetCustomHandler", "test\Resources\TestProjects\DotNetCustomHandler\DotNetCustomHandler.csproj", "{276857C1-88C8-994D-593E-AE6FA9B14556}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetIsolatedWithBundles", "test\Resources\TestProjects\DotNetIsolatedWithBundles\DotNetIsolatedWithBundles.csproj", "{1D031D10-9B04-544D-3FEE-45CB178F05A0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -151,6 +153,10 @@ Global
 		{276857C1-88C8-994D-593E-AE6FA9B14556}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{276857C1-88C8-994D-593E-AE6FA9B14556}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{276857C1-88C8-994D-593E-AE6FA9B14556}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D031D10-9B04-544D-3FEE-45CB178F05A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D031D10-9B04-544D-3FEE-45CB178F05A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D031D10-9B04-544D-3FEE-45CB178F05A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D031D10-9B04-544D-3FEE-45CB178F05A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -178,6 +184,7 @@ Global
 		{3746E49F-DD26-4CBD-B961-0ADF6EA84909} = {B2312621-6D0A-429F-9A45-06B45CE69691}
 		{6C6ABC17-1262-4AD8-8CDA-AF6819EF60EE} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{276857C1-88C8-994D-593E-AE6FA9B14556} = {B2312621-6D0A-429F-9A45-06B45CE69691}
+		{1D031D10-9B04-544D-3FEE-45CB178F05A0} = {B2312621-6D0A-429F-9A45-06B45CE69691}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}

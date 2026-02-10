@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath($@"..\..\DotNetIsolatedUnsupportedWorker\{TestHelpers.BuildConfig}");
         private static readonly string _dotnetIsolatedEmptyScriptRoot = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
         private static readonly string _dotnetCustomHandlerPath = Path.GetFullPath($@"..\..\DotNetCustomHandler\{TestHelpers.BuildConfig}");
+        private static readonly string _dotnetIsolatedWithBundlesPath = Path.GetFullPath($@"..\..\DotNetIsolatedWithBundles\{TestHelpers.BuildConfig}");
 
         private static Action<IServiceCollection> _customizeScriptHostServices;
 
@@ -63,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
+        private readonly TestMetricsLogger _testMetricsLogger = new();
 
         private readonly ITestOutputHelper _testOutputHelper;
 
@@ -459,6 +461,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var newProcessId = channel.WorkerProcess.Process.Id;
             Assert.Contains("--max-old-space-size=1272", channel.WorkerProcess.Process.StartInfo.Arguments);
             Assert.NotEqual(processId, newProcessId);
+
+            AssertWorkerProcessStartupCount(2);
+
+            AssertLanguageWorkerOptionsSetupCount(2);
+        }
+
+        [Fact]
+        // This test doesn't specialize, but is here to compare behavior with the other Arguments test above
+        public async Task NoSpecialization_StartWorkerWithWorkerArguments()
+        {
+            _environment.Clear();
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder(_loggerProvider, "HttpTriggerNoAuth");
+
+            builder.ConfigureAppConfiguration(config =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, Path.GetFullPath(@"TestScripts\NodeWithBundles") }
+                });
+            });
+
+            // Use an actual env var here as it will be refreshed in config after specialization
+            using var envVars = new TestScopedEnvironmentVariable("languageWorkers:node:arguments", "--max-old-space-size=1272");
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+
+            var response = await client.GetAsync("api/HttpTriggerNoAuth");
+            response.EnsureSuccessStatusCode();
+
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
+            Assert.Contains("--max-old-space-size=1272", channel.WorkerProcess.Process.StartInfo.Arguments);
+
+            AssertWorkerProcessStartupCount(1);
+
+            AssertLanguageWorkerOptionsSetupCount(1);
         }
 
         [Fact]
@@ -889,6 +933,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
+
+            AssertWorkerProcessStartupCount(1);
+
+            // because placeholder app has bundles in host.json, it refreshes 2x before specializing.
+            AssertLanguageWorkerOptionsSetupCount(3);
+        }
+
+        [Fact]
+        public async Task DotNetIsolatedWithBundles_PlaceholderHit()
+        {
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolatedWithBundlesPath, _loggerProvider, "HttpRequestFunction");
+
+            using var testServer = new TestServer(builder);
+
+            var client = testServer.CreateClient();
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            // Validate that the channel is set up with native worker
+            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+
+            var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+            Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
+            Assert.NotNull(placeholderChannel.WorkerProcess.Process.Id);
+            var runningProcess = Process.GetProcessById(placeholderChannel.WorkerProcess.Id);
+            Assert.Contains(runningProcess.ProcessName, "FunctionsNetHost");
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/HttpRequestFunction");
+            response.EnsureSuccessStatusCode();
+
+            // Placeholder hit; these should match
+            var specializedChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
+            Assert.Same(placeholderChannel, specializedChannel);
+            runningProcess = Process.GetProcessById(placeholderChannel.WorkerProcess.Id);
+            Assert.Contains(runningProcess.ProcessName, "FunctionsNetHost");
+
+            var log = _loggerProvider.GetLog();
+            Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
+            Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
+            Assert.DoesNotContain("Shutting down placeholder worker.", log);
+
+            AssertWorkerProcessStartupCount(1);
+
+            // because placeholder app has bundles in host.json, it refreshes 2x before specializing.
+            // and then it refreshes for bundles and for dotnet-isolated when specializing.
+            // This is not really a valid scenario, but we need to ensure it keeps working. Customers should not use
+            // bundles with dotnet-isolated.
+            AssertLanguageWorkerOptionsSetupCount(4);
         }
 
         [Theory]
@@ -918,7 +1013,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags , ScriptConstants.FeatureFlagEnableResponseCompression);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableResponseCompression);
 
             response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
@@ -927,7 +1022,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task Specialization_DotnetIsolatedApp_MissingAzureFunctionsDir_Logs()
+        public async Task Specialization_DotNetIsolatedApp_MissingAzureFunctionsDir_Logs()
         {
             Guid guid = Guid.NewGuid();
             string path = "test-path" + guid.ToString();
@@ -1206,6 +1301,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '7.0'. Match: False", log);
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
+
+            AssertWorkerProcessStartupCount(2);
+
+            // because placeholder app has bundles in host.json, it refreshes twice in placeholder mode for dotnet-isolated
+            AssertLanguageWorkerOptionsSetupCount(3);
         }
 
         [Fact]
@@ -1495,6 +1595,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
             return builder;
+        }
+
+        private void AssertLanguageWorkerOptionsSetupCount(int expected)
+        {
+            // Verify LanguageWorkerOptions setup count
+            var workerConfigLogs = _loggerProvider.GetAllLogMessages()
+                .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Workers Directory set to:"))
+                .ToArray();
+            Assert.Equal(expected, workerConfigLogs.Length);
+        }
+
+        private void AssertWorkerProcessStartupCount(int expected)
+        {
+            var workerStartLogs = _loggerProvider.GetAllLogMessages()
+                .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Starting worker process with FileName:"))
+                .ToArray();
+            Assert.Equal(expected, workerStartLogs.Length);
         }
 
         private class InfiniteTimerStandbyManager : StandbyManager

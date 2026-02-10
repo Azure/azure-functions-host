@@ -123,14 +123,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// Runs tests with Node language provider function.
         /// </summary>
         [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task CodelessFunction_CanUse_SingleJavascriptLanguageProviders(bool enableDynamicWorkerResolution)
+        [InlineData(true, "dotnet")]
+        [InlineData(false, "dotnet")]
+        [InlineData(true, "dotnet-isolated")]
+        [InlineData(false, "dotnet-isolated")]
+        public async Task CodelessFunction_CanUse_SingleJavascriptLanguageProviders(bool enableDynamicWorkerResolution, string functionWorkerRuntime)
         {
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", "NoFunction");
             var settings = new Dictionary<string, string>()
             {
                 [EnvironmentSettingNames.AppKind] = "workflowApp",
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = functionWorkerRuntime,
             };
             var testEnvironment = new TestEnvironment(settings);
 
