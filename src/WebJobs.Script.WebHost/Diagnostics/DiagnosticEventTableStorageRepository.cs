@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -15,7 +15,6 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -33,6 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly ILogger<DiagnosticEventTableStorageRepository> _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly object _syncLock = new object();
+
+        private readonly SemaphoreSlim _initLock = new SemaphoreSlim(1, 1);
+        private volatile bool _tableClientInitialized;
+        private volatile bool _tableClientInitAttempted;
 
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
         private TableServiceClient _tableClient;
@@ -52,56 +55,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _logger = logger;
             _flushLogsTimer = new Lazy<Timer>(() => new Timer(OnFlushLogs, null, logFlushInterval, logFlushInterval));
             _azureTableStorageProvider = azureTableStorageProvider;
+
+            if (!_environment.IsPlaceholderModeEnabled())
+            {
+                _ = InitializeTableClientAsync();
+            }
         }
 
         public DiagnosticEventTableStorageRepository(IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHost,
             IAzureTableStorageProvider azureTableStorageProvider, ILogger<DiagnosticEventTableStorageRepository> logger)
             : this(hostIdProvider, environment, scriptHost, azureTableStorageProvider, logger, LogFlushInterval) { }
 
-        internal TableServiceClient TableClient
-        {
-            get
-            {
-                if (_tableClient is null && !_environment.IsPlaceholderModeEnabled())
-                {
-                    if (!_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableClient))
-                    {
-                        DisableService();
-                        Logger.ServiceDisabledFailedToCreateClient(_logger);
-                        return _tableClient;
-                    }
-
-                    try
-                    {
-                        // When using RBAC, we need "Storage Table Data Contributor" as we require to list, create and delete tables and query/insert/delete entities.
-                        // Testing permissions by listing tables, creating and deleting a test table.
-                        var testTable = _tableClient.GetTableClient($"{TableNamePrefix}Check");
-                        _ = TableStorageHelpers.TableExists(testTable, _tableClient);
-                        _ = testTable.CreateIfNotExists();
-                        _ = testTable.Delete();
-                    }
-                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict || rfe.ErrorCode == TableErrorCode.TableBeingDeleted)
-                    {
-                        // The table is being deleted or there could be a conflict for several instances initializing.
-                        // We can ignore this error as it is not a failure and we tested the permissions.
-                    }
-                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Forbidden)
-                    {
-                        DisableService();
-                        Logger.ServiceDisabledUnauthorizedClient(_logger, rfe);
-                    }
-                    catch (Exception ex)
-                    {
-                        // We failed to connect to the table storage account. This could be due to a transient error or a configuration issue, such network issues.
-                        // We will disable the service.
-                        DisableService();
-                        Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
-                    }
-                }
-
-                return _tableClient;
-            }
-        }
+        internal TableServiceClient TableClient => _tableClient;
 
         internal string HostId
         {
@@ -124,9 +89,69 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _events.Clear();
         }
 
+        private async Task InitializeTableClientAsync(CancellationToken cancellationToken = default)
+        {
+            if (_tableClientInitialized || _environment.IsPlaceholderModeEnabled())
+            {
+                _tableClientInitAttempted = true;
+                return;
+            }
+
+            await _initLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (_tableClientInitialized || _environment.IsPlaceholderModeEnabled())
+                {
+                    _tableClientInitAttempted = true;
+                    return;
+                }
+
+                if (!_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableClient))
+                {
+                    DisableService();
+                    Logger.ServiceDisabledFailedToCreateClient(_logger);
+                    _tableClientInitAttempted = true;
+                    return;
+                }
+
+                try
+                {
+                    var testTable = _tableClient.GetTableClient($"{TableNamePrefix}Check");
+                    _ = TableStorageHelpers.TableExists(testTable, _tableClient);
+                    _ = await testTable.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
+                    _ = await testTable.DeleteAsync(cancellationToken).ConfigureAwait(false);
+
+                    _tableClientInitialized = true;
+                    _tableClientInitAttempted = true;
+                }
+                catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict || rfe.ErrorCode == TableErrorCode.TableBeingDeleted)
+                {
+                    // Conflict while initializing across instances; permissions validated.
+                    _tableClientInitialized = true;
+                    _tableClientInitAttempted = true;
+                }
+                catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Forbidden)
+                {
+                    DisableService();
+                    Logger.ServiceDisabledUnauthorizedClient(_logger, rfe);
+                    _tableClientInitAttempted = true;
+                }
+                catch (Exception ex)
+                {
+                    DisableService();
+                    Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
+                    _tableClientInitAttempted = true;
+                }
+            }
+            finally
+            {
+                _initLock.Release();
+            }
+        }
+
         internal TableClient GetDiagnosticEventsTable(DateTime? now = null)
         {
-            if (TableClient != null)
+            if (_tableClient != null)
             {
                 now = now ?? DateTime.UtcNow;
                 string currentTableName = GetTableName(now.Value);
@@ -135,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 if (_diagnosticEventsTable == null || currentTableName != _tableName)
                 {
                     _tableName = currentTableName;
-                    _diagnosticEventsTable = TableClient.GetTableClient(_tableName);
+                    _diagnosticEventsTable = _tableClient.GetTableClient(_tableName);
                 }
             }
 
@@ -162,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 try
                 {
-                    var tables = (await TableStorageHelpers.ListTablesAsync(TableClient, TableNamePrefix)).ToList();
+                    var tables = (await TableStorageHelpers.ListTablesAsync(_tableClient, TableNamePrefix)).ToList();
 
                     foreach (var table in tables)
                     {
@@ -224,7 +249,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // TableClient is initialized lazily and it will stop the timer that schedules flush logs whenever it fails to initialize.
             // We need to check if the TableClient is null before proceeding. This helps when the first time the property is accessed is as part of the FlushLogs method.
             // We should not have any events stored pending to be written since WriteDiagnosticEvent will check for an initialized TableClient.
-            if (_environment.IsPlaceholderModeEnabled() || TableClient is null || !IsEnabled())
+            if (_environment.IsPlaceholderModeEnabled() || !_isEnabled)
+            {
+                return;
+            }
+
+            if (!_tableClientInitialized && !_tableClientInitAttempted)
+            {
+                await InitializeTableClientAsync().ConfigureAwait(false);
+            }
+
+            if (_tableClient is null)
             {
                 return;
             }
@@ -245,11 +280,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     return;
                 }
 
-                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableClient, TableCreationMaxRetryCount);
+                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, _tableClient, TableCreationMaxRetryCount);
                 if (tableCreated)
                 {
                     Logger.QueueingBackgroundTablePurge(_logger);
-                    TableStorageHelpers.QueueBackgroundTablePurge(table, TableClient, TableNamePrefix, _logger);
+                    TableStorageHelpers.QueueBackgroundTablePurge(table, _tableClient, TableNamePrefix, _logger);
                 }
             }
             catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.Forbidden)
@@ -317,7 +352,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void WriteDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
         {
-            if (TableClient is null || string.IsNullOrEmpty(HostId) || !IsEnabled())
+            if (_tableClient is null || string.IsNullOrEmpty(HostId) || !IsEnabled())
             {
                 return;
             }
