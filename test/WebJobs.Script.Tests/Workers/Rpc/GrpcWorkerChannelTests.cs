@@ -1766,14 +1766,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 .Setup(p => p.GetService(typeof(IOptions<ScriptJobHostOptions>)))
                 .Returns(options);
 
-            // Explicitly enable OpenTelemetry for the worker channel
-            _testEnvironment.SetEnvironmentVariable("AzureWebJobsTelemetryMode", "OpenTelemetry");
-
-            // Create worker channel with OpenTelemetry enabled
-            await CreateDefaultWorkerChannel(autoStart: false, capabilities: new Dictionary<string, string>
-            {
-                { RpcWorkerConstants.WorkerOpenTelemetryEnabled, "true" }
-            });
+            await CreateDefaultWorkerChannel();
 
             InvocationRequest invocationRequest = null;
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.InvocationRequest, evt =>
