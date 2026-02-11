@@ -121,6 +121,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
+            // Filter out high-volume, low-value log messages that contribute
+            // significant noise to the FunctionsLogs table.
+            if (IsNoisyLogMessage(source, formattedMessage))
+            {
+                return;
+            }
+
             var scopeProps = _scopeProvider.GetScopeDictionaryOrNull();
             string functionName = _functionName ?? stateFunctionName ?? string.Empty;
             if (string.IsNullOrEmpty(functionName) && scopeProps?.Count > 0)
@@ -177,6 +184,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
+        }
+
+        internal static bool IsNoisyLogMessage(string source, string formattedMessage)
+        {
+            // "Sending events to EventHub" - ~0.7% of total log volume
+            if (string.Equals(formattedMessage, "Sending events to EventHub", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            // Storage QueueListener polling logs - ~9.5% of total log volume
+            if (source != null && source.Equals("Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", StringComparison.Ordinal))
+            {
+                if (formattedMessage.StartsWith("Poll for function", StringComparison.Ordinal)
+                    || formattedMessage.Contains("polling queue", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }
