@@ -10,3 +10,4 @@
 - Updating OTel related packages (#11568)
 - Fixed worker configuration cache invalidation to properly refresh language worker options during host restarts with extension bundles (#11582)
 - Logging environment value of LocalSitePackagesPath in RunFromPackageHandler (#11541)
+- fixing TableClient for DiagnosticEventTableStorageRepository(#11605)
