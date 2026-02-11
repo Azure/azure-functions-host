@@ -20,7 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         private readonly INameResolver _nameResolver;
         private readonly TimerTriggerPlatformOptions _platformOptions;
 
-        public CoreExtensionsScriptBindingProvider(INameResolver nameResolver, IOptions<TimerTriggerPlatformOptions> platformOptions, ILogger<CoreExtensionsScriptBindingProvider> logger)
+        public CoreExtensionsScriptBindingProvider(
+            INameResolver nameResolver,
+            IOptions<TimerTriggerPlatformOptions> platformOptions,
+            ILogger<CoreExtensionsScriptBindingProvider> logger)
             : base(logger)
         {
             _nameResolver = nameResolver ?? throw new ArgumentNullException(nameof(nameResolver));
@@ -79,12 +82,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
                     if (!isCron)
                     {
+                        string message = $"The timer schedule '{schedule}' is not a CRON expression. Non-CRON expressions are not supported by the scale controller and may cause scaling issues. Please use a CRON expression instead. See {DiagnosticEventConstants.TimerConstantExpressionWarningHelpLink} for more information.";
+
                         if (_platformOptions.NonCronScheduleBehavior is NonCronScheduleBehavior.Error)
                         {
-                            throw new ArgumentException(string.Format("'{0}' is not a valid CRON expression.", schedule));
+                            var exception = new ArgumentException(string.Format("'{0}' is not a valid CRON expression.", schedule));
+                            _logger.LogDiagnosticEventError(DiagnosticEventConstants.TimerConstantExpressionWarningErrorCode, message, DiagnosticEventConstants.TimerConstantExpressionWarningHelpLink, exception);
+                            throw exception;
                         }
 
-                        string message = $"The timer schedule '{schedule}' is not a CRON expression. Non-CRON expressions are not supported by the scale controller and may cause scaling issues. Please use a CRON expression instead. See {DiagnosticEventConstants.TimerConstantExpressionWarningHelpLink} for more information.";
                         _logger.LogDiagnosticEventWarning(DiagnosticEventConstants.TimerConstantExpressionWarningErrorCode, message, DiagnosticEventConstants.TimerConstantExpressionWarningHelpLink, null);
                     }
                 }

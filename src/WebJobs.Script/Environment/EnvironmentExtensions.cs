@@ -203,8 +203,14 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Windows Consumption App Service app; otherwise, false.</returns>
         public static bool IsWindowsConsumption(this IEnvironment environment)
         {
+            if (environment.Platform != OSPlatform.Windows)
+            {
+                return false;
+            }
+
             string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
-            return environment.Platform == OSPlatform.Windows && string.Equals(value, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase);
+
+            return string.Equals(value, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -301,7 +307,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Windows Azure managed hosting environment; otherwise, false.</returns>
         public static bool IsWindowsAzureManagedHosting(this IEnvironment environment)
         {
-            return environment.IsAppService() && environment.Platform == OSPlatform.Windows;
+            if (environment.Platform != OSPlatform.Windows)
+            {
+                return false;
+            }
+
+            return environment.IsAppService();
         }
 
         /// <summary>

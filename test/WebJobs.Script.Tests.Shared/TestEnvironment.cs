@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public bool Is64BitProcess => _is64BitProcess;
 
-        public OSPlatform Platform { get; set; } = OSPlatform.Windows;
+        public OSPlatform Platform { get; set; } = SystemEnvironment.GetCurrentPlatform();
 
         public string this[string key]
         {

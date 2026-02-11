@@ -52,15 +52,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var bindingContext = new ScriptBindingContext(triggerMetadata);
             var binding = new CoreExtensionsScriptBindingProvider.TimerTriggerScriptBinding(nameResolver, platformOptions, _logger, bindingContext);
 
-            // TimeSpan expression is invalid
+            // TimeSpan expression is invalid and logs diagnostic error before throwing
             triggerMetadata["schedule"] = "00:00:15";
             var ex = Assert.Throws<ArgumentException>(() => binding.GetAttributes());
             Assert.Equal("'00:00:15' is not a valid CRON expression.", ex.Message);
+            Assert.Single(_loggerProvider.GetAllLogMessages().Where(m => m.Level == LogLevel.Error));
+            _loggerProvider.ClearAllLogMessages();
 
             // TimeSpan specified via app setting is invalid
             triggerMetadata["schedule"] = "%TEST_SCHEDULE_TIMESPAN%";
             ex = Assert.Throws<ArgumentException>(() => binding.GetAttributes());
             Assert.Equal("'00:00:15' is not a valid CRON expression.", ex.Message);
+            Assert.Single(_loggerProvider.GetAllLogMessages().Where(m => m.Level == LogLevel.Error));
+            _loggerProvider.ClearAllLogMessages();
 
             //// 6-digit Cron expression is valid
             triggerMetadata["schedule"] = "0 * * * * *";

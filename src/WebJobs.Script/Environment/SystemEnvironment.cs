@@ -2,9 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -37,21 +35,24 @@ namespace Microsoft.Azure.WebJobs.Script
             Environment.SetEnvironmentVariable(name, value);
         }
 
-        private static OSPlatform GetCurrentPlatform()
+        internal static OSPlatform GetCurrentPlatform()
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (OperatingSystem.IsWindows())
             {
                 return OSPlatform.Windows;
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+
+            if (OperatingSystem.IsLinux())
             {
                 return OSPlatform.Linux;
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+
+            if (OperatingSystem.IsMacOS())
             {
                 return OSPlatform.OSX;
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
+
+            if (OperatingSystem.IsFreeBSD())
             {
                 return OSPlatform.FreeBSD;
             }

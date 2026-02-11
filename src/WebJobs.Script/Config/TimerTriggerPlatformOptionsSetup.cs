@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration;
 
-internal class TimerTriggerPlatformOptionsSetup : IConfigureOptions<TimerTriggerPlatformOptions>
+internal sealed class TimerTriggerPlatformOptionsSetup : IConfigureOptions<TimerTriggerPlatformOptions>
 {
     private readonly IEnvironment _environment;
 
