@@ -332,7 +332,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
             // Mock TableServiceClient.QueryAsync to return empty (table doesn't exist)
             var emptyPageable = AsyncPageable<TableItem>.FromPages(Array.Empty<Page<TableItem>>());
             _tableServiceClientMock
-                .Setup(s => s.QueryAsync(It.IsAny<System.Linq.Expressions.Expression<Func<TableItem, bool>>>(), null, null, It.IsAny<CancellationToken>()))
+                .Setup(s => s.QueryAsync(
+                    It.IsAny<System.Linq.Expressions.Expression<Func<TableItem, bool>>>(),
+                    It.IsAny<int?>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
                 .Returns(emptyPageable);
 
             _tableClientMock
