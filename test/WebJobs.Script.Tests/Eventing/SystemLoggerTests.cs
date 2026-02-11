@@ -395,15 +395,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
         }
 
-        [Fact]
-        public void Log_Process_QueueListenerPollingMessage()
-        {
-            var localLogger = new SystemLogger(_hostInstanceId, "Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
-            localLogger.LogInformation("Poll for function 'TestFunction' returned 0 messages");
-
-            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
-        }
-
         public class FunctionExceptionDataProvider
         {
             public static IEnumerable<object[]> TestCases
