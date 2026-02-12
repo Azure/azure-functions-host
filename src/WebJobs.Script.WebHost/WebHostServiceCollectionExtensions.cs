@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
+using Microsoft.Azure.WebJobs.Script.WebHost.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -254,8 +255,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddMetrics();
             services.AddHealthChecks().AddWebJobsScriptHealthChecks();
 
-            // App Capabilities Provider
-            services.AddSingleton<IAppCapabilitiesProvider, DefaultAppCapabilitiesProvider>();
+            // App Capabilities related services
+            services.AddSingleton<IAppCapabilitiesStore, WorkerProvidedAppCapabilitiesStore>();
+            services.AddOptions<AppCapabilitiesOptions>();
+            services.ConfigureOptions<WebHostAppCapabilitiesOptionsSetup>();
+            services.AddSingleton<IOptionsChangeTokenSource<AppCapabilitiesOptions>, AppCapabilitiesChangeTokenSource>();
         }
 
         internal static void AddHostingConfigOptions(this IServiceCollection services, IConfiguration configuration)

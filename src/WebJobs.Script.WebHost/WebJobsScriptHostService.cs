@@ -19,6 +19,7 @@ using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -36,6 +37,7 @@ using Microsoft.Extensions.Options;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 using AppInsightsCredentialOptions = Microsoft.Azure.WebJobs.Logging.ApplicationInsights.TokenCredentialOptions;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -65,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly bool _originalStandbyModeValue;
         private readonly string _originalFunctionsWorkerRuntime;
         private readonly string _originalFunctionsWorkerRuntimeVersion;
+        private readonly IOptionsChangeTokenSource<AppCapabilitiesOptions> _appCapabilitiesChangeTokenSource;
 
         // we're only using this dictionary's keys so it acts as a "ConcurrentHashSet"
         private readonly ConcurrentDictionary<ScriptHostStartupOperation, byte> _activeStartupOperations = new();
@@ -87,7 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
             IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager, IHostMetrics hostMetrics,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            WorkerConfigCacheInvalidator workerConfigCacheInvalidator)
+            WorkerConfigCacheInvalidator workerConfigCacheInvalidator,
+            IOptionsChangeTokenSource<AppCapabilitiesOptions> appCapabilitiesChangeTokenSource)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -126,6 +130,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _originalStandbyModeValue = _scriptWebHostEnvironment.InStandbyMode;
             _originalFunctionsWorkerRuntime = _environment.GetFunctionsWorkerRuntime();
             _originalFunctionsWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+
+            _appCapabilitiesChangeTokenSource = appCapabilitiesChangeTokenSource ?? throw new ArgumentNullException(nameof(appCapabilitiesChangeTokenSource));
         }
 
         public event EventHandler HostInitializing;
@@ -395,6 +401,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
                 _workerConfigCacheInvalidator.InvalidateCachePostBuildIfEnabled();
+
+                if (_appCapabilitiesChangeTokenSource is AppCapabilitiesChangeTokenSource { } appCapsChangeToken)
+                {
+                    appCapsChangeToken.TriggerChange();
+                }
 
                 var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();
                 if (scriptHost != null)

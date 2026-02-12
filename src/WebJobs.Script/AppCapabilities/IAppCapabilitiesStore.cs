@@ -5,10 +5,12 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
-    public interface IAppCapabilitiesProvider
+    public interface IAppCapabilitiesStore
     {
-        IReadOnlyDictionary<string, string> GetCapabilities();
+        public IReadOnlyDictionary<string, string> Capabilities { get; }
 
-        void SetCapability(string capability, string value);
+        public void Set(string key, string value);
+
+        public void SetAll(IDictionary<string, string> capabilities);
     }
 }

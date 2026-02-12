@@ -64,6 +64,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly string _workerInvocationSucccededMetric;
         private readonly string _workerInvocationFailedMetric;
         private readonly string _workerId;
+        private readonly IAppCapabilitiesStore _appCapabilitiesStore;
+        private readonly IOptionsChangeTokenSource<AppCapabilitiesOptions> _appCapabilitiesChangeTokenSource;
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
         private bool _disposing;
@@ -94,7 +96,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private System.Timers.Timer _timer;
         private bool _functionMetadataRequestSent = false;
         private IOptions<ScriptJobHostOptions> _scriptHostOptions;
-        private IAppCapabilitiesProvider _appCapabilitiesProvider;
 
         internal GrpcWorkerChannel(
             string workerId,
@@ -110,7 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            IAppCapabilitiesProvider appCapabilitiesProvider,
+            IAppCapabilitiesStore appCapabilitiesStore,
+            IOptionsChangeTokenSource<AppCapabilitiesOptions> appCapabilitiesChangeTokenSource,
             IHttpProxyService httpProxyService)
         {
             _workerId = workerId;
@@ -130,7 +132,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _httpProxyService = httpProxyService;
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
-            _appCapabilitiesProvider = appCapabilitiesProvider;
+            _appCapabilitiesStore = appCapabilitiesStore;
+            _appCapabilitiesChangeTokenSource = appCapabilitiesChangeTokenSource;
 
             if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
             {
@@ -615,10 +618,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        /// <summary>
-        /// Registers app capabilities from the worker init response into the AppCapabilitiesProvider.
-        /// </summary>
-        /// <param name="appCapabilities">The app capabilities map from the worker.</param>
         private void RegisterAppCapabilities(MapField<string, string> appCapabilities)
         {
             if (appCapabilities is null || appCapabilities.Count == 0)
@@ -628,12 +627,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             try
             {
-                _workerChannelLogger.LogDebug("Registering {count} app capabilities from worker '{workerId}')",
+                _workerChannelLogger.LogDebug("Registering {count} app capabilities from worker '{workerId}'",
                     appCapabilities.Count, _workerId);
 
-                foreach (var capability in appCapabilities)
+                _appCapabilitiesStore.SetAll(appCapabilities);
+
+                if (_appCapabilitiesChangeTokenSource is AppCapabilitiesChangeTokenSource appCapabilitiesChangeTokenSource)
                 {
-                    _appCapabilitiesProvider.SetCapability(capability.Key, capability.Value);
+                    appCapabilitiesChangeTokenSource.TriggerChange();
                 }
             }
             catch (Exception ex)

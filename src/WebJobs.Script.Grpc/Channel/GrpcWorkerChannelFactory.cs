@@ -29,13 +29,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ISharedMemoryManager _sharedMemoryManager = null;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
-        private readonly IAppCapabilitiesProvider _appCapabilityProvider;
+        private readonly IAppCapabilitiesStore _appCapabilitiesStore;
+        private readonly IOptionsChangeTokenSource<AppCapabilitiesOptions> _appCapabilitiesChangeTokenSource;
         private readonly IHttpProxyService _httpProxyService;
 
         public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IScriptHostManager hostManager, IEnvironment environment, ILoggerFactory loggerFactory,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager,
-            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            IAppCapabilitiesProvider appCapabilityProvider, IHttpProxyService httpProxyService)
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IAppCapabilitiesStore appCapabilitiesStore, 
+            IOptionsChangeTokenSource<AppCapabilitiesOptions> appCapabilitiesChangeTokenSource, IHttpProxyService httpProxyService)
         {
             _eventManager = eventManager;
             _hostManager = hostManager;
@@ -46,7 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _sharedMemoryManager = sharedMemoryManager;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _hostingConfigOptions = hostingConfigOptions;
-            _appCapabilityProvider = appCapabilityProvider;
+            _appCapabilitiesStore = appCapabilitiesStore;
+            _appCapabilitiesChangeTokenSource = appCapabilitiesChangeTokenSource;
             _httpProxyService = httpProxyService;
         }
 
@@ -63,13 +65,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
 
             return CreateInternal(workerId, _eventManager, _hostManager, languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger, attemptCount,
-                _environment, _applicationHostOptions, _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions, _appCapabilityProvider, _httpProxyService);
+                _environment, _applicationHostOptions, _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions, _appCapabilitiesStore, _appCapabilitiesChangeTokenSource, _httpProxyService);
         }
 
         internal virtual IRpcWorkerChannel CreateInternal(string workerId, IScriptEventManager eventManager, IScriptHostManager hostManager, RpcWorkerConfig languageWorkerConfig, IWorkerProcess rpcWorkerProcess,
             ILogger workerLogger, IMetricsLogger metricsLogger, int attemptCount, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-            ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, 
-            IAppCapabilitiesProvider appCapabilitiesProvider, IHttpProxyService httpProxyService)
+            ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IAppCapabilitiesStore appCapabilitiesStore, IOptionsChangeTokenSource<AppCapabilitiesOptions> appCapabilitiesChangeTokenSource, IHttpProxyService httpProxyService)
         {
             return new GrpcWorkerChannel(
                          workerId,
@@ -85,7 +87,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                          sharedMemoryManager,
                          workerConcurrencyOptions,
                          hostingConfigOptions,
-                         appCapabilitiesProvider,
+                         appCapabilitiesStore,
+                         appCapabilitiesChangeTokenSource,
                          httpProxyService);
         }
     }

@@ -31,10 +31,10 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// <param name="options">The options instance to configure.</param>
         public void Configure(AppCapabilitiesOptions options)
         {
-            var jobHostCapabilitiesSection = _configuration.GetSection(ConfigurationSectionNames.AppCapabilities);
-            if (jobHostCapabilitiesSection.Exists())
+            var capabilitiesSection = _configuration.GetSection(ConfigurationSectionNames.AppCapabilities);
+            if (capabilitiesSection.Exists())
             {
-                AddCapabilitiesFromSection(options, jobHostCapabilitiesSection);
+                AddCapabilitiesFromSection(options, capabilitiesSection);
             }
         }
 
