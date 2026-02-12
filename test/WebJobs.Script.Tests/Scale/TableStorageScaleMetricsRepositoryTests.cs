@@ -335,7 +335,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Scale
                 .Setup(s => s.QueryAsync(
                     It.IsAny<System.Linq.Expressions.Expression<Func<TableItem, bool>>>(),
                     It.IsAny<int?>(),
-                    It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .Returns(emptyPageable);
 
