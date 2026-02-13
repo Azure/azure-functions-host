@@ -276,11 +276,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.WorkerInitRequest);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
 
-            await Task.Delay(500);
+            var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
 
             _workerChannel.Dispose();
             var traces = _logger.GetLogMessages();
-            var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
         }
 
@@ -1118,10 +1117,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, true, useDefaultMetadataIndexing: true));
             var functions = _workerChannel.GetFunctionMetadata();
 
-            await Task.Delay(500);
+            var expectedLog = $"Received the worker function metadata response from worker {_workerChannel.Id}";
+
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
+
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
         }
 
         [Fact]
