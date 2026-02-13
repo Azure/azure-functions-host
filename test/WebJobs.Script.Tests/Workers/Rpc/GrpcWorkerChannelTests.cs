@@ -1754,6 +1754,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Baggage.SetBaggage("key1", "value1");
             Baggage.SetBaggage("key2", "value2");
             Baggage.SetBaggage("key1", "value3"); // duplicate key to test that the last value is used
+            Baggage.SetBaggage("key3", null);
 
             // Set TelemetryMode to OpenTelemetry in ScriptJobHostOptions
             var jobHostOptions = new ScriptJobHostOptions
@@ -1786,6 +1787,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Assert
             Assert.NotNull(invocationRequest);
+            Assert.False(invocationRequest.TraceContext.Baggage.ContainsKey("key3"));
             Assert.True(invocationRequest.TraceContext.Baggage.ContainsKey("key1"));
             Assert.True(invocationRequest.TraceContext.Baggage.ContainsKey("key2"));
             Assert.Equal("value3", invocationRequest.TraceContext.Baggage["key1"]);
