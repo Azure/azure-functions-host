@@ -353,9 +353,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
             _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.WorkerInitRequest);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -377,9 +379,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
             await CreateDefaultWorkerChannel();
             await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker and host running in V2 compatibility mode")));
+
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)),
+                timeout: 3000,
+                pollingInterval: 50);
+
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, "Worker and host running in V2 compatibility mode")),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Theory]
@@ -391,9 +400,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             await CreateDefaultWorkerChannel();
             _testFunctionRpcService.PublishSystemLogEvent(levelToTest);
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedSystemLogMessage) && m.Level.ToString().Equals(expectedLogLevel.ToString())));
+
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedSystemLogMessage) && m.Level.ToString().Equals(expectedLogLevel.ToString())),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -403,10 +414,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _metricsLogger.ClearCollections();
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
-            await Task.Delay(500);
             string testWorkerId = _workerId.ToLowerInvariant();
-            var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)),
+                timeout: 3000,
+                pollingInterval: 50);
+
             Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}")));
         }
 
@@ -431,9 +445,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Send invocation which will be using RpcSharedMemory for the inputs
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContextWithSharedMemoryInputs(Guid.NewGuid(), null);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -463,10 +478,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     break;
                 }
             }
-            await Task.Delay(500);
 
-            var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -484,12 +500,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, token);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
-            while (!token.IsCancellationRequested)
+            // Wait for cancellation with a timeout
+            using (var timeoutCts = new CancellationTokenSource(5000))
             {
-                await Task.Delay(1000);
-                if (token.IsCancellationRequested)
+                while (!token.IsCancellationRequested)
                 {
-                    break;
+                    if (timeoutCts.Token.IsCancellationRequested)
+                    {
+                        throw new TimeoutException("Timed out waiting for cancellation to be requested.");
+                    }
+                    await Task.Yield();
                 }
             }
 
@@ -521,12 +541,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.JobHostOptions.Value.SendCanceledInvocationsToWorker = sendCanceledInvocationsToWorker;
 
-            while (!token.IsCancellationRequested)
+            // Wait for cancellation with a timeout
+            using (var timeoutCts = new CancellationTokenSource(5000))
             {
-                await Task.Delay(1000);
-                if (token.IsCancellationRequested)
+                while (!token.IsCancellationRequested)
                 {
-                    break;
+                    if (timeoutCts.Token.IsCancellationRequested)
+                    {
+                        throw new TimeoutException("Timed out waiting for cancellation to be requested.");
+                    }
+                    await Task.Yield();
                 }
             }
 
@@ -558,10 +582,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HandlesInvocationCancelMessage, "true" } });
             var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null);
             _workerChannel.SendInvocationCancel(invocationId.ToString());
-            await Task.Delay(500);
+
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)),
+                timeout: 3000,
+                pollingInterval: 50);
+
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)),
+                timeout: 3000,
+                pollingInterval: 50);
+
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
             // The outbound log should happen twice: once for worker init request and once for the invocation cancel request
             Assert.Equal(traces.Where(m => m.FormattedMessage.Equals(_expectedLogMsg)).Count(), 2);
         }
@@ -611,7 +643,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _metricsLogger.ClearCollections();
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
-            await Task.Delay(500);
+
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)),
+                timeout: 3000,
+                pollingInterval: 50);
+
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
@@ -641,7 +678,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
-            await Task.Delay(500);
+
+            // Wait for the FunctionLoadRequestResponse metric event to be generated
+            await TestHelpers.Await(
+                () => _metricsLogger.EventsBegan.Contains(MetricEventNames.FunctionLoadRequestResponse),
+                timeout: 3000,
+                pollingInterval: 50);
+
             AreExpectedMetricsGenerated();
             Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
         }
@@ -1705,99 +1748,109 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             using var activity = new Activity("test-activity");
             activity.Start();
 
-            ScriptInvocationContext scriptInvocationContext = null;
-            // Capture the ExecutionContext while the Activity is current
-            System.Threading.ExecutionContext.Run(
-                System.Threading.ExecutionContext.Capture(),
-                _ =>
-                {
-                    scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, logger: _logger);
-                    scriptInvocationContext.AsyncExecutionContext = System.Threading.ExecutionContext.Capture();
-                },
-                null);
+            try
+            {
+                ScriptInvocationContext scriptInvocationContext = null;
+                // Capture the ExecutionContext while the Activity is current
+                System.Threading.ExecutionContext.Run(
+                    System.Threading.ExecutionContext.Capture(),
+                    _ =>
+                    {
+                        scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource, logger: _logger);
+                        scriptInvocationContext.AsyncExecutionContext = System.Threading.ExecutionContext.Capture();
+                    },
+                    null);
 
-            // Register the invocation so that InvokeResponse can find it
-            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+                // Register the invocation so that InvokeResponse can find it
+                await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
-            // Prepare InvocationResponse with custom TraceContextAttributes
-            var attributes = new Dictionary<string, string>
+                // Prepare InvocationResponse with custom TraceContextAttributes
+                var attributes = new Dictionary<string, string>
             {
                 { "customKey1", "customValue1" },
                 { "customKey2", "customValue2" },
                 { "faas.trigger", "customTrigger" }
             };
-            var invocationResponse = new InvocationResponse
+                var invocationResponse = new InvocationResponse
+                {
+                    InvocationId = invocationId.ToString(),
+                    Result = new StatusResult { Status = StatusResult.Types.Status.Success },
+                    TraceContextAttributes = { attributes }
+                };
+
+                // Act
+                await _workerChannel.InvokeResponse(invocationResponse);
+
+                // Assert
+                Assert.Equal("customValue1", Activity.Current.GetTagItem("customKey1"));
+                Assert.Equal("customValue2", Activity.Current.GetTagItem("customKey2"));
+                Assert.Equal("customTrigger", Activity.Current.GetTagItem("faas.trigger"));
+            }
+            finally
             {
-                InvocationId = invocationId.ToString(),
-                Result = new StatusResult { Status = StatusResult.Types.Status.Success },
-                TraceContextAttributes = { attributes }
-            };
-
-            // Act
-            await _workerChannel.InvokeResponse(invocationResponse);
-
-            // Assert
-            Assert.Equal("customValue1", Activity.Current.GetTagItem("customKey1"));
-            Assert.Equal("customValue2", Activity.Current.GetTagItem("customKey2"));
-            Assert.Equal("customTrigger", Activity.Current.GetTagItem("faas.trigger"));
-
-            activity.Stop();
+                activity.Stop();
+            }
         }
 
         [Fact]
         public async Task SendInvocationRequest_PropagatesBaggageCurrentToInvocationRequest()
         {
-            //Arrange
-            var invocationId = Guid.NewGuid();
-            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
-            var functionMetadata = BuildFunctionMetadataForTimerTrigger("TestFunction");
-            var logger = _logger;
-
-            // Set up OpenTelemetry baggage
-            Baggage.ClearBaggage();
-            Baggage.SetBaggage("key1", "value1");
-            Baggage.SetBaggage("key2", "value2");
-            Baggage.SetBaggage("key1", "value3"); // duplicate key to test that the last value is used
-            Baggage.SetBaggage("key3", null);
-
-            // Set TelemetryMode to OpenTelemetry in ScriptJobHostOptions
-            var jobHostOptions = new ScriptJobHostOptions
+            try
             {
-                RootScriptPath = _scriptRootPath,
-                TelemetryMode = TelemetryMode.OpenTelemetry
-            };
-            var options = new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions);
-            _mockScriptHostManager.As<IServiceProvider>()
-                .Setup(p => p.GetService(typeof(IOptions<ScriptJobHostOptions>)))
-                .Returns(options);
+                //Arrange
+                var invocationId = Guid.NewGuid();
+                var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+                var functionMetadata = BuildFunctionMetadataForTimerTrigger("TestFunction");
+                var logger = _logger;
 
-            await CreateDefaultWorkerChannel();
+                // Set up OpenTelemetry baggage
+                Baggage.ClearBaggage();
+                Baggage.SetBaggage("key1", "value1");
+                Baggage.SetBaggage("key2", "value2");
+                Baggage.SetBaggage("key1", "value3"); // duplicate key to test that the last value is used
+                Baggage.SetBaggage("key3", null);
 
-            InvocationRequest invocationRequest = null;
-            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.InvocationRequest, evt =>
+                // Set TelemetryMode to OpenTelemetry in ScriptJobHostOptions
+                var jobHostOptions = new ScriptJobHostOptions
+                {
+                    RootScriptPath = _scriptRootPath,
+                    TelemetryMode = TelemetryMode.OpenTelemetry
+                };
+                var options = new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions);
+                _mockScriptHostManager.As<IServiceProvider>()
+                    .Setup(p => p.GetService(typeof(IOptions<ScriptJobHostOptions>)))
+                    .Returns(options);
+
+                await CreateDefaultWorkerChannel();
+
+                InvocationRequest invocationRequest = null;
+                _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.InvocationRequest, evt =>
+                {
+                    invocationRequest = evt.Message.InvocationRequest;
+                });
+
+                // Act
+                var invocationContext = GetTestScriptInvocationContext(
+                    invocationId,
+                    resultSource,
+                    logger: _logger,
+                    scriptRootPath: _scriptRootPath);
+
+                await _workerChannel.SendInvocationRequest(invocationContext);
+                await Task.Delay(500); // allow async event to fire
+
+                // Assert
+                Assert.NotNull(invocationRequest);
+                Assert.False(invocationRequest.TraceContext.Baggage.ContainsKey("key3"));
+                Assert.True(invocationRequest.TraceContext.Baggage.ContainsKey("key1"));
+                Assert.True(invocationRequest.TraceContext.Baggage.ContainsKey("key2"));
+                Assert.Equal("value3", invocationRequest.TraceContext.Baggage["key1"]);
+                Assert.Equal("value2", invocationRequest.TraceContext.Baggage["key2"]);
+            }
+            finally
             {
-                invocationRequest = evt.Message.InvocationRequest;
-            });
-
-            // Act
-            var invocationContext = GetTestScriptInvocationContext(
-                invocationId,
-                resultSource,
-                logger: _logger,
-                scriptRootPath: _scriptRootPath);
-
-            await _workerChannel.SendInvocationRequest(invocationContext);
-            await Task.Delay(500); // allow async event to fire
-
-            // Assert
-            Assert.NotNull(invocationRequest);
-            Assert.False(invocationRequest.TraceContext.Baggage.ContainsKey("key3"));
-            Assert.True(invocationRequest.TraceContext.Baggage.ContainsKey("key1"));
-            Assert.True(invocationRequest.TraceContext.Baggage.ContainsKey("key2"));
-            Assert.Equal("value3", invocationRequest.TraceContext.Baggage["key1"]);
-            Assert.Equal("value2", invocationRequest.TraceContext.Baggage["key2"]);
-
-            Baggage.ClearBaggage();
+                Baggage.ClearBaggage();
+            }
         }
 
         public async Task Ensure_Failure_Status_On_CurrentActivity_WhenInvocationFailed()
