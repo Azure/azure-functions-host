@@ -1,8 +1,9 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script;
@@ -17,6 +18,15 @@ namespace Microsoft.Extensions.Logging
     public static class ScriptLoggingBuilderExtensions
     {
         private static readonly ConcurrentDictionary<string, bool> _filteredCategoryCache = new();
+
+        // High-volume extension categories whose Debug/Trace logs are
+        // suppressed to reduce noise in the FunctionsLogs table.
+        private static readonly HashSet<string> _suppressedCategories = new(StringComparer.Ordinal)
+        {
+            "Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener",
+            "Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl",
+            "Host.Executor"
+        };
 
         public static ILoggingBuilder AddForwardingLogger(this ILoggingBuilder builder)
         {
@@ -46,7 +56,23 @@ namespace Microsoft.Extensions.Logging
 
         internal static bool Filter(string category, LogLevel actualLevel, LogLevel minLevel)
         {
-            return actualLevel >= minLevel && IsFiltered(category);
+            if (actualLevel < minLevel || !IsFiltered(category))
+            {
+                return false;
+            }
+
+            // Suppress Debug/ Trace from high-volume extension categories.
+            if (actualLevel < LogLevel.Information && IsSuppressedCategory(category))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsSuppressedCategory(string category)
+        {
+            return _suppressedCategories.Contains(category);
         }
 
         private static bool IsFiltered(string category)
