@@ -31,7 +31,6 @@ using Moq;
 using OpenTelemetry;
 using Xunit;
 using Xunit.Abstractions;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
