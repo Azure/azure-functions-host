@@ -35,6 +35,64 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             await client.FlushAsync(CancellationToken.None);
         }
 
+        [Theory]
+        [InlineData("Http", "http://localhost:5000/api/func", true)]
+        [InlineData("Http", "http://localhost/api/func", true)]
+        [InlineData("Http", "https://localhost:7071/api/func", true)]
+        [InlineData("Http", "http://127.0.0.1:5000/api/func", true)]
+        [InlineData("Http", "http://127.0.0.1/api/func", true)]
+        [InlineData("Http", "http://127.0.0.2:5000/api/func", true)]
+        [InlineData("Http", "http://[::1]:5000/api/func", true)]
+        [InlineData("Http", "http://[::1]/api/func", true)]
+        [InlineData("HTTP", "http://localhost:5000/api/func", true)]
+        [InlineData("http", "http://localhost:5000/api/func", true)]
+        [InlineData("Http", "https://myapp.azurewebsites.net/api/func", false)]
+        [InlineData("Http", "https://storage.blob.core.windows.net/container", false)]
+        [InlineData("Http", "", false)]
+        [InlineData("Http", null, false)]
+        [InlineData("Http", "not-a-uri", false)]
+        [InlineData("SQL", "http://localhost:5000/api/func", false)]
+        [InlineData("Azure Service Bus", "http://localhost:5000/api/func", false)]
+        [InlineData(null, "http://localhost:5000/api/func", false)]
+        [InlineData("", "http://localhost:5000/api/func", false)]
+        public void Process_FiltersLocalhostDependencies(string type, string data, bool shouldFilter)
+        {
+            var items = new List<ITelemetry>();
+            var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
+
+            var dependency = new DependencyTelemetry
+            {
+                Type = type,
+                Data = data
+            };
+
+            processor.Process(dependency);
+
+            if (shouldFilter)
+            {
+                Assert.Empty(items);
+            }
+            else
+            {
+                Assert.Single(items);
+            }
+        }
+
+        private class TestTelemetryProcessor : ITelemetryProcessor
+        {
+            private readonly List<ITelemetry> _items;
+
+            public TestTelemetryProcessor(List<ITelemetry> items)
+            {
+                _items = items;
+            }
+
+            public void Process(ITelemetry item)
+            {
+                _items.Add(item);
+            }
+        }
+
         public class MyCustomTelemetryProcessor : ITelemetryProcessor
         {
             public MyCustomTelemetryProcessor(ITelemetryProcessor item)

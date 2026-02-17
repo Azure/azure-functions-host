@@ -21,6 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public void Process(ITelemetry item)
         {
+            // Filter out dependency telemetry for localhost calls (host-to-worker interactions).
+            if (item is DependencyTelemetry dependencyTelemetry && IsLocalhostDependency(dependencyTelemetry))
+            {
+                return;
+            }
+
             // Only process if exception is thrown by user code (if IsUserException is true).
             if (item is ExceptionTelemetry exceptionTelemetry
                 && exceptionTelemetry?.Exception?.InnerException is RpcException rpcException
@@ -29,6 +35,21 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 item = ToUserException(rpcException, item);
             }
             this.Next.Process(item);
+        }
+
+        private static bool IsLocalhostDependency(DependencyTelemetry dependencyTelemetry)
+        {
+            if (string.IsNullOrEmpty(dependencyTelemetry.Data))
+            {
+                return false;
+            }
+
+            if (string.Equals(dependencyTelemetry.Type, "Http", StringComparison.OrdinalIgnoreCase) && Uri.TryCreate(dependencyTelemetry.Data, UriKind.Absolute, out var uri))
+            {
+                return uri.IsLoopback;
+            }
+
+            return false;
         }
 
         private ITelemetry ToUserException(RpcException rpcException, ITelemetry originalItem)
