@@ -20,15 +20,14 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
-using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -52,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly WorkerConfigCacheInvalidator _workerConfigCacheInvalidator;
         private readonly HostPerformanceManager _performanceManager;
         private readonly IOptions<HostHealthMonitorOptions> _healthMonitorOptions;
         private readonly IConfiguration _config;
@@ -65,8 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly bool _originalStandbyModeValue;
         private readonly string _originalFunctionsWorkerRuntime;
         private readonly string _originalFunctionsWorkerRuntimeVersion;
-        private readonly IOptionsChangeTokenSource<WorkerConfigurationResolverOptions> _workerConfigResolverOptionsChangeTokenSource;
-        private readonly IOptionsChangeTokenSource<LanguageWorkerOptions> _languageWorkerOptionsChangeTokenSource;
 
         // we're only using this dictionary's keys so it acts as a "ConcurrentHashSet"
         private readonly ConcurrentDictionary<ScriptHostStartupOperation, byte> _activeStartupOperations = new();
@@ -89,8 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
             IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager, IHostMetrics hostMetrics,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            IOptionsChangeTokenSource<LanguageWorkerOptions> languageWorkerOptionsChangeTokenSource,
-            IOptionsChangeTokenSource<WorkerConfigurationResolverOptions> workerConfigResolverOptionsChangeTokenSource)
+            WorkerConfigCacheInvalidator workerConfigCacheInvalidator)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -101,8 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             RegisterApplicationLifetimeEvents();
 
             _metricsLogger = metricsLogger;
-            _workerConfigResolverOptionsChangeTokenSource = workerConfigResolverOptionsChangeTokenSource ?? throw new ArgumentNullException(nameof(workerConfigResolverOptionsChangeTokenSource));
-            _languageWorkerOptionsChangeTokenSource = languageWorkerOptionsChangeTokenSource ?? throw new ArgumentNullException(nameof(languageWorkerOptionsChangeTokenSource));
+            _workerConfigCacheInvalidator = workerConfigCacheInvalidator ?? throw new ArgumentNullException(nameof(workerConfigCacheInvalidator));
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _scriptWebHostEnvironment = scriptWebHostEnvironment ?? throw new ArgumentNullException(nameof(scriptWebHostEnvironment));
             _scriptHostBuilder = scriptHostBuilder ?? throw new ArgumentNullException(nameof(scriptHostBuilder));
@@ -398,16 +394,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _ = Task.Run(() => deferredLogProvider.ProcessBufferedLogsAsync(selectedProviders));
                     }
                 }
-
-                if (_workerConfigResolverOptionsChangeTokenSource is HostBuiltChangeTokenSource<WorkerConfigurationResolverOptions> { } hostBuiltChangeTokenResolverOptions)
-                {
-                    hostBuiltChangeTokenResolverOptions.TriggerChange();
-                }
-
-                if (_languageWorkerOptionsChangeTokenSource is HostBuiltChangeTokenSource<LanguageWorkerOptions> { } hostBuiltChangeTokenSource)
-                {
-                    hostBuiltChangeTokenSource.TriggerChange();
-                }
+                _workerConfigCacheInvalidator.InvalidateCachePostBuildIfEnabled();
 
                 var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();
                 if (scriptHost != null)

@@ -52,16 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _applicationHostOptions = applicationHostOptions;
             _hostingConfigOptions = hostingConfigOptions;
 
-            languageWorkerOptions.OnChange(async languageWorkerOptions =>
-            {
-                IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
-                if (rpcWorkerChannel != null && !UsePlaceholderChannel(rpcWorkerChannel))
-                {
-                    _logger.LogInformation("Language worker options changed, and the placeholder worker channel is invalid for other reasons (e.g., worker configuration changes). Shutting down the channel.");
-                    await ShutdownChannelIfExistsAsync(_workerRuntime, rpcWorkerChannel.Id);
-                }
-            });
-
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -222,12 +222,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
 
-            if (logs.Length == 10)
+            if (logs.Length == 11)
             {
                 Assert.Collection(logs,
                     p => Assert.StartsWith("Starting Assignment", p),
                     p => Assert.StartsWith("Applying 1 app setting(s)", p),
                     p => Assert.EndsWith("points to an existing blob: True", p),
+                    p => Assert.StartsWith("Environment variable 'LocalSitePackagesPath'", p),
                     p => Assert.StartsWith("Unsquashing remote zip", p),
                     p => Assert.StartsWith("Running: ", p),
                     p => Assert.StartsWith("Output:", p),
@@ -1606,12 +1607,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
 
-            if (logs.Length == 10)
+            if (logs.Length == 11)
             {
                 Assert.Collection(logs,
                     p => Assert.StartsWith("Starting Assignment", p),
                     p => Assert.StartsWith("Applying 1 app setting(s)", p),
                     p => Assert.EndsWith("points to an existing blob: True", p),
+                    p => Assert.StartsWith("Environment variable 'LocalSitePackagesPath'", p),
                     p => Assert.StartsWith("Unsquashing remote zip", p),
                     p => Assert.StartsWith("Running: ", p),
                     p => Assert.StartsWith("Output:", p),
