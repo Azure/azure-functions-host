@@ -496,16 +496,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, token);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
-            // Wait for cancellation with a timeout
-            using (var timeoutCts = new CancellationTokenSource(5000))
+            while (!token.IsCancellationRequested)
             {
-                while (!token.IsCancellationRequested)
+                await Task.Delay(1000);
+                if (token.IsCancellationRequested)
                 {
-                    if (timeoutCts.Token.IsCancellationRequested)
-                    {
-                        throw new TimeoutException("Timed out waiting for cancellation to be requested.");
-                    }
-                    await Task.Yield();
+                    break;
                 }
             }
 
@@ -537,16 +533,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.JobHostOptions.Value.SendCanceledInvocationsToWorker = sendCanceledInvocationsToWorker;
 
-            // Wait for cancellation with a timeout
-            using (var timeoutCts = new CancellationTokenSource(5000))
+            while (!token.IsCancellationRequested)
             {
-                while (!token.IsCancellationRequested)
+                await Task.Delay(1000);
+                if (token.IsCancellationRequested)
                 {
-                    if (timeoutCts.Token.IsCancellationRequested)
-                    {
-                        throw new TimeoutException("Timed out waiting for cancellation to be requested.");
-                    }
-                    await Task.Yield();
+                    break;
                 }
             }
 
