@@ -469,14 +469,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var scriptInvocationContext = GetTestScriptInvocationContext(invocationId, null, token);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
-            while (!token.IsCancellationRequested)
-            {
-                await Task.Delay(1000);
-                if (token.IsCancellationRequested)
-                {
-                    break;
-                }
-            }
+            // Wait for cancellation to be requested
+            await TestHelpers.Await(
+                () => token.IsCancellationRequested,
+                timeout: 5000,
+                pollingInterval: 100);
 
             await TestHelpers.Await(
                 () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)),
