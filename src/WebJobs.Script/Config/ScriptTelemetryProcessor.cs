@@ -44,7 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 return false;
             }
 
-            if (string.Equals(dependencyTelemetry.Type, "Http", StringComparison.OrdinalIgnoreCase) && Uri.TryCreate(dependencyTelemetry.Data, UriKind.Absolute, out var uri))
+            if (string.Equals(dependencyTelemetry.Type, "Http", StringComparison.OrdinalIgnoreCase)
+                && Uri.TryCreate(dependencyTelemetry.Data, UriKind.Absolute, out var uri))
             {
                 return uri.IsLoopback;
             }
