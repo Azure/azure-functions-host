@@ -1,14 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -29,8 +21,17 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using OpenTelemetry;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -378,7 +379,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
             await CreateDefaultWorkerChannel();
-            await Task.Delay(500);
 
             await TestHelpers.Await(
                 () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)),
@@ -679,7 +679,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
 
-            // Wait for the FunctionLoadRequestResponse metric event to be generated
             await TestHelpers.Await(
                 () => _metricsLogger.EventsBegan.Contains(MetricEventNames.FunctionLoadRequestResponse),
                 timeout: 3000,
@@ -711,7 +710,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
-            await Task.Delay(500);
+
+            await TestHelpers.Await(
+                () => _metricsLogger.EventsBegan.Contains(MetricEventNames.FunctionLoadRequestResponse),
+                timeout: 3000,
+                pollingInterval: 50);
+
             AreExpectedMetricsGenerated();
             Assert.Equal(2, _metricsLogger.LoggedEvents.Count(e => e.Contains(MetricEventNames.FunctionBindingDeferred)));
             Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{MetricEventNames.FunctionBindingDeferred}_js1")));
@@ -739,7 +743,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
-            await Task.Delay(500);
+
+            await TestHelpers.Await(
+                () => _metricsLogger.EventsBegan.Contains(MetricEventNames.FunctionLoadRequestResponse),
+                timeout: 3000,
+                pollingInterval: 50);
+
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
@@ -760,7 +769,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.SetupFunctionInvocationBuffers(functions);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
-            await Task.Delay(500);
+
+            await TestHelpers.Await(
+                () => _metricsLogger.EventsBegan.Contains(MetricEventNames.FunctionLoadRequestResponse),
+                timeout: 3000,
+                pollingInterval: 50);
+
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
             var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(_expectedLoadMsgPartial) ?? false);
@@ -809,8 +823,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                {
                    Assert.Contains("\"worker.functionId\": \"fn1\"", m.Message.ToString());
                });
-
-            await Task.Delay(500);
         }
 
         [Fact]
@@ -823,10 +835,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, true));
             var functions = _workerChannel.GetFunctionMetadata();
 
-            await Task.Delay(500);
+            var expectedLog = $"FunctionId is already a part of metadata properties for TestFunctionId1";
+
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
+
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"FunctionId is already a part of metadata properties for TestFunctionId1")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLog)));
         }
 
         [Fact]
@@ -849,7 +867,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functions = GetTestFunctionsList_WithDisabled("node", funcName);
             _workerChannel.SetupFunctionInvocationBuffers(functions);
             _workerChannel.SendFunctionLoadRequests(null, null);
-            await Task.Delay(500);
+
+            await TestHelpers.Await(
+                () => _metricsLogger.EventsBegan.Contains(MetricEventNames.FunctionLoadRequestResponse),
+                timeout: 3000,
+                pollingInterval: 50);
+
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
             var errorLogs = traces.Where(m => m.Level == LogLevel.Error);
@@ -867,7 +890,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Environment.SetEnvironmentVariable("TestValid", "TestValue");
                 _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest, workerSupportsSpecialization: true);
                 var pending = _workerChannel.SendFunctionEnvironmentReloadRequest();
-                await Task.Delay(500);
+
+                // Wait for the initial log message indicating the request was sent
+                await TestHelpers.Await(
+                    () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '910'")),
+                    timeout: 3000,
+                    pollingInterval: 50);
+
                 await pending; // this can timeout
             }
             catch
@@ -942,10 +971,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, new TaskCompletionSource<ScriptInvocationResult>());
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
             _testFunctionRpcService.PublishInvocationResponseEvent(invocationId.ToString());
-            await Task.Delay(500);
+
+            var expectedLog = $"InvocationResponse received for invocation: '{invocationId}'";
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
+
             var testWorkerId = _workerId.ToLowerInvariant();
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"InvocationResponse received for invocation: '{invocationId}'")));
             Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains($"{string.Format(MetricEventNames.WorkerInvoked, testWorkerId)}_{scriptInvocationContext.FunctionMetadata.Name}")));
             Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeSucceeded, testWorkerId))));
             Assert.Equal(0, _metricsLogger.LoggedEvents.Count(e => e.Contains(string.Format(MetricEventNames.WorkerInvokeFailed, testWorkerId))));
@@ -976,9 +1010,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             await CreateDefaultWorkerChannel();
             _testFunctionRpcService.PublishInvocationResponseEvent();
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "InvocationResponse received for invocation: 'TestInvocationId'")));
+
+            var expectedLog = "InvocationResponse received for invocation: 'TestInvocationId'";
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -991,13 +1028,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 _ => _testFunctionRpcService.PublishFunctionLoadResponseEvent("TestFunctionId1"));
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
 
-            await Task.Delay(500);
+            var expectedLog = "Received FunctionLoadResponse for function: 'js1' with functionId: 'TestFunctionId1'.";
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
+
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
 
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "FunctionInvocationBuffer TestFunctionId1");
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "FunctionInvocationBuffer TestFunctionId2");
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for function: 'js1' with functionId: 'TestFunctionId1'.")), "FunctionLoadResponse TestFunctionId1");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLog)), "FunctionLoadResponse TestFunctionId1");
         }
 
         [Fact]
@@ -1010,11 +1052,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 _ => _testFunctionRpcService.PublishSystemErrorFunctionLoadResponseEvent("TestFunctionId1", "abc AccountKey== "));
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
 
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            ShowOutput(traces);
-
-            Assert.True(traces.Any(m => m.Exception != null && m.Exception.Message.Contains("abc [Hidden Credential]")));
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => m.Exception is not null && m.Exception.Message.Contains("abc [Hidden Credential]")),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -1088,7 +1129,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                             new List<string>() { "TestFunctionId1", "TestFunctionId2" },
                             new StatusResult() { Status = StatusResult.Types.Status.Failure });
 
-            await Task.Delay(500);
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Count(m => m.FormattedMessage.Contains("Worker failed to load function")) == 2,
+                timeout: 3000,
+                pollingInterval: 50);
+
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "setup TestFunctionId1");
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "setup TestFunctionId2");
@@ -1125,7 +1170,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                             new List<string>() { "TestFunctionId1", "TestFunctionId2" },
                             new StatusResult() { Status = StatusResult.Types.Status.Success });
 
-            await Task.Delay(500);
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Count(m => m.FormattedMessage.StartsWith("Received FunctionLoadResponse for function:")) == 2,
+                timeout: 3000,
+                pollingInterval: 50);
+
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "setup TestFunctionId1");
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "setup TestFunctionId2");
@@ -1144,10 +1193,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, true));
             var functions = _workerChannel.GetFunctionMetadata();
 
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            ShowOutput(traces);
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+            var expectedLog = $"Received the worker function metadata response from worker {_workerChannel.Id}";
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -1181,10 +1231,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, true, useDefaultMetadataIndexing: false));
             var functions = _workerChannel.GetFunctionMetadata();
 
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            ShowOutput(traces);
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+            var expectedLog = $"Received the worker function metadata response from worker {_workerChannel.Id}";
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -1196,10 +1247,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
                _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, false, useDefaultMetadataIndexing: true));
             var functions = _workerChannel.GetFunctionMetadata();
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            ShowOutput(traces);
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+
+            var expectedLog = $"Received the worker function metadata response from worker {_workerChannel.Id}";
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -1211,10 +1264,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
                _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, false, useDefaultMetadataIndexing: false));
             var functions = _workerChannel.GetFunctionMetadata();
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            ShowOutput(traces);
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index function {functionId}")));
+
+            var expectedLog = $"Worker failed to index function {functionId}";
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -1226,10 +1281,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
                _ => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, false));
             var functions = _workerChannel.GetFunctionMetadata();
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            ShowOutput(traces);
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index function {functionId}")));
+
+            var expectedLog = $"Worker failed to index function {functionId}";
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -1239,9 +1296,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
                     _ => _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", null, null, false, false, false));
             var functions = _workerChannel.GetFunctionMetadata();
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index functions")));
+
+            var expectedLog = $"Worker failed to index functions";
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                timeout: 3000,
+                pollingInterval: 50);
         }
 
         [Fact]
@@ -1277,7 +1337,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task SharedMemoryDataTransferSetting_VerifyEnabled()
         {
             await CreateSharedMemoryEnabledWorkerChannel();
-            await Task.Delay(500);
             Assert.True(_workerChannel.IsSharedMemoryDataTransferEnabled, "shared memory should be enabled");
         }
 
@@ -1288,7 +1347,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task SharedMemoryDataTransferSetting_VerifyDisabled()
         {
             await CreateDefaultWorkerChannel();
-
             Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled);
         }
 
@@ -1297,12 +1355,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         /// All other requirements for shared memory data transfer will be enabled.
         /// </summary>
         [Fact]
-        public void SharedMemoryDataTransferSetting_VerifyDisabledIfWorkerCapabilityAbsent()
+        public async Task SharedMemoryDataTransferSetting_VerifyDisabledIfWorkerCapabilityAbsent()
         {
             // Enable shared memory data transfer in the environment
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferEnabledSettingName, "1");
-            CreateDefaultWorkerChannel();
-
+            await CreateDefaultWorkerChannel();
             Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled);
         }
 
@@ -1311,9 +1368,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         /// All other requirements for shared memory data transfer will be enabled.
         /// </summary>
         [Fact]
-        public void SharedMemoryDataTransferSetting_VerifyDisabledIfEnvironmentVariableAbsent()
+        public async Task SharedMemoryDataTransferSetting_VerifyDisabledIfEnvironmentVariableAbsent()
         {
-            CreateSharedMemoryEnabledWorkerChannel(setEnvironmentVariable: false);
+            await CreateSharedMemoryEnabledWorkerChannel(setEnvironmentVariable: false);
             Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled);
         }
 
@@ -1386,8 +1443,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostingConfigOptions,
                _httpProxyService);
 
-            // wait 10 seconds
-            await Task.Delay(10000);
+            await Task.Yield();
 
             IEnumerable<TimeSpan> latencyHistory = workerChannel.GetLatencies();
 
@@ -1407,9 +1463,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 ctx = evt.Message.InvocationRequest.TraceContext;
             });
-            await Task.Delay(500);
 
-            Assert.NotNull(ctx);
+            await TestHelpers.Await(
+                () => ctx is not null,
+                timeout: 3000,
+                pollingInterval: 50);
+
             var attribs = ctx.Attributes;
             Assert.NotNull(attribs);
 
@@ -1439,9 +1498,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 grpcEvent = evt;
             });
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
-            await Task.Delay(500);
 
-            Assert.NotNull(grpcEvent);
+            await TestHelpers.Await(
+                () => grpcEvent is not null,
+                timeout: 3000,
+                pollingInterval: 50);
 
             activity.Stop();
             var attribs = grpcEvent.Message.InvocationRequest.TraceContext.Attributes;
@@ -1837,10 +1898,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     scriptRootPath: _scriptRootPath);
 
                 await _workerChannel.SendInvocationRequest(invocationContext);
-                await Task.Delay(500); // allow async event to fire
+                await TestHelpers.Await(
+                     () => invocationRequest is not null,
+                     timeout: 3000,
+                     pollingInterval: 50);
 
                 // Assert
-                Assert.NotNull(invocationRequest);
                 Assert.False(invocationRequest.TraceContext.Baggage.ContainsKey("key3"));
                 Assert.True(invocationRequest.TraceContext.Baggage.ContainsKey("key1"));
                 Assert.True(invocationRequest.TraceContext.Baggage.ContainsKey("key2"));
