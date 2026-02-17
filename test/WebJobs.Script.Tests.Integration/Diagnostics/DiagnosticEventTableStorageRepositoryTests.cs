@@ -194,8 +194,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, localStorageProvider, _logger);
 
-            // FlushLogs triggers initialization, which will fail and disable the service
+            // Service should start enabled
             Assert.True(repository.IsEnabled());
+
+            // FlushLogs triggers initialization, which will fail and disable the service
             await repository.FlushLogs();
 
             DateTime dateTime = new DateTime(2021, 1, 1);
@@ -492,6 +494,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
                 new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, storageProviderMock.Object, _logger);
 
             // Dispose should not trigger any storage calls when in placeholder mode (never initialized)
+            repository.Dispose();
+
+            storageProviderMock.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public void Dispose_DoesNotInvokeStorageProvider_WhenNotInPlaceholderModeAndNotInitialized()
+        {
+            IEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            var storageProviderMock = new Mock<IAzureTableStorageProvider>(MockBehavior.Strict);
+
+            DiagnosticEventTableStorageRepository repository =
+                new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, storageProviderMock.Object, _logger);
+
+            // Repository has never been initialized, so the TableClient should be null
+            Assert.Null(repository.TableClient);
+
+            // Dispose should not trigger any storage calls or initialization when not in placeholder mode but never initialized
             repository.Dispose();
 
             storageProviderMock.VerifyNoOtherCalls();

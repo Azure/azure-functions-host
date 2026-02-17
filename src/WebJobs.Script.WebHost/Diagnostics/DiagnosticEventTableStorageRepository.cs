@@ -127,7 +127,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
             finally
             {
-                _tableClientInitialized = true;
+                // Once initialization has been attempted (whether successful or not), we mark the table client as initialized
+                // to avoid repeated initialization attempts. On failure paths, the service is disabled via DisableService().
+                // Don't set if disposed to prevent race with disposal.
+                if (!_disposed)
+                {
+                    _tableClientInitialized = true;
+                }
                 _initSemaphore.Release();
             }
         }
@@ -354,11 +360,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // If the table client hasn't been initialized yet, kick off initialization.
             // This handles the case where the host was in placeholder mode during construction
             // and has since specialized — the constructor skipped initialization, so we trigger it here.
+            // Errors are handled within InitializeTableClientAsync, which disables the service on failure.
             if (!_tableClientInitialized)
             {
-                _ = InitializeTableClientAsync().ContinueWith(
-                    t => Logger.ServiceDisabledUnableToConnectToStorage(_logger, t.Exception),
-                    TaskContinuationOptions.OnlyOnFaulted);
+                _ = InitializeTableClientAsync();
             }
 
             var diagnosticEvent = new DiagnosticEvent(HostId, timestamp)
@@ -450,12 +455,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         _flushLogsTimer.Value?.Dispose();
                     }
 
-                    if (_tableClient != null)
+                    if (_tableClient is not null)
                     {
                         FlushLogs().GetAwaiter().GetResult();
                     }
 
-                    _initSemaphore.Dispose();
+                    if (_initSemaphore is not null)
+                    {
+                        try
+                        {
+                            _initSemaphore.Dispose();
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            // Suppress exception if semaphore was already disposed or is being disposed by another thread
+                        }
+                    }
                 }
             }
         }
