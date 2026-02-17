@@ -528,7 +528,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public Fixture()
             {
-                TestSiteName = "Test_test";
+                TestSiteName = $"Test_{Guid.NewGuid():N}";
                 Environment = new TestEnvironment();
 
                 var configuration = TestHelpers.GetTestConfiguration();
@@ -690,8 +690,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Dictionary<string, string> dictionary = KeyVaultSecretsRepository.GetDictionaryFromScriptSecrets(secrets, functionNameOrHost);
                 foreach (string key in dictionary.Keys)
                 {
-                    await Utility.InvokeWithRetriesWhenAsync(() => SecretClient.SetSecretAsync(key, dictionary[key]),
-                        5, TimeSpan.FromSeconds(1), (e) => e is RequestFailedException rfex && rfex.Status == 409);
+                    await SecretClient.SetSecretAsync(key, dictionary[key]);
                 }
             }
 
