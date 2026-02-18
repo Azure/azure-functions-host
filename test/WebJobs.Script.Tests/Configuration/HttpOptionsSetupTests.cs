@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Runtime.InteropServices;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(ScriptConstants.DynamicSku);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey)).Returns<string>(null);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion)).Returns<string>(null);
+            mockEnvironment.Setup(p => p.Platform).Returns(OSPlatform.Windows);
 
             var setup = new HttpOptionsSetup(mockEnvironment.Object);
             var options = new HttpOptions();
@@ -37,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(ScriptConstants.DynamicSku);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey)).Returns<string>(null);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion)).Returns<string>(null);
+            mockEnvironment.Setup(p => p.Platform).Returns(OSPlatform.Windows);
 
             var setup = new HttpOptionsSetup(mockEnvironment.Object);
             var options = new HttpOptions();
@@ -55,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Dedicated");
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey)).Returns<string>(null);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion)).Returns<string>(null);
+            mockEnvironment.Setup(p => p.Platform).Returns(OSPlatform.Windows);
 
             var setup = new HttpOptionsSetup(mockEnvironment.Object);
             var options = new HttpOptions();

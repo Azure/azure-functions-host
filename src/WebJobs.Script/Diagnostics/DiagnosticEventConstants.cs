@@ -37,5 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string DeprecatedProxiesErrorCode = "AZFD0014";
         public const string DeprecatedProxiesHelpLink = "https://aka.ms/functions-deprecated-proxies";
+
+        public const string TimerConstantExpressionWarningErrorCode = "AZFD0015";
+        public const string TimerConstantExpressionWarningHelpLink = "https://aka.ms/functions-timer-cron";
     }
 }

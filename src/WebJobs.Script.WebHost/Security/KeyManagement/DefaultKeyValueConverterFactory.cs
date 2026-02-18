@@ -13,12 +13,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public sealed class DefaultKeyValueConverterFactory : IKeyValueConverterFactory
     {
-        private readonly bool _encryptionSupported;
+        private readonly bool _shouldEncrypt;
         private static readonly PlaintextKeyValueConverter PlaintextValueConverter = new PlaintextKeyValueConverter(FileAccess.ReadWrite);
 
-        public DefaultKeyValueConverterFactory(bool allowEncryption)
+        public DefaultKeyValueConverterFactory(bool repositorySupportsEncryption)
         {
-            _encryptionSupported = !allowEncryption && IsEncryptionSupported();
+            _shouldEncrypt = !repositorySupportsEncryption && IsEncryptionSupported();
         }
 
         private static bool IsEncryptionSupported()
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public IKeyValueWriter GetValueWriter(Key key)
         {
-            if (_encryptionSupported)
+            if (_shouldEncrypt)
             {
                 return new DataProtectionKeyValueConverter(FileAccess.Write);
             }
