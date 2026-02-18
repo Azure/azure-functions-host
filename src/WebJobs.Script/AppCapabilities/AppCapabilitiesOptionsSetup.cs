@@ -16,13 +16,16 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<AppCapabilitiesOptionsSetup> _logger;
+        private readonly IAppCapabilitiesStore _appCapabilitiesStore;
 
         public AppCapabilitiesOptionsSetup(
             IConfiguration configuration,
+            IAppCapabilitiesStore appCapabilitiesStore,
             ILogger<AppCapabilitiesOptionsSetup> logger)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _appCapabilitiesStore = appCapabilitiesStore ?? throw new ArgumentNullException(nameof(appCapabilitiesStore));
         }
 
         /// <summary>
@@ -35,6 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             if (capabilitiesSection.Exists())
             {
                 AddCapabilitiesFromSection(options, capabilitiesSection);
+            }
+
+            foreach (var kvp in _appCapabilitiesStore.Capabilities)
+            {
+                options.Capabilities[kvp.Key] = kvp.Value;
             }
         }
 
