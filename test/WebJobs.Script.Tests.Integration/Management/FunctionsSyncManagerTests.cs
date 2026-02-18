@@ -150,6 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(() => _sku);
+            _mockEnvironment.Setup(p => p.Platform).Returns(System.Runtime.InteropServices.OSPlatform.Windows);
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
