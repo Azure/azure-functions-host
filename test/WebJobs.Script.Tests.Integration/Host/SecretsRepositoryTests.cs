@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string testFunctionName = secretsType == ScriptSecretsType.Host ? null : functionName;
 
                 // Ensure secrets are in an active state (not soft-deleted from a previous test run)
-                // before calling WriteAsync which has no 409 handling.
+                // before calling WriteAsync.
                 if (repositoryType == SecretsRepositoryType.KeyVault)
                 {
                     await _fixture.WriteSecret(testFunctionName ?? "host", secrets);
