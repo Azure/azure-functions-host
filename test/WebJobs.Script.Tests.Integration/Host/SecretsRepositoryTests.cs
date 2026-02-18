@@ -690,16 +690,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Dictionary<string, string> dictionary = KeyVaultSecretsRepository.GetDictionaryFromScriptSecrets(secrets, functionNameOrHost);
                 foreach (string key in dictionary.Keys)
                 {
-                    try
+                    // Secret may be soft-deleted from a previous test run.
+                    // Try purge first (best-effort), then retry SetSecret with backoff.
+                    for (int attempt = 0; attempt < 4; attempt++)
                     {
-                        await SecretClient.SetSecretAsync(key, dictionary[key]);
-                    }
-                    catch (RequestFailedException ex) when (ex.Status == 409)
-                    {
-                        // Secret is soft-deleted (e.g. host--masterKey--master which has a fixed name).
-                        // Secret is soft-deleted from a previous test run. Purge it, then recreate.
-                        await SecretClient.PurgeDeletedSecretAsync(key);
-                        await SecretClient.SetSecretAsync(key, dictionary[key]);
+                        try
+                        {
+                            await SecretClient.SetSecretAsync(key, dictionary[key]);
+                            break;
+                        }
+                        catch (RequestFailedException ex) when (ex.Status == 409 && attempt < 3)
+                        {
+                            try
+                            {
+                                await SecretClient.PurgeDeletedSecretAsync(key);
+                            }
+                            catch (RequestFailedException)
+                            {
+                                // Purge may 404 if delete hasn't propagated or already purged.
+                            }
+
+                            await Task.Delay(TimeSpan.FromSeconds(1));
+                        }
                     }
                 }
             }
