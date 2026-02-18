@@ -27,10 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class SecretsRepositoryTests : IClassFixture<SecretsRepositoryTests.Fixture>
     {
         private readonly SecretsRepositoryTests.Fixture _fixture;
-        private static readonly string _uniqueRunId = Guid.NewGuid().ToString("N")[..8];
         private readonly string functionName = "Test_test";
-        public static string KeyName = $"Te!@#st!1-te_st{_uniqueRunId}";
-        private static readonly string MasterKeyName = $"master{_uniqueRunId}";
+        public static string KeyName = "Te!@#st!1-te_st";
 
         private ITestOutputHelper _output;
 
@@ -103,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 testSecrets = new HostSecrets()
                 {
-                    MasterKey = new(MasterKeyName, "test"),
+                    MasterKey = new("master", "test"),
                     FunctionKeys = [new(KeyName, "test")],
                     SystemKeys = [new(KeyName, "test")]
                 };
@@ -125,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             if (secretsType == ScriptSecretsType.Host)
             {
-                Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, MasterKeyName);
+                Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, "master");
                 Assert.Equal((secretsContent as HostSecrets).MasterKey.Value, "test");
                 Assert.Equal((secretsContent as HostSecrets).FunctionKeys[0].Name, KeyName);
                 Assert.Equal((secretsContent as HostSecrets).FunctionKeys[0].Value, "test");
@@ -160,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     testSecrets = new HostSecrets()
                     {
-                        MasterKey = new Key(MasterKeyName, "test"),
+                        MasterKey = new Key("master", "test"),
                         FunctionKeys = functionKeys,
                         SystemKeys = new List<Key>() { new Key(KeyName, "test") }
                     };
@@ -182,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 if (secretsType == ScriptSecretsType.Host)
                 {
-                    Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, MasterKeyName);
+                    Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, "master");
                     Assert.Equal((secretsContent as HostSecrets).MasterKey.Value, "test");
 
                     Assert.Equal((secretsContent as HostSecrets).FunctionKeys.Count, functionKeys.Count);
@@ -230,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     secrets = new HostSecrets()
                     {
-                        MasterKey = new Key(MasterKeyName, "test"),
+                        MasterKey = new Key("master", "test"),
                         FunctionKeys = new List<Key>() { new Key(KeyName, "test") },
                         SystemKeys = new List<Key>() { new Key(KeyName, "test") }
                     };
@@ -258,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 if (secretsType == ScriptSecretsType.Host)
                 {
 
-                    Assert.Equal((secrets1 as HostSecrets).MasterKey.Name, MasterKeyName);
+                    Assert.Equal((secrets1 as HostSecrets).MasterKey.Name, "master");
                     Assert.Equal((secrets1 as HostSecrets).MasterKey.Value, "test");
                     Assert.Equal((secrets1 as HostSecrets).FunctionKeys[0].Name, KeyName);
                     Assert.Equal((secrets1 as HostSecrets).FunctionKeys[0].Value, "test");
@@ -692,7 +690,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Dictionary<string, string> dictionary = KeyVaultSecretsRepository.GetDictionaryFromScriptSecrets(secrets, functionNameOrHost);
                 foreach (string key in dictionary.Keys)
                 {
-                    await SecretClient.SetSecretAsync(key, dictionary[key]);
+                    try
+                    {
+                        await SecretClient.SetSecretAsync(key, dictionary[key]);
+                    }
+                    catch (RequestFailedException ex) when (ex.Status == 409)
+                    {
+                        // Secret is soft-deleted (e.g. host--masterKey--master which has a fixed name).
+                        // Recover it, then overwrite its value.
+                        var operation = await SecretClient.StartRecoverDeletedSecretAsync(key);
+                        await operation.WaitForCompletionAsync();
+                        await SecretClient.SetSecretAsync(key, dictionary[key]);
+                    }
                 }
             }
 
@@ -753,7 +762,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         FunctionKeys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.Name), functionKeyBundle.Value) },
                         SystemKeys = new List<Key>() { new Key(GetSecretName(systemKeyBundle.Name), systemKeyBundle.Value) }
                     };
-                    hostSecrets.MasterKey = new Key(GetSecretName(masterBundle.Name), masterBundle.Value);
+                    hostSecrets.MasterKey = new Key("master", masterBundle.Value);
                     return hostSecrets;
                 }
                 else
