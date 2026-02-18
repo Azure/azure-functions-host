@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -27,8 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class SecretsRepositoryTests : IClassFixture<SecretsRepositoryTests.Fixture>
     {
         private readonly SecretsRepositoryTests.Fixture _fixture;
+        private static readonly string _uniqueRunId = Guid.NewGuid().ToString("N")[..8];
         private readonly string functionName = "Test_test";
-        public static string KeyName = "Te!@#st!1-te_st";
+        public static string KeyName = $"Te!@#st!1-te_st{_uniqueRunId}";
+        private static readonly string MasterKeyName = $"master{_uniqueRunId}";
 
         private ITestOutputHelper _output;
 
@@ -101,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 testSecrets = new HostSecrets()
                 {
-                    MasterKey = new("master", "test"),
+                    MasterKey = new(MasterKeyName, "test"),
                     FunctionKeys = [new(KeyName, "test")],
                     SystemKeys = [new(KeyName, "test")]
                 };
@@ -123,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             if (secretsType == ScriptSecretsType.Host)
             {
-                Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, "master");
+                Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, MasterKeyName);
                 Assert.Equal((secretsContent as HostSecrets).MasterKey.Value, "test");
                 Assert.Equal((secretsContent as HostSecrets).FunctionKeys[0].Name, KeyName);
                 Assert.Equal((secretsContent as HostSecrets).FunctionKeys[0].Value, "test");
@@ -158,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     testSecrets = new HostSecrets()
                     {
-                        MasterKey = new Key("master", "test"),
+                        MasterKey = new Key(MasterKeyName, "test"),
                         FunctionKeys = functionKeys,
                         SystemKeys = new List<Key>() { new Key(KeyName, "test") }
                     };
@@ -180,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 if (secretsType == ScriptSecretsType.Host)
                 {
-                    Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, "master");
+                    Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, MasterKeyName);
                     Assert.Equal((secretsContent as HostSecrets).MasterKey.Value, "test");
 
                     Assert.Equal((secretsContent as HostSecrets).FunctionKeys.Count, functionKeys.Count);
@@ -228,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     secrets = new HostSecrets()
                     {
-                        MasterKey = new Key("master", "test"),
+                        MasterKey = new Key(MasterKeyName, "test"),
                         FunctionKeys = new List<Key>() { new Key(KeyName, "test") },
                         SystemKeys = new List<Key>() { new Key(KeyName, "test") }
                     };
@@ -256,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 if (secretsType == ScriptSecretsType.Host)
                 {
 
-                    Assert.Equal((secrets1 as HostSecrets).MasterKey.Name, "master");
+                    Assert.Equal((secrets1 as HostSecrets).MasterKey.Name, MasterKeyName);
                     Assert.Equal((secrets1 as HostSecrets).MasterKey.Value, "test");
                     Assert.Equal((secrets1 as HostSecrets).FunctionKeys[0].Name, KeyName);
                     Assert.Equal((secrets1 as HostSecrets).FunctionKeys[0].Value, "test");
@@ -528,7 +530,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public Fixture()
             {
-                TestSiteName = $"Test_{Guid.NewGuid():N}";
+                TestSiteName = "Test_test";
                 Environment = new TestEnvironment();
 
                 var configuration = TestHelpers.GetTestConfiguration();
@@ -751,7 +753,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         FunctionKeys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.Name), functionKeyBundle.Value) },
                         SystemKeys = new List<Key>() { new Key(GetSecretName(systemKeyBundle.Name), systemKeyBundle.Value) }
                     };
-                    hostSecrets.MasterKey = new Key("master", masterBundle.Value);
+                    hostSecrets.MasterKey = new Key(GetSecretName(masterBundle.Name), masterBundle.Value);
                     return hostSecrets;
                 }
                 else
