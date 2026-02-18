@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -153,19 +153,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _events.Clear();
         }
 
-        internal TableClient GetDiagnosticEventsTable(DateTime? now = null)
+        private async Task<bool> EnsureInitializedAsync()
         {
-            if (_tableClient != null)
+            if (_environment.IsPlaceholderModeEnabled() || !IsEnabled())
             {
-                now = now ?? DateTime.UtcNow;
-                string currentTableName = GetTableName(now.Value);
+                return false;
+            }
 
-                // update the table reference when date rolls over to a new month
-                if (_diagnosticEventsTable == null || currentTableName != _tableName)
-                {
-                    _tableName = currentTableName;
-                    _diagnosticEventsTable = _tableClient.GetTableClient(_tableName);
-                }
+            if (!_disposed)
+            {
+                await InitializeTableClientAsync();
+            }
+
+            if (_tableClient is null || !_tableClientInitialized || !IsEnabled())
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        internal async Task<TableClient> GetDiagnosticEventsTableAsync(DateTime? now = null)
+        {
+            if (!await EnsureInitializedAsync())
+            {
+                return null;
+            }
+
+            return GetDiagnosticEventsTable(now);
+        }
+
+        private TableClient GetDiagnosticEventsTable(DateTime? now = null)
+        {
+            now = now ?? DateTime.UtcNow;
+            string currentTableName = GetTableName(now.Value);
+
+            // update the table reference when date rolls over to a new month
+            if (_diagnosticEventsTable == null || currentTableName != _tableName)
+            {
+                _tableName = currentTableName;
+                _diagnosticEventsTable = _tableClient.GetTableClient(_tableName);
             }
 
             return _diagnosticEventsTable;
@@ -250,17 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal virtual async Task FlushLogs(TableClient table = null)
         {
-            if (_environment.IsPlaceholderModeEnabled() || !IsEnabled())
-            {
-                return;
-            }
-
-            if (!_disposed)
-            {
-                await InitializeTableClientAsync();
-            }
-
-            if (_tableClient is null || !IsEnabled())
+            if (!await EnsureInitializedAsync())
             {
                 return;
             }

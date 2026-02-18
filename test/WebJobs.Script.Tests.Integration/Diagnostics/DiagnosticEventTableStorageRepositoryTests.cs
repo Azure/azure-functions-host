@@ -173,11 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, _azureTableStorageProvider, _logger);
             
-            // Initialize the table client
-            await repository.InitializeTableClientAsync();
-            
             DateTime dateTime = new DateTime(2021, 1, 1);
-            var cloudTable = repository.GetDiagnosticEventsTable(dateTime);
+            var cloudTable = await repository.GetDiagnosticEventsTableAsync(dateTime);
             Assert.NotNull(cloudTable);
             Assert.NotNull(repository.TableClient);
             Assert.Equal(cloudTable.Name, $"{DiagnosticEventTableStorageRepository.TableNamePrefix}202101");
@@ -201,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             await repository.FlushLogs();
 
             DateTime dateTime = new DateTime(2021, 1, 1);
-            var cloudTable = repository.GetDiagnosticEventsTable(dateTime);
+            var cloudTable = await repository.GetDiagnosticEventsTableAsync(dateTime);
             Assert.Null(cloudTable);
             Assert.False(repository.IsEnabled());
 
@@ -219,12 +216,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, _azureTableStorageProvider, _logger);
 
-            // Initialize the table client
-            await repository.InitializeTableClientAsync();
-
             // delete any existing non-current diagnostics events tables
             string tablePrefix = DiagnosticEventTableStorageRepository.TableNamePrefix;
-            var currentTable = repository.GetDiagnosticEventsTable();
+            var currentTable = await repository.GetDiagnosticEventsTableAsync();
             var tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableClient, tablePrefix);
             foreach (var table in tables)
             {
@@ -263,12 +257,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, _azureTableStorageProvider, _logger);
 
-            // Initialize the table client
-            await repository.InitializeTableClientAsync();
-
             // delete any existing non-current diagnostics events tables
             string tablePrefix = DiagnosticEventTableStorageRepository.TableNamePrefix;
-            var currentTable = repository.GetDiagnosticEventsTable();
+            var currentTable = await repository.GetDiagnosticEventsTableAsync();
             var tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableClient, tablePrefix);
             foreach (var table in tables)
             {
@@ -361,12 +352,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, scriptHostMock.Object, _azureTableStorageProvider, _logger);
 
-            // Initialize the table client
-            await repository.InitializeTableClientAsync();
-
             // delete existing tables
             string tablePrefix = DiagnosticEventTableStorageRepository.TableNamePrefix;
-            var currentTable = repository.GetDiagnosticEventsTable();
+            var currentTable = await repository.GetDiagnosticEventsTableAsync();
             var tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableClient, tablePrefix);
             foreach (var table in tables)
             {
@@ -414,10 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, _azureTableStorageProvider, _logger);
 
-            // Initialize the table client
-            await repository.InitializeTableClientAsync();
-
-            var table = repository.GetDiagnosticEventsTable();
+            var table = await repository.GetDiagnosticEventsTableAsync();
             await TableStorageHelpers.CreateIfNotExistsAsync(table, repository.TableClient, 2);
             await EmptyTableAsync(table);
 
@@ -440,10 +425,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, _azureTableStorageProvider, _logger);
 
-            // Initialize the table client
-            await repository.InitializeTableClientAsync();
-
-            var table = repository.GetDiagnosticEventsTable();
+            var table = await repository.GetDiagnosticEventsTableAsync();
             await TableStorageHelpers.CreateIfNotExistsAsync(table, repository.TableClient, 2);
             await EmptyTableAsync(table);
 
@@ -465,8 +447,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             DiagnosticEventTableStorageRepository repository =
                 new DiagnosticEventTableStorageRepository(_hostIdProvider, testEnvironment, _scriptHostMock.Object, _azureTableStorageProvider, _logger);
 
-            // Initialize the table client
-            await repository.InitializeTableClientAsync();
+            // Ensure initialization happens by calling the async method
+            await repository.GetDiagnosticEventsTableAsync();
 
             var tableClient = repository.TableClient;
             var table = tableClient.GetTableClient("aa");
