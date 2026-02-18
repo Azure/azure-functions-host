@@ -32,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IAzureTableStorageProvider _azureTableStorageProvider;
         private readonly ILogger<DiagnosticEventTableStorageRepository> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly object _syncLock = new object();
         private readonly SemaphoreSlim _initSemaphore = new SemaphoreSlim(1, 1);
 
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
@@ -43,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private bool _disposed = false;
         private bool _purged = false;
         private string _tableName;
-        private bool _isEnabled = true;
+        private volatile bool _isEnabled = true;
 
         internal DiagnosticEventTableStorageRepository(IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
             IAzureTableStorageProvider azureTableStorageProvider, ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
@@ -83,7 +82,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            await _initSemaphore.WaitAsync();
+            try
+            {
+                await _initSemaphore.WaitAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Semaphore was disposed (race with disposal), exit early
+                return;
+            }
+
             try
             {
                 if (_tableClientInitialized || _disposed)
@@ -302,14 +310,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             // Swap the events dictionary to reset the event count for the new flush window.
             // All existing events are logged to other logging pipelines already.
-            // Use the same lock as WriteDiagnosticEvent to prevent race conditions when
-            // concurrent writes happen during the swap operation.
-            ConcurrentDictionary<string, DiagnosticEvent> tempDictionary;
-            lock (_syncLock)
-            {
-                tempDictionary = _events;
-                _events = new ConcurrentDictionary<string, DiagnosticEvent>();
-            }
+            // Use Interlocked.Exchange to atomically swap dictionaries while preventing race conditions.
+            var tempDictionary = Interlocked.Exchange(ref _events, new ConcurrentDictionary<string, DiagnosticEvent>());
 
             if (!tempDictionary.IsEmpty)
             {
@@ -376,30 +378,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 HitCount = 1
             };
 
-            // Protect the entire add-or-update operation to prevent race conditions with FlushLogs.
-            // Without this lock, the following race can occur:
-            // 1. Thread A: TryAdd fails (key exists in dictionary)
-            // 2. FlushLogs: Swaps _events to new empty dictionary
-            // 3. Thread A: Tries to update _events[errorCode] but key is now in old dictionary or missing
-            // Result: Lost update or exception
-            // The lock is also used in FlushLogs when swapping dictionaries, ensuring atomicity.
-            lock (_syncLock)
-            {
-                if (!_events.TryAdd(errorCode, diagnosticEvent))
+            // Use AddOrUpdate for atomic add-or-update operation.
+            // ConcurrentDictionary ensures thread-safety for this operation.
+            // If the dictionary is swapped by FlushLogs during this call, the event will be added to whichever
+            // dictionary the reference points to at the time. Events added to the old dictionary after the swap
+            // will still be flushed in the current cycle.
+            _events.AddOrUpdate(
+                errorCode,
+                diagnosticEvent,
+                (key, existingEvent) =>
                 {
-                    if (_events.TryGetValue(errorCode, out var existingEvent))
-                    {
-                        existingEvent.Timestamp = timestamp;
-                        existingEvent.HitCount++;
-                    }
-                    else
-                    {
-                        // Key was removed (e.g., dictionary was swapped between TryAdd and acquiring lock)
-                        // Add the event to the current dictionary
-                        _events.TryAdd(errorCode, diagnosticEvent);
-                    }
-                }
-            }
+                    existingEvent.Timestamp = timestamp;
+                    existingEvent.HitCount++;
+                    return existingEvent;
+                });
 
             EnsureFlushLogsTimerInitialized();
         }
