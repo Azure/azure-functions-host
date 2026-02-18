@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private bool _disposed = false;
         private bool _purged = false;
         private string _tableName;
-        private bool _isEnabled = true;
+        private volatile bool _isEnabled = true;
 
         internal DiagnosticEventTableStorageRepository(IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
             IAzureTableStorageProvider azureTableStorageProvider, ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
