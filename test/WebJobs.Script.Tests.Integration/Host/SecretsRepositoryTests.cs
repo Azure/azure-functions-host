@@ -697,9 +697,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     catch (RequestFailedException ex) when (ex.Status == 409)
                     {
                         // Secret is soft-deleted (e.g. host--masterKey--master which has a fixed name).
-                        // Recover it, then overwrite its value.
-                        var operation = await SecretClient.StartRecoverDeletedSecretAsync(key);
-                        await operation.WaitForCompletionAsync();
+                        // Secret is soft-deleted from a previous test run. Purge it, then recreate.
+                        await SecretClient.PurgeDeletedSecretAsync(key);
                         await SecretClient.SetSecretAsync(key, dictionary[key]);
                     }
                 }
