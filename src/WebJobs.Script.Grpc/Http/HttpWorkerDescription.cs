@@ -1,13 +1,13 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
