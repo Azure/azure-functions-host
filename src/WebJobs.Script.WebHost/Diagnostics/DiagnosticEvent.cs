@@ -51,6 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public int Level { get; set; }
 
+        public string Details { get; set; }
+
         [IgnoreDataMember]
         public LogLevel LogLevel
         {
@@ -62,7 +64,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             Interlocked.Increment(ref _hitCount);
         }
-
-        public string Details { get; set; }
     }
 }
