@@ -795,7 +795,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 logger.InStandByMode(operationId);
             }
 
-            LogInitializationSettings(logger, _metricsLogger, _environment, _scriptWebHostEnvironment, _hostingConfigOptions.Value, _originalStandbyModeValue, _originalFunctionsWorkerRuntime, _originalFunctionsWorkerRuntimeVersion);
+            LogInitializationSettings(logger, _metricsLogger, _environment, _scriptWebHostEnvironment, _hostingConfigOptions.Value, _originalStandbyModeValue, _workerRuntimeResolver.GetWorkerRuntime(), _originalFunctionsWorkerRuntimeVersion);
         }
 
         internal static void LogInitializationSettings(ILogger logger, IMetricsLogger metricsLogger, IEnvironment environment, IScriptWebHostEnvironment scriptWebHostEnvironment, FunctionsHostingConfigOptions hostingConfigOptions, bool originalStandbyModeValue,
@@ -829,8 +829,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 logger.LogDebug($"HIS Warn mode enabled.");
             }
 
-            logger.LogHostInitializationSettings(_originalFunctionsWorkerRuntime, functionWorkerRuntime, _originalFunctionsWorkerRuntimeVersion, functionWorkerRuntimeVersion,
-                functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict, hisMode);
+            logger.LogHostInitializationSettings(originalFunctionsWorkerRuntime, functionWorkerRuntime, originalFunctionsWorkerRuntimeVersion, functionWorkerRuntimeVersion,
+    functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict, hisMode, adminIsolationEnabled,
+    functionsSiteUpdateId);
+
         }
 
         private void OnHostHealthCheckTimer(object state)
