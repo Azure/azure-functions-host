@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.IO.Abstractions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
@@ -43,6 +44,7 @@ namespace Microsoft.WebJobs.Script.Tests
         public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder, Action<IWebJobsBuilder> configureWebJobs,
             Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false, Action<IServiceCollection> configureRootServices = null)
         {
+            Directory.Delete(TestHelpers.FunctionsTestDirectory);
             var webHostOptions = new ScriptApplicationHostOptions()
             {
                 IsSelfHost = true,
