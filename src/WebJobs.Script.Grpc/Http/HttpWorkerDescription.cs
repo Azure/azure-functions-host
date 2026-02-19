@@ -57,7 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             if (string.IsNullOrEmpty(DefaultExecutablePath))
             {
-                throw new ValidationException($"WorkerDescription {nameof(DefaultExecutablePath)} cannot be empty");
+                var hostjson = File.ReadAllText(Path.Combine(Path.GetTempPath(), "FunctionsTest", "host.json"));
+                throw new ValidationException($"WorkerDescription {nameof(DefaultExecutablePath)} cannot be empty. HostJson:{hostjson}");
             }
         }
     }
