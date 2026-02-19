@@ -3,9 +3,11 @@
 using System;
 using System.Collections.ObjectModel;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NCrontab;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -16,19 +18,22 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     internal class CoreExtensionsScriptBindingProvider : ScriptBindingProvider
     {
         private readonly INameResolver _nameResolver;
-        private readonly IEnvironment _environment;
+        private readonly TimerTriggerPlatformOptions _platformOptions;
 
-        public CoreExtensionsScriptBindingProvider(INameResolver nameResolver, IEnvironment environment, ILogger<CoreExtensionsScriptBindingProvider> logger)
+        public CoreExtensionsScriptBindingProvider(
+            INameResolver nameResolver,
+            IOptions<TimerTriggerPlatformOptions> platformOptions,
+            ILogger<CoreExtensionsScriptBindingProvider> logger)
             : base(logger)
         {
             _nameResolver = nameResolver ?? throw new ArgumentNullException(nameof(nameResolver));
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _platformOptions = (platformOptions ?? throw new ArgumentNullException(nameof(platformOptions))).Value;
         }
 
         /// <inheritdoc/>
         public override bool TryCreate(ScriptBindingContext context, out ScriptBinding binding)
         {
-            if (context == null)
+            if (context is null)
             {
                 throw new ArgumentNullException(nameof(context));
             }
@@ -37,21 +42,23 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
             if (string.Equals(context.Type, "timerTrigger", StringComparison.OrdinalIgnoreCase))
             {
-                binding = new TimerTriggerScriptBinding(_nameResolver, _environment, context);
+                binding = new TimerTriggerScriptBinding(_nameResolver, _platformOptions, Logger, context);
             }
 
-            return binding != null;
+            return binding is not null;
         }
 
         internal class TimerTriggerScriptBinding : ScriptBinding
         {
             private readonly INameResolver _nameResolver;
-            private readonly IEnvironment _environment;
+            private readonly TimerTriggerPlatformOptions _platformOptions;
+            private readonly ILogger _logger;
 
-            public TimerTriggerScriptBinding(INameResolver nameResolver, IEnvironment environment, ScriptBindingContext context) : base(context)
+            public TimerTriggerScriptBinding(INameResolver nameResolver, TimerTriggerPlatformOptions platformOptions, ILogger logger, ScriptBindingContext context) : base(context)
             {
                 _nameResolver = nameResolver ?? throw new ArgumentNullException(nameof(nameResolver));
-                _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+                _platformOptions = platformOptions ?? throw new ArgumentNullException(nameof(platformOptions));
+                _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             }
 
             public override Type DefaultType => typeof(TimerInfo);
@@ -63,18 +70,28 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 string schedule = Context.GetMetadataValue<string>("schedule");
                 bool runOnStartup = Context.GetMetadataValue<bool>("runOnStartup");
                 bool useMonitor = Context.GetMetadataValue<bool>("useMonitor", true);
-                if (_environment.IsWindowsConsumption())
+
+                if (_platformOptions.NonCronScheduleBehavior is not NonCronScheduleBehavior.Allow)
                 {
                     // pre-resolve app setting specifiers
                     schedule = _nameResolver.ResolveWholeString(schedule);
 
-                    var options = new CrontabSchedule.ParseOptions()
+                    // Accept both 5-digit and 6-digit (with seconds) CRON expressions.
+                    bool isCron = CrontabSchedule.TryParse(schedule) is not null
+                        || CrontabSchedule.TryParse(schedule, new CrontabSchedule.ParseOptions { IncludingSeconds = true }) is not null;
+
+                    if (!isCron)
                     {
-                        IncludingSeconds = true
-                    };
-                    if (CrontabSchedule.TryParse(schedule, options) == null)
-                    {
-                        throw new ArgumentException(string.Format("'{0}' is not a valid CRON expression.", schedule));
+                        string message = $"The timer schedule '{schedule}' is not a CRON expression. Non-CRON expressions are not supported by the scale controller and may cause scaling issues. Please use a CRON expression instead. See {DiagnosticEventConstants.TimerConstantExpressionWarningHelpLink} for more information.";
+
+                        if (_platformOptions.NonCronScheduleBehavior is NonCronScheduleBehavior.Error)
+                        {
+                            var exception = new ArgumentException(string.Format("'{0}' is not a valid CRON expression.", schedule));
+                            _logger.LogDiagnosticEventError(DiagnosticEventConstants.TimerConstantExpressionWarningErrorCode, message, DiagnosticEventConstants.TimerConstantExpressionWarningHelpLink, exception);
+                            throw exception;
+                        }
+
+                        _logger.LogDiagnosticEventWarning(DiagnosticEventConstants.TimerConstantExpressionWarningErrorCode, message, DiagnosticEventConstants.TimerConstantExpressionWarningHelpLink, null);
                     }
                 }
 
