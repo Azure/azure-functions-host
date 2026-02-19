@@ -706,7 +706,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         catch (RequestFailedException ex) when (ex.Status == 409)
                         {
                             // Secret is soft-deleted from a previous test run. Purge it (best-effort) and retry.
-                            try { await SecretClient.PurgeDeletedSecretAsync(key); } catch (RequestFailedException) { }
+                            try
+                            {
+                                await SecretClient.PurgeDeletedSecretAsync(key);
+                            }
+                            catch (RequestFailedException)
+                            {
+                            }
+                            
+                            // Allow purge to propagate before retrying
+                            await Task.Delay(TimeSpan.FromSeconds(1));
                             throw;
                         }
                     }, 4, TimeSpan.FromSeconds(1), ex => ex is RequestFailedException rfex && rfex.Status == 409);
