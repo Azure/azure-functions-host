@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -62,6 +63,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly Mock<IHttpProxyService> _mockHttpProxyService = new Mock<IHttpProxyService>();
         private readonly IHttpProxyService _httpProxyService;
+        private readonly Mock<IAppCapabilitiesStore> _mockAppCapabilitiesStore = new Mock<IAppCapabilitiesStore>();
+        private readonly Mock<IOptionsChangeTokenSource<AppCapabilitiesOptions>> _mockOptionsChangeTokenSource = new Mock<IOptionsChangeTokenSource<AppCapabilitiesOptions>>();
         private GrpcWorkerChannel _workerChannel;
 
         public GrpcWorkerChannelTests(ITestOutputHelper testOutput)
@@ -137,6 +140,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _sharedMemoryManager,
                _workerConcurrencyOptions,
                _hostingConfigOptions,
+               _mockAppCapabilitiesStore.Object,
+               _mockOptionsChangeTokenSource.Object,
                _httpProxyService);
 
             if (autoStart)
@@ -240,6 +245,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _sharedMemoryManager,
                _workerConcurrencyOptions,
                _hostingConfigOptions,
+               _mockAppCapabilitiesStore.Object,
+               _mockOptionsChangeTokenSource.Object,
                _httpProxyService);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
         }
@@ -585,6 +592,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _sharedMemoryManager,
                _workerConcurrencyOptions,
                _hostingConfigOptions,
+               _mockAppCapabilitiesStore.Object,
+               _mockOptionsChangeTokenSource.Object,
                _httpProxyService);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
@@ -1294,6 +1303,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _sharedMemoryManager,
                _workerConcurrencyOptions,
                _hostingConfigOptions,
+               _mockAppCapabilitiesStore.Object,
+               _mockOptionsChangeTokenSource.Object,
                _httpProxyService);
 
             IEnumerable<TimeSpan> latencyHistory = null;
@@ -1335,6 +1346,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _sharedMemoryManager,
                _workerConcurrencyOptions,
                _hostingConfigOptions,
+               _mockAppCapabilitiesStore.Object,
+               _mockOptionsChangeTokenSource.Object,
                _httpProxyService);
 
             // wait 10 seconds

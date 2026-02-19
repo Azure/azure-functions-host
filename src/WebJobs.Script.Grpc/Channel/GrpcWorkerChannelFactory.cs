@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IScriptHostManager hostManager, IEnvironment environment, ILoggerFactory loggerFactory,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager,
-            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IAppCapabilitiesStore appCapabilitiesStore, 
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IAppCapabilitiesStore appCapabilitiesStore,
             IOptionsChangeTokenSource<AppCapabilitiesOptions> appCapabilitiesChangeTokenSource, IHttpProxyService httpProxyService)
         {
             _eventManager = eventManager;
