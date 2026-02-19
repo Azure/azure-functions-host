@@ -21,8 +21,10 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public void Process(ITelemetry item)
         {
-            // Filter out dependency telemetry for localhost calls (host-to-worker interactions).
-            if (item is DependencyTelemetry dependencyTelemetry && IsLocalhostDependency(dependencyTelemetry))
+            // Filter out all outgoing HTTP dependency telemetry. In out-of-proc scenarios the host's
+            // only HTTP dependency is the loopback call to the worker.
+            if (item is DependencyTelemetry dep
+                && string.Equals(dep.Type, "Http", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -35,22 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 item = ToUserException(rpcException, item);
             }
             this.Next.Process(item);
-        }
-
-        private static bool IsLocalhostDependency(DependencyTelemetry dependencyTelemetry)
-        {
-            if (string.IsNullOrEmpty(dependencyTelemetry.Data))
-            {
-                return false;
-            }
-
-            if (string.Equals(dependencyTelemetry.Type, "Http", StringComparison.OrdinalIgnoreCase)
-                && Uri.TryCreate(dependencyTelemetry.Data, UriKind.Absolute, out var uri))
-            {
-                return uri.IsLoopback;
-            }
-
-            return false;
         }
 
         private ITelemetry ToUserException(RpcException rpcException, ITelemetry originalItem)
