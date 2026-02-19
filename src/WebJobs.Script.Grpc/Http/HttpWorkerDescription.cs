@@ -1,11 +1,13 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Extensions.Logging;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
-using Microsoft.Extensions.Logging;
+using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
@@ -57,8 +59,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             if (string.IsNullOrEmpty(DefaultExecutablePath))
             {
+
+                var jobHostVars = string.Join(Environment.NewLine,
+                    Environment.GetEnvironmentVariables()
+                    .Cast<DictionaryEntry>()
+                    .Where(e => ((string)e.Key).StartsWith("AzureFunctionsJobHost", StringComparison.OrdinalIgnoreCase))
+                    .Select(e => $"{e.Key}={e.Value}"));
+
                 var hostjson = File.ReadAllText(Path.Combine(Path.GetTempPath(), "FunctionsTest", "host.json"));
-                throw new ValidationException($"WorkerDescription {nameof(DefaultExecutablePath)} cannot be empty. HostJson:{hostjson}");
+                throw new ValidationException($"WorkerDescription {nameof(DefaultExecutablePath)} cannot be empty.Input directory:{inputWorkerDirectory}, jobHostVars={jobHostVars}, HostJson:{hostjson}");
             }
         }
     }
