@@ -33,6 +33,14 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // IConfiguration will cause the SnapshotConfiguration to be created and the TelemetryProcessor to be applied.
             _configuration.Bind(options);
 
+            // Live metrics should be enabled by default. Re-apply the default if the config value is not explicitly set.
+            // In .NET 10, ConfigurationBinder.Bind now sets non-nullable bool properties to default(bool)=false for null
+            // config values, overriding the SDK default of true.
+            if (string.IsNullOrEmpty(_configuration[nameof(ApplicationInsightsLoggerOptions.EnableLiveMetrics)]))
+            {
+                options.EnableLiveMetrics = true;
+            }
+
             ApplySamplingSettings(options);
 
             string quickPulseKey = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsQuickPulseAuthApiKey);
