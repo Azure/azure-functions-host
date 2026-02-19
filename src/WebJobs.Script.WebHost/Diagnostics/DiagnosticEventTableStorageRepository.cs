@@ -406,7 +406,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 (key, existingEvent) =>
                 {
                     existingEvent.Timestamp = timestamp;
-                    existingEvent.HitCount++;
+                    existingEvent.IncrementHitCount();
                     return existingEvent;
                 });
 
