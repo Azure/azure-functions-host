@@ -59,7 +59,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             if (string.IsNullOrEmpty(DefaultExecutablePath))
             {
-
                 var jobHostVars = string.Join(Environment.NewLine,
                     Environment.GetEnvironmentVariables()
                     .Cast<DictionaryEntry>()
