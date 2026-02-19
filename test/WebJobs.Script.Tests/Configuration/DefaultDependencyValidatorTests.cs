@@ -8,10 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -81,22 +78,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             TestLoggerProvider loggerProvider = new();
 
             var builder = new HostBuilder().
-                ConfigureWebHostDefaults(webhostBuilder =>
+                ConfigureWebHost(webhostBuilder =>
                 {
-                    webhostBuilder.Configure(app =>
-                    {
-                        app.Run(async context =>
-                        {
-                            await context.Response.WriteAsync("Hello world");
-                        });
-                    });
-
                     webhostBuilder.ConfigureLogging(b =>
                     {
                         b.AddProvider(loggerProvider);
                     });
 
                     webhostBuilder.UseTestServer();
+                    webhostBuilder.UseStartup<Startup>();
                 })
                 .ConfigureServices(s =>
                 {
