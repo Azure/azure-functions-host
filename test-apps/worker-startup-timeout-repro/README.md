@@ -52,10 +52,30 @@ curl http://localhost:5000/api/hello
    - `State == Error` → first check fails
    - `_currentJobHost is null` → second check fails
    - Returns **false** → calls `RestartHostAsync()` instead of `InitializeChannelAsync()`
-8. `RestartHostAsync()` cancels the retry, then hits `await _hostStartSemaphore.WaitAsync()`
-9. **Deadlock**: the semaphore is held by the retry's `StartHostAsync` (via `.GetAwaiter().GetResult()`
-   sync-over-async in `FunctionMetadataManager.cs:150`), which is blocked waiting for
-   `RestartHostAsync` to complete
+8. `RestartHostAsync()` cancels the retry op, then hits `await _hostStartSemaphore.WaitAsync()`
+9. **Deadlock**: `RestartHostAsync` is waiting to acquire `_hostStartSemaphore`, but the semaphore
+   is held by the retry's own `StartHostAsync` (line 307) — which is blocked on the current thread.
+   The full call chain on the blocked thread is:
+
+   ```
+   StartHostAsync                         ← HOLDS _hostStartSemaphore (line 307)
+     → UnsynchronizedStartHostCoreAsync
+       → BuildHost()
+         → FunctionMetadataManager
+           → .GetFunctionMetadataAsync()
+             .GetAwaiter().GetResult()     ← SYNC BLOCK — thread cannot be released
+               → WorkerFunctionMetadataProvider.GetFunctionMetadataAsync()
+                 → await RestartHostAsync()
+                   → await _hostStartSemaphore.WaitAsync()   ← NEEDS the same semaphore
+   ```
+
+   The `.GetAwaiter().GetResult()` at `FunctionMetadataManager.cs:150` blocks the thread
+   synchronously. When `RestartHostAsync` hits `await _hostStartSemaphore.WaitAsync()`, the
+   await returns an incomplete Task. That Task propagates back up to `.GetResult()`, which
+   blocks the thread waiting for it to complete. But the Task can only complete when the
+   semaphore is released, and the semaphore can only be released when `StartHostAsync`'s
+   `finally` block runs, which requires `BuildHost()` to return, which requires this thread
+   to unblock — circular dependency, permanent deadlock.
 10. Host stuck permanently — 503 on every request
 
 ## Bug Location
