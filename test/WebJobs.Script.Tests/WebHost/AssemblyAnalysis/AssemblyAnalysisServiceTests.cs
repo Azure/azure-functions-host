@@ -13,7 +13,7 @@ using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.WebHost.AssemblyAnalysis
+namespace Microsoft.Azure.WebJobs.Script.Tests.AssemblyAnalysis
 {
     public class AssemblyAnalysisServiceTests
     {
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.WebHost.AssemblyAnalysis
             var descriptor = new FunctionDescriptor("NodeFunc", null, metadata, null, null, null, null);
             mockJobHost.Setup(h => h.Functions).Returns(new[] { descriptor }.ToImmutableArray());
 
-            var service = CreateService(mockJobHost.Object);
+            var service = CreateService(mockJobHost.Object, Path.GetTempPath());
 
             service.AnalyzeFunctionAssemblies();
 
