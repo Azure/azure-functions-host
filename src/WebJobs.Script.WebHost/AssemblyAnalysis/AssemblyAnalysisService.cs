@@ -18,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
     internal class AssemblyAnalysisService : IHostedService, IDisposable
     {
         private readonly IEnvironment _environment;
-        private readonly ILoggerFactory _loggerFactory;
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
         private readonly WebJobsScriptHostService _scriptHost;
         private readonly string _scriptRootPath;
@@ -32,10 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
         {
             _environment = environment;
             _scriptHost = scriptHost;
-            _loggerFactory = loggerFactory;
             _standbyOptionsMonitor = standbyOptionsMonitor;
             _scriptRootPath = applicationHostOptions?.Value?.ScriptPath;
-            _logger = _loggerFactory.CreateLogger<AssemblyAnalysisService>();
+            _logger = loggerFactory.CreateLogger<AssemblyAnalysisService>();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -109,46 +107,58 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
 
         internal void AnalyzeFunctionAssemblies()
         {
-            var jobHost = GetJobHost();
-
-            if (jobHost == null
-                || (_cancellationTokenSource?.IsCancellationRequested ?? false))
+            try
             {
-                return;
-            }
+                var jobHost = GetJobHost();
 
-            var logger = _loggerFactory.CreateLogger<AssemblyAnalysisService>();
-            var hasUnoptimizedAssemblies = false;
-
-            foreach (var item in jobHost.Functions)
-            {
-                if (_cancellationTokenSource?.IsCancellationRequested ?? false)
+                if (jobHost == null
+                    || string.IsNullOrEmpty(_scriptRootPath)
+                    || (_cancellationTokenSource?.IsCancellationRequested ?? false))
                 {
                     return;
                 }
 
-                if (item.Metadata.ScriptFile?.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    // Isolated - check the function assembly on disk via ScriptFile path.
-                    string scriptFilePath = Path.IsPathRooted(item.Metadata.ScriptFile)
-                        ? item.Metadata.ScriptFile
-                        : Path.Combine(_scriptRootPath ?? string.Empty, item.Metadata.ScriptFile);
+                var hasUnoptimizedAssemblies = false;
+                string normalizedRoot = Path.GetFullPath(_scriptRootPath);
 
-                    if (!IsReadyToRunOptimized(scriptFilePath))
+                foreach (var item in jobHost.Functions)
+                {
+                    if (_cancellationTokenSource?.IsCancellationRequested ?? false)
                     {
-                        hasUnoptimizedAssemblies = true;
-                        break;
+                        return;
+                    }
+
+                    if (item.Metadata.ScriptFile?.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        // Isolated - check the function assembly on disk via ScriptFile path.
+                        string scriptFilePath = Path.GetFullPath(Path.Combine(normalizedRoot, item.Metadata.ScriptFile));
+
+                        if (!scriptFilePath.StartsWith(normalizedRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogWarning("Skipping assembly with path outside script root: {ScriptFile}", item.Metadata.ScriptFile);
+                            continue;
+                        }
+
+                        if (!IsReadyToRunOptimized(scriptFilePath))
+                        {
+                            hasUnoptimizedAssemblies = true;
+                            break;
+                        }
                     }
                 }
-            }
 
-            if (hasUnoptimizedAssemblies)
+                if (hasUnoptimizedAssemblies)
+                {
+                    _logger.LogDiagnosticEventWarning(
+                        DiagnosticEventConstants.FunctionAssemblyNotReadyToRunErrorCode,
+                        "Function assemblies are not optimized with Ready-to-Run compilation, which may increase cold start times. Publish your application with PublishReadyToRun=true to improve performance.",
+                        DiagnosticEventConstants.FunctionAssemblyNotReadyToRunHelpLink,
+                        exception: null);
+                }
+            }
+            catch (Exception ex)
             {
-                logger.LogDiagnosticEventWarning(
-                    DiagnosticEventConstants.FunctionAssemblyNotReadyToRunErrorCode,
-                    "Function assemblies are not optimized with Ready-to-Run compilation, which may increase cold start times. Publish your application with PublishReadyToRun=true to improve performance.",
-                    DiagnosticEventConstants.FunctionAssemblyNotReadyToRunHelpLink,
-                    exception: null);
+                _logger.LogError(ex, "Error analyzing function assemblies. Handling error and continuing.");
             }
         }
 
