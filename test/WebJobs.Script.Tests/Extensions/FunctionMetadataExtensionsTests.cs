@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.IO;
@@ -257,20 +257,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 Raw = new JObject()
             };
             functionMetadata.Bindings.Add(httpTriggerBinding);
-            var uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
+            var uri = Script.WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
             Assert.Equal("https://localhost/api/testfunction", uri.ToString());
 
             // with empty route prefix
-            uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
+            uri = Script.WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
             Assert.Equal("https://localhost/testfunction", uri.ToString());
 
             // with a custom route
             httpTriggerBinding.Raw.Add("route", "catalog/products/{category:alpha?}/{id:int?}");
-            uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
+            uri = Script.WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
             Assert.Equal("https://localhost/api/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
 
             // with empty route prefix
-            uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
+            uri = Script.WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
             Assert.Equal("https://localhost/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
         }
 

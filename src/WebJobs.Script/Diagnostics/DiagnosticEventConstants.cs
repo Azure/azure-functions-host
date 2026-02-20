@@ -40,5 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string TimerConstantExpressionWarningErrorCode = "AZFD0015";
         public const string TimerConstantExpressionWarningHelpLink = "https://aka.ms/functions-timer-cron";
+
+        public const string FunctionAssemblyNotReadyToRunErrorCode = "AZFD0016";
+        public const string FunctionAssemblyNotReadyToRunHelpLink = "https://aka.ms/functions-r2r";
     }
 }
