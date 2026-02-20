@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.WebHost.AssemblyAnalysis
         {
             // Use the test assembly itself — debug builds are not R2R compiled.
             string dllPath = typeof(AssemblyAnalysisServiceTests).Assembly.Location;
-            var service = CreateService(CreateJobHost(dllPath));
+            var service = CreateService(CreateJobHost(dllPath), Path.GetDirectoryName(dllPath));
 
             service.AnalyzeFunctionAssemblies();
 
@@ -52,7 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.WebHost.AssemblyAnalysis
         public void AnalyzeFunctionAssemblies_NonExistentPath_LogsDiagnosticEvent()
         {
             // IsReadyToRunOptimized catches file-not-found and returns false (unoptimized).
-            var service = CreateService(CreateJobHost("D:/doesnotexist/nonexistent.dll"));
+            const string fakeDllPath = "D:/doesnotexist/nonexistent.dll";
+            var service = CreateService(CreateJobHost(fakeDllPath), Path.GetDirectoryName(fakeDllPath));
 
             service.AnalyzeFunctionAssemblies();
 
@@ -85,9 +87,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.WebHost.AssemblyAnalysis
         [Fact]
         public void AnalyzeFunctionAssemblies_DuplicateScriptFiles_ChecksOnce()
         {
-            // Two functions pointing to the same DLL should only trigger one diagnostic event,
-            // and the DLL should only be read once (deduped by checkedPaths).
+            // Two functions pointing to the same DLL should only trigger one diagnostic event
+            // because analysis stops at the first unoptimized assembly.
             string dllPath = typeof(AssemblyAnalysisServiceTests).Assembly.Location;
+            string scriptRoot = Path.GetDirectoryName(dllPath);
             var mockJobHost = new Mock<IScriptJobHost>();
 
             var metadata1 = new FunctionMetadata { Name = "Func1", ScriptFile = dllPath };
@@ -96,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.WebHost.AssemblyAnalysis
             var descriptor2 = new FunctionDescriptor("Func2", null, metadata2, null, null, null, null);
             mockJobHost.Setup(h => h.Functions).Returns(new[] { descriptor1, descriptor2 }.ToImmutableArray());
 
-            var service = CreateService(mockJobHost.Object);
+            var service = CreateService(mockJobHost.Object, scriptRoot);
 
             service.AnalyzeFunctionAssemblies();
 
@@ -120,13 +123,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.WebHost.AssemblyAnalysis
             Assert.Empty(_loggerProvider.GetAllLogMessages().Where(l => l.Level >= LogLevel.Warning));
         }
 
-        private TestableAssemblyAnalysisService CreateService(IScriptJobHost jobHost)
+        private TestableAssemblyAnalysisService CreateService(IScriptJobHost jobHost, string scriptRootPath = null)
         {
             return new TestableAssemblyAnalysisService(
                 _mockEnvironment.Object,
                 _loggerFactory,
                 _mockStandbyOptions.Object,
-                jobHost);
+                jobHost,
+                scriptRootPath);
         }
 
         private static IScriptJobHost CreateJobHost(string dllPath)
@@ -146,8 +150,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.WebHost.AssemblyAnalysis
                 IEnvironment environment,
                 ILoggerFactory loggerFactory,
                 IOptionsMonitor<StandbyOptions> standbyOptionsMonitor,
-                IScriptJobHost jobHost)
-                : base(environment, scriptHost: null, loggerFactory, standbyOptionsMonitor, applicationHostOptions: null)
+                IScriptJobHost jobHost,
+                string scriptRootPath = null)
+                : base(environment, scriptHost: null, loggerFactory, standbyOptionsMonitor,
+                    Options.Create(new ScriptApplicationHostOptions { ScriptPath = scriptRootPath }))
             {
                 _jobHost = jobHost;
             }
