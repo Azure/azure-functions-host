@@ -1,0 +1,82 @@
+{
+    "name": "azure-functions-nodejs-worker",
+    "author": "Microsoft Corporation",
+    "version": "3.12.0",
+    "description": "Microsoft Azure Functions NodeJS Worker",
+    "license": "(MIT OR Apache-2.0)",
+    "dependencies": {
+        "@azure/functions": "^3.5.0",
+        "@grpc/grpc-js": "^1.8.22",
+        "@grpc/proto-loader": "^0.7.8",
+        "blocked-at": "^1.2.0",
+        "fs-extra": "^10.0.1",
+        "globby": "^11.0.0",
+        "minimist": "^1.2.5",
+        "p-retry": "^4.0.0"
+    },
+    "devDependencies": {
+        "@types/blocked-at": "^1.0.1",
+        "@types/chai": "^4.2.22",
+        "@types/chai-as-promised": "^7.1.5",
+        "@types/fs-extra": "^9.0.13",
+        "@types/minimist": "^1.2.2",
+        "@types/mocha": "^2.2.48",
+        "@types/mock-fs": "^4.13.1",
+        "@types/node": "^16.9.6",
+        "@types/semver": "^7.3.9",
+        "@types/sinon": "^7.0.0",
+        "@types/uuid": "^8.3.4",
+        "@typescript-eslint/eslint-plugin": "^5.12.1",
+        "@typescript-eslint/parser": "^5.12.1",
+        "chai": "^4.2.0",
+        "chai-as-promised": "^7.1.1",
+        "escape-string-regexp": "^4.0.0",
+        "eslint": "^7.32.0",
+        "eslint-config-prettier": "^8.3.0",
+        "eslint-plugin-deprecation": "^1.3.2",
+        "eslint-plugin-header": "^3.1.1",
+        "eslint-plugin-import": "^2.29.0",
+        "eslint-plugin-prettier": "^4.0.0",
+        "eslint-plugin-simple-import-sort": "^10.0.0",
+        "minimist": "^1.2.6",
+        "mocha": "^11.1.0",
+        "mocha-junit-reporter": "^2.0.2",
+        "mocha-multi-reporters": "^1.5.1",
+        "mock-fs": "^5.1.2",
+        "prettier": "^2.4.1",
+        "protobufjs": "^7.2.5",
+        "protobufjs-cli": "^1.1.1",
+        "rimraf": "^2.6.3",
+        "semver": "^7.3.5",
+        "shx": "^0.3.3",
+        "sinon": "^7.0.0",
+        "ts-node": "^3.3.0",
+        "typescript": "^4.5.5",
+        "webpack": "^5.94.0",
+        "webpack-cli": "^4.8.0"
+    },
+    "homepage": "https://github.com/Azure/azure-functions-nodejs-worker",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Azure/azure-functions-nodejs-worker.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Azure/azure-functions-nodejs-worker/issues"
+    },
+    "scripts": {
+        "clean": "rimraf dist && rimraf azure-functions-language-worker-protobuf/src/rpc*",
+        "build": "rimraf dist && npm run gen && shx mkdir -p dist/azure-functions-language-worker-protobuf/src && shx cp azure-functions-language-worker-protobuf/src/rpc.* dist/azure-functions-language-worker-protobuf/src/. && tsc",
+        "gen": "node scripts/generateProtos.js",
+        "test": "mocha -r ts-node/register \"./test/**/*.ts\" --reporter mocha-multi-reporters --reporter-options configFile=test/mochaReporterOptions.json",
+        "lint": "eslint .",
+        "lint-fix": "eslint . --fix",
+        "format": "prettier . --write",
+        "updateVersion": "ts-node ./scripts/updateVersion.ts",
+        "watch": "tsc --watch",
+        "webpack": "webpack --mode production"
+    },
+    "files": [
+        "dist"
+    ],
+    "main": "dist/src/nodejsWorker.js"
+}
