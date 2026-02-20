@@ -4,9 +4,14 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "AzureWebJobsScriptRoot": "C:\\src\\azure-functions-host\\test-apps\\worker-startup-timeout-repro\\sample-app",
+        "languageWorkers__workersDirectory": "C:\\src\\azure-functions-host\\test-apps\\worker-startup-timeout-repro\\workers",
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "FUNCTIONS_WORKER_RUNTIME": "node",
+        "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
+        "FUNCTIONS_WORKER_RUNTIME_VERSION": "~20"
       },
-      "applicationUrl": "https://localhost:62513;http://localhost:62514"
+      "applicationUrl": "http://localhost:5050"
     }
   }
 }

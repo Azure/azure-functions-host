@@ -8,28 +8,27 @@ Functions Host to enter a permanent deadlock, returning 503 for all requests ind
 
 ## Quick Start
 
-```powershell
-cd <azure-functions-host repo root>
+1. Open `src\WebJobs.Script.WebHost\Properties\launchSettings.json` and verify the absolute paths
+   in `AzureWebJobsScriptRoot` and `languageWorkers__workersDirectory` match where you cloned the
+   repo. For example, if you cloned to `D:\repos\azure-functions-host`, update the paths to:
+   ```
+   "AzureWebJobsScriptRoot": "D:\\repos\\azure-functions-host\\test-apps\\worker-startup-timeout-repro\\sample-app",
+   "languageWorkers__workersDirectory": "D:\\repos\\azure-functions-host\\test-apps\\worker-startup-timeout-repro\\workers",
+   ```
 
-# Set environment variables
-$env:AzureWebJobsScriptRoot = "$PWD\test-apps\worker-startup-timeout-repro\sample-app"
-$env:FUNCTIONS_WORKER_RUNTIME = "node"
-$env:languageWorkers__workersDirectory = "$PWD\test-apps\worker-startup-timeout-repro\workers"
-$env:AzureWebJobsStorage = ""
-$env:FUNCTIONS_WORKER_RUNTIME_VERSION = "~20"
-$env:AzureWebJobsSecretStorageType = "files"
+2. Set **WebJobs.Script.WebHost** as the startup project and press **F5** to start debugging.
 
-# Run the host
-dotnet run --project src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj --no-launch-profile
-```
+3. Wait ~10 seconds, then in a terminal:
 
-Wait ~10 seconds, then in another terminal:
+   ```powershell
+   curl http://localhost:5050/api/hello
+   # → HTTP 503: Function host is not running.
+   # (This will never recover — the host is deadlocked)
+   ```
 
-```powershell
-curl http://localhost:5000/api/hello
-# → HTTP 503: Function host is not running.
-# (This will never recover — the host is deadlocked)
-```
+4. To inspect the deadlock, pause the debugger and open **Debug → Windows → Parallel Stacks**.
+   You will see the thread holding `_hostStartSemaphore` blocked on `.GetAwaiter().GetResult()`,
+   waiting for `RestartHostAsync` which is waiting for the same semaphore.
 
 ## How It Works
 
