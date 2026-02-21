@@ -15,18 +15,27 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities;
 /// </summary>
 public sealed class AppCapabilitiesChangeTokenSource : IOptionsChangeTokenSource<AppCapabilitiesOptions>, IDisposable
 {
-    private CancellationTokenSource _cts = new();
+    private CancellationTokenSource? _cts = new();
 
     public string Name => Options.DefaultName;
 
-    public IChangeToken GetChangeToken() => new CancellationChangeToken(_cts.Token);
+    public IChangeToken GetChangeToken()
+    {
+        var cts = _cts ?? throw new ObjectDisposedException(nameof(AppCapabilitiesChangeTokenSource));
+
+        return new CancellationChangeToken(cts.Token);
+    }
 
     public void TriggerChange()
     {
         var previousCts = Interlocked.Exchange(ref _cts, new CancellationTokenSource());
-        previousCts.Cancel();
-        previousCts.Dispose();
+        previousCts?.Cancel();
+        previousCts?.Dispose();
     }
 
-    public void Dispose() => _cts.Dispose();
+    public void Dispose()
+    {
+        var cts = Interlocked.Exchange(ref _cts, null);
+        cts?.Dispose();
+    }
 }
