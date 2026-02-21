@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        public void PublishWorkerInitResponseEvent(IDictionary<string, string> capabilities = null, WorkerMetadata workerMetadata = null)
+        public void PublishWorkerInitResponseEvent(IDictionary<string, string> capabilities = null, WorkerMetadata workerMetadata = null, IDictionary<string, string> appCapabilities = null)
         {
             StatusResult statusResult = new StatusResult()
             {
@@ -243,12 +243,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Result = statusResult
             };
 
-            if (capabilities != null)
+            if (capabilities is not null)
             {
                 initResponse.Capabilities.Add(capabilities);
             }
 
-            if (workerMetadata != null)
+            if (workerMetadata is not null)
             {
                 initResponse.WorkerMetadata = workerMetadata;
             }
@@ -258,6 +258,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 {
                     RuntimeVersion = ".Net"
                 };
+            }
+
+            if (appCapabilities is not null)
+            {
+                initResponse.AppCapabilities.Add(appCapabilities);
             }
 
             StreamingMessage responseMessage = new StreamingMessage()
