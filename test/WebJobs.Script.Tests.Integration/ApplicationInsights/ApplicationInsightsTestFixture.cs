@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             IOptionsChangeTokenSource<AppCapabilitiesOptions> optionsChangeTokenSource, IHttpProxyService httpProxyService)
             {
                 return new TestGrpcWorkerChannel(workerId, eventManager, hostManager, languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger,
-                    attemptCount, environment, applicationHostOptions, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions,capabilitiesStore, optionsChangeTokenSource, httpProxyService);
+                    attemptCount, environment, applicationHostOptions, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions, capabilitiesStore, optionsChangeTokenSource, httpProxyService);
             }
 
             private class TestGrpcWorkerChannel : GrpcWorkerChannel
