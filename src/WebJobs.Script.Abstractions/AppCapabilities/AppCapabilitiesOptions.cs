@@ -10,6 +10,11 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
     public sealed class AppCapabilitiesOptions
     {
+        /// <summary>
+        ///  Gets the capabilities of the current instance, represented as a dictionary of key-value pairs.
+        /// </summary>
+        /// <remarks>The keys in the dictionary are case-insensitive, allowing for flexible access to
+        /// capability values.</remarks>
         public Dictionary<string, string> Capabilities { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 }
