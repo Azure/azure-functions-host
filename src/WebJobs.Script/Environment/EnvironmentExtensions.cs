@@ -659,6 +659,10 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public static string GetFunctionsSiteUpdateId(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(FunctionsSiteUpdateId, string.Empty);
+        }
         public static string GetHttpLeaderEndpoint(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariableOrDefault(HttpLeaderEndpoint, string.Empty);
