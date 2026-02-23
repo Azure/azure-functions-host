@@ -1,0 +1,130 @@
+<Playlist Version="2.0">
+  <Rule Name="Includes" Match="Any">
+    <Rule Match="All">
+      <Property Name="Solution" />
+      <Rule Match="Any">
+        <Rule Match="All">
+          <Property Name="Project" Value="WebJobs.Script.Tests.Integration" />
+          <Rule Match="Any">
+            <Rule Match="All">
+              <Property Name="Namespace" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd" />
+              <Rule Match="Any">
+                <Rule Match="All">
+                  <Property Name="Class" Value="MultiLanguageEndToEndTests" />
+                  <Rule Match="Any">
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_MultipleLanguageProviders" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_MultipleLanguageProviders" />
+                      </Rule>
+                    </Rule>
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_SingleJavaLanguageProviders" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_SingleJavaLanguageProviders" />
+                      </Rule>
+                    </Rule>
+                  </Rule>
+                </Rule>
+              </Rule>
+            </Rule>
+            <Rule Match="All">
+              <Property Name="Namespace" Value="Microsoft.Azure.WebJobs.Script.Tests.CosmosDB" />
+              <Rule Match="Any">
+                <Rule Match="All">
+                  <Property Name="Class" Value="CosmosDBNodeEndToEndTests" />
+                  <Rule Match="Any">
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.CosmosDB.CosmosDBNodeEndToEndTests.CosmosDB" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.CosmosDB.CosmosDBNodeEndToEndTests.CosmosDB" />
+                      </Rule>
+                    </Rule>
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.CosmosDB.CosmosDBNodeEndToEndTests.CosmosDBMultipleItems" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.CosmosDB.CosmosDBNodeEndToEndTests.CosmosDBMultipleItems" />
+                      </Rule>
+                    </Rule>
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.CosmosDB.CosmosDBNodeEndToEndTests.CosmosDBTrigger" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.CosmosDB.CosmosDBNodeEndToEndTests.CosmosDBTrigger" />
+                      </Rule>
+                    </Rule>
+                  </Rule>
+                </Rule>
+              </Rule>
+            </Rule>
+            <Rule Match="All">
+              <Property Name="Namespace" Value="Microsoft.Azure.WebJobs.Script.Tests.EndToEnd" />
+              <Rule Match="Any">
+                <Rule Match="All">
+                  <Property Name="Class" Value="EndToEndTimeoutTests" />
+                  <Rule Match="Any">
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.EndToEndTimeoutTests.TimeoutTest_IgnoringToken_CSharp" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.EndToEndTimeoutTests.TimeoutTest_IgnoringToken_CSharp" />
+                      </Rule>
+                    </Rule>
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.EndToEndTimeoutTests.TimeoutTest_SyncFunction_CSharp" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.EndToEndTimeoutTests.TimeoutTest_SyncFunction_CSharp" />
+                      </Rule>
+                    </Rule>
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.EndToEndTimeoutTests.TimeoutTest_UsingToken_CSharp" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.EndToEndTimeoutTests.TimeoutTest_UsingToken_CSharp" />
+                      </Rule>
+                    </Rule>
+                  </Rule>
+                </Rule>
+              </Rule>
+            </Rule>
+            <Rule Match="All">
+              <Property Name="Namespace" Value="Microsoft.Azure.WebJobs.Script.Tests.Host" />
+              <Rule Match="Any">
+                <Rule Match="All">
+                  <Property Name="Class" Value="WebScriptHostManagerTimeoutTests" />
+                  <Rule Match="Any">
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Host.WebScriptHostManagerTimeoutTests.OnTimeoutException_IgnoreToken_StopsManager" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.Host.WebScriptHostManagerTimeoutTests.OnTimeoutException_IgnoreToken_StopsManager" />
+                      </Rule>
+                    </Rule>
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Host.WebScriptHostManagerTimeoutTests.OnTimeoutException_UsesToken_ManagerKeepsRunning" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.Host.WebScriptHostManagerTimeoutTests.OnTimeoutException_UsesToken_ManagerKeepsRunning" />
+                      </Rule>
+                    </Rule>
+                  </Rule>
+                </Rule>
+              </Rule>
+            </Rule>
+            <Rule Match="All">
+              <Property Name="Namespace" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host" />
+              <Rule Match="Any">
+                <Rule Match="All">
+                  <Property Name="Class" Value="WebJobsScriptHostServiceTests" />
+                  <Rule Match="Any">
+                    <Rule Match="All">
+                      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.WebJobsScriptHostServiceTests.GetHostKeys_DelaysUntilHostInitialized" />
+                      <Rule Match="Any">
+                        <Property Name="DisplayName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.WebJobsScriptHostServiceTests.GetHostKeys_DelaysUntilHostInitialized" />
+                      </Rule>
+                    </Rule>
+                  </Rule>
+                </Rule>
+              </Rule>
+            </Rule>
+          </Rule>
+        </Rule>
+      </Rule>
+    </Rule>
+  </Rule>
+</Playlist>

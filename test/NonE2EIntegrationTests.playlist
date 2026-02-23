@@ -1,0 +1,1495 @@
+<Playlist Version="2.0">
+  <Rule Name="Includes" Match="Any">
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.LogEvent_QueuesPendingEvent(eventName: &quot;Event1&quot;, expectedEventName: &quot;event1&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.LogEvent_QueuesPendingEvent(eventName: &quot;{ \&quot;AzureWebJobsStorage\&quot;: \&quot;DefaultEndpointsProto&quot;..., expectedEventName: &quot;{ \&quot;azurewebjobsstorage\&quot;: \&quot;[hidden credential]\&quot;&quot;...)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.LogEvent_AggregatesIntoExistingEvent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.LogEvent_Function_AggregatesIntoExistingEvent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.Complete_TimestampSet_CompletesEvent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.Complete_StopwatchSet_CompletesEvent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.BeginEvent_ReturnsEventHandle" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.EndEvent_CompletesPendingEvent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.LatencyEvent_CompletesPendingEvent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.EndEvent_AggregatesIntoExistingEvent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.EndEvent_Function_AggregatesIntoExistingEvent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.EndEvent_InvalidHandle_NoOp" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.TimerFlush_MultipleEventsQueued_EmitsExpectedEvents" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.TimerFlush_CalledOnExpectedInterval" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.Dispose_FlushesQueuedEvents" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.MetricsEventManager_BasicTest" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.ShortRunningFunction_Publishes_Function_EndEvent_To_MeshInitService" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.LongRunningFunction_Publishes_Function_InProgress_And_EndEvent_To_MeshInitService" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.MetricsEventManager_MultipleConcurrentShortFunctionExecutions" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.MetricsEventManager_MultipleConcurrentLongFunctionExecutions" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.MetricsEventManager_ActivityTimer_HandlesExceptions" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.MetricsEventManager_MultipleConcurrentFunctions" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.MetricsEventManager_NonParallelExecutionsShouldHaveDifferentExecutionId" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.GetAggregateKey_ReturnsExpectedValue(eventName: &quot;Event1&quot;, functionName: null, expected: &quot;event1&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.GetAggregateKey_ReturnsExpectedValue(eventName: &quot;Event1&quot;, functionName: &quot;&quot;, expected: &quot;event1&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.GetAggregateKey_ReturnsExpectedValue(eventName: &quot;Event1&quot;, functionName: &quot;Function1&quot;, expected: &quot;event1_function1&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.MetricsEventManagerTests.SystemEvent_DebugValue_ReturnsExpectedValue" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.Constructor_CreatesSecretPathIfNotExists(repositoryType: BlobStorage, sku: &quot;Dedicated&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.Constructor_CreatesSecretPathIfNotExists(repositoryType: BlobStorage, sku: &quot;Dynamic&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.Constructor_CreatesSecretPathIfNotExists(repositoryType: BlobStorageSas, sku: &quot;Dedicated&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.Constructor_CreatesSecretPathIfNotExists(repositoryType: FileSystem, sku: &quot;Dedicated&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.Constructor_CreatesSecretPathIfNotExists(repositoryType: KeyVault, sku: &quot;Dedicated&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.ReadAsync_ReadsExpectedFile(repositoryType: BlobStorage, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.ReadAsync_ReadsExpectedFile(repositoryType: BlobStorage, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.ReadAsync_ReadsExpectedFile(repositoryType: BlobStorageSas, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.ReadAsync_ReadsExpectedFile(repositoryType: BlobStorageSas, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.ReadAsync_ReadsExpectedFile(repositoryType: FileSystem, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.ReadAsync_ReadsExpectedFile(repositoryType: FileSystem, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.ReadAsync_ReadsExpectedFile(repositoryType: KeyVault, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.ReadAsync_ReadsExpectedFile(repositoryType: KeyVault, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.ReadAsync_ReadsExpectedKeyVaultPages(repositoryType: KeyVault, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.ReadAsync_ReadsExpectedKeyVaultPages(repositoryType: KeyVault, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_CreatesExpectedFile(repositoryType: BlobStorage, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_CreatesExpectedFile(repositoryType: BlobStorage, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_CreatesExpectedFile(repositoryType: BlobStorageSas, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_CreatesExpectedFile(repositoryType: BlobStorageSas, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_CreatesExpectedFile(repositoryType: FileSystem, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_CreatesExpectedFile(repositoryType: FileSystem, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_CreatesExpectedFile(repositoryType: KeyVault, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_CreatesExpectedFile(repositoryType: KeyVault, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_ChangeNotificationUpdatesExistingSecret(repositoryType: BlobStorage)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_ChangeNotificationUpdatesExistingSecret(repositoryType: BlobStorageSas)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.WriteAsync_ChangeNotificationUpdatesExistingSecret(repositoryType: FileSystem)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.FileSystemRepo_PurgeOldSecrets_RemovesOldAndKeepsCurrentSecrets" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.GetSecretSnapshots_ReturnsExpected(repositoryType: FileSystem, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.GetSecretSnapshots_ReturnsExpected(repositoryType: FileSystem, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.GetSecretSnapshots_ReturnsExpected(repositoryType: BlobStorage, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.GetSecretSnapshots_ReturnsExpected(repositoryType: BlobStorage, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.GetSecretSnapshots_ReturnsExpected(repositoryType: BlobStorageSas, secretsType: Host)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.GetSecretSnapshots_ReturnsExpected(repositoryType: BlobStorageSas, secretsType: Function)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.BlobRepository_WriteAsync_DoesNot_ClearBlobContents(repositoryType: BlobStorage)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.BlobRepository_WriteAsync_DoesNot_ClearBlobContents(repositoryType: BlobStorageSas)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.BlobRepository_SimultaneousWrites_Throws_PreconditionFailed(repositoryType: BlobStorage)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.BlobRepository_SimultaneousWrites_Throws_PreconditionFailed(repositoryType: BlobStorageSas)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.BlobRepository_SimultaneousCreates_Throws_Conflict(repositoryType: BlobStorage)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SecretsRepositoryTests.BlobRepository_SimultaneousCreates_Throws_Conflict(repositoryType: BlobStorageSas)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.StandbyInitializationTests.IsPlaceholderMode_ThroughoutInitialization_EvaluatesCorrectly" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.AcquireLockRequest_ReturnsCorrectLockHandle(status: BadRequest, lockId: &quot;testlock&quot;, ownerId: &quot;testowner&quot;, expectedLockId: null, expectedOwnerId: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.AcquireLockRequest_ReturnsCorrectLockHandle(status: OK, lockId: &quot;testlock&quot;, ownerId: &quot;testowner&quot;, expectedLockId: &quot;testlock&quot;, expectedOwnerId: &quot;testowner&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.AcquireLockRequest_UsesWebsiteinstanceIdIfOwnerMissing" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.AcquireLockRequestThrowsOnInvalidInput(lockId: &quot;&quot;, ownerId: &quot;&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.AcquireLockRequestThrowsOnInvalidInput(lockId: null, ownerId: &quot;&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.AcquireLockRequestThrowsOnInvalidInput(lockId: null, ownerId: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.AcquireLockRequestThrowsOnInvalidInput(lockId: &quot;&quot;, ownerId: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.AcquireLockRequestThrowsOnInvalidInput(lockId: &quot;&quot;, ownerId: &quot;testOwner&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.GetLockRequest_ReturnsCorrectLockHandle(status: BadRequest, lockId: &quot;testlock&quot;, ownerId: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.GetLockRequest_ReturnsCorrectLockHandle(status: OK, lockId: &quot;testlock&quot;, ownerId: &quot;testowner&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.GetLockRequest_ThrowsOnInvalidInput(lockId: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.GetLockRequest_ThrowsOnInvalidInput(lockId: &quot;&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.ReleaseLockRequest_ThrowsOnInvalidInput(lockId: &quot;&quot;, ownerId: &quot;&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.ReleaseLockRequest_ThrowsOnInvalidInput(lockId: null, ownerId: &quot;&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.GetRequestUri_UsesHttpLeaderEndpoint(leaderEndpoint: &quot;http://test-endpoint&quot;, pathAndQueryString: &quot;/testpath&quot;, expected: &quot;http://test-endpoint/lock/testpath&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.KubernetesDistributedLockManagerTests.GetRequestUri_UsesHttpLeaderEndpoint(leaderEndpoint: &quot;http://test-endpoint&quot;, pathAndQueryString: &quot;&quot;, expected: &quot;http://test-endpoint/lock&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.FunctionDispatcherEndToEndTests.InitializeWorkers_Retries_Succeed" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.LanguageWorkerChannelManagerEndToEndTests.InitializeAsync_DoNotInitialize_JavaWorker_ProxiesOnly" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.WorkerConcurrencyManagerEndToEndTests.WorkerStatus_NewWorkerAdded" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.FunctionGeneratorTests.Generate_EndToEnd" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.StringTextPlainResponse_Conneg" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.StringTextPlain" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.NullContentType_Ignored_Conneg" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.ByteArrayTextPlainResponse_Conneg" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.ByteArrayTextPlain" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.ObjectTextPlain" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.StringJson" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.ByteArrayJson" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.ObjectJson" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.StringXml" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.ByteArrayXmlResponse" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.ObjectXml" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.NodeContentTests.InitializeAsync_WorkerRuntime_Node_DoNotInitialize_JavaWorker" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.ListFunctions_Proxies_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.Proxy_Invoke_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.File_Extensions_Test(fileName: &quot;test.txt&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.File_Extensions_Test(fileName: &quot;test.asp&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.File_Extensions_Test(fileName: &quot;test.aspx&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.File_Extensions_Test(fileName: &quot;test.svc&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.File_Extensions_Test(fileName: &quot;test.html&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.File_Extensions_Test(fileName: &quot;test.css&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.File_Extensions_Test(fileName: &quot;test.js&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.RootCheck" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LocalFunctionCall" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LocalFunctionCall_ModifyResponse" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LocalFunctionCall_Redirect" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LocalFunctionCallWithAuth" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LocalFunctionInfiniteRedirectTest" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LocalFunctionCallWithoutProxy" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LocalFunctionRouteCallWithoutProxy" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LocalFunctionCallForNonAlphanumericProxyName" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.CatchAllApis" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.ColdStartRequest" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.TrailingSlashRemoved" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.TrailingSlashRemoved2" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.TrailingSlashKept" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.TrailingSlashKept2" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.CatchAllWithCustomRoutes" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.CatchAllWithCustomRoutesWithInvalidVerb" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LongQueryString" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LongRoute" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.ProxyCallingLocalProxy" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.LocalFunctionCallBodyOverride" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.ExternalCallBodyOverride" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.EmptyHeadReturnsContentType" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ProxyEndToEndTests.EmptyGetDoesntReturnsContentType" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.ApplicationInsights_InvocationsContainDifferentOperationIds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_ThreadUtilization" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_ResetsSharedLoadContext" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.ForNonReadOnlyFileSystem_RestartWorkerForSpecializationAndHotReload" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_RestartsWorkerForNonReadOnlyFileSystem" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_UsePlaceholderWorkerforReadOnlyFileSystem" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_RestartWorkerWithWorkerArguments" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.NoSpecialization_StartWorkerWithWorkerArguments" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_GCMode" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_ResetsSecretManagerRepository" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.StartAsync_SetsCorrectActiveHost_RefreshesLanguageWorkerOptions" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_LoadWebHookProviderAndRetrieveSecrets" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_CustomStartupRemovesAzureWebJobsStorage" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_CustomStartupAddsWebJobsStorage" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_JobHostInternalStorageOptionsUpdatesWithActiveHost" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(websiteSku: &quot;FlexConsumption&quot;, featureFlags: &quot;EnableMcpCustomHandlerPreview&quot;, isExpectedToResetWorkerRuntime: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(websiteSku: &quot;FlexConsumption&quot;, featureFlags: &quot;Feature1,EnableMcpCustomHandlerPreview&quot;, isExpectedToResetWorkerRuntime: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(websiteSku: &quot;FlexConsumption&quot;, featureFlags: &quot;Feature1&quot;, isExpectedToResetWorkerRuntime: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(websiteSku: &quot;FlexConsumption&quot;, featureFlags: null, isExpectedToResetWorkerRuntime: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(websiteSku: &quot;Dynamic&quot;, featureFlags: null, isExpectedToResetWorkerRuntime: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(websiteSku: &quot;Dynamic&quot;, featureFlags: &quot;EnableMcpCustomHandlerPreview&quot;, isExpectedToResetWorkerRuntime: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(websiteSku: &quot;Dynamic&quot;, featureFlags: &quot;Feature1,EnableMcpCustomHandlerPreview&quot;, isExpectedToResetWorkerRuntime: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(websiteSku: &quot;ElasticPremium&quot;, featureFlags: null, isExpectedToResetWorkerRuntime: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(websiteSku: &quot;ElasticPremium&quot;, featureFlags: &quot;Feature1,EnableMcpCustomHandlerPreview&quot;, isExpectedToResetWorkerRuntime: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_FlexSku_McpPreview_SetsWorkerRuntimeToCustom(websiteSku: &quot;&quot;, featureFlags: null, isExpectedToResetWorkerRuntime: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.DotNetIsolated_PlaceholderHit" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.DotNetIsolatedWithBundles_PlaceholderHit" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.ResponseCompressionWorksAfterSpecialization(acceptEncodingRequestHeaderValue: &quot;gzip&quot;, expectedContentEncodingResponseHeaderValue: &quot;gzip&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.ResponseCompressionWorksAfterSpecialization(acceptEncodingRequestHeaderValue: &quot;br&quot;, expectedContentEncodingResponseHeaderValue: &quot;br&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.ResponseCompressionWorksAfterSpecialization(acceptEncodingRequestHeaderValue: &quot;gzip, deflate, br&quot;, expectedContentEncodingResponseHeaderValue: &quot;br&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.ResponseCompressionWorksAfterSpecialization(acceptEncodingRequestHeaderValue: &quot;&quot;, expectedContentEncodingResponseHeaderValue: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_DotNetIsolatedApp_MissingAzureFunctionsDir_Logs" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_DynamicResolution_FallbackPath_Logs" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_DynamicResolution_Logs" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.DotNetIsolated_PlaceholderHit_WithProxies" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.DotNetIsolated_PlaceholderMiss_EnvVar" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.DotNetIsolated_PlaceholderMiss_Not64Bit" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.DotNetIsolated_PlaceholderMiss_DotNetVer" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.DotNetIsolated_PlaceholderMiss_UnsupportedWorkerPackage" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.DotNetIsolated_PlaceholderMiss_EmptyScriptRoot" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.SpecializedSite_StopsHostBeforeWorker" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.Specialization_Writes_WorkerStartupLogs" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.WarmupFunctionEndToEndTests.Warmup_Invoke_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.WarmupFunctionEndToEndTests.Normal_Api_Warmup_HttpTrigger_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.WarmupFunctionEndToEndTests.Proxy_Admin_Override_Fails" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.WarmupFunctionEndToEndTests.FunctionRoutes_Admin_Override_Fails" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Security.SecretManagerProviderTests.OptionsMonitor_OnChange_ResetsCurrent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Security.SecretManagerProviderTests.TryGetSecretsRepositoryType_ReturnsExpectedValue" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Security.SecretManagerProviderTests.SecretsEnabled_ReturnsExpectedValue" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.EndToEndTimeoutTests.TimeoutTest_SyncFunction_CSharp" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.EndToEndTimeoutTests.TimeoutTest_UsingToken_CSharp" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.EndToEnd.EndToEndTimeoutTests.TimeoutTest_IgnoringToken_CSharp" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Middleware.CustomHeadersMiddlewareCSharpEndToEndTests.CustomHeadersMiddlewareRootUrl" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Middleware.CustomHeadersMiddlewareCSharpEndToEndTests.CustomHeadersMiddlewareAdminUrl" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Middleware.CustomHeadersMiddlewareCSharpEndToEndTests.CustomHeadersMiddlewareHttpTriggerUrl" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Middleware.CustomHeadersMiddlewareCSharpEndToEndTests.CustomHeadersMiddlewareExtensionWebhookUrl" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Middleware.CustomHeadersMiddlewareNodeEndToEndTests.CustomHeadersMiddlewareRootUrl" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Middleware.CustomHeadersMiddlewareNodeEndToEndTests.CustomHeadersMiddlewareAdminUrl" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Middleware.CustomHeadersMiddlewareNodeEndToEndTests.CustomHeadersMiddlewareHttpTriggerUrl" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Middleware.CustomHeadersMiddlewareNodeEndToEndTests.CustomHeadersMiddlewareExtensionWebhookUrl" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.GetTriggersAsync_ReturnsExpectedContent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_StandbyMode_ReturnsFalse" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_LocalEnvironment_ReturnsFalse" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.ArmCacheEnabled_VerifyDefault" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_PostsExpectedContent(cacheEnabled: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_PostsExpectedContent(cacheEnabled: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_SecretsEnabled_ClearsSecretsCache" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_SecretsDisabled_DoesNotClearSecretsCache" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_BackgroundSync_DoesNotPostsEmptyContent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_BackgroundSync_PostsExpectedContent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_BackgroundSync_SetTriggersFailure_HashNotUpdated" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_NoDurableTaskHub_UsesBundles_V2DefaultsPosted" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_NoDurableTaskHub_DurableV1ExtensionJson_V1DefaultsPosted" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_NoDurableTaskHub_DurableV2ExtensionJson_CleanSiteName_V2DefaultsPosted" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_NoDurableTaskHub_DurableV2ExtensionJson_InvalidSiteName_V2DefaultsPosted" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_DurableV1ExtensionJson_V1ConfigPosted" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_DurableV2ExtensionJson_V2ConfigPosted" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_DurableV2ExtensionJson_StorageProviderPosted(scenarioName: &quot;DurableMsSQLProviderPayload&quot;, expectedPayload: &quot;DurableMsSQLProviderPayload&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_DurableV2ExtensionJson_StorageProviderPosted(scenarioName: &quot;DurableAdditionalPayload&quot;, expectedPayload: &quot;DurableMsSQLProviderPayload&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_DurableV2ExtensionJson_StorageProviderPosted(scenarioName: &quot;DurableHasHubNameAndOrchestrationConfig&quot;, expectedPayload: &quot;DurableHasHubNameAndOrchestrationConfigPayload&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_DurableV2ExtensionJson_StorageProviderPosted(scenarioName: &quot;DurableHasStorageAndActivityConfig&quot;, expectedPayload: &quot;DurableHasStorageAndActivityConfigPayload&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.TrySyncTriggers_DurableV2ExtensionJson_StorageProviderPosted(scenarioName: &quot;Empty&quot;, expectedPayload: &quot;EmptyDurablePayload&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.UpdateHashAsync_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.CheckAndUpdateHashAsync_ReturnsExpectedValue(storageConnectionString: &quot;&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.CheckAndUpdateHashAsync_ReturnsExpectedValue(storageConnectionString: &quot;notaconnectionstring&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.Disables_Ssl_If_SkipSslValidation_Enabled(skipSslValidation: 1, syncTriggersUri: &quot;http://sitename/operations/settriggers&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.Disables_Ssl_If_SkipSslValidation_Enabled(skipSslValidation: 0, syncTriggersUri: &quot;https://sitename/operations/settriggers&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.Use_Website_Name_If_Website_Hostname_Is_Not_Available(hostName: null, siteName: &quot;sitename&quot;, expectedSyncTriggersUri: &quot;https://sitename.azurewebsites.net/operations/sett&quot;...)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.Use_Website_Name_If_Website_Hostname_Is_Not_Available(hostName: &quot;hostname&quot;, siteName: null, expectedSyncTriggersUri: &quot;https://hostname/operations/settriggers&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.Managed_Kubernetes_Environment_SyncTrigger_Url_Validation(kubernetesServiceHost: &quot;KUBERNETES_SERVICE_HOST&quot;, expectedSyncTriggersUri: &quot;http://k8se-build-service.k8se-system.svc.cluster.&quot;...)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.Managed_Kubernetes_Environment_SyncTrigger_Url_Validation(kubernetesServiceHost: null, expectedSyncTriggersUri: &quot;https://appname.azurewebsites.net/operations/settr&quot;...)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.FunctionsSyncManagerTests.GetSyncTriggersPayload_DeduplicatesFunctionMetadataByName_KeepsFirstOccurrence" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.IsMSIEnabled_ReturnsMSIEndpointAndMSIStatus(msiSecret: null, msiEndpoint: null, expectedMsiEnabled: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.IsMSIEnabled_ReturnsMSIEndpointAndMSIStatus(msiSecret: &quot;&quot;, msiEndpoint: &quot;&quot;, expectedMsiEnabled: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.IsMSIEnabled_ReturnsMSIEndpointAndMSIStatus(msiSecret: &quot;secret&quot;, msiEndpoint: &quot;&quot;, expectedMsiEnabled: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.IsMSIEnabled_ReturnsMSIEndpointAndMSIStatus(msiSecret: &quot;&quot;, msiEndpoint: &quot;endpoint&quot;, expectedMsiEnabled: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.IsMSIEnabled_ReturnsMSIEndpointAndMSIStatus(msiSecret: &quot;secret&quot;, msiEndpoint: &quot;endpoint&quot;, expectedMsiEnabled: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.Returns_BYOS_EnvironmentVariables" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.Returns_Is_AzureFilesConfigured(connectionString: &quot;&quot;, contentShare: &quot;&quot;, isAzureFilesConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.Returns_Is_AzureFilesConfigured(connectionString: &quot;cs&quot;, contentShare: &quot;share&quot;, isAzureFilesConfigured: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.Returns_Is_AzureFilesConfigured(connectionString: &quot;cs&quot;, contentShare: &quot;&quot;, isAzureFilesConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.Returns_Is_AzureFilesConfigured(connectionString: &quot;cs&quot;, contentShare: null, isAzureFilesConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.Returns_Is_AzureFilesConfigured(connectionString: &quot;&quot;, contentShare: &quot;share&quot;, isAzureFilesConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.Returns_Is_AzureFilesConfigured(connectionString: null, contentShare: &quot;share&quot;, isAzureFilesConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Managment.HostAssignmentContextTests.Returns_Is_AzureFilesConfigured(connectionString: null, contentShare: null, isAzureFilesConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Host.WebScriptHostManagerTimeoutTests.OnTimeoutException_IgnoreToken_StopsManager" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Host.WebScriptHostManagerTimeoutTests.OnTimeoutException_UsesToken_ManagerKeepsRunning" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Host.WebScriptHostManagerTimeoutTests.OnTimeoutException_OOP_HasExpectedLogs" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.CosmosDB.CosmosDBNodeEndToEndTests.CosmosDBTrigger" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.CosmosDB.CosmosDBNodeEndToEndTests.CosmosDB" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.CosmosDB.CosmosDBNodeEndToEndTests.CosmosDBMultipleItems" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 204 (No content)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is empty." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The secret manager key delete is invoked." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 204 (No content)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is empty." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The secret manager key delete is invoked." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 204 (No content)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is empty." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The secret manager key delete is invoked." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 204 (No content)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is empty." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The secret manager key delete is invoked." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 200 (OK)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The function keys are retrieved from the secret manager." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is a valid list of keys." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The returned resource has a valid &apos;self&apos; link." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 200 (OK)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The function keys are retrieved from the secret manager." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is a valid list of keys." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The returned resource has a valid &apos;self&apos; link." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 200 (OK)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is the expected key." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 200 (OK)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is the expected key." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 200 (OK)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The function keys are retrieved from the secret manager." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is a valid list of keys." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The returned resource has a valid &apos;self&apos; link." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 201 (Created)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The Location header is set." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is the expected key." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The returned resource has a valid &apos;self&apos; link." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 201 (Created)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The Location header is set." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is the expected key." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The returned resource has a valid &apos;self&apos; link." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 201 (Created)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The Location header is set." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is the expected key." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The returned resource has a valid &apos;self&apos; link." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 201 (Created)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The Location header is set." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is the expected key." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The returned resource has a valid &apos;self&apos; link." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 201 (Created)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The Location header is set." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is the expected key." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The returned resource has a valid &apos;self&apos; link." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="HTTP Response status code is 201 (Created)." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The Location header is set." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Response body is the expected key." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="The returned resource has a valid &apos;self&apos; link." />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CodelessEndToEndTests.CodelessFunction_Invokes_HttpTrigger(path: &quot;Node&quot;, workerRuntime: &quot;node&quot;, allowedList: &quot;HttpTrigger&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CodelessEndToEndTests.CodelessFunction_Invokes_HttpTrigger(path: &quot;NoFunction&quot;, workerRuntime: &quot;node&quot;, allowedList: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CodelessEndToEndTests.CodelessFunction_Honors_allowedList(path: &quot;Node&quot;, workerRuntime: &quot;node&quot;, allowedList: &quot;HttpTrigger&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CodelessEndToEndTests.CodelessFunction_Honors_allowedList(path: &quot;NoFunction&quot;, workerRuntime: &quot;node&quot;, allowedList: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CodelessEndToEndTests.CodelessFunction_CanUse_MultipleProviders(path: &quot;Node&quot;, workerRuntime: &quot;node&quot;, allowedList: &quot;HttpTrigger&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CodelessEndToEndTests.CodelessFunction_CanUse_MultipleProviders(path: &quot;NoFunction&quot;, workerRuntime: &quot;node&quot;, allowedList: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CodelessEndToEndTests.CodelessFunction_DoesNot_ListFunctions(path: &quot;Node&quot;, workerRuntime: &quot;node&quot;, allowedList: &quot;HttpTrigger&quot;, listCount: 35)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CodelessEndToEndTests.CodelessFunction_DoesNot_ListFunctions(path: &quot;NoFunction&quot;, workerRuntime: &quot;node&quot;, allowedList: null, listCount: 0)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CodelessEndToEndTests.CodelessFunction_SyncTrigger_Succeeds(path: &quot;Node&quot;, workerRuntime: &quot;node&quot;, allowedList: &quot;HttpTrigger&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CodelessEndToEndTests.CodelessFunction_SyncTrigger_Succeeds(path: &quot;NoFunction&quot;, workerRuntime: &quot;node&quot;, allowedList: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CSharpPrecompiledEndToEndTests.InProc_ChoosesCorrectLanguage(functionWorkerRuntime: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.CSharpPrecompiledEndToEndTests.InProc_ChoosesCorrectLanguage(functionWorkerRuntime: &quot;dotnet&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.DiagnosticsEndToEndTests.FileLogger_IOExceptionDuringInvocation_Recovers" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.HostConfigurationExceptionTests.HostStatusReturns_IfHostJsonError" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;Authorization&quot;, issuer: null, audience: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;Authorization&quot;, issuer: &quot;https://appservice.core.azurewebsites.net&quot;, audience: &quot;https://testsite.azurewebsites.net&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;Authorization&quot;, issuer: &quot;https://appservice.core.azurewebsites.net&quot;, audience: &quot;https://testsite.azurewebsites.net/azurefunctions&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;Authorization&quot;, issuer: &quot;https://testsite.scm.azurewebsites.net&quot;, audience: &quot;https://testsite.azurewebsites.net&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;Authorization&quot;, issuer: &quot;https://testsite.scm.azurewebsites.net&quot;, audience: &quot;https://testsite.azurewebsites.net/azurefunctions&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;Authorization&quot;, issuer: &quot;https://testsite.azurewebsites.net&quot;, audience: &quot;https://testsite.azurewebsites.net&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;x-ms-site-token&quot;, issuer: null, audience: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;x-ms-site-token&quot;, issuer: &quot;https://appservice.core.azurewebsites.net&quot;, audience: &quot;https://testsite.azurewebsites.net&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;x-ms-site-token&quot;, issuer: &quot;https://AppService.Core.Azurewebsites.net&quot;, audience: &quot;https://TestSite.Azurewebsites.net&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;x-ms-site-token&quot;, issuer: &quot;https://appservice.core.azurewebsites.net&quot;, audience: &quot;https://testsite.azurewebsites.net/azurefunctions&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;x-ms-site-token&quot;, issuer: &quot;https://testsite.scm.azurewebsites.net&quot;, audience: &quot;https://testsite.azurewebsites.net&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;x-ms-site-token&quot;, issuer: &quot;https://testsite.scm.azurewebsites.net&quot;, audience: &quot;https://testsite.azurewebsites.net/azurefunctions&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_Succeeds(headerName: &quot;x-ms-site-token&quot;, issuer: &quot;https://testsite.azurewebsites.net&quot;, audience: &quot;https://testsite.azurewebsites.net&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_InvalidAudience_Fails(headerName: &quot;Authorization&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_InvalidAudience_Fails(headerName: &quot;x-ms-site-token&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_InvalidIssuer_Fails(headerName: &quot;Authorization&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_InvalidIssuer_Fails(headerName: &quot;x-ms-site-token&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_InvalidSignature_Fails(headerName: &quot;Authorization&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_InvalidSignature_Fails(headerName: &quot;x-ms-site-token&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeAdminApi_ValidToken_UTF8Encoding_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.JwtTokenAuthTests.InvokeNonAdminApi_InvalidToken_DoesNotLogTokenAuthFailure" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_MultipleLanguageProviders" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_SingleJavaLanguageProviders" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_SingleJavascriptLanguageProviders(enableDynamicWorkerResolution: True, functionWorkerRuntime: &quot;dotnet&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_SingleJavascriptLanguageProviders(enableDynamicWorkerResolution: False, functionWorkerRuntime: &quot;dotnet&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_SingleJavascriptLanguageProviders(enableDynamicWorkerResolution: True, functionWorkerRuntime: &quot;dotnet-isolated&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_SingleJavascriptLanguageProviders(enableDynamicWorkerResolution: False, functionWorkerRuntime: &quot;dotnet-isolated&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_NoLanguageProviders(enableDynamicWorkerResolution: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.MultiLanguageEndToEndTests.CodelessFunction_CanUse_NoLanguageProviders(enableDynamicWorkerResolution: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.NodeHostRestartEndToEndTests.JobHostRestart_StopsCreatingNewWorkers" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.SWAEndToEndTests.NoStorageConfigured_SecretsDisabled" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.SWAEndToEndTests.InvokeFunction_AnonymousLevel_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.SWAEndToEndTests.InvokeFunction_FunctionLevel_NoAuthToken_Fails" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.SWAEndToEndTests.InvokeFunction_FunctionLevel_ValidToken_Succeeds(headerName: &quot;Authorization&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.SWAEndToEndTests.InvokeFunction_FunctionLevel_ValidToken_Succeeds(headerName: &quot;x-ms-site-token&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.SWAEndToEndTests.SyncTriggers_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.WebHostStartupEndToEndTests.TransientError_DuringHostBuild_DoesNotDeadlock" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.WebJobsStartupEndToEndTests.ExternalStartup_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.WebJobsStartupEndToEndTests.InProcAppsWorkWithDotnetIsolatedAsFunctionWorkerRuntimeValue" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.WebJobsStartupEndToEndTests.ExternalStartup_InvalidOverwrite_StopsHost" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.WebJobsStartupEndToEndTests.ExternalConfigurationStartup_Exception_SetsErrorAndRetries" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd.WebJobsStartupEndToEndTests.ExternalStartup_Exception_SetsErrorAndRetries" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureBlobStorageProviderTests.TestAzureBlobStorageProvider_ConnectionInWebHostConfiguration" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureBlobStorageProviderTests.TestAzureBlobStorageProvider_ConnectionInJobHostConfiguration" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureBlobStorageProviderTests.TestAzureBlobStorageProvider_NoConnectionThrowsException" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureBlobStorageProviderTests.TestAzureBlobStorageProvider_JobHostConfigurationWinsConflict(connectionName: &quot;ConnectionStrings:AzureWebJobsStorage1&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureBlobStorageProviderTests.TestAzureBlobStorageProvider_JobHostConfigurationWinsConflict(connectionName: &quot;AzureWebJobsStorage1&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureBlobStorageProviderTests.TestAzureBlobStorageProvider_JobHostConfigurationWinsConflict(connectionName: &quot;Storage1&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureTableStorageProviderTests.TryCreateHostingTableServiceClient_ConnectionInWebHostConfiguration" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureTableStorageProviderTests.TryCreateHostingTableServiceClient_ConnectionInJobHostConfiguration" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureTableStorageProviderTests.TryCreateHostingTableServiceClient_IdentityBasedConnections(key: &quot;AzureWebJobsStorage:accountName&quot;, value: &quot;storage&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureTableStorageProviderTests.TryCreateHostingTableServiceClient_IdentityBasedConnections(key: &quot;AzureWebJobsStorage:AccountName&quot;, value: &quot;storage&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureTableStorageProviderTests.TryCreateHostingTableServiceClient_IdentityBasedConnections(key: &quot;AzureWebJobsStorage:tableServiceUri&quot;, value: &quot;https://mytable.functions&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureTableStorageProviderTests.TryCreateHostingTableServiceClient_IdentityBasedConnections(key: &quot;AzureWebJobsStorage:TableServiceUri&quot;, value: &quot;https://mytable.functions&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureTableStorageProviderTests.TryCreateHostingTableServiceClient_NoConnectionThrowsException" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureTableStorageProviderTests.TestAzureBlobStorageProvider_JobHostConfigurationWinsConflict(connectionName: &quot;ConnectionStrings:AzureWebJobsStorage1&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureTableStorageProviderTests.TestAzureBlobStorageProvider_JobHostConfigurationWinsConflict(connectionName: &quot;AzureWebJobsStorage1&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.AzureTableStorageProviderTests.TestAzureBlobStorageProvider_JobHostConfigurationWinsConflict(connectionName: &quot;Storage1&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.BlobServiceClientProviderTests.TestBlobStorageProvider_ConnectionName" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.BlobServiceClientProviderTests.TestBlobStorageProvider_ConnectionNameWithResolver" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.BlobServiceClientProviderTests.TestBlobStorageProvider_TryConnectionStringVariants(keyName: &quot;ConnectionStrings:AzureWebJobsStorage&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.BlobServiceClientProviderTests.TestBlobStorageProvider_TryConnectionStringVariants(keyName: &quot;AzureWebJobsStorage&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.StorageEndToEndTests.QueueTriggerToBlobRich" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.ExplicitStorageReferenceNotAllowedEndToEndTests.StorageV12TypesNotAllowed" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.TableServiceClientProviderTests.Create_ConnectionName" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.TableServiceClientProviderTests.Create_ConnectionNameWithResolver" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.TableServiceClientProviderTests.Create_TryConnectionStringVariants(keyName: &quot;ConnectionStrings:AzureWebJobsStorage&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage.TableServiceClientProviderTests.Create_TryConnectionStringVariants(keyName: &quot;AzureWebJobsStorage&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.InvalidStorageConnection_Handled" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.WriteMetricsAsync_PersistsMetrics" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.ReadWriteMetrics_IntegerConversion_HandlesLongs" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.ReadMetricsAsync_FiltersExpiredMetrics" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.ReadMetricsAsync_NoMetricsForMonitor_ReturnsEmpty" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.ReadMetricsAsync_InvalidMonitor_ReturnsEmpty" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.TableRead_ManyRows_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.WriteAsync_RollsToNewTable" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.QueueBackgroundMetricsTablePurge_PurgesTables" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.LogStorageException_LogsDetails" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale.TableStorageScaleMetricsRepositoryTests.WriteMetricsAsync_PersistsMultipleBatchesCorrectly" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware.AllowSynchronousIOMiddlewareTests.SyncRead_Fails_ByDefault" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware.AllowSynchronousIOMiddlewareTests.SyncRead_Succeeds_WithFlag" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware.AllowSynchronousIOMiddlewareTests.SyncRead_Succeeds_InV2CompatMode" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware.AllowSynchronousIOMiddlewareTests.SyncDownload_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware.FunctionInvocationMiddlewareTests.RequiresAuthz_ReturnsExpectedResult" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.AzureStorageInfoValueTests.Builds_AzureStorageInfoValue(id: null, type: null, accountName: null, shareName: null, accessKey: null, mountPath: null, protocol: null, isValid: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.AzureStorageInfoValueTests.Builds_AzureStorageInfoValue(id: &quot;&quot;, type: null, accountName: &quot;&quot;, shareName: &quot;&quot;, accessKey: &quot;&quot;, mountPath: &quot;&quot;, protocol: &quot;&quot;, isValid: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.AzureStorageInfoValueTests.Builds_AzureStorageInfoValue(id: &quot;AZUREFILESSTORAGE_storageid&quot;, type: AzureFiles, accountName: &quot;&quot;, shareName: &quot;&quot;, accessKey: &quot;&quot;, mountPath: &quot;&quot;, protocol: &quot;&quot;, isValid: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.AzureStorageInfoValueTests.Builds_AzureStorageInfoValue(id: &quot;AZUREBLOBSTORAGE_storageid&quot;, type: AzureBlob, accountName: &quot;&quot;, shareName: &quot;&quot;, accessKey: &quot;&quot;, mountPath: &quot;&quot;, protocol: &quot;&quot;, isValid: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.AzureStorageInfoValueTests.Builds_AzureStorageInfoValue(id: &quot;AZUREFILESSTORAGE_storageid&quot;, type: AzureFiles, accountName: &quot;&quot;, shareName: &quot;sharename&quot;, accessKey: &quot;accesskey&quot;, mountPath: &quot;mountpath&quot;, protocol: &quot;&quot;, isValid: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.AzureStorageInfoValueTests.Builds_AzureStorageInfoValue(id: &quot;AZUREFILESSTORAGE_storageid&quot;, type: AzureFiles, accountName: &quot;accountname&quot;, shareName: &quot;sharename&quot;, accessKey: &quot;accesskey&quot;, mountPath: &quot;mountpath&quot;, protocol: &quot;&quot;, isValid: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.AzureStorageInfoValueTests.Builds_AzureStorageInfoValue(id: &quot;AZUREFILESSTORAGE_storageid&quot;, type: AzureFiles, accountName: &quot;accountname&quot;, shareName: &quot;sharename&quot;, accessKey: &quot;accesskey&quot;, mountPath: &quot;mountpath&quot;, protocol: &quot;smb&quot;, isValid: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.AzureStorageInfoValueTests.Builds_AzureStorageInfoValue(id: &quot;AZUREBLOBSTORAGE_storageid&quot;, type: AzureBlob, accountName: &quot;accountname&quot;, shareName: &quot;&quot;, accessKey: &quot;accesskey&quot;, mountPath: &quot;mountpath&quot;, protocol: &quot;&quot;, isValid: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.AzureStorageInfoValueTests.Builds_AzureStorageInfoValue(id: &quot;AZUREBLOBSTORAGE_storageid&quot;, type: AzureBlob, accountName: &quot;accountname&quot;, shareName: &quot;sharename&quot;, accessKey: &quot;accesskey&quot;, mountPath: &quot;mountpath&quot;, protocol: &quot;&quot;, isValid: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.AzureStorageInfoValueTests.Builds_AzureStorageInfoValue(id: &quot;AZUREFILESSTORAGE_storageid&quot;, type: AzureFiles, accountName: &quot;accountname&quot;, shareName: &quot;sharename&quot;, accessKey: &quot;accesskey&quot;, mountPath: &quot;mountpath&quot;, protocol: &quot;http&quot;, isValid: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.ContainerFunctionExecutionActivityTests.Activity_Equals_Itself" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.ContainerFunctionExecutionActivityTests.Comparison_Ignores_EventTime" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.ContainerFunctionExecutionActivityTests.Comparison_Returns_Expected_Results(expected: True, functionName1: &quot;&quot;, functionName2: &quot;&quot;, stage1: InProgress, stage2: InProgress, triggerType1: &quot;&quot;, triggerType2: &quot;&quot;, success1: False, success2: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.ContainerFunctionExecutionActivityTests.Comparison_Returns_Expected_Results(expected: False, functionName1: &quot;func-1&quot;, functionName2: &quot;&quot;, stage1: InProgress, stage2: InProgress, triggerType1: &quot;&quot;, triggerType2: &quot;&quot;, success1: False, success2: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.ContainerFunctionExecutionActivityTests.Comparison_Returns_Expected_Results(expected: False, functionName1: &quot;func-1&quot;, functionName2: &quot;func-1&quot;, stage1: Finished, stage2: InProgress, triggerType1: &quot;&quot;, triggerType2: &quot;&quot;, success1: False, success2: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.ContainerFunctionExecutionActivityTests.Comparison_Returns_Expected_Results(expected: False, functionName1: &quot;func-1&quot;, functionName2: &quot;func-1&quot;, stage1: Finished, stage2: Finished, triggerType1: &quot;trigger-1&quot;, triggerType2: &quot;&quot;, success1: False, success2: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.ContainerFunctionExecutionActivityTests.Comparison_Returns_Expected_Results(expected: False, functionName1: &quot;func-1&quot;, functionName2: &quot;func-1&quot;, stage1: Finished, stage2: Finished, triggerType1: &quot;trigger-1&quot;, triggerType2: &quot;trigger-1&quot;, success1: False, success2: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.LinuxContainerActivityPublisherTests.PublishesFunctionExecutionActivity" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.LinuxContainerActivityPublisherTests.PublishesSpecializationCompleteEvent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.LinuxContainerActivityPublisherTests.DoesNotPublishExecutionActivityInStandbyMode" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.LinuxContainerActivityPublisherTests.InitializingPublisherThrowsExceptionForNonLinuxConsumptionApps" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.LinuxContainerActivityPublisherTests.PublishesUniqueFunctionExecutionActivitiesOnly" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.MeshServiceClientTests.MountsCifsShare" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.MeshServiceClientTests.MountsFuseShare" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.MeshServiceClientTests.PublishesFunctionExecutionStatus" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.MeshServiceClientTests.PublishesAllFunctionExecutionActivities" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.MeshServiceClientTests.PublishesAllFunctionExecutionActivitiesEvenInCaseOfExceptions" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.MeshServiceClientTests.CreatesBindMount" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.MeshServiceClientTests.IgnoresGlobalSerializer" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;SCM_RUN_FROM_PACKAGE&quot;, url: &quot;http://url/file.zip&quot;, blobExists: True, scmRunFromPackageConfigured: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;SCM_RUN_FROM_PACKAGE&quot;, url: &quot;http://url/file.zip&quot;, blobExists: False, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;SCM_RUN_FROM_PACKAGE&quot;, url: &quot;1&quot;, blobExists: True, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;SCM_RUN_FROM_PACKAGE&quot;, url: &quot;1&quot;, blobExists: False, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;SCM_RUN_FROM_PACKAGE&quot;, url: &quot;&quot;, blobExists: True, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;SCM_RUN_FROM_PACKAGE&quot;, url: &quot;&quot;, blobExists: False, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;SCM_RUN_FROM_PACKAGE&quot;, url: null, blobExists: True, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;SCM_RUN_FROM_PACKAGE&quot;, url: null, blobExists: False, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;WEBSITE_RUN_FROM_PACKAGE&quot;, url: &quot;http://url/file.zip&quot;, blobExists: True, scmRunFromPackageConfigured: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;WEBSITE_RUN_FROM_PACKAGE&quot;, url: &quot;http://url/file.zip&quot;, blobExists: False, scmRunFromPackageConfigured: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;WEBSITE_RUN_FROM_PACKAGE&quot;, url: &quot;1&quot;, blobExists: True, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;WEBSITE_RUN_FROM_PACKAGE&quot;, url: &quot;1&quot;, blobExists: False, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;WEBSITE_RUN_FROM_PACKAGE&quot;, url: &quot;&quot;, blobExists: True, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;WEBSITE_RUN_FROM_PACKAGE&quot;, url: &quot;&quot;, blobExists: False, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;WEBSITE_RUN_FROM_PACKAGE&quot;, url: null, blobExists: True, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_IsRunFromPackage(environmentVariableName: &quot;WEBSITE_RUN_FROM_PACKAGE&quot;, url: null, blobExists: False, scmRunFromPackageConfigured: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_ScmRunFromPackage(environmentVariableName: &quot;SCM_RUN_FROM_PACKAGE&quot;, isScmRunFromPackage: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_ScmRunFromPackage(environmentVariableName: &quot;WEBSITE_RUN_FROM_PACKAGE&quot;, isScmRunFromPackage: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_ScmRunFromPackage(environmentVariableName: &quot;WEBSITE_USE_ZIP&quot;, isScmRunFromPackage: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Management.RunFromPackageContextTests.Returns_ScmRunFromPackage(environmentVariableName: &quot;WEBSITE_RUN_FROM_ZIP&quot;, isScmRunFromPackage: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.BlobStorageSecretsRepositoryTests.BlobRepository_TierSetToArchive_ReadAsync_Logs_DiagnosticEvent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.HostIdValidatorTests.ScheduleValidation_Succeeds(storageConfigured: False, expectHostIdInfo: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.HostIdValidatorTests.ScheduleValidation_Succeeds(storageConfigured: True, expectHostIdInfo: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.HostIdValidatorTests.ValidateHostIdUsageAsync_ExistingHostIdInfoMatches_Succeeds" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.HostIdValidatorTests.ValidateHostIdUsageAsync_Collision_WarningLevel_Logs" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.HostIdValidatorTests.ValidateHostIdUsageAsync_Collision_ErrorLevel_LogsAndStopsApplication(level: null)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.HostIdValidatorTests.ValidateHostIdUsageAsync_Collision_ErrorLevel_LogsAndStopsApplication(level: &quot;Error&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.HostIdValidatorTests.ValidateHostIdUsageAsync_Collision_ErrorLevel_LogsAndStopsApplication(level: &quot;None&quot;)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.HostIdValidatorTests.WriteHostIdAsync_ExistingBlob_HandlesCollision(collision: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.HostIdValidatorTests.WriteHostIdAsync_ExistingBlob_HandlesCollision(collision: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.WebJobsScriptHostServiceTests.GetHostKeys_DelaysUntilHostInitialized" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.WebJobsScriptHostServiceTests.InitializationLogs_AreEmitted" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.WebJobsScriptHostServiceTests.WebHookProvider_IsRegistered" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.WebJobsScriptHostServiceTests.HostHealthMonitor_TriggersShutdown_WhenHostUnhealthy" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.WebJobsScriptHostServiceTests.HostHealthMonitor_RestartsSuccessfully_WhenHostRecovers" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.WebJobsScriptHostServiceTests.IsHostHealthy_ReturnsExpectedResult" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.WebJobsScriptHostServiceTests.Restarts_CanCancel_Restarts" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs.EventHubsEndToEndTestsBase.EventHub" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.TimerFlush_CalledOnExpectedInterval" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.TimerFlush_NotStartedWithRepositoryDisabled" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.WriteDiagnostic_LogsError_WhenHostIdNotSet" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.WriteDiagnostic_HasTheCorrectHitCount_WhenCalledFromMultipleThreadsConcurrently" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.GetDiagnosticEventsTable_ReturnsExpectedValue_WhenSpecialized" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.GetDiagnosticEventsTable_LogsError_StorageConnectionStringIsNotPresent" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.QueueBackgroundDiagnosticsEventsTablePurge_PurgesTables" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.QueueBackgroundDiagnosticsEventsTablePurge_PurgesOnlyDiagnosticTables" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.FlushLogs_OnPrimaryHost_DoesNotTryToPurgeEvents_WhenTableClientNotInitialized" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.FlushLogs_OnPrimaryHost_PurgesPreviousEventVersionTables(testEventVersion: &quot;&quot;, expectedTableCount: 0, fillTable: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.FlushLogs_OnPrimaryHost_PurgesPreviousEventVersionTables(testEventVersion: &quot;2021-01-01&quot;, expectedTableCount: 0, fillTable: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.FlushLogs_OnPrimaryHost_PurgesPreviousEventVersionTables(testEventVersion: &quot;2024-05-01&quot;, expectedTableCount: 1, fillTable: True)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.FlushLogs_OnPrimaryHost_PurgesPreviousEventVersionTables(testEventVersion: &quot;anything&quot;, expectedTableCount: 1, fillTable: False)" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.ExecuteBatchAsync_WritesToTableStorage" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.FlushLogs_WritesToTableStorage" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.ExecuteBatchAsync_LogsError" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.Dispose_DoesNotInvokeStorageProvider" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.Dispose_DoesNotInvokeStorageProvider_WhenNotInPlaceholderModeAndNotInitialized" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics.DiagnosticEventTableStorageRepositoryTests.FlushLogs_DisablesService_NoPermissions" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers.WarmupScenarios.TestWarmupEndPoint_WhenHostStarts" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsCSharpEndToEndTests.Validate_Manual" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsCSharpEndToEndTests.Validate_Http_Success" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsCSharpEndToEndTests.Validate_Http_Failure" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsCSharpEndToEndTests.Validate_Http_Throw" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsCSharpEndToEndTests.Validate_HostLogs" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsCSharpEndToEndTests.Validate_BeginScope" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsIgnoredNodeEndToEndTests.Validate_Manual" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsNodeEndToEndTests.Validate_Manual" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsNodeEndToEndTests.Validate_Http_Success" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsNodeEndToEndTests.Validate_Http_Failure" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsNodeEndToEndTests.Validate_Http_Throw" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsNodeEndToEndTests.Validate_HostLogs" />
+    </Rule>
+    <Rule Match="All">
+      <Property Name="TestWithNormalizedFullyQualifiedName" Value="Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights.ApplicationInsightsNodeEndToEndTests.Validate_BeginScope" />
+    </Rule>
+  </Rule>
+</Playlist>
