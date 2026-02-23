@@ -10,6 +10,14 @@ jobs:
   variables:
     test_projects: test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj
 
+  templateContext:
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish test results (TRX)
+      path: $(Agent.TempDirectory)/TestResults
+      artifact: NonE2EIntegrationTests_TRX
+      condition: succeededOrFailed()
+
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
@@ -94,6 +102,7 @@ jobs:
 
   - task: DotNetCoreCLI@2
     displayName: Non-E2E integration tests
+    timeoutInMinutes: 30
     inputs:
       command: test
       testRunTitle: Non-E2E integration tests

@@ -17,6 +17,11 @@ jobs:
       path: $(Build.ArtifactStagingDirectory)
       artifact: WebHost_Deps
       condition: and(failed(), eq(variables['System.JobAttempt'], 1)) # only publish on first attempt
+    - output: pipelineArtifact
+      displayName: Publish test results (TRX)
+      path: $(Agent.TempDirectory)/TestResults
+      artifact: UnitTests_TRX
+      condition: succeededOrFailed()
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self

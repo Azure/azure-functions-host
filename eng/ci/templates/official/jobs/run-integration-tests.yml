@@ -12,6 +12,14 @@ jobs:
     is_release: $[contains(variables['Build.SourceBranch'], 'release/')]
     test_args: -c release --no-build
 
+  templateContext:
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish test results (TRX)
+      path: $(Agent.TempDirectory)/TestResults
+      artifact: E2EIntegrationTests_TRX
+      condition: succeededOrFailed()
+
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
@@ -157,6 +165,7 @@ jobs:
   - task: DotNetCoreCLI@2
     displayName: Samples end to end tests
     condition: succeededOrFailed()
+    timeoutInMinutes: 30
     inputs:
       command: test
       testRunTitle: Samples end to end tests
