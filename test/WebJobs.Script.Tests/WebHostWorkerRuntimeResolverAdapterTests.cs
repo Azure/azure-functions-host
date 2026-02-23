@@ -231,6 +231,61 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
         }
 
         [Fact]
+        public void GetWorkerRuntime_CachesNullEnvironmentValue()
+        {
+            var environment = new Mock<IEnvironment>(MockBehavior.Strict);
+            environment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
+                .Returns((string)null);
+
+            var serviceMap = new Dictionary<Type, object>();
+            var scriptHostManager = new TestScriptHostService(ScriptSettingsManager.BuildDefaultConfiguration(), serviceMap);
+
+            var services = new ServiceCollection();
+            services.AddSingleton<IScriptHostManager>(scriptHostManager);
+            var serviceProvider = services.BuildServiceProvider();
+
+            var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+
+            var result1 = adapter.GetWorkerRuntime(defaultValue: "fallback");
+            var result2 = adapter.GetWorkerRuntime(defaultValue: "fallback");
+            var result3 = adapter.GetWorkerRuntime(defaultValue: "fallback");
+
+            Assert.Equal("fallback", result1);
+            Assert.Equal("fallback", result2);
+            Assert.Equal("fallback", result3);
+            environment.Verify(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime), Times.Once);
+        }
+
+        [Fact]
+        public void GetWorkerRuntime_ActiveHostChanged_ClearsEnvironmentCache()
+        {
+            var environment = new Mock<IEnvironment>(MockBehavior.Strict);
+            environment.SetupSequence(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
+                .Returns((string)null)
+                .Returns("python");
+
+            var serviceMap = new Dictionary<Type, object>();
+            var scriptHostManager = new TestScriptHostService(ScriptSettingsManager.BuildDefaultConfiguration(), serviceMap);
+
+            var services = new ServiceCollection();
+            services.AddSingleton<IScriptHostManager>(scriptHostManager);
+            var serviceProvider = services.BuildServiceProvider();
+
+            var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+
+            var result1 = adapter.GetWorkerRuntime(defaultValue: "fallback");
+            Assert.Equal("fallback", result1);
+
+            // Simulate specialization: host changed, environment now has a value
+            scriptHostManager.OnActiveHostChanged();
+
+            var result2 = adapter.GetWorkerRuntime(defaultValue: "fallback");
+            Assert.Equal("python", result2);
+        }
+
+        [Fact]
         public void GetWorkerRuntime_Concurrency_ResolvesOnceAndCaches()
         {
             var resolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);

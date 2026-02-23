@@ -160,7 +160,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
             var testEnvironment = new TestEnvironment();
-            //testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
 
             var workerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);

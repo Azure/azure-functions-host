@@ -830,9 +830,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             logger.LogHostInitializationSettings(originalFunctionsWorkerRuntime, functionWorkerRuntime, originalFunctionsWorkerRuntimeVersion, functionWorkerRuntimeVersion,
-    functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict, hisMode, adminIsolationEnabled,
-    functionsSiteUpdateId);
-
+                functionExtensionVersion, currentDirectory, inStandbyMode, hasBeenSpecialized, usePlaceholderDotNetIsolated, websiteSku, featureFlags, hostingConfigDict, hisMode, adminIsolationEnabled,
+                functionsSiteUpdateId);
         }
 
         private void OnHostHealthCheckTimer(object state)

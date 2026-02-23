@@ -17,6 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
     /// </summary>
     internal sealed class WebHostWorkerRuntimeResolverAdapter : IWorkerRuntimeResolver, IDisposable
     {
+        // Sentinel used to distinguish "not yet resolved" (null) from "resolved to empty/missing".
+        // Uses new string instance (not interned) so ReferenceEquals can reliably identify it.
+        private static readonly string EnvironmentValueNotSet = new(' ', 0);
+
         private readonly IServiceProvider _rootProvider;
         private readonly ILogger<WebHostWorkerRuntimeResolverAdapter> _logger;
         private readonly IEnvironment _environment;
@@ -82,6 +86,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                     return existing ?? valueFromEnvironment;
                 }
 
+                // Cache the "not set" result so we don't re-read the environment on every call.
+                Interlocked.CompareExchange(ref _cachedEnvironmentValue, EnvironmentValueNotSet, comparand: null);
+
+                return defaultValue;
+            }
+
+            if (ReferenceEquals(cachedValue, EnvironmentValueNotSet))
+            {
                 return defaultValue;
             }
 
@@ -128,8 +140,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         private void OnActiveHostChanged(object sender, ActiveHostChangedEventArgs e)
         {
-            // Clear cached resolver when active host changes (host restart/rebuild)
+            // Clear cached resolver and environment value when active host changes (host restart/rebuild).
+            // The environment value may have changed during specialization.
             Interlocked.Exchange(ref _cachedHostResolver, null);
+            Interlocked.Exchange(ref _cachedEnvironmentValue, null);
             _logger.ActiveHostChangedResolverCleared();
         }
     }

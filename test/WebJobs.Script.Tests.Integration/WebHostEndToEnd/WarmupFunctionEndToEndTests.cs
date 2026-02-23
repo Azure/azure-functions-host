@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 };
 
                 var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
-                var provider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), mockWorkerRuntimeResolver.Object);
+                _ = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), mockWorkerRuntimeResolver.Object);
 
                 var builder = AspNetCore.WebHost.CreateDefaultBuilder()
                    .UseStartup<Startup>()

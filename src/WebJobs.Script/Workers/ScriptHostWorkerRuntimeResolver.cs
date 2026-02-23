@@ -10,6 +10,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     /// <summary>
     /// Resolves the worker runtime for the current script host instance.
+    /// At this scope, the functions worker runtime is expected to be present;
+    /// the hosting infrastructure only reaches this point after the runtime
+    /// has been configured (e.g., via environment variables or specialization).
     /// </summary>
     internal sealed class ScriptHostWorkerRuntimeResolver : IWorkerRuntimeResolver
     {

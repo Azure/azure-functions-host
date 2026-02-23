@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal async void ShutdownWebhostLanguageWorkerChannels()
         {
-            _logger.LogDebug("{workerRuntimeConstant}={value}. Will shutdown all the worker channels that started in placeholder mode", "Functions worker runtime", _workerRuntime);
+            _logger.LogDebug("Worker runtime={value}. Will shutdown all the worker channels that started in placeholder mode", _workerRuntime);
             await _webHostLanguageWorkerChannelManager?.ShutdownChannelsAsync();
         }
 
