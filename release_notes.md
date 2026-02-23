@@ -12,3 +12,4 @@
 - Fixed worker configuration cache invalidation to properly refresh language worker options during host restarts with extension bundles (#11582)
 - Logging environment value of LocalSitePackagesPath in RunFromPackageHandler (#11541)
 - Improve timer trigger schedule validation for all consumption plans: accept 5 and 6-digit CRON expressions, apply validation to all consumption SKUs, and warn on non-CRON schedules for Linux Consumption (#11601)
+- Update NodeJS Worker Version to [3.13.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.13.0)
