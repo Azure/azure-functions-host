@@ -52,11 +52,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             else
             {
-                workerRuntime = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.FunctionWorkerRuntime, defaultValue);
+                workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             }
 
-            var existing = Interlocked.CompareExchange(ref _resolvedWorkerRuntime, workerRuntime, comparand: null);
-            return existing ?? workerRuntime;
+            // Only cache non-null resolved values. Default values should not be cached
+            // as they may differ across callers.
+            if (workerRuntime is not null)
+            {
+                var existing = Interlocked.CompareExchange(ref _resolvedWorkerRuntime, workerRuntime, comparand: null);
+                return existing ?? workerRuntime;
+            }
+
+            return defaultValue;
         }
     }
 }

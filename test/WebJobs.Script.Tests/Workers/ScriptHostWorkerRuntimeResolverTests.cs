@@ -100,6 +100,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         }
 
         [Fact]
+        public void GetWorkerRuntime_DoesNotCacheDefaultValue()
+        {
+            var environmentMock = new Mock<IEnvironment>(MockBehavior.Strict);
+            environmentMock
+                .Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
+                .Returns((string)null);
+
+            var scriptJobHostOptions = CreateOptionsMonitor(null);
+            var resolver = new ScriptHostWorkerRuntimeResolver(environmentMock.Object, scriptJobHostOptions);
+
+            var result1 = resolver.GetWorkerRuntime(defaultValue: string.Empty);
+            var result2 = resolver.GetWorkerRuntime();
+
+            Assert.Equal(string.Empty, result1);
+            Assert.Null(result2);
+        }
+
+        [Fact]
         public void Ctor_ThrowsArgumentNullException_WhenEnvironmentIsNull()
         {
             var scriptJobHostOptions = CreateOptionsMonitor(null);
