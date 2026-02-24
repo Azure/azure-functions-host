@@ -202,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
-                _mockConfig, new TestScriptEventManager(), _hostMetrics, 
+                _mockConfig, new TestScriptEventManager(), _hostMetrics,
                 _mockWorkerRuntimeResolver.Object, _functionsHostingConfigOptions, _workerConfigCacheInvalidator);
 
             await _hostService.StartAsync(CancellationToken.None);
@@ -251,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
-                _mockConfig, new TestScriptEventManager(), _hostMetrics, 
+                _mockConfig, new TestScriptEventManager(), _hostMetrics,
                 _mockWorkerRuntimeResolver.Object, _functionsHostingConfigOptions, _workerConfigCacheInvalidator);
 
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
@@ -471,7 +471,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
                new Mock<IApplicationLifetime>().Object, _mockConfig,
-               new TestScriptEventManager(), _hostMetrics, 
+               new TestScriptEventManager(), _hostMetrics,
                _mockWorkerRuntimeResolver.Object, _functionsHostingConfigOptions, _workerConfigCacheInvalidator);
 
             // Simulate a call to specialize coming from the PlaceholderSpecializationMiddleware. This
