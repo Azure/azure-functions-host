@@ -316,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void SetupFunctionBuffers_Verify_ReadyForInvocation_Returns_False()
         {
-            CreateDefaultWorkerChannel();
+            CreateDefaultWorkerChannel(autoStart: false);
             Assert.False(_workerChannel.IsChannelReadyForInvocations());
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             Assert.False(_workerChannel.IsChannelReadyForInvocations());
