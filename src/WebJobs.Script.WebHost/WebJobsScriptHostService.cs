@@ -64,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IHostMetrics _hostMetrics;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly bool _originalStandbyModeValue;
+        private readonly string _originalFunctionsWorkerRuntime;
         private readonly string _originalFunctionsWorkerRuntimeVersion;
         private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         // we're only using this dictionary's keys so it acts as a "ConcurrentHashSet"
@@ -135,6 +136,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
             // we'll use this to emit telemetry on if and how this process has been specialized
             _originalStandbyModeValue = _scriptWebHostEnvironment.InStandbyMode;
+            // Read directly from environment rather than through _workerRuntimeResolver to avoid
+            // a circular dependency: this constructor → resolver.GetWorkerRuntime() →
+            // IScriptHostManager → WebJobsScriptHostService (this class).
+            _originalFunctionsWorkerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) ?? string.Empty;
             _originalFunctionsWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
         }
 
@@ -795,7 +800,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 logger.InStandByMode(operationId);
             }
 
-            LogInitializationSettings(logger, _metricsLogger, _environment, _scriptWebHostEnvironment, _hostingConfigOptions.Value, _originalStandbyModeValue, _workerRuntimeResolver.GetWorkerRuntime(), _originalFunctionsWorkerRuntimeVersion);
+            LogInitializationSettings(logger, _metricsLogger, _environment, _scriptWebHostEnvironment, _hostingConfigOptions.Value, _originalStandbyModeValue, _originalFunctionsWorkerRuntime, _originalFunctionsWorkerRuntimeVersion);
         }
 
         internal static void LogInitializationSettings(ILogger logger, IMetricsLogger metricsLogger, IEnvironment environment, IScriptWebHostEnvironment scriptWebHostEnvironment, FunctionsHostingConfigOptions hostingConfigOptions, bool originalStandbyModeValue,
