@@ -991,14 +991,14 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Rpc.Core/3.0.44": {
+      "Microsoft.Azure.WebJobs.Rpc.Core/3.0.45": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs": "3.0.44"
+          "Microsoft.Azure.WebJobs": "3.0.45"
         },
         "runtime": {
           "lib/net6.0/Microsoft.Azure.WebJobs.Rpc.Core.dll": {
-            "assemblyVersion": "3.0.44.0",
-            "fileVersion": "3.0.44.25605"
+            "assemblyVersion": "3.0.45.0",
+            "fileVersion": "3.0.45.26113"
           }
         }
       },
@@ -3026,7 +3026,7 @@
       "Microsoft.Azure.WebJobs.Script.Grpc/4.1048.100-pr.26110.4": {
         "dependencies": {
           "Grpc.AspNetCore": "2.55.0",
-          "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.44",
+          "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.45",
           "Microsoft.Azure.WebJobs.Script": "4.1048.100-pr.26110.4"
         },
         "runtime": {
@@ -3743,12 +3743,12 @@
       "path": "microsoft.azure.webjobs.logging.applicationinsights/3.0.44",
       "hashPath": "microsoft.azure.webjobs.logging.applicationinsights.3.0.44.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Rpc.Core/3.0.44": {
+    "Microsoft.Azure.WebJobs.Rpc.Core/3.0.45": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-9ewFqg3cQ6N4ZsVYJYeSFkhFJXP/lmQT8bvyAkBxpmdXTn4+sa4VGbzzJVCdG7cksFG8XJ0xw+SFGvBp28Iv/w==",
-      "path": "microsoft.azure.webjobs.rpc.core/3.0.44",
-      "hashPath": "microsoft.azure.webjobs.rpc.core.3.0.44.nupkg.sha512"
+      "sha512": "sha512-C2/E80ouBqILZ/cG++dDcyJGH8Vvffw58jvg/+MREO1+kvWgKt84K9L4fVu8TJ9YzGsc9UlfWcJlI4s8idep4A==",
+      "path": "microsoft.azure.webjobs.rpc.core/3.0.45",
+      "hashPath": "microsoft.azure.webjobs.rpc.core.3.0.45.nupkg.sha512"
     },
     "Microsoft.Azure.WebJobs.Script.Abstractions/1.0.4-preview": {
       "type": "package",
