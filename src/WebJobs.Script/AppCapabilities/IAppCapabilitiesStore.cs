@@ -25,23 +25,13 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         public IReadOnlyDictionary<string, string> Capabilities { get; }
 
         /// <summary>
-        /// Sets a single capability with the specified key and value.
-        /// </summary>
-        /// <param name="key">The capability key to set.</param>
-        /// <param name="value">The capability value to associate with the key.</param>
-        /// <remarks>
-        /// If the capability already exists, its value will be updated. Otherwise, a new capability will be added.
-        /// </remarks>
-        public void Set(string key, string value);
-
-        /// <summary>
         /// Sets multiple capabilities from the provided dictionary.
         /// </summary>
-        /// <param name="capabilities">A dictionary containing the capabilities to set.</param>
+        /// <param name="capabilities">An enumerable containing key value pairs with the capabilities to set.</param>
         /// <remarks>
         /// This method updates existing capabilities and adds new ones from the provided dictionary.
         /// Existing capabilities not included in the dictionary remain unchanged.
         /// </remarks>
-        public void SetAll(IDictionary<string, string> capabilities);
+        public void SetAll(IEnumerable<KeyValuePair<string, string>> capabilities);
     }
 }

@@ -15,6 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// </summary>
         /// <remarks>The keys in the dictionary are case-insensitive, allowing for flexible access to
         /// capability values.</remarks>
-        public Dictionary<string, string> Capabilities { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public IDictionary<string, string> Capabilities { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 }

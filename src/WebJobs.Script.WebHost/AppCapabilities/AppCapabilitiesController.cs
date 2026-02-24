@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
@@ -12,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
-    public class AppCapabilitiesController : Controller
+    public sealed class AppCapabilitiesController : Controller
     {
         private readonly IOptionsMonitor<AppCapabilitiesOptions> _capabilitiesOptions;
         private readonly ILogger<AppCapabilitiesController> _logger;
@@ -29,16 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [RequiresRunningHost]
         public IActionResult GetCapabilities()
         {
-            try
-            {
-                var capabilities = _capabilitiesOptions.CurrentValue.Capabilities;
-                return new OkObjectResult(capabilities);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An error occurred while retrieving capabilities.");
-                return StatusCode(500, "An error occurred while retrieving capabilities.");
-            }
+            var capabilities = _capabilitiesOptions.CurrentValue.Capabilities;
+            return new OkObjectResult(capabilities);
         }
 
         [HttpGet]

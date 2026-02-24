@@ -6,6 +6,8 @@ using System.Threading;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
+#nullable enable
+
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities;
 
 /// <summary>

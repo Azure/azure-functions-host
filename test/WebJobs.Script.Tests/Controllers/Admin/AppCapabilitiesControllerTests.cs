@@ -61,18 +61,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             Assert.Empty(capabilities);
         }
 
-        [Fact]
-        public void GetCapabilities_ReturnsInternalServerError_WhenExceptionThrown()
-        {
-            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Throws(new InvalidOperationException("Test exception"));
-
-            var result = _controller.GetCapabilities();
-
-            var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(500, statusCodeResult.StatusCode);
-            Assert.Equal("An error occurred while retrieving capabilities.", statusCodeResult.Value);
-        }
-
         [Theory]
         [InlineData("feature1", "value1")]
         [InlineData("feature2", "value2")]

@@ -65,7 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly string _workerInvocationFailedMetric;
         private readonly string _workerId;
         private readonly IAppCapabilitiesStore _appCapabilitiesStore;
-        private readonly IOptionsChangeTokenSource<AppCapabilitiesOptions> _appCapabilitiesChangeTokenSource;
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
         private bool _disposing;
@@ -112,7 +111,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             IAppCapabilitiesStore appCapabilitiesStore,
-            IOptionsChangeTokenSource<AppCapabilitiesOptions> appCapabilitiesChangeTokenSource,
             IHttpProxyService httpProxyService)
         {
             _workerId = workerId;
@@ -133,7 +131,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _httpProxyService = httpProxyService;
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
             _appCapabilitiesStore = appCapabilitiesStore;
-            _appCapabilitiesChangeTokenSource = appCapabilitiesChangeTokenSource;
 
             if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
             {
@@ -627,19 +624,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             try
             {
-                _workerChannelLogger.LogDebug("Registering {count} app capabilities from worker '{workerId}'",
-                    appCapabilities.Count, _workerId);
+                Logger.RegisteringAppCapabilities(_workerChannelLogger, appCapabilities.Count, _workerId);
 
                 _appCapabilitiesStore.SetAll(appCapabilities);
-
-                if (_appCapabilitiesChangeTokenSource is AppCapabilitiesChangeTokenSource appCapabilitiesChangeTokenSource)
-                {
-                    appCapabilitiesChangeTokenSource.TriggerChange();
-                }
             }
             catch (Exception ex)
             {
-                _workerChannelLogger.LogWarning(ex, "Failed to register app capabilities from worker '{workerId}'", _workerId);
+                Logger.FailedToRegisterAppCapabilities(_workerChannelLogger, ex, _workerId);
             }
         }
 

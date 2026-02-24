@@ -15,7 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     internal sealed class AppCapabilitiesOptionsSetup : IConfigureOptions<AppCapabilitiesOptions>
     {
         private readonly IConfiguration _configuration;
-        private readonly ILogger<AppCapabilitiesOptionsSetup> _logger;
         private readonly IAppCapabilitiesStore _appCapabilitiesStore;
 
         public AppCapabilitiesOptionsSetup(
@@ -24,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             ILogger<AppCapabilitiesOptionsSetup> logger)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _appCapabilitiesStore = appCapabilitiesStore ?? throw new ArgumentNullException(nameof(appCapabilitiesStore));
         }
 
@@ -55,13 +53,14 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             AppCapabilitiesOptions options,
             IConfigurationSection section)
         {
-            var children = section.GetChildren();
-            _logger.LogDebug("Loading App Capabilities from configuration section '{sectionName}' with {count} entries.",
-                section.Path, children.Count());
+            var children = section.GetChildren().ToList();
 
             foreach (var child in children)
             {
-                options.Capabilities[child.Key] = child.Value ?? string.Empty;
+                if (child.Value is not null)
+                {
+                    options.Capabilities[child.Key] = child.Value;
+                }
             }
         }
     }

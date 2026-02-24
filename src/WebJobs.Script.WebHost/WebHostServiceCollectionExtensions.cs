@@ -255,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddHealthChecks().AddWebJobsScriptHealthChecks();
 
             // App Capabilities related services
-            services.AddSingleton<IAppCapabilitiesStore, WorkerProvidedAppCapabilitiesStore>();
+            services.AddSingleton<IAppCapabilitiesStore, DefaultAppCapabilitiesStore>();
             services.AddSingleton<IOptionsChangeTokenSource<AppCapabilitiesOptions>, AppCapabilitiesChangeTokenSource>();
         }
 

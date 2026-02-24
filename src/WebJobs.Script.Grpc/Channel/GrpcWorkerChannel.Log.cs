@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -22,9 +22,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 new EventId(821, nameof(InvocationResponseReceived)),
                 "InvocationResponse received for invocation: '{invocationId}'");
 
+            private static readonly Action<ILogger, int, string, Exception> _registeringAppCapabilities = LoggerMessage.Define<int, string>(
+             LogLevel.Debug,
+             new EventId(822, nameof(RegisteringAppCapabilities)),
+             "Registering {count} app capabilities from worker '{workerId}'");
+
+            private static readonly Action<ILogger, string, Exception> _failedToRegisterAppCapabilities = LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(823, nameof(FailedToRegisterAppCapabilities)),
+                "Failed to register app capabilities from worker '{workerId}'");
+
             internal static void ChannelReceivedMessage(ILogger logger, string workerId, ContentOneofCase msgType) => _channelReceivedMessage(logger, workerId, msgType, null);
 
             internal static void InvocationResponseReceived(ILogger logger, string invocationId) => _invocationResponseReceived(logger, invocationId, null);
+
+            internal static void RegisteringAppCapabilities(ILogger logger, int count, string workerId) => _registeringAppCapabilities(logger, count, workerId, null);
+
+            internal static void FailedToRegisterAppCapabilities(ILogger logger, Exception ex, string workerId) => _failedToRegisterAppCapabilities(logger, workerId, ex);
         }
     }
 }

@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
             options.AddPolicy(PolicyNames.AdminAuthLevel, p =>
             {
                 p.AddScriptAuthenticationSchemes();
-                //p.AddRequirements(new AuthLevelRequirement(AuthorizationLevel.Admin));
+                p.AddRequirements(new AuthLevelRequirement(AuthorizationLevel.Admin));
                 p.RequireAssertion(c =>
                 {
                     if (c.Resource is AuthorizationFilterContext filterContext)
