@@ -264,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     || !Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
                 {
                     _logger.LogDebug("The host is not in a state where we can resume.");
-                    return StatusCode(StatusCodes.Status409Conflict);
+                    return StatusCode(StatusCodes.Status409Conflict, new { error = "Host is not in a resumable state" });
                 }
 
                 bool isDrainModeEnabled = drainModeManager.IsDrainModeEnabled;

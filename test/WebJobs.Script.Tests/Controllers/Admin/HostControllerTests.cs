@@ -347,8 +347,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             scriptHostManagerMock.SetupGet(p => p.State).Returns(hostStatus);
             drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(drainModeEnabled);
 
-            var result = (StatusCodeResult)await _hostController.Resume(scriptHostManagerMock.Object, default);
-            Assert.Equal(expectedCode, result.StatusCode);
+            var result = await _hostController.Resume(scriptHostManagerMock.Object, default);
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(expectedCode, objectResult.StatusCode);
             scriptHostManagerMock.Verify(p => p.RestartHostAsync("test", It.IsAny<CancellationToken>()), Times.Never());
         }
 
@@ -366,8 +367,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Setup drain mode to return true initially, then false after restart
             drainModeManager.SetupSequence(x => x.IsDrainModeEnabled)
-                .Returns(true) // First check - before restart
-                .Returns(false); // Second check - after restart
+                .Returns(true)  // First check - before restart
+                .Returns(false) // Second check - after restart
+                .Returns(false); // Additional reads (e.g., for status)
 
             var expectedBody = new ResumeStatus { State = ScriptHostState.Running };
             var result = (OkObjectResult)await _hostController.Resume(scriptHostManagerMock.Object, default);
@@ -440,17 +442,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
 
-            // Setup state sequence: Running before check, Stopping after restart
-            scriptHostManagerMock.SetupSequence(p => p.State)
-                .Returns(ScriptHostState.Running) // Initial check
-                .Returns(ScriptHostState.Stopping); // After restart
+            // Use mutable locals instead of SetupSequence so multiple reads are supported
+            var currentHostState = ScriptHostState.Running;
+            scriptHostManagerMock.SetupGet(p => p.State).Returns(() => currentHostState);
 
-            scriptHostManagerMock.Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            var isDrainModeEnabled = true;
+            drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(() => isDrainModeEnabled);
 
-            // Setup drain mode to return true initially, then false after restart
-            drainModeManager.SetupSequence(x => x.IsDrainModeEnabled)
-                .Returns(true) // First check - before restart
-                .Returns(false); // Second check - after restart
+            scriptHostManagerMock
+                .Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()))
+                .Callback(() =>
+                {
+                    currentHostState = ScriptHostState.Stopping;
+                    isDrainModeEnabled = false;
+                })
+                .Returns(Task.CompletedTask);
 
             var result = await _hostController.Resume(scriptHostManagerMock.Object, default);
 
