@@ -267,18 +267,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     return StatusCode(StatusCodes.Status409Conflict);
                 }
 
-                _logger.LogDebug($"Drain mode enabled: {drainModeManager.IsDrainModeEnabled}");
+                bool isDrainModeEnabled = drainModeManager.IsDrainModeEnabled;
+                _logger.LogDebug($"Drain mode enabled: {isDrainModeEnabled}");
 
-                if (drainModeManager.IsDrainModeEnabled)
+                if (isDrainModeEnabled)
                 {
                     _logger.LogDebug("Starting a new host");
                     await scriptHostManager.RestartHostAsync("Resuming from drain mode.", CancellationToken.None);
 
-                    // Verify the restart succeeded and drain mode was actually disabled
-                    // This handles race conditions where ApplicationStopping can abort the restart mid-execution
-                    if (drainModeManager.IsDrainModeEnabled || scriptHostManager.State != ScriptHostState.Running)
+                    // Verify the restart succeeded and drain mode was actually disabled.
+                    // This handles race conditions where ApplicationStopping can abort the restart mid-execution.
+                    bool drainModeStillEnabled = drainModeManager.IsDrainModeEnabled;
+                    ScriptHostState postRestartState = scriptHostManager.State;
+                    if (drainModeStillEnabled || postRestartState != ScriptHostState.Running)
                     {
-                        _logger.LogWarning($"Resume failed - host did not restart successfully. DrainModeEnabled: {drainModeManager.IsDrainModeEnabled}, HostState: {scriptHostManager.State}");
+                        _logger.LogWarning($"Resume failed - host did not restart successfully. DrainModeEnabled: {drainModeStillEnabled}, HostState: {postRestartState}");
                         return StatusCode(StatusCodes.Status409Conflict, new { error = "Resume failed, host restart was aborted" });
                     }
                 }
