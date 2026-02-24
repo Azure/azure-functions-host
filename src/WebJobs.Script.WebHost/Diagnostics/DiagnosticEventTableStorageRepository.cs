@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -32,16 +32,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IAzureTableStorageProvider _azureTableStorageProvider;
         private readonly ILogger<DiagnosticEventTableStorageRepository> _logger;
         private readonly IServiceProvider _serviceProvider;
-        private readonly object _syncLock = new object();
+        private readonly SemaphoreSlim _initSemaphore = new SemaphoreSlim(1, 1);
 
         private ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
         private TableServiceClient _tableClient;
+        private volatile bool _tableClientInitialized;
         private TableClient _diagnosticEventsTable;
         private string _hostId;
         private bool _disposed = false;
         private bool _purged = false;
         private string _tableName;
-        private bool _isEnabled = true;
+        private volatile bool _isEnabled = true;
 
         internal DiagnosticEventTableStorageRepository(IHostIdProvider hostIdProvider, IEnvironment environment, IScriptHostManager scriptHostManager,
             IAzureTableStorageProvider azureTableStorageProvider, ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
@@ -58,50 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             IAzureTableStorageProvider azureTableStorageProvider, ILogger<DiagnosticEventTableStorageRepository> logger)
             : this(hostIdProvider, environment, scriptHost, azureTableStorageProvider, logger, LogFlushInterval) { }
 
-        internal TableServiceClient TableClient
-        {
-            get
-            {
-                if (_tableClient is null && !_environment.IsPlaceholderModeEnabled())
-                {
-                    if (!_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableClient))
-                    {
-                        DisableService();
-                        Logger.ServiceDisabledFailedToCreateClient(_logger);
-                        return _tableClient;
-                    }
-
-                    try
-                    {
-                        // When using RBAC, we need "Storage Table Data Contributor" as we require to list, create and delete tables and query/insert/delete entities.
-                        // Testing permissions by listing tables, creating and deleting a test table.
-                        var testTable = _tableClient.GetTableClient($"{TableNamePrefix}Check");
-                        _ = TableStorageHelpers.TableExists(testTable, _tableClient);
-                        _ = testTable.CreateIfNotExists();
-                        _ = testTable.Delete();
-                    }
-                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict || rfe.ErrorCode == TableErrorCode.TableBeingDeleted)
-                    {
-                        // The table is being deleted or there could be a conflict for several instances initializing.
-                        // We can ignore this error as it is not a failure and we tested the permissions.
-                    }
-                    catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Forbidden)
-                    {
-                        DisableService();
-                        Logger.ServiceDisabledUnauthorizedClient(_logger, rfe);
-                    }
-                    catch (Exception ex)
-                    {
-                        // We failed to connect to the table storage account. This could be due to a transient error or a configuration issue, such network issues.
-                        // We will disable the service.
-                        DisableService();
-                        Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
-                    }
-                }
-
-                return _tableClient;
-            }
-        }
+        internal TableServiceClient TableClient => _tableClient;
 
         internal string HostId
         {
@@ -117,6 +75,77 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal ConcurrentDictionary<string, DiagnosticEvent> Events => _events;
 
+        internal async Task InitializeTableClientAsync()
+        {
+            if (_tableClientInitialized || _disposed)
+            {
+                return;
+            }
+
+            try
+            {
+                await _initSemaphore.WaitAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Semaphore was disposed (race with disposal), exit early
+                return;
+            }
+
+            try
+            {
+                if (_tableClientInitialized || _disposed)
+                {
+                    return;
+                }
+
+                if (!_azureTableStorageProvider.TryCreateHostingTableServiceClient(out _tableClient))
+                {
+                    DisableService();
+                    Logger.ServiceDisabledFailedToCreateClient(_logger);
+                    return;
+                }
+
+                try
+                {
+                    // When using RBAC, we need "Storage Table Data Contributor" as we require to list, create and delete tables and query/insert/delete entities.
+                    // Testing permissions by listing tables, creating and deleting a test table.
+                    var testTable = _tableClient.GetTableClient($"{TableNamePrefix}Check");
+                    _ = await TableStorageHelpers.TableExistAsync(testTable, _tableClient);
+                    _ = await testTable.CreateIfNotExistsAsync();
+                    await testTable.DeleteAsync();
+                }
+                catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict || rfe.ErrorCode == TableErrorCode.TableBeingDeleted)
+                {
+                    // The table is being deleted or there could be a conflict for several instances initializing.
+                    // We can ignore this error as it is not a failure and we tested the permissions.
+                }
+                catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Forbidden)
+                {
+                    DisableService();
+                    Logger.ServiceDisabledUnauthorizedClient(_logger, rfe);
+                }
+                catch (Exception ex)
+                {
+                    // We failed to connect to the table storage account. This could be due to a transient error or a configuration issue, such network issues.
+                    // We will disable the service.
+                    DisableService();
+                    Logger.ServiceDisabledUnableToConnectToStorage(_logger, ex);
+                }
+            }
+            finally
+            {
+                // Once initialization has been attempted (whether successful or not), we mark the table client as initialized
+                // to avoid repeated initialization attempts. On failure paths, the service is disabled via DisableService().
+                // Don't set if disposed to prevent race with disposal.
+                if (!_disposed)
+                {
+                    _tableClientInitialized = true;
+                }
+                _initSemaphore.Release();
+            }
+        }
+
         private void DisableService()
         {
             _isEnabled = false;
@@ -124,19 +153,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _events.Clear();
         }
 
-        internal TableClient GetDiagnosticEventsTable(DateTime? now = null)
+        private async Task<bool> EnsureInitializedAsync()
         {
-            if (TableClient != null)
+            if (_environment.IsPlaceholderModeEnabled() || !IsEnabled())
             {
-                now = now ?? DateTime.UtcNow;
-                string currentTableName = GetTableName(now.Value);
+                return false;
+            }
 
-                // update the table reference when date rolls over to a new month
-                if (_diagnosticEventsTable == null || currentTableName != _tableName)
-                {
-                    _tableName = currentTableName;
-                    _diagnosticEventsTable = TableClient.GetTableClient(_tableName);
-                }
+            if (!_disposed)
+            {
+                await InitializeTableClientAsync();
+            }
+
+            if (_tableClient is null || !_tableClientInitialized || !IsEnabled())
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        internal async Task<TableClient> GetDiagnosticEventsTableAsync(DateTime? now = null)
+        {
+            if (!await EnsureInitializedAsync())
+            {
+                return null;
+            }
+
+            return GetDiagnosticEventsTable(now);
+        }
+
+        private TableClient GetDiagnosticEventsTable(DateTime? now = null)
+        {
+            now = now ?? DateTime.UtcNow;
+            string currentTableName = GetTableName(now.Value);
+
+            // update the table reference when date rolls over to a new month
+            if (_diagnosticEventsTable == null || currentTableName != _tableName)
+            {
+                _tableName = currentTableName;
+                _diagnosticEventsTable = _tableClient.GetTableClient(_tableName);
             }
 
             return _diagnosticEventsTable;
@@ -162,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 try
                 {
-                    var tables = (await TableStorageHelpers.ListTablesAsync(TableClient, TableNamePrefix)).ToList();
+                    var tables = (await TableStorageHelpers.ListTablesAsync(_tableClient, TableNamePrefix)).ToList();
 
                     foreach (var table in tables)
                     {
@@ -221,10 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal virtual async Task FlushLogs(TableClient table = null)
         {
-            // TableClient is initialized lazily and it will stop the timer that schedules flush logs whenever it fails to initialize.
-            // We need to check if the TableClient is null before proceeding. This helps when the first time the property is accessed is as part of the FlushLogs method.
-            // We should not have any events stored pending to be written since WriteDiagnosticEvent will check for an initialized TableClient.
-            if (_environment.IsPlaceholderModeEnabled() || TableClient is null || !IsEnabled())
+            if (!await EnsureInitializedAsync())
             {
                 return;
             }
@@ -245,11 +298,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     return;
                 }
 
-                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, TableClient, TableCreationMaxRetryCount);
+                bool tableCreated = await TableStorageHelpers.CreateIfNotExistsAsync(table, _tableClient, TableCreationMaxRetryCount);
                 if (tableCreated)
                 {
                     Logger.QueueingBackgroundTablePurge(_logger);
-                    TableStorageHelpers.QueueBackgroundTablePurge(table, TableClient, TableNamePrefix, _logger);
+                    TableStorageHelpers.QueueBackgroundTablePurge(table, _tableClient, TableNamePrefix, _logger);
                 }
             }
             catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.Forbidden)
@@ -272,10 +325,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            // Assigning a new empty directory to reset the event count in the new duration window.
+            // Swap the events dictionary to reset the event count for the new flush window.
             // All existing events are logged to other logging pipelines already.
-            ConcurrentDictionary<string, DiagnosticEvent> tempDictionary = _events;
-            _events = new ConcurrentDictionary<string, DiagnosticEvent>();
+            // Use Interlocked.Exchange to atomically swap dictionaries while preventing race conditions.
+            var tempDictionary = Interlocked.Exchange(ref _events, new ConcurrentDictionary<string, DiagnosticEvent>());
+
             if (!tempDictionary.IsEmpty)
             {
                 await ExecuteBatchAsync(tempDictionary, table);
@@ -317,9 +371,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void WriteDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
         {
-            if (TableClient is null || string.IsNullOrEmpty(HostId) || !IsEnabled())
+            if (!IsEnabled() || string.IsNullOrEmpty(HostId))
             {
                 return;
+            }
+
+            // If the table client hasn't been initialized yet, kick off initialization.
+            // This handles the case where the host was in placeholder mode during construction
+            // and has since specialized — the constructor skipped initialization, so we trigger it here.
+            // Errors are handled within InitializeTableClientAsync, which disables the service on failure.
+            if (!_tableClientInitialized)
+            {
+                _ = InitializeTableClientAsync();
             }
 
             var diagnosticEvent = new DiagnosticEvent(HostId, timestamp)
@@ -332,14 +395,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 HitCount = 1
             };
 
-            if (!_events.TryAdd(errorCode, diagnosticEvent))
-            {
-                lock (_syncLock)
+            // Use AddOrUpdate for atomic add-or-update operation.
+            // ConcurrentDictionary ensures thread-safety for this operation.
+            // If the dictionary is swapped by FlushLogs during this call, the event will be added to whichever
+            // dictionary the reference points to at the time. Events added to the old dictionary after the swap
+            // will still be flushed in the current cycle.
+            _events.AddOrUpdate(
+                errorCode,
+                diagnosticEvent,
+                (key, existingEvent) =>
                 {
-                    _events[errorCode].Timestamp = timestamp;
-                    _events[errorCode].HitCount++;
-                }
-            }
+                    existingEvent.Timestamp = timestamp;
+                    existingEvent.IncrementHitCount();
+                    return existingEvent;
+                });
 
             EnsureFlushLogsTimerInitialized();
         }
@@ -386,17 +455,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             if (!_disposed)
             {
+                _disposed = true;
+
                 if (disposing)
                 {
-                    if (_flushLogsTimer?.Value != null)
+                    if (_flushLogsTimer.IsValueCreated)
                     {
-                        _flushLogsTimer?.Value?.Dispose();
+                        _flushLogsTimer.Value?.Dispose();
                     }
 
-                    FlushLogs().GetAwaiter().GetResult();
-                }
+                    if (_tableClient is not null)
+                    {
+                        FlushLogs().GetAwaiter().GetResult();
+                    }
 
-                _disposed = true;
+                    if (_initSemaphore is not null)
+                    {
+                        try
+                        {
+                            _initSemaphore.Dispose();
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            // Suppress exception if semaphore was already disposed or is being disposed by another thread
+                        }
+                    }
+                }
             }
         }
 

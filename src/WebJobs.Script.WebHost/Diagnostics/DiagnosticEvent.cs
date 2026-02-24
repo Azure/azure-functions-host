@@ -1,8 +1,9 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Runtime.Serialization;
+using System.Threading;
 using Azure;
 using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
@@ -12,6 +13,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class DiagnosticEvent : ITableEntity
     {
+        private int _hitCount;
+
         internal const string CurrentEventVersion = "2024-05-01";
 
         public DiagnosticEvent() { }
@@ -34,7 +37,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public string EventVersion { get; set; }
 
-        public int HitCount { get; set; }
+        public int HitCount
+        {
+            get => _hitCount;
+            set => _hitCount = value;
+        }
 
         public string Message { get; set; }
 
@@ -44,6 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public int Level { get; set; }
 
+        public string Details { get; set; }
+
         [IgnoreDataMember]
         public LogLevel LogLevel
         {
@@ -51,6 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             set { Level = (int)value; }
         }
 
-        public string Details { get; set; }
+        internal void IncrementHitCount()
+        {
+            Interlocked.Increment(ref _hitCount);
+        }
     }
 }
