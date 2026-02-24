@@ -663,6 +663,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return environment.GetEnvironmentVariableOrDefault(FunctionsSiteUpdateId, string.Empty);
         }
+
         public static string GetHttpLeaderEndpoint(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariableOrDefault(HttpLeaderEndpoint, string.Empty);
