@@ -340,6 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script
                          .Bind(o);
                     });
                 services.ConfigureOptions<ScaleOptionsSetup>();
+                services.ConfigureOptions<TimerTriggerPlatformOptionsSetup>();
 
                 services.AddOptions<AppCapabilitiesOptions>();
                 services.ConfigureOptions<AppCapabilitiesOptionsSetup>();
