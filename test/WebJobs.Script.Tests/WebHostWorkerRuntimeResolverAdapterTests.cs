@@ -231,11 +231,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
         }
 
         [Fact]
-        public void GetWorkerRuntime_CachesNullEnvironmentValue()
+        public void GetWorkerRuntime_DoesNotCacheNullEnvironmentValue()
         {
             var environment = new Mock<IEnvironment>(MockBehavior.Strict);
-            environment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
-                .Returns((string)null);
+            environment.SetupSequence(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
+                .Returns((string)null)
+                .Returns((string)null)
+                .Returns("powershell");
 
             var serviceMap = new Dictionary<Type, object>();
             var scriptHostManager = new TestScriptHostService(ScriptSettingsManager.BuildDefaultConfiguration(), serviceMap);
@@ -247,14 +249,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
             var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
 
-            var result1 = adapter.GetWorkerRuntime(defaultValue: "fallback");
-            var result2 = adapter.GetWorkerRuntime(defaultValue: "fallback");
-            var result3 = adapter.GetWorkerRuntime(defaultValue: "fallback");
+            // First two calls: env var not set, returns default each time (re-reads env)
+            Assert.Null(adapter.GetWorkerRuntime());
+            Assert.Null(adapter.GetWorkerRuntime());
 
-            Assert.Equal("fallback", result1);
-            Assert.Equal("fallback", result2);
-            Assert.Equal("fallback", result3);
-            environment.Verify(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime), Times.Once);
+            // Third call: env var now set (e.g., after ApplyAppSettings during specialization)
+            Assert.Equal("powershell", adapter.GetWorkerRuntime());
+
+            environment.Verify(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime), Times.Exactly(3));
         }
 
         [Fact]

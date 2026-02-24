@@ -17,10 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
     /// </summary>
     internal sealed class WebHostWorkerRuntimeResolverAdapter : IWorkerRuntimeResolver, IDisposable
     {
-        // Sentinel used to distinguish "not yet resolved" (null) from "resolved to empty/missing".
-        // Uses new string instance (not interned) so ReferenceEquals can reliably identify it.
-        private static readonly string EnvironmentValueNotSet = new(' ', 0);
-
         private readonly IServiceProvider _rootProvider;
         private readonly ILogger<WebHostWorkerRuntimeResolverAdapter> _logger;
         private readonly IEnvironment _environment;
@@ -74,30 +70,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 return scriptHostResolver.GetWorkerRuntime(defaultValue);
             }
 
-            // Fallback to environment when Job Host scoped resolver is not available yet
+            // Fallback to environment when Job Host scoped resolver is not available yet.
+            // Only cache non-empty values. During specialization, the env var may be set
+            // after a previous read returned null, so we must re-read on each call until
+            // a value is available. Caching the "not set" state would cause a race condition
+            // since we rely on OnActiveHostChanged to clear the cache, which fires after
+            // the value is already needed.
             var cachedValue = _cachedEnvironmentValue;
-            if (cachedValue is null)
+            if (cachedValue is not null)
             {
-                var valueFromEnvironment = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-
-                if (!string.IsNullOrEmpty(valueFromEnvironment))
-                {
-                    var existing = Interlocked.CompareExchange(ref _cachedEnvironmentValue, valueFromEnvironment, comparand: null);
-                    return existing ?? valueFromEnvironment;
-                }
-
-                // Cache the "not set" result so we don't re-read the environment on every call.
-                Interlocked.CompareExchange(ref _cachedEnvironmentValue, EnvironmentValueNotSet, comparand: null);
-
-                return defaultValue;
+                return cachedValue;
             }
 
-            if (ReferenceEquals(cachedValue, EnvironmentValueNotSet))
+            var valueFromEnvironment = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+
+            if (!string.IsNullOrEmpty(valueFromEnvironment))
             {
-                return defaultValue;
+                var existing = Interlocked.CompareExchange(ref _cachedEnvironmentValue, valueFromEnvironment, comparand: null);
+                return existing ?? valueFromEnvironment;
             }
 
-            return cachedValue;
+            return defaultValue;
         }
 
         public void Dispose()
