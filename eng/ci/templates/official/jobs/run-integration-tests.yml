@@ -16,7 +16,7 @@ jobs:
     outputs:
     - output: pipelineArtifact
       displayName: Publish test results (TRX)
-      path: $(Agent.TempDirectory)/TestResults
+      path: $(Agent.TempDirectory)
       artifact: E2EIntegrationTests_TRX
       condition: succeededOrFailed()
 
