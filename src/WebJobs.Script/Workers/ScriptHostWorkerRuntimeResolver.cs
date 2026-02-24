@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -47,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                                  HostConfigurationProfile.WebAppCustomHandlerProfile,
                                  StringComparison.OrdinalIgnoreCase))
             {
-                workerRuntime = "custom";
+                workerRuntime = RpcWorkerConstants.CustomHandlerLanguageWorkerName;
             }
             else
             {

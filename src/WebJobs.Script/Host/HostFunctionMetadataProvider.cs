@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _logger = logger;
-            _workerRuntimeResolver = workerRuntimeResolver;
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors

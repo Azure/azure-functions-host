@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment;
             _rpcServerShutdownTimeoutInMilliseconds = 5000;
             _webHostRpcWorkerChannelManager = rpcWorkerChannelManager ?? throw new ArgumentNullException(nameof(rpcWorkerChannelManager));
-            _workerRuntime = workerRuntimeResolver.GetWorkerRuntime();
+            _workerRuntime = (workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver))).GetWorkerRuntime();
             _placeholderLanguageWorkersList = _environment.GetLanguageWorkerListToStartInPlaceholder();
             _languageWorkerOptions = languageWorkerOptions;
         }

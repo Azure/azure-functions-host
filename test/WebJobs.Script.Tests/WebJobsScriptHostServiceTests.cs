@@ -523,7 +523,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .Build();
 
-            var mockWorkerResolver = new Mock<IWorkerRuntimeResolver>();
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
@@ -561,8 +560,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
                 }
             });
-
-            var mockWorkerResolver = new Mock<IWorkerRuntimeResolver>();
 
             using (_hostService = new WebJobsScriptHostService(
                             _monitor, scriptHostBuilder.Object, NullLoggerFactory.Instance,

@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _configuration = configuration;
             _metricsLogger = metricsLogger;
             _logger = loggerFactory.CreateLogger<HttpWorkerOptionsSetup>();
-            _workerRuntimeResolver = workerRuntimeResolver;
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
         }
 
         public void Configure(HttpWorkerOptions options)

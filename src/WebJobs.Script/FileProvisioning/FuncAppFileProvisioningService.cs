@@ -1,10 +1,10 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
             IFuncAppFileProvisionerFactory funcAppFileProvisionerFactory)
         {
             _options = options;
-            _workerRuntimeResolver = workerRuntimeResolver;
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
             _funcAppFileProvisionerFactory = funcAppFileProvisionerFactory;
         }
 
