@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
             };
 
-            string workerRuntime = runtimeResolver.GetWorkerRuntime();
+            string workerRuntime = runtimeResolver.GetWorkerRuntime(defaultValue: string.Empty);
 
             IEnumerable<WorkerProcessInfo> workerProcesses = null;
             if (Utility.TryGetHostService(scriptHostManager, out IScriptHostWorkerManager scriptHostWorkerManager))

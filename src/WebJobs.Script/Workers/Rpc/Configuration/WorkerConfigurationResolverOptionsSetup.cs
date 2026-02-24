@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
             ArgumentNullException.ThrowIfNull(_functionsHostingConfigOptions.Value);
-            _workerRuntimeResolver = workerRuntimeResolver;
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
         }
 
         public void Configure(WorkerConfigurationResolverOptions options)
