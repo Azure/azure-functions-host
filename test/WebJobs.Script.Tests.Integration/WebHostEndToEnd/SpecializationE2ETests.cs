@@ -19,7 +19,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
@@ -28,8 +31,10 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -230,6 +235,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     throw;
                 }
             }
+        }
+
+        [Fact]
+        public async Task Specialization_WebHostOptionsAreLogged()
+        {
+            const string optionsCategory = "Microsoft.Azure.WebJobs.Hosting.OptionsLoggingService";
+
+            var builder = CreateStandbyHostBuilder(_loggerProvider, "FunctionExecutionContext");
+
+            using var testServer = new TestServer(builder);
+            var client = testServer.CreateClient();
+
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            // Specialize
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/functionexecutioncontext");
+            response.EnsureSuccessStatusCode();
+
+            // Wait for the OptionsLoggingService to process all queued log entries.
+            await TestHelpers.Await(() =>
+                _loggerProvider.GetAllLogMessages()
+                    .Any(m => string.Equals(m.Category, optionsCategory, StringComparison.Ordinal)
+                           && m.FormattedMessage.StartsWith(nameof(ScriptJobHostOptions), StringComparison.Ordinal)));
+
+            var allOptionsLogs = _loggerProvider.GetAllLogMessages()
+                .Where(m => string.Equals(m.Category, optionsCategory, StringComparison.Ordinal))
+                .Select(m => m.FormattedMessage)
+                .ToList();
+
+            // WebHost-level options implementing IOptionsFormatter should be logged.
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(HttpBodyControlOptions));
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(ResponseCompressionOptions));
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(HostHealthMonitorOptions));
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(WorkerConfigurationResolverOptions));
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(LanguageWorkerOptions));
+
+            // ScriptHost-level options should also be present.
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(ScriptJobHostOptions));
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(FunctionResultAggregatorOptions));
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(ConcurrencyOptions));
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(SingletonOptions));
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(ScaleOptions));
+            TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(HttpOptions));
         }
 
         [Fact]
