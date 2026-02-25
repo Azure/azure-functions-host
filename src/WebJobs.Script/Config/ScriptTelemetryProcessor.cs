@@ -25,8 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             // Filter out HTTP dependency telemetry originating from the host's proxy calls to
             // out-of-proc workers.
-            if (item is DependencyTelemetry
-                && IsHostProxyForwarding.Value)
+            if (item is DependencyTelemetry && IsHostProxyForwarding.Value)
             {
                 return;
             }
