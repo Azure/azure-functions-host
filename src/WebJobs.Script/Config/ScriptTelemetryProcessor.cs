@@ -1,8 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
+using System.Threading;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -12,6 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 {
     internal class ScriptTelemetryProcessor : ITelemetryProcessor
     {
+        internal static readonly AsyncLocal<bool> IsHostProxyForwarding = new();
+
         public ScriptTelemetryProcessor(ITelemetryProcessor next)
         {
             this.Next = next;
@@ -21,10 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public void Process(ITelemetry item)
         {
-            // Filter out all outgoing HTTP dependency telemetry. In out-of-proc scenarios the host's
-            // only HTTP dependency is the loopback call to the worker.
-            if (item is DependencyTelemetry dep
-                && string.Equals(dep.Type, "Http", StringComparison.OrdinalIgnoreCase))
+            // Filter out HTTP dependency telemetry originating from the host's proxy calls to
+            // out-of-proc workers.
+            if (item is DependencyTelemetry
+                && IsHostProxyForwarding.Value)
             {
                 return;
             }

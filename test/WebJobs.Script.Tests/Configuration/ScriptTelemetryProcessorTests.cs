@@ -17,30 +17,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
     public class ScriptTelemetryProcessorTests
     {
         [Theory]
-        [InlineData("Http", true)]
-        [InlineData("HTTP", true)]
-        [InlineData("http", true)]
-        [InlineData("Azure blob", false)]
-        [InlineData("Azure Service Bus", false)]
-        [InlineData("Azure Event Hubs", false)]
-        [InlineData("SQL", false)]
-        [InlineData(null, false)]
-        [InlineData("", false)]
-        public void Process_FiltersHttpDependencies(string type, bool shouldFilter)
+        [InlineData("Http")]
+        [InlineData("HTTP")]
+        [InlineData("http")]
+        public void Process_HttpDependency_ProxyRequest_IsFiltered(string type)
         {
             var items = new List<ITelemetry>();
             var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
 
+            ScriptTelemetryProcessor.IsHostProxyForwarding.Value = true;
+            try
+            {
+                processor.Process(new DependencyTelemetry { Type = type });
+            }
+            finally
+            {
+                ScriptTelemetryProcessor.IsHostProxyForwarding.Value = false;
+            }
+
+            Assert.Empty(items);
+        }
+
+        [Theory]
+        [InlineData("Http")]
+        [InlineData("HTTP")]
+        [InlineData("http")]
+        public void Process_HttpDependency_NotProxyRequest_IsNotFiltered(string type)
+        {
+            var items = new List<ITelemetry>();
+            var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
+
+            // IsHostProxyForwarding defaults to false — simulates user code making an external HTTP call
             processor.Process(new DependencyTelemetry { Type = type });
 
-            if (shouldFilter)
+            Assert.Single(items);
+        }
+
+        [Fact]
+        public void Process_NonDependencyTelemetry_ProxyRequest_IsNotFiltered()
+        {
+            var items = new List<ITelemetry>();
+            var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
+
+            ScriptTelemetryProcessor.IsHostProxyForwarding.Value = true;
+            try
             {
-                Assert.Empty(items);
+                processor.Process(new TraceTelemetry("test"));
             }
-            else
+            finally
             {
-                Assert.Single(items);
+                ScriptTelemetryProcessor.IsHostProxyForwarding.Value = false;
             }
+
+            Assert.Single(items);
         }
 
         [Fact]
