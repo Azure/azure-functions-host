@@ -12,6 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     {
         private readonly IOptionsChangeTokenSource<AppCapabilitiesOptions> _optionsChangeTokenSource;
         private readonly ConcurrentDictionary<string, string> _capabilities = new(StringComparer.OrdinalIgnoreCase);
+        private readonly object _updateLock = new();
 
         public DefaultAppCapabilitiesStore(IOptionsChangeTokenSource<AppCapabilitiesOptions> optionsChangeTokenSource)
         {
@@ -22,17 +23,20 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 
         public void SetAll(IEnumerable<KeyValuePair<string, string>> capabilities)
         {
-            foreach (var kvp in capabilities)
+            lock (_updateLock)
             {
-                if (!string.IsNullOrEmpty(kvp.Key) && !string.IsNullOrEmpty(kvp.Value))
+                foreach (var kvp in capabilities)
                 {
-                    _capabilities[kvp.Key] = kvp.Value;
+                    if (!string.IsNullOrEmpty(kvp.Key) && !string.IsNullOrEmpty(kvp.Value))
+                    {
+                        _capabilities[kvp.Key] = kvp.Value;
+                    }
                 }
-            }
 
-            if (_optionsChangeTokenSource is AppCapabilitiesChangeTokenSource changeTokenSource)
-            {
-                changeTokenSource.TriggerChange();
+                if (_optionsChangeTokenSource is AppCapabilitiesChangeTokenSource changeTokenSource)
+                {
+                    changeTokenSource.TriggerChange();
+                }
             }
         }
     }

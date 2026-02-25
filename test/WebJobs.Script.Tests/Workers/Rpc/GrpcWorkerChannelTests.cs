@@ -487,6 +487,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(traces.Any(m => m.Level == LogLevel.Warning && m.FormattedMessage.Contains("Failed to register app capabilities")));
         }
 
+        [Fact]
+        public async Task WorkerInitResponse_WithAppCapabilities_DoesNotRegisterInStore_ForLogicApp()
+        {
+            // Arrange - Set environment to indicate this is a Logic App
+            _testEnvironment.SetEnvironmentVariable("APP_KIND", ScriptConstants.WorkFlowAppKind);
+
+            var appCapabilities = new Dictionary<string, string>
+            {
+                { "capability1", "value1" },
+                { "capability2", "value2" },
+                { "capability3", "value3" }
+            };
+
+            await CreateDefaultWorkerChannel(autoStart: false);
+
+            // Setup the mock to track if SetAll is called
+            _mockAppCapabilitiesStore
+                .Setup(x => x.SetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()));
+
+            // Configure to respond with appCapabilities
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.WorkerInitRequest,
+                _ => _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities: null, workerMetadata: null, appCapabilities: appCapabilities));
+
+            // Act - Start the worker process which triggers init
+            await _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+
+            // Assert - Verify SetAll was NOT called for Logic Apps
+            _mockAppCapabilitiesStore.Verify(x => x.SetAll(It.IsAny<IDictionary<string, string>>()), Times.Never);
+
+            // Verify no registration logging occurred
+            var traces = _logger.GetLogMessages();
+            Assert.False(traces.Any(m => m.FormattedMessage.Contains("Registering") && m.FormattedMessage.Contains("app capabilities")));
+        }
+
         [Theory]
         [InlineData(RpcLog.Types.Level.Information, RpcLog.Types.Level.Information)]
         [InlineData(RpcLog.Types.Level.Error, RpcLog.Types.Level.Error)]

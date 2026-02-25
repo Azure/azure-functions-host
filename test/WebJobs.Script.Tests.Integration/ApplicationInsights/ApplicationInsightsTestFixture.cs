@@ -101,26 +101,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
             public TestGrpcWorkerChannelFactory(IScriptEventManager eventManager, IScriptHostManager hostManager, IEnvironment environment, ILoggerFactory loggerFactory,
                 IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager, 
-                IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IAppCapabilitiesStore appCapabilitiesStore, IOptionsChangeTokenSource<AppCapabilitiesOptions> optionsChangeTokenSource, IHttpProxyService httpProxyService)
-                : base(eventManager, hostManager, environment, loggerFactory, applicationHostOptions, rpcWorkerProcessManager, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions, appCapabilitiesStore, optionsChangeTokenSource, httpProxyService)
+                IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IAppCapabilitiesStore appCapabilitiesStore, IHttpProxyService httpProxyService)
+                : base(eventManager, hostManager, environment, loggerFactory, applicationHostOptions, rpcWorkerProcessManager, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions, appCapabilitiesStore, httpProxyService)
             {
             }
 
             internal override IRpcWorkerChannel CreateInternal(string workerId, IScriptEventManager eventManager, IScriptHostManager hostManager, RpcWorkerConfig languageWorkerConfig, IWorkerProcess rpcWorkerProcess,
             ILogger workerLogger, IMetricsLogger metricsLogger, int attemptCount, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IAppCapabilitiesStore capabilitiesStore, 
-            IOptionsChangeTokenSource<AppCapabilitiesOptions> optionsChangeTokenSource, IHttpProxyService httpProxyService)
+            IHttpProxyService httpProxyService)
             {
                 return new TestGrpcWorkerChannel(workerId, eventManager, hostManager, languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger,
-                    attemptCount, environment, applicationHostOptions, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions, capabilitiesStore, optionsChangeTokenSource, httpProxyService);
+                    attemptCount, environment, applicationHostOptions, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions, capabilitiesStore, httpProxyService);
             }
 
             private class TestGrpcWorkerChannel : GrpcWorkerChannel
             {
                 internal TestGrpcWorkerChannel(string workerId, IScriptEventManager eventManager, IScriptHostManager hostManager, RpcWorkerConfig workerConfig, IWorkerProcess rpcWorkerProcess, ILogger logger, 
                     IMetricsLogger metricsLogger, int attemptCount, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ISharedMemoryManager sharedMemoryManager, 
-                    IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IAppCapabilitiesStore appCapabilitiesStore, IOptionsChangeTokenSource<AppCapabilitiesOptions> optionsChangeTokenSource, IHttpProxyService httpProxyService)
-                    : base(workerId, eventManager, hostManager, workerConfig, rpcWorkerProcess, logger, metricsLogger, attemptCount, environment, applicationHostOptions, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions, appCapabilitiesStore, optionsChangeTokenSource, httpProxyService)
+                    IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IAppCapabilitiesStore appCapabilitiesStore, IHttpProxyService httpProxyService)
+                    : base(workerId, eventManager, hostManager, workerConfig, rpcWorkerProcess, logger, metricsLogger, attemptCount, environment, applicationHostOptions, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions, appCapabilitiesStore, httpProxyService)
                 {
                 }
 

@@ -540,7 +540,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _state = _state | RpcWorkerChannelState.Initialized;
 
             ApplyCapabilities(_initMessage.Capabilities);
-            RegisterAppCapabilities(_initMessage.AppCapabilities);
+
+            if (!_environment.IsLogicApp())
+            {
+                RegisterAppCapabilities(_initMessage.AppCapabilities);
+            }
 
             _workerInitTask.TrySetResult(true);
         }
