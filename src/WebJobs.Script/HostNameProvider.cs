@@ -28,6 +28,12 @@ namespace Microsoft.Azure.WebJobs.Script
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
+        /// <summary>
+        /// Event raised when the hostname is updated (e.g., after a slot swap).
+        /// Subscribers should use this to refresh any cached hostname-dependent data.
+        /// </summary>
+        public event EventHandler<HostNameChangedEventArgs> HostNameChanged;
+
         public virtual string Value
         {
             get
@@ -56,14 +62,49 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!string.IsNullOrEmpty(hostNameHeaderValue) &&
                 string.Compare(Value, hostNameHeaderValue) != 0)
             {
-                logger.LogInformation("HostName updated from '{0}' to '{1}'", Value, hostNameHeaderValue);
+                string previousHostName = Value;
+                logger.LogInformation("HostName updated from '{0}' to '{1}'", previousHostName, hostNameHeaderValue);
                 _hostName = hostNameHeaderValue;
+
+                // Raise event to notify subscribers (e.g., FunctionsSyncManager) that hostname has changed.
+                // This allows them to refresh any hostname-dependent cached data like invoke_url_template.
+                OnHostNameChanged(previousHostName, hostNameHeaderValue);
             }
+        }
+
+        /// <summary>
+        /// Raises the HostNameChanged event.
+        /// </summary>
+        protected virtual void OnHostNameChanged(string previousHostName, string newHostName)
+        {
+            HostNameChanged?.Invoke(this, new HostNameChangedEventArgs(previousHostName, newHostName));
         }
 
         internal void Reset()
         {
             _hostName = null;
         }
+    }
+
+    /// <summary>
+    /// Event arguments for the HostNameChanged event.
+    /// </summary>
+    public class HostNameChangedEventArgs : EventArgs
+    {
+        public HostNameChangedEventArgs(string previousHostName, string newHostName)
+        {
+            PreviousHostName = previousHostName;
+            NewHostName = newHostName;
+        }
+
+        /// <summary>
+        /// Gets the previous hostname before the change.
+        /// </summary>
+        public string PreviousHostName { get; }
+
+        /// <summary>
+        /// Gets the new hostname after the change.
+        /// </summary>
+        public string NewHostName { get; }
     }
 }

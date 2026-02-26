@@ -90,5 +90,68 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logs.Count);
             Assert.Equal("HostName updated from 'test.azurewebsites.net' to 'test2.azurewebsites.net'", logs[0].FormattedMessage);
         }
+
+        [Fact]
+        public void Synchronize_RaisesHostNameChangedEvent_WhenHostNameChanges()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns((string)null);
+
+            var eventRaisedCount = 0;
+            string capturedPreviousHostName = null;
+            string capturedNewHostName = null;
+
+            _hostNameProvider.HostNameChanged += (sender, args) =>
+            {
+                eventRaisedCount++;
+                capturedPreviousHostName = args.PreviousHostName;
+                capturedNewHostName = args.NewHostName;
+            };
+
+            // Initial sync - should raise event (null -> test.azurewebsites.net)
+            HttpRequest request = new DefaultHttpContext().Request;
+            request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "test.azurewebsites.net");
+            _hostNameProvider.Synchronize(request, _logger);
+
+            Assert.Equal(1, eventRaisedCount);
+            Assert.Null(capturedPreviousHostName);
+            Assert.Equal("test.azurewebsites.net", capturedNewHostName);
+
+            // Same hostname - should NOT raise event
+            _hostNameProvider.Synchronize(request, _logger);
+            Assert.Equal(1, eventRaisedCount);
+
+            // Different hostname - should raise event
+            request = new DefaultHttpContext().Request;
+            request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "test2.azurewebsites.net");
+            _hostNameProvider.Synchronize(request, _logger);
+
+            Assert.Equal(2, eventRaisedCount);
+            Assert.Equal("test.azurewebsites.net", capturedPreviousHostName);
+            Assert.Equal("test2.azurewebsites.net", capturedNewHostName);
+        }
+
+        [Fact]
+        public void Synchronize_DoesNotRaiseEvent_WhenHostNameIsEmptyOrNull()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns((string)null);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns((string)null);
+
+            var eventRaisedCount = 0;
+            _hostNameProvider.HostNameChanged += (sender, args) => eventRaisedCount++;
+
+            // Empty header - should NOT raise event
+            HttpRequest request = new DefaultHttpContext().Request;
+            request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, string.Empty);
+            _hostNameProvider.Synchronize(request, _logger);
+
+            Assert.Equal(0, eventRaisedCount);
+
+            // No header - should NOT raise event
+            request = new DefaultHttpContext().Request;
+            _hostNameProvider.Synchronize(request, _logger);
+
+            Assert.Equal(0, eventRaisedCount);
+        }
     }
 }
