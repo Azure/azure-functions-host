@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 {
     internal class ScriptTelemetryProcessor : ITelemetryProcessor
     {
-        internal static readonly AsyncLocal<bool> IsHostProxyForwarding = new();
+        internal static readonly AsyncLocal<bool> SuppressDependencyTelemetry = new();
 
         public ScriptTelemetryProcessor(ITelemetryProcessor next)
         {
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             // Filter out HTTP dependency telemetry originating from the host's proxy calls to
             // out-of-proc workers.
-            if (item is DependencyTelemetry && IsHostProxyForwarding.Value)
+            if (item is DependencyTelemetry && SuppressDependencyTelemetry.Value)
             {
                 return;
             }

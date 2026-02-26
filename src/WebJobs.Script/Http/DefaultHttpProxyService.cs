@@ -104,9 +104,16 @@ namespace Microsoft.Azure.WebJobs.Script.Http
             // This helps track failures/cancellations that should halt retrying the http request.
             httpContext.Items[ScriptConstants.HttpProxyScriptInvocationContext] = context;
 
-            ScriptTelemetryProcessor.IsHostProxyForwarding.Value = true;
-            var forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig, _httpTransformer).AsTask();
-            ScriptTelemetryProcessor.IsHostProxyForwarding.Value = false;
+            Task<ForwarderError> forwardingTask;
+            try
+            {
+                ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = true;
+                forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig, _httpTransformer).AsTask();
+            }
+            finally
+            {
+                ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = false;
+            }
 
             context.Properties[ScriptConstants.HttpProxyTask] = forwardingTask;
         }

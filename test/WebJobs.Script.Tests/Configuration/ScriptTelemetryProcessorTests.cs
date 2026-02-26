@@ -25,14 +25,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var items = new List<ITelemetry>();
             var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
 
-            ScriptTelemetryProcessor.IsHostProxyForwarding.Value = true;
+            ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = true;
             try
             {
                 processor.Process(new DependencyTelemetry { Type = type });
             }
             finally
             {
-                ScriptTelemetryProcessor.IsHostProxyForwarding.Value = false;
+                ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = false;
             }
 
             Assert.Empty(items);
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var items = new List<ITelemetry>();
             var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
 
-            // IsHostProxyForwarding defaults to false — simulates user code making an external HTTP call
+            // SuppressDependencyTelemetry defaults to false — simulates user code making an external HTTP call
             processor.Process(new DependencyTelemetry { Type = type });
 
             Assert.Single(items);
@@ -59,14 +59,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var items = new List<ITelemetry>();
             var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
 
-            ScriptTelemetryProcessor.IsHostProxyForwarding.Value = true;
+            ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = true;
             try
             {
                 processor.Process(new TraceTelemetry("test"));
             }
             finally
             {
-                ScriptTelemetryProcessor.IsHostProxyForwarding.Value = false;
+                ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = false;
             }
 
             Assert.Single(items);
