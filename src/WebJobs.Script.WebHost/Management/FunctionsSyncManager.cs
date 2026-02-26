@@ -73,6 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private BlobClient _hashBlobClient;
         private CancellationTokenSource _hostNameChangeDebounceCts;
+        private Task _hostNameChangeTask;
+        private bool _disposed;
 
         public FunctionsSyncManager(IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, IScriptHostManager scriptHostManager)
         {
@@ -822,25 +824,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             // Cancel any pending debounced re-sync and start a new one.
             // This ensures we wait for hostname to stabilize before re-syncing.
+            CancellationTokenSource cts;
             lock (_hostNameChangeLock)
             {
+                if (_disposed)
+                {
+                    return;
+                }
+
                 _hostNameChangeDebounceCts?.Cancel();
                 _hostNameChangeDebounceCts?.Dispose();
                 _hostNameChangeDebounceCts = new CancellationTokenSource();
+                cts = _hostNameChangeDebounceCts;
             }
 
-            var cts = _hostNameChangeDebounceCts;
-            _ = Task.Run(async () =>
+            _hostNameChangeTask = Task.Run(async () =>
             {
                 try
                 {
                     // Wait for debounce period to allow hostname to stabilize
                     await Task.Delay(HostNameChangeDebounceDelayMs, cts.Token);
-
-                    if (cts.Token.IsCancellationRequested)
-                    {
-                        return;
-                    }
 
                     _logger.LogInformation("Executing background sync triggers after hostname change stabilized to '{NewHostName}'.",
                         _hostNameProvider.Value);
@@ -855,10 +858,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         _logger.LogWarning("Background sync triggers failed after hostname change: {Error}", result.Error);
                     }
                 }
-                catch (TaskCanceledException)
+                catch (Exception ex) when (ex is TaskCanceledException or ObjectDisposedException)
                 {
-                    // Another hostname change occurred, this sync was superseded
-                    _logger.LogDebug("Background sync triggers cancelled due to subsequent hostname change.");
+                    // Another hostname change occurred or Dispose was called; this sync was superseded
+                    _logger.LogDebug("Background sync triggers cancelled due to subsequent hostname change or disposal.");
                 }
                 catch (Exception ex)
                 {
@@ -875,6 +878,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // Cancel and dispose of any pending debounced re-sync
             lock (_hostNameChangeLock)
             {
+                _disposed = true;
                 _hostNameChangeDebounceCts?.Cancel();
                 _hostNameChangeDebounceCts?.Dispose();
                 _hostNameChangeDebounceCts = null;

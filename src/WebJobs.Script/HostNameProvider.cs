@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string hostNameHeaderValue = request.Headers[ScriptConstants.AntaresDefaultHostNameHeader];
             if (!string.IsNullOrEmpty(hostNameHeaderValue) &&
-                string.Compare(Value, hostNameHeaderValue) != 0)
+                !string.Equals(Value, hostNameHeaderValue, StringComparison.OrdinalIgnoreCase))
             {
                 string previousHostName = Value;
                 logger.LogInformation("HostName updated from '{0}' to '{1}'", previousHostName, hostNameHeaderValue);
