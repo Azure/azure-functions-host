@@ -85,26 +85,4 @@ namespace Microsoft.Azure.WebJobs.Script
             _hostName = null;
         }
     }
-
-    /// <summary>
-    /// Event arguments for the HostNameChanged event.
-    /// </summary>
-    public class HostNameChangedEventArgs : EventArgs
-    {
-        public HostNameChangedEventArgs(string previousHostName, string newHostName)
-        {
-            PreviousHostName = previousHostName;
-            NewHostName = newHostName;
-        }
-
-        /// <summary>
-        /// Gets the previous hostname before the change.
-        /// </summary>
-        public string PreviousHostName { get; }
-
-        /// <summary>
-        /// Gets the new hostname after the change.
-        /// </summary>
-        public string NewHostName { get; }
-    }
 }

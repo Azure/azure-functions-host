@@ -1371,7 +1371,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public void Dispose_CancelsHostNameChangeSyncAndUnsubscribes()
+        public async Task Dispose_CancelsHostNameChangeSyncAndUnsubscribes()
         {
             // Arrange - simulate a hostname change to start a background sync
             var loggerFactory = new LoggerFactory();
@@ -1392,7 +1392,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _hostNameProvider.Synchronize(request2, logger);
 
             // Small delay to confirm no sync was scheduled
-            Task.Delay(500).Wait();
+            await Task.Delay(500);
             var logs = _loggerProvider.GetAllLogMessages();
             Assert.DoesNotContain(logs, l =>
                 l.Category == SyncManagerLogCategory &&
