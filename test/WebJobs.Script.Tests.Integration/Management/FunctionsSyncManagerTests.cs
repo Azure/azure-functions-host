@@ -1309,12 +1309,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task HostNameChange_TriggersBackgroundSyncTriggers()
         {
-            // Arrange - set up environment for sync triggers
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 ResetMockFileSystem();
 
-                // Act - simulate a hostname change (e.g., after slot swap)
                 var request = new DefaultHttpContext().Request;
                 request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "newhost.azurewebsites.net");
 
@@ -1323,13 +1321,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var logger = loggerFactory.CreateLogger<HostNameProvider>();
                 _hostNameProvider.Synchronize(request, logger);
 
-                // Assert - the hostname was updated
                 Assert.Equal("newhost.azurewebsites.net", _hostNameProvider.Value);
 
                 // Wait for the debounced background sync to fire (5s debounce + buffer)
                 await Task.Delay(TimeSpan.FromSeconds(7));
 
-                // Verify that logs indicate the background sync was attempted
                 var logs = _loggerProvider.GetAllLogMessages();
                 Assert.Contains(logs, l => l.FormattedMessage.Contains("Hostname changed from"));
                 Assert.Contains(logs, l => l.FormattedMessage.Contains("Executing background sync triggers after hostname change"));
@@ -1339,7 +1335,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task HostNameChange_Debounces_MultipleChanges()
         {
-            // Arrange
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 ResetMockFileSystem();
@@ -1347,7 +1342,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 loggerFactory.AddProvider(_loggerProvider);
                 var logger = loggerFactory.CreateLogger<HostNameProvider>();
 
-                // Act - simulate rapid hostname flip-flop (as during slot swap)
                 var request1 = new DefaultHttpContext().Request;
                 request1.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "slot1.azurewebsites.net");
                 _hostNameProvider.Synchronize(request1, logger);
@@ -1358,22 +1352,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 request2.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "production.azurewebsites.net");
                 _hostNameProvider.Synchronize(request2, logger);
 
-                // Assert - only the final hostname should be used
                 Assert.Equal("production.azurewebsites.net", _hostNameProvider.Value);
 
                 // Wait for debounce to settle
                 await Task.Delay(TimeSpan.FromSeconds(7));
 
-                // The first sync should have been cancelled
+                // Only the final hostname sync should have executed, not the first one
                 var logs = _loggerProvider.GetAllLogMessages();
-                Assert.Contains(logs, l => l.FormattedMessage.Contains("cancelled due to subsequent hostname change"));
+                var syncExecutionLogs = logs.Where(l => l.FormattedMessage.Contains("Executing background sync triggers after hostname change")).ToList();
+                Assert.Single(syncExecutionLogs);
+                Assert.Contains("production.azurewebsites.net", syncExecutionLogs[0].FormattedMessage);
             }
         }
 
         [Fact]
         public async Task Dispose_CancelsHostNameChangeSyncAndUnsubscribes()
         {
-            // Arrange - simulate a hostname change to start a background sync
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
             var logger = loggerFactory.CreateLogger<HostNameProvider>();
@@ -1381,17 +1375,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "newhost.azurewebsites.net");
             _hostNameProvider.Synchronize(request, logger);
 
-            // Act - dispose immediately (before the 5s debounce fires)
             _functionsSyncManager.Dispose();
 
-            // Assert - verify no exception occurs and event is unsubscribed
             // A subsequent hostname change should not trigger the handler
             _loggerProvider.ClearAllLogMessages();
             var request2 = new DefaultHttpContext().Request;
             request2.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "anotherhost.azurewebsites.net");
             _hostNameProvider.Synchronize(request2, logger);
 
-            // Small delay to confirm no sync was scheduled
             await Task.Delay(500);
             var logs = _loggerProvider.GetAllLogMessages();
             Assert.DoesNotContain(logs, l =>

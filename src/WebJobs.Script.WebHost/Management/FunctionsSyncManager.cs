@@ -50,10 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string ManagedKubernetesBuildServiceName = "k8se-build-service";
         private const string ManagedKubernetesBuildServiceNamespace = "k8se-system";
 
-        // Debounce delay for hostname change re-sync (in milliseconds).
-        // This prevents rapid re-syncs during slot swap hostname flip-flop.
-        private const int HostNameChangeDebounceDelayMs = 5000;
-
         private readonly Regex versionRegex = new Regex(@"Version=(?<majorversion>\d)\.\d\.\d");
 
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
@@ -69,11 +65,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly object _hostNameChangeLock = new object();
+        private readonly Func<Task> _syncTriggersAfterHostNameChange;
 
         private BlobClient _hashBlobClient;
-        private CancellationTokenSource _hostNameChangeDebounceCts;
-        private Task _hostNameChangeTask;
         private bool _disposed;
 
         public FunctionsSyncManager(IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, IScriptHostManager scriptHostManager)
@@ -93,6 +87,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             // Subscribe to hostname changes to trigger re-sync after slot swaps.
             // This ensures the ARM cache (invoke_url_template) is updated with the correct hostname.
+            Func<Task> syncAction = SyncTriggersAfterHostNameChangeAsync;
+            _syncTriggersAfterHostNameChange = syncAction.Debounce(milliseconds: 5000);
             _hostNameProvider.HostNameChanged += OnHostNameChanged;
         }
 
@@ -819,71 +815,58 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// </summary>
         private void OnHostNameChanged(object sender, HostNameChangedEventArgs e)
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             _logger.LogInformation("Hostname changed from '{PreviousHostName}' to '{NewHostName}'. Scheduling background sync triggers update.",
                 e.PreviousHostName, e.NewHostName);
 
-            // Cancel any pending debounced re-sync and start a new one.
-            // This ensures we wait for hostname to stabilize before re-syncing.
-            CancellationTokenSource cts;
-            lock (_hostNameChangeLock)
-            {
-                if (_disposed)
-                {
-                    return;
-                }
+            _ = _syncTriggersAfterHostNameChange();
+        }
 
-                _hostNameChangeDebounceCts?.Cancel();
-                _hostNameChangeDebounceCts?.Dispose();
-                _hostNameChangeDebounceCts = new CancellationTokenSource();
-                cts = _hostNameChangeDebounceCts;
+        /// <summary>
+        /// Executes the background sync triggers after hostname change has stabilized.
+        /// This method is wrapped by <see cref="FuncExtensions.Debounce"/> to prevent rapid re-syncs.
+        /// </summary>
+        private async Task SyncTriggersAfterHostNameChangeAsync()
+        {
+            if (_disposed)
+            {
+                return;
             }
 
-            _hostNameChangeTask = Task.Run(async () =>
+            _logger.LogInformation("Executing background sync triggers after hostname change stabilized to '{NewHostName}'.",
+                _hostNameProvider.Value);
+
+            try
             {
-                try
+                var result = await TrySyncTriggersAsync(isBackgroundSync: true);
+                if (result.Success)
                 {
-                    // Wait for debounce period to allow hostname to stabilize
-                    await Task.Delay(HostNameChangeDebounceDelayMs, cts.Token);
-
-                    _logger.LogInformation("Executing background sync triggers after hostname change stabilized to '{NewHostName}'.",
-                        _hostNameProvider.Value);
-
-                    var result = await TrySyncTriggersAsync(isBackgroundSync: true);
-                    if (result.Success)
-                    {
-                        _logger.LogInformation("Background sync triggers completed successfully after hostname change.");
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Background sync triggers failed after hostname change: {Error}", result.Error);
-                    }
+                    _logger.LogInformation("Background sync triggers completed successfully after hostname change.");
                 }
-                catch (Exception ex) when (ex is TaskCanceledException or ObjectDisposedException)
+                else
                 {
-                    // Another hostname change occurred or Dispose was called; this sync was superseded
-                    _logger.LogDebug("Background sync triggers cancelled due to subsequent hostname change or disposal.");
+                    _logger.LogWarning("Background sync triggers failed after hostname change: {Error}", result.Error);
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during background sync triggers after hostname change.");
-                }
-            });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during background sync triggers after hostname change.");
+            }
         }
 
         public void Dispose()
         {
-            // Unsubscribe from hostname changes
-            _hostNameProvider.HostNameChanged -= OnHostNameChanged;
-
-            // Cancel and dispose of any pending debounced re-sync
-            lock (_hostNameChangeLock)
+            if (_disposed)
             {
-                _disposed = true;
-                _hostNameChangeDebounceCts?.Cancel();
-                _hostNameChangeDebounceCts?.Dispose();
-                _hostNameChangeDebounceCts = null;
+                return;
             }
 
+            _disposed = true;
+            _hostNameProvider.HostNameChanged -= OnHostNameChanged;
             _syncSemaphore.Dispose();
         }
 
