@@ -3,6 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Fix stale hostname in ARM cache after slot swap by adding event-based re-sync when `HostNameProvider` detects a hostname change (#11629)
 - Refactor DiagnosticEventTableStorageRepository TableClient (#11611)
 - Improve resiliency of batch operations in TableStorageScaleMetricsRepository with Polly retry and exponential backoff (#11586)
 - Add support for propagating tags from the worker to the host and update the protobuf version to `v1.12.0-protofile` (#11575)
