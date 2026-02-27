@@ -19,6 +19,7 @@ using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -36,7 +37,6 @@ using Microsoft.Extensions.Options;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
-
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 using AppInsightsCredentialOptions = Microsoft.Azure.WebJobs.Logging.ApplicationInsights.TokenCredentialOptions;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly bool _originalStandbyModeValue;
         private readonly string _originalFunctionsWorkerRuntime;
         private readonly string _originalFunctionsWorkerRuntimeVersion;
+        private readonly IAppCapabilitiesStore _appCapabilitiesStore;
 
         // we're only using this dictionary's keys so it acts as a "ConcurrentHashSet"
         private readonly ConcurrentDictionary<ScriptHostStartupOperation, byte> _activeStartupOperations = new();
@@ -88,7 +89,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
             IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager, IHostMetrics hostMetrics,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            WorkerConfigCacheInvalidator workerConfigCacheInvalidator)
+            WorkerConfigCacheInvalidator workerConfigCacheInvalidator,
+            IAppCapabilitiesStore appCapabilitiesStore)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -110,6 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _eventManager = eventManager;
             _hostMetrics = hostMetrics ?? throw new ArgumentNullException(nameof(hostMetrics));
+            _appCapabilitiesStore = appCapabilitiesStore ?? throw new ArgumentNullException(nameof(appCapabilitiesStore));
 
             _hostStarted = _hostStartedSource.Task;
 
@@ -594,6 +597,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 _logger.EnteringRestart(reason);
+
+                _appCapabilitiesStore.Clear();
 
                 // If anything is mid-startup, cancel it.
                 _startupLoopTokenSource?.Cancel();

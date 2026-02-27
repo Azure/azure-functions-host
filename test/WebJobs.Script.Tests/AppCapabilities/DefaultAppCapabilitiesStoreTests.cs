@@ -151,9 +151,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.AppCapabilities
             {
                 new KeyValuePair<string, string>("ValidKey1", "ValidValue1"),
                 new KeyValuePair<string, string>(null, "Value"),
-                new KeyValuePair<string, string>("", "Value"),
+                new KeyValuePair<string, string>(string.Empty, "Value"),
                 new KeyValuePair<string, string>("Key", null),
-                new KeyValuePair<string, string>("Key2", ""),
+                new KeyValuePair<string, string>("Key2", string.Empty),
                 new KeyValuePair<string, string>("ValidKey2", "ValidValue2")
             };
 
@@ -200,6 +200,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.AppCapabilities
             Assert.True(store.Capabilities.ContainsKey("TestKey"));
             Assert.True(store.Capabilities.ContainsKey("testkey"));
             Assert.True(store.Capabilities.ContainsKey("TESTKEY"));
+        }
+
+        [Fact]
+        public void Clear_TriggersChangeNotification()
+        {
+            var changeTokenSource = new AppCapabilitiesChangeTokenSource();
+            var store = new DefaultAppCapabilitiesStore(changeTokenSource);
+
+            var changeToken = changeTokenSource.GetChangeToken();
+            var hasChangedBefore = changeToken.HasChanged;
+
+            store.Clear();
+
+            Assert.False(hasChangedBefore);
+            Assert.True(changeToken.HasChanged);
         }
     }
 }

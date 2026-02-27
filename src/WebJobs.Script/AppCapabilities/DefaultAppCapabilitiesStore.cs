@@ -33,10 +33,24 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
                     }
                 }
 
-                if (_optionsChangeTokenSource is AppCapabilitiesChangeTokenSource changeTokenSource)
-                {
-                    changeTokenSource.TriggerChange();
-                }
+                TriggerChangeNotification();
+            }
+        }
+
+        public void Clear()
+        {
+            lock (_updateLock)
+            {
+                _capabilities.Clear();
+                TriggerChangeNotification();
+            }
+        }
+
+        private void TriggerChangeNotification()
+        {
+            if (_optionsChangeTokenSource is AppCapabilitiesChangeTokenSource changeTokenSource)
+            {
+                changeTokenSource.TriggerChange();
             }
         }
     }

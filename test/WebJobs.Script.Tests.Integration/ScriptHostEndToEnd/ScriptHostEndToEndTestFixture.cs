@@ -1,17 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Web.Http;
 using Azure;
 using Azure.Data.Tables;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -23,8 +18,15 @@ using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web.Http;
 using Xunit;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -274,6 +276,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public virtual void ConfigureServices(IServiceCollection services)
         {
+            // This is registered by WebHost typically, but is needed for tests that run without WebHost, so adding it here at the ScriptHost level.
+            services.AddSingleton<IAppCapabilitiesStore, DefaultAppCapabilitiesStore>();
+            services.AddSingleton<IOptionsChangeTokenSource<AppCapabilitiesOptions>, AppCapabilitiesChangeTokenSource>();
         }
 
         public virtual async Task DisposeAsync()

@@ -33,5 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// Existing capabilities not included in the dictionary remain unchanged.
         /// </remarks>
         public void SetAll(IEnumerable<KeyValuePair<string, string>> capabilities);
+
+        /// <summary>
+        /// Clears all capabilities from the store, removing all existing key-value pairs.
+        /// </summary>
+        public void Clear();
     }
 }
