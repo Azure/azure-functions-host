@@ -70,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _hostPerformanceManager = new HostPerformanceManager(_mockEnvironment.Object, _healthMonitorOptions, serviceProviderMock.Object);
             _mockConfig = new Mock<IConfiguration>().Object;
             _hostMetrics = _host.Object.Services.GetService<IHostMetrics>();
+            _mockAppCapabilitiesStore = new Mock<IAppCapabilitiesStore>();
 
             _workerConfigCacheInvalidator = new(null, null);
         }
