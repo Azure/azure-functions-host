@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
@@ -28,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // following is the set of GET APIs that don't return secrets
             var safeReaderApis = new string[]
             {
+                "AppCapabilitiesController.Get",
+                "AppCapabilitiesController.GetCapabilities",
                 "ExtensionBundleController.GetBindings",
                 "ExtensionBundleController.GetResources",
                 "ExtensionBundleController.GetResourcesLocale",

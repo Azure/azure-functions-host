@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -89,6 +90,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IWorkerConfigurationProvider, DefaultWorkerConfigurationProvider>();
             services.AddSingleton<IWorkerConfigurationProvider, DynamicWorkerConfigurationProvider>();
             services.AddSingleton<IWorkerConfigurationProvider, ExplicitWorkerConfigurationProvider>();
+            services.AddSingleton<IAppCapabilitiesStore, DefaultAppCapabilitiesStore>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddSingleton(_ => new WorkerConfigCacheInvalidator(null, null));
