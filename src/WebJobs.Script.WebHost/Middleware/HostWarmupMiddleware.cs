@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -20,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     {
         private readonly IWebHostWorkerManager _workerManager;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly RequestDelegate _next;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
@@ -38,7 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             IScriptHostManager hostManager,
             ILogger<HostWarmupMiddleware> logger,
             IWebHostWorkerManager workerManager,
-            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+            IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IHttpClientFactory httpClientFactory = null)
         {
             _next = next;
             _webHostEnvironment = webHostEnvironment;
@@ -48,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath);
             _workerManager = workerManager ?? throw new ArgumentNullException(nameof(workerManager));
             _hostingConfigOptions = hostingConfigOptions;
+            _httpClientFactory = httpClientFactory;
         }
 
         public Task Invoke(HttpContext httpContext)
@@ -68,10 +73,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             // We only want to run our JIT traces on the first warmup call.
             if (!_jitTraceHasRun)
             {
-                PreJitPrepare(WarmUpConstants.JitTraceFileName);
+                await PreJitPrepareAsync(WarmUpConstants.JitTraceFileName, WarmUpConstants.PreJitTraceUrlSettingName);
                 if (_environment.IsAnyLinuxConsumption())
                 {
-                    PreJitPrepare(WarmUpConstants.LinuxJitTraceFileName);
+                    await PreJitPrepareAsync(WarmUpConstants.LinuxJitTraceFileName, WarmUpConstants.PreJitLinuxTraceUrlSettingName);
                 }
                 _jitTraceHasRun = true;
             }
@@ -133,6 +138,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
         }
 
+        internal async Task PreJitPrepareAsync(string jitTraceFileName, string urlSettingName)
+        {
+            StreamReader remoteStream = await TryDownloadJitTraceAsync(jitTraceFileName, urlSettingName);
+
+            if (remoteStream is not null)
+            {
+                try
+                {
+                    var sw = Stopwatch.StartNew();
+                    JitTraceRuntime.Prepare(remoteStream, out int successfulPrepares, out int failedPrepares);
+                    sw.Stop();
+                    _logger.LogInformation(new EventId(100, "PreJit"),
+                        "PreJIT (remote) Successful prepares: {successfulPrepares}, Failed prepares: {failedPrepares} FileName = {jitTraceFileName}, Duration = {elapsedMs}ms",
+                        successfulPrepares, failedPrepares, jitTraceFileName, sw.ElapsedMilliseconds);
+
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to apply remote jittrace for '{jitTraceFileName}'. Falling back to local file.", jitTraceFileName);
+                }
+                finally
+                {
+                    remoteStream.Dispose();
+                }
+            }
+
+            PreJitPrepare(jitTraceFileName);
+        }
+
         private void PreJitPrepare(string jitTraceFileName)
         {
             // This is to PreJIT all methods captured in coldstart.jittrace file to improve cold start time
@@ -144,12 +179,79 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
             if (file.Exists)
             {
+                var sw = Stopwatch.StartNew();
                 JitTraceRuntime.Prepare(file, out int successfulPrepares, out int failedPrepares);
+                sw.Stop();
 
                 // We will need to monitor failed vs success prepares and if the failures increase, it means code paths have diverged or there have been updates on dotnet core side.
                 // When this happens, we will need to regenerate the coldstart.jittrace file.
                 _logger.LogInformation(new EventId(100, "PreJit"),
-                    $"PreJIT Successful prepares: {successfulPrepares}, Failed prepares: {failedPrepares} FileName = {jitTraceFileName}");
+                    "PreJIT (local fallback) Successful prepares: {successfulPrepares}, Failed prepares: {failedPrepares} FileName = {jitTraceFileName}, Duration = {elapsedMs}ms",
+                    successfulPrepares, failedPrepares, jitTraceFileName, sw.ElapsedMilliseconds);
+            }
+        }
+
+        /// <summary>
+        /// Attempts to download a .jittrace file from a URL configured via FunctionsHostingConfig or environment variable.
+        /// Downloads the file to a well-known local path under the PreJIT folder. If the file has already been
+        /// downloaded from a previous run, the local copy is reused without re-downloading.
+        /// Returns a <see cref="StreamReader"/> if a remote file is available, or <c>null</c> if no URL is configured or the download fails.
+        /// The caller is responsible for disposing the returned <see cref="StreamReader"/>.
+        /// </summary>
+        internal async Task<StreamReader> TryDownloadJitTraceAsync(string jitTraceFileName, string urlSettingName)
+        {
+            string url = _hostingConfigOptions?.Value?.GetFeature(urlSettingName)
+                         ?? _environment.GetEnvironmentVariable(urlSettingName);
+
+            if (string.IsNullOrEmpty(url))
+            {
+                return null;
+            }
+
+            var localPath = Path.Combine(
+                _assemblyLocalPath,
+                WarmUpConstants.PreJitFolderName, $"remote.{jitTraceFileName}");
+
+            // If we already downloaded this file previously, reuse it.
+            if (File.Exists(localPath))
+            {
+                _logger.LogInformation("Using cached remote jittrace file at '{localPath}' (source: cached).", localPath);
+
+                return new StreamReader(new FileStream(localPath, FileMode.Open, FileAccess.Read));
+            }
+
+            if (_httpClientFactory is null)
+            {
+                _logger.LogWarning("IHttpClientFactory is not available. Cannot download remote jittrace file for '{jitTraceFileName}'.", jitTraceFileName);
+
+                return null;
+            }
+
+            try
+            {
+                _logger.LogInformation("Downloading remote jittrace file for '{jitTraceFileName}' from configured URL (source: remote).", jitTraceFileName);
+
+                var sw = Stopwatch.StartNew();
+                var httpClient = _httpClientFactory.CreateClient();
+                using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode();
+
+                using (var fileStream = new FileStream(localPath, FileMode.Create, FileAccess.Write))
+                {
+                    await response.Content.CopyToAsync(fileStream);
+                }
+
+                sw.Stop();
+                _logger.LogInformation("Successfully downloaded remote jittrace file for '{jitTraceFileName}' to '{localPath}' (source: remote, downloadMs: {elapsedMs}).",
+                    jitTraceFileName, localPath, sw.ElapsedMilliseconds);
+
+                return new StreamReader(new FileStream(localPath, FileMode.Open, FileAccess.Read));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to download remote jittrace file for '{jitTraceFileName}'. Falling back to local file.", jitTraceFileName);
+
+                return null;
             }
         }
 
