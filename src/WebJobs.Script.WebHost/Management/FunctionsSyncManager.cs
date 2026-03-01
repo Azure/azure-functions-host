@@ -809,7 +809,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         /// <summary>
-        /// Handles hostname changes (e.g., after slot swap) by triggering a debounced background re-sync.
+        /// Handles hostname changes (e.g., after slot swap) by triggering a debounced re-sync.
         /// This ensures the ARM cache (invoke_url_template) is updated with the correct hostname.
         /// The debounce prevents rapid re-syncs during hostname flip-flop that can occur during slot swaps.
         /// </summary>
@@ -820,16 +820,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return;
             }
 
-            _logger.LogInformation("Hostname changed from '{PreviousHostName}' to '{NewHostName}'. Scheduling background sync triggers update.",
+            // During standby mode, IsSyncTriggersEnvironment returns false and SetTriggers would be a no-op.
+            // Skip scheduling to avoid misleading log messages.
+            if (_webHostEnvironment.InStandbyMode)
+            {
+                return;
+            }
+
+            _logger.LogInformation("Hostname changed from '{PreviousHostName}' to '{NewHostName}'. Scheduling sync triggers update.",
                 e.PreviousHostName, e.NewHostName);
 
             _ = _syncTriggersAfterHostNameChange();
         }
 
         /// <summary>
-        /// Executes the background sync triggers after hostname change has stabilized.
+        /// Executes a non-background (authoritative) sync triggers after hostname change has stabilized.
+        /// Uses <c>isBackgroundSync: false</c> to force a <c>SetTriggers</c> call without hash-based de-duplication,
+        /// ensuring the ARM cache (e.g., invoke_url_template) is updated even when the trigger payload is unchanged.
         /// This method is wrapped by <see cref="FuncExtensions.Debounce"/> to prevent rapid re-syncs.
         /// </summary>
+        /// <remarks>
+        /// Trade-off: Using <c>isBackgroundSync: false</c> means that if the site temporarily has no functions
+        /// (e.g., transient file system issue during swap), an empty payload will be sent to SetTriggers, which
+        /// could cause ARM to think the app has no triggers. This is an acceptable trade-off because:
+        /// 1. It is extremely unlikely for functions to disappear during a swap.
+        /// 2. The regular background sync timer will eventually re-sync with the correct payload.
+        /// 3. The alternative (using background sync) would bypass SetTriggers due to hash de-dup, defeating
+        ///    the purpose of this fix entirely.
+        /// </remarks>
         private async Task SyncTriggersAfterHostNameChangeAsync()
         {
             if (_disposed)
@@ -837,24 +855,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return;
             }
 
-            _logger.LogInformation("Executing background sync triggers after hostname change stabilized to '{NewHostName}'.",
+            _logger.LogInformation("Executing sync triggers after hostname change stabilized to '{NewHostName}'.",
                 _hostNameProvider.Value);
 
             try
             {
-                var result = await TrySyncTriggersAsync(isBackgroundSync: true);
+                var result = await TrySyncTriggersAsync(isBackgroundSync: false);
                 if (result.Success)
                 {
-                    _logger.LogInformation("Background sync triggers completed successfully after hostname change.");
+                    _logger.LogInformation("Sync triggers completed successfully after hostname change.");
                 }
                 else
                 {
-                    _logger.LogWarning("Background sync triggers failed after hostname change: {Error}", result.Error);
+                    _logger.LogWarning("Sync triggers failed after hostname change: {Error}", result.Error);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during background sync triggers after hostname change.");
+                _logger.LogError(ex, "Error during sync triggers after hostname change.");
             }
         }
 

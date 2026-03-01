@@ -1307,7 +1307,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task HostNameChange_TriggersBackgroundSyncTriggers()
+        public async Task HostNameChange_TriggersSyncTriggers()
         {
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -1323,12 +1323,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 Assert.Equal("newhost.azurewebsites.net", _hostNameProvider.Value);
 
-                // Wait for the debounced background sync to fire (5s debounce + buffer)
+                // Wait for the debounced sync to fire (5s debounce + buffer)
                 await Task.Delay(TimeSpan.FromSeconds(7));
 
                 var logs = _loggerProvider.GetAllLogMessages();
                 Assert.Contains(logs, l => l.FormattedMessage.Contains("Hostname changed from"));
-                Assert.Contains(logs, l => l.FormattedMessage.Contains("Executing background sync triggers after hostname change"));
+                Assert.Contains(logs, l => l.FormattedMessage.Contains("Executing sync triggers after hostname change"));
             }
         }
 
@@ -1359,7 +1359,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 // Only the final hostname sync should have executed, not the first one
                 var logs = _loggerProvider.GetAllLogMessages();
-                var syncExecutionLogs = logs.Where(l => l.FormattedMessage.Contains("Executing background sync triggers after hostname change")).ToList();
+                var syncExecutionLogs = logs.Where(l => l.FormattedMessage.Contains("Executing sync triggers after hostname change")).ToList();
                 Assert.Single(syncExecutionLogs);
                 Assert.Contains("production.azurewebsites.net", syncExecutionLogs[0].FormattedMessage);
             }
@@ -1385,9 +1385,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             await Task.Delay(500);
             var logs = _loggerProvider.GetAllLogMessages();
+
+            // Verify no sync was scheduled after dispose
             Assert.DoesNotContain(logs, l =>
                 l.Category == SyncManagerLogCategory &&
-                l.FormattedMessage.Contains("Scheduling background sync triggers"));
+                l.FormattedMessage.Contains("Hostname changed from"));
         }
 
         public void Dispose()

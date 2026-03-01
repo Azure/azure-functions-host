@@ -108,25 +108,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 capturedNewHostName = args.NewHostName;
             };
 
-            // Initial sync - should raise event (null -> test.azurewebsites.net)
+            // Initial sync (null -> test.azurewebsites.net) should NOT raise event.
+            // This is hostname discovery during specialization/scale-out, not a slot swap.
             HttpRequest request = new DefaultHttpContext().Request;
             request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "test.azurewebsites.net");
             _hostNameProvider.Synchronize(request, _logger);
 
-            Assert.Equal(1, eventRaisedCount);
-            Assert.Null(capturedPreviousHostName);
-            Assert.Equal("test.azurewebsites.net", capturedNewHostName);
+            Assert.Equal(0, eventRaisedCount);
 
             // Same hostname - should NOT raise event
             _hostNameProvider.Synchronize(request, _logger);
-            Assert.Equal(1, eventRaisedCount);
+            Assert.Equal(0, eventRaisedCount);
 
-            // Different hostname - should raise event
+            // Different hostname (slot swap) - SHOULD raise event
             request = new DefaultHttpContext().Request;
             request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "test2.azurewebsites.net");
             _hostNameProvider.Synchronize(request, _logger);
 
-            Assert.Equal(2, eventRaisedCount);
+            Assert.Equal(1, eventRaisedCount);
             Assert.Equal("test.azurewebsites.net", capturedPreviousHostName);
             Assert.Equal("test2.azurewebsites.net", capturedNewHostName);
         }

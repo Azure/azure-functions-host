@@ -66,9 +66,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 logger.LogInformation("HostName updated from '{0}' to '{1}'", previousHostName, hostNameHeaderValue);
                 _hostName = hostNameHeaderValue;
 
-                // Raise event to notify subscribers (e.g., FunctionsSyncManager) that hostname has changed.
-                // This allows them to refresh any hostname-dependent cached data like invoke_url_template.
-                OnHostNameChanged(previousHostName, hostNameHeaderValue);
+                // Only raise the event when the previous hostname was already set.
+                // During specialization/scale-out, the first request sets the hostname from null/environment default
+                // to the real value — this is initial discovery, not a slot swap, and should not trigger a re-sync.
+                if (!string.IsNullOrEmpty(previousHostName))
+                {
+                    OnHostNameChanged(previousHostName, hostNameHeaderValue);
+                }
             }
         }
 
