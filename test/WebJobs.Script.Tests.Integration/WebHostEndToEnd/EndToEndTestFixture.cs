@@ -141,6 +141,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, _functionsWorkerRuntime);
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, _workerProcessCount.ToString());
             }
+            else
+            {
+                // Explicitly clear the environment variable to prevent CI environment pollution
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+            }
             if (!string.IsNullOrEmpty(_functionsWorkerRuntimeVersion))
             {
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, _functionsWorkerRuntimeVersion);
