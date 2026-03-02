@@ -1612,10 +1612,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .ConfigureAppConfiguration(c =>
                 {
-                    c.AddInMemoryCollection(new Dictionary<string, string>
+                    var inMemorySettings = new Dictionary<string, string>
                     {
                         { _scriptRootConfigPath, _specializedScriptRoot }
-                    });
+                    };
+
+                    string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                    if (workerRuntime is not null)
+                    {
+                        inMemorySettings[EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime;
+                    }
+
+                    c.AddInMemoryCollection(inMemorySettings);
                 })
                 .ConfigureServices((bc, s) =>
                 {
@@ -1727,5 +1735,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 throw new NotImplementedException();
             }
         }
+
     }
 }

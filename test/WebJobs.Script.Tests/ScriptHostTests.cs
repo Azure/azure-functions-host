@@ -494,6 +494,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         s =>
                         {
                             s.AddSingleton<IMetricsLogger>(metricsLogger);
+                            s.AddSingleton<IEnvironment>(environment);
                         })
                         .Build();
                     var scriptHost = host.GetScriptHost();

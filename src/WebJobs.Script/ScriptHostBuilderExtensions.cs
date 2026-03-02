@@ -124,7 +124,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Selectively surface the worker runtime environment variable into the script host
                 // configuration so that IConfiguration consumers can resolve it without depending
                 // on IEnvironment directly.
-                string workerRuntime = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                var environment = applicationOptions.RootServiceProvider?.GetService<IEnvironment>() ?? SystemEnvironment.Instance;
+                string workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
                 if (workerRuntime is not null)
                 {
                     configBuilder.AddInMemoryCollection(new[]

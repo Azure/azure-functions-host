@@ -248,6 +248,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
             FileUtility.CopyDirectory(sourceFunctionApp, appContent);
             var host = new TestFunctionHost(sourceFunctionApp, testLogPath,
+                configureWebHostServices: s =>
+                {
+                    s.AddSingleton(testEnvironment);
+                },
                 configureScriptHostWebJobsBuilder: builder =>
                 {
                     foreach (var provider in providers)
