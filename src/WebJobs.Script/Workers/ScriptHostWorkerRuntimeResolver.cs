@@ -3,8 +3,7 @@
 
 using System;
 using System.Threading;
-using Microsoft.Azure.WebJobs.Script.Configuration;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -17,18 +16,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     /// </summary>
     internal sealed class ScriptHostWorkerRuntimeResolver : IWorkerRuntimeResolver
     {
-        private readonly IEnvironment _environment;
+        private readonly IConfiguration _configuration;
         private readonly IOptionsMonitor<ScriptJobHostOptions> _scriptJobHostOptionsMonitor;
         private string _resolvedWorkerRuntime;
 
         public ScriptHostWorkerRuntimeResolver(
-            IEnvironment environment,
+            IConfiguration configuration,
             IOptionsMonitor<ScriptJobHostOptions> scriptJobHostOptionsMonitor)
         {
-            ArgumentNullException.ThrowIfNull(environment);
+            ArgumentNullException.ThrowIfNull(configuration);
             ArgumentNullException.ThrowIfNull(scriptJobHostOptionsMonitor);
 
-            _environment = environment;
+            _configuration = configuration;
             _scriptJobHostOptionsMonitor = scriptJobHostOptionsMonitor;
         }
 
@@ -40,19 +39,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 return cachedRuntime;
             }
 
-            string workerRuntime;
-            if (string.Equals(_scriptJobHostOptionsMonitor.CurrentValue.ConfigurationProfile,
-                              HostConfigurationProfile.McpCustomHandlerProfile,
-                              StringComparison.OrdinalIgnoreCase)
-                || string.Equals(_scriptJobHostOptionsMonitor.CurrentValue.ConfigurationProfile,
-                                 HostConfigurationProfile.WebAppCustomHandlerProfile,
-                                 StringComparison.OrdinalIgnoreCase))
+            // Check the worker runtime from the options first (set by configuration profiles),
+            // then fall back to the configuration entry (e.g., FUNCTIONS_WORKER_RUNTIME env var).
+            string workerRuntime = _scriptJobHostOptionsMonitor.CurrentValue.ProfileWorkerRuntime;
+
+            if (string.IsNullOrEmpty(workerRuntime))
             {
-                workerRuntime = RpcWorkerConstants.CustomHandlerLanguageWorkerName;
-            }
-            else
-            {
-                workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                workerRuntime = _configuration[EnvironmentSettingNames.FunctionWorkerRuntime];
             }
 
             // Only cache non-null resolved values. Default values should not be cached

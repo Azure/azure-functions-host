@@ -22,7 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             [ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, ScriptConstants.EnableProxyingHttpRequest)] = "true",
             [ConfigurationPath.Combine(ConfigurationSectionNames.Http, "routePrefix")] = string.Empty,
-            [ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, "http", "routes", "0", "route")] = "{*route}"
+            [ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, "http", "routes", "0", "route")] = "{*route}",
+            [nameof(ScriptJobHostOptions.ProfileWorkerRuntime)] = Workers.Rpc.RpcWorkerConstants.CustomHandlerLanguageWorkerName,
         };
 
         internal const string McpCustomHandlerProfile = "mcp-custom-handler";

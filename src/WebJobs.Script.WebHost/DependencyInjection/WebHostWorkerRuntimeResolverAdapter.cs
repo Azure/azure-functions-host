@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -19,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
     {
         private readonly IServiceProvider _rootProvider;
         private readonly ILogger<WebHostWorkerRuntimeResolverAdapter> _logger;
-        private readonly IEnvironment _environment;
+        private readonly IConfiguration _configuration;
         private IWorkerRuntimeResolver _cachedHostResolver;
         private IScriptHostManager _hostManager;
         private string _cachedEnvironmentValue;
@@ -27,14 +28,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public WebHostWorkerRuntimeResolverAdapter(
             IServiceProvider rootProvider,
-            IEnvironment environment,
+            IConfiguration configuration,
             ILogger<WebHostWorkerRuntimeResolverAdapter> logger)
         {
             ArgumentNullException.ThrowIfNull(rootProvider);
-            ArgumentNullException.ThrowIfNull(environment);
+            ArgumentNullException.ThrowIfNull(configuration);
             ArgumentNullException.ThrowIfNull(logger);
             _rootProvider = rootProvider;
-            _environment = environment;
+            _configuration = configuration;
             _logger = logger;
         }
 
@@ -82,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 return cachedValue;
             }
 
-            var valueFromEnvironment = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            var valueFromEnvironment = _configuration[EnvironmentSettingNames.FunctionWorkerRuntime];
 
             if (!string.IsNullOrEmpty(valueFromEnvironment))
             {

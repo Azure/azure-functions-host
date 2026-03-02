@@ -120,6 +120,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     configBuilder.AddConfiguration(scriptHostConfiguration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName));
                 }
+
+                // Selectively surface the worker runtime environment variable into the script host
+                // configuration so that IConfiguration consumers can resolve it without depending
+                // on IEnvironment directly.
+                string workerRuntime = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                if (workerRuntime is not null)
+                {
+                    configBuilder.AddInMemoryCollection(new[]
+                    {
+                        new KeyValuePair<string, string>(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime)
+                    });
+                }
             });
 
             // WebJobs configuration

@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -26,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             resolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
 
             var provider = CreateProviderWithScriptHostResolver(resolver.Object);
-            var environment = new Mock<IEnvironment>();
+            var configuration = CreateConfiguration();
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(provider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(provider, configuration, logger.Object);
 
             var result = adapter.GetWorkerRuntime();
             Assert.Equal("node", result);
@@ -52,9 +53,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             services.AddSingleton(scriptHostManagerMock.Object);
             var provider = services.BuildServiceProvider();
 
-            var environment = new Mock<IEnvironment>();
+            var configuration = CreateConfiguration();
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(provider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(provider, configuration, logger.Object);
 
             var result1 = adapter.GetWorkerRuntime();
             var result2 = adapter.GetWorkerRuntime();
@@ -82,9 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             services.AddSingleton<IScriptHostManager>(scriptHostManager);
             var serviceProvider = services.BuildServiceProvider();
 
-            var environment = new Mock<IEnvironment>();
+            var configuration = CreateConfiguration();
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, configuration, logger.Object);
 
             // Act & Assert: First time calling GetWorkerRuntime uses resolver1 and caches it.
             Assert.Equal("dotnet", adapter.GetWorkerRuntime());
@@ -116,9 +117,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             services.AddSingleton<IScriptHostManager>(scriptHostManager);
             var provider = services.BuildServiceProvider();
 
-            var environment = new Mock<IEnvironment>();
+            var configuration = CreateConfiguration();
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(provider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(provider, configuration, logger.Object);
 
             // Trigger ActiveHostChanged before any resolver has been cached
             scriptHostManager.OnActiveHostChanged();
@@ -144,9 +145,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             services.AddSingleton<IScriptHostManager>(scriptHostManager);
             var serviceProvider = services.BuildServiceProvider();
 
-            var environment = new Mock<IEnvironment>();
+            var configuration = CreateConfiguration();
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, configuration, logger.Object);
 
             var result = adapter.GetWorkerRuntime();
             Assert.Equal("dotnet", result);
@@ -159,10 +160,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
         }
 
         [Fact]
-        public void GetWorkerRuntime_FallsBackToEnvironment_WhenResolverNotAvailable()
+        public void GetWorkerRuntime_FallsBackToConfiguration_WhenResolverNotAvailable()
         {
-            var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
+            var configuration = CreateConfiguration(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
 
             var serviceMap = new Dictionary<Type, object>();
             var scriptHostManager = new TestScriptHostService(ScriptSettingsManager.BuildDefaultConfiguration(), serviceMap);
@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             var serviceProvider = services.BuildServiceProvider();
 
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, configuration, logger.Object);
 
             var result = adapter.GetWorkerRuntime();
 
@@ -180,10 +180,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
         }
 
         [Fact]
-        public void GetWorkerRuntime_CachesEnvironmentValue()
+        public void GetWorkerRuntime_CachesConfigurationValue()
         {
-            var environment = new Mock<IEnvironment>(MockBehavior.Strict);
-            environment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
+            var configurationMock = new Mock<IConfiguration>(MockBehavior.Strict);
+            configurationMock.Setup(c => c[EnvironmentSettingNames.FunctionWorkerRuntime])
                 .Returns("node");
 
             var serviceMap = new Dictionary<Type, object>();
@@ -194,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             var serviceProvider = services.BuildServiceProvider();
 
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, configurationMock.Object, logger.Object);
 
             // Call multiple times to verify caching
             var result1 = adapter.GetWorkerRuntime();
@@ -204,16 +204,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             Assert.Equal("node", result1);
             Assert.Equal("node", result2);
             Assert.Equal("node", result3);
-            environment.Verify(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime), Times.Once);
+            configurationMock.Verify(c => c[EnvironmentSettingNames.FunctionWorkerRuntime], Times.Once);
         }
 
         [Fact]
-        public void GetWorkerRuntime_DefaultValue_Returned_WhenResolverAndEnvironmentMissing()
+        public void GetWorkerRuntime_DefaultValue_Returned_WhenResolverAndConfigurationMissing()
         {
-            // Arrange: No script host resolver and no environment value set
-            var environment = new Mock<IEnvironment>(MockBehavior.Strict);
-            environment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
-                .Returns((string)null);
+            var configuration = CreateConfiguration();
 
             var serviceMap = new Dictionary<Type, object>();
             var scriptHostManager = new TestScriptHostService(ScriptSettingsManager.BuildDefaultConfiguration(), serviceMap);
@@ -223,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             var serviceProvider = services.BuildServiceProvider();
 
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, configuration, logger.Object);
 
             var result = adapter.GetWorkerRuntime(defaultValue: "fallback");
 
@@ -231,10 +228,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
         }
 
         [Fact]
-        public void GetWorkerRuntime_DoesNotCacheNullEnvironmentValue()
+        public void GetWorkerRuntime_DoesNotCacheNullConfigurationValue()
         {
-            var environment = new Mock<IEnvironment>(MockBehavior.Strict);
-            environment.SetupSequence(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
+            var configurationMock = new Mock<IConfiguration>(MockBehavior.Strict);
+            configurationMock.SetupSequence(c => c[EnvironmentSettingNames.FunctionWorkerRuntime])
                 .Returns((string)null)
                 .Returns((string)null)
                 .Returns("powershell");
@@ -247,23 +244,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             var serviceProvider = services.BuildServiceProvider();
 
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, configurationMock.Object, logger.Object);
 
-            // First two calls: env var not set, returns default each time (re-reads env)
+            // First two calls: config value not set, returns default each time (re-reads config)
             Assert.Null(adapter.GetWorkerRuntime());
             Assert.Null(adapter.GetWorkerRuntime());
 
-            // Third call: env var now set (e.g., after ApplyAppSettings during specialization)
+            // Third call: config value now set (e.g., after ApplyAppSettings during specialization)
             Assert.Equal("powershell", adapter.GetWorkerRuntime());
 
-            environment.Verify(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime), Times.Exactly(3));
+            configurationMock.Verify(c => c[EnvironmentSettingNames.FunctionWorkerRuntime], Times.Exactly(3));
         }
 
         [Fact]
-        public void GetWorkerRuntime_ActiveHostChanged_ClearsEnvironmentCache()
+        public void GetWorkerRuntime_ActiveHostChanged_ClearsConfigurationCache()
         {
-            var environment = new Mock<IEnvironment>(MockBehavior.Strict);
-            environment.SetupSequence(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
+            var configurationMock = new Mock<IConfiguration>(MockBehavior.Strict);
+            configurationMock.SetupSequence(c => c[EnvironmentSettingNames.FunctionWorkerRuntime])
                 .Returns((string)null)
                 .Returns("python");
 
@@ -275,12 +272,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             var serviceProvider = services.BuildServiceProvider();
 
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, configurationMock.Object, logger.Object);
 
             var result1 = adapter.GetWorkerRuntime(defaultValue: "fallback");
             Assert.Equal("fallback", result1);
 
-            // Simulate specialization: host changed, environment now has a value
+            // Simulate specialization: host changed, configuration now has a value
             scriptHostManager.OnActiveHostChanged();
 
             var result2 = adapter.GetWorkerRuntime(defaultValue: "fallback");
@@ -307,9 +304,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             services.AddSingleton<IScriptHostManager>(scriptHostManagerMock.Object);
             var serviceProvider = services.BuildServiceProvider();
 
-            var environment = new Mock<IEnvironment>();
+            var configuration = CreateConfiguration();
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, configuration, logger.Object);
 
             // Act: Simulate multiple concurrent calls to validate thread-safety and caching behavior
             const int callCount = 10;
@@ -325,11 +322,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
         }
 
         [Fact]
-        public async Task GetWorkerRuntime_Concurrency_CachesEnvironmentValue()
+        public async Task GetWorkerRuntime_Concurrency_CachesConfigurationValue()
         {
-            var environment = new Mock<IEnvironment>(MockBehavior.Strict);
-            environment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
-                .Returns("python");
+            var configuration = CreateConfiguration(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
 
             var serviceMap = new Dictionary<Type, object>();
             var scriptHostManager = new TestScriptHostService(ScriptSettingsManager.BuildDefaultConfiguration(), serviceMap);
@@ -339,7 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             var serviceProvider = services.BuildServiceProvider();
 
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, configuration, logger.Object);
 
             // Act: Simulate multiple concurrent calls to validate thread-safety and caching behavior
             const int taskCount = 10;
@@ -356,11 +351,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
         }
 
         [Fact]
-        public void Dispose_ClearsEnvironmentCache()
+        public void Dispose_ClearsConfigurationCache()
         {
-            var environment = new Mock<IEnvironment>(MockBehavior.Strict);
-            environment.Setup(e => e.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime))
-                .Returns("node");
+            var configuration = CreateConfiguration(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
 
             var serviceMap = new Dictionary<Type, object>();
             var scriptHostManager = new TestScriptHostService(ScriptSettingsManager.BuildDefaultConfiguration(), serviceMap);
@@ -370,7 +363,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             var serviceProvider = services.BuildServiceProvider();
 
             var logger = new Mock<ILogger<WebHostWorkerRuntimeResolverAdapter>>();
-            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, environment.Object, logger.Object);
+            var adapter = new WebHostWorkerRuntimeResolverAdapter(serviceProvider, configuration, logger.Object);
 
             // Get value to cache it
             var result = adapter.GetWorkerRuntime();
@@ -390,6 +383,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Tests.DependencyInjection
             var services = new ServiceCollection();
             services.AddSingleton(scriptHostManagerMock.Object);
             return services.BuildServiceProvider();
+        }
+
+        private static IConfiguration CreateConfiguration(string key = null, string value = null)
+        {
+            var settings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (key is not null)
+            {
+                settings[key] = value;
+            }
+
+            return new ConfigurationBuilder()
+                .AddInMemoryCollection(settings)
+                .Build();
         }
     }
 }
