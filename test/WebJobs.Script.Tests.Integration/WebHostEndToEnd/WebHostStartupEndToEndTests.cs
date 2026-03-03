@@ -77,8 +77,8 @@ public class WebHostStartupEndToEndTests
         var loggerProvider = new TestLoggerProvider();
         var builder = CreateHostBuilder(loggerProvider, "FunctionExecutionContext");
 
-        using var testServer = new TestServer(builder);
-        var client = testServer.CreateClient();
+        using var host = builder.Build();
+        var client = host.GetTestClient();
 
         var response = await client.GetAsync("api/functionexecutioncontext");
         response.EnsureSuccessStatusCode();
@@ -102,7 +102,7 @@ public class WebHostStartupEndToEndTests
         TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(LanguageWorkerOptions));
     }
 
-    private static IWebHostBuilder CreateHostBuilder(TestLoggerProvider loggerProvider, params string[] functions)
+    private static IHostBuilder CreateHostBuilder(TestLoggerProvider loggerProvider, params string[] functions)
     {
         var environment = new TestEnvironment(new Dictionary<string, string>
         {
@@ -110,11 +110,15 @@ public class WebHostStartupEndToEndTests
             { EnvironmentSettingNames.AzureWebsiteContainerReady, "1" },
         });
 
-        return Program.CreateWebHostBuilder()
-            .ConfigureLogging(b =>
+        return new HostBuilder()
+            .ConfigureWebHost(webHostBuilder =>
             {
-                b.AddProvider(loggerProvider);
-                b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Debug);
+                webHostBuilder.UseTestServer();
+                webHostBuilder.ConfigureLogging(b =>
+                {
+                    b.AddProvider(loggerProvider);
+                    b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Debug);
+                });
             })
             .ConfigureAppConfiguration(c =>
             {

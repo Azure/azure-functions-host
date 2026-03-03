@@ -243,8 +243,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var builder = CreateStandbyHostBuilder(_loggerProvider, "FunctionExecutionContext");
 
-            using var testServer = new TestServer(builder);
-            var client = testServer.CreateClient();
+            using var host = builder.Build();
+            var client = host.GetTestClient();
 
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
@@ -538,14 +538,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Use an actual env var here as it will be refreshed in config after specialization
             using var envVars = new TestScopedEnvironmentVariable("languageWorkers:node:arguments", "--max-old-space-size=1272");
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var client = testServer.CreateClient();
+            var client = host.GetTestClient();
 
             var response = await client.GetAsync("api/HttpTriggerNoAuth");
             response.EnsureSuccessStatusCode();
 
-            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var webChannelManager = host.Services.GetService<IWebHostRpcWorkerChannelManager>();
             var channel = await webChannelManager.GetChannels("node").Single().Value.Task;
             Assert.Contains("--max-old-space-size=1272", channel.WorkerProcess.Process.StartInfo.Arguments);
 
@@ -995,14 +995,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolatedWithBundlesPath, _loggerProvider, "HttpRequestFunction");
 
-            using var testServer = new TestServer(builder);
+            using var host = builder.Build();
 
-            var client = testServer.CreateClient();
+            var client = host.GetTestClient();
             var response = await client.GetAsync("api/warmup");
             response.EnsureSuccessStatusCode();
 
             // Validate that the channel is set up with native worker
-            var webChannelManager = testServer.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var webChannelManager = host.Services.GetService<IWebHostRpcWorkerChannelManager>();
 
             var placeholderChannel = await webChannelManager.GetChannels("dotnet-isolated").Single().Value.Task;
             Assert.Contains("FunctionsNetHost.exe", placeholderChannel.WorkerProcess.Process.StartInfo.FileName);
@@ -1670,6 +1670,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var builder = new HostBuilder()
                 .ConfigureWebHost(webHostBuilder =>
                 {
+                    webHostBuilder.UseTestServer();
                     webHostBuilder.ConfigureLogging(b =>
                     {
                         b.AddProvider(loggerProvider);
