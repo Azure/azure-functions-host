@@ -15,21 +15,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
     public class AppCapabilitiesControllerTests
     {
         private readonly Mock<IOptionsMonitor<AppCapabilitiesOptions>> _mockCapabilitiesOptions;
-        private readonly Mock<ILogger<AppCapabilitiesController>> _mockLogger;
         private readonly AppCapabilitiesController _controller;
         private readonly AppCapabilitiesOptions _capabilitiesOptions;
 
         public AppCapabilitiesControllerTests()
         {
             _capabilitiesOptions = new AppCapabilitiesOptions();
-            _capabilitiesOptions.Capabilities.Add("feature1", "value1");
-            _capabilitiesOptions.Capabilities.Add("feature2", "value2");
-            _capabilitiesOptions.Capabilities.Add("extensionSupport", "enabled");
+
+            IDictionary<string, string> capabilitiesOptionsDict = (IDictionary<string, string>)_capabilitiesOptions;
+
+            capabilitiesOptionsDict.Add("feature1", "value1");
+            capabilitiesOptionsDict.Add("feature2", "value2");
+            capabilitiesOptionsDict.Add("extensionSupport", "enabled");
 
             _mockCapabilitiesOptions = new Mock<IOptionsMonitor<AppCapabilitiesOptions>>(MockBehavior.Strict);
             _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(_capabilitiesOptions);
-
-            _mockLogger = new Mock<ILogger<AppCapabilitiesController>>();
 
             _controller = new AppCapabilitiesController(_mockCapabilitiesOptions.Object);
         }
@@ -106,7 +106,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         public void Get_HandlesNullValue()
         {
             var optionsWithNull = new AppCapabilitiesOptions();
-            optionsWithNull.Capabilities.Add("nullFeature", null);
+            IDictionary<string, string> capabilitiesDict = (IDictionary<string, string>)optionsWithNull;
+            capabilitiesDict.Add("nullFeature", null);
+
             _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(optionsWithNull);
 
             var result = _controller.Get("nullFeature");

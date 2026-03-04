@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// This method updates existing capabilities and adds new ones from the provided dictionary.
         /// Existing capabilities not included in the dictionary remain unchanged.
         /// </remarks>
-        public void SetAll(IEnumerable<KeyValuePair<string, string>> capabilities);
+        public bool TrySetAll(IEnumerable<KeyValuePair<string, string>> capabilities);
 
         /// <summary>
         /// Clears all capabilities from the store, removing all existing key-value pairs.

@@ -169,6 +169,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .ConfigureScriptHostServices(scriptHostServices =>
                 {
+                    scriptHostServices.AddOptions<AppCapabilitiesOptions>();
+                    scriptHostServices.ConfigureOptions<AppCapabilitiesOptionsSetup>();
+
                     configureScriptHostServices?.Invoke(scriptHostServices);
                 })
                 .ConfigureAppConfiguration((builderContext, config) =>

@@ -92,6 +92,8 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IWorkerConfigurationProvider, ExplicitWorkerConfigurationProvider>();
             services.AddSingleton<IAppCapabilitiesStore, DefaultAppCapabilitiesStore>();
             services.AddSingleton<IOptionsChangeTokenSource<AppCapabilitiesOptions>, AppCapabilitiesChangeTokenSource>();
+            services.AddOptions<AppCapabilitiesOptions>();
+            services.ConfigureOptions<AppCapabilitiesOptionsSetup>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddSingleton(_ => new WorkerConfigCacheInvalidator(null, null));

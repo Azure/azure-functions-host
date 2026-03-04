@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
@@ -25,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [RequiresRunningHost]
         public IActionResult GetCapabilities()
         {
-            var capabilities = _capabilitiesOptions.CurrentValue.Capabilities;
+            var capabilities = _capabilitiesOptions.CurrentValue;
             return new OkObjectResult(capabilities);
         }
 
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [RequiresRunningHost]
         public IActionResult Get(string name)
         {
-            var capabilities = _capabilitiesOptions.CurrentValue.Capabilities;
+            IDictionary<string, string> capabilities = _capabilitiesOptions.CurrentValue;
 
             if (capabilities.TryGetValue(name, out var value))
             {

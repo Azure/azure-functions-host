@@ -2,10 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 #nullable enable
@@ -19,8 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 
         public AppCapabilitiesOptionsSetup(
             IConfiguration configuration,
-            IAppCapabilitiesStore appCapabilitiesStore,
-            ILogger<AppCapabilitiesOptionsSetup> logger)
+            IAppCapabilitiesStore appCapabilitiesStore)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _appCapabilitiesStore = appCapabilitiesStore ?? throw new ArgumentNullException(nameof(appCapabilitiesStore));
@@ -32,15 +30,17 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// <param name="options">The options instance to configure.</param>
         public void Configure(AppCapabilitiesOptions options)
         {
+            var optionsDict = (IDictionary<string, string>)options;
+
             var capabilitiesSection = _configuration.GetSection(ConfigurationSectionNames.AppCapabilities);
             if (capabilitiesSection.Exists())
             {
-                AddCapabilitiesFromSection(options, capabilitiesSection);
+                AddCapabilitiesFromSection(optionsDict, capabilitiesSection);
             }
 
             foreach (var kvp in _appCapabilitiesStore.Capabilities)
             {
-                options.Capabilities[kvp.Key] = kvp.Value;
+                optionsDict[kvp.Key] = kvp.Value;
             }
         }
 
@@ -50,16 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// <param name="options">The options to add capabilities to.</param>
         /// <param name="section">The configuration section containing capability definitions.</param>
         private void AddCapabilitiesFromSection(
-            AppCapabilitiesOptions options,
+            IDictionary<string, string> options,
             IConfigurationSection section)
         {
-            var children = section.GetChildren().ToList();
-
-            foreach (var child in children)
+            foreach (var child in section.GetChildren())
             {
                 if (child.Value is not null)
                 {
-                    options.Capabilities[child.Key] = child.Value;
+                    options[child.Key] = child.Value;
                 }
             }
         }

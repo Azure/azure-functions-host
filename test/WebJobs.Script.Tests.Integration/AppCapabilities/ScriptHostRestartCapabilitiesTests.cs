@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 { "feature1", "value1" },
                 { "workerRuntime", "dotnet" }
             };
-            capabilitiesStore.SetAll(capabilities);
+            capabilitiesStore.TrySetAll(capabilities);
 
             Assert.Equal(2, capabilitiesStore.Capabilities.Count);
 

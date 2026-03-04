@@ -409,7 +409,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Setup the mock to capture SetAll call
             Dictionary<string, string> capturedCapabilities = null;
             _mockAppCapabilitiesStore
-                .Setup(x => x.SetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
+                .Setup(x => x.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
                 .Callback<IEnumerable<KeyValuePair<string, string>>>(caps =>
                 {
                     capturedCapabilities = new Dictionary<string, string>(caps);
@@ -423,17 +423,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
 
             // Verify SetAll was called with the correct capabilities
-            _mockAppCapabilitiesStore.Verify(x => x.SetAll(It.IsAny<IDictionary<string, string>>()), Times.Once);
+            _mockAppCapabilitiesStore.Verify(x => x.TrySetAll(It.IsAny<IDictionary<string, string>>()), Times.Once);
 
             Assert.NotNull(capturedCapabilities);
             Assert.Equal(3, capturedCapabilities.Count);
             Assert.Equal("value1", capturedCapabilities["capability1"]);
             Assert.Equal("value2", capturedCapabilities["capability2"]);
             Assert.Equal("value3", capturedCapabilities["capability3"]);
-
-            // Verify logging
-            var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => m.FormattedMessage.Contains("Registering 3 app capabilities from worker")));
         }
 
         [Fact]
@@ -449,7 +445,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
 
             // Verify SetAll was not called when appCapabilities is null or empty
-            _mockAppCapabilitiesStore.Verify(x => x.SetAll(It.IsAny<IDictionary<string, string>>()), Times.Never);
+            _mockAppCapabilitiesStore.Verify(x => x.TrySetAll(It.IsAny<IDictionary<string, string>>()), Times.Never);
 
             // Verify logging does not contain app capabilities message
             var traces = _logger.GetLogMessages();
@@ -468,7 +464,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Setup the mock to throw an exception
             _mockAppCapabilitiesStore
-                .Setup(x => x.SetAll(It.IsAny<IDictionary<string, string>>()))
+                .Setup(x => x.TrySetAll(It.IsAny<IDictionary<string, string>>()))
                 .Throws(new InvalidOperationException("Test exception"));
 
             // Send StartStream and configure to respond with appCapabilities
@@ -480,7 +476,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await Task.Delay(500);
 
             // Verify SetAll was called
-            _mockAppCapabilitiesStore.Verify(x => x.SetAll(It.IsAny<IDictionary<string, string>>()), Times.Once);
+            _mockAppCapabilitiesStore.Verify(x => x.TrySetAll(It.IsAny<IDictionary<string, string>>()), Times.Once);
 
             // Verify warning was logged
             var traces = _logger.GetLogMessages();
@@ -504,7 +500,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Setup the mock to track if SetAll is called
             _mockAppCapabilitiesStore
-                .Setup(x => x.SetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()));
+                .Setup(x => x.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()));
 
             // Configure to respond with appCapabilities
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.WorkerInitRequest,
@@ -514,7 +510,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
 
             // Assert - Verify SetAll was NOT called for Logic Apps
-            _mockAppCapabilitiesStore.Verify(x => x.SetAll(It.IsAny<IDictionary<string, string>>()), Times.Never);
+            _mockAppCapabilitiesStore.Verify(x => x.TrySetAll(It.IsAny<IDictionary<string, string>>()), Times.Never);
 
             // Verify no registration logging occurred
             var traces = _logger.GetLogMessages();

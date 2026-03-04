@@ -629,9 +629,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             try
             {
-                Logger.RegisteringAppCapabilities(_workerChannelLogger, appCapabilities.Count, _workerId);
-
-                _appCapabilitiesStore.SetAll(appCapabilities);
+                _appCapabilitiesStore.TrySetAll(appCapabilities);
             }
             catch (Exception ex)
             {
