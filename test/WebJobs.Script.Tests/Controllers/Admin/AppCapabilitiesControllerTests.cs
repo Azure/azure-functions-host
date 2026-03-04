@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -40,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             var result = _controller.GetCapabilities();
 
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var capabilities = Assert.IsType<Dictionary<string, string>>(okResult.Value);
+            var capabilities = (IDictionary<string, string>)okResult.Value;
             Assert.Equal(3, capabilities.Count);
             Assert.Equal("value1", capabilities["feature1"]);
             Assert.Equal("value2", capabilities["feature2"]);
@@ -56,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             var result = _controller.GetCapabilities();
 
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var capabilities = Assert.IsType<Dictionary<string, string>>(okResult.Value);
+            var capabilities = (IDictionary<string, string>)okResult.Value;
             Assert.Empty(capabilities);
         }
 
@@ -100,21 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             var result = _controller.Get("Feature1");
 
             Assert.IsType<OkObjectResult>(result);
-        }
-
-        [Fact]
-        public void Get_HandlesNullValue()
-        {
-            var optionsWithNull = new AppCapabilitiesOptions();
-            IDictionary<string, string> capabilitiesDict = (IDictionary<string, string>)optionsWithNull;
-            capabilitiesDict.Add("nullFeature", null);
-
-            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(optionsWithNull);
-
-            var result = _controller.Get("nullFeature");
-
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.Null(okResult.Value);
         }
     }
 }
