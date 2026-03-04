@@ -106,6 +106,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     });
 
                     webHostBuilder.UseTestServer();
+
+                    // On the dev branch (WebHostBuilder), ConfigureServices lambdas run
+                    // BEFORE UseStartup's Startup.ConfigureServices. Since Startup registers
+                    // IFunctionMetadataManager via AddSingleton (not TryAdd), the Startup
+                    // registration was appended after the test's Replace and became the "last"
+                    // registration — the one DI resolves. This meant the REAL
+                    // FunctionMetadataManager (with WorkerFunctionMetadataProvider) was used.
+                    //
+                    // With HostBuilder.ConfigureWebHost, host-level ConfigureServices runs
+                    // AFTER Startup, so Replace would find and remove Startup's registration,
+                    // leaving only the test's custom one (with null WorkerFunctionMetadataProvider).
+                    // This broke tests that depend on WebHost channel initialization via
+                    // WorkerFunctionMetadataProvider.InitializeChannelAsync.
+                    //
+                    // To preserve dev behavior, register the Replace BEFORE UseStartup so
+                    // Startup's AddSingleton runs after and becomes the effective registration.
+                    webHostBuilder.ConfigureServices(services =>
+                    {
+                        services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataManager), sp =>
+                        {
+                            var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+                            var scriptManager = sp.GetService<IScriptHostManager>();
+                            var loggerFactory = sp.GetService<ILoggerFactory>();
+                            var environment = sp.GetService<IEnvironment>();
+
+                            return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
+                        }, ServiceLifetime.Singleton));
+                    });
+
                     webHostBuilder.UseStartup<TestStartup>();
 
                     // In .NET 10, UseStartup<T> eagerly activates the startup class via
@@ -132,15 +161,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return TestHelpers.CreateOptionsMonitor(_hostOptions);
                 }, ServiceLifetime.Singleton));
                 services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
-                services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataManager), sp =>
-                {
-                    var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
-                    var scriptManager = sp.GetService<IScriptHostManager>();
-                    var loggerFactory = sp.GetService<ILoggerFactory>();
-                    var environment = sp.GetService<IEnvironment>();
-
-                    return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
-                }, ServiceLifetime.Singleton));
 
                 services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
                 services.SkipDependencyValidation();
