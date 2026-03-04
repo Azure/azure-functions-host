@@ -110,11 +110,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
                 _ = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), mockWorkerRuntimeResolver.Object);
 
-                var builder = new HostBuilder()
-                    .ConfigureWebHost(webhostBuilder =>
+                var builder = Program.CreateHostBuilder()
+                    .ConfigureWebHost(webHostBuilder =>
                     {
-
-                        webhostBuilder.UseStartup<Startup>();
+                        webHostBuilder.UseTestServer();
                     })
                     .ConfigureServices(services =>
                     {
@@ -128,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         {
                             o.IsSelfHost = true;
                             o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "csharp");
-                            o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions");
+                            o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions", "WarmupFunctionTests");
                             o.SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets");
                             o.HasParentScope = true;
 
@@ -137,6 +136,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     });
 
                 _host = builder.Build();
+                _host.StartAsync().GetAwaiter().GetResult();
+
                 HostOptions.RootServiceProvider = _host.Services;
                 var scriptConfig = _host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
@@ -161,6 +162,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public void Dispose()
             {
+                try
+                {
+                    _host.StopAsync().GetAwaiter().GetResult();
+                }
+                catch
+                {
+                }
+
                 _host.Dispose();
                 HttpServer?.Dispose();
                 HttpClient?.Dispose();

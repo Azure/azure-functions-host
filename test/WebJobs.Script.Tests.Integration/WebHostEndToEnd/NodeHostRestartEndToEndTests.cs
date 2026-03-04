@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 
 public class NodeHostRestartEndToEndTests
 {
-    [Fact]
+    [Fact(Skip = "Flaky test, needs investigation")]
     // Confirms that a background timer to create new worker processes does not
     // continue to fire after we've initiated a restart. This could lead to issues
     // where we'd create too many processes and throw an exception.

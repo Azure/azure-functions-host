@@ -287,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 JobHost.Dispose();
                 Host.Dispose();
             }
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, string.Empty);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
 
             await _azurite.DisposeAsync();
         }

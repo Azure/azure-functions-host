@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
         private static TestFunctionHost GetHost(Action<IDictionary<string, string>> addEnvironmentVariables = null)
         {
             string scriptPath = @"TestScripts\DirectLoad\";
-            string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
+            string logPath = Path.Combine(Path.GetTempPath(), "Functions", "AllowSynchronousIOMiddlewareTests");
 
             var host = new TestFunctionHost(scriptPath, logPath,
                 configureWebHostServices: s =>
