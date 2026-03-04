@@ -526,7 +526,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), SystemEnvironment.Instance);
             var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
-            var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), defaultProvider, manager, factory, environment, mockOptions.Object, metadataOptions);
+
+            // In .NET 10, the IFunctionMetadataManager singleton may be resolved before the
+            // script host is initialized, so ActiveHost is null and GetService returns null.
+            // Provide a default ScriptJobHostOptions so _scriptOptions is never null at
+            // construction time. InitializeServices() will replace it with the real options
+            // once ActiveHostChanged fires.
+            var scriptOptions = managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>()
+                ?? Options.Create(new ScriptJobHostOptions());
+            var metadataManager = new FunctionMetadataManager(scriptOptions, defaultProvider, manager, factory, environment, mockOptions.Object, metadataOptions);
 
             return metadataManager;
         }
