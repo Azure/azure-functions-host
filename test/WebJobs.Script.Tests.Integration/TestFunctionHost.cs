@@ -95,7 +95,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var builder = new HostBuilder()
                 .ConfigureWebHost(webHostBuilder =>
                 {
-
                     webHostBuilder.ConfigureLogging(b =>
                     {
                         _webHostLoggerProvider = new(_webHostInstanceId);
@@ -106,7 +105,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                          .AddFilter<TestLoggerProvider>("Azure.Core", LogLevel.Warning);
                     });
 
+                    webHostBuilder.UseTestServer();
                     webHostBuilder.UseStartup<TestStartup>();
+
+                    // In .NET 10, UseStartup<T> eagerly activates the startup class via
+                    // ActivatorUtilities, so it cannot resolve services registered later.
+                    // Apply configureWebHostServices after UseStartup instead of injecting
+                    // it into TestStartup's constructor via PostConfigureServices.
+                    if (configureWebHostServices is not null)
+                    {
+                        webHostBuilder.ConfigureServices(configureWebHostServices);
+                    }
                 });
 
             builder.ConfigureServices(services =>
@@ -135,9 +144,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
                 services.SkipDependencyValidation();
-
-                // Allows us to configure services as the last step, thereby overriding anything
-                services.AddSingleton(new PostConfigureServices(configureWebHostServices));
             });
 
             builder.ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
@@ -191,6 +197,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             _webHost = builder.Build();
+
+            // The original code used new TestServer(builder) which internally starts the server.
+            // With the HostBuilder pattern, we must explicitly start the host so that the
+            // TestServer (registered via UseTestServer) initializes its application pipeline.
+            _webHost.StartAsync().GetAwaiter().GetResult();
 
             HttpClient = _webHost.GetTestClient();
             HttpClient.Timeout = TimeSpan.FromMinutes(5);
@@ -477,18 +488,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private class TestStartup
         {
             private WebHost.Startup _startup;
-            private readonly PostConfigureServices _postConfigure;
 
-            public TestStartup(IConfiguration configuration, PostConfigureServices postConfigure)
+            public TestStartup(IConfiguration configuration)
             {
                 _startup = new WebHost.Startup(configuration);
-                _postConfigure = postConfigure;
             }
 
             public void ConfigureServices(IServiceCollection services)
             {
                 _startup.ConfigureServices(services);
-                _postConfigure?.ConfigureServices(services);
             }
 
             public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
@@ -538,21 +546,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public bool IsLegacyExtensionBundle() => true;
 
             public string GetOutdatedBundleVersion() { return string.Empty; /* no-op for test */ }
-        }
-
-        private class PostConfigureServices
-        {
-            private readonly Action<IServiceCollection> _postConfigure;
-
-            public PostConfigureServices(Action<IServiceCollection> postConfigure)
-            {
-                _postConfigure = postConfigure;
-            }
-
-            public void ConfigureServices(IServiceCollection services)
-            {
-                _postConfigure?.Invoke(services);
-            }
         }
     }
 }
