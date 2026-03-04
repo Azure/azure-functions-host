@@ -104,7 +104,7 @@ public class DefaultAppCapabilitiesStoreTests
     }
 
     [Fact]
-    public async Task Clear_ThenSetAll_AllowsNewValuesToBeSet()
+    public void Clear_ThenSetAll_AllowsNewValuesToBeSet()
     {
         var changeTokenSource = new TestChangeTokenSource<AppCapabilitiesOptions>();
         var store = new DefaultAppCapabilitiesStore(changeTokenSource);
