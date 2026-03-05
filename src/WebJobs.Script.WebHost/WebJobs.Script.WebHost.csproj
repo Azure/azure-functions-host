@@ -64,6 +64,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Azure.Functions.Abstractions\Microsoft.Azure.Functions.Abstractions.csproj" />
     <ProjectReference Include="..\Azure.Functions.InstanceManager\Azure.Functions.InstanceManager.csproj" />
     <ProjectReference Include="..\Azure.Functions.WorkerModel\Azure.Functions.WorkerModel.csproj" />
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />

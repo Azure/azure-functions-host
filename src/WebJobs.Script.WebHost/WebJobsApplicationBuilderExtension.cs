@@ -4,7 +4,6 @@
 using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
@@ -61,10 +60,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 #endif
 
-            if (standbyOptions.InStandbyMode)
-            {
-                builder.UseMiddleware<PlaceholderSpecializationMiddleware>();
-            }
+            //if (standbyOptions.InStandbyMode)
+            //{
+            //    builder.UseMiddleware<PlaceholderSpecializationMiddleware>();
+            //}
 
             // Enable response compression only after PlaceholderSpecializationMiddleware, as it requires customer opt-in feature flag value.
             builder.UseWhen(_ => responseCompressionOptionsMonitor.CurrentValue.EnableResponseCompression, config =>

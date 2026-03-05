@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Model - Scale Controller</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #333;
+        }
+        h1 {
+            color: #0078d4;
+            font-size: 1.8em;
+        }
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        .status-healthy { background: #107c10; }
+        .status-unhealthy { background: #d13438; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #333;
+        }
+        .card h2 {
+            color: #0078d4;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card h2 .count {
+            background: #0078d4;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.9em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+        th {
+            color: #888;
+            font-weight: 500;
+            font-size: 0.85em;
+            text-transform: uppercase;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        .status-placeholder { background: #5c2d91; }
+        .status-specializing { background: #c19c00; }
+        .status-specialized { background: #107c10; }
+        .status-error { background: #d13438; }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #0078d4; color: white; }
+        .btn-primary:hover { background: #106ebe; }
+        .btn-success { background: #107c10; color: white; }
+        .btn-success:hover { background: #0b5c0b; }
+        .btn-danger { background: #d13438; color: white; }
+        .btn-danger:hover { background: #a52a2d; }
+        .btn-sm { padding: 4px 8px; font-size: 0.8em; }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 0.9em;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #0f0f23;
+            color: #eee;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .logs {
+            background: #0f0f23;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+        .log-entry {
+            padding: 2px 0;
+        }
+        .log-info { color: #0078d4; }
+        .log-success { color: #107c10; }
+        .log-warning { color: #c19c00; }
+        .log-error { color: #d13438; }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 12px;
+            width: 500px;
+            max-width: 90%;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .modal-header h3 { color: #0078d4; }
+        .close-btn {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ Worker Model Scale Controller</h1>
+            <span id="systemStatus" class="status-badge status-healthy">Checking...</span>
+        </header>
+
+        <div class="grid">
+            <!-- Applications Card -->
+            <div class="card">
+                <h2>
+                    📦 Applications
+                    <span class="count" id="appCount">0</span>
+                </h2>
+                <table id="appsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Language</th>
+                            <th>Version</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="showCreateAppModal()">+ Create App</button>
+                </div>
+            </div>
+
+            <!-- Runtimes Card -->
+            <div class="card">
+                <h2>
+                    🖥️ Runtimes
+                    <span class="count" id="runtimeCount">0</span>
+                </h2>
+                <table id="runtimesTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Status</th>
+                            <th>Endpoints</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Workers Card -->
+            <div class="card">
+                <h2>
+                    👷 Workers
+                    <span class="count" id="workerCount">0</span>
+                </h2>
+                <table id="workersTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Status</th>
+                            <th>App</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Logs Card -->
+            <div class="card">
+                <h2>📋 Activity Log</h2>
+                <div class="logs" id="logsContainer">
+                    <div class="log-entry log-info">[System] Scale Controller UI loaded</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <h2>🚀 Quick Actions</h2>
+            <div class="actions">
+                <button class="btn btn-success" onclick="refreshAll()">🔄 Refresh All</button>
+                <a href="/swagger" class="btn btn-primary" target="_blank">📖 API Docs</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create App Modal -->
+    <div class="modal" id="createAppModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Application</h3>
+                <button class="close-btn" onclick="closeModal('createAppModal')">&times;</button>
+            </div>
+            <form id="createAppForm" onsubmit="createApp(event)">
+                <div class="form-group">
+                    <label>Display Name</label>
+                    <input type="text" id="appName" required placeholder="My Function App">
+                </div>
+                <div class="form-group">
+                    <label>Language</label>
+                    <select id="appLanguage" required>
+                        <option value="dotnet-isolated">C# (.NET Isolated)</option>
+                        <option value="node">Node.js</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>App Package (.zip) — optional, can deploy later</label>
+                    <input type="file" id="appZipFile" accept=".zip">
+                </div>
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">Create</button>
+                    <button type="button" class="btn" onclick="closeModal('createAppModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        // Logging
+        function log(message, level = 'info') {
+            const container = document.getElementById('logsContainer');
+            const entry = document.createElement('div');
+            const time = new Date().toLocaleTimeString();
+            entry.className = `log-entry log-${level}`;
+            entry.textContent = `[${time}] ${message}`;
+            container.insertBefore(entry, container.firstChild);
+        }
+
+        // API helpers
+        async function api(endpoint, options = {}) {
+            try {
+                const response = await fetch(API_BASE + endpoint, {
+                    headers: { 'Content-Type': 'application/json' },
+                    ...options
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                log(`API Error: ${endpoint} - ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // Load data
+        async function loadStatus() {
+            try {
+                const status = await api('/api/status');
+                const badge = document.getElementById('systemStatus');
+                const rCount = Array.isArray(status?.runtimes) ? status.runtimes.length : 0;
+                const wCount = Array.isArray(status?.workers) ? status.workers.length : 0;
+                badge.textContent = `${rCount} Runtimes | ${wCount} Workers`;
+                badge.className = 'status-badge status-healthy';
+            } catch (e) {
+                const badge = document.getElementById('systemStatus');
+                badge.textContent = 'Disconnected';
+                badge.className = 'status-badge status-unhealthy';
+            }
+        }
+
+        async function loadApps() {
+            try {
+                const apps = await api('/api/apps');
+                document.getElementById('appCount').textContent = apps.length;
+                const tbody = document.querySelector('#appsTable tbody');
+                tbody.innerHTML = apps.map(app => {
+                    const proxyUrl = `/proxy/${app.id}/api/hello`;
+                    return `
+                    <tr>
+                        <td title="${app.id}">${app.displayName}</td>
+                        <td>${app.language}</td>
+                        <td>${app.codeVersion ? `<span class="status status-specialized">v${app.codeVersion.substring(0,8)}</span>` : '<span style="color:#666">not deployed</span>'}</td>
+                        <td>
+                            ${app.codeVersion ? `<a href="${proxyUrl}" target="_blank" class="btn btn-sm btn-success">▶ Try</a>` : ''}
+                            <button class="btn btn-sm btn-primary" onclick="deployApp('${app.id}')">${app.codeVersion ? 'Redeploy' : 'Deploy'}</button>
+                        </td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="4" class="empty-state">No applications</td></tr>';
+            } catch {
+                document.querySelector('#appsTable tbody').innerHTML = 
+                    '<tr><td colspan="4" class="empty-state">Failed to load</td></tr>';
+            }
+        }
+
+        async function loadRuntimes() {
+            try {
+                const runtimes = await api('/api/runtimes');
+                document.getElementById('runtimeCount').textContent = runtimes.length;
+                const tbody = document.querySelector('#runtimesTable tbody');
+                tbody.innerHTML = runtimes.map(r => {
+                    const status = typeof r.status === 'number' ? ['Placeholder','Specializing','Specialized'][r.status] : r.status;
+                    return `
+                    <tr>
+                        <td title="${r.id}">${r.id.substring(0, 12)}...</td>
+                        <td><span class="status status-${status.toLowerCase()}">${status}</span></td>
+                        <td>${r.httpEndpoint || r.grpcEndpoint || '-'}</td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="3" class="empty-state">No runtimes registered</td></tr>';
+            } catch {
+                document.querySelector('#runtimesTable tbody').innerHTML = 
+                    '<tr><td colspan="3" class="empty-state">Failed to load</td></tr>';
+            }
+        }
+
+        async function loadWorkers() {
+            try {
+                const workers = await api('/api/workers');
+                document.getElementById('workerCount').textContent = workers.length;
+                const tbody = document.querySelector('#workersTable tbody');
+                tbody.innerHTML = workers.map(w => {
+                    const status = typeof w.status === 'number' ? ['Placeholder','Specializing','Specialized'][w.status] : w.status;
+                    return `
+                    <tr>
+                        <td title="${w.id}">${w.id.substring(0, 12)}...</td>
+                        <td><span class="status status-${status.toLowerCase()}">${status}</span></td>
+                        <td>${w.applicationId || '-'}</td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="3" class="empty-state">No workers registered</td></tr>';
+            } catch {
+                document.querySelector('#workersTable tbody').innerHTML = 
+                    '<tr><td colspan="3" class="empty-state">Failed to load</td></tr>';
+            }
+        }
+
+        async function refreshAll() {
+            log('Refreshing all data...');
+            await Promise.all([loadStatus(), loadApps(), loadRuntimes(), loadWorkers()]);
+            log('Refresh complete', 'success');
+        }
+
+        // Actions
+        function showCreateAppModal() {
+            document.getElementById('createAppModal').classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        async function createApp(event) {
+            event.preventDefault();
+            const name = document.getElementById('appName').value;
+            const language = document.getElementById('appLanguage').value;
+            const fileInput = document.getElementById('appZipFile');
+            
+            // Generate appId from display name (slug)
+            const appId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `app-${Date.now()}`;
+            
+            try {
+                log(`Creating application '${appId}'...`);
+                const app = await api('/api/apps', {
+                    method: 'POST',
+                    body: JSON.stringify({ appId, displayName: name, language })
+                });
+                log(`Application created: ${app.id}`, 'success');
+                
+                // If zip file was provided, deploy it
+                if (fileInput.files.length > 0) {
+                    log(`Deploying package to '${app.id}'...`);
+                    await uploadDeploy(app.id, fileInput.files[0]);
+                }
+                
+                closeModal('createAppModal');
+                document.getElementById('createAppForm').reset();
+                await loadApps();
+            } catch (error) {
+                log(`Failed to create app: ${error.message}`, 'error');
+            }
+        }
+
+        async function uploadDeploy(appId, file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/apps/${appId}/deploy`, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) {
+                    const err = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${err}`);
+                }
+                const result = await response.json();
+                log(`Deployed ${appId} → version ${result.codeVersion}`, 'success');
+                return result;
+            } catch (error) {
+                log(`Deploy failed: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function deployApp(appId) {
+            // Create a hidden file input and trigger it
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.zip';
+            input.onchange = async () => {
+                if (input.files.length === 0) return;
+                log(`Deploying package to '${appId}'...`);
+                try {
+                    await uploadDeploy(appId, input.files[0]);
+                    await loadApps();
+                } catch (error) {
+                    log(`Deployment failed: ${error.message}`, 'error');
+                }
+            };
+            input.click();
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshAll();
+            // Auto-refresh every 10 seconds
+            setInterval(refreshAll, 10000);
+        });
+    </script>
+</body>
+</html>

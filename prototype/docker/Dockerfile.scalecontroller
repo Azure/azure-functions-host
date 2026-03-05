@@ -1,0 +1,33 @@
+# Scale Controller Mock Dockerfile
+# Simple mock SC for local development
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy project files
+COPY prototype/WorkerModel.Contracts/*.csproj prototype/WorkerModel.Contracts/
+COPY prototype/WorkerModel.ScaleController/*.csproj prototype/WorkerModel.ScaleController/
+COPY prototype/Directory.Build.props prototype/
+
+# Restore
+RUN dotnet restore prototype/WorkerModel.ScaleController/WorkerModel.ScaleController.csproj
+
+# Copy source
+COPY prototype/ prototype/
+
+# Build
+RUN dotnet publish prototype/WorkerModel.ScaleController/WorkerModel.ScaleController.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# Runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:80
+EXPOSE 80
+
+ENTRYPOINT ["dotnet", "WorkerModel.ScaleController.dll"]

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Opt out of central package management for Aspire integration packages -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.14" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+    <PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.1.1" />
+    <!-- Explicit 9.x to match ServiceDefaults transitive resolution (OTel 1.12 → M.E.* 9.x) -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WorkerModel.Contracts\WorkerModel.Contracts.csproj" />
+    <ProjectReference Include="..\WorkerModel.ServiceDefaults\WorkerModel.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+</Project>

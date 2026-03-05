@@ -1,0 +1,6 @@
+@WorkerModel.ScaleController_HostAddress = http://localhost:5208
+
+GET {{WorkerModel.ScaleController_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

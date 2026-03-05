@@ -74,6 +74,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return services.AddSingleton<IAuthorizationHandler, FunctionAuthorizationHandler>();
         }
 
+        private static void AddWebHostGrpcServices(IServiceCollection services)
+        {
+            // Standby services
+            services.AddStandbyServices();
+
+            services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
+            services.TryAddSingleton<IStandbyManager, StandbyManager>();
+        }
+
         public static void AddWebJobsScriptHost(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddHttpContextAccessor();
@@ -93,13 +102,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             .AddNewtonsoftJson()
             .AddXmlDataContractSerializerFormatters();
 
-            // Standby services
-            services.AddStandbyServices();
+            AddWebHostGrpcServices(services);
 
-            services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
-            services.TryAddSingleton<IStandbyManager, StandbyManager>();
             services.TryAddSingleton<IServiceCollection>(services);
+
             services.AddSingleton<DefaultScriptHostBuilder>();
             services.TryAddSingleton<IScriptHostBuilder>(s => s.GetRequiredService<DefaultScriptHostBuilder>());
             services.TryAddSingleton<IScriptHostBuilderEx>(s => s.GetRequiredService<DefaultScriptHostBuilder>());

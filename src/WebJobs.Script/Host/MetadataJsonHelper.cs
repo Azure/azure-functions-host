@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    internal static class MetadataJsonHelper
+    public static class MetadataJsonHelper
     {
         /// <summary>
         /// Sanitizes the values of top-level properties in the specified <see cref="JObject"/>

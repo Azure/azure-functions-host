@@ -92,6 +92,11 @@ message StreamingMessage {
     
     // Worker responds after warming up with the warmup result
     WorkerWarmupResponse worker_warmup_response = 34;
+
+    // Sidecar sends consolidated worker + function info to Runtime
+    // Replaces the multi-step handshake (StartStream + WorkerInit + FunctionMetadata)
+    WorkerConnect worker_connect = 35;
+    WorkerConnectResponse worker_connect_response = 36;
     
   }
 }
@@ -450,6 +455,35 @@ message WorkerWarmupRequest {
 }
 
 message WorkerWarmupResponse {
+  StatusResult result = 1;
+}
+
+// Sidecar sends consolidated worker and function info to Runtime.
+// Replaces the multi-step handshake (StartStream + WorkerInit + FunctionMetadata)
+// with a single message containing everything the Runtime needs.
+message WorkerConnect {
+  // Worker identity
+  string worker_id = 1;
+
+  // Language runtime info
+  string language = 2;
+  string language_version = 3;
+
+  // Worker capabilities from WorkerInitResponse
+  map<string, string> worker_capabilities = 4;
+
+  // Worker metadata from WorkerInitResponse
+  WorkerMetadata worker_metadata = 5;
+
+  // Function metadata from FunctionMetadataResponse
+  repeated RpcFunctionMetadata function_metadata = 6;
+
+  // Whether the worker uses default metadata indexing
+  bool use_default_metadata_indexing = 7;
+}
+
+// Runtime acknowledges the WorkerConnect
+message WorkerConnectResponse {
   StatusResult result = 1;
 }
 

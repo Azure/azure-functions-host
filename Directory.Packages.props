@@ -1,11 +1,9 @@
 <Project>
-
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
     <IdentityDependencyVersion>6.35.0</IdentityDependencyVersion>
   </PropertyGroup>
-
   <!-- Azure packages -->
   <ItemGroup>
     <PackageVersion Include="Azure.Core" Version="1.47.1" />
@@ -15,12 +13,12 @@
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.22.1" />
     <PackageVersion Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.5.8" />
     <PackageVersion Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.3.20240307.67" />
+    <PackageVersion Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.14" />
     <PackageVersion Include="Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption" Version="1.0.5" />
     <PackageVersion Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
     <PackageVersion Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageVersion Include="Microsoft.Extensions.Azure" Version="1.12.0" />
   </ItemGroup>
-
   <!-- AspNetCore Packages -->
   <ItemGroup>
     <PackageVersion Include="Grpc.AspNetCore" Version="2.55.0" />
@@ -29,7 +27,6 @@
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.1" />
   </ItemGroup>
-
   <!-- Microsoft packages -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.3.1" />
@@ -43,7 +40,6 @@
     <PackageVersion Include="NuGet.ProjectModel" Version="5.11.6" />
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.0.1" />
   </ItemGroup>
-
   <!-- WebJobs packages -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.Azure.WebJobs" Version="3.0.44" />
@@ -55,7 +51,6 @@
     <PackageVersion Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.4-preview" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.44" />
   </ItemGroup>
-
   <!-- Telemetry packages -->
   <ItemGroup>
     <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
@@ -72,7 +67,6 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="0.5.0-beta.7" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.12.0" />
   </ItemGroup>
-
   <!-- System packages -->
   <ItemGroup>
     <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="9.0.6" />
@@ -95,17 +89,14 @@
     <PackageVersion Include="System.Text.RegularExpressions" Version="4.3.1" />
     <PackageVersion Include="System.Threading.Channels" Version="8.0.0" />
   </ItemGroup>
-
   <!-- Other packages -->
   <ItemGroup>
     <PackageVersion Include="BenchmarkDotNet" Version="0.13.1" />
     <PackageVersion Include="Mono.Posix.NETStandard" Version="1.0.0" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
-
   <!-- Global packages -->
   <ItemGroup>
     <GlobalPackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" />
   </ItemGroup>
-
 </Project>

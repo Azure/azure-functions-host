@@ -115,5 +115,49 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             // Reaching here implies that http health of the container is ok.
             return Ok();
         }
+
+        /// <summary>
+        /// Development-only endpoint for assigning instances without authentication.
+        /// Only available when WorkerModel__DecoupledMode is enabled (prototype/dev scenarios).
+        /// </summary>
+        [HttpPost]
+        [Route("dev/instance/assign")]
+        [AllowAnonymous]
+        public async Task<IActionResult> DevAssign([FromBody] HostAssignmentRequest hostAssignmentRequest)
+        {
+            // Only allow in decoupled mode (prototype/development)
+            if (!string.Equals(_environment.GetEnvironmentVariable("WorkerModel__DecoupledMode"), "true", System.StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Dev assign endpoint called but WorkerModel__DecoupledMode is not enabled");
+                return NotFound();
+            }
+
+            if (hostAssignmentRequest is null)
+            {
+                return BadRequest($"{nameof(hostAssignmentRequest)} cannot be null.");
+            }
+
+            if (hostAssignmentRequest.AssignmentContext is null)
+            {
+                return BadRequest($"{nameof(HostAssignmentRequest.AssignmentContext)} must be provided for dev endpoint.");
+            }
+
+            _logger.LogInformation("[DevAssign] Starting dev assignment for site '{SiteName}'",
+                hostAssignmentRequest.AssignmentContext.SiteName);
+
+            var assignmentContext = _startupContextProvider.SetContext(hostAssignmentRequest);
+
+            // Skip validation and MSI sidecar for dev - just start assignment
+            var succeeded = _instanceManager.StartAssignment(assignmentContext);
+
+            if (succeeded)
+            {
+                _logger.LogInformation("[DevAssign] Assignment started successfully");
+                return Accepted();
+            }
+
+            _logger.LogWarning("[DevAssign] Instance already assigned");
+            return StatusCode(StatusCodes.Status409Conflict, "Instance already assigned");
+        }
     }
 }

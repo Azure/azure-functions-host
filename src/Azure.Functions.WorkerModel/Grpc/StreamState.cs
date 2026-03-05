@@ -15,6 +15,7 @@ internal enum StreamState
 internal enum WorkerAction
 {
     StartStream,
+    WorkerConnect,
     WorkerInitResponse,
     MetadataResponse,
     InvocationResponse,

@@ -1,0 +1,286 @@
+syntax = "proto3";
+
+option csharp_namespace = "WorkerModel.Contracts";
+
+package workermodel;
+
+// Sidecar service - exposed to FunctionsNetHost (worker)
+// This acts as a proxy to the Runtime's FunctionRpc service
+service SidecarRpc {
+  // Bidirectional streaming for function invocations
+  // Mirrors the Runtime's FunctionRpc.EventStream
+  rpc EventStream(stream StreamingMessage) returns (stream StreamingMessage);
+}
+
+// Simplified streaming message that wraps the content
+// The actual FunctionRpc messages are defined in the azure-functions-language-worker-protobuf repo
+// For the prototype, we forward messages as-is between worker and runtime
+message StreamingMessage {
+  string request_id = 1;
+  oneof content {
+    // Worker -> Runtime
+    StartStream start_stream = 20;
+    WorkerInitRequest worker_init_request = 21;
+    WorkerHeartbeat worker_heartbeat = 22;
+    WorkerStatusRequest worker_status_request = 23;
+    FunctionLoadResponseCollection function_load_response_collection = 24;
+    InvocationResponse invocation_response = 25;
+    FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
+    
+    // Runtime -> Worker
+    WorkerInitResponse worker_init_response = 40;
+    WorkerHeartbeatResponse worker_heartbeat_response = 41;
+    WorkerStatusResponse worker_status_response = 42;
+    FunctionLoadRequestCollection function_load_request_collection = 43;
+    InvocationRequest invocation_request = 44;
+    FunctionEnvironmentReloadRequest function_environment_reload_request = 45;
+    WorkerTerminate worker_terminate = 46;
+
+    // Sidecar -> Runtime (new worker model)
+    // Replaces the multi-step handshake: StartStream + WorkerInit + FunctionMetadata
+    WorkerConnect worker_connect = 50;
+
+    // Runtime -> Sidecar (new worker model)
+    // Acknowledges the connection and tells the Sidecar what functions to load
+    WorkerConnectResponse worker_connect_response = 51;
+  }
+}
+
+// Worker startup message
+message StartStream {
+  string worker_id = 1;
+}
+
+// Worker initialization
+message WorkerInitRequest {
+  string host_version = 1;
+  map<string, string> capabilities = 2;
+}
+
+message WorkerInitResponse {
+  string worker_version = 1;
+  map<string, string> capabilities = 2;
+  StatusResult result = 3;
+}
+
+// Heartbeat
+message WorkerHeartbeat {
+}
+
+message WorkerHeartbeatResponse {
+}
+
+// Worker status
+message WorkerStatusRequest {
+}
+
+message WorkerStatusResponse {
+}
+
+// Function loading
+message FunctionLoadRequestCollection {
+  repeated RpcFunctionMetadata function_metadata = 1;
+}
+
+message FunctionLoadResponseCollection {
+  repeated FunctionLoadResponse function_load_responses = 1;
+}
+
+message FunctionLoadResponse {
+  string function_id = 1;
+  StatusResult result = 2;
+}
+
+message RpcFunctionMetadata {
+  string function_id = 1;
+  string name = 2;
+  string directory = 3;
+  string script_file = 4;
+  string entry_point = 5;
+  map<string, BindingInfo> bindings = 6;
+}
+
+message BindingInfo {
+  string type = 1;
+  Direction direction = 2;
+  
+  enum Direction {
+    in = 0;
+    out = 1;
+    inout = 2;
+  }
+}
+
+// Invocations
+message InvocationRequest {
+  string invocation_id = 1;
+  string function_id = 2;
+  repeated ParameterBinding input_data = 3;
+  map<string, TypedData> trigger_metadata = 4;
+}
+
+message InvocationResponse {
+  string invocation_id = 1;
+  repeated ParameterBinding output_data = 2;
+  TypedData return_value = 3;
+  StatusResult result = 4;
+}
+
+message ParameterBinding {
+  string name = 1;
+  TypedData data = 2;
+}
+
+message TypedData {
+  oneof data {
+    string string = 1;
+    bytes bytes = 2;
+    int64 int = 3;
+    double double = 4;
+    CollectionBytes collection_bytes = 5;
+    CollectionString collection_string = 6;
+    RpcHttp http = 7;
+  }
+}
+
+message CollectionBytes {
+  repeated bytes bytes = 1;
+}
+
+message CollectionString {
+  repeated string string = 1;
+}
+
+message RpcHttp {
+  string method = 1;
+  string url = 2;
+  map<string, string> headers = 3;
+  TypedData body = 4;
+  map<string, string> query = 5;
+  string status_code = 6;
+}
+
+// Environment reload (specialization)
+message FunctionEnvironmentReloadRequest {
+  map<string, string> environment_variables = 1;
+  string function_app_directory = 2;
+}
+
+message FunctionEnvironmentReloadResponse {
+  StatusResult result = 1;
+}
+
+// Worker terminate
+message WorkerTerminate {
+  int32 grace_period_seconds = 1;
+}
+
+// Common status result
+message StatusResult {
+  Status status = 1;
+  string result = 2;
+  RpcException exception = 3;
+  
+  enum Status {
+    Success = 0;
+    Failure = 1;
+    Cancelled = 2;
+  }
+}
+
+message RpcException {
+  string message = 1;
+  string stack_trace = 2;
+}
+
+// ============================================================================
+// New Worker Model messages (Sidecar <-> Runtime)
+// ============================================================================
+
+// Sent by the Sidecar to the Runtime when connecting a specialized worker.
+// Replaces the multi-step handshake:
+//   StartStream → WorkerInitRequest/Response → FunctionsMetadataRequest/Response
+//
+// By the time the Sidecar connects to the Runtime, it already has all this
+// information from the placeholder warm-up and specialization phases.
+message WorkerConnect {
+  // --- Worker identity ---
+
+  // Unique identifier for this worker instance
+  string worker_id = 1;
+
+  // Worker language runtime (e.g., "dotnet-isolated", "python", "node")
+  string language = 2;
+
+  // Version of the language runtime (e.g., "8.0", "9.0")
+  string language_version = 3;
+
+  // --- Worker capabilities (from WorkerInitResponse during placeholder) ---
+
+  // Worker-advertised capabilities (e.g., "RpcHttpBodyOnly" -> "true")
+  map<string, string> worker_capabilities = 4;
+
+  // Worker metadata for telemetry (runtime name/version, worker version, bitness)
+  WorkerMetadata worker_metadata = 5;
+
+  // --- Function metadata (from FunctionMetadataResponse during placeholder) ---
+
+  // Function definitions discovered by the worker
+  repeated RpcFunctionMetadata function_metadata = 6;
+
+  // If true, the Runtime should perform its own function indexing
+  // rather than relying on the worker-provided metadata
+  bool use_default_metadata_indexing = 7;
+
+  // --- Application context (from specialization /assign) ---
+
+  // Application identifier (site name)
+  string application_id = 8;
+
+  // Deployed code version
+  string code_version = 9;
+
+  // Root directory where the function app code is mounted
+  string script_root = 10;
+}
+
+// Telemetry metadata about the worker process
+message WorkerMetadata {
+  // The runtime/stack name (e.g., "dotnet-isolated")
+  string runtime_name = 1;
+
+  // The version of the runtime/stack
+  string runtime_version = 2;
+
+  // The version of the worker SDK
+  string worker_version = 3;
+
+  // The worker bitness/architecture (e.g., "X64", "Arm64")
+  string worker_bitness = 4;
+
+  // Optional additional custom properties
+  map<string, string> custom_properties = 5;
+}
+
+// Runtime acknowledges the WorkerConnect and tells the Sidecar
+// which functions to load (may differ from what the worker discovered).
+message WorkerConnectResponse {
+  // Status of the connection
+  StatusResult result = 1;
+
+  // Host capabilities the worker should be aware of
+  map<string, string> host_capabilities = 2;
+
+  // Functions the Runtime wants loaded (may be a subset of what worker reported)
+  // If empty, Runtime accepted all functions from WorkerConnect.function_metadata
+  repeated FunctionLoadRequest function_load_requests = 3;
+}
+
+// Individual function load request from Runtime
+message FunctionLoadRequest {
+  // Unique function identifier
+  string function_id = 1;
+
+  // Function metadata
+  RpcFunctionMetadata metadata = 2;
+}

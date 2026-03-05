@@ -1,0 +1,25 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.1.1">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>80461571-e061-4ce4-a659-d294855ad0e5</UserSecretsId>
+    <!-- Opt out of central package management for this project due to version conflicts -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting" Version="13.1.1" />
+    <PackageReference Include="Aspire.Hosting.Azure.Storage" Version="13.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WorkerModel.ScaleController\WorkerModel.ScaleController.csproj" />
+    <ProjectReference Include="..\WorkerModel.Sidecar\WorkerModel.Sidecar.csproj" />
+    <ProjectReference Include="..\WorkerModel.RuntimeSidecar\WorkerModel.RuntimeSidecar.csproj" />
+    <ProjectReference Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
+  </ItemGroup>
+
+</Project>

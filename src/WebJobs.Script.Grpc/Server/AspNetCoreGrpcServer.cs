@@ -29,7 +29,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IScriptHostManager scriptHostManager,
             ILogger<AspNetCoreGrpcServer> logger)
         {
-            int port = WorkerUtilities.GetUnusedTcpPort();
+            // Allow fixed gRPC port via environment variable for decoupled worker model
+            var grpcPortStr = Environment.GetEnvironmentVariable("FUNCTIONS_GRPC_PORT");
+            int port = !string.IsNullOrEmpty(grpcPortStr) && int.TryParse(grpcPortStr, out var fixedPort)
+                ? fixedPort
+                : WorkerUtilities.GetUnusedTcpPort();
             _grpcHostBuilder = AspNetCoreGrpcHostBuilder.CreateHostBuilder(service, scriptEventManager, scriptHostManager, port);
             _logger = logger;
             Uri = new Uri($"http://{WorkerConstants.HostName}:{port}");

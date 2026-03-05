@@ -1,0 +1,51 @@
+# Runtime Dockerfile
+# Builds the Azure Functions WebHost Runtime with decoupled worker support
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy solution and project files
+COPY src/WebJobs.Script.WebHost/*.csproj src/WebJobs.Script.WebHost/
+COPY src/WebJobs.Script/*.csproj src/WebJobs.Script/
+COPY src/WebJobs.Script.Grpc/*.csproj src/WebJobs.Script.Grpc/
+COPY src/WebJobs.Script.Abstractions/*.csproj src/WebJobs.Script.Abstractions/
+COPY Directory.Build.props Directory.Build.targets Directory.Packages.props ./
+COPY NuGet.config ./
+
+# Restore
+RUN dotnet restore src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
+
+# Copy remaining source
+COPY src/ src/
+
+# Build
+RUN dotnet publish src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# Runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+
+# Install SquashFS tools for mounting customer apps (production parity)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends squashfuse fuse && \
+    rm -rf /var/lib/apt/lists/*
+
+# Mount point for customer app (SquashFS will mount here)
+RUN mkdir -p /home/site/wwwroot
+
+# Copy published app
+COPY --from=build /app/publish .
+
+# Environment
+ENV ASPNETCORE_URLS=http://+:80
+ENV AzureWebJobsScriptRoot=/home/site/wwwroot
+ENV WorkerModel__DecoupledMode=true
+ENV WorkerModel__DisableProcessManagement=true
+
+# Expose HTTP and gRPC ports
+EXPOSE 80 50051
+
+ENTRYPOINT ["dotnet", "Microsoft.Azure.WebJobs.Script.WebHost.dll"]

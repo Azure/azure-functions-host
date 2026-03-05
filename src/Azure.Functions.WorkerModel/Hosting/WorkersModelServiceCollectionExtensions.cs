@@ -25,7 +25,7 @@ public static class WorkersModelServiceCollectionExtensions
         services.TryAddSingleton<IEventProcessor, WorkerEventProcessor>();
         services.TryAddSingleton<IWorkerResolver, DefaultWorkerResolver>();
         services.AddSingleton<DefaultWorkerManager>();
-        services.AddSingleton<IFunctionMetadataProvider, WorkerModelFunctionMetadataProvider>();
+        // services.AddSingleton<IFunctionMetadataProvider, WorkerModelFunctionMetadataProvider>();
         services.TryAddSingleton<IWorkerManager>(s => s.GetRequiredService<DefaultWorkerManager>());
         services.TryAddSingleton<IScriptHostWorkerManager>(s => s.GetRequiredService<DefaultWorkerManager>());
         services.AddSingleton<IWorkerFunctionDescriptorProviderFactory, WorkerModelFunctionDescriptorProviderFactory>();
@@ -42,11 +42,15 @@ public static class WorkersModelServiceCollectionExtensions
         services.AddHostedService<RpcInitializationService>();
         services.ConfigureOptions<GrpcServerOptionsSetup>();
         services.ConfigureOptions<FunctionApplicationOptionsSetup>();
+        services.AddSingleton<IJobHostManager, JobHostManager>();
+        services.AddSingleton<GrpcWorkerStreamFactory>();
+
+        services.AddSingleton<WorkerModelFunctionMetadataProvider>();
         services.AddSingleton<WorkerModelFunctionMetadataManager>();
         services.AddSingleton<IFunctionMetadataManager>(s => s.GetRequiredService<WorkerModelFunctionMetadataManager>());
         services.AddSingleton<IFunctionMetadataManagerEx>(s => s.GetRequiredService<WorkerModelFunctionMetadataManager>());
-        services.AddSingleton<IJobHostManager, JobHostManager>();
-        services.AddSingleton<GrpcWorkerStreamFactory>();
+
+        services.AddSingleton<IScriptHostManager, WorkerModelScriptHostManager>();
 
         return services;
     }

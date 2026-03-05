@@ -1,0 +1,34 @@
+<Project>
+  <!-- 
+    Use parent's central package management but add our own packages.
+    Also prevent importing parent's Directory.Build.targets (which requires Engineering.targets).
+  -->
+  <PropertyGroup>
+    <ImportDirectoryBuildTargets>false</ImportDirectoryBuildTargets>
+  </PropertyGroup>
+
+  <!-- Add additional package versions needed by prototype projects -->
+  <ItemGroup>
+    <PackageVersion Include="Google.Protobuf" Version="3.27.2" />
+    <PackageVersion Include="Grpc.Core.Api" Version="2.65.0" />
+    <PackageVersion Include="Grpc.Tools" Version="2.65.0" />
+    <PackageVersion Include="Grpc.Net.Client" Version="2.65.0" />
+    <!-- Scale Controller packages -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.19.1" />
+    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.37.1" />
+    <!-- Aspire/ServiceDefaults packages -->
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="8.4.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.1.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.10.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.10.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.10.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.10.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.10.0" />
+    <!-- Aspire hosting packages -->
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.1.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.CosmosDB" Version="9.1.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="9.1.0" />
+  </ItemGroup>
+</Project>

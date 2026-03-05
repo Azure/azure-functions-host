@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- FunctionsNetHost native binary - contentFiles copied to output -->
+    <PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" />
+  </ItemGroup>
+
+</Project>

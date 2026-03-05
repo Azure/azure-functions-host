@@ -4,7 +4,11 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
+        "Logging__LogLevel__Default": "Debug",
+        "Logging__LogLevel__Microsoft": "Information",
+        "Logging__Console__IsEnabled": "true"
       },
       "applicationUrl": "https://localhost:62513;http://localhost:62514"
     }

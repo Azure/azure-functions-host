@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+option csharp_namespace = "WorkerModel.Contracts.Wrapper";
+
+package workermodel.wrapper;
+
+// Wrapper control service - Sidecar to Wrapper communication
+service WrapperControl {
+  // Check worker process health
+  rpc GetStatus(WrapperStatusRequest) returns (WrapperStatusResponse);
+  
+  // Request graceful shutdown
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+  
+  // Request worker restart (for failure recovery, not specialization)
+  rpc RestartWorker(RestartWorkerRequest) returns (RestartWorkerResponse);
+}
+
+message WrapperStatusRequest {
+}
+
+message WrapperStatusResponse {
+  bool is_running = 1;
+  int32 process_id = 2;
+  int64 uptime_seconds = 3;
+  string worker_id = 4;
+}
+
+message ShutdownRequest {
+  string reason = 1;
+  int32 timeout_seconds = 2;
+}
+
+message ShutdownResponse {
+  bool accepted = 1;
+}
+
+message RestartWorkerRequest {
+  string reason = 1;
+}
+
+message RestartWorkerResponse {
+  bool accepted = 1;
+  string message = 2;
+}

@@ -36,6 +36,7 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
     private readonly ISharedMemoryManager _sharedMemoryManager;
 
     private ConcurrentDictionary<string, ExecutingInvocation> _executingInvocations = new();
+    private ConcurrentDictionary<string, Exception> _functionLoadErrors = new();
     private ImmutableDictionary<string, TaskCompletionSource> _loadedFunctions;
 
     private Uri _httpProxyEndpoint;
@@ -356,6 +357,28 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
         _functionMetadataTcs.TrySetResult(_functions);
     }
 
+    /// <summary>
+    /// Loads functions from pre-processed metadata (e.g., from a WorkerConnect message).
+    /// Sets up invocation tracking and sends FunctionLoadRequests to the worker.
+    /// This uses the same metadata objects the invoker uses, ensuring FunctionId consistency.
+    /// </summary>
+    internal void LoadFunctionsFromMetadata(IEnumerable<FunctionMetadata> metadata)
+    {
+        var metadataArray = metadata.ToImmutableArray();
+
+        _loadedFunctions = metadataArray
+            .ToDictionary(f => f.GetFunctionId(), _ => new TaskCompletionSource())
+            .ToImmutableDictionary();
+
+        bool supportsLoadResponseCollection = !string.IsNullOrEmpty(
+            _workerCapabilities.GetCapabilityState(RpcWorkerConstants.SupportsLoadResponseCollection));
+
+        SendFunctionLoadRequests(metadataArray, supportsLoadResponseCollection);
+
+        _functions = metadataArray;
+        _functionMetadataTcs.TrySetResult(_functions);
+    }
+
     public async Task<ScriptInvocationResult> InvokeAsync(ScriptInvocationContext context)
     {
         if (Status != WorkerStatus.Running)
@@ -364,6 +387,8 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
         }
 
         var functionId = context.FunctionMetadata.GetFunctionId();
+
+        // Wait for function to be loaded; if load failed, the TCS is faulted and this will throw
         if (!_loadedFunctions[functionId].Task.IsCompletedSuccessfully)
         {
             await _loadedFunctions[functionId].Task;
@@ -381,21 +406,13 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
             string invocationId = context.ExecutionContext.InvocationId.ToString();
             string functionId = context.FunctionMetadata.GetFunctionId();
 
-            // do not send an invocation request for functions that failed to load or could not be indexed by the worker
-            //if (_functionLoadErrors.TryGetValue(functionId, out Exception exception))
-            //{
-            //    _workerChannelLogger.LogDebug("Function {functionName} failed to load", context.FunctionMetadata.Name);
-            //    context.SetException(exception);
-            //    RemoveExecutingInvocation(invocationId);
-            //    return;
-            //}
-            //else if (_metadataRequestErrors.TryGetValue(functionId, out exception))
-            //{
-            //    _workerChannelLogger.LogDebug("Worker failed to load metadata for {functionName}", context.FunctionMetadata.Name);
-            //    context.SetException(exception);
-            //    RemoveExecutingInvocation(invocationId);
-            //    return;
-            //}
+            // do not send an invocation request for functions that failed to load
+            if (_functionLoadErrors.TryGetValue(functionId, out Exception exception))
+            {
+                _workerChannelLogger.LogDebug("Function {functionName} failed to load", context.FunctionMetadata.Name);
+                context.SetException(exception);
+                return;
+            }
 
             //if (context.CancellationToken.IsCancellationRequested)
             //{
@@ -600,7 +617,7 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
                 _workerChannelLogger?.LogError(functionLoadEx, "Worker failed to load function: '{functionName}' with functionId: '{functionId}'.", functionName, loadResponse.FunctionId);
             }
             //Cache function load errors to replay error messages on invoking failed functions
-            // _functionLoadErrors[loadResponse.FunctionId] = functionLoadEx;
+            _functionLoadErrors[loadResponse.FunctionId] = functionLoadEx;
         }
 
         if (loadResponse.IsDependencyDownloaded)
@@ -608,13 +625,17 @@ internal class GrpcWorker : IWorker, IAsyncDisposable
             // _workerChannelLogger?.LogDebug("Managed dependency successfully downloaded by the {workerLanguage} language worker", _workerConfig.Description.Language);
         }
 
-        // link the invocation inputs to the invoke call
-        // var invokeBlock = new ActionBlock<ScriptInvocationContext>(async ctx => await SendInvocationRequest(ctx));
-        // associate the invocation input buffer with the function
-        // var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
-        //_inputLinks.Add(disposableLink);
-
-        _loadedFunctions[loadResponse.FunctionId].TrySetResult();
+        // On failure, fault the TCS so InvokeAsync doesn't hang waiting for a load that will never succeed.
+        // On success, signal that the function is ready for invocations.
+        if (loadResponse.Result.IsFailure(out _))
+        {
+            _loadedFunctions[loadResponse.FunctionId].TrySetException(
+                functionLoadEx ?? new InvalidOperationException($"Function '{functionName}' failed to load."));
+        }
+        else
+        {
+            _loadedFunctions[loadResponse.FunctionId].TrySetResult();
+        }
     }
 
     // Waits for invocations to complete

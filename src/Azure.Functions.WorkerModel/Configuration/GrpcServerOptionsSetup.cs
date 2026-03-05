@@ -7,7 +7,10 @@ internal class GrpcServerOptionsSetup : IConfigureOptions<GrpcServerOptions>
 {
     public void Configure(GrpcServerOptions options)
     {
-        int port = WorkerUtilities.GetUnusedTcpPort();
+        var grpcPortStr = Environment.GetEnvironmentVariable("FUNCTIONS_GRPC_PORT");
+        int port = !string.IsNullOrEmpty(grpcPortStr) && int.TryParse(grpcPortStr, out var fixedPort)
+            ? fixedPort
+            : WorkerUtilities.GetUnusedTcpPort();
         options.ServerUri = new Uri($"http://{WorkerConstants.HostName}:{port}");
     }
 }

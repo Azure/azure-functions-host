@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # Azure Functions Runtime
+  runtime:
+    build:
+      context: ..
+      dockerfile: prototype/docker/Dockerfile.runtime
+    ports:
+      - "7071:80"      # HTTP
+      - "50051:50051"  # gRPC
+    environment:
+      - AzureWebJobsStorage=UseDevelopmentStorage=true
+      - WorkerModel__DecoupledMode=true
+      - WorkerModel__DisableProcessManagement=true
+      - WorkerModel__ScaleControllerEndpoint=http://scalecontroller:80
+      - AZURE_FUNCTIONS_ENVIRONMENT=Development
+    # Required for SquashFS/FUSE mounting
+    devices:
+      - /dev/fuse
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    depends_on:
+      - azurite
+      - scalecontroller
+    networks:
+      - functions-network
+
+  # Worker 1
+  worker1:
+    build:
+      context: ..
+      dockerfile: prototype/docker/Dockerfile.worker
+    environment:
+      - WORKER_ID=worker-001
+      - SCALECONTROLLER_ENDPOINT=http://scalecontroller:80
+      # RuntimeEndpoint provided by SC at specialization
+    # Required for SquashFS/FUSE mounting
+    devices:
+      - /dev/fuse
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    depends_on:
+      - scalecontroller
+    networks:
+      - functions-network
+
+  # Worker 2
+  worker2:
+    build:
+      context: ..
+      dockerfile: prototype/docker/Dockerfile.worker
+    environment:
+      - WORKER_ID=worker-002
+      - SCALECONTROLLER_ENDPOINT=http://scalecontroller:80
+    devices:
+      - /dev/fuse
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    depends_on:
+      - scalecontroller
+    networks:
+      - functions-network
+
+  # Scale Controller Mock
+  scalecontroller:
+    build:
+      context: ..
+      dockerfile: prototype/docker/Dockerfile.scalecontroller
+    ports:
+      - "8080:80"
+    environment:
+      - COSMOS_CONNECTION_STRING=AccountEndpoint=https://cosmosdb:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
+      - BLOB_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+    depends_on:
+      - azurite
+      - cosmosdb
+    networks:
+      - functions-network
+
+  # Azurite (Azure Storage Emulator)
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    ports:
+      - "10000:10000"  # Blob
+      - "10001:10001"  # Queue
+      - "10002:10002"  # Table
+    command: "azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --loose"
+    networks:
+      - functions-network
+
+  # Cosmos DB Emulator
+  cosmosdb:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+    ports:
+      - "8081:8081"    # Data Explorer
+      - "10250:10250"
+      - "10251:10251"
+      - "10252:10252"
+      - "10253:10253"
+      - "10254:10254"
+    environment:
+      - AZURE_COSMOS_EMULATOR_PARTITION_COUNT=10
+      - AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE=true
+    networks:
+      - functions-network
+
+networks:
+  functions-network:
+    driver: bridge

@@ -1,0 +1,76 @@
+# Worker Dockerfile
+# Builds the Worker container with Wrapper, Sidecar, and FunctionsNetHost
+
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy prototype projects
+COPY prototype/WorkerModel.Contracts/*.csproj prototype/WorkerModel.Contracts/
+COPY prototype/WorkerModel.Sidecar/*.csproj prototype/WorkerModel.Sidecar/
+COPY prototype/WorkerModel.Wrapper/*.csproj prototype/WorkerModel.Wrapper/
+COPY prototype/Directory.Build.props prototype/
+
+# Restore all projects
+RUN dotnet restore prototype/WorkerModel.Sidecar/WorkerModel.Sidecar.csproj
+RUN dotnet restore prototype/WorkerModel.Wrapper/WorkerModel.Wrapper.csproj
+
+# Copy remaining source
+COPY prototype/ prototype/
+
+# Build Sidecar
+RUN dotnet publish prototype/WorkerModel.Sidecar/WorkerModel.Sidecar.csproj \
+    -c Release \
+    -o /app/sidecar \
+    --no-restore
+
+# Build Wrapper (AOT)
+RUN dotnet publish prototype/WorkerModel.Wrapper/WorkerModel.Wrapper.csproj \
+    -c Release \
+    -r linux-x64 \
+    -o /app/wrapper \
+    --no-restore
+
+# Download FunctionsNetHost from NuGet
+WORKDIR /nethost
+RUN dotnet new console -n temp && \
+    dotnet add temp package Microsoft.Azure.Functions.DotNetIsolatedNativeHost --version 1.0.13 && \
+    cp -r /root/.nuget/packages/microsoft.azure.functions.dotnetisolatednativehost/1.0.13/contentFiles/any/any/workers/dotnet-isolated /app/dotnet-isolated || \
+    echo "FunctionsNetHost package structure may have changed, check manually"
+
+# Runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+
+# Install SquashFS tools for mounting customer apps (production parity)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends squashfuse fuse curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy Wrapper (native AOT binary)
+COPY --from=build /app/wrapper /app/wrapper
+
+# Copy Sidecar
+COPY --from=build /app/sidecar /app/sidecar
+
+# Copy FunctionsNetHost (if available)
+COPY --from=build /app/dotnet-isolated /app/dotnet-isolated
+
+# Mount point for customer app (SquashFS will mount here)
+RUN mkdir -p /home/site/wwwroot
+
+# Default environment
+ENV WORKER_ID=worker-001
+ENV FUNCTIONS_URI=http://localhost:50051
+ENV FUNCTIONS_NETHOST_PATH=/app/dotnet-isolated/FunctionsNetHost
+ENV AzureWebJobsScriptRoot=/home/site/wwwroot
+ENV WRAPPER_SOCKET_PATH=/tmp/wrapper.sock
+
+# Sidecar ports
+EXPOSE 8080 50051
+
+# Start script that runs both Sidecar and Wrapper
+COPY prototype/docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
