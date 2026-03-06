@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -241,6 +241,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     };
                 }
                 string testFunctionName = secretsType == ScriptSecretsType.Host ? null : functionName;
+
+                // Ensure secrets are in an active state (not soft-deleted from a previous test run)
+                // before calling WriteAsync.
+                if (repositoryType == SecretsRepositoryType.KeyVault)
+                {
+                    await _fixture.WriteSecret(testFunctionName ?? "host", secrets);
+                }
 
                 var target = _fixture.GetNewSecretRepository();
                 await target.WriteAsync(secretsType, testFunctionName, secrets);
@@ -690,8 +697,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Dictionary<string, string> dictionary = KeyVaultSecretsRepository.GetDictionaryFromScriptSecrets(secrets, functionNameOrHost);
                 foreach (string key in dictionary.Keys)
                 {
-                    await Utility.InvokeWithRetriesWhenAsync(() => SecretClient.SetSecretAsync(key, dictionary[key]),
-                        5, TimeSpan.FromSeconds(1), (e) => e is RequestFailedException rfex && rfex.Status == 409);
+                    await Utility.InvokeWithRetriesWhenAsync(async () =>
+                    {
+                        try
+                        {
+                            await SecretClient.SetSecretAsync(key, dictionary[key]);
+                        }
+                        catch (RequestFailedException ex) when (ex.Status == 409)
+                        {
+                            // Secret is soft-deleted from a previous test run. Purge it (best-effort) and retry.
+                            try
+                            {
+                                await SecretClient.PurgeDeletedSecretAsync(key);
+                            }
+                            catch (RequestFailedException)
+                            {
+                            }
+                            
+                            // Allow purge to propagate before retrying
+                            await Task.Delay(TimeSpan.FromSeconds(1));
+                            throw;
+                        }
+                    }, 4, TimeSpan.FromSeconds(1), ex => ex is RequestFailedException rfex && rfex.Status == 409);
                 }
             }
 

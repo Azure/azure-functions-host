@@ -3,7 +3,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.0" VersionOverride="4.0.3148" />
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.2" VersionOverride="4.0.4025" />
-    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" VersionOverride="4.0.4581" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.4" VersionOverride="4.0.4759" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.6" VersionOverride="4.0.4778" />
   </ItemGroup>
 
   <Target Name="RemovePowershellWorkerRuntimes" BeforeTargets="AssignTargetPaths" Condition="'$(RuntimeIdentifier)' != ''">

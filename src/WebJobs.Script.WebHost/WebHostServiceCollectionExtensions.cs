@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -216,6 +217,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService, HostedServiceManager>();
 
             // Configuration
+
+            // Enable options logging for WebHost-level options that implement IOptionsFormatter.
+            services.AddFormattableOptionsLogging();
 
             // ScriptApplicationHostOptions are special in that they need to be reset on specialization, but the reset
             // must happen after the StandbyOptions have reset. For this reason, we have a special ChangeTokenSource that

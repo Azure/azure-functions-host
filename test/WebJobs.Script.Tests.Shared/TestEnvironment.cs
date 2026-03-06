@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -29,6 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public bool Is64BitProcess => _is64BitProcess;
+
+        public OSPlatform Platform { get; set; } = SystemEnvironment.GetCurrentPlatform();
 
         public string this[string key]
         {

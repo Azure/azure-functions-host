@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -201,6 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns(containerReady ? "1" : null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment)).Returns(isManagedAppEnvironment ? "1" : null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebsitePodName)).Returns(isConsumptionLinuxOnLegion ? "RandomPodName" : null);
+            _mockEnvironment.Setup(p => p.Platform).Returns(OSPlatform.Windows);
 
             var result = FunctionsSyncManager.IsSyncTriggersEnvironment(_mockWebHostEnvironment.Object, _mockEnvironment.Object);
             Assert.Equal(expected, result);
@@ -217,6 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey)).Returns("1");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns("1");
+            _mockEnvironment.Setup(p => p.Platform).Returns(OSPlatform.Windows);
 
             var result = FunctionsSyncManager.IsSyncTriggersEnvironment(_mockWebHostEnvironment.Object, _mockEnvironment.Object);
             Assert.Equal(expected, result);
