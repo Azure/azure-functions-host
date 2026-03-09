@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v10.0": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/4.1048.100-ci.26153.3": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/4.1048.100-ci.26156.4": {
         "dependencies": {
           "AspNetCore.HealthChecks.UI.Client": "9.0.0",
           "Azure.Security.KeyVault.Secrets": "4.6.0",
@@ -18,8 +18,8 @@
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption": "1.0.5",
           "Microsoft.Azure.Storage.File": "11.1.7",
-          "Microsoft.Azure.WebJobs.Script": "4.1048.100-ci.26153.3",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1048.100-ci.26153.3",
+          "Microsoft.Azure.WebJobs.Script": "4.1048.100-ci.26156.4",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1048.100-ci.26156.4",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.Security.Utilities.Core": "1.21.0",
           "Microsoft.Azure.WebJobs.Script.Reference": "4.1048.0.0",
@@ -884,6 +884,14 @@
           }
         }
       },
+      "Microsoft.Extensions.DependencyModel/10.0.0": {
+        "runtime": {
+          "lib/net10.0/Microsoft.Extensions.DependencyModel.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.25.52411"
+          }
+        }
+      },
       "Microsoft.Extensions.Http.Polly/10.0.0": {
         "dependencies": {
           "Polly": "7.2.4",
@@ -1588,7 +1596,7 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script/4.1048.100-ci.26153.3": {
+      "Microsoft.Azure.WebJobs.Script/4.1048.100-ci.26156.4": {
         "dependencies": {
           "Azure.Data.Tables": "12.8.3",
           "Azure.Monitor.OpenTelemetry.Exporter": "1.5.0",
@@ -1604,6 +1612,7 @@
           "Microsoft.Azure.WebJobs.Script.Abstractions": "1.0.4-preview",
           "Microsoft.CodeAnalysis.CSharp.Scripting": "3.3.1",
           "Microsoft.Extensions.Azure": "1.13.1",
+          "Microsoft.Extensions.DependencyModel": "10.0.0",
           "Microsoft.Extensions.Http.Polly": "10.0.0",
           "Microsoft.Extensions.Telemetry.Abstractions": "9.8.0",
           "NuGet.ProjectModel": "5.11.6",
@@ -1623,11 +1632,11 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/4.1048.100-ci.26153.3": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/4.1048.100-ci.26156.4": {
         "dependencies": {
           "Grpc.AspNetCore": "2.55.0",
           "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.45",
-          "Microsoft.Azure.WebJobs.Script": "4.1048.100-ci.26153.3",
+          "Microsoft.Azure.WebJobs.Script": "4.1048.100-ci.26156.4",
           "Mono.Posix.NETStandard": "1.0.0"
         },
         "runtime": {
@@ -1640,7 +1649,7 @@
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.dll": {
             "assemblyVersion": "4.1048.0.0",
-            "fileVersion": "4.1048.100.26153"
+            "fileVersion": "4.1048.100.26156"
           }
         }
       },
@@ -1648,14 +1657,14 @@
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
             "assemblyVersion": "4.1048.0.0",
-            "fileVersion": "4.1048.100.26153"
+            "fileVersion": "4.1048.100.26156"
           }
         }
       }
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/4.1048.100-ci.26153.3": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/4.1048.100-ci.26156.4": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -2087,6 +2096,13 @@
       "path": "microsoft.extensions.compliance.abstractions/9.8.0",
       "hashPath": "microsoft.extensions.compliance.abstractions.9.8.0.nupkg.sha512"
     },
+    "Microsoft.Extensions.DependencyModel/10.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-RFYJR7APio/BiqdQunRq6DB+nDB6nc2qhHr77mlvZ0q0BT8PubMXN7XicmfzCbrDE/dzhBnUKBRXLTcqUiZDGg==",
+      "path": "microsoft.extensions.dependencymodel/10.0.0",
+      "hashPath": "microsoft.extensions.dependencymodel.10.0.0.nupkg.sha512"
+    },
     "Microsoft.Extensions.Http.Polly/10.0.0": {
       "type": "package",
       "serviceable": true,
@@ -2479,12 +2495,12 @@
       "path": "yarp.reverseproxy/2.0.1",
       "hashPath": "yarp.reverseproxy.2.0.1.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script/4.1048.100-ci.26153.3": {
+    "Microsoft.Azure.WebJobs.Script/4.1048.100-ci.26156.4": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/4.1048.100-ci.26153.3": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/4.1048.100-ci.26156.4": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
