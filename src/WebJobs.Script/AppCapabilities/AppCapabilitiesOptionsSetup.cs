@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 #nullable enable
@@ -15,13 +16,16 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     {
         private readonly IConfiguration _configuration;
         private readonly IAppCapabilitiesStore _appCapabilitiesStore;
+        private readonly ILogger<AppCapabilitiesOptionsSetup> _logger;
 
         public AppCapabilitiesOptionsSetup(
             IConfiguration configuration,
-            IAppCapabilitiesStore appCapabilitiesStore)
+            IAppCapabilitiesStore appCapabilitiesStore,
+            ILogger<AppCapabilitiesOptionsSetup> logger)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _appCapabilitiesStore = appCapabilitiesStore ?? throw new ArgumentNullException(nameof(appCapabilitiesStore));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -40,6 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 
             foreach (var kvp in _appCapabilitiesStore.Capabilities)
             {
+                if (optionsDict.ContainsKey(kvp.Key))
+                {
+                    _logger.LogDebug("Duplicate capability key found. Overriding existing value with a worker provided value.");
+                }
                 optionsDict[kvp.Key] = kvp.Value;
             }
         }
@@ -57,6 +65,11 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             {
                 if (child.Value is not null)
                 {
+                    if (options.ContainsKey(child.Key))
+                    {
+                        _logger.LogDebug("Duplicate capability key found. Overriding existing value with a configuration provided value.");
+                    }
+
                     options[child.Key] = child.Value;
                 }
             }

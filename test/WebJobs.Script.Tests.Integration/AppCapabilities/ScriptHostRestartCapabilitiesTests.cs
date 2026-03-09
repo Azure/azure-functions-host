@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
+namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.AppCapabilities
 {
     public class ScriptHostRestartCapabilitiesTests
     {
