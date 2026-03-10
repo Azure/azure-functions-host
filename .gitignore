@@ -499,4 +499,3 @@ local.settings.json
 /tools/ExtensionsMetadataGenerator/test/ExtensionsMetadataGeneratorTests/runtimeAssemblies.txt
 BenchmarkDotNet.Artifacts/
 /test/Resources/TestProjects/DotNetCustomHandler/Properties/launchSettings.json
-.github/prompts/
