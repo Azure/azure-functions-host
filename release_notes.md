@@ -18,3 +18,4 @@
 - Update NodeJS Worker Version to [3.13.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.13.0) (#11622)
 - Update Python Worker Version to [4.43.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.43.0) (#11623)
 - Filter out dependency telemetry for localhost calls (#11609)
+- Upgrading Microsoft.Extensions.Caching.Abstractions, System.Diagnostics.DiagnosticSource, System.Text.Json, System.Text.Encodings.Web and Microsoft.Extensions.Hosting.Abstractions to 10.0.3 to support MCP scenarios using the latest SDK. (#11638)
