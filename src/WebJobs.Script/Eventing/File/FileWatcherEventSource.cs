@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing.File
         private readonly AutoRecoveringFileSystemWatcher _fileWatcher;
         private readonly IScriptEventManager _eventManager;
         private readonly string _source;
+        private readonly object _syncLock = new object();
         private bool _disposed = false;
 
         public FileWatcherEventSource(IScriptEventManager eventManager,
@@ -31,23 +32,47 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing.File
 
         private void FileChanged(object sender, FileSystemEventArgs e)
         {
-            if (!_disposed)
+            lock (_syncLock)
             {
+                if (_disposed)
+                {
+                    return;
+                }
+
                 var fileEvent = new FileEvent(_source, e);
-                _eventManager.Publish(fileEvent);
+                try
+                {
+                    _eventManager.Publish(fileEvent);
+                }
+                catch (ObjectDisposedException ex) when (string.Equals(ex.ObjectName, nameof(ScriptEventManager), StringComparison.Ordinal))
+                {
+                }
             }
         }
 
         private void Dispose(bool disposing)
         {
-            if (!_disposed)
+            bool disposeWatcher = false;
+
+            lock (_syncLock)
             {
-                if (disposing)
+                if (_disposed)
                 {
-                    _fileWatcher.Dispose();
+                    return;
                 }
 
                 _disposed = true;
+
+                if (disposing)
+                {
+                    _fileWatcher.Changed -= FileChanged;
+                    disposeWatcher = true;
+                }
+            }
+
+            if (disposeWatcher)
+            {
+                _fileWatcher.Dispose();
             }
         }
 

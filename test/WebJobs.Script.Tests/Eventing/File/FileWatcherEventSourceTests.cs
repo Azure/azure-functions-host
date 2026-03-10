@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -65,6 +66,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
 
                 Assert.Equal(2, events.Count);
             }
+        }
+
+        [Fact]
+        public void DisposedEventManager_DoesNotThrowWhenFileChangeIsRaised()
+        {
+            using var directory = new TempDirectory();
+            using var eventManager = new ScriptEventManager();
+            using var eventSource = new FileWatcherEventSource(eventManager, "TestSource", directory.Path);
+            var eventInfo = new FileSystemEventArgs(WatcherChangeTypes.Changed, directory.Path, "test.txt");
+            var fileChangedMethod = typeof(FileWatcherEventSource).GetMethod("FileChanged", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(fileChangedMethod);
+
+            eventManager.Dispose();
+
+            var exception = Record.Exception(() => fileChangedMethod!.Invoke(eventSource, new object[] { this, eventInfo }));
+            Assert.Null(exception);
         }
     }
 }
