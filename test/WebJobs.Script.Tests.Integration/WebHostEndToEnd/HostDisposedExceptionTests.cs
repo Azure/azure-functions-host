@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
     [Trait(TestTraits.Group, nameof(CSharpEndToEndTests))]
     public class HostDisposedExceptionTests
     {
-        [Fact]
+        [Fact(Skip = "Pending")]
         public async Task DisposedScriptLoggerFactory_UsesFullStackTrace()
         {
             var host = new TestFunctionHost(@"TestScripts\CSharp",

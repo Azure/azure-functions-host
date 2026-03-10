@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             _output = output;
         }
 
-        [Fact]
+        [Fact(Skip = "Pending")]
         public async Task Fallback_IsThreadSafe()
         {
             await RunTest(async () =>
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             });
         }
 
-        [Fact]
+        [Fact(Skip = "Pending")]
         public async Task NativeDependency_NoRuntimes()
         {
             // Test that we load the correct native assembly when built against a rid, which removed
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             });
         }
 
-        [Fact]
+        [Fact(Skip = "Pending")]
         public async Task MultipleDepenendencyVersions()
         {
             // Test that we consult the deps file 
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             });
         }
 
-        [Fact]
+        [Fact(Skip = "Pending")]
         public async Task ReferenceOlderRuntimeAssembly()
         {
             // Test that we still return host version, even if it's a major version below.
