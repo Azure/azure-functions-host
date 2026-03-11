@@ -115,7 +115,6 @@ jobs:
     inputs:
       packageType: sdk
       version: 10.x
-      includePreviewVersions: true
 
   - script: dotnet --info
     displayName: "Print .NET Environment Info"
