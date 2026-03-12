@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
     [Trait(TestTraits.Group, nameof(CSharpEndToEndTests))]
     public class HostDisposedExceptionTests
     {
-        [Fact(Skip = "Pending")]
+        [Fact]
         public async Task DisposedScriptLoggerFactory_UsesFullStackTrace()
         {
             var host = new TestFunctionHost(@"TestScripts\CSharp",
@@ -40,7 +40,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
 
             await CustomListener.RunAsync("one");
 
+            var jobhost = host.JobHostServices.GetRequiredService<IScriptJobHost>();
+            await jobhost.StopAsync();
+            await host.WebHost.StopAsync();
+            host.WebHost.Dispose();
             host.Dispose();
+
 
             // In this scenario, the logger throws an exception before we enter the try/catch for the function invocation.
             var ex = await Assert.ThrowsAsync<HostDisposedException>(() => CustomListener.RunAsync("two"));

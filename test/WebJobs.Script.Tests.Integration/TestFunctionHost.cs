@@ -271,6 +271,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public HttpClient HttpClient { get; private set; }
 
+        public IHost WebHost => _webHost;
+
         /// <summary>
         /// Create a new HttpClient without default test configuration.
         /// </summary>
