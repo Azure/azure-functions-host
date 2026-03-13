@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Exceptions;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -103,8 +104,25 @@ namespace Microsoft.Azure.WebJobs.Script.Http
             // This helps track failures/cancellations that should halt retrying the http request.
             httpContext.Items[ScriptConstants.HttpProxyScriptInvocationContext] = context;
 
-            var forwardingTask = _httpForwarder.SendAsync(httpContext, httpUri.ToString(), _messageInvoker, _forwarderRequestConfig, _httpTransformer).AsTask();
+            Task<ForwarderError> forwardingTask = ForwardWithSuppressedTelemetryAsync(httpContext, httpUri.ToString());
             context.Properties[ScriptConstants.HttpProxyTask] = forwardingTask;
+        }
+
+        private async Task<ForwarderError> ForwardWithSuppressedTelemetryAsync(HttpContext httpContext, string uri)
+        {
+            // Task.Yield() ensures we enter a fresh async scope before setting the AsyncLocal value,
+            // preventing cross-scope contamination into the synchronous calling context.
+            await Task.Yield();
+
+            try
+            {
+                ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = true;
+                return await _httpForwarder.SendAsync(httpContext, uri, _messageInvoker, _forwarderRequestConfig, _httpTransformer);
+            }
+            finally
+            {
+                ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = false;
+            }
         }
     }
 }

@@ -257,6 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
+        [InlineData("7.6", "7.6")]
         [InlineData("7.4", "7.4")]
         [InlineData("7.2", "7.2")]
         [InlineData(null, "7.4")]
@@ -426,8 +427,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Contains("ProcessCount must not be greater than MaxProcessCount", resultEx2.Message);
 
             workerConfig = CreateWorkerConfig(10, 10, "-800", false);
-            var resultEx3 = Assert.Throws<JsonException>(() => WorkerConfigurationProviderBase.GetWorkerProcessCount(workerConfig, testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName), testEnvironment.GetEffectiveCoresCount()));
-            Assert.Contains("value could not be converted to System.TimeSpan", resultEx3.Message);
+            var resultEx3 = Assert.Throws<ArgumentOutOfRangeException>(() => WorkerConfigurationProviderBase.GetWorkerProcessCount(workerConfig, testEnvironment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName), testEnvironment.GetEffectiveCoresCount()));
+            Assert.Contains("The TimeSpan must not be negative", resultEx3.Message);
         }
 
         private static JsonElement CreateWorkerConfig(int processCount, int maxProcessCount, string processStartupInterval, bool setProcessCountToCores)
