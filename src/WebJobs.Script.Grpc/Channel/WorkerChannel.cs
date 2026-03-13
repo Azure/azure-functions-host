@@ -39,7 +39,7 @@ using ParameterBindingType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.Parame
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    internal abstract partial class WorkerChannelBase : IRpcWorkerChannel, IDisposable
+    internal abstract partial class WorkerChannel : IRpcWorkerChannel, IDisposable
     {
         private readonly IScriptEventManager _eventManager;
         private readonly RpcWorkerConfig _workerConfig;
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _functionMetadataRequestSent = false;
         private IOptions<ScriptJobHostOptions> _scriptHostOptions;
 
-        internal WorkerChannelBase(
+        internal WorkerChannel(
             string workerId,
             IScriptEventManager eventManager,
             IScriptHostManager hostManager,
@@ -179,8 +179,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             get => _state;
             set => _state = value;
         }
-
-        protected virtual void OnDisposing() { }
 
         protected virtual void DisposeWorkerResources() { }
 
@@ -1523,7 +1521,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Dispose()
         {
-            OnDisposing();
             _disposing = true;
             Dispose(true);
         }

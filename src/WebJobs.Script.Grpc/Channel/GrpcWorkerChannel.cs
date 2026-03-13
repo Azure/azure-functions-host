@@ -20,7 +20,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    internal class GrpcWorkerChannel : WorkerChannelBase
+    internal class GrpcWorkerChannel : WorkerChannel
     {
         private IWorkerProcess _rpcWorkerProcess;
 
@@ -86,9 +86,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        protected override void OnDisposing()
+        protected override void Dispose(bool disposing)
         {
-            StopWorkerProcess();
+            if (disposing)
+            {
+                StopWorkerProcess();
+            }
+
+            base.Dispose(disposing);
         }
 
         protected override void DisposeWorkerResources()
