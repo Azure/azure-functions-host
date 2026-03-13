@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -117,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         private IHostBuilder CreateTimeoutHostBuilder(string scriptPath, TimeSpan timeout, string functionName)
         {
-            var builder = new HostBuilder()
+            var builder = Program.CreateHostBuilder()
                .ConfigureDefaultTestWebScriptHost(b =>
                {
                    b.Services.Configure<ScriptJobHostOptions>(o =>

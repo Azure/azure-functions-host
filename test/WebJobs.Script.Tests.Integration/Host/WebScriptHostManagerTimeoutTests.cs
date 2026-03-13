@@ -32,8 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                 Assert.DoesNotContain(messages, t => t.FormattedMessage.StartsWith("Done"));
                 Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
                 Assert.Contains(messages, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
-            }
 
+                host.WebHost.Dispose();
+            }
+            
             // Validates a bug where WebHost services were not being disposed on a function timeout
             Assert.True(_disposedService.IsDisposed, "Expected services to be disposed");
         }

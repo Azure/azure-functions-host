@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                     // host initialization is in progress
                     await TestHelpers.Await(() =>
                     {
-                        return !TestWebHookExtension.Initializing;
+                        return TestWebHookExtension.Initializing;
                     });
 
                     // make the keys request while during initialization BEFORE the extension
