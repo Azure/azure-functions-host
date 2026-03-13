@@ -1,14 +1,6 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
-using System.Web.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -18,6 +10,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web.Http;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -33,6 +35,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
             _hostName = new HostNameProvider(SystemEnvironment.Instance).Value ?? "localhost";
+            PrintLogs();
+        }
+
+        void PrintLogs()
+        {
+            var thread = new Thread(() =>
+            {
+                var i = 0;
+
+                while (true)
+                {
+                    var messageList = _fixture.TestHost.GetWebHostLogMessages();
+                    while (i < messageList.Count)
+                    {
+                        Console.WriteLine(messageList[i].FormattedMessage);
+                        i++;
+                    }
+
+                    Thread.Sleep(25); // prevent tight CPU spin
+                }
+            })
+            {
+                IsBackground = true
+            };
+
+            thread.Start();
         }
 
         [Fact]
