@@ -107,11 +107,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var provider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), SystemEnvironment.Instance);
 
-                var builder = new HostBuilder()
-                    .ConfigureWebHost(webhostBuilder =>
+                var builder = Program.CreateHostBuilder()
+                    .ConfigureWebHost(webHostBuilder =>
                     {
-
-                        webhostBuilder.UseStartup<Startup>();
+                        webHostBuilder.UseTestServer();
                     })
                     .ConfigureServices(services =>
                     {
@@ -134,6 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     });
 
                 _host = builder.Build();
+                _host.StartAsync().GetAwaiter().GetResult();
+
                 HostOptions.RootServiceProvider = _host.Services;
                 var scriptConfig = _host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
