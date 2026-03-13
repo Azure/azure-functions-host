@@ -678,10 +678,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var expectedPowerShellVersion = "7.4";
             using var host = builder.Build();
 
-            await host.StartAsync();
-
-            var client = host.GetTestClient();
-
             var scriptHostService = host.Services.GetService<WebJobsScriptHostService>();
             var channelFactory = host.Services.GetService<IRpcWorkerChannelFactory>();
             var workerOptionsPlaceholderMode = host.Services.GetService<IOptions<LanguageWorkerOptions>>();
@@ -884,6 +880,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+
         /// <summary>
         /// This scenario tests that the configured JobHostInternalStorageOptions will have the right
         /// customer-provided configuration of the ActiveHost after specialization.
@@ -902,8 +899,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // We can't assume the placeholder has any environment variables specified by the customer.
             // Add environment variables expected throughout the specialization (similar to how DWAS updates the environment)
-            using (new TestScopedEnvironmentVariable("AzureFunctionsJobHost__InternalSasBlobContainer", ""))
-            using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))
+            using (new TestScopedEnvironmentVariable("AzureFunctionsJobHost__InternalSasBlobContainer", null))
+            using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", null))
             {
                 var builder = CreateStandbyHostBuilder(_loggerProvider, "FunctionExecutionContext")
                 .ConfigureScriptHostWebJobsBuilder(s =>
