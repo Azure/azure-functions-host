@@ -97,7 +97,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: Non-E2E integration tests
-      arguments: '--filter "Category!=E2E" -c release --no-build'
+      arguments: '--filter "Category!=E2E" -c release --no-build -v d'
       projects: $(test_projects)
     env:
       AzureWebJobsStorage: $(Storage)
