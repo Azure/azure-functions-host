@@ -41,32 +41,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment(settings);
             var loggerProvider = new TestLoggerProvider();
 
-            var builder = new HostBuilder()
-                .ConfigureWebHost(webhostBuilder =>
+            var builder = Program.CreateHostBuilder()
+                .ConfigureWebHost(webHostBuilder =>
                 {
-                    webhostBuilder.ConfigureLogging(b =>
+                    webHostBuilder.UseTestServer();
+                })
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddInMemoryCollection(new Dictionary<string, string>
                     {
-                        b.AddProvider(loggerProvider);
-                    })
-                    .ConfigureAppConfiguration(c =>
-                    {
-                        c.AddInMemoryCollection(new Dictionary<string, string>
-                        {
                         { scriptRootConfigPath, specializedScriptRoot }
-                        });
-                    })
-                    .ConfigureServices((bc, s) =>
-                    {
-                        s.AddSingleton<IEnvironment>(environment);
-
-                        // Simulate the environment becoming specialized after these options have been 
-                        // initialized with standby paths.
-                        s.AddOptions<ScriptApplicationHostOptions>()
-                            .PostConfigure<IEnvironment>((o, e) =>
-                            {
-                                Specialize(e);
-                            });
                     });
+                })
+                .ConfigureLogging(b =>
+                {
+                    b.AddProvider(loggerProvider);
+                })
+                .ConfigureServices((bc, s) =>
+                {
+                    s.AddSingleton<IEnvironment>(environment);
+
+                    // Simulate the environment becoming specialized after these options have been
+                    // initialized with standby paths.
+                    s.AddOptions<ScriptApplicationHostOptions>()
+                        .PostConfigure<IEnvironment>((o, e) =>
+                        {
+                            Specialize(e);
+                        });
                 })
                 .ConfigureScriptHostServices(s =>
                 {
