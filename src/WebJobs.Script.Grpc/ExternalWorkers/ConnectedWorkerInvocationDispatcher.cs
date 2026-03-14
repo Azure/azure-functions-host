@@ -6,8 +6,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
@@ -21,6 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
     {
         private readonly IConnectedWorkerChannelManager _channelManager;
         private readonly ILogger<ConnectedWorkerInvocationDispatcher> _logger;
+        private int _roundRobinCounter;
+        private IEnumerable<FunctionMetadata> _functions;
 
         public ConnectedWorkerInvocationDispatcher(
             IConnectedWorkerChannelManager channelManager,
@@ -50,25 +54,74 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         /// <inheritdoc/>
         public async Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
-            var channels = _channelManager.GetChannels();
-            var channel = channels.Values
-                .FirstOrDefault(c => c.IsChannelReadyForInvocations());
+            var readyChannels = _channelManager.GetChannels().Values
+                .Where(c => c.IsChannelReadyForInvocations())
+                .ToList();
 
-            if (channel is null)
+            if (readyChannels.Count == 0)
             {
                 throw new InvalidOperationException("No connected worker channel is ready for invocations.");
             }
 
-            _logger.LogDebug("Dispatching invocation to external worker {workerId}", channel.Id);
-            await channel.SendInvocationRequest(invocationContext);
+            IRpcWorkerChannel channel;
+            if (readyChannels.Count == 1)
+            {
+                channel = readyChannels[0];
+            }
+            else
+            {
+                int index = Interlocked.Increment(ref _roundRobinCounter) % readyChannels.Count;
+                if (_roundRobinCounter < 0 || index < 0)
+                {
+                    _roundRobinCounter = 0;
+                    index = 0;
+                }
+
+                channel = readyChannels[index];
+            }
+
+            string functionId = invocationContext.FunctionMetadata.GetFunctionId();
+            if (channel.FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
+            {
+                _logger.LogDebug("Dispatching invocation to external worker {workerId}", channel.Id);
+                bufferBlock.Post(invocationContext);
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"Function:{invocationContext.FunctionMetadata.Name} is not loaded by the external worker: {channel.Id}");
+            }
+
+            await Task.CompletedTask;
         }
 
         /// <inheritdoc/>
         public Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
-            // No-op: external workers provide their own metadata and are already connected.
-            // Function load requests will be sent when the channel is ready.
+            _functions = functions;
+
+            foreach (var channel in _channelManager.GetChannels().Values)
+            {
+                SetupChannel(channel);
+            }
+
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Sets up function invocation buffers and sends function load requests on a channel.
+        /// Called during <see cref="InitializeAsync"/> for existing channels, and can be called
+        /// when new channels connect after initialization.
+        /// </summary>
+        internal void SetupChannel(IRpcWorkerChannel channel)
+        {
+            if (_functions is null)
+            {
+                return;
+            }
+
+            channel.SetupFunctionInvocationBuffers(_functions);
+            channel.SendFunctionLoadRequests(managedDependencyOptions: null, functionTimeout: null);
         }
 
         /// <inheritdoc/>
@@ -92,14 +145,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         /// <inheritdoc/>
         public Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception)
         {
-            // External workers cannot be restarted by the host.
             return Task.FromResult(false);
         }
 
         /// <inheritdoc/>
         public Task StartWorkerChannel()
         {
-            // No-op: workers connect inbound; the host does not start them.
             return Task.CompletedTask;
         }
 
