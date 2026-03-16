@@ -24,7 +24,7 @@ using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMeta
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    internal class RpcFunctionInvocationDispatcher : IFunctionInvocationDispatcher
+    internal class RpcFunctionInvocationDispatcher : FunctionInvocationDispatcher
     {
         private static readonly int MultiLanguageDefaultProcessCount = 1;
 
@@ -80,7 +80,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             IHostMetrics hostMetrics,
             IWorkerRuntimeResolver workerRuntimeResolver)
+            : base(functionDispatcherLoadBalancer, scriptHostOptions, loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>())
         {
+            _logger = Logger;
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -94,7 +96,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // Using IOptionsMonitor here to get the same cached version used by other copmponents and avoid a new instance initialization.
             _workerConfigs = workerOptions?.CurrentValue?.WorkerConfigs ?? throw new ArgumentNullException(nameof(workerOptions));
             _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
-            _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
             _workerRuntime = (workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver))).GetWorkerRuntime();
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
@@ -114,9 +115,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal Task<int> MaxProcessCount => _maxProcessCount.Value;
 
-        public FunctionInvocationDispatcherState State { get; private set; }
+        public override FunctionInvocationDispatcherState State { get; set; }
 
-        public int ErrorEventsThreshold { get; private set; }
+        public override int ErrorEventsThreshold { get; set; }
+
+        protected override TimeSpan ShutdownTimeout => _shutdownTimeout;
 
         public IJobHostRpcWorkerChannelManager JobHostLanguageWorkerChannelManager => _jobHostLanguageWorkerChannelManager;
 
@@ -253,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }, _processStartCancellationToken.Token);
         }
 
-        public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
+        public override async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -367,7 +370,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             AddLogUserCategory(functions);
         }
 
-        public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
+        public override async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
         {
             var workerChannels = (await GetInitializedWorkerChannelsAsync()).ToArray();
             _logger.LogDebug($"[HostMonitor] Checking worker statuses (Count={workerChannels.Length})");
@@ -393,45 +396,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return workerStatuses;
         }
 
-        public async Task ShutdownAsync()
+        protected override async Task<IEnumerable<IRpcWorkerChannel>> GetReadyChannelsAsync()
         {
-            _logger.LogDebug($"Waiting for {nameof(RpcFunctionInvocationDispatcher)} to shutdown");
-            Task timeoutTask = Task.Delay(_shutdownTimeout);
-            IList<Task> workerChannelTasks = (await GetInitializedWorkerChannelsAsync()).Select(a => a.DrainInvocationsAsync()).ToList();
-            Task completedTask = await Task.WhenAny(timeoutTask, Task.WhenAll(workerChannelTasks));
-
-            if (completedTask.Equals(timeoutTask))
-            {
-                _logger.LogDebug($"Draining invocations from language worker channel timed out. Shutting down '{nameof(RpcFunctionInvocationDispatcher)}'");
-            }
-            else
-            {
-                _logger.LogDebug($"Draining invocations from language worker channel completed. Shutting down '{nameof(RpcFunctionInvocationDispatcher)}'");
-            }
-        }
-
-        public async Task InvokeAsync(ScriptInvocationContext invocationContext)
-        {
-            // We have entered back into a system scope, ensure our logs are captured as such.
-            using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();
-
-            // This could throw if no initialized workers are found. Shut down instance and retry.
-            IEnumerable<IRpcWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync(invocationContext.FunctionMetadata.Language ?? _workerRuntime);
-            var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
-            string functionId = invocationContext.FunctionMetadata.GetFunctionId();
-            if (rpcWorkerChannel.FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
-            {
-                if (_logger.IsEnabled(LogLevel.Trace))
-                {
-                    _logger.LogTrace("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, rpcWorkerChannel.Id);
-                }
-
-                bufferBlock.Post(invocationContext);
-            }
-            else
-            {
-                throw new InvalidOperationException($"Function:{invocationContext.FunctionMetadata.Name} is not loaded by the language worker: {rpcWorkerChannel.Id}");
-            }
+            return await GetInitializedWorkerChannelsAsync(_workerRuntime);
         }
 
         internal async Task<IEnumerable<IRpcWorkerChannel>> GetAllWorkerChannelsAsync(string language = null)
@@ -519,7 +486,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public async Task StartWorkerChannel()
+        public override async Task StartWorkerChannel()
         {
             await StartWorkerChannel(null);
         }
@@ -670,14 +637,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             _disposing = true;
             State = FunctionInvocationDispatcherState.Disposing;
             Dispose(true);
         }
 
-        public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception = null)
+        public override async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception = null)
         {
             // Dispose and restart errored channel with the particular invocation id
             var channels = await GetInitializedWorkerChannelsAsync();
@@ -696,16 +663,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return false;
         }
 
-        private void AddLogUserCategory(IEnumerable<FunctionMetadata> functions)
-        {
-            foreach (FunctionMetadata metadata in functions)
-            {
-                metadata.Properties[LogConstants.CategoryNameKey] = LogCategories.CreateFunctionUserCategory(metadata.Name);
-                metadata.Properties[ScriptConstants.LogPropertyHostInstanceIdKey] = _scriptOptions.InstanceId;
-            }
-        }
-
-        public void PreShutdown()
+        public override void PreShutdown()
         {
             // It's important to prevent any new workers from starting on the orphaned host. The
             // only way to guarantee this is to signal to the dispatcher that it's done with process

@@ -6,11 +6,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
 {
@@ -19,23 +19,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
     /// Only does routing — no process management, no restart logic.
     /// Registered as <see cref="IFunctionInvocationDispatcher"/> in external worker mode.
     /// </summary>
-    internal class ConnectedWorkerInvocationDispatcher : IFunctionInvocationDispatcher
+    internal class ConnectedWorkerInvocationDispatcher : FunctionInvocationDispatcher
     {
         private readonly IConnectedWorkerChannelManager _channelManager;
-        private readonly ILogger<ConnectedWorkerInvocationDispatcher> _logger;
-        private int _roundRobinCounter;
         private IEnumerable<FunctionMetadata> _functions;
 
         public ConnectedWorkerInvocationDispatcher(
             IConnectedWorkerChannelManager channelManager,
+            IRpcFunctionInvocationDispatcherLoadBalancer loadBalancer,
+            IOptions<ScriptJobHostOptions> scriptJobHostOptions,
             ILogger<ConnectedWorkerInvocationDispatcher> logger)
+            : base(loadBalancer, scriptJobHostOptions, logger)
         {
             _channelManager = channelManager ?? throw new ArgumentNullException(nameof(channelManager));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <inheritdoc/>
-        public FunctionInvocationDispatcherState State
+        public override FunctionInvocationDispatcherState State
         {
             get
             {
@@ -49,61 +49,36 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         }
 
         /// <inheritdoc/>
-        public int ErrorEventsThreshold => int.MaxValue;
+        public override int ErrorEventsThreshold => int.MaxValue;
 
         /// <inheritdoc/>
-        public async Task InvokeAsync(ScriptInvocationContext invocationContext)
+        protected override Task<IEnumerable<IRpcWorkerChannel>> GetReadyChannelsAsync()
         {
-            var readyChannels = _channelManager.GetChannels().Values
-                .Where(c => c.IsChannelReadyForInvocations())
-                .ToList();
+            IEnumerable<IRpcWorkerChannel> channels = _channelManager.GetChannels().Values
+                .Where(c => c.IsChannelReadyForInvocations());
 
-            if (readyChannels.Count == 0)
-            {
-                throw new InvalidOperationException("No connected worker channel is ready for invocations.");
-            }
-
-            IRpcWorkerChannel channel;
-            if (readyChannels.Count == 1)
-            {
-                channel = readyChannels[0];
-            }
-            else
-            {
-                int index = Interlocked.Increment(ref _roundRobinCounter) % readyChannels.Count;
-                if (_roundRobinCounter < 0 || index < 0)
-                {
-                    _roundRobinCounter = 0;
-                    index = 0;
-                }
-
-                channel = readyChannels[index];
-            }
-
-            string functionId = invocationContext.FunctionMetadata.GetFunctionId();
-            if (channel.FunctionInputBuffers.TryGetValue(functionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
-            {
-                _logger.LogDebug("Dispatching invocation to external worker {workerId}", channel.Id);
-                bufferBlock.Post(invocationContext);
-            }
-            else
-            {
-                throw new InvalidOperationException(
-                    $"Function:{invocationContext.FunctionMetadata.Name} is not loaded by the external worker: {channel.Id}");
-            }
-
-            await Task.CompletedTask;
+            return Task.FromResult(channels);
         }
 
         /// <inheritdoc/>
-        public Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
+        public override Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (functions is null || !functions.Any())
+            {
+                Logger.LogDebug($"{nameof(ConnectedWorkerInvocationDispatcher)} received no functions");
+                return Task.CompletedTask;
+            }
+
             _functions = functions;
 
             foreach (var channel in _channelManager.GetChannels().Values)
             {
                 SetupChannel(channel);
             }
+
+            AddLogUserCategory(functions);
 
             return Task.CompletedTask;
         }
@@ -125,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         }
 
         /// <inheritdoc/>
-        public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
+        public override async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
         {
             var result = new Dictionary<string, WorkerStatus>();
             foreach (var (id, channel) in _channelManager.GetChannels())
@@ -137,31 +112,27 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         }
 
         /// <inheritdoc/>
-        public Task ShutdownAsync()
-        {
-            return Task.CompletedTask;
-        }
-
-        /// <inheritdoc/>
-        public Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception)
+        public override Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId, Exception exception)
         {
             return Task.FromResult(false);
         }
 
         /// <inheritdoc/>
-        public Task StartWorkerChannel()
+        public override Task StartWorkerChannel()
         {
             return Task.CompletedTask;
         }
 
         /// <inheritdoc/>
-        public void PreShutdown()
+        public override void PreShutdown()
         {
         }
 
         /// <inheritdoc/>
-        public void Dispose()
+        public override void Dispose()
         {
+            State = FunctionInvocationDispatcherState.Disposing;
+            State = FunctionInvocationDispatcherState.Disposed;
         }
     }
 }

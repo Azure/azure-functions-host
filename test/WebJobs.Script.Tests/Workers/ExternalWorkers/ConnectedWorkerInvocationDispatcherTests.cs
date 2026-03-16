@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -36,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             _dispatcher = new ConnectedWorkerInvocationDispatcher(
                 _mockChannelManager.Object,
+                new RpcFunctionInvocationDispatcherLoadBalancer(),
+                Options.Create(new ScriptJobHostOptions()),
                 NullLogger<ConnectedWorkerInvocationDispatcher>.Instance);
         }
 
