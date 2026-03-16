@@ -1792,6 +1792,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             private readonly Action<InboundGrpcEvent> _callback;
             private readonly Action<Exception> _faultHandler;
             private CancellationTokenRegistration _ctr;
+            private CancellationTokenSource? _cts;
             private int _state;
 
             public PendingItem(Action<InboundGrpcEvent> callback, Action<Exception> faultHandler)
@@ -1803,9 +1804,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             public PendingItem(Action<InboundGrpcEvent> callback, Action<Exception> faultHandler, TimeSpan timeout)
                 : this(callback, faultHandler)
             {
-                var cts = new CancellationTokenSource();
-                cts.CancelAfter(timeout);
-                _ctr = cts.Token.Register(static state => ((PendingItem)state).OnTimeout(), this);
+                _cts = new CancellationTokenSource();
+                _cts.CancelAfter(timeout);
+                _ctr = _cts.Token.Register(static state => ((PendingItem)state).OnTimeout(), this);
             }
 
             public bool IsComplete => Volatile.Read(ref _state) != 0;
@@ -1816,20 +1817,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 _ctr.Dispose();
                 _ctr = default;
-                if (MakeComplete() && _callback != null)
+                if (MakeComplete())
                 {
-                    try
-                    {
-                        _callback.Invoke(message);
-                    }
-                    catch (Exception fault)
+                    _cts?.Dispose();
+                    _cts = null;
+                    if (_callback != null)
                     {
                         try
                         {
-                            _faultHandler?.Invoke(fault);
+                            _callback.Invoke(message);
                         }
-                        catch
+                        catch (Exception fault)
                         {
+                            try
+                            {
+                                _faultHandler?.Invoke(fault);
+                            }
+                            catch
+                            {
+                            }
                         }
                     }
                 }
@@ -1837,20 +1843,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             private void OnTimeout()
             {
-                if (MakeComplete() && _faultHandler != null)
+                if (MakeComplete())
                 {
-                    try
-                    {
-                        throw new TimeoutException();
-                    }
-                    catch (Exception timeout)
+                    _cts?.Dispose();
+                    _cts = null;
+                    if (_faultHandler != null)
                     {
                         try
                         {
-                            _faultHandler(timeout);
+                            throw new TimeoutException();
                         }
-                        catch
+                        catch (Exception timeout)
                         {
+                            try
+                            {
+                                _faultHandler(timeout);
+                            }
+                            catch
+                            {
+                            }
                         }
                     }
                 }
