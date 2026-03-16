@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using System.Text;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Constraints;
@@ -50,10 +51,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var httpTrigger = function.HttpTriggerAttribute;
                 if (httpTrigger != null)
                 {
+                    var constraintMethods = BuildConstraintMethods(httpTrigger.Methods);
                     var constraints = new RouteValueDictionary();
-                    if (httpTrigger.Methods != null)
+                    if (constraintMethods is not null)
                     {
-                        constraints.Add("httpMethod", new HttpMethodRouteConstraint(httpTrigger.Methods));
+                        constraints.Add("httpMethod", new HttpMethodRouteConstraint(constraintMethods));
                     }
 
                     string route = httpTrigger.Route;
@@ -66,6 +68,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     WebJobsRouteBuilder builder = isProxy ? proxiesRoutesBuilder : routesBuilder;
                     builder.MapFunctionRoute(function.Metadata.Name, route, constraints, function.Metadata.Name);
+
+                    // Register HEAD-only shadow route for 405 responses.
+                    if (!isProxy && ShouldRegisterHeadNotAllowedRoute(httpTrigger.Methods))
+                    {
+                        var headConstraints = new RouteValueDictionary();
+                        headConstraints.Add("httpMethod", new HttpMethodRouteConstraint("head"));
+                        string sentinelName = BuildHeadNotAllowedSentinelName(httpTrigger.Methods);
+                        builder.MapFunctionRoute(sentinelName, route, headConstraints, sentinelName);
+                    }
 
                     LogRouteMap(routesLogBuilder, function.Metadata.Name, route, httpTrigger.Methods, isProxy, _httpOptions.Value.RoutePrefix);
                 }
@@ -124,5 +135,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 builder.AppendLine($"Mapped function route '{prefix}/{route}' [{methodList}] to '{functionName}'");
             }
         }
+
+        // Returns the methods array to use for the route constraint.
+        // Adds "head" when "get" is present and "head" is not.
+        internal static string[] BuildConstraintMethods(string[] triggerMethods)
+        {
+            if (triggerMethods is null)
+            {
+                return null;
+            }
+
+            bool hasGet = triggerMethods.Contains("get", StringComparer.OrdinalIgnoreCase);
+            bool hasHead = triggerMethods.Contains("head", StringComparer.OrdinalIgnoreCase);
+
+            if (hasGet && !hasHead)
+            {
+                return [.. triggerMethods, "head"];
+            }
+
+            return triggerMethods;
+        }
+
+        // Returns true when a HEAD shadow-route should be registered for 405 handling.
+        // True only when the function accepts neither GET nor HEAD.
+        internal static bool ShouldRegisterHeadNotAllowedRoute(string[] triggerMethods)
+        {
+            if (triggerMethods is null)
+            {
+                return false;
+            }
+
+            bool hasGet = triggerMethods.Contains("get", StringComparer.OrdinalIgnoreCase);
+            bool hasHead = triggerMethods.Contains("head", StringComparer.OrdinalIgnoreCase);
+
+            return !hasGet && !hasHead;
+        }
+
+        // Builds the sentinel route name for a HEAD-405 shadow route.
+        // Format: "$head_not_allowed:POST, PUT" (methods uppercased, joined with ", ").
+        internal static string BuildHeadNotAllowedSentinelName(string[] triggerMethods)
+            => ScriptConstants.HeadMethodNotAllowedPrefix
+               + string.Join(", ", triggerMethods.Select(m => m.ToUpperInvariant()));
     }
 }
