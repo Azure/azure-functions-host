@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization.Policy;
@@ -62,26 +63,44 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 }
 
                 int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
-                IActionResult result = await GetResultAsync(context, functionExecution);
 
-                if (context.Items.TryGetValue(ScriptConstants.HttpProxyingEnabled, out var httpProxyingEnabled))
+                Stream originalBody = null;
+                if (HttpMethods.IsHead(context.Request.Method))
                 {
-                    if (httpProxyingEnabled?.ToString() == bool.TrueString)
+                    originalBody = context.Response.Body;
+                    context.Response.Body = Stream.Null;
+                }
+
+                try
+                {
+                    IActionResult result = await GetResultAsync(context, functionExecution);
+
+                    if (context.Items.TryGetValue(ScriptConstants.HttpProxyingEnabled, out var httpProxyingEnabled))
                     {
+                        if (httpProxyingEnabled?.ToString() == bool.TrueString)
+                        {
+                            return;
+                        }
+                    }
+
+                    if (nestedProxiesCount > 0)
+                    {
+                        // if Proxy, the rest of the pipeline will be processed by Proxies in
+                        // case there are response overrides and what not.
+                        SetProxyResult(context, nestedProxiesCount, result);
                         return;
                     }
-                }
 
-                if (nestedProxiesCount > 0)
+                    ActionContext actionContext = new ActionContext(context, context.GetRouteData(), new ActionDescriptor());
+                    await result.ExecuteResultAsync(actionContext);
+                }
+                finally
                 {
-                    // if Proxy, the rest of the pipeline will be processed by Proxies in
-                    // case there are response overrides and what not.
-                    SetProxyResult(context, nestedProxiesCount, result);
-                    return;
+                    if (originalBody is not null)
+                    {
+                        context.Response.Body = originalBody;
+                    }
                 }
-
-                ActionContext actionContext = new ActionContext(context, context.GetRouteData(), new ActionDescriptor());
-                await result.ExecuteResultAsync(actionContext);
             }
         }
 
