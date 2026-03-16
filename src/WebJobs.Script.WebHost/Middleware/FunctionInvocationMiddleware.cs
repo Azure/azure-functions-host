@@ -34,6 +34,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         // TODO: Confirm that only HttpTrigger requests would flow through here
         public async Task Invoke(HttpContext context)
         {
+            // HEAD request on a route that doesn't support HEAD/GET → 405 Method Not Allowed.
+            var headNotAllowed = context.Features.Get<IHeadNotAllowedFeature>();
+            if (headNotAllowed is not null)
+            {
+                context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                context.Response.Headers.Allow = headNotAllowed.AllowedMethods;
+                return;
+            }
+
             if (_next != null)
             {
                 await _next(context);
