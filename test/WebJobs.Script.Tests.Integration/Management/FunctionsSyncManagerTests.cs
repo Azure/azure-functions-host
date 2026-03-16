@@ -261,6 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             FileUtility.Instance = fileSystem;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task GetTriggersAsync_ReturnsExpectedContent()
         {
@@ -277,6 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(GetExpectedTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_StandbyMode_ReturnsFalse()
         {
@@ -290,6 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds()
         {
@@ -319,6 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_LocalEnvironment_ReturnsFalse()
         {
@@ -332,6 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_ManagedAppEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
@@ -361,6 +366,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_KubernetesManagedEnv_WithNo_AzureWebJobsStorage_ReturnsTrue()
         {
@@ -388,6 +394,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void ArmCacheEnabled_VerifyDefault()
         {
@@ -395,6 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(_functionsSyncManager.ArmCacheEnabled);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -494,6 +502,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return result;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_SecretsEnabled_ClearsSecretsCache()
         {
@@ -506,6 +515,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_SecretsDisabled_DoesNotClearSecretsCache()
         {
@@ -522,6 +532,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_BackgroundSync_DoesNotPostsEmptyContent()
         {
@@ -540,6 +551,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_BackgroundSync_PostsExpectedContent()
         {
@@ -604,6 +616,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_BackgroundSync_SetTriggersFailure_HashNotUpdated()
         {
@@ -635,6 +648,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_NoDurableTaskHub_UsesBundles_V2DefaultsPosted()
         {
@@ -661,6 +675,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_NoDurableTaskHub_DurableV1ExtensionJson_V1DefaultsPosted()
         {
@@ -686,6 +701,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_NoDurableTaskHub_DurableV2ExtensionJson_CleanSiteName_V2DefaultsPosted()
         {
@@ -712,6 +728,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_NoDurableTaskHub_DurableV2ExtensionJson_InvalidSiteName_V2DefaultsPosted()
         {
@@ -737,6 +754,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_DurableV1ExtensionJson_V1ConfigPosted()
         {
@@ -765,6 +783,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TrySyncTriggers_DurableV2ExtensionJson_V2ConfigPosted()
         {
@@ -796,6 +815,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("DurableMsSQLProviderPayload", "DurableMsSQLProviderPayload")]
         [InlineData("DurableAdditionalPayload", "DurableMsSQLProviderPayload")] // Payload trimed to the minimum payload
@@ -882,6 +902,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task UpdateHashAsync_Succeeds()
         {
@@ -961,6 +982,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return extensionJson.ToString();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("")]
         [InlineData("notaconnectionstring")]
@@ -984,6 +1006,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(1, "http://sitename/operations/settriggers")]
         [InlineData(0, "https://sitename/operations/settriggers")]
@@ -997,6 +1020,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(HttpMethod.Post, httpRequest.Method);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(null, "sitename", "https://sitename.azurewebsites.net/operations/settriggers")]
         [InlineData("hostname", null, "https://hostname/operations/settriggers")]
@@ -1011,6 +1035,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(HttpMethod.Post, httpRequest.Method);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("KUBERNETES_SERVICE_HOST", "http://k8se-build-service.k8se-system.svc.cluster.local:8181/api/operations/settriggers")]
         [InlineData(null, "https://appname.azurewebsites.net/operations/settriggers")]
@@ -1026,6 +1051,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(HttpMethod.Post, httpRequest.Method);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task GetSyncTriggersPayload_DeduplicatesFunctionMetadataByName_KeepsFirstOccurrence()
         {

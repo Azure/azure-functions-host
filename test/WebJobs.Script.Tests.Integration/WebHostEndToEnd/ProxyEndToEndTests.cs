@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _hostName = new HostNameProvider(SystemEnvironment.Instance).Value ?? "localhost";
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ListFunctions_Proxies_Succeeds()
         {
@@ -70,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(4, metadata.Length);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Proxy_Invoke_Succeeds()
         {
@@ -79,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(response.Headers.GetValues("myversion").ToArray()[0], "123");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("test.txt")]
         [InlineData("test.asp")]
@@ -96,6 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("test", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task RootCheck()
         {
@@ -106,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Root", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LocalFunctionCall()
         {
@@ -116,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LocalFunctionCall_ModifyResponse()
         {
@@ -130,6 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LocalFunctionCall_Redirect()
         {
@@ -142,6 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LocalFunctionCallWithAuth()
         {
@@ -154,6 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LocalFunctionInfiniteRedirectTest()
         {
@@ -164,6 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(content.Contains("Infinite loop"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LocalFunctionCallWithoutProxy()
         {
@@ -174,6 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LocalFunctionRouteCallWithoutProxy()
         {
@@ -184,6 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LocalFunctionCallForNonAlphanumericProxyName()
         {
@@ -194,6 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task CatchAllApis()
         {
@@ -204,6 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ColdStartRequest()
         {
@@ -216,6 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         //backend set as constant - no trailing slash should be added
         public async Task TrailingSlashRemoved()
@@ -228,6 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal($"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         //backend ended with simple param - no trailing slash should be added
         public async Task TrailingSlashRemoved2()
@@ -240,6 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         //backend path ended with wildcard param - slash should be kept
         public async Task TrailingSlashKept()
@@ -252,6 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute/?a=1", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         //backend path ended with wildcard param - slash should be kept
         public async Task TrailingSlashKept2()
@@ -264,6 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
          public async Task CatchAllWithCustomRoutes()
         {
@@ -274,6 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task CatchAllWithCustomRoutesWithInvalidVerb()
         {
@@ -282,6 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("404", response.StatusCode.ToString("D"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LongQueryString()
         {
@@ -295,6 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("200", response.StatusCode.ToString("D"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LongRoute()
         {
@@ -308,6 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("200", response.StatusCode.ToString("D"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ProxyCallingLocalProxy()
         {
@@ -318,6 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LocalFunctionCallBodyOverride()
         {
@@ -329,6 +353,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("{\"test\":\"{}{123}\"}", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ExternalCallBodyOverride()
         {
@@ -340,6 +365,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("{\"test\":\"123\"}", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         //"HEAD" request to proxy. backend returns 304 with no body but content-type shouldn't be null
         public async Task EmptyHeadReturnsContentType()
@@ -354,6 +380,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(response.Headers.Contains("Test"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         //"GET" request to proxy. backend returns 304 with no body so content-type should be null
         public async Task EmptyGetDoesntReturnsContentType()

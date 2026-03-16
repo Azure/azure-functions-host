@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -27,6 +27,7 @@ public class WebHostStartupEndToEndTests
 {
     private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
 
+    [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
     [Fact]
     public async Task TransientError_DuringHostBuild_DoesNotDeadlock()
     {
@@ -67,6 +68,7 @@ public class WebHostStartupEndToEndTests
         }
     }
 
+    [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
     [Fact]
     public async Task WebHostOptionsAreLogged_WithoutPlaceholderMode()
     {

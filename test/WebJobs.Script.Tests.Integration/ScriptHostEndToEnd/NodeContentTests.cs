@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestFixture Fixture { get; set; }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StringTextPlainResponse_Conneg()
         {
@@ -35,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StringTextPlain()
         {
@@ -43,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task NullContentType_Ignored_Conneg()
         {
@@ -51,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ByteArrayTextPlainResponse_Conneg()
         {
@@ -60,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ByteArrayTextPlain()
         {
@@ -69,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ObjectTextPlain()
         {
@@ -78,6 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, Regex.Replace(content, @"\s+", string.Empty));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StringJson()
         {
@@ -85,6 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("asdf", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ByteArrayJson()
         {
@@ -95,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("asdf", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ObjectJson()
         {
@@ -105,6 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StringXml()
         {
@@ -112,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("asdf", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ByteArrayXmlResponse()
         {
@@ -122,6 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("asdf", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ObjectXml()
         {
@@ -132,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(str, content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InitializeAsync_WorkerRuntime_Node_DoNotInitialize_JavaWorker()
         {

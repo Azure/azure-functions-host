@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Assign_MSISpecializationFailure_ReturnsError()
         {
@@ -104,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(areRequiredMetricsLogged(testmetricslogger, [MetricEventNames.LinuxContainerSpecializationAssign, MetricEventNames.LinuxContainerSpecializationMSIInit]));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void Http_Health_Status_Returns_Ok()
         {
@@ -120,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(200, okResult.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Assignment_Sets_Secrets_Context()
         {
@@ -174,6 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(areRequiredMetricsLogged(testmetricslogger, [MetricEventNames.LinuxContainerSpecializationAssign, MetricEventNames.LinuxContainerSpecializationZipHead]));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Assignment_Does_Not_Set_Secrets_Context_For_Warmup_Request()
         {
@@ -228,6 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(areRequiredMetricsLogged(testmetricslogger, [MetricEventNames.LinuxContainerSpecializationAssign, MetricEventNames.LinuxContainerSpecializationZipHeadWarmup]));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true, true, true)]
         [InlineData(false, true, true)]
@@ -288,6 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(areRequiredMetricsLogged(testmetricslogger, [MetricEventNames.LinuxContainerSpecializationAssign]));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Assignment_InvalidInput_ReturnsBadRequest()
         {
@@ -332,6 +338,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(areRequiredMetricsLogged(testmetricslogger, [MetricEventNames.LinuxContainerSpecializationAssign]));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Assignment_MissingClaims_ReturnsForbidden()
         {

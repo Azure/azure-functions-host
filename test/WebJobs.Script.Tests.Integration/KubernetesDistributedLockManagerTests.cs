@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private const string TestHttpLeaderEndpoint = "http://test-endpoint";
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(HttpStatusCode.BadRequest, "testlock", "testowner", null, null)]
         [InlineData(HttpStatusCode.OK, "testlock", "testowner", "testlock", "testowner")]
@@ -59,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task AcquireLockRequest_UsesWebsiteinstanceIdIfOwnerMissing()
         {
@@ -89,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(instanceId, ((KubernetesLockHandle)lockHandle).Owner);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("", "")]
         [InlineData(null, "")]
@@ -107,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ("", lockId, ownerId, "", TimeSpan.FromSeconds(5), new CancellationToken()));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(HttpStatusCode.BadRequest, "testlock", null)]
         [InlineData(HttpStatusCode.OK, "testlock", "testowner")]
@@ -146,6 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(null)]
         [InlineData("")]
@@ -162,6 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 "", lockId, new CancellationToken()));    
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("", "")]
         [InlineData(null, "")]
@@ -181,6 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("http://test-endpoint", "/testpath", "http://test-endpoint/lock/testpath")]
         [InlineData("http://test-endpoint", "", "http://test-endpoint/lock")]

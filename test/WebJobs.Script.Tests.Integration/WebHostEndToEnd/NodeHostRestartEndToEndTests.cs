@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 
 public class NodeHostRestartEndToEndTests
 {
+    [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
     [Fact]
     // Confirms that a background timer to create new worker processes does not
     // continue to fire after we've initiated a restart. This could lead to issues

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -30,12 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _fixture = fixture;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Fix fixture compilation issue (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2023)")]
         public async Task Invoking_DotNetFunction()
         {
             await InvokeDotNetFunction("DotNetFunction", "Hello from .NET");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Fix fixture compilation issue (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2023)")]
         public async Task Invoking_DotNetFunctionShared()
         {
@@ -59,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expectedResult, await response.Content.ReadAsStringAsync());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Fix fixture compilation issue (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2023)")]
         public void AssemblyChange_TriggersEnvironmentShutdown()
         {
@@ -75,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(eventSet, "Shutdown was not called when assembly changes were made.");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Fix fixture compilation issue (tracked by https://github.com/Azure/azure-webjobs-sdk-script/issues/2023)")]
         public async Task Invoke_WithSameTypeNames_InvokesExpectedMethod()
         {

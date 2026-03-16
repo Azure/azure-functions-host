@@ -13,6 +13,7 @@ using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -47,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             KeyVault
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(SecretsRepositoryType.BlobStorage, "Dedicated")]
         [InlineData(SecretsRepositoryType.BlobStorage, "Dynamic")]
@@ -82,6 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Function)]
@@ -137,6 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory] // Only for Key Vault to test paging over large number of secrets
         [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Function)]
@@ -209,6 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Function)]
@@ -279,6 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(SecretsRepositoryType.BlobStorage)]
         [InlineData(SecretsRepositoryType.BlobStorageSas)]
@@ -311,6 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact] // This test only run for FileSystemRepository as secrets purging is a no-op for blob storage secrets
         public async Task FileSystemRepo_PurgeOldSecrets_RemovesOldAndKeepsCurrentSecrets()
         {
@@ -337,6 +344,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Function)]
@@ -378,6 +386,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(SecretsRepositoryType.BlobStorage)]
         [InlineData(SecretsRepositoryType.BlobStorageSas)]
@@ -422,6 +431,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(SecretsRepositoryType.BlobStorage)]
         [InlineData(SecretsRepositoryType.BlobStorageSas)]
@@ -477,6 +487,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(SecretsRepositoryType.BlobStorage)]
         [InlineData(SecretsRepositoryType.BlobStorageSas)]
@@ -623,11 +634,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public Task InitializeAsync()
             {
+                IntegrationTestPrintLogger.FixtureSetupStart(GetType().Name);
+                IntegrationTestPrintLogger.FixtureSetupEnd(GetType().Name);
                 return Task.CompletedTask;
             }
 
             public async Task DisposeAsync()
             {
+                IntegrationTestPrintLogger.FixtureDisposeStart(GetType().Name);
                 try
                 {
                     // delete blob files
@@ -638,6 +652,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 catch
                 {
                     // best effort
+                }
+                finally
+                {
+                    IntegrationTestPrintLogger.FixtureDisposeEnd(GetType().Name);
                 }
             }
 

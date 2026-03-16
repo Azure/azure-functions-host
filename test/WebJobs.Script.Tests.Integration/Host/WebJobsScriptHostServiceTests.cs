@@ -101,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _scriptHostService = _testHost.JobHostServices.GetService<IScriptHostManager>() as WebJobsScriptHostService;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task GetHostKeys_DelaysUntilHostInitialized()
         {
@@ -151,6 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void InitializationLogs_AreEmitted()
         {
@@ -183,6 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void WebHookProvider_IsRegistered()
         {
@@ -190,6 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             Assert.NotNull(_scriptHostService.Services.GetService<IScriptWebHookProvider>());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HostHealthMonitor_TriggersShutdown_WhenHostUnhealthy()
         {
@@ -221,6 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             Assert.Contains(scriptHostLogMessages, p => p.FormattedMessage == "Stopping JobHost");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HostHealthMonitor_RestartsSuccessfully_WhenHostRecovers()
         {
@@ -260,6 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             Assert.Contains(logMessages, p => p.FormattedMessage == "Job host started");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void IsHostHealthy_ReturnsExpectedResult()
         {
@@ -281,6 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             Assert.True(_scriptHostService.IsHostHealthy());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Restarts_CanCancel_Restarts()
         {

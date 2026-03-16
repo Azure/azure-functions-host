@@ -14,18 +14,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
         {
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public Task CosmosDBTrigger()
         {
             return CosmosDBTriggerToBlobTest();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public Task CosmosDB()
         {
             return CosmosDBTest();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public Task CosmosDBMultipleItems()
         {

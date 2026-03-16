@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 #if SCENARIOS
 
@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Keys
             _fixture = fixture;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "Host Status returns 200 (OK).")]
         public void HostStatus_Returns200()
         {
@@ -24,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Keys
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "Function Invoke returns 200 (OK).")]
         public void FunctionInvoke_Returns200()
         {

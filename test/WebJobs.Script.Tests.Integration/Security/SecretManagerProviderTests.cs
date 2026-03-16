@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -51,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 new TestMetricsLogger(), hostNameProvider, new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>()), azureBlobStorageProvider);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void OptionsMonitor_OnChange_ResetsCurrent()
         {
@@ -63,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             Assert.NotSame(manager1, manager3);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void TryGetSecretsRepositoryType_ReturnsExpectedValue()
         {
@@ -71,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             Assert.Equal(typeof(BlobStorageSecretsRepository), repositoryType);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void SecretsEnabled_ReturnsExpectedValue()
         {

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -70,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             return false;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MountsCifsShare()
         {
@@ -89,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 ItExpr.IsAny<CancellationToken>());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MountsFuseShare()
         {
@@ -110,6 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 ItExpr.IsAny<CancellationToken>());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task PublishesFunctionExecutionStatus()
         {
@@ -132,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 ItExpr.IsAny<CancellationToken>());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task PublishesAllFunctionExecutionActivities()
         {
@@ -158,6 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task PublishesAllFunctionExecutionActivitiesEvenInCaseOfExceptions()
         {
@@ -191,6 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                    string.Equals(targetPath, formData["targetPath"]);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task CreatesBindMount()
         {
@@ -212,6 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 ItExpr.IsAny<CancellationToken>());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task IgnoresGlobalSerializer()
         {

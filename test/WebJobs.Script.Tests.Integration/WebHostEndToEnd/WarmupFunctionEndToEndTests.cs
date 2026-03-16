@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Warmup_Invoke_Succeeds()
         {
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(response.Headers.Contains("myversion"), "/admin/warmup cannot be overriden by proxies.");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Normal_Api_Warmup_HttpTrigger_Succeeds()
         {
@@ -52,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("Pong", content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Proxy_Admin_Override_Fails()
         {
@@ -61,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(response.Headers.Contains("myversion"), "/admin/* endpoints cannot be overriden by proxies.");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task FunctionRoutes_Admin_Override_Fails()
         {

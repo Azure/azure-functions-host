@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
              };
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/7805")]
         public async Task ZipPackageFailure_DetectedOnSpecialization()
         {
@@ -90,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StandbyModeE2E_DotnetIsolated_WarmupSucceeds()
         {
@@ -123,6 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             host.Dispose();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -180,6 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StandbyModeE2E_Dotnet_HostIdValidator_DoesNotRunInPlaceholderMode()
         {
@@ -280,6 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Empty(errors);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/7805")]
         public async Task InitializeAsync_WithSpecializedSite_SkipsWarmupFunctionsAndLogs()
         {
@@ -325,6 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4230")]
         public async Task StandbyModeE2E_Java()
         {
@@ -332,6 +338,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Verify_StandbyModeE2E_Java();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4230")]
         public async Task StandbyModeE2E_JavaTemplateSite()
         {
@@ -340,6 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Verify_StandbyModeE2E_Java();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4230")]
         public async Task StandbyModeE2E_Node()
         {

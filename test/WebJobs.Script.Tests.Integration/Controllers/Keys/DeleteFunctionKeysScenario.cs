@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Net.Http;
@@ -20,18 +20,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             _fixture = fixture;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "HTTP Response status code is 204 (No content).")]
         public void ResponseIs204NoContent()
         {
             Assert.Equal(System.Net.HttpStatusCode.NoContent, _fixture.HttpResponse.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "Response body is empty.")]
         public void ResponseBodyIsEmpty()
         {
             Assert.Equal(_fixture.HttpResponse.Content.Headers.ContentLength, 0);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "The secret manager key delete is invoked.")]
         public void SecretManagerKeyDeleteIsInvoked()
         {

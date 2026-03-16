@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     {
         private readonly MultipleProcessesTestFixture _fixture = new();
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task NodeProcess_Different_AfterHostRestart()
         {
@@ -46,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(3, result.Count());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task NodeProcessCount_RemainsSame_AfterMultipleTimeouts()
         {

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _instanceManager.Reset();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAssignment_AppliesAssignmentContext()
         {
@@ -130,6 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Assign called while host is not in placeholder mode and start context is not present.", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAssignment_Failure_ExitsPlaceholderMode()
         {
@@ -160,6 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 It.Is<Type>(t => t == typeof(LegionInstanceManager)), "Assign failed"), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAssignment_Succeeds_With_No_RunFromPackage_AppSetting()
         {
@@ -183,6 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Triggering specialization", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAssignment_Does_Not_Assign_Settings_For_Warmup_Request()
         {
@@ -202,6 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(logs.Any(l => l.StartsWith("Starting Assignment.")));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void StartAssignment_ReturnsTrue_ForPinnedContainers()
         {
@@ -217,6 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(result);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void StartAssignment_ReturnsFalse_ForNonPinnedContainersInStandbyMode()
         {

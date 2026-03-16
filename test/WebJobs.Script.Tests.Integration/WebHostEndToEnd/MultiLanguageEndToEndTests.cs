@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// <summary>
         /// Runs tests with multiple language provider function.
         /// </summary>
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task CodelessFunction_CanUse_MultipleLanguageProviders()
         {
@@ -83,6 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// <summary>
         /// Runs tests with Java language provider function.
         /// </summary>
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task CodelessFunction_CanUse_SingleJavaLanguageProviders()
         {
@@ -122,6 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// <summary>
         /// Runs tests with Node language provider function.
         /// </summary>
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true, "dotnet")]
         [InlineData(false, "dotnet")]
@@ -173,6 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         /// <summary>
         /// Runs tests with no language provider function.
         /// </summary>
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]

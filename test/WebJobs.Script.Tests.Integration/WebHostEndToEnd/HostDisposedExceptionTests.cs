@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Description;
@@ -14,7 +12,6 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Azure.WebJobs.Script.Tests.EndToEnd;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -28,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
     [Trait(TestTraits.Group, nameof(CSharpEndToEndTests))]
     public class HostDisposedExceptionTests
     {
+        [IntegrationTestPrint]
         [Fact]
         public async Task DisposedScriptLoggerFactory_UsesFullStackTrace()
         {

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _fixture = fixture;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Invoke_Succeeds()
         {
@@ -57,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(LogCategories.CreateFunctionUserCategory("Function1"), log.Category);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Invoke_ExceptionThrown_DetailsLogged()
         {

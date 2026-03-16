@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.IO;
@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
     public class BlobStorageSecretsRepositoryTests
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task BlobRepository_TierSetToArchive_ReadAsync_Logs_DiagnosticEvent()
         {

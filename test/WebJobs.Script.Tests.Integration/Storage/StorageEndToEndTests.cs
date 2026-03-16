@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Storage.Queue;
@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             _fixture = fixture;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task QueueTriggerToBlobRich()
         {

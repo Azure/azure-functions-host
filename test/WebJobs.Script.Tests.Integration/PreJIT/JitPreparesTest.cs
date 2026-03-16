@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
     [Trait(TestTraits.Group, TestTraits.ReleaseTests)]
     public class JitPreparesTest
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory(Skip = "Currently disabled in v4")]
         [InlineData(WarmUpConstants.JitTraceFileName, 1.0)]
         [InlineData(WarmUpConstants.LinuxJitTraceFileName, 1.0)]

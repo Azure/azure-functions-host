@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
     {
         private const string StorageConnection = "AzureWebJobsStorage";
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TestAzureBlobStorageProvider_ConnectionInWebHostConfiguration()
         {
@@ -39,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             await VerifyBlobServiceClientAvailable(blobServiceClient);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TestAzureBlobStorageProvider_ConnectionInJobHostConfiguration()
         {
@@ -62,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             await VerifyBlobServiceClientAvailable(blobServiceClient);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void TestAzureBlobStorageProvider_NoConnectionThrowsException()
         {
@@ -76,6 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             Assert.False(azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("ConnectionStrings:AzureWebJobsStorage1")]
         [InlineData("AzureWebJobsStorage1")]

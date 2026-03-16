@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             };
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("")]
         [InlineData(null)]
@@ -73,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             Assert.Equal(AccessToken, token);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task UsesUserAssignedIdentityToFetchToken()
         {
@@ -97,6 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             Assert.Equal(AccessToken, token);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ThrowsIfMSINotEnabled()
         {
@@ -121,6 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await tokenProvider.GetManagedIdentityToken(UriWithNoSasToken));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("")]
         [InlineData(null)]

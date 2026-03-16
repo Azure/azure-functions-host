@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
     public class CodelessEndToEndTests
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("Node", "node", "HttpTrigger")]
         [InlineData("NoFunction", "node", null)]
@@ -68,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("Node", "node", "HttpTrigger")]
         [InlineData("NoFunction", "node", null)]
@@ -115,6 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("Node", "node", "HttpTrigger")]
         [InlineData("NoFunction", "node", null)]
@@ -162,6 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("Node", "node", "HttpTrigger", 35)]
         [InlineData("NoFunction", "node", null, 0)]
@@ -203,6 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("Node", "node", "HttpTrigger")]
         [InlineData("NoFunction", "node", null)]

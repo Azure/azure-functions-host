@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
@@ -106,6 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public virtual async Task InitializeAsync()
         {
+            IntegrationTestPrintLogger.FixtureSetupStart(GetType().Name);
             await _azurite.InitializeAsync();
             string nowString = DateTime.UtcNow.ToString("yyMMdd-HHmmss");
             string GetDestPath(int counter)
@@ -121,6 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _copiedRootPath = GetDestPath(i++);
             }
 
+            IntegrationTestPrintLogger.CopiedRootPath(GetType().FullName , _copiedRootPath);
             FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
 
             var extensionsToInstall = GetExtensionsToInstall();
@@ -198,6 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             MasterKey = await Host.GetMasterKeyAsync();
             RootScriptPath = _copiedRootPath;
+            IntegrationTestPrintLogger.FixtureSetupEnd(GetType().Name);
         }
 
         public virtual void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
@@ -324,6 +328,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 try
                 {
+                    IntegrationTestPrintLogger.DirectoryDelete(directory, GetType().FullName);
                     Directory.Delete(directory, true);
                 }
                 catch
@@ -336,6 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, null);
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, null);
             await _azurite.DisposeAsync();
+            IntegrationTestPrintLogger.FixtureDisposeEnd(GetType().Name);
         }
 
         public void AssertNoScriptHostErrors()

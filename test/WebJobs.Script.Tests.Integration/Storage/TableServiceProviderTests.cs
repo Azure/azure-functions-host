@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             _tableServiceClientProvider = new TableServiceClientProvider(componentFactory, logForwarder);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Create_ConnectionName()
         {
@@ -48,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             await VerifyServiceAvailable(client);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Create_ConnectionNameWithResolver()
         {
@@ -57,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             await VerifyServiceAvailable(client);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("ConnectionStrings:AzureWebJobsStorage")]
         [InlineData("AzureWebJobsStorage")]

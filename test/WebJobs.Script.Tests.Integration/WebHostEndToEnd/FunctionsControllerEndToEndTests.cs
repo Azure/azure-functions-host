@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, TestTraits.FunctionsControllerEndToEnd)]
     public class FunctionsControllerEndToEndTests : FunctionsControllerTestFixture
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task FunctionsController_GetAllFunctions_ReturnsOk()
         {
@@ -35,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(originalInstanceId, await GetActiveHostInstanceIdAsync());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task FunctionsController_GetSpecificFunction_ReturnsOk()
         {
@@ -58,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(originalInstanceId, await GetActiveHostInstanceIdAsync());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task FunctionsController_GetSpecificFunctionStatus_ReturnsOk()
         {
@@ -80,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(originalInstanceId, await GetActiveHostInstanceIdAsync());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task FunctionsController_CreateUpdate_NoFileChange_ReturnsCreated_NoRestart()
         {
@@ -102,6 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(originalInstanceId, await GetActiveHostInstanceIdAsync());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task FunctionsController_CreateUpdate_FileChange_ReturnsCreated_RestartsJobHost()
         {

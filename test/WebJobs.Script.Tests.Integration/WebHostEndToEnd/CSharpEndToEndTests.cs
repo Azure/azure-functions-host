@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -33,42 +33,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ManualTrigger_Invoke_Succeeds()
         {
             await ManualTrigger_Invoke_SucceedsTest();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task QueueTriggerToBlob()
         {
             await QueueTriggerToBlobTest();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Not yet enabled.")]
         public void MobileTables()
         {
             // await MobileTablesTest(isDotNet: true);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Not yet enabled.")]
         public void NotificationHub()
         {
             // await NotificationHubTest("NotificationHubOut");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Not yet enabled.")]
         public void NotificationHub_Out_Notification()
         {
             // await NotificationHubTest("NotificationHubOutNotification");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Not yet enabled.")]
         public void NotificationHubNative()
         {
             // await NotificationHubTest("NotificationHubNative");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Not yet enabled.")]
         public void MobileTablesTable()
         {
@@ -83,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             //await WaitForMobileTableRecordAsync("Item", id);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task FunctionLogging_Succeeds()
         {
@@ -126,6 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.NotEmpty(allLogs);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task VerifyHostHeader()
         {
@@ -154,6 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal($"{actualProtocol}://{actualHost}/{path}", url);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task VerifyResultRedirect()
         {
@@ -168,6 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(response.StatusCode, HttpStatusCode.Redirect);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task VerifyAcceptResult_OtherFunctionRoute()
         {
@@ -182,6 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(response.StatusCode, HttpStatusCode.Accepted);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task VerifyCreateResult_OtherFunctionRoute()
         {
@@ -196,6 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(response.StatusCode, HttpStatusCode.Created);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task VerifyAcceptResult_BadRoute()
         {
@@ -210,6 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(response.StatusCode, HttpStatusCode.InternalServerError);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task VerifyCreateResult_BadRoute()
         {
@@ -224,6 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(response.StatusCode, HttpStatusCode.InternalServerError);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MultipleOutputs()
         {
@@ -257,6 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Test Blob 3", Utility.RemoveUtf8ByteOrderMark(blobContent));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ScriptReference_LoadsScript()
         {
@@ -265,6 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("TestClass", await response.Content.ReadAsStringAsync());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MissingAssemblies_ShowsHelpfulMessage()
         {
@@ -275,6 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(true, hasWarning);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void MultipleTriggers_ShowsHelpfulMessage()
         {
@@ -283,6 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("The 'MultipleTriggers' function is in error: Multiple trigger bindings defined. A function can only have a single trigger binding.", log);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ExecutionContext_IsPopulated()
         {
@@ -297,6 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(Path.Combine(Fixture.Host.ScriptOptions.RootScriptPath, functionName), context.FunctionDirectory);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SharedAssemblyDependenciesAreLoaded()
         {
@@ -304,6 +324,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("secondary type value", await response.Content.ReadAsStringAsync());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task RandGuidBinding_GeneratesRandomIDs()
         {
@@ -317,6 +338,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_Post_Dynamic()
         {
@@ -342,6 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Name: Mathew Charles, Location: Seattle", body);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_Model_Binding()
         {
@@ -349,6 +372,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(JObject.DeepEquals(req, res), res.ToString());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "V2 is out of support")]
         public async Task HttpTrigger_Model_Binding_V2CompatMode()
         {
@@ -408,6 +432,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             return (jObject, JObject.Parse(await response.Content.ReadAsStringAsync()));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTriggerToBlob()
         {
@@ -450,6 +475,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedValue, Utility.RemoveUtf8ByteOrderMark(result));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Failing due to a change in connection string validation in the WebJobs SDK. Tracking issue: https://github.com/Azure/azure-webjobs-sdk/issues/2415")]
         public async Task FunctionWithIndexingError_ReturnsError()
         {

@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
     {
         private TestDisposable _disposedService = new TestDisposable();
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task OnTimeoutException_IgnoreToken_StopsManager()
         {
@@ -40,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             Assert.True(_disposedService.IsDisposed, "Expected services to be disposed");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task OnTimeoutException_UsesToken_ManagerKeepsRunning()
         {
@@ -58,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task OnTimeoutException_OOP_HasExpectedLogs()
         {

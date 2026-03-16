@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             _fixture.CleanupMetricsFiles();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(false, true)]
         [InlineData(false, false)]
@@ -109,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(publishingLogs.Length >= expectedFileCount);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task NoFunctionActivity_AlwaysReadyInstance_ExpectedMetricsPublished()
         {
@@ -138,6 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ShortTestRun_MaximumFileLimitHonored()
         {
@@ -189,6 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(count > 1);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(false)]
         [InlineData(true)]

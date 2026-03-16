@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, TestTraits.DrainModeEndToEnd)]
     public class DrainModeResumeEndToEndTests : ResumeTestFixture
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DrainModeEnabled_RunningHost_StartsNewHost_ReturnsOk()
         {
@@ -69,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.NotEqual(originalInstanceId, await GetActiveHostInstanceIdAsync());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DrainModeDisabled_RunningHost_ReturnsOk()
         {

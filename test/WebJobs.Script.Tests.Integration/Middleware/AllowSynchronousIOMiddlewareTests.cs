@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
 {
     public class AllowSynchronousIOMiddlewareTests
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Seems very difficult to trigger this failure now.")]
         public async Task SyncRead_Fails_ByDefault()
         {
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SyncRead_Succeeds_WithFlag()
         {
@@ -43,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SyncRead_Succeeds_InV2CompatMode()
         {
@@ -57,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SyncDownload_Succeeds()
         {

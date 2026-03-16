@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
             _fixture = fixture;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Need to investigate .NET 6 failure")]
         public async Task EventHub()
         {

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     /// </summary>
     public class SWAEndToEndTests(SWAEndToEndTests.TestFixture fixture) : IClassFixture<SWAEndToEndTests.TestFixture>
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void NoStorageConfigured_SecretsDisabled()
         {
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             Assert.False(fixture.Host.SecretManagerProvider.SecretsEnabled);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InvokeFunction_AnonymousLevel_Succeeds()
         {
@@ -46,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             Assert.Equal(code, responseBody);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InvokeFunction_FunctionLevel_NoAuthToken_Fails()
         {
@@ -57,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(nameof(HttpRequestHeader.Authorization))]
         [InlineData(ScriptConstants.SiteTokenHeaderName)]
@@ -89,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             return token;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SyncTriggers_Succeeds()
         {

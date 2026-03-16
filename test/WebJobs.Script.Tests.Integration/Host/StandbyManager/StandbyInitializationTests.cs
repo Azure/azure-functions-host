@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class StandbyInitializationTests
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task IsPlaceholderMode_ThroughoutInitialization_EvaluatesCorrectly()
         {

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -122,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _metricsLogger = new WebHostMetricsLogger(_metricsEventManager);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("Event1", "event1")]
         [InlineData("{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }", "{ \"azurewebjobsstorage\": \"[hidden credential]\", \"anotherkey\": \"anothervalue\" }")]
@@ -144,6 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(3, _metricsEventManager.QueuedEvents.Count);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void LogEvent_AggregatesIntoExistingEvent()
         {
@@ -169,6 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void LogEvent_Function_AggregatesIntoExistingEvent()
         {
@@ -210,6 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Null(metricEvent.FunctionName);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Complete_TimestampSet_CompletesEvent()
         {
@@ -232,6 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(evt.Completed);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Complete_StopwatchSet_CompletesEvent()
         {
@@ -256,6 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(evt.StopWatch.IsActive); // The stopwatch has no state, but has been activated
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void BeginEvent_ReturnsEventHandle()
         {
@@ -266,6 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True((DateTime.UtcNow - evt.Timestamp).TotalSeconds < 15);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void EndEvent_CompletesPendingEvent()
         {
@@ -283,6 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(evt.Average > 0);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void LatencyEvent_CompletesPendingEvent()
         {
@@ -297,6 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, evt.Count);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void EndEvent_AggregatesIntoExistingEvent()
         {
@@ -337,6 +346,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void EndEvent_Function_AggregatesIntoExistingEvent()
         {
@@ -383,6 +393,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Null(metricEvent.FunctionName);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void EndEvent_InvalidHandle_NoOp()
         {
@@ -393,6 +404,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TimerFlush_MultipleEventsQueued_EmitsExpectedEvents()
         {
@@ -470,6 +482,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TimerFlush_CalledOnExpectedInterval()
         {
@@ -494,6 +507,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockEventManager.VerifyAll();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void Dispose_FlushesQueuedEvents()
         {
@@ -510,6 +524,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(0, _metricsEventManager.QueuedEvents.Count);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MetricsEventManager_BasicTest()
         {
@@ -524,6 +539,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, 2);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ShortRunningFunction_Publishes_Function_EndEvent_To_MeshInitService()
         {
@@ -545,6 +561,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             a.ExecutionStage == ExecutionStage.Finished && a.Success)), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LongRunningFunction_Publishes_Function_InProgress_And_EndEvent_To_MeshInitService()
         {
@@ -571,6 +588,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MetricsEventManager_MultipleConcurrentShortFunctionExecutions()
         {
@@ -588,6 +606,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip ="Need to investigate why this fails on CI. Works locally.")]
         public async Task MetricsEventManager_MultipleConcurrentLongFunctionExecutions()
         {
@@ -627,6 +646,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     SerializeFunctionExecutionEventArguments(_functionExecutionEventArguments)));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MetricsEventManager_ActivityTimer_HandlesExceptions()
         {
@@ -690,6 +710,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(inProgressCount > 0);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MetricsEventManager_MultipleConcurrentFunctions()
         {
@@ -714,6 +735,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MetricsEventManager_NonParallelExecutionsShouldHaveDifferentExecutionId()
         {
@@ -728,6 +750,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(_functionExecutionEventArguments[0].ExecutionId == _functionExecutionEventArguments[_functionExecutionEventArguments.Count - 1].ExecutionId, "Execution ids are not the same");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("Event1", null, "event1")]
         [InlineData("Event1", "", "event1")]
@@ -738,6 +761,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expected, result);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void SystemEvent_DebugValue_ReturnsExpectedValue()
         {

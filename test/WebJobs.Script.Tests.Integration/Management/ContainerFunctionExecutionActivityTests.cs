@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -10,6 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 {
     public class ContainerFunctionExecutionActivityTests
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void Activity_Equals_Itself()
         {
@@ -17,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             Assert.Equal(activity, activity);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void Comparison_Ignores_EventTime()
         {
@@ -26,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             Assert.Equal(activity1, activity2);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true, "", "", ExecutionStage.InProgress, ExecutionStage.InProgress, "", "", false, false)]
         [InlineData(false, "func-1", "", ExecutionStage.InProgress, ExecutionStage.InProgress, "", "", false, false)]

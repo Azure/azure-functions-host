@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 {
     public class AzureStorageInfoValueTests
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(null, null, null, null, null, null, null, false)]
         [InlineData("", null, "", "", "", "", "", false)]

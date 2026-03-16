@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -22,18 +22,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             _fixture = fixture;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "HTTP Response status code is 200 (OK).")]
         public void ResponseIs200Ok()
         {
             Assert.Equal(System.Net.HttpStatusCode.OK, _fixture.HttpResponse.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "The function keys are retrieved from the secret manager.")]
         public void FunctionKeysAreRetrievedFromSecretManager()
         {
             _fixture.SecretManagerMock.Verify(s => s.GetFunctionSecretsAsync(_fixture.TestKeyScope, false));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "Response body is a valid list of keys.")]
         public void ResponseBodyIsValidAPIModelRepresentation()
         {
@@ -50,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "The returned resource has a valid 'self' link.")]
         public void ReturnedResourceHasValidSelfLink()
         {

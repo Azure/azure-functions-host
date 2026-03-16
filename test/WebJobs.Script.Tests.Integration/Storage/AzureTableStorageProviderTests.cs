@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             _azurite = azurite;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TryCreateHostingTableServiceClient_ConnectionInWebHostConfiguration()
         {
@@ -39,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             await VerifyTableServiceClientAvailable(client);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TryCreateHostingTableServiceClient_ConnectionInJobHostConfiguration()
         {
@@ -58,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             await VerifyTableServiceClientAvailable(client);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("AzureWebJobsStorage:accountName", "storage")]
         [InlineData("AzureWebJobsStorage:AccountName", "storage")]
@@ -80,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             Assert.True(azureTableStorageProvider.TryCreateHostingTableServiceClient(out _));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void TryCreateHostingTableServiceClient_NoConnectionThrowsException()
         {
@@ -94,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             Assert.False(azureTableStorageProvider.TryCreateTableServiceClient(ConnectionStringNames.Storage, out TableServiceClient tableServiceClient));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("ConnectionStrings:AzureWebJobsStorage1")]
         [InlineData("AzureWebJobsStorage1")]

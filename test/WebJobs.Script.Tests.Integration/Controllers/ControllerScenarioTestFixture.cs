@@ -8,6 +8,7 @@ using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,11 +32,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public void Dispose()
         {
+            IntegrationTestPrintLogger.FixtureDisposeStart(GetType().Name);
             Host?.Dispose();
+            IntegrationTestPrintLogger.FixtureDisposeEnd(GetType().Name);
         }
 
         public virtual async Task InitializeAsync()
         {
+            IntegrationTestPrintLogger.FixtureSetupStart(GetType().Name);
             _config = new HttpConfiguration();
             _settingsManager = ScriptSettingsManager.Instance;
 
@@ -70,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
             var manager = Host.Services.GetService<IScriptHostManager>();
             await manager.DelayUntilHostReadyAsync();
+            IntegrationTestPrintLogger.FixtureSetupEnd(GetType().Name);
         }
 
         public Task DisposeAsync()

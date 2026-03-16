@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
         private TestLoggerProvider _loggerProvider = new TestLoggerProvider();
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TimeoutTest_SyncFunction_CSharp()
         {
@@ -35,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await RunTimeoutTest(scriptLang, "TimeoutSync");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TimeoutTest_UsingToken_CSharp()
         {
@@ -49,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
              });
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TimeoutTest_IgnoringToken_CSharp()
         {

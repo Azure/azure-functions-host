@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Metrics;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -94,6 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public async Task InitializeAsync()
         {
+            IntegrationTestPrintLogger.FixtureSetupStart(GetType().Name);
             await _azurite.InitializeAsync();
             if (!string.IsNullOrEmpty(_functionsWorkerLanguage))
             {
@@ -187,6 +189,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await Host.StartAsync();
                 _hostStartedEvent.Wait(TimeSpan.FromSeconds(30));
             }
+
+            IntegrationTestPrintLogger.FixtureSetupEnd(GetType().Name);
         }
 
         public async Task<CloudQueue> GetNewQueue(string queueName)
@@ -277,6 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public virtual async Task DisposeAsync()
         {
+            IntegrationTestPrintLogger.FixtureDisposeStart(GetType().Name);
             if (JobHost != null)
             {
                 await JobHost.StopAsync();
@@ -287,6 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
 
             await _azurite.DisposeAsync();
+            IntegrationTestPrintLogger.FixtureDisposeEnd(GetType().Name);
         }
 
         private class TestEntity : ITableEntity

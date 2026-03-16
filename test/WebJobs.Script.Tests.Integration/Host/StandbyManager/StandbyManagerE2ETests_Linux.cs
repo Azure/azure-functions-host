@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [Trait(TestTraits.Group, TestTraits.StandbyModeTestsLinux)]
     public class StandbyManagerE2ETests_Linux : StandbyManagerE2ETestBase
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StandbyModeE2E_LinuxConsumptionOnLegion()
         {
@@ -70,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(typeof(LinuxContainerLegionMetricsPublisher), webHost.Services.GetRequiredService<IMetricsPublisher>().GetType());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
@@ -196,6 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LinuxContainer_TimeZoneEnvVariableE2E()
         {

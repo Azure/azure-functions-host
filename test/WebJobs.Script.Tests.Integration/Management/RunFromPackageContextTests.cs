@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
     {
         private const string Url = "http://url/file.zip";
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(EnvironmentSettingNames.ScmRunFromPackage, Url, true, true)]
         [InlineData(EnvironmentSettingNames.ScmRunFromPackage, Url, false, false)]
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             Assert.Equal(scmRunFromPackageConfigured, runFromPackageContext.IsRunFromPackage(options, NullLogger.Instance));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(EnvironmentSettingNames.ScmRunFromPackage, true)]
         [InlineData(EnvironmentSettingNames.AzureWebsiteRunFromPackage, false)]

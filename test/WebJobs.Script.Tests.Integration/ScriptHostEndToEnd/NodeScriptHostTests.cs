@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Fixture = fixture;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("httptrigger")]
         [InlineData("httptriggershared")]
@@ -87,6 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpUtility.UrlDecode(url), (string)resultObject["reqOriginalUrl"]);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("application/octet-stream")]
         [InlineData("multipart/form-data; boundary=----WebKitFormBoundaryTYtz7wze2XXrH26B")]
@@ -122,6 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(inputBytes, rawBody);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task PromiseResolve()
         {
@@ -144,6 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task PromiseApi_Resolves()
         {
@@ -166,6 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task PromiseApi_Rejects()
         {
@@ -186,6 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("reject", t.Exception.InnerException.InnerException.Message);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ExecutionContext_IsProvided()
         {

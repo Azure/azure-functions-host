@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Linq;
@@ -22,18 +22,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             _fixture = fixture;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "HTTP Response status code is 201 (Created).")]
         public void ResponseIs201Ok()
         {
             Assert.Equal(System.Net.HttpStatusCode.Created, _fixture.HttpResponse.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "The Location header is set.")]
         public void LocationIsSet()
         {
             Assert.Equal(_fixture.FormattedRequestUri, _fixture.HttpResponse.Headers.Location.ToString());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "Response body is the expected key.")]
         public void ResponseBodyIsValidAPIModelRepresentation()
         {
@@ -44,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             Assert.Equal("generated", key.Value);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(DisplayName = "The returned resource has a valid 'self' link.")]
         public void ReturnedResourceHasValidSelfLink()
         {

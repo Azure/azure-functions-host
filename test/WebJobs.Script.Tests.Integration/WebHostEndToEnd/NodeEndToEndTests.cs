@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -36,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     public class NodeEndToEndTests(NodeEndToEndTests.TestFixture fixture)
         : EndToEndTestsBase<NodeEndToEndTests.TestFixture>(fixture)
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task BlobTriggerToBlobTest()
         {
@@ -80,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Guid.Parse(invocationId);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task QueueTriggerByteArray()
         {
@@ -103,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         /// is cached, and the Fact that all the other tests in this suite run verifies that
         /// the error did not bring down the host.
         /// </summary>
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ErrorFunction_DoesNotBringDownHost()
         {
@@ -112,48 +115,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Contains("'invalid' is not a valid binding direction.", error);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ManualTrigger_Invoke_Succeeds()
         {
             await ManualTrigger_Invoke_SucceedsTest();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task QueueTriggerToBlob()
         {
             await QueueTriggerToBlobTest();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TableInput()
         {
             await TableInputTest();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TableOutput()
         {
             await TableOutputTest();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Not yet enabled.")]
         public void NotificationHub()
         {
             // await NotificationHubTest("NotificationHubOut");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Not yet enabled.")]
         public void NotificationHubNative()
         {
             // await NotificationHubTest("NotificationHubNative");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Not yet enabled.")]
         public void MobileTables()
         {
             //await MobileTablesTest();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Scenario_BindingData()
         {
@@ -169,6 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await WaitForTraceAsync("Scenarios", log => log.FormattedMessage.Contains(input.Value));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Scenario_Logging()
         {
@@ -229,6 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.NotEmpty(allLogs);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task RandGuidBinding_GeneratesRandomIDs()
         {
@@ -243,6 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Scenario_OutputBindingContainsFunctions()
         {
@@ -267,6 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("{\"nested\":{},\"array\":[{}],\"value\":\"value\"}", blobString);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MultipleExports()
         {
@@ -275,6 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 log => log.FormattedMessage.Contains("Exports: IsObject=true, Count=4"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SingleNamedExport()
         {
@@ -283,6 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 log => log.FormattedMessage.Contains("Exports: IsObject=true, Count=1"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTriggerToBlob()
         {
@@ -324,6 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedValue, result);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("application/json", "{\"name\": \"test\" }", "rawresponse")]
         [InlineData("application/json", 1, "rawresponse")]
@@ -362,6 +380,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(body.ToString(), responseBody);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_GetPlainText_WithLongResponse_ReturnsExpectedResult()
         {
@@ -396,6 +415,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(2000, body.Length);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory(Skip = "Content negotiation not working currently")]
         [InlineData("application/json", "\"testinput\"")]
         [InlineData("application/xml", "<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">testinput</string>")]
@@ -432,6 +452,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedBody, body);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_Get_Succeeds()
         {
@@ -467,6 +488,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Test Request Header", reqHeaders["test-header"]);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_MalformedJsonBody_Succeeds()
         {
@@ -492,6 +514,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(json, (string)resultObject["reqRawBody"]);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTriggerExpressApi_SendStatus_Succeeds()
         {
@@ -508,6 +531,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTriggerPromise_ReturnFromPromise_Succeeds()
         {
@@ -526,6 +550,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("returned from promise", body);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Needs investigation")]
         public async Task HttpTrigger_Scenarios_ResBinding()
         {
@@ -541,6 +566,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("test", await response.Content.ReadAsAsync<string>());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Needs investigation")]
         public async Task HttpTrigger_Scenarios_NullBody()
         {
@@ -557,6 +583,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Null(response.Content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Needs investigation")]
         public async Task HttpTrigger_Scenarios_ScalarReturn_InBody()
         {
@@ -587,6 +614,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(123, await response.Content.ReadAsAsync<int>());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Needs investigation")]
         public async Task HttpTrigger_Scenarios_ScalarReturn()
         {
@@ -611,6 +639,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(123, await response.Content.ReadAsAsync<int>());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Needs investigation")]
         public async Task HttpTrigger_Post_PlainText()
         {
@@ -640,6 +669,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("text/plain", resultObject["reqHeaders"]["content-type"]);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Needs investigation")]
         public async Task HttpTrigger_Post_JsonObject()
         {
@@ -678,6 +708,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Needs investigation")]
         public async Task HttpTrigger_Post_JsonArray()
         {
@@ -745,6 +776,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Assert.Equal(rawBody, (string)resultObject["reqRawBody"]);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Needs investigation")]
         public async Task HttpTrigger_Scenarios_Buffer()
         {
@@ -771,6 +803,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(1, array[1]);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void TimerTrigger()
         {
@@ -778,6 +811,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Contains(logs, log => log.FormattedMessage.Contains("Timer function ran!"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MultipleOutputs()
         {
@@ -812,6 +846,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Test Blob 3", blobContent.TrimEnd('\0').Trim('"'));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MultipleInputs()
         {
@@ -834,6 +869,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
 #if APIHUB
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact( Skip = "unsupported" )]
         public async Task ApiHubTableEntityIn()
         {
@@ -859,6 +895,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(logs.Any(p => p.Contains(expectedLog)));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact( Skip = "unsupported" )]
         public async Task ApiHubTableEntityOut()
         {

@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HostAdminApis_ValidAdminToken_Succeeds()
         {
@@ -68,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InvokeAdminLevelFunction_WithoutMasterKey_ReturnsUnauthorized()
         {
@@ -108,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InvokeFunction_RequiresKeyOrNonPlatformToken()
         {
@@ -148,6 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InvokeFunction_AdminInvokeApi_Succeeds()
         {
@@ -162,6 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         [Trait(TestTraits.Group, TestTraits.WebhookTests)]
         public async Task ExtensionWebHook_AuthorizationLevelOverride_Succeeds()
@@ -193,6 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         [Trait(TestTraits.Group, TestTraits.WebhookTests)]
         public async Task ExtensionWebHook_Succeeds()
@@ -243,6 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [Trait(TestTraits.Group, TestTraits.AdminIsolationTests)]
         [InlineData("admin/host/status", ScriptConstants.DynamicSku, "1", true, false, false, true, HttpStatusCode.Forbidden)]
@@ -311,6 +318,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
 
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("admin/vfs/site/wwwroot/host.json", HttpStatusCode.OK)]
         [InlineData("admin/vfs/host.json", HttpStatusCode.Forbidden)]
@@ -335,6 +343,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("GET")]
         [InlineData("POST")]
@@ -348,6 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("no-store, no-cache", cacheHeader);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("/admin/health")]
         [InlineData("/admin/health/live")]
@@ -365,6 +375,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("{\"status\":\"Healthy\"}", body);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("/admin/health?expand=true", null)]
         [InlineData("/admin/health/live?expand=true", HealthCheckTags.Liveness)]
@@ -402,6 +413,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("/admin/health")]
         [InlineData("/admin/health/live")]
@@ -414,6 +426,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InstallExtensionsEnsureOldPathReturns404()
         {
@@ -428,6 +441,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InstallExtensionTest()
         {
@@ -442,6 +456,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ArmExtensionsResourceFilter_NonExtensionRoute_Succeeds()
         {
@@ -453,6 +468,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ArmExtensionsResourceFilter_GetSecrets_NonAdmin_Unauthorized()
         {
@@ -468,6 +484,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(Microsoft.Azure.WebJobs.Script.WebHost.Properties.Resources.UnauthorizedArmExtensionResourceRequest, content);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ArmExtensionsResourceFilter_GetSecrets_Admin_Succeeds()
         {
@@ -482,6 +499,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ArmExtensionsResourceFilter_GetSecrets_Internal_Succeeds()
         {
@@ -494,6 +512,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ArmExtensionsResourceFilter_GetSecrets_NoKey_Unauthorized()
         {
@@ -507,6 +526,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ArmExtensionsResourceFilter_InvalidKey_Unauthorized()
         {
@@ -521,6 +541,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ArmExtensionsResourceFilter_NonGet_Succeeds()
         {
@@ -534,6 +555,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ArmExtensionsResourceFilter_GetNonSecretResource_Succeeds()
         {
@@ -547,6 +569,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SyncTriggers_AdminTokenProvided_Succeeds()
         {
@@ -561,6 +584,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SyncTriggers_NoAuthentication_ReturnsUnauthorized()
         {
@@ -570,6 +594,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SyncTriggers_MasterKeyProvided_Succeeds()
         {
@@ -580,6 +605,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HostLog_Anonymous_Fails()
         {
@@ -590,6 +616,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HostLog_AdminLevel_Succeeds()
         {
@@ -640,6 +667,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HostLog_SingletonLog_ReturnsBadRequest()
         {
@@ -660,6 +688,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Contains(error, "An array of log entry objects is expected.");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HostStatus_AdminLevel_Succeeds()
         {
@@ -706,6 +735,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(node.IsEmpty);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HostStatus_AnonymousLevelRequest_Fails()
         {
@@ -715,6 +745,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact(Skip = "Offline check conflicting with other tests, needs investigation")]
         public async Task SetHostState_Offline_Succeeds()
         {
@@ -788,6 +819,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(content.Contains("Host is offline"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task AdminRequests_PutHostInDebugMode()
         {
@@ -808,6 +840,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(lastModified < File.GetLastWriteTime(debugSentinelFilePath));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ListFunctions_Succeeds()
         {
@@ -826,6 +859,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("https://somewebsite.azurewebsites.net/api/httptrigger", function.InvokeUrlTemplate.ToString());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Home_Get_Succeeds()
         {
@@ -834,6 +868,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Home_Get_WithHomepageDisabled_Succeeds()
         {
@@ -846,6 +881,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Home_Get_InAzureEnvironment_AsInternalRequest_ReturnsNoContent()
         {
@@ -862,6 +898,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ManualTrigger_Invoke_Succeeds()
         {
@@ -893,6 +930,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_Poco_Post_Succeeds()
         {
@@ -930,12 +968,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_Get_WithoutContentType_Succeeds()
         {
             await SamplesTestHelpers.InvokeAndValidateHttpTriggerWithoutContentType(_fixture, "HttpTrigger");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_CorrelationIDsAreLogged()
         {
@@ -1002,6 +1042,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.All(httpTraceEvents, p => Assert.Equal(functionInvocationId, p.FunctionInvocationId));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Legacy_RequestTypes_Succeed()
         {
@@ -1024,6 +1065,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_Poco_Get_Succeeds()
         {
@@ -1050,6 +1092,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_Anonymous_Get_Succeeds()
         {
@@ -1092,6 +1135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         [Trait(TestTraits.Group, TestTraits.AdminIsolationTests)]
         public async Task HttpTrigger_AdminLevel_AdminIsolationEnabled_Succeeds()
@@ -1133,6 +1177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_DuplicateQueryParams_Succeeds()
         {
@@ -1156,6 +1201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_CustomRoute_ReturnsExpectedResponse()
         {
@@ -1221,6 +1267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTriggerWithObject_Post_Succeeds()
         {
@@ -1247,6 +1294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_Identities_Succeeds()
         {
@@ -1272,6 +1320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_Identities_AnonymousAccessSucceeds()
         {
@@ -1295,6 +1344,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task HttpTrigger_Identities_BlocksSpoofedEasyAuthIdentity()
         {

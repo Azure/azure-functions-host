@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _fileSystem = GetFileSystem();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("")]
         [InlineData(null)]
@@ -65,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true, UriWithNoSasToken, null, false, false)] // warmup requests will never use token
         [InlineData(true, UriWithSasToken, null, false, false)]
@@ -174,6 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DownloadsFileUsingManagedIdentity()
         {
@@ -217,6 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _managedIdentityTokenProvider.Verify(p => p.GetManagedIdentityToken(UriWithNoSasToken), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(UriWithSasToken, true, false)]
         [InlineData(UriWithSasToken, false, false)]
@@ -291,6 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ShouldThrowExceptionIfSourcePackageFolderDoesNotExist()
         {
@@ -305,6 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ShouldThrowExceptionIfSourcePackageNameFileDoesNotExist()
         {
@@ -320,6 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ShouldThrowExceptionIfSourcePackageNameFileIsEmpty()
         {
@@ -336,6 +343,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ShouldThrowExceptionIfSourcePakgeFileDoesNotExist()
         {
@@ -354,6 +362,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ShouldCopySourcePakgeToTempLocation()
         {
@@ -401,6 +410,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             return r.RequestUri.AbsoluteUri.Equals(url);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -458,6 +468,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -70,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                    string.Equals(filePath, httpRequestMessage.RequestUri.AbsoluteUri);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true, true)]
         [InlineData(true, false)]
@@ -88,6 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             await Task.CompletedTask;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -112,6 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _meshServiceClientMock.Verify(m => m.MountCifs(connectionString, contentShare, HomeDirectory), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task MountAzureFileShareReturnsFalseOnException()
         {
@@ -135,6 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _meshServiceClientMock.Verify(m => m.MountCifs(connectionString, contentShare, HomeDirectory), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -219,6 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true, "1")]
         [InlineData(false, null)]
@@ -267,6 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _meshServiceClientMock.Verify(m => m.MountFuse(MeshServiceClient.SquashFsOperation, It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -320,6 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 .Returns(Task.FromResult(true));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true, "0")]
         [InlineData(false, null)]
@@ -395,6 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -413,6 +421,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -480,6 +489,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     MetricEventNames.LinuxContainerSpecializationFileCommand), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true, "1")]
         [InlineData(false, null)]
@@ -543,6 +553,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _meshServiceClientMock.Verify(m => m.MountFuse(MeshServiceClient.SquashFsOperation, It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true, "1")]
         [InlineData(false, null)]

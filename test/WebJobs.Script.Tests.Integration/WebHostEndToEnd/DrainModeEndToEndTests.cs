@@ -16,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, TestTraits.DrainModeEndToEnd)]
     public class DrainModeEndToEndTests : DrainTestFixture
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task RunningHost_EnableDrainMode_ReturnsAccepted()
         {
@@ -46,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task RunningHost_EnableDrainMode_FunctionInvocationCancelled_ReturnsNotFound()
         {

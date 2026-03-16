@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         private const int FlushIntervalMs = 2;
         private const int DelayIntervalMs = 500;
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task PublishesFunctionExecutionActivity()
         {
@@ -57,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task PublishesSpecializationCompleteEvent()
         {
@@ -91,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DoesNotPublishExecutionActivityInStandbyMode()
         {
@@ -116,6 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void InitializingPublisherThrowsExceptionForNonLinuxConsumptionApps()
         {
@@ -143,6 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             Assert.True(failsWithExpectedException);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task PublishesUniqueFunctionExecutionActivitiesOnly()
         {

@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             _fixture = fixture;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(nameof(HttpRequestHeader.Authorization))]
         [InlineData(nameof(HttpRequestHeader.Authorization), "https://appservice.core.azurewebsites.net", "https://testsite.azurewebsites.net")]
@@ -63,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             response.EnsureSuccessStatusCode();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(nameof(HttpRequestHeader.Authorization))]
         [InlineData(ScriptConstants.SiteTokenHeaderName)]
@@ -91,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             Assert.True(validationError.Exception.Message.StartsWith("IDX10231: Audience validation failed."));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(nameof(HttpRequestHeader.Authorization))]
         [InlineData(ScriptConstants.SiteTokenHeaderName)]
@@ -119,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             Assert.Equal("IDX10205: Issuer validation failed.", validationError.Exception.Message);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(nameof(HttpRequestHeader.Authorization))]
         [InlineData(ScriptConstants.SiteTokenHeaderName)]
@@ -149,6 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             Assert.True(validationError.Exception.Message.StartsWith("IDX10517: Signature validation failed."));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InvokeAdminApi_ValidToken_UTF8Encoding_Succeeds()
         {
@@ -161,6 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             response.EnsureSuccessStatusCode();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InvokeNonAdminApi_InvalidToken_DoesNotLogTokenAuthFailure()
         {

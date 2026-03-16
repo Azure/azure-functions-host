@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
@@ -11,6 +11,7 @@ using System.Threading;
 using Xunit.Sdk;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
 {
@@ -78,6 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
 
         public async Task InitializeAsync()
         {
+            IntegrationTestPrintLogger.FixtureSetupStart(GetType().Name);
             try
             {
                 await StartAzuriteAsync();
@@ -86,21 +88,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures
             {
                 _exceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
             }
+            finally
+            {
+                IntegrationTestPrintLogger.FixtureSetupEnd(GetType().Name);
+            }
         }
 
         public async Task DisposeAsync()
         {
-            if (Interlocked.Exchange(ref _process, null) is { } p)
+            IntegrationTestPrintLogger.FixtureDisposeStart(GetType().Name);
+            try
             {
-                if (!p.HasExited)
+                if (Interlocked.Exchange(ref _process, null) is { } p)
                 {
-                    p.Kill(entireProcessTree: true);
+                    if (!p.HasExited)
+                    {
+                        p.Kill(entireProcessTree: true);
+                    }
+
+                    using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
+                    await p.WaitForExitAsync(cts.Token);
+
+                    p.Dispose();
                 }
-
-                using CancellationTokenSource cts = new(TimeSpan.FromSeconds(5));
-                await p.WaitForExitAsync(cts.Token);
-
-                p.Dispose();
+            }
+            finally
+            {
+                IntegrationTestPrintLogger.FixtureDisposeEnd(GetType().Name);
             }
         }
 

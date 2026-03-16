@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
             _hostBuild = new SemaphoreSlim(0, 2);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TestWarmupEndPoint_WhenHostStarts()
         {

@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _storageConfigured = true;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(false, false)]
         [InlineData(true, true)]
@@ -91,6 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ValidateHostIdUsageAsync_ExistingHostIdInfoMatches_Succeeds()
         {
@@ -110,6 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             Assert.Empty(logs);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ValidateHostIdUsageAsync_Collision_WarningLevel_Logs()
         {
@@ -139,6 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Never);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(null)]
         [InlineData("Error")]
@@ -172,6 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]

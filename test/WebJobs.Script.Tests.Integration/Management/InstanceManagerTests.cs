@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _instanceManager.Reset();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAssignment_AppliesAssignmentContext()
         {
@@ -132,6 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Assign called while host is not in placeholder mode and start context is not present.", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAssignment_Failure_ExitsPlaceholderMode()
         {
@@ -162,6 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Assign failed"), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAssignment_Succeeds_With_No_RunFromPackage_AppSetting()
         {
@@ -184,6 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Triggering specialization", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAssignment_Succeeds_With_NonEmpty_ScmRunFromPackage_Blob()
         {
@@ -251,6 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAssignment_Does_Not_Assign_Settings_For_Warmup_Request()
         {
@@ -275,6 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(logs.Any(l => l.StartsWith("Starting Assignment.")));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAssignment_Succeeds_With_Empty_ScmRunFromPackage_Blob()
         {
@@ -315,6 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Triggering specialization", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void StartAssignment_ReturnsTrue_ForPinnedContainers()
         {
@@ -330,6 +337,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(result);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void StartAssignment_ReturnsFalse_ForNonPinnedContainersInStandbyMode()
         {
@@ -342,6 +350,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(result);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ValidateContext_InvalidZipUrl_WebsiteUseZip_ReturnsError()
         {
@@ -396,6 +405,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("ValidateContext failed", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ValidateContext_EmptyZipUrl_ReturnsSuccess()
         {
@@ -425,6 +435,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ValidateContext_Succeeds_For_WebsiteUseZip_Only()
         {
@@ -469,6 +480,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ValidateContext_Succeeds_For_ScmBuildPackage_Only()
         {
@@ -502,6 +514,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ValidateContext_Skips_Validation_For_Urls_With_No_Sas_Token()
         {
@@ -537,6 +550,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ValidateContext_Succeeds_For_WebsiteUseZip_With_ScmPackageDefined()
         {
@@ -582,6 +596,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SpecializeMSISidecar_EmptyMSIEndpoint_NoOp()
         {
@@ -604,6 +619,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Collection(logs, p => Assert.StartsWith("MSI enabled status: False", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SpecializeMSISidecar_Succeeds()
         {
@@ -633,6 +649,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SpecializeMSISidecar_Succeeds_EncryptedMSIContextWithoutProvidedEndpoint()
         {
@@ -664,6 +681,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SpecializeMSISidecar_Succeeds_EncryptedMSIContextWithProvidedEndpoint()
         {
@@ -696,6 +714,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SpecializeMsiSidecar_RequiredPropertiesInPayload()
         {
@@ -772,6 +791,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SpecializeMSISidecar_NoOp_ForWarmup_Request()
         {
@@ -797,6 +817,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Empty(logs);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task SpecializeMSISidecar_Fails()
         {
@@ -835,6 +856,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Failed to specialize MSI sidecar"), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DoesNotSpecializeMSISidecar_WhenMSIContextNull()
         {
@@ -871,6 +893,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Could not specialize MSI sidecar since MSIContext and EncryptedTokenServiceSpecializationPayload were empty"), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Mounts_Valid_BYOS_Accounts()
         {
@@ -934,6 +957,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     targetPath3), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Does_Not_Mount_Invalid_BYOS_Accounts()
         {
@@ -980,6 +1004,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 client => client.MountCifs(It.IsAny<string>(), It.IsAny<string>(), It.Is<string>(s => s != targetPath1)), Times.Never());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true, false)]
         [InlineData(false, true)]
@@ -1054,6 +1079,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -1100,6 +1126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     false), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Falls_Back_To_Local_Disk_If_Azure_Files_Unavailable_For_PowerShell_Apps()
         {
@@ -1156,6 +1183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     true), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Falls_Back_To_Local_Disk_If_Azure_Files_Unavailable_Only_If_Azure_Files_Mounted_For_PowerShell_Apps()
         {
@@ -1208,6 +1236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     false), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -1259,6 +1288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     true), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -1322,6 +1352,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -1389,6 +1420,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task AssignInstanceAsync_AppliesAssignmentContext()
         {
@@ -1452,6 +1484,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Assign called while host is not in placeholder mode and start context is not present.", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task AssignInstanceAsync_Does_Not_Assign_Settings_For_Warmup_Request()
         {
@@ -1480,6 +1513,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(logs.Any(l => l.StartsWith("Starting Assignment.")));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task AssignInstanceAsync_WarmupDownload_Failure_Logs_Warning()
         {
@@ -1517,6 +1551,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(_scriptWebEnvironment.InStandbyMode);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task AssignInstanceAsync_Failure_ExitsPlaceholderMode()
         {
@@ -1548,6 +1583,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Assign failed"), Times.Once);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task AssignInstanceAsync_Succeeds_With_No_RunFromPackage_AppSetting()
         {
@@ -1570,6 +1606,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Triggering specialization", p));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task AssignInstanceAsync_Succeeds_With_NonEmpty_ScmRunFromPackage_Blob()
         {
@@ -1636,6 +1673,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task AssignInstanceAsync_ForPinnedContainers()
         {
@@ -1651,6 +1689,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.True(result);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task AssignInstanceAsync_ReturnsFalse_ForNonPinnedContainersInStandbyMode()
         {

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Http;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
@@ -29,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public ApplicationInsightsTestFixture(string scriptRoot, string testId, bool ignoreAppInsightsFromWorker = false)
         {
+            IntegrationTestPrintLogger.FixtureSetupStart(GetType().Name);
             string scriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot);
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, testId);
@@ -73,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             HttpClient = TestHost.HttpClient;
 
             TestHelpers.WaitForWebHost(HttpClient);
+            IntegrationTestPrintLogger.FixtureSetupEnd(GetType().Name);
         }
 
         public TestTelemetryChannel Channel { get; private set; } = new TestTelemetryChannel();
@@ -87,6 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public void Dispose()
         {
+            IntegrationTestPrintLogger.FixtureDisposeStart(GetType().Name);
             TestHost?.Dispose();
             HttpClient?.Dispose();
 
@@ -94,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // is disposed on a background task, it doesn't block. So waiting here to ensure
             // everything is flushed and can't affect subsequent tests.
             Thread.Sleep(2000);
+            IntegrationTestPrintLogger.FixtureDisposeEnd(GetType().Name);
         }
 
         private class TestGrpcWorkerChannelFactory : GrpcWorkerChannelFactory

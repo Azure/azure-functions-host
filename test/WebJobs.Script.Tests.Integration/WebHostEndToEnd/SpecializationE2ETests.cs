@@ -93,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _customizeScriptHostServices = null;
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ApplicationInsights_InvocationsContainDifferentOperationIds()
         {
@@ -180,6 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Empty(timerLogs.Where(p => p.Context.Operation.Id == startupRequest.Context.Operation.Id));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_ThreadUtilization()
         {
@@ -243,6 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_WebHostOptionsAreLogged()
         {
@@ -295,6 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(HttpOptions));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_ResetsSharedLoadContext()
         {
@@ -326,6 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotSame(placeholderContext, specializedContext);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ForNonReadOnlyFileSystem_RestartWorkerForSpecializationAndHotReload()
         {
@@ -404,6 +409,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains(newContent, responseContent);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_RestartsWorkerForNonReadOnlyFileSystem()
         {
@@ -451,6 +457,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_UsePlaceholderWorkerforReadOnlyFileSystem()
         {
@@ -495,6 +502,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(processId, newProcessId);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_RestartWorkerWithWorkerArguments()
         {
@@ -548,6 +556,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertLanguageWorkerOptionsSetupCount(2);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         // This test doesn't specialize, but is here to compare behavior with the other Arguments test above
         public async Task NoSpecialization_StartWorkerWithWorkerArguments()
@@ -590,6 +599,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertLanguageWorkerOptionsSetupCount(1);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_GCMode()
         {
@@ -618,6 +628,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(GCSettings.LatencyMode != GCLatencyMode.NoGCRegion, "GCLatencyMode should *not* be NoGCRegion at the end of specialization");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_ResetsSecretManagerRepository()
         {
@@ -666,6 +677,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Single(messages, "ResetSecretManager");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task StartAsync_SetsCorrectActiveHost_RefreshesLanguageWorkerOptions()
         {
@@ -720,6 +732,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// Loads an extension that requires Host secrets and needs connection to storage.
         /// This happens when the ActiveHost changes as a new JobHost is initialized
         /// </summary>
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_LoadWebHookProviderAndRetrieveSecrets()
         {
@@ -772,6 +785,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// <summary>
         /// This scenario tests that storage can still be used 
         /// </summary>
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_CustomStartupRemovesAzureWebJobsStorage()
         {
@@ -826,6 +840,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_CustomStartupAddsWebJobsStorage()
         {
@@ -888,6 +903,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// Since JobHostInternalStorageOptions is registered at the WebHost, it must react to changes
         /// to the ActiveHost.
         /// </summary>
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_JobHostInternalStorageOptionsUpdatesWithActiveHost()
         {
@@ -955,7 +971,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(ScriptConstants.FlexConsumptionSku, ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview, true)]
         [InlineData(ScriptConstants.FlexConsumptionSku, $"Feature1,{ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview}", true)]
@@ -1012,6 +1028,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit()
         {
@@ -1059,6 +1076,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertLanguageWorkerOptionsSetupCount(3);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DotNetIsolatedWithBundles_PlaceholderHit()
         {
@@ -1109,6 +1127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertLanguageWorkerOptionsSetupCount(4);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("gzip", "gzip")]
         [InlineData("br", "br")]
@@ -1149,6 +1168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expectedContentEncodingResponseHeaderValue, value?.First());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_DotNetIsolatedApp_MissingAzureFunctionsDir_Logs()
         {
@@ -1193,6 +1213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_DynamicResolution_FallbackPath_Logs()
         {
@@ -1264,6 +1285,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(probingLog.Any());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_DynamicResolution_Logs()
         {
@@ -1347,6 +1369,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(probingLog.Length != 0);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DotNetIsolated_PlaceholderHit_WithProxies()
         {
@@ -1402,6 +1425,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DotNetIsolated_PlaceholderMiss_EnvVar()
         {
@@ -1413,6 +1437,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DotNetIsolated_PlaceholderMiss_Not64Bit()
         {
@@ -1431,6 +1456,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DotNetIsolated_PlaceholderMiss_DotNetVer()
         {
@@ -1453,6 +1479,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertLanguageWorkerOptionsSetupCount(3);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DotNetIsolated_PlaceholderMiss_UnsupportedWorkerPackage()
         {
@@ -1468,6 +1495,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task DotNetIsolated_PlaceholderMiss_EmptyScriptRoot()
         {
@@ -1483,6 +1511,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("Shutting down placeholder worker. Worker is not compatible for runtime: dotnet-isolated", log);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         // Fix for https://github.com/Azure/azure-functions-host/issues/9288 
         public async Task SpecializedSite_StopsHostBeforeWorker()
@@ -1561,6 +1590,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Empty(completedLogs.Where(p => p.Level == LogLevel.Error));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task Specialization_Writes_WorkerStartupLogs()
         {

@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             EmptyMetricsTableAsync().GetAwaiter().GetResult();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task InvalidStorageConnection_Handled()
         {
@@ -81,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             await localRepository.WriteMetricsAsync(metricsMap);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task WriteMetricsAsync_PersistsMetrics()
         {
@@ -140,6 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.Equal(0, result.Count);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ReadWriteMetrics_IntegerConversion_HandlesLongs()
         {
@@ -210,6 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.Equal(12345, currSample.Count);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ReadMetricsAsync_FiltersExpiredMetrics()
         {
@@ -248,6 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.All(resultMetrics, p => Assert.Equal(77, p.Count));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ReadMetricsAsync_NoMetricsForMonitor_ReturnsEmpty()
         {
@@ -259,6 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.Empty(result[monitor1]);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ReadMetricsAsync_InvalidMonitor_ReturnsEmpty()
         {
@@ -273,6 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.Equal("Monitor Microsoft.Azure.WebJobs.Script.Tests.TestInvalidScaleMonitor doesn't implement Microsoft.Azure.WebJobs.Host.Scale.IScaleMonitor`1[TMetrics].", log.FormattedMessage);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TableRead_ManyRows_Succeeds()
         {
@@ -320,6 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             }
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task WriteAsync_RollsToNewTable()
         {
@@ -368,6 +376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.Empty(tables);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task QueueBackgroundMetricsTablePurge_PurgesTables()
         {
@@ -400,6 +409,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             }, timeout: 5000);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task LogStorageException_LogsDetails()
         {
@@ -450,6 +460,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.True(errorLog.FormattedMessage.Contains("ErrorCode: TableNotFound"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task WriteMetricsAsync_PersistsMultipleBatchesCorrectly()
         {

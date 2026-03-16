@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 {
     public class HostAssignmentContextTests
     {
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData(null, null, false)]
         [InlineData("", "", false)]
@@ -30,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(msiEndpoint, actualMsiEndpoint);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void Returns_BYOS_EnvironmentVariables()
         {
@@ -55,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("blob2", byosEnvironmentVariables.First(env => env.Key == "AzureBlobStorage_blob2").Value);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("", "",  false)]
         [InlineData("cs", "share",  true)]

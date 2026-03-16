@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             _azureTableStorageProvider = TestHelpers.GetAzureTableStorageProvider(configuration);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task TimerFlush_CalledOnExpectedInterval()
         {
@@ -84,6 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             mockDiagnosticEventTableStorageRepository.VerifyAll();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void TimerFlush_NotStartedWithRepositoryDisabled()
         {
@@ -105,6 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             Assert.False(lazyTimer.IsValueCreated, "Timer should not be created when repository is disabled");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void WriteDiagnostic_LogsError_WhenHostIdNotSet()
         {
@@ -119,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             Assert.Equal(0, repository.Events.Values.Count());
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task WriteDiagnostic_HasTheCorrectHitCount_WhenCalledFromMultipleThreadsConcurrently()
         {
@@ -164,6 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             Assert.Equal(200, repository.Events["fn0003"].HitCount);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task GetDiagnosticEventsTable_ReturnsExpectedValue_WhenSpecialized()
         {
@@ -180,6 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             Assert.Equal(cloudTable.Name, $"{DiagnosticEventTableStorageRepository.TableNamePrefix}202101");
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task GetDiagnosticEventsTable_LogsError_StorageConnectionStringIsNotPresent()
         {
@@ -207,6 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             Assert.True(errorIntializingPresent);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task QueueBackgroundDiagnosticsEventsTablePurge_PurgesTables()
         {
@@ -248,6 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             }, timeout: 5000);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task QueueBackgroundDiagnosticsEventsTablePurge_PurgesOnlyDiagnosticTables()
         {
@@ -293,6 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             }, timeout: 5000);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task FlushLogs_OnPrimaryHost_DoesNotTryToPurgeEvents_WhenTableClientNotInitialized()
         {
@@ -332,6 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Theory]
         [InlineData("", 0, true)] // event version not present
         [InlineData("2021-01-01", 0, true)] // outdated version
@@ -393,6 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             }, timeout: 5000);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ExecuteBatchAsync_WritesToTableStorage()
         {
@@ -416,6 +427,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             Assert.Equal(results.Count(), 1);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task FlushLogs_WritesToTableStorage()
         {
@@ -438,6 +450,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             Assert.Equal(results.Count(), 1);
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task ExecuteBatchAsync_LogsError()
         {
@@ -464,6 +477,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             Assert.True(message.StartsWith("Unable to write diagnostic events to table storage"));
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void Dispose_DoesNotInvokeStorageProvider()
         {
@@ -481,6 +495,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             storageProviderMock.VerifyNoOtherCalls();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public void Dispose_DoesNotInvokeStorageProvider_WhenNotInPlaceholderModeAndNotInitialized()
         {
@@ -501,6 +516,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             storageProviderMock.VerifyNoOtherCalls();
         }
 
+        [Microsoft.Azure.WebJobs.Script.Tests.Integration.IntegrationTestPrint]
         [Fact]
         public async Task FlushLogs_DisablesService_NoPermissions()
         {
