@@ -39,6 +39,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
 
         public Task InvokeAsync(HttpContext context, string functionName)
         {
+            // Sentinel: HEAD request on a route that doesn't support HEAD/GET → 405.
+            if (functionName.StartsWith(ScriptConstants.HeadMethodNotAllowedPrefix, StringComparison.Ordinal))
+            {
+                string allowedMethods = functionName[ScriptConstants.HeadMethodNotAllowedPrefix.Length..];
+                context.Features.Set<IHeadNotAllowedFeature>(new HeadNotAllowedFeature(allowedMethods));
+                return Task.CompletedTask;
+            }
+
             if (_isProxy)
             {
                 ProxyFunctionExecutor proxyFunctionExecutor = new ProxyFunctionExecutor(_scriptHost);
