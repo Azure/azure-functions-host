@@ -35,32 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
             _hostName = new HostNameProvider(SystemEnvironment.Instance).Value ?? "localhost";
-            PrintLogs();
-        }
-
-        void PrintLogs()
-        {
-            var thread = new Thread(() =>
-            {
-                var i = 0;
-
-                while (true)
-                {
-                    var messageList = _fixture.TestHost.GetWebHostLogMessages();
-                    while (i < messageList.Count)
-                    {
-                        Console.WriteLine(messageList[i].FormattedMessage);
-                        i++;
-                    }
-
-                    Thread.Sleep(25); // prevent tight CPU spin
-                }
-            })
-            {
-                IsBackground = true
-            };
-
-            thread.Start();
         }
 
         [Fact]
@@ -291,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task CatchAllWithCustomRoutes()
+         public async Task CatchAllWithCustomRoutes()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"proxy/api/myroute/mysubroute");
 
