@@ -158,7 +158,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
         public const string HeadMethodNotAllowedPrefix = "$head_not_allowed:";
-        public const string HttpAllowedMethodsKey = "httpAllowedMethods";
         public const string HttpMethodConstraintName = "httpMethod";
         public const string Snapshot = "snapshot";
         public const string Runtime = "runtime";

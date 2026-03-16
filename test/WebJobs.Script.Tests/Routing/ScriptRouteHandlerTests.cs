@@ -63,4 +63,16 @@ public class ScriptRouteHandlerTests
         Assert.NotNull(feature);
         Assert.Equal("DELETE", feature.AllowedMethods);
     }
+
+    [Fact]
+    public async Task InvokeAsync_NormalFunctionName_DoesNotSetHeadNotAllowedFeature()
+    {
+        // A non-sentinel name should NOT set IHeadNotAllowedFeature.
+        var context = new DefaultHttpContext();
+
+        // Use a name that doesn't start with the sentinel prefix.
+        await _handler.InvokeAsync(context, "TestFunction");
+
+        Assert.Null(context.Features.Get<IHeadNotAllowedFeature>());
+    }
 }
