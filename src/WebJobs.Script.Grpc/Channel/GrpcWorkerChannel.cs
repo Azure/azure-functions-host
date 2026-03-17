@@ -16,7 +16,6 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
-using Microsoft.Azure.AppService.Proxy.Common.Extensions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
