@@ -1,0 +1,7 @@
+<Project>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.GolangWorker" VersionOverride="0.1.0" />
+  </ItemGroup>
+
+</Project>
