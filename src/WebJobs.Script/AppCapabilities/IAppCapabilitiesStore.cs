@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     /// <remarks>
     /// Application capabilities represent features and characteristics of the current
     /// application instance that can be queried and updated at runtime. This is just one source
-    /// of capabilities, and does not reflect all capabailities of the system.
+    /// of capabilities, and does not reflect all capabilities of the system.
     /// </remarks>
     public interface IAppCapabilitiesStore
     {
