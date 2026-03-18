@@ -1,9 +1,7 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
@@ -11,16 +9,69 @@ using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class ScriptTelemetryProcessorTests
     {
+        [Theory]
+        [InlineData("Http")]
+        [InlineData("HTTP")]
+        [InlineData("http")]
+        public void Process_HttpDependency_ProxyRequest_IsFiltered(string type)
+        {
+            var items = new List<ITelemetry>();
+            var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
+
+            ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = true;
+            try
+            {
+                processor.Process(new DependencyTelemetry { Type = type });
+            }
+            finally
+            {
+                ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = false;
+            }
+
+            Assert.Empty(items);
+        }
+
+        [Theory]
+        [InlineData("Http")]
+        [InlineData("HTTP")]
+        [InlineData("http")]
+        public void Process_HttpDependency_NotProxyRequest_IsNotFiltered(string type)
+        {
+            var items = new List<ITelemetry>();
+            var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
+
+            // SuppressDependencyTelemetry defaults to false — simulates user code making an external HTTP call
+            processor.Process(new DependencyTelemetry { Type = type });
+
+            Assert.Single(items);
+        }
+
+        [Fact]
+        public void Process_NonDependencyTelemetry_ProxyRequest_IsNotFiltered()
+        {
+            var items = new List<ITelemetry>();
+            var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
+
+            ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = true;
+            try
+            {
+                processor.Process(new TraceTelemetry("test"));
+            }
+            finally
+            {
+                ScriptTelemetryProcessor.SuppressDependencyTelemetry.Value = false;
+            }
+
+            Assert.Single(items);
+        }
+
         [Fact]
         public async Task Test_TelemetryProcessor_AppInsights()
         {
@@ -33,6 +84,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             TelemetryClient client = new TelemetryClient(config);
             client.TrackException(oldEt);
             await client.FlushAsync(CancellationToken.None);
+        }
+
+        private class TestTelemetryProcessor : ITelemetryProcessor
+        {
+            private readonly List<ITelemetry> _items;
+
+            public TestTelemetryProcessor(List<ITelemetry> items)
+            {
+                _items = items;
+            }
+
+            public void Process(ITelemetry item)
+            {
+                _items.Add(item);
+            }
         }
 
         public class MyCustomTelemetryProcessor : ITelemetryProcessor
