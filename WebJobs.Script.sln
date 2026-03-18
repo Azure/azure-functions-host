@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.0.11222.15 d18.0
+VisualStudioVersion = 18.0.11222.15
 MinimumVisualStudioVersion = 15.0.0.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}"
 EndProject
@@ -69,7 +69,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetCustomHandler", "test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetIsolatedWithBundles", "test\Resources\TestProjects\DotNetIsolatedWithBundles\DotNetIsolatedWithBundles.csproj", "{1D031D10-9B04-544D-3FEE-45CB178F05A0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Tests.Abstractions", "test\WebJobs.Script.Abstractions\WebJobs.Script.Tests.Abstractions.csproj", "{12894F85-EC35-440F-8706-A62372C285F6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Abstractions.Tests", "test\WebJobs.Script.Abstractions\WebJobs.Script.Abstractions.Tests.csproj", "{12894F85-EC35-440F-8706-A62372C285F6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
