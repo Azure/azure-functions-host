@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Threading;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
@@ -25,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 
         public bool TrySetAll(IEnumerable<KeyValuePair<string, string>> capabilities)
         {
+            bool shouldNotify = false;
+
             lock (_updateLock)
             {
                 // Only allow the first worker to register capabilities as all workers tied to a JobHost instance should have the same capabilities.
@@ -41,12 +42,16 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
                     }
 
                     _isInitialized = true;
-                    TriggerChangeNotification();
-                    return true;
+                    shouldNotify = true;
                 }
-
-                return false;
             }
+
+            if (shouldNotify)
+            {
+                TriggerChangeNotification();
+            }
+
+            return shouldNotify;
         }
 
         public void Clear()
@@ -55,8 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             {
                 _capabilities.Clear();
                 _isInitialized = false;
-                TriggerChangeNotification();
             }
+
+            TriggerChangeNotification();
         }
 
         private void TriggerChangeNotification()
