@@ -55,6 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private static readonly string _standbyPath = Path.Combine(Path.GetTempPath(), "functions", "standby", "wwwroot");
         private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
+        private static readonly string _logPathConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.LogPath));
+        private static readonly string _testLogPath = Path.Combine(Path.GetTempPath(), "Functions", "SpecializationE2ETests");
 
         private static readonly string _dotnetIsolated60Path = Path.GetFullPath($@"..\..\DotNetIsolated60\{TestHelpers.BuildConfig}");
         private static readonly string _dotnetIsolatedUnsuppportedPath = Path.GetFullPath($@"..\..\DotNetIsolatedUnsupportedWorker\{TestHelpers.BuildConfig}");
@@ -123,7 +125,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     });
                 });
 
-            using var webHost = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var webHost = stoppable.Inner;
 
             await webHost.StartAsync();
 
@@ -174,8 +178,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var distinctOpIds = timerLogs.Select(p => p.Context.Operation.Id).Distinct();
             Assert.Equal(timerLogs.Count(), distinctOpIds.Count());
             Assert.Empty(timerLogs.Where(p => p.Context.Operation.Id == startupRequest.Context.Operation.Id));
-
-            await webHost.StopAsync();
         }
 
         [Fact]
@@ -183,7 +185,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var builder = CreateStandbyHostBuilder(_loggerProvider, "FunctionExecutionContext");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -237,8 +241,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 throw;
             }
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -248,7 +250,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var builder = CreateStandbyHostBuilder(_loggerProvider, "FunctionExecutionContext");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -289,8 +293,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(SingletonOptions));
             TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(ScaleOptions));
             TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(HttpOptions));
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -298,7 +300,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var builder = CreateStandbyHostBuilder(_loggerProvider, "FunctionExecutionContext");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -320,8 +324,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var specializedContext = FunctionAssemblyLoadContext.Shared;
 
             Assert.NotSame(placeholderContext, specializedContext);
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -341,7 +343,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
             });
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -398,8 +402,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var hotReloadProcessId = channel.WorkerProcess.Process.Id;
             Assert.NotEqual(hotReloadProcessId, newProcessId);
             Assert.Contains(newContent, responseContent);
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -419,7 +421,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
             });
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -444,8 +448,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             channel = await webChannelManager.GetChannels("node").Single().Value.Task;
             var newProcessId = channel.WorkerProcess.Process.Id;
             Assert.NotEqual(processId, newProcessId);
-
-            await host.StopAsync();
         }
 
 
@@ -466,7 +468,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     });
                 });
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -489,8 +493,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             channel = await webChannelManager.GetChannels("node").Single().Value.Task;
             var newProcessId = channel.WorkerProcess.Process.Id;
             Assert.Equal(processId, newProcessId);
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -510,7 +512,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
             });
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -542,8 +546,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertWorkerProcessStartupCount(2);
 
             AssertLanguageWorkerOptionsSetupCount(2);
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -568,7 +570,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Use an actual env var here as it will be refreshed in config after specialization
             using var envVars = new TestScopedEnvironmentVariable("languageWorkers:node:arguments", "--max-old-space-size=1272");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -584,8 +588,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertWorkerProcessStartupCount(1);
 
             AssertLanguageWorkerOptionsSetupCount(1);
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -593,7 +595,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var builder = CreateStandbyHostBuilder(_loggerProvider, "FunctionExecutionContext");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -612,8 +616,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response.EnsureSuccessStatusCode();
 
             Assert.True(GCSettings.LatencyMode != GCLatencyMode.NoGCRegion, "GCLatencyMode should *not* be NoGCRegion at the end of specialization");
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -625,7 +627,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     logging.AddFilter<TestLoggerProvider>(null, LogLevel.Debug);
                 });
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -660,8 +664,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, messages.Where(p => p == "GetSecretsEnabled").Count());
 
             Assert.Single(messages, "ResetSecretManager");
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -675,7 +677,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Task ignore = Task.Delay(3000).ContinueWith(_ => _pauseAfterStandbyHostBuild.Release());
 
             var expectedPowerShellVersion = "7.4";
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+            var host = stoppable.Inner;
 
             var scriptHostService = host.Services.GetService<WebJobsScriptHostService>();
             var channelFactory = host.Services.GetService<IRpcWorkerChannelFactory>();
@@ -711,7 +714,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, workerOptionsAtJobhostLevel.Value.WorkerConfigs.Count);
             var rpcChannelAfterSpecialization = (GrpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsAtJobhostLevel.Value.WorkerConfigs);
             Assert.Equal(expectedPowerShellVersion, rpcChannelAfterSpecialization.WorkerConfig.Description.DefaultRuntimeVersion);
-            await host.StopAsync();
         }
 
         /// <summary>
@@ -741,7 +743,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // This is required to force secrets to load.
                 _environment.SetEnvironmentVariable("WEBSITE_HOSTNAME", "test");
 
-                using var host = builder.Build();
+                await using var stoppable = new StoppableHost(builder.Build());
+
+                var host = stoppable.Inner;
 
                 await host.StartAsync();
 
@@ -762,8 +766,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     response = await client.GetAsync("api/functionexecutioncontext");
                     response.EnsureSuccessStatusCode();
                 }
-
-                await host.StopAsync();
             }
         }
 
@@ -798,7 +800,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // This is required to force secrets to load.
                 _environment.SetEnvironmentVariable("WEBSITE_HOSTNAME", "test");
 
-                using var host = builder.Build();
+                await using var stoppable = new StoppableHost(builder.Build());
+
+                var host = stoppable.Inner;
 
                 await host.StartAsync();
 
@@ -819,8 +823,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     response = await client.GetAsync("api/functionexecutioncontext");
                     response.EnsureSuccessStatusCode();
                 }
-
-                await host.StopAsync();
             }
         }
 
@@ -857,7 +859,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // This is required to force secrets to load.
                 _environment.SetEnvironmentVariable("WEBSITE_HOSTNAME", "test");
 
-                using var host = builder.Build();
+                await using var stoppable = new StoppableHost(builder.Build());
+
+                var host = stoppable.Inner;
 
                 await host.StartAsync();
 
@@ -874,8 +878,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // This request will force specialization.
                 response = await client.GetAsync("api/functionexecutioncontext");
                 response.EnsureSuccessStatusCode();
-
-                await host.StopAsync();
             }
         }
 
@@ -915,7 +917,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // This is required to force secrets to load.
                 _environment.SetEnvironmentVariable("WEBSITE_HOSTNAME", "test");
 
-                using var host = builder.Build();
+                await using var stoppable = new StoppableHost(builder.Build());
+
+                var host = stoppable.Inner;
 
                 await host.StartAsync();
 
@@ -947,8 +951,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     Assert.True(blobStorageProvider.TryCreateHostingBlobContainerClient(out var blobContainerClient));
                     Assert.Equal("test-sas-container", blobContainerClient.Name);
                 }
-
-                await host.StopAsync();
                 await containerClient.DeleteAsync();
             }
         }
@@ -973,7 +975,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetCustomHandlerPath, _loggerProvider, environmentVariables, "SimpleHttpTrigger");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1006,8 +1010,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Assert.DoesNotContain("MCP custom handler preview is enabled. Setting FUNCTIONS_WORKER_RUNTIME to 'custom'", log);
             }
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -1015,7 +1017,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestDataFunction");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1053,8 +1057,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // because placeholder app has bundles in host.json, it refreshes 2x before specializing.
             AssertLanguageWorkerOptionsSetupCount(3);
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -1062,7 +1064,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolatedWithBundlesPath, _loggerProvider, "HttpRequestFunction");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1103,8 +1107,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // This is not really a valid scenario, but we need to ensure it keeps working. Customers should not use
             // bundles with dotnet-isolated.
             AssertLanguageWorkerOptionsSetupCount(4);
-
-            await host.StopAsync();
         }
 
         [Theory]
@@ -1116,7 +1118,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestDataFunction");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1143,8 +1147,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response.EnsureSuccessStatusCode();
             response.Content.Headers.TryGetValues("Content-Encoding", out value);
             Assert.Equal(expectedContentEncodingResponseHeaderValue, value?.First());
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -1163,7 +1165,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(path, _loggerProvider);
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1187,8 +1191,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 int completed = _loggerProvider.GetAllLogMessages().Count(p => p.FormattedMessage.Contains("Could not find the .azurefunctions folder in the deployed artifacts of a .NET isolated function app."));
                 return completed > 0;
             });
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -1213,7 +1215,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 services.Configure<FunctionsHostingConfigOptions>(o => o.Features["WORKERS_AVAILABLE_FOR_DYNAMIC_RESOLUTION"] = "node");
             });
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1258,8 +1262,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             probingLog = logs.FirstOrDefault(p => p.Contains("Worker probing paths set to:"));
             Assert.True(probingLog.Any());
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -1318,7 +1320,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 c.AddInMemoryCollection(inMemorySettings);
             });
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1341,8 +1345,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var probingLog = logs.FirstOrDefault(p => p.Contains("Worker probing paths set to:"));
             Assert.True(probingLog.Length != 0);
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -1352,7 +1354,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // specialization
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestFunction");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1396,8 +1400,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains("UsePlaceholderDotNetIsolated: True", log);
             Assert.Contains("Placeholder runtime version: '6.0'. Site runtime version: '6.0'. Match: True", log);
             Assert.DoesNotContain("Shutting down placeholder worker.", log);
-
-            await host.StopAsync();
         }
 
         [Fact]
@@ -1496,7 +1498,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestDataFunction", "QueueFunction");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1555,7 +1559,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.NotEmpty(completedLogs.Where(p => p.Level == LogLevel.Information));
             Assert.Empty(completedLogs.Where(p => p.Level == LogLevel.Error));
-            await host.StopAsync();
         }
 
         [Fact]
@@ -1575,7 +1578,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestDataFunction", "QueueFunction");
             var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1609,8 +1614,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var userMessages = userLogger.GetAllLogMessages().Select(p => p.FormattedMessage);
             Assert.Contains("Console Out from worker on startup.", userMessages);
             Assert.DoesNotContain("Fake console out from placeholder", userMessages); // this log should be 'lost' and never written
-
-            await host.StopAsync();
         }
 
         private async Task DotNetIsolatedPlaceholderMiss(string scriptRootPath, Action additionalSpecializedSetup = null)
@@ -1620,7 +1623,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // remove WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, null);
 
-            using var host = builder.Build();
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
 
             await host.StartAsync();
 
@@ -1663,8 +1668,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.DoesNotContain(Process.GetProcesses(), p => p.ProcessName.Contains("FunctionsNetHost"));
                 Assert.Throws<InvalidOperationException>(() => placeholderChannel.WorkerProcess.Process.Id);
             }
-
-            await host.StopAsync();
         }
 
         private IHostBuilder InitializeDotNetIsolatedPlaceholderBuilder(string scriptRootPath, TestLoggerProvider testLoggerProvider, params string[] functions)
@@ -1712,7 +1715,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     c.AddInMemoryCollection(new Dictionary<string, string>
                     {
-                        { _scriptRootConfigPath, _specializedScriptRoot }
+                        { _scriptRootConfigPath, _specializedScriptRoot },
+                        { _logPathConfigPath, _testLogPath }
                     });
                 })
                 .ConfigureLogging(b =>
@@ -1830,6 +1834,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public Task<HttpResponseMessage> ConvertAsync(HttpRequestMessage input, CancellationToken cancellationToken)
             {
                 throw new NotImplementedException();
+            }
+        }
+
+        /// <summary>
+        /// Wraps an <see cref="IHost"/> to ensure <see cref="IHost.StopAsync"/> is called
+        /// before disposal, guaranteeing <see cref="FileMonitoringService.StopAsync"/> runs
+        /// and file watchers are unsubscribed even if a test assertion fails.
+        /// </summary>
+        private sealed class StoppableHost : IAsyncDisposable
+        {
+            public IHost Inner { get; }
+
+            public StoppableHost(IHost host) => Inner = host;
+
+            public IServiceProvider Services => Inner.Services;
+
+            public async ValueTask DisposeAsync()
+            {
+                try
+                {
+                    await Inner.StopAsync();
+                }
+                catch
+                {
+                }
+
+                Inner.Dispose();
             }
         }
     }
