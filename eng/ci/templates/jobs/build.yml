@@ -4,6 +4,9 @@ parameters:
   default: false
 - name: projects
   type: string
+- name: configuration
+  type: string
+  default: release
 - name: build_args
   type: string
   default: ''
@@ -25,7 +28,7 @@ jobs:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)
     outputs:
     - output: pipelineArtifact
-      displayName: Publish logs
+      displayName: Publish packages
       path: $(pack_dir)
       artifact: ${{ iif(eq(parameters.label, ''), 'drop_packages', format('drop_packages_{0}', parameters.label)) }}
 
@@ -45,13 +48,13 @@ jobs:
       inputs:
         command: build
         projects: ${{ parameters.projects }}
-        arguments: -c $(configuration) -v m --no-restore ${{ parameters.build_args }}
+        arguments: -c ${{ parameters.configuration }} -v m --no-restore ${{ parameters.build_args }}
 
     - task: DotNetCoreCLI@2
       displayName: Unit tests
       inputs:
         command: test
-        arguments: -c $(configuration) --no-build ${{ parameters.build_args }}
+        arguments: -c ${{ parameters.configuration }} --no-build ${{ parameters.build_args }}
         projects: ${{ parameters.projects }}
 
     - ${{ if eq(parameters.sign, true) }}:
@@ -59,7 +62,7 @@ jobs:
         parameters:
           displayName: Sign assemblies
           minimatch: true
-          signType: dll-strong-name
+          signType: dll
           folderPath: out/bin
           pattern: |
             **/Microsoft.Azure.WebJobs.*.dll
@@ -70,7 +73,7 @@ jobs:
       inputs:
         command: custom
         custom: pack
-        arguments: -c $(configuration) -v m -o $(pack_dir) --no-build ${{ parameters.build_args }}
+        arguments: -c ${{ parameters.configuration }} -v m -o $(pack_dir) --no-build ${{ parameters.build_args }}
         projects: ${{ parameters.projects }}
 
     - ${{ if eq(parameters.sign, true) }}:
