@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();
 
-            IEnumerable<IRpcWorkerChannel> workerChannels = await GetReadyChannelsAsync();
+            IEnumerable<IRpcWorkerChannel> workerChannels = await GetReadyChannelsAsync(invocationContext);
             var channel = _loadBalancer.GetLanguageWorkerChannel(workerChannels);
             string functionId = invocationContext.FunctionMetadata.GetFunctionId();
 
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             Logger.LogDebug("Waiting for {dispatcher} to shutdown", GetType().Name);
 
-            var channels = await GetReadyChannelsAsync();
+            var channels = await GetReadyChannelsAsync(invocationContext: null);
             var drainTasks = channels.Select(c => c.DrainInvocationsAsync()).ToList();
 
             if (drainTasks.Count > 0)
@@ -109,7 +109,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// Resolves the set of ready worker channels.
         /// Each subclass resolves channels from its own channel manager.
         /// </summary>
-        protected abstract Task<IEnumerable<IRpcWorkerChannel>> GetReadyChannelsAsync();
+        /// <param name="invocationContext">
+        /// The invocation context, used by subclasses that need per-function language routing.
+        /// May be <see langword="null"/> when called outside of invocation (e.g., during shutdown).
+        /// </param>
+        protected abstract Task<IEnumerable<IRpcWorkerChannel>> GetReadyChannelsAsync(ScriptInvocationContext invocationContext);
 
         /// <inheritdoc/>
         public abstract Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default);

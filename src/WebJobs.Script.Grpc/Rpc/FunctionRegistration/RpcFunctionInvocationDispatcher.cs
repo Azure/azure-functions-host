@@ -396,9 +396,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return workerStatuses;
         }
 
-        protected override async Task<IEnumerable<IRpcWorkerChannel>> GetReadyChannelsAsync()
+        protected override async Task<IEnumerable<IRpcWorkerChannel>> GetReadyChannelsAsync(ScriptInvocationContext invocationContext)
         {
-            return await GetInitializedWorkerChannelsAsync(_workerRuntime);
+            string language = invocationContext?.FunctionMetadata.Language ?? _workerRuntime;
+
+            return await GetInitializedWorkerChannelsAsync(language);
         }
 
         internal async Task<IEnumerable<IRpcWorkerChannel>> GetAllWorkerChannelsAsync(string language = null)

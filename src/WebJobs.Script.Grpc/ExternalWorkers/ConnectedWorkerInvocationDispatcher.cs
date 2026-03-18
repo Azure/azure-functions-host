@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         public override int ErrorEventsThreshold => int.MaxValue;
 
         /// <inheritdoc/>
-        protected override Task<IEnumerable<IRpcWorkerChannel>> GetReadyChannelsAsync()
+        protected override Task<IEnumerable<IRpcWorkerChannel>> GetReadyChannelsAsync(ScriptInvocationContext invocationContext)
         {
             IEnumerable<IRpcWorkerChannel> channels = _channelManager.GetChannels().Values
                 .Where(c => c.IsChannelReadyForInvocations());
