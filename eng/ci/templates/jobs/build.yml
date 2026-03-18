@@ -47,8 +47,6 @@ jobs:
         projects: ${{ parameters.projects }}
         arguments: -c $(configuration) -v m --no-restore ${{ parameters.build_args }}
 
-    - template: /eng/ci/templates/steps/start-emulators.yml@self
-
     - task: DotNetCoreCLI@2
       displayName: Unit tests
       inputs:
