@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         private readonly IOptionsChangeTokenSource<AppCapabilitiesOptions> _optionsChangeTokenSource;
         private readonly ConcurrentDictionary<string, string> _capabilities = new(StringComparer.OrdinalIgnoreCase);
         private readonly object _updateLock = new();
-        private int _isInitialized = 0;
+        private bool _isInitialized = false;
 
         public DefaultAppCapabilitiesStore(IOptionsChangeTokenSource<AppCapabilitiesOptions> optionsChangeTokenSource)
         {
@@ -28,11 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             lock (_updateLock)
             {
                 // Only allow the first worker to register capabilities as all workers tied to a JobHost instance should have the same capabilities.
-                if (Interlocked.CompareExchange(ref _isInitialized, 1, 0) == 0)
+                if (!_isInitialized)
                 {
                     foreach (var kvp in capabilities)
                     {
-                        if (kvp.Key is null || kvp.Value is null || kvp.Key == string.Empty || kvp.Value == string.Empty)
+                        if (string.IsNullOrEmpty(kvp.Key) || string.IsNullOrEmpty(kvp.Value))
                         {
                             continue;
                         }
@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
                         _capabilities[kvp.Key] = kvp.Value;
                     }
 
+                    _isInitialized = true;
                     TriggerChangeNotification();
                     return true;
                 }
@@ -53,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             lock (_updateLock)
             {
                 _capabilities.Clear();
-                Interlocked.Exchange(ref _isInitialized, 0);
+                _isInitialized = false;
                 TriggerChangeNotification();
             }
         }
