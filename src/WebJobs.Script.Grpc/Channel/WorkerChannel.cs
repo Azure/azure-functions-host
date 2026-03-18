@@ -15,6 +15,7 @@ using System.Threading.Tasks.Dataflow;
 using Google.Protobuf.Collections;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -33,6 +34,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
+using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 using ParameterBindingType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.ParameterBinding.RpcDataOneofCase;
@@ -61,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ChannelReader<InboundGrpcEvent> _inbound;
         private readonly string _workerInvocationSucccededMetric;
         private readonly string _workerInvocationFailedMetric;
+        private readonly IAppCapabilitiesStore _appCapabilitiesStore;
         private RpcWorkerChannelState _state;
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private GrpcCapabilities _workerCapabilities;
@@ -104,6 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IAppCapabilitiesStore appCapabilitesStore,
             IHttpProxyService httpProxyService)
         {
             _workerId = workerId;
@@ -122,6 +126,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _httpProxyService = httpProxyService;
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
+
+            _appCapabilitiesStore = appCapabilitesStore;
 
             if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
             {
@@ -523,6 +529,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             _state = _state | RpcWorkerChannelState.Initialized;
+
+            if (!_environment.IsLogicApp())
+            {
+                RegisterAppCapabilities(_initMessage.AppCapabilities);
+            }
 
             ApplyCapabilities(_initMessage.Capabilities);
 
@@ -1733,6 +1744,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }, attributes);
         }
 
+        private void RegisterAppCapabilities(MapField<string, string> appCapabilities)
+        {
+            if (appCapabilities is null || appCapabilities.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                _appCapabilitiesStore.TrySetAll(appCapabilities);
+            }
+            catch (Exception ex)
+            {
+                Logger.FailedToRegisterAppCapabilities(_workerChannelLogger, ex, _workerId);
+            }
+        }
+
         private sealed class ExecutingInvocation : IDisposable
         {
             public ExecutingInvocation(ScriptInvocationContext context, IInvocationMessageDispatcher dispatcher)
@@ -1834,9 +1862,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 new EventId(821, nameof(InvocationResponseReceived)),
                 "InvocationResponse received for invocation: '{invocationId}'");
 
-            internal static void ChannelReceivedMessage(ILogger logger, string workerId, MsgType msgType) => _channelReceivedMessage(logger, workerId, msgType, null);
+            private static readonly Action<ILogger, string, Exception> _failedToRegisterAppCapabilities = LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(823, nameof(FailedToRegisterAppCapabilities)),
+                "Failed to register app capabilities from worker '{workerId}'");
+
+            internal static void ChannelReceivedMessage(ILogger logger, string workerId, ContentOneofCase msgType) => _channelReceivedMessage(logger, workerId, msgType, null);
 
             internal static void InvocationResponseReceived(ILogger logger, string invocationId) => _invocationResponseReceived(logger, invocationId, null);
+
+            internal static void FailedToRegisterAppCapabilities(ILogger logger, Exception ex, string workerId) => _failedToRegisterAppCapabilities(logger, workerId, ex);
         }
     }
 }
