@@ -69,7 +69,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetCustomHandler", "test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotNetIsolatedWithBundles", "test\Resources\TestProjects\DotNetIsolatedWithBundles\DotNetIsolatedWithBundles.csproj", "{1D031D10-9B04-544D-3FEE-45CB178F05A0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Abstractions.Tests", "test\WebJobs.Script.Abstractions\WebJobs.Script.Abstractions.Tests.csproj", "{12894F85-EC35-440F-8706-A62372C285F6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Abstractions.Tests", "test\WebJobs.Script.Abstractions.Tests\WebJobs.Script.Abstractions.Tests.csproj", "{12894F85-EC35-440F-8706-A62372C285F6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
