@@ -1,0 +1,73 @@
+parameters:
+- name: projects
+  type: string
+- name: folder
+  type: string
+- name: public
+  type: boolean
+  default: false
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+
+extends:
+  template: v1/1ES.Official.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc
+      image: 1es-windows-2022
+      os: windows
+
+    stages:
+    - stage: Validate
+      jobs:
+      - job: Validate
+        templateContext:
+          type: validationJob
+
+        steps:
+        - pwsh: |
+            $source = "$(Build.SourceBranch)"
+            if (!($source -like "refs/tags/*-v*" || $source -like "refs/tags/v*" || $source -like "refs/heads/release/*" || $source -like "refs/heads/internal/release/*"))
+            {
+              Write-Host "##vso[task.logissue type=error]Invalid release branch. Branch must be a tag (v* or *-v*) or a release branch (release/*, internal/release/*)."
+              exit 1
+            }
+          displayName: Validate Source Branch
+
+    - stage: Build
+      dependsOn: Validate
+      variables:
+      - template: /ci/variables/cfs.yml@eng
+
+      jobs:
+      - template: /eng/ci/templates/jobs/build.yml@self
+        parameters:
+          sign: true
+          projects: ${{ parameters.projects }}
+          build_args: -p:IsReleaseCI=true
+
+    - stage: Release
+      dependsOn: Build
+      jobs:
+      - template: /ci/release-nuget-package.yml@eng
+        parameters:
+          isProduction: true
+          approvers: '[internal]\Azure Functions Core'
+          artifact: drop_packages
+          stagingFeed: public/pre-release
+          packages: |
+            **/*.nupkg
+            !**/*.symbols.nupkg
+          ${{ if eq(parameters.public, true) }}:
+            partnerDrop:
+              serviceConnection: azure-sdk-partner-drops
+              targetFolder: azure-functions/dotnet/${{ parameters.folder }}/$(Build.BuildNumber)

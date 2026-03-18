@@ -1,0 +1,13 @@
+parameters:
+- name: public
+  displayName: Publish to nuget.org?
+  type: boolean
+  default: false
+
+extends:
+  template: /eng/ci/templates/pipelines/release.yml@self
+  parameters:
+    public: ${{ parameters.public }}
+    folder: azure-webjobs-script-abstractions
+    projects: |
+      $(Build.SourcesDirectory)/src/WebJobs.Script.Abstractions/WebJobs.Script.Abstractions.csproj
