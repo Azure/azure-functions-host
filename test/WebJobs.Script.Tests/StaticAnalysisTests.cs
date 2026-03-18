@@ -28,8 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // following is the set of GET APIs that don't return secrets
             var safeReaderApis = new string[]
             {
-                "AppCapabilitiesController.Get",
-                "AppCapabilitiesController.GetCapabilities",
                 "ExtensionBundleController.GetBindings",
                 "ExtensionBundleController.GetResources",
                 "ExtensionBundleController.GetResourcesLocale",

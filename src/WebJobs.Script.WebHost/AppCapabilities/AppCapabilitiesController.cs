@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/capabilities")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [RequiresRunningHost]
+        [ResourceContainsSecrets]
         public IActionResult GetCapabilities()
         {
             IDictionary<string, string> capabilities = _capabilitiesOptions.CurrentValue;
@@ -44,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Route("admin/capabilities/{name}")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         [RequiresRunningHost]
+        [ResourceContainsSecrets]
         public IActionResult Get(string name)
         {
             IDictionary<string, string> capabilities = _capabilitiesOptions.CurrentValue;
