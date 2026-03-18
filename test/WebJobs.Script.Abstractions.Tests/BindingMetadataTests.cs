@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests
+namespace Microsoft.Azure.WebJobs.Script.Abstractions.Tests
 {
     public class BindingMetadataTests
     {

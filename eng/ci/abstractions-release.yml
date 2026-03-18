@@ -14,3 +14,4 @@ extends:
     folder: azure-webjobs-script-abstractions
     projects: |
       $(Build.SourcesDirectory)/src/WebJobs.Script.Abstractions/WebJobs.Script.Abstractions.csproj
+      $(Build.SourcesDirectory)/test/WebJobs.Script.Abstractions.Tests/WebJobs.Script.Abstractions.Tests.csproj
