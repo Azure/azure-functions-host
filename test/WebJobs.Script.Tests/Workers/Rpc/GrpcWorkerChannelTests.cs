@@ -423,7 +423,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
 
             // Verify SetAll was called with the correct capabilities
-            _mockAppCapabilitiesStore.Verify(x => x.TrySetAll(It.IsAny<IDictionary<string, string>>()), Times.Once);
+            _mockAppCapabilitiesStore.Verify(x => x.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()), Times.Once);
 
             Assert.NotNull(capturedCapabilities);
             Assert.Equal(3, capturedCapabilities.Count);
@@ -464,7 +464,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // Setup the mock to throw an exception
             _mockAppCapabilitiesStore
-                .Setup(x => x.TrySetAll(It.IsAny<IDictionary<string, string>>()))
+                .Setup(x => x.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
                 .Throws(new InvalidOperationException("Test exception"));
 
             // Send StartStream and configure to respond with appCapabilities
@@ -476,7 +476,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await Task.Delay(500);
 
             // Verify SetAll was called
-            _mockAppCapabilitiesStore.Verify(x => x.TrySetAll(It.IsAny<IDictionary<string, string>>()), Times.Once);
+            _mockAppCapabilitiesStore.Verify(x => x.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()), Times.Once);
 
             // Verify warning was logged
             var traces = _logger.GetLogMessages();

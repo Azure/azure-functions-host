@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-            IAppCapabilitiesStore appCapabilitesStore,
+            IAppCapabilitiesStore appCapabilitiesStore,
             IHttpProxyService httpProxyService)
         {
             _workerId = workerId;
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _httpProxyService = httpProxyService;
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
-            _appCapabilitiesStore = appCapabilitesStore;
+            _appCapabilitiesStore = appCapabilitiesStore;
 
             if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
             {
