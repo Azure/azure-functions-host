@@ -21,8 +21,6 @@ resources:
 variables:
 - template: /eng/ci/templates/variables/build.yml@self
 - template: /ci/variables/cfs.yml@eng
-- name: configuration
-  value: release
 
 extends:
   template: v1/1ES.Official.PipelineTemplate.yml@1es
