@@ -18,6 +18,12 @@ resources:
     name: engineering
     ref: refs/tags/release
 
+variables:
+- template: /eng/ci/templates/variables/build.yml@self
+- template: /ci/variables/cfs.yml@eng
+- name: configuration
+  value: release
+
 extends:
   template: v1/1ES.Official.PipelineTemplate.yml@1es
   parameters:
@@ -45,8 +51,6 @@ extends:
 
     - stage: Build
       dependsOn: Validate
-      variables:
-      - template: /ci/variables/cfs.yml@eng
 
       jobs:
       - template: /eng/ci/templates/jobs/build.yml@self

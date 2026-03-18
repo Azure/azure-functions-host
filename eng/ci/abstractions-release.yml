@@ -4,6 +4,9 @@ parameters:
   type: boolean
   default: false
 
+trigger: none
+pr: none
+
 extends:
   template: /eng/ci/templates/official/pipelines/release.yml@self
   parameters:
