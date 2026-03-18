@@ -30,7 +30,7 @@ jobs:
       artifact: ${{ iif(eq(parameters.label, ''), 'drop_packages', format('drop_packages_{0}', parameters.label)) }}
 
   steps:
-    - template: /eng/ci/templates/steps/install-dotnet.yml@self
+    - template: /eng/ci/templates/install-dotnet.yml@self
 
     - task: DotNetCoreCLI@2
       displayName: Restore
