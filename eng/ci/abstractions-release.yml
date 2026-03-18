@@ -5,7 +5,7 @@ parameters:
   default: false
 
 extends:
-  template: /eng/ci/templates/pipelines/release.yml@self
+  template: /eng/ci/templates/official/pipelines/release.yml@self
   parameters:
     public: ${{ parameters.public }}
     folder: azure-webjobs-script-abstractions
