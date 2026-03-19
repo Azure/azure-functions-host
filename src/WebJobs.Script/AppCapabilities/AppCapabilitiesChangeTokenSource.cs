@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities;
 /// Call <see cref="TriggerChange"/> to signal that capabilities have been updated
 /// and options should be re-evaluated.
 /// </summary>
-public sealed class AppCapabilitiesChangeTokenSource : IOptionsChangeTokenSource<AppCapabilitiesOptions>, IDisposable
+internal sealed class AppCapabilitiesChangeTokenSource : IOptionsChangeTokenSource<AppCapabilitiesOptions>, IDisposable
 {
     private CancellationTokenSource? _cts = new();
 

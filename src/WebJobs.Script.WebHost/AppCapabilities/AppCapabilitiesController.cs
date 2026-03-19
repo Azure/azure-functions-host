@@ -1,17 +1,18 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
+#nullable enable
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
@@ -36,9 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public IActionResult GetCapabilities()
         {
             IDictionary<string, string> capabilities = _capabilitiesOptions.CurrentValue;
-            var responseData = ValidateAndTrimResponse(capabilities);
+            var validationResult = ValidateResponseSize(capabilities);
 
-            return Ok(responseData);
+            if (!validationResult.IsValid)
+            {
+                return StatusCode(StatusCodes.Status413PayloadTooLarge, new { error = validationResult.ErrorMessage });
+            }
+
+            return Ok(capabilities);
         }
 
         [HttpGet]
@@ -59,38 +65,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return NotFound();
         }
 
-        private IDictionary<string, string> ValidateAndTrimResponse(IDictionary<string, string> capabilities)
+        private (bool IsValid, string? ErrorMessage) ValidateResponseSize(IDictionary<string, string> capabilities)
         {
             var serializedResponse = JsonSerializer.Serialize(capabilities);
             var responseSize = System.Text.Encoding.UTF8.GetByteCount(serializedResponse);
 
             if (responseSize <= MaxResponseSizeBytes)
             {
-                return capabilities;
+                return (true, null);
             }
 
-            _logger.LogWarning("Capabilities response size ({ResponseSize} bytes) exceeds maximum allowed size ({MaxSize} bytes). Trimming response.", responseSize, MaxResponseSizeBytes);
+            var errorMessage = $"Capabilities response size ({responseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).";
+            _logger.LogError(errorMessage);
 
-            // Trim the response by removing capabilities until it fits
-            var trimmedCapabilities = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var currentSize = 0;
-
-            foreach (var capability in capabilities.OrderBy(c => c.Key))
-            {
-                var kvpSize = System.Text.Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(new KeyValuePair<string, string>(capability.Key, capability.Value)));
-
-                if (currentSize + kvpSize > MaxResponseSizeBytes)
-                {
-                    break;
-                }
-
-                trimmedCapabilities[capability.Key] = capability.Value;
-                currentSize += kvpSize;
-            }
-
-            _logger.LogWarning("Response trimmed from {OriginalCount} to {TrimmedCount} capabilities.", capabilities.Count, trimmedCapabilities.Count);
-
-            return trimmedCapabilities;
+            return (false, errorMessage);
         }
 
         private string ValidateAndTrimValue(string name, string value)

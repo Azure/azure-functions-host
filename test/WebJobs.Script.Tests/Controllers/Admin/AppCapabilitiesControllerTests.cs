@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         }
 
         [Fact]
-        public void GetCapabilities_DoesNotTrim_WhenResponseSizeUnderLimit()
+        public void GetCapabilities_ReturnsOk_WhenResponseSizeUnderLimit()
         {
             var options = new AppCapabilitiesOptions();
             IDictionary<string, string> dict = (IDictionary<string, string>)options;
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             _mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Warning,
+                    It.IsAny<LogLevel>(),
                     It.IsAny<EventId>(),
                     It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         }
 
         [Fact]
-        public void GetCapabilities_TrimsResponse_WhenResponseSizeExceedsLimit()
+        public void GetCapabilities_Returns413_WhenResponseSizeExceedsLimit()
         {
             var options = new AppCapabilitiesOptions();
             IDictionary<string, string> dict = (IDictionary<string, string>)options;
@@ -110,27 +110,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var result = _controller.GetCapabilities();
 
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var capabilities = (IDictionary<string, string>)okResult.Value;
+            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status413PayloadTooLarge, statusCodeResult.StatusCode);
 
-            Assert.True(capabilities.Count < 3);
-
-            var serialized = JsonSerializer.Serialize(capabilities);
-            var responseSize = Encoding.UTF8.GetByteCount(serialized);
-            Assert.True(responseSize <= ScriptConstants.MaxTriggersStringLength);
-
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("exceeds maximum allowed size")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
-                Times.AtLeastOnce);
+            dynamic errorResponse = statusCodeResult.Value;
+            Assert.NotNull(errorResponse.error);
+            Assert.Contains("exceeds maximum allowed size", (string)errorResponse.error);
         }
 
         [Fact]
-        public void GetCapabilities_LogsWarning_WhenTrimmingOccurs()
+        public void GetCapabilities_LogsError_WhenResponseExceedsLimit()
         {
             var options = new AppCapabilitiesOptions();
             IDictionary<string, string> dict = (IDictionary<string, string>)options;
@@ -144,36 +133,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             _mockLogger.Verify(
                 x => x.Log(
-                    LogLevel.Warning,
+                    LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Response trimmed from")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("exceeds maximum allowed size")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
-        }
-
-        [Fact]
-        public void GetCapabilities_TrimsInAlphabeticalOrder()
-        {
-            var options = new AppCapabilitiesOptions();
-            IDictionary<string, string> dict = (IDictionary<string, string>)options;
-
-            var largeValue = new string('z', ScriptConstants.MaxTriggersStringLength / 3);
-            dict.Add("zCapability", largeValue);
-            dict.Add("aCapability", largeValue);
-            dict.Add("mCapability", largeValue);
-
-            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(options);
-
-            var result = _controller.GetCapabilities();
-
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var capabilities = (IDictionary<string, string>)okResult.Value;
-
-            if (capabilities.Count < 3)
-            {
-                Assert.True(capabilities.ContainsKey("aCapability"));
-            }
         }
 
         [Theory]

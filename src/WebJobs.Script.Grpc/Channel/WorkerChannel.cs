@@ -1864,7 +1864,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             private static readonly Action<ILogger, string, Exception> _failedToRegisterAppCapabilities = LoggerMessage.Define<string>(
                 LogLevel.Warning,
-                new EventId(823, nameof(FailedToRegisterAppCapabilities)),
+                new EventId(822, nameof(FailedToRegisterAppCapabilities)),
                 "Failed to register app capabilities from worker '{workerId}'");
 
             internal static void ChannelReceivedMessage(ILogger logger, string workerId, ContentOneofCase msgType) => _channelReceivedMessage(logger, workerId, msgType, null);

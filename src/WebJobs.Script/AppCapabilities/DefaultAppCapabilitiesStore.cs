@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
-    public sealed class DefaultAppCapabilitiesStore : IAppCapabilitiesStore
+    internal sealed class DefaultAppCapabilitiesStore : IAppCapabilitiesStore
     {
         private readonly IOptionsChangeTokenSource<AppCapabilitiesOptions> _optionsChangeTokenSource;
         private readonly ConcurrentDictionary<string, string> _capabilities = new(StringComparer.OrdinalIgnoreCase);
