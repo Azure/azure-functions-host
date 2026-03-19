@@ -244,7 +244,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Wire up StopApplication calls as they behave in hosted scenarios
             var lifetime = WebHostServices.GetService<IHostApplicationLifetime>();
-            lifetime.ApplicationStopping.Register(async () => await _webHost.StopAsync());
+            lifetime.ApplicationStopping.Register(async () =>
+            {
+                try
+                {
+                    await _webHost.StopAsync();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Host may already be disposed during test cleanup.
+                }
+            });
 
             StartAsync().GetAwaiter().GetResult();
 
@@ -493,7 +503,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (!_isDisposed)
             {
                 HttpClient.Dispose();
-                
+
+                try
+                {
+                    _webHost.StopAsync().GetAwaiter().GetResult();
+                }
+                catch
+                {
+                }
+
+                try
+                {
+                    _webHost.Dispose();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Host may have been disposed directly by a test.
+                }
+
                 _stillRunningTimer?.Change(-1, -1);
                 _stillRunningTimer?.Dispose();
 
