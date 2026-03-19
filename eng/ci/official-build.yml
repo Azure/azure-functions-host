@@ -6,7 +6,6 @@ trigger:
     - in-proc
     - release/*
     - internal/release/*
-    - feature/*
 
 schedules:
 # Ensure we build nightly to catch any new CVEs and report SDL often.
