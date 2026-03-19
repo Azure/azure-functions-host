@@ -6,6 +6,7 @@ pr:
     - dev
     - in-proc
     - release/*
+    - feature/*
 
 resources:
   repositories:
