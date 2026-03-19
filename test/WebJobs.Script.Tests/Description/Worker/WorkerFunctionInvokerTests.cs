@@ -14,19 +14,18 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class WorkerFunctionInvokerTests
     {
         private readonly TestWorkerFunctionInvoker _testFunctionInvoker;
-        private readonly Mock<IApplicationLifetime> _applicationLifetime;
+        private readonly Mock<IHostApplicationLifetime> _applicationLifetime;
         private readonly Mock<IFunctionInvocationDispatcher> _mockFunctionInvocationDispatcher;
 
         public WorkerFunctionInvokerTests()
         {
-            _applicationLifetime = new Mock<IApplicationLifetime>();
+            _applicationLifetime = new Mock<IHostApplicationLifetime>();
             _mockFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
             _mockFunctionInvocationDispatcher.Setup(a => a.ErrorEventsThreshold).Returns(0);
 

@@ -1,10 +1,11 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -25,10 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <param name="bindingProviders">List of <see cref="IScriptBindingProvider"/> instances.</param>
         /// <param name="dispatcher"><see cref="IFunctionInvocationDispatcher"/> instance.</param>
         /// <param name="loggerFactory"><see cref="ILoggerFactory"/> instance.</param>
-        /// <param name="applicationLifetime"><see cref="IApplicationLifetime"/> instance.</param>
+        /// <param name="applicationLifetime"><see cref="IHostApplicationLifetime"/> instance.</param>
         /// <param name="workerInitializationTimeout">Worker initialization timeout.</param>
         public MultiLanguageFunctionDescriptorProvider(ScriptHost host, IList<RpcWorkerConfig> workerConfig, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
+            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IHostApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
             : base(host, config, bindingProviders, dispatcher, loggerFactory, applicationLifetime, workerInitializationTimeout)
         {
             _workerConfig = workerConfig ?? throw new ArgumentNullException(nameof(workerConfig));

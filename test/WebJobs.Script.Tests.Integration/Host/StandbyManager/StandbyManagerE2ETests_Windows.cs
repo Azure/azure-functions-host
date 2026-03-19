@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -76,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(environment.IsContainerReady());
 
             // wait for shutdown to be triggered
-            var applicationLifetime = host.Services.GetServices<Microsoft.AspNetCore.Hosting.IApplicationLifetime>().Single();
+            var applicationLifetime = host.Services.GetServices<IHostApplicationLifetime>().Single();
             await TestHelpers.RunWithTimeoutAsync(() => applicationLifetime.ApplicationStopping.WaitHandle.WaitOneAsync(), TimeSpan.FromSeconds(30));
 
             // ensure the host was specialized and the expected error was logged

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license Informationrmation.
 
 using System;
@@ -24,7 +24,6 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
@@ -34,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly string TestLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
 
         private readonly WebJobsScriptHostService _scriptHostService;
-        private readonly Mock<IApplicationLifetime> _mockApplicationLifetime;
+        private readonly Mock<IHostApplicationLifetime> _mockApplicationLifetime;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly TestFunctionHost _testHost;
         private readonly Collection<string> _exceededCounters = new Collection<string>();
@@ -53,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             };
             var wrappedHealthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(_healthMonitorOptions);
 
-            _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Loose);
+            _mockApplicationLifetime = new Mock<IHostApplicationLifetime>(MockBehavior.Loose);
             _mockApplicationLifetime.Setup(p => p.StopApplication())
                .Callback(() =>
                {
@@ -84,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 configureWebHostServices: services =>
                 {
                     services.AddSingleton<IOptions<HostHealthMonitorOptions>>(wrappedHealthMonitorOptions);
-                    services.AddSingleton<IApplicationLifetime>(_mockApplicationLifetime.Object);
+                    services.AddSingleton<IHostApplicationLifetime>(_mockApplicationLifetime.Object);
                     services.AddSingleton<IEnvironment>(_mockEnvironment.Object);
                     services.AddSingleton<HostPerformanceManager>(mockHostPerformanceManager.Object);
 
