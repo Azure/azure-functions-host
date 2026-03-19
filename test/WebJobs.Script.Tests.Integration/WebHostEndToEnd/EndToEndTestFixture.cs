@@ -332,9 +332,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             }
 
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, string.Empty);
-            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, string.Empty);
-            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, string.Empty);
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, null);
+            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, null);
             await _azurite.DisposeAsync();
         }
 
