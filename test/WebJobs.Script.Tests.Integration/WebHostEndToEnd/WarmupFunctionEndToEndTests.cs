@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -12,11 +12,13 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -104,7 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
                 };
 
-                var provider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), SystemEnvironment.Instance);
+                var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+                _ = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), mockWorkerRuntimeResolver.Object);
 
                 var builder = AspNetCore.WebHost.CreateDefaultBuilder()
                    .UseStartup<Startup>()

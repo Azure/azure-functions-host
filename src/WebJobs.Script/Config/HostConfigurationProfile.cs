@@ -15,10 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         // This ensures tests will fail if these values are changed without updating the test also.
         private const string DefaultProfile = "default";
 
-        private const string McpCustomHandlerProfile = "mcp-custom-handler";
-
-        private const string WebAppCustomHandlerProfile = "web-app-custom-handler";
-
         // Make sure to update this as new profiles are added.
         private const string SupportedValues = $"'', '{DefaultProfile}', '{McpCustomHandlerProfile}', '{WebAppCustomHandlerProfile}'";
 
@@ -26,8 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             [ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, ScriptConstants.EnableProxyingHttpRequest)] = "true",
             [ConfigurationPath.Combine(ConfigurationSectionNames.Http, "routePrefix")] = string.Empty,
-            [ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, "http", "routes", "0", "route")] = "{*route}"
+            [ConfigurationPath.Combine(ConfigurationSectionNames.CustomHandler, "http", "routes", "0", "route")] = "{*route}",
+            [nameof(ScriptJobHostOptions.ProfileWorkerRuntime)] = Workers.Rpc.RpcWorkerConstants.CustomHandlerLanguageWorkerName,
         };
+
+        internal const string McpCustomHandlerProfile = "mcp-custom-handler";
+
+        internal const string WebAppCustomHandlerProfile = "web-app-custom-handler";
 
         public static readonly HostConfigurationProfile Default = new(DefaultProfile, []);
 

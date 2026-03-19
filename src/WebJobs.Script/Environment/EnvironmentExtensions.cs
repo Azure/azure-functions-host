@@ -659,23 +659,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static string GetFunctionsWorkerRuntime(this IEnvironment environment)
-        {
-            return environment.GetEnvironmentVariableOrDefault(FunctionWorkerRuntime, string.Empty);
-        }
-
         public static string GetFunctionsSiteUpdateId(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariableOrDefault(FunctionsSiteUpdateId, string.Empty);
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether AzureFileShare should be mounted when specializing Linux Consumption workers.
-        /// </summary>
-        public static bool SupportsAzureFileShareMount(this IEnvironment environment)
-        {
-            return string.Equals(environment.GetFunctionsWorkerRuntime(), RpcWorkerConstants.PowerShellLanguageWorkerName,
-                StringComparison.OrdinalIgnoreCase);
         }
 
         public static string GetHttpLeaderEndpoint(this IEnvironment environment)

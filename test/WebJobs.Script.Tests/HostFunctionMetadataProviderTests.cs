@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -9,6 +9,7 @@ using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -33,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ReadFunctionMetadata_Succeeds()
         {
+            var workerRuntimeMock = new Mock<IWorkerRuntimeResolver>();
             var testLoggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(testLoggerProvider);
@@ -40,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "node");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, logger, _testMetricsLogger, SystemEnvironment.Instance);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, logger, _testMetricsLogger, workerRuntimeMock.Object);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
             Assert.Equal(18, metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result.Length);
@@ -56,10 +58,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ReadFunctionMetadata_For_WorkerIndexingFormatApp_Fails()
         {
+            var workerRuntimeMock = new Mock<IWorkerRuntimeResolver>();
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "PythonWorkerIndexing");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, SystemEnvironment.Instance);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, workerRuntimeMock.Object);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
             Assert.Equal(0, metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result.Length);
         }
@@ -67,10 +70,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ReadFunctionMetadata_With_Retry_Succeeds()
         {
+            var workerRuntimeMock = new Mock<IWorkerRuntimeResolver>();
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample", "noderetry");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, SystemEnvironment.Instance);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, workerRuntimeMock.Object);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
             var functionMetadatas = metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result;
 

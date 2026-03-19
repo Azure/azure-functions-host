@@ -25,13 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
         private readonly IFileSystem _fileSystem;
         private readonly IOptions<FunctionsHostingConfigOptions> _functionsHostingConfigOptions;
         private readonly ILogger _logger;
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
 
         public WorkerConfigurationResolverOptionsSetup(ILoggerFactory loggerFactory,
                                                         IConfiguration configuration,
                                                         IEnvironment environment,
                                                         IFileSystem fileSystem,
                                                         IScriptHostManager scriptHostManager,
-                                                        IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions)
+                                                        IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions,
+                                                        IWorkerRuntimeResolver workerRuntimeResolver)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);
@@ -41,13 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _functionsHostingConfigOptions = functionsHostingConfigOptions ?? throw new ArgumentNullException(nameof(functionsHostingConfigOptions));
             ArgumentNullException.ThrowIfNull(_functionsHostingConfigOptions.Value);
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
         }
 
         public void Configure(WorkerConfigurationResolverOptions options)
         {
             var configuration = GetRequiredConfiguration();
             options.WorkersRootDirPath = GetWorkersRootDirPath(configuration);
-            options.WorkerRuntime = _environment.GetFunctionsWorkerRuntime();
+            options.WorkerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
             options.WorkersAvailableForResolution = GetWorkersAvailableForResolution();
             options.IsPlaceholderModeEnabled = _environment.IsPlaceholderModeEnabled();
             options.IsMultiLanguageWorkerEnvironment = _environment.IsMultiLanguageRuntimeEnvironment();

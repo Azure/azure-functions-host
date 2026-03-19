@@ -19,13 +19,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
-
         private readonly string _workerRuntime;
         private readonly int _rpcServerShutdownTimeoutInMilliseconds;
         private HashSet<string> _placeholderLanguageWorkersList = new HashSet<string>();
 
-        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer,
-            IWebHostRpcWorkerChannelManager rpcWorkerChannelManager, ILogger<RpcInitializationService> logger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
+        public RpcInitializationService(
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+            IEnvironment environment,
+            IRpcServer rpcServer,
+            IWebHostRpcWorkerChannelManager rpcWorkerChannelManager,
+            ILogger<RpcInitializationService> logger,
+            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
+            IWorkerRuntimeResolver workerRuntimeResolver)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _logger = logger;
@@ -33,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment;
             _rpcServerShutdownTimeoutInMilliseconds = 5000;
             _webHostRpcWorkerChannelManager = rpcWorkerChannelManager ?? throw new ArgumentNullException(nameof(rpcWorkerChannelManager));
-            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _workerRuntime = (workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver))).GetWorkerRuntime();
             _placeholderLanguageWorkersList = _environment.GetLanguageWorkerListToStartInPlaceholder();
             _languageWorkerOptions = languageWorkerOptions;
         }

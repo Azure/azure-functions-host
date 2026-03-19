@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,12 +30,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
+
             _workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(
                 mockScriptOptions.Object,
                 mockLogger.Object,
                 mockEnvironment.Object,
                 mockChannelManager.Object,
-                mockScriptHostManager.Object);
+                mockScriptHostManager.Object,
+                mockRuntimeResolver.Object);
         }
 
         [Fact]
@@ -194,10 +199,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             TestEnvironment environment = new();
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
 
             var workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(
-                optionsMonitor, logger, environment, mockWebHostRpcWorkerChannelManager.Object, mockScriptHostManager.Object);
+                optionsMonitor, logger, environment, mockWebHostRpcWorkerChannelManager.Object, mockScriptHostManager.Object, mockRuntimeResolver.Object);
             await workerFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, false);
 
             var traces = logger.GetLogMessages();
@@ -237,7 +243,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockOptionsMonitor.Setup(m => m.CurrentValue).Returns(scriptOptions);
 
             var testEnvironment = new TestEnvironment();
-            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "node");
 
             var mockRpcWorkerChannel = new Mock<IRpcWorkerChannel>(MockBehavior.Strict);
             var rawFunctionMetadataList = new List<RawFunctionMetadata>
@@ -260,12 +265,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             mockChannelManager.Setup(m => m.GetChannels("node")).Returns(channels);
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
+
             var provider = new WorkerFunctionMetadataProvider(
                 mockOptionsMonitor.Object,
                 NullLogger<WorkerFunctionMetadataProvider>.Instance,
                 testEnvironment,
                 mockChannelManager.Object,
-                mockScriptHostManager.Object);
+                mockScriptHostManager.Object,
+                mockRuntimeResolver.Object);
 
             var workerConfigs = new List<RpcWorkerConfig>();
 

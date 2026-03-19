@@ -28,6 +28,7 @@ using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -67,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _originalFunctionsWorkerRuntime;
         private readonly string _originalFunctionsWorkerRuntimeVersion;
         private readonly IAppCapabilitiesStore _appCapabilitiesStore;
-
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         // we're only using this dictionary's keys so it acts as a "ConcurrentHashSet"
         private readonly ConcurrentDictionary<ScriptHostStartupOperation, byte> _activeStartupOperations = new();
 
@@ -84,10 +85,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private int _applicationStopping;
         private int _applicationStopped;
 
-        public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory,
-            IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
-            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
-            IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager, IHostMetrics hostMetrics,
+        public WebJobsScriptHostService(
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+            IScriptHostBuilder scriptHostBuilder,
+            ILoggerFactory loggerFactory,
+            IScriptWebHostEnvironment scriptWebHostEnvironment,
+            IEnvironment environment,
+            HostPerformanceManager hostPerformanceManager,
+            IOptions<HostHealthMonitorOptions> healthMonitorOptions,
+            IMetricsLogger metricsLogger,
+            IApplicationLifetime applicationLifetime,
+            IConfiguration config,
+            IScriptEventManager eventManager,
+            IHostMetrics hostMetrics,
+            IWorkerRuntimeResolver workerRuntimeResolver,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             WorkerConfigCacheInvalidator workerConfigCacheInvalidator,
             IAppCapabilitiesStore appCapabilitiesStore)
@@ -126,9 +137,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _hostingConfigOptions = hostingConfigOptions;
 
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
             // we'll use this to emit telemetry on if and how this process has been specialized
             _originalStandbyModeValue = _scriptWebHostEnvironment.InStandbyMode;
-            _originalFunctionsWorkerRuntime = _environment.GetFunctionsWorkerRuntime();
+            // Read directly from environment rather than through _workerRuntimeResolver to avoid
+            // a circular dependency: this constructor → resolver.GetWorkerRuntime() →
+            // IScriptHostManager → WebJobsScriptHostService (this class).
+            _originalFunctionsWorkerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) ?? string.Empty;
             _originalFunctionsWorkerRuntimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
         }
 

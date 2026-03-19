@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             HostConfigurationProfile profile = HostConfigurationProfile.Get(name);
             Dictionary<string, string> configDict = new(profile.Configuration);
             profile.Name.Should().Be(expectedProfileName);
-            configDict.Should().HaveCount(4);
+            configDict.Should().HaveCount(5);
             configDict.Should().ContainKey("configurationProfile")
                 .WhoseValue.Should().Be(expectedProfileName);
             configDict.Should().ContainKey("customHandler:enableProxyingHttpRequest")
@@ -47,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .WhoseValue.Should().Be(string.Empty);
             configDict.Should().ContainKey("customHandler:http:routes:0:route")
                 .WhoseValue.Should().Be("{*route}");
+            configDict.Should().ContainKey("ProfileWorkerRuntime")
+                .WhoseValue.Should().Be("custom");
         }
 
         [Fact]

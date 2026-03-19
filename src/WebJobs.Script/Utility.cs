@@ -654,6 +654,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        /// <summary>
+        /// Gets a value indicating whether AzureFileShare should be mounted when specializing Linux Consumption workers.
+        /// </summary>
+        public static bool IsAzureFileShareMountSupported(string workerRuntime)
+        {
+            return string.Equals(workerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
         internal static bool IsSingleLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {
             if (functions == null)

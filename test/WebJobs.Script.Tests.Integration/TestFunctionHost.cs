@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
@@ -511,6 +512,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
 
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
             var mockOptions = new Mock<IOptionsMonitor<LanguageWorkerOptions>>();
             mockOptions.Setup(o => o.CurrentValue).Returns(workerOptions);
             mockOptions.Setup(o => o.OnChange(It.IsAny<Action<LanguageWorkerOptions, string>>())).Returns(Mock.Of<IDisposable>());
@@ -519,7 +521,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var managerServiceProvider = manager as IServiceProvider;
 
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), SystemEnvironment.Instance);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), mockWorkerRuntimeResolver.Object);
             var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
             var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), defaultProvider, manager, factory, environment, mockOptions.Object, metadataOptions);
 

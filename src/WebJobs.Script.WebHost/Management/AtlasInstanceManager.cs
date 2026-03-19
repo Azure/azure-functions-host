@@ -1,8 +1,7 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -13,9 +12,9 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -33,11 +32,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IOptionsFactory<ScriptApplicationHostOptions> _optionsFactory;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
 
-        public AtlasInstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, IHttpClientFactory httpClientFactory, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, ILogger<AtlasInstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IRunFromPackageHandler runFromPackageHandler,
-            IPackageDownloadHandler packageDownloadHandler) : base(httpClientFactory, webHostEnvironment,
-            environment, logger, metricsLogger, meshServiceClient)
+        public AtlasInstanceManager(
+            IOptionsFactory<ScriptApplicationHostOptions> optionsFactory,
+            IHttpClientFactory httpClientFactory,
+            IScriptWebHostEnvironment webHostEnvironment,
+            IEnvironment environment,
+            ILogger<AtlasInstanceManager> logger,
+            IMetricsLogger metricsLogger,
+            IMeshServiceClient meshServiceClient,
+            IRunFromPackageHandler runFromPackageHandler,
+            IPackageDownloadHandler packageDownloadHandler,
+            IWorkerRuntimeResolver workerRuntimeResolver)
+                : base(
+                      httpClientFactory,
+                      webHostEnvironment,
+                      environment,
+                      logger,
+                      metricsLogger,
+                      meshServiceClient)
         {
             _client = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
@@ -48,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _packageDownloadHandler = packageDownloadHandler ?? throw new ArgumentNullException(nameof(packageDownloadHandler));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
         }
 
         public override async Task<string> SpecializeMSISidecar(HostAssignmentContext context)
@@ -248,7 +263,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
             RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
 
-            if (_environment.SupportsAzureFileShareMount() || pkgContext.IsRunFromLocalPackage())
+            var workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
+            if (Utility.IsAzureFileShareMountSupported(workerRuntime) || pkgContext.IsRunFromLocalPackage())
             {
                 var azureFilesMounted = false;
                 if (assignmentContext.IsAzureFilesContentShareConfigured(_logger))

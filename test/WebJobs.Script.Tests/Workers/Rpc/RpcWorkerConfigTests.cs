@@ -692,7 +692,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var loggerFactoryMock = new Mock<ILoggerFactory>();
                 loggerFactoryMock.Setup(f => f.CreateLogger(It.IsAny<string>())).Returns(testLogger);
 
-                var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, _testEnvironment, testScriptHostManager.Object, null);
+                var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, workerRuntime: null, _testEnvironment, testScriptHostManager.Object, null);
                 var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
                 var providers = GetProviders(loggerFactoryMock.Object, dynamicProviderLogger, testMetricsLogger, FileUtility.Instance, workerProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);

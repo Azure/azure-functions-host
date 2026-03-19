@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // config sources earlier we will need to consider if we want to read from those as well
             // here.
             ConfigProfile = environment.GetEnvironmentVariable(ConfigProfileEnvKey);
-            WorkerRuntime = environment.GetFunctionsWorkerRuntime();
+            WorkerRuntime = environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.FunctionWorkerRuntime, string.Empty);
             IsLogicApp = environment.IsLogicApp();
         }
 

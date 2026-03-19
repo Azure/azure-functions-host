@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -66,8 +67,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             meshServiceClient.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
                 It.Is<Type>(t => t == typeof(AtlasInstanceManager)), "Failed to specialize MSI sidecar")).Returns(Task.CompletedTask);
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(), testmetricslogger, meshServiceClient.Object, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(), testmetricslogger, meshServiceClient.Object, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object, mockRuntimeResolver.Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             instanceManager.Reset();
@@ -142,8 +146,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(), testmetricslogger, null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(), testmetricslogger, null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object, mockRuntimeResolver.Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             instanceManager.Reset();
@@ -196,8 +203,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             StatusCode = HttpStatusCode.OK
             });
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
-                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(), testmetricslogger, null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(), testmetricslogger, null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object, mockRuntimeResolver.Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             instanceManager.Reset();

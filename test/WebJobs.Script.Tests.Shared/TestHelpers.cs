@@ -632,10 +632,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public class TestScriptHostService : IScriptHostManager, IServiceProvider
         {
             private readonly IConfiguration _configuration;
+            private readonly IDictionary<Type, object> _services;
 
             public TestScriptHostService(IConfiguration configuration)
             {
                 _configuration = configuration;
+                _services = new Dictionary<Type, object>();
+            }
+
+            public TestScriptHostService(IConfiguration configuration, IDictionary<Type, object> services)
+            {
+                _configuration = configuration;
+                _services = services ?? new Dictionary<Type, object>();
             }
 
             event EventHandler IScriptHostManager.HostInitializing
@@ -671,7 +679,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return _configuration;
                 }
 
-                throw new NotImplementedException();
+                if (_services != null && _services.TryGetValue(serviceType, out var instance))
+                {
+                    return instance;
+                }
+
+                throw new NotImplementedException($"No service registered for type {serviceType}");
             }
 
             Task IScriptHostManager.RestartHostAsync(string reason, CancellationToken cancellationToken)

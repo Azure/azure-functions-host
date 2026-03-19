@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -61,8 +62,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 bashCommandHandler, zipHandler, _packageDownloadHandler.Object, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
 
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             _instanceManager = new AtlasInstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
+                _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object, mockWorkerRuntimeResolver.Object);
 
             _instanceManager.Reset();
         }
@@ -211,9 +215,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
                 .ReturnsAsync(string.Empty);
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
-                _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
+                _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -295,9 +302,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsScmRunFromPackage = false
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
+
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
-                _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
+                _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -371,9 +382,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     StatusCode = HttpStatusCode.NotFound
                 });
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<AtlasInstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object);
+                new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             var assignmentContext = new HostAssignmentContext
             {
@@ -448,9 +462,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     StatusCode = HttpStatusCode.OK,
                 });
 
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
                 _scriptWebEnvironment, _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object);
+                new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object, mockWorkerRuntimeResolver.Object);
 
             string error = await instanceManager.ValidateContext(assignmentContext);
             Assert.Null(error);
@@ -561,9 +578,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     StatusCode = HttpStatusCode.OK,
                 });
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
                 _scriptWebEnvironment, _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object);
+                new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             string error = await instanceManager.ValidateContext(assignmentContext);
             Assert.Null(error);
@@ -915,9 +935,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             meshInitServiceClient.Setup(client =>
                 client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3, CloudConstants.AzureStorageSuffix), share3, targetPath3)).Returns(Task.FromResult(true));
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
-                _runFromPackageHandler, _packageDownloadHandler.Object);
+                _runFromPackageHandler, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             await instanceManager.AssignInstanceAsync(hostAssignmentContext);
 
@@ -967,9 +990,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             meshInitServiceClient.Setup(client =>
                 client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1)).ReturnsAsync(true);
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
-                _runFromPackageHandler, _packageDownloadHandler.Object);
+                _runFromPackageHandler, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             await instanceManager.AssignInstanceAsync(hostAssignmentContext);
             meshInitServiceClient.Verify(
@@ -996,10 +1022,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var context = new HostAssignmentContext
             {
                 IsWarmupRequest = false,
-                Environment = new Dictionary<string, string>()
-                {
-                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PowerShellLanguageWorkerName,
-                }
+                Environment = []
             };
 
             if (azureFilesConfigured)
@@ -1024,9 +1047,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(ContainerHealthEventType.Fatal,
                 It.IsAny<Type>(), It.IsAny<string>())).Returns(Task.CompletedTask);
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.PowerShellLanguageWorkerName);
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
-                runFromPackageHandler.Object, _packageDownloadHandler.Object);
+                runFromPackageHandler.Object, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             await instanceManager.AssignInstanceAsync(context);
 
@@ -1070,7 +1096,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsWarmupRequest = false,
                 Environment = new Dictionary<string, string>()
                 {
-                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PowerShellLanguageWorkerName,
                     [EnvironmentSettingNames.AzureWebsiteRunFromPackage] = url
                 }
             };
@@ -1087,9 +1112,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("powershell");
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
-                runFromPackageHandler.Object, _packageDownloadHandler.Object);
+                runFromPackageHandler.Object, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             await instanceManager.AssignInstanceAsync(context);
 
@@ -1112,10 +1140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var context = new HostAssignmentContext
             {
                 IsWarmupRequest = false,
-                Environment = new Dictionary<string, string>()
-                {
-                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PowerShellLanguageWorkerName,
-                }
+                Environment = []
             };
 
             // Azure files
@@ -1139,9 +1164,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.PowerShellLanguageWorkerName);
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
-                runFromPackageHandler.Object, _packageDownloadHandler.Object);
+                runFromPackageHandler.Object, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             await instanceManager.AssignInstanceAsync(context);
 
@@ -1168,10 +1196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var context = new HostAssignmentContext
             {
                 IsWarmupRequest = false,
-                Environment = new Dictionary<string, string>()
-                {
-                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PowerShellLanguageWorkerName,
-                }
+                Environment = []
             };
 
             // Azure files
@@ -1195,9 +1220,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.PowerShellLanguageWorkerName);
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
-                runFromPackageHandler.Object, _packageDownloadHandler.Object);
+                runFromPackageHandler.Object, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             await instanceManager.AssignInstanceAsync(context);
 
@@ -1224,7 +1252,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsWarmupRequest = false,
                 Environment = new Dictionary<string, string>()
                 {
-                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PythonLanguageWorkerName,
                     [EnvironmentSettingNames.AzureWebsiteRunFromPackage] = url
                 }
             };
@@ -1246,9 +1273,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(It.IsAny<ContainerHealthEventType>(), It.IsAny<Type>(), It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.PythonLanguageWorkerName);
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
-                runFromPackageHandler.Object, _packageDownloadHandler.Object);
+                runFromPackageHandler.Object, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             await instanceManager.AssignInstanceAsync(context);
 
@@ -1273,10 +1303,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var context = new HostAssignmentContext
             {
                 IsWarmupRequest = false,
-                Environment = new Dictionary<string, string>()
-                {
-                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PythonLanguageWorkerName,
-                }
+                Environment = []
             };
 
             // AzureFiles
@@ -1299,9 +1326,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(It.IsAny<ContainerHealthEventType>(), It.IsAny<Type>(), It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
+
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.PythonLanguageWorkerName);
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
-                runFromPackageHandler.Object, _packageDownloadHandler.Object);
+                runFromPackageHandler.Object, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             await instanceManager.AssignInstanceAsync(context);
 
@@ -1336,10 +1367,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var context = new HostAssignmentContext
             {
                 IsWarmupRequest = false,
-                Environment = new Dictionary<string, string>()
-                {
-                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PythonLanguageWorkerName,
-                }
+                Environment = []
             };
 
             // AzureFiles
@@ -1367,9 +1395,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _meshServiceClientMock.Setup(m => m.NotifyHealthEvent(It.IsAny<ContainerHealthEventType>(), It.IsAny<Type>(), It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.PythonLanguageWorkerName);
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
-                runFromPackageHandler.Object, _packageDownloadHandler.Object);
+                runFromPackageHandler.Object, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             await instanceManager.AssignInstanceAsync(context);
 
@@ -1557,7 +1588,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Environment = new Dictionary<string, string>(),
                 IsWarmupRequest = false
             };
-            
+
             await _instanceManager.AssignInstanceAsync(context);
 
             Assert.False(_scriptWebEnvironment.InStandbyMode);
@@ -1597,9 +1628,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
                 .ReturnsAsync(string.Empty);
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             var instanceManager = new AtlasInstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
-                _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
+                _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
 
             await instanceManager.AssignInstanceAsync(context);
 
@@ -1694,9 +1728,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             _instanceManager.Reset();
 
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
+
             return new AtlasInstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object), _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<AtlasInstanceManager>(), new TestMetricsLogger(),
-                meshServiceClient, _runFromPackageHandler, _packageDownloadHandler.Object);
+                meshServiceClient, _runFromPackageHandler, _packageDownloadHandler.Object, mockRuntimeResolver.Object);
         }
 
         public void Dispose()

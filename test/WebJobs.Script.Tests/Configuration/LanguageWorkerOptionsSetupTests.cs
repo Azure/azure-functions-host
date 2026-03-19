@@ -47,15 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var testProfileManager = new Mock<IWorkerProfileManager>();
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
-            if (!string.IsNullOrEmpty(workerRuntime))
-            {
-                testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
-            }
-            else
-            {
-                // The dotnet-isolated worker only runs in placeholder mode. Setting the placeholder environment to 1 for the test.
-                testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            }
+            var workerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            workerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns(workerRuntime);
 
             testProfileManager.Setup(pm => pm.LoadWorkerDescriptionFromProfiles(It.IsAny<RpcWorkerDescription>(), out It.Ref<RpcWorkerDescription>.IsAny))
                 .Callback((RpcWorkerDescription defaultDescription, out RpcWorkerDescription outDescription) =>
@@ -72,13 +65,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     }
                 });
 
-            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, null);
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, workerRuntime, testEnvironment, testScriptHostManager.Object, null);
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
             var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
-            var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver);
+            var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver, workerRuntimeResolver.Object);
             var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -113,8 +106,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             loggerFactory.AddProvider(loggerProvider);
 
             var testEnvironment = new TestEnvironment();
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
+
+            var workerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            workerRuntimeResolver.Setup(r => r.GetWorkerRuntime(null)).Returns(workerRuntime);
 
             var testMetricLogger = new TestMetricsLogger();
             var testProfileManager = new Mock<IWorkerProfileManager>();
@@ -126,13 +121,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
 
-            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, workerRuntime, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
             var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
-            var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver);
+            var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver, workerRuntimeResolver.Object);
             var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -165,18 +160,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
             var testEnvironment = new TestEnvironment();
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
+
+            var workerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            workerRuntimeResolver.Setup(r => r.GetWorkerRuntime(null)).Returns(workerRuntime);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
-            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, workerRuntime, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
             var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
-            var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver);
+            var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver, workerRuntimeResolver.Object);
             var options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -208,18 +205,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
             var testEnvironment = new TestEnvironment();
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, releaseChannel);
+
+            var workerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
+            workerRuntimeResolver.Setup(r => r.GetWorkerRuntime(null)).Returns(workerRuntime);
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, hostingOptionsSetting);
-            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, workerRuntime, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
             var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
-            var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver);
+            var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver, workerRuntimeResolver.Object);
             LanguageWorkerOptions options = new LanguageWorkerOptions();
 
             setup.Configure(options);
@@ -267,7 +266,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node");
-            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, null, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
             // Act
@@ -305,7 +304,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             // Arrange
             var mockEnv = new Mock<IEnvironment>();
-            mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(languageWorker);
             mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
             mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
 
@@ -330,7 +328,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
-            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, languageWorker, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var testMetricLogger = new TestMetricsLogger();
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
@@ -374,7 +372,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
             hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, setting);
-            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, null, mockEnvironment.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var testMetricLogger = new TestMetricsLogger();
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
@@ -399,7 +397,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             // Arrange
             var mockEnv = new Mock<IEnvironment>();
-            mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(languageWorker);
             mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel)).Returns(releaseChannel);
             mockEnv.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
 
@@ -434,7 +431,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node|powershell");
-            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(updatedConfig, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(updatedConfig, languageWorker, mockEnv.Object, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var testMetricLogger = new TestMetricsLogger();
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 

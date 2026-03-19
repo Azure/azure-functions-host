@@ -35,7 +35,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = "/default/workers",
                 }).Build();
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(
+                loggerFactory,
+                configuration,
+                testEnvironment,
+                FileUtility.Instance,
+                mockScriptHostManager.Object,
+                new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions),
+                mockWorkerRuntimeResolver.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -65,7 +75,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 .Setup(sp => sp.GetService(typeof(IConfiguration)))
                 .Returns(latestConfiguration);
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(
+                loggerFactory,
+                configuration,
+                testEnvironment,
+                FileUtility.Instance,
+                mockScriptHostManager.Object,
+                new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions),
+                mockWorkerRuntimeResolver.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -100,7 +120,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 .Setup(sp => sp.GetService(typeof(IConfiguration)))
                 .Returns(latestConfiguration);
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(
+                loggerFactory,
+                configuration,
+                testEnvironment,
+                FileUtility.Instance,
+                mockScriptHostManager.Object,
+                new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions),
+                mockWorkerRuntimeResolver.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -123,7 +153,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = null,
                 }).Build();
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(testLoggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(
+                testLoggerFactory,
+                configuration,
+                testEnvironment,
+                FileUtility.Instance,
+                mockScriptHostManager.Object,
+                new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions),
+                mockWorkerRuntimeResolver.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -140,7 +180,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var configuration = new ConfigurationBuilder().Build();
             var hostingOptions = new FunctionsHostingConfigOptions();
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(testLoggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(
+                testLoggerFactory,
+                configuration,
+                testEnvironment,
+                FileUtility.Instance,
+                mockScriptHostManager.Object,
+                new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions),
+                mockWorkerRuntimeResolver.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -241,12 +291,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var configuration = configBuilder.Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
 
-            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "java");
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("java");
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var setup = new WorkerConfigurationResolverOptionsSetup(
+                loggerFactory,
+                configuration,
+                testEnvironment,
+                FileUtility.Instance,
+                mockScriptHostManager.Object,
+                new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions),
+                mockWorkerRuntimeResolver.Object);
             var options = new WorkerConfigurationResolverOptions();
 
             // Act
@@ -277,12 +335,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testEnvironment = new TestEnvironment();
             var configuration = new ConfigurationBuilder().Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
-            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "java");
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(testLoggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("java");
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(
+                testLoggerFactory,
+                configuration,
+                testEnvironment,
+                FileUtility.Instance,
+                mockScriptHostManager.Object,
+                new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions),
+                mockWorkerRuntimeResolver.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 
@@ -304,14 +371,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var configuration = configBuilder.Build();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
 
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "java");
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("java");
+
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel, "standard");
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, "workflowapp");
 
             var hostingOptions = new FunctionsHostingConfigOptions();
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java|node");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(testLoggerFactory, configuration, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var setup = new WorkerConfigurationResolverOptionsSetup(
+                testLoggerFactory,
+                configuration,
+                testEnvironment,
+                FileUtility.Instance,
+                mockScriptHostManager.Object,
+                new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions),
+                mockWorkerRuntimeResolver.Object);
             var options = new WorkerConfigurationResolverOptions();
 
             // Act
@@ -354,7 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, featureFlagValue);
 
-            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, null, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             bool result = optionsMonitor.CurrentValue.IsDynamicWorkerResolutionEnabled;
 
             Assert.Equal(expected, result);
@@ -380,10 +456,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, multilanguageApp);
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, placeholdermode);
 
-            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var optionsMonitor = GetTestWorkerConfigurationResolverOptions(config, workerRuntime, testEnvironment, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             bool result = optionsMonitor.CurrentValue.IsDynamicWorkerResolutionEnabled;
 
             Assert.Equal(expected, result);
@@ -409,7 +484,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             hostingOptions.Features.Add(RpcWorkerConstants.IgnoredWorkerVersions, hostingConfigSetting);
             hostingOptions.Features.Add(RpcWorkerConstants.WorkersAvailableForDynamicResolution, "java");
 
-            var setup = new WorkerConfigurationResolverOptionsSetup(loggerFactory, config, testEnvironment, FileUtility.Instance, mockScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
+            var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
+
+            var setup = new WorkerConfigurationResolverOptionsSetup(
+                loggerFactory,
+                config,
+                testEnvironment,
+                FileUtility.Instance,
+                mockScriptHostManager.Object,
+                new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions),
+                mockWorkerRuntimeResolver.Object);
             var options = new WorkerConfigurationResolverOptions();
             setup.Configure(options);
 

@@ -121,6 +121,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     configBuilder.AddConfiguration(scriptHostConfiguration.GetSection(ScriptConstants.FunctionsHostingConfigSectionName));
                 }
+
+                // Selectively surface the worker runtime environment variable into the script host
+                // configuration so that IConfiguration consumers can resolve it without depending
+                // on IEnvironment directly.
+                var environment = applicationOptions.RootServiceProvider?.GetService<IEnvironment>() ?? SystemEnvironment.Instance;
+                string workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                if (workerRuntime is not null)
+                {
+                    configBuilder.AddInMemoryCollection(new[]
+                    {
+                        new KeyValuePair<string, string>(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime)
+                    });
+                }
             });
 
             // WebJobs configuration
@@ -369,6 +382,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IHostOptionsProvider, HostOptionsProvider>();
                 services.AddSingleton<IInstanceServicesProviderFactory, ScriptInstanceServicesProviderFactory>();
+                services.AddSingleton<IWorkerRuntimeResolver, ScriptHostWorkerRuntimeResolver>();
             });
 
             RegisterFileProvisioningService(builder);

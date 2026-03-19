@@ -31,6 +31,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Host;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -73,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
 
@@ -110,9 +112,12 @@ namespace Microsoft.Azure.WebJobs.Script
             IWorkerFunctionDescriptorProviderFactory descriptorProviderFactory,
             IScriptHostLifecycleService scriptHostLifecycleService,
             IOptions<FunctionMetadataOptions> metadataOptions,
+            IWorkerRuntimeResolver workerRuntimeResolver,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
+            ArgumentNullException.ThrowIfNull(workerRuntimeResolver);
+
             _environment = environment;
             _typeLocator = typeLocator as ScriptTypeLocator
                 ?? throw new ArgumentException(nameof(typeLocator), $"A {nameof(ScriptTypeLocator)} instance is required.");
@@ -132,6 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script
             EventManager = eventManager;
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
             ExtensionBundleManager = extensionBundleManager;
+            _workerRuntimeResolver = workerRuntimeResolver;
 
             _metricsLogger = metricsLogger;
 
@@ -283,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
 
-                string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                string workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
                 _logger.FunctionsWorkerRuntimeValue(Sanitizer.Sanitize(workerRuntime));
 
                 if (workerRuntime is null)
@@ -444,7 +450,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            ValidateFunctionsWorkerRuntime(_environment, _hostingConfigOptions, _logger);
+            ValidateFunctionsWorkerRuntime(_workerRuntimeResolver, _hostingConfigOptions, _logger);
 
             // Log whether App Insights is enabled
             if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsInstrumentationKey) || !string.IsNullOrEmpty(_settingsManager.ApplicationInsightsConnectionString))
@@ -471,9 +477,9 @@ namespace Microsoft.Azure.WebJobs.Script
             InitializeFileSystem();
         }
 
-        internal static void ValidateFunctionsWorkerRuntime(IEnvironment environment, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
+        internal static void ValidateFunctionsWorkerRuntime(IWorkerRuntimeResolver workerRuntimeResolver, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)
         {
-            if (string.IsNullOrEmpty(environment.GetFunctionsWorkerRuntime()))
+            if (string.IsNullOrEmpty(workerRuntimeResolver.GetWorkerRuntime()))
             {
                 string baseMessage = $"The '{EnvironmentSettingNames.FunctionWorkerRuntime}' setting is required. Please specify a valid value. See {DiagnosticEventConstants.MissingFunctionsWorkerRuntimeHelpLink} for more information.";
 

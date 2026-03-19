@@ -16,19 +16,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IEnvironment _environment;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerConfigurationResolver _workerConfigurationResolver;
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
 
         public LanguageWorkerOptionsSetup(IEnvironment environment,
                                           IMetricsLogger metricsLogger,
-                                          IWorkerConfigurationResolver workerConfigurationResolver)
+                                          IWorkerConfigurationResolver workerConfigurationResolver,
+                                          IWorkerRuntimeResolver workerRuntimeResolver)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _workerConfigurationResolver = workerConfigurationResolver ?? throw new ArgumentNullException(nameof(workerConfigurationResolver));
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
         }
 
         public void Configure(LanguageWorkerOptions options)
         {
-            string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            string workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
 
             // Parsing worker.config.json should always be done in case of multi language worker
             if (!string.IsNullOrEmpty(workerRuntime) &&

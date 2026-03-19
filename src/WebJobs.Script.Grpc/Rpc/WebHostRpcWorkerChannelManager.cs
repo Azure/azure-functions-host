@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _profileManager;
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
         private IConfiguration _config;
@@ -41,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                               IConfiguration config,
                                               IWorkerProfileManager workerProfileManager,
                                               IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
-                                              IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
+                                              IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+                                              IWorkerRuntimeResolver workerRuntimeResolver)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -54,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
         }
 
         public Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string runtime)
@@ -116,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public async Task SpecializeAsync()
         {
             _logger.LogInformation("Starting language worker channel specialization");
-            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
 
             IRpcWorkerChannel rpcWorkerChannel = await GetChannelAsync(_workerRuntime);
 
@@ -142,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task WorkerWarmupAsync()
         {
-            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
 
             if (_workerRuntime == null)
             {
@@ -295,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationScheduleShutdownStandbyChannels))
             {
-                _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                _workerRuntime = _workerRuntime ?? _workerRuntimeResolver.GetWorkerRuntime();
                 if (!string.IsNullOrEmpty(_workerRuntime))
                 {
                     var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));

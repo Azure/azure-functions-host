@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
     internal class HttpWorkerOptionsSetup : IConfigureOptions<HttpWorkerOptions>, IValidateOptions<HttpWorkerOptions>
     {
-        private readonly IEnvironment _environment;
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         private IConfiguration _configuration;
         private ILogger _logger;
         private IMetricsLogger _metricsLogger;
@@ -25,14 +25,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private string argumentsSectionName = $"{WorkerConstants.WorkerDescription}:arguments";
         private string workerArgumentsSectionName = $"{WorkerConstants.WorkerDescription}:workerArguments";
 
-        public HttpWorkerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, IEnvironment environment)
+        public HttpWorkerOptionsSetup(
+            IOptions<ScriptJobHostOptions> scriptJobHostOptions,
+            IConfiguration configuration,
+            ILoggerFactory loggerFactory,
+            IMetricsLogger metricsLogger,
+            IWorkerRuntimeResolver workerRuntimeResolver)
         {
-            ArgumentNullException.ThrowIfNull(environment);
             _scriptJobHostOptions = scriptJobHostOptions.Value;
             _configuration = configuration;
             _metricsLogger = metricsLogger;
             _logger = loggerFactory.CreateLogger<HttpWorkerOptionsSetup>();
-            _environment = environment;
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
         }
 
         public void Configure(HttpWorkerOptions options)
@@ -73,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             workerSection.Bind(options);
 
-            var workerRuntime = _environment.GetFunctionsWorkerRuntime();
+            var workerRuntime = _workerRuntimeResolver.GetWorkerRuntime();
             if (string.Equals(workerRuntime, RpcWorkerConstants.CustomHandlerLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 options.CustomRoutesEnabled = true;

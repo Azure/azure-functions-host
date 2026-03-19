@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,16 +28,19 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IMetricsLogger _metricsLogger;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
-        private readonly IEnvironment _environment;
+        private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         private ImmutableArray<FunctionMetadata> _functions;
 
-        public HostFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<HostFunctionMetadataProvider> logger,
-            IMetricsLogger metricsLogger, IEnvironment environment)
+        public HostFunctionMetadataProvider(
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+            ILogger<HostFunctionMetadataProvider> logger,
+            IMetricsLogger metricsLogger,
+            IWorkerRuntimeResolver workerRuntimeResolver)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _logger = logger;
-            _environment = environment;
+            _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -105,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     JObject functionConfig = JObject.Parse(json);
 
                     return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem,
-                        workerConfigs, _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime));
+                        workerConfigs, _workerRuntimeResolver.GetWorkerRuntime());
                 }
                 catch (Exception ex)
                 {

@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
-    <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests.Abstractions</AssemblyName>
-    <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests.Abstractions</RootNamespace>
+    <AssemblyName>Microsoft.Azure.WebJobs.Script.Abstractions.Tests</AssemblyName>
+    <RootNamespace>Microsoft.Azure.WebJobs.Script.Abstractions.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
