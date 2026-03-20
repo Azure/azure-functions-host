@@ -18,13 +18,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
     internal class ConnectedWorkerChannelManager : IConnectedWorkerChannelManager
     {
         private readonly ConcurrentDictionary<string, ConnectedWorkerChannel> _channels = new();
-        private TaskCompletionSource<IRpcWorkerChannel> _firstChannelReady = new();
+        private readonly object _channelAvailableLock = new();
+        private TaskCompletionSource _channelAvailable = new();
 
         /// <inheritdoc/>
         public void AddChannel(string workerId, ConnectedWorkerChannel channel)
         {
-            _channels[workerId] = channel;
-            _firstChannelReady.TrySetResult(channel);
+            lock (_channelAvailableLock)
+            {
+                _channels[workerId] = channel;
+                _channelAvailable.TrySetResult();
+            }
         }
 
         /// <inheritdoc/>
@@ -38,7 +42,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         /// <inheritdoc/>
         public async Task ShutdownChannelAsync(string workerId)
         {
-            if (_channels.TryRemove(workerId, out var channel))
+            ConnectedWorkerChannel channel = null;
+
+            lock (_channelAvailableLock)
+            {
+                _channels.TryRemove(workerId, out channel);
+
+                if (channel is not null && _channels.IsEmpty)
+                {
+                    _channelAvailable = new TaskCompletionSource();
+                }
+            }
+
+            if (channel is not null)
             {
                 await channel.DrainInvocationsAsync();
                 channel.Dispose();
@@ -59,7 +75,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
 
             try
             {
-                return await _firstChannelReady.Task.WaitAsync(cts.Token);
+                await _channelAvailable.Task.WaitAsync(cts.Token);
+
+                return _channels.Values.FirstOrDefault(c => c.IsChannelReadyForInvocations())
+                    ?? _channels.Values.First();
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {

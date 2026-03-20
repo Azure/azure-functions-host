@@ -139,5 +139,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             Assert.Null(_manager.GetChannel("worker1"));
         }
+
+        [Fact]
+        public async Task WaitForChannelAsync_AfterShutdownAndReconnect_ReturnsNewChannel()
+        {
+            var channelA = CreateTestChannel("workerA");
+            _manager.AddChannel("workerA", channelA);
+
+            var result1 = await _manager.WaitForChannelAsync(TimeSpan.FromSeconds(5));
+            Assert.Same(channelA, result1);
+
+            await _manager.ShutdownChannelAsync("workerA");
+
+            var waitTask = _manager.WaitForChannelAsync(TimeSpan.FromSeconds(5));
+            await Task.Delay(50);
+            Assert.False(waitTask.IsCompleted, "WaitForChannelAsync should block after all channels are shut down");
+
+            var channelB = CreateTestChannel("workerB");
+            _manager.AddChannel("workerB", channelB);
+
+            var result2 = await waitTask;
+            Assert.Same(channelB, result2);
+        }
+
+        [Fact]
+        public async Task WaitForChannelAsync_AfterPartialShutdown_StillReturnsRemainingChannel()
+        {
+            var channelA = CreateTestChannel("workerA");
+            var channelB = CreateTestChannel("workerB");
+            _manager.AddChannel("workerA", channelA);
+            _manager.AddChannel("workerB", channelB);
+
+            await _manager.ShutdownChannelAsync("workerA");
+
+            // TCS should not have been reset since channelB is still active
+            var result = await _manager.WaitForChannelAsync(TimeSpan.FromSeconds(5));
+            Assert.NotNull(result);
+            Assert.Same(channelB, result);
+        }
     }
 }

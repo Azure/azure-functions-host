@@ -90,17 +90,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
             if (drainTasks.Count > 0)
             {
-                Task completedTask = await Task.WhenAny(
-                    Task.WhenAll(drainTasks),
-                    Task.Delay(ShutdownTimeout));
+                Task drainAll = Task.WhenAll(drainTasks);
+                Task timeout = Task.Delay(ShutdownTimeout);
+                Task completedTask = await Task.WhenAny(drainAll, timeout);
 
-                if (completedTask is not Task<Task>)
+                if (completedTask.Equals(timeout))
                 {
-                    Logger.LogDebug("Draining invocations from worker channels completed during shutdown");
+                    Logger.LogDebug("Draining invocations from worker channels timed out during shutdown");
                 }
                 else
                 {
-                    Logger.LogDebug("Draining invocations from worker channels timed out during shutdown");
+                    Logger.LogDebug("Draining invocations from worker channels completed during shutdown");
                 }
             }
         }
