@@ -49,10 +49,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         protected virtual TimeSpan ShutdownTimeout => DefaultShutdownTimeout;
 
         /// <inheritdoc/>
-        public virtual FunctionInvocationDispatcherState State { get; set; }
+        public virtual FunctionInvocationDispatcherState State { get; protected set; }
 
         /// <inheritdoc/>
-        public virtual int ErrorEventsThreshold { get; set; }
+        public virtual int ErrorEventsThreshold { get; protected set; }
 
         /// <inheritdoc/>
         public async Task InvokeAsync(ScriptInvocationContext invocationContext)

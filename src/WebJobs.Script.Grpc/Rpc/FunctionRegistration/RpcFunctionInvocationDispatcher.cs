@@ -115,9 +115,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal Task<int> MaxProcessCount => _maxProcessCount.Value;
 
-        public override FunctionInvocationDispatcherState State { get; set; }
+        public override FunctionInvocationDispatcherState State { get; protected set; }
 
-        public override int ErrorEventsThreshold { get; set; }
+        public override int ErrorEventsThreshold { get; protected set; }
 
         protected override TimeSpan ShutdownTimeout => _shutdownTimeout;
 
