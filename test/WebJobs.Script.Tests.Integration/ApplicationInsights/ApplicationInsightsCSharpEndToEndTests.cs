@@ -3,9 +3,11 @@
 
 using System.Threading.Tasks;
 using Xunit;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EAppInsights)]
     public class ApplicationInsightsCSharpEndToEndTests : ApplicationInsightsEndToEndTestsBase<ApplicationInsightsCSharpEndToEndTests.TestFixture>
     {
         public ApplicationInsightsCSharpEndToEndTests(TestFixture fixture) : base(fixture)

@@ -21,6 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -28,6 +29,7 @@ using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EControllers)]
     public class WebJobsScriptHostServiceTests : IDisposable
     {
         private readonly string TestScriptPath = @"TestScripts\CSharp";

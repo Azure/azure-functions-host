@@ -12,9 +12,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Xunit;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 
+[Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
 public class NodeHostRestartEndToEndTests
 {
     [Fact]

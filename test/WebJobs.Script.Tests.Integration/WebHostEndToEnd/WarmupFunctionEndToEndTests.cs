@@ -21,9 +21,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2ESpecialization)]
     public class WarmupFunctionEndToEndTests : IClassFixture<WarmupFunctionEndToEndTests.TestFixture>
     {
         private readonly ScriptSettingsManager _settingsManager;

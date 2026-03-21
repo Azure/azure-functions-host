@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Xunit;
 
@@ -22,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     /// <summary>
     /// Tests verifying the Static Web Apps deployment configuration.
     /// </summary>
+    [Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
     public class SWAEndToEndTests(SWAEndToEndTests.TestFixture fixture) : IClassFixture<SWAEndToEndTests.TestFixture>
     {
         [Fact]
