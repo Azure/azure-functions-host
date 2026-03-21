@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
     public class WebJobsStartupEndToEndTests
     {
         private const string _projectName = "WebJobsStartupTests";

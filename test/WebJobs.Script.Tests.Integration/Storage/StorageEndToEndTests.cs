@@ -5,10 +5,12 @@ using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EStorage)]
     public class StorageEndToEndTests : IClassFixture<StorageEndToEndTests.StorageTestFixture>
     {
         private StorageTestFixture _fixture;

@@ -7,10 +7,12 @@ using System.Text;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EStorage)]
     public class AzureBlobStorageProviderTests
     {
         private const string StorageConnection = "AzureWebJobsStorage";

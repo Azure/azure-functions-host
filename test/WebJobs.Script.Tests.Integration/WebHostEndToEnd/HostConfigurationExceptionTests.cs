@@ -8,10 +8,12 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
     public class HostConfigurationExceptionTests : IDisposable
     {
         private readonly string _hostPath;
