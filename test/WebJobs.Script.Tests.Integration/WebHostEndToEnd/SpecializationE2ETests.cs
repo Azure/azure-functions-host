@@ -48,6 +48,7 @@ using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2ESpecialization)]
     public class SpecializationE2ETests
     {
         private static readonly SemaphoreSlim _pauseBeforeHostBuild = new(1, 1);
@@ -956,7 +957,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await containerClient.DeleteAsync();
             }
         }
-
 
         [Theory]
         [InlineData(ScriptConstants.FlexConsumptionSku, ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview, true)]

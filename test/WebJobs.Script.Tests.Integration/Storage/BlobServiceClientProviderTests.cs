@@ -9,6 +9,7 @@ using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
@@ -16,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
     /// <summary>
     /// Tests whether the StorageClientProvider can properly create a client and send a request
     /// </summary>
+    [Trait(TestTraits.Group, TestTraits.NonE2EStorage)]
     public class BlobServiceClientProviderTests
     {
         private const string StorageConnection = "AzureWebJobsStorage";

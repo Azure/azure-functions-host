@@ -18,6 +18,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EControllers)]
     public class HostIdValidatorTests
     {
         private readonly string _testHostId = "test-host-id";

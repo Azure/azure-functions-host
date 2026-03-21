@@ -4,9 +4,11 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
     public class CSharpPrecompiledEndToEndTests
     {
         [Theory]

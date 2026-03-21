@@ -21,6 +21,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EStorage)]
     public class TableStorageScaleMetricsRepositoryTests
     {
         private const string TestHostId = "testhostid";

@@ -23,6 +23,7 @@ using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EStorage)]
     public class DiagnosticEventTableStorageRepositoryTests : IClassFixture<AzuriteFixture>
     {
         private const string TestHostId = "testhostid";

@@ -19,6 +19,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EAppInsights)]
     public class EndToEndTimeoutTests
     {
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;

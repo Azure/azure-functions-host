@@ -8,9 +8,11 @@ using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.DataContracts;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EAppInsights)]
     public class ApplicationInsightsIgnoredNodeEndToEndTests : IClassFixture<ApplicationInsightsIgnoredNodeEndToEndTests.TestFixture>
     {
         private ApplicationInsightsTestFixture _fixture;
