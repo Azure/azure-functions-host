@@ -8,10 +8,12 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EControllers)]
     public class WarmupScenarios : IDisposable
     {
         private static readonly TimeSpan SemaphoreWaitTimeout = TimeSpan.FromSeconds(30);

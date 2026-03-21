@@ -93,23 +93,75 @@ jobs:
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
-    displayName: Non-E2E integration tests
+    displayName: 'Specialization tests'
+    condition: succeededOrFailed()
     inputs:
       command: test
-      testRunTitle: Non-E2E integration tests
-      arguments: '--filter "Category!=E2E" -c release --no-build'
+      testRunTitle: 'Specialization'
+      arguments: '--filter "Category!=E2E&Group=NonE2E_Specialization" -c release --no-build'
       projects: $(test_projects)
     env:
       AzureWebJobsStorage: $(Storage)
-      AzureWebJobsSecondaryStorage: $(SecondaryStorage)
+
+  - task: DotNetCoreCLI@2
+    displayName: 'WebHost EndToEnd tests'
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: 'WebHost EndToEnd'
+      arguments: '--filter "Category!=E2E&Group=NonE2E_WebHost" -c release --no-build'
+      projects: $(test_projects)
+    env:
+      AzureWebJobsStorage: $(Storage)
+
+  - task: DotNetCoreCLI@2
+    displayName: 'AppInsights & Worker tests'
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: 'AppInsights & Worker'
+      arguments: '--filter "Category!=E2E&Group=NonE2E_AppInsights" -c release --no-build'
+      projects: $(test_projects)
+    env:
+      AzureWebJobsStorage: $(Storage)
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Controllers & Host tests'
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: 'Controllers & Host'
+      arguments: '--filter "Category!=E2E&Group=NonE2E_Controllers" -c release --no-build'
+      projects: $(test_projects)
+    env:
+      AzureWebJobsStorage: $(Storage)
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Storage & Misc tests'
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: 'Storage & Misc'
+      arguments: '--filter "Category!=E2E&Group=NonE2E_Storage" -c release --no-build'
+      projects: $(test_projects)
+    env:
+      AzureWebJobsStorage: $(Storage)
       ConnectionStrings__CosmosDB: $(CosmosDB)
-      AzureWebJobsEventHubSender: $(EventHub)
-      AzureWebJobsEventHubReceiver: $(EventHub)
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Ungrouped tests'
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: 'Ungrouped'
+      arguments: '--filter "Category!=E2E&Group!=NonE2E_Specialization&Group!=NonE2E_WebHost&Group!=NonE2E_AppInsights&Group!=NonE2E_Controllers&Group!=NonE2E_Storage" -c release --no-build'
+      projects: $(test_projects)
+    env:
+      AzureWebJobsStorage: $(Storage)
       AzureWebJobsSecretStorageKeyVaultUri: $(KeyVaultUri)
       AzureWebJobsSecretStorageKeyVaultTenantId: $(AzureTenantId)
       AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
       AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
-      AzureWebJobsEventHubPath: testhub
 
   - task: AzurePowerShell@5
     condition: always()

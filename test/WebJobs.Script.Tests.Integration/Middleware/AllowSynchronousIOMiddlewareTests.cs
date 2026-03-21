@@ -8,11 +8,13 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EControllers)]
     public class AllowSynchronousIOMiddlewareTests
     {
         [Fact(Skip = "Seems very difficult to trigger this failure now.")]

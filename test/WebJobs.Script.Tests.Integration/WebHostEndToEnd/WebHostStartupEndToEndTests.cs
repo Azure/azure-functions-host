@@ -23,6 +23,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 
+[Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
 public class WebHostStartupEndToEndTests
 {
     private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));

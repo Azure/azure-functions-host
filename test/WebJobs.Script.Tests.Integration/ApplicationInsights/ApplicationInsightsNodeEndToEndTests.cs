@@ -1,8 +1,12 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Microsoft.WebJobs.Script.Tests;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EAppInsights)]
     public class ApplicationInsightsNodeEndToEndTests : ApplicationInsightsEndToEndTestsBase<ApplicationInsightsNodeEndToEndTests.TestFixture>
     {
         public ApplicationInsightsNodeEndToEndTests(TestFixture fixture) : base(fixture)

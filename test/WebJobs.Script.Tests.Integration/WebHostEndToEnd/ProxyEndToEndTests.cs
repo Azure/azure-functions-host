@@ -25,6 +25,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
     public class ProxyEndToEndTests : IClassFixture<ProxyEndToEndTests.TestFixture>
     {
         private readonly ScriptSettingsManager _settingsManager;

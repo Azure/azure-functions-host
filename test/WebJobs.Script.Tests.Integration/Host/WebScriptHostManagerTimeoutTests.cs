@@ -12,9 +12,11 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Host
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2ESpecialization)]
     public class WebScriptHostManagerTimeoutTests
     {
         private TestDisposable _disposedService = new TestDisposable();
