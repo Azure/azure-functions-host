@@ -3,15 +3,38 @@ parameters:
   displayName: Publish to nuget.org?
   type: boolean
   default: false
+- name: runId
+  displayName: host.official build run ID (leave empty for latest)
+  type: string
+  default: ''
 
 trigger: none
 pr: none
+
+resources:
+  pipelines:
+  - pipeline: OfficialBuild
+    source: host.official
 
 extends:
   template: /eng/ci/templates/official/pipelines/release.yml@self
   parameters:
     public: ${{ parameters.public }}
     folder: azure-webjobs-script-abstractions
-    projects: |
-      $(Build.SourcesDirectory)/src/WebJobs.Script.Abstractions/WebJobs.Script.Abstractions.csproj
-      $(Build.SourcesDirectory)/test/WebJobs.Script.Abstractions.Tests/WebJobs.Script.Abstractions.Tests.csproj
+    downloadSteps:
+    - task: DownloadPipelineArtifact@2
+      displayName: Download Abstractions packages from host.official
+      inputs:
+        source: specific
+        project: $(System.TeamProject)
+        pipeline: $(resources.pipeline.OfficialBuild.pipelineID)
+        ${{ if ne(parameters.runId, '') }}:
+          buildVersionToDownload: specific
+          runId: ${{ parameters.runId }}
+        ${{ else }}:
+          buildVersionToDownload: latest
+        artifact: drop_nuget
+        patterns: |
+          **/*Abstractions*.nupkg
+          !**/*.symbols.nupkg
+        path: $(Build.ArtifactStagingDirectory)/packages

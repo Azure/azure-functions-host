@@ -1,6 +1,6 @@
 parameters:
-- name: projects
-  type: string
+- name: downloadSteps
+  type: stepList
 - name: folder
   type: string
 - name: public
@@ -47,18 +47,27 @@ extends:
             }
           displayName: Validate Source Branch
 
-    - stage: Build
+    - stage: Download
       dependsOn: Validate
 
       jobs:
-      - template: /eng/ci/templates/jobs/build.yml@self
-        parameters:
-          sign: true
-          projects: ${{ parameters.projects }}
-          build_args: -p:IsReleaseCI=true
+      - job: DownloadPackages
+        displayName: Download release packages
+
+        templateContext:
+          outputParentDirectory: $(Build.ArtifactStagingDirectory)
+          outputs:
+          - output: pipelineArtifact
+            displayName: Publish release packages
+            path: $(Build.ArtifactStagingDirectory)/packages
+            artifact: drop_packages
+
+        steps:
+        - ${{ each step in parameters.downloadSteps }}:
+          - ${{ step }}
 
     - stage: Release
-      dependsOn: Build
+      dependsOn: Download
       jobs:
       - template: /ci/release-nuget-package.yml@eng
         parameters:

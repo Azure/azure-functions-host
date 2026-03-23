@@ -52,3 +52,52 @@ jobs:
       projects: |
         **/ExtensionsMetadataGenerator.csproj
         **/WebJobs.Script.Abstractions.csproj
+
+  - template: ci/sign-files.yml@eng
+    parameters:
+      displayName: Sign Abstractions assemblies
+      folderPath: out/bin/WebJobs.Script.Abstractions/release
+      pattern: Microsoft.Azure.WebJobs.Script.Abstractions*.dll
+      signType: dll
+
+  - task: DotNetCoreCLI@2
+    displayName: Pack Abstractions
+    inputs:
+      command: custom
+      custom: pack
+      arguments: '--no-build -c release -o $(nuget_drop_path)'
+      projects: |
+        **/WebJobs.Script.Abstractions.csproj
+
+  - template: ci/sign-files.yml@eng
+    parameters:
+      displayName: Sign ExtensionsMetadataGenerator assemblies
+      folderPath: out/bin/ExtensionsMetadataGenerator
+      pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
+      signType: dll-strong-name
+
+  - task: DotNetCoreCLI@2
+    displayName: Pack ExtensionsMetadataGenerator
+    inputs:
+      command: custom
+      custom: pack
+      arguments: '--no-build -c release -o $(nuget_drop_path)'
+      projects: |
+        **/ExtensionsMetadataGenerator.csproj
+
+  - template: ci/sign-files.yml@eng
+    parameters:
+      displayName: Sign NugetPackages
+      folderPath: $(nuget_drop_path)
+      pattern: '*.nupkg'
+      signType: nuget
+
+  - task: DeleteFiles@1
+    displayName: Delete CodeSignSummary files
+    inputs:
+      contents: '**/CodeSignSummary-*.md'
+
+  - task: DeleteFiles@1
+    displayName: Delete CodeSignSummary files
+    inputs:
+      contents: '$(nuget_package_path)/**/CodeSignSummary-*.md'
