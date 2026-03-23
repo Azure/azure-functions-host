@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var logger = loggerFactory.CreateLogger<HostIdValidator>();
             var hostNameProvider = new HostNameProvider(_environment);
             var mockStorageProvider = new Mock<IAzureBlobStorageProvider>(MockBehavior.Strict);
-            var mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
+            var mockApplicationLifetime = new Mock<IHostApplicationLifetime>(MockBehavior.Strict);
             _hostIdValidator = new HostIdValidator(_environment, mockStorageProvider.Object, mockApplicationLifetime.Object, hostNameProvider, logger);
             _provider = new ScriptHostIdProvider(_mockConfiguration.Object, _environment, new TestOptionsMonitor<ScriptApplicationHostOptions>(_scriptApplicationHostOptions), _hostIdValidator);
         }

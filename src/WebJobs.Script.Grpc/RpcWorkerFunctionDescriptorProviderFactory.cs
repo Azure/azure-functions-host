@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -18,14 +19,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description;
 internal class RpcWorkerFunctionDescriptorProviderFactory : IWorkerFunctionDescriptorProviderFactory
 {
     private readonly IFunctionInvocationDispatcher _dispatcher;
-    private readonly IApplicationLifetime _applicationLifetime;
+    private readonly IHostApplicationLifetime _applicationLifetime;
     private readonly HttpWorkerOptions _httpWorkerOptions;
     private readonly ScriptJobHostOptions _scriptHostOptions;
     private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptionsMonitor;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger _logger;
 
-    public RpcWorkerFunctionDescriptorProviderFactory(IFunctionInvocationDispatcherFactory dispatcherFactory, IApplicationLifetime applicationLifetime, IOptions<ScriptJobHostOptions> scriptHostOptions,
+    public RpcWorkerFunctionDescriptorProviderFactory(IFunctionInvocationDispatcherFactory dispatcherFactory, IHostApplicationLifetime applicationLifetime, IOptions<ScriptJobHostOptions> scriptHostOptions,
                     IOptions<HttpWorkerOptions> httpWorkerOptions, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptionsMonitor, ILoggerFactory loggerFactory)
     {
         _dispatcher = dispatcherFactory.GetFunctionDispatcher();

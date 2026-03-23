@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -723,7 +724,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var eventManager = new ScriptEventManager();
             var metricsLogger = new Mock<IMetricsLogger>();
-            var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+            var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
             var testEnv = new TestEnvironment();
             TimeSpan intervals = startupIntervals ?? TimeSpan.FromMilliseconds(100);
 

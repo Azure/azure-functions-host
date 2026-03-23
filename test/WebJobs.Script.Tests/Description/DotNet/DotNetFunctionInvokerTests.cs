@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -28,7 +28,6 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -368,7 +367,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var tempDirectory = new TempDirectory())
             {
-                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
 
                 // Create the invoker dependencies and setup the appropriate method to throw the exception
                 RunDependencies dependencies = CreateDependencies(s =>

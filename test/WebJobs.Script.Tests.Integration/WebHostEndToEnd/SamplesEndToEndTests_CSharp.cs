@@ -27,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -769,7 +770,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await AwaitHostStateAsync(ScriptHostState.Running);
 
-            // need to reinitialize TestFunctionHost to reset IApplicationLifetime
+            // need to reinitialize TestFunctionHost to reset IHostApplicationLifetime
             await _fixture.InitializeAsync();
 
             // verify functions can be invoked
