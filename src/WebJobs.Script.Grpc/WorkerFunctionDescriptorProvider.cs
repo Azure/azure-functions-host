@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -24,12 +25,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly ILoggerFactory _loggerFactory;
         private readonly IFunctionInvocationDispatcher _dispatcher;
-        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly TimeSpan _workerInitializationTimeout;
         private readonly Regex _expressionRegex;
 
         public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
+            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IHostApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
             : base(host, config, bindingProviders)
         {
             _dispatcher = dispatcher;

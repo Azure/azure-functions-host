@@ -19,9 +19,10 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.WebJobs.Script.Tests;
-using Xunit;
 using static Microsoft.Azure.WebJobs.Script.HostIdValidator;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -76,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(environment.IsContainerReady());
 
             // wait for shutdown to be triggered
-            var applicationLifetime = host.Services.GetServices<Microsoft.AspNetCore.Hosting.IApplicationLifetime>().Single();
+            var applicationLifetime = host.Services.GetServices<IHostApplicationLifetime>().Single();
             await TestHelpers.RunWithTimeoutAsync(() => applicationLifetime.ApplicationStopping.WaitHandle.WaitOneAsync(), TimeSpan.FromSeconds(30));
 
             // ensure the host was specialized and the expected error was logged

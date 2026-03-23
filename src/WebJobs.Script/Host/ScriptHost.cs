@@ -14,7 +14,6 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -34,6 +33,7 @@ using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string HostAssemblyName = "ScriptHost";
         private const string GeneratedTypeNamespace = "Host";
         internal const string GeneratedTypeName = "Functions";
-        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IJobHostMetadataProvider metadataProvider,
             IHostIdProvider hostIdProvider,
             IHttpRoutesManager httpRoutesManager,
-            IApplicationLifetime applicationLifetime,
+            IHostApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
             IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
