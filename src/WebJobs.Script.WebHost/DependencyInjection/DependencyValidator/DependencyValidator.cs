@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             expected.Expect<ILoggerFactory, ScriptLoggerFactory>();
             expected.ExpectFactory<IMetricsLogger, NonDisposableMetricsLogger>();
 
-            expected.Expect<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
+            expected.ExpectFactory<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
 
             expected.Expect<IEventCollectorFactory>("Microsoft.Azure.WebJobs.Logging.EventCollectorFactory");
 

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -11,8 +11,8 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Xunit;
 using Microsoft.WebJobs.Script.Tests;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 
@@ -34,7 +34,7 @@ public class NodeHostRestartEndToEndTests
             await fixture.InitializeAsync();
             var channelManager = fixture.Host.WebHostServices.GetService<IWebHostRpcWorkerChannelManager>();
             var scriptHostManager = fixture.Host.WebHostServices.GetService<IScriptHostManager>();
-            var appHostLifecycle = fixture.Host.JobHostServices.GetService<IApplicationLifetime>();
+            var appHostLifecycle = fixture.Host.JobHostServices.GetService<IHostApplicationLifetime>();
             var semaphore = new SemaphoreSlim(0, 1);
             registration = appHostLifecycle.ApplicationStopping.Register(() =>
             {

@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private string _testSettingValue = "TestSettingValue";
         private ILoggerProvider _testLoggerProvider;
         private ILoggerFactory _testLoggerFactory;
-        private Mock<IApplicationLifetime> _mockApplicationLifetime;
+        private Mock<IHostApplicationLifetime> _mockApplicationLifetime;
 
         public StandbyManagerTests()
         {
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             _mockLanguageWorkerChannelManager = new Mock<IWebHostWorkerManager>();
             _testEnvironment = new TestEnvironment();
-            _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
+            _mockApplicationLifetime = new Mock<IHostApplicationLifetime>(MockBehavior.Strict);
 
             _testLoggerProvider = new TestLoggerProvider();
             _testLoggerFactory = new LoggerFactory();

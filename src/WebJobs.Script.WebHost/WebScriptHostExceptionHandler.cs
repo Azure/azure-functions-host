@@ -8,17 +8,18 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebScriptHostExceptionHandler : IWebJobsExceptionHandler
     {
-        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly ILogger _logger;
         private readonly IScriptHostWorkerManager _workerManager;
 
-        public WebScriptHostExceptionHandler(IApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger, IScriptHostWorkerManager workerManager)
+        public WebScriptHostExceptionHandler(IHostApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger, IScriptHostWorkerManager workerManager)
         {
             _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
             _workerManager = workerManager;
