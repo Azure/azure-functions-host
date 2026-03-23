@@ -20,7 +20,6 @@ using Moq;
 using WebJobs.Script.Tests;
 using Xunit;
 using Xunit.Abstractions;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
@@ -30,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         private readonly ILoggerFactory _loggerFactory;
         private readonly TestEnvironment _testEnvironment;
         private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _optionsMonitor;
-        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly ITestOutputHelper _output;
 
         public WorkerConcurrencyManagerTest(ITestOutputHelper output)
@@ -46,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             optionsMonitor.Setup(x => x.CurrentValue).Returns(new FunctionsHostingConfigOptions());
             _optionsMonitor = optionsMonitor.Object;
 
-            Mock<IApplicationLifetime> applicationLifetime = new Mock<IApplicationLifetime>();
+            Mock<IHostApplicationLifetime> applicationLifetime = new Mock<IHostApplicationLifetime>();
             applicationLifetime.Setup(x => x.StopApplication()).Verifiable();
             _applicationLifetime = applicationLifetime.Object;
 

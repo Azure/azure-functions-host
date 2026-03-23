@@ -39,13 +39,12 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 using AppInsightsCredentialOptions = Microsoft.Azure.WebJobs.Logging.ApplicationInsights.TokenCredentialOptions;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebJobsScriptHostService : IHostedService, IScriptHostManager, IServiceProvider, IDisposable
     {
-        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IScriptWebHostEnvironment _scriptWebHostEnvironment;
         private readonly IScriptHostBuilder _scriptHostBuilder;
@@ -92,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HostPerformanceManager hostPerformanceManager,
             IOptions<HostHealthMonitorOptions> healthMonitorOptions,
             IMetricsLogger metricsLogger,
-            IApplicationLifetime applicationLifetime,
+            IHostApplicationLifetime applicationLifetime,
             IConfiguration config,
             IScriptEventManager eventManager,
             IHostMetrics hostMetrics,

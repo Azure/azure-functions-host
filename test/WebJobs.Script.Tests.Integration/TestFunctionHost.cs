@@ -37,7 +37,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -243,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _hostService = manager as WebJobsScriptHostService;
 
             // Wire up StopApplication calls as they behave in hosted scenarios
-            var lifetime = WebHostServices.GetService<IApplicationLifetime>();
+            var lifetime = WebHostServices.GetService<IHostApplicationLifetime>();
             lifetime.ApplicationStopping.Register(async () =>
             {
                 try

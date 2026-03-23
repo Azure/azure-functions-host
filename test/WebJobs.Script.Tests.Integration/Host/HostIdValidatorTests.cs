@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly HostIdValidator _hostIdValidator;
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
-        private readonly Mock<IApplicationLifetime> _mockApplicationLifetime;
+        private readonly Mock<IHostApplicationLifetime> _mockApplicationLifetime;
         private BlobContainerClient _blobContainerClient;
         private bool _storageConfigured;
 
@@ -53,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             mockBlobStorageProvider.Setup(p => p.TryCreateHostingBlobContainerClient(out _blobContainerClient)).Returns(() => _storageConfigured);
 
             var hostNameProvider = new HostNameProvider(_environment);
-            _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
+            _mockApplicationLifetime = new Mock<IHostApplicationLifetime>(MockBehavior.Strict);
             _hostIdValidator = new HostIdValidator(_environment, mockBlobStorageProvider.Object, _mockApplicationLifetime.Object, hostNameProvider, logger);
 
             _storageConfigured = true;

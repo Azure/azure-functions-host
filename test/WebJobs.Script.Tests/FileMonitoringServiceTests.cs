@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -77,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 };
 
                 var loggerFactory = new LoggerFactory();
-                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
                 var mockScriptHostManager = new Mock<IScriptHostManager>();
                 var mockEventManager = new ScriptEventManager();
                 var environment = new TestEnvironment();
@@ -124,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WatchFiles = { "host.json" }
                 };
                 var loggerFactory = new LoggerFactory();
-                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
                 var mockScriptHostManager = new Mock<IScriptHostManager>();
                 var mockEventManager = new ScriptEventManager();
                 var environment = new TestEnvironment();
@@ -189,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WatchFiles = { "host.json" }
                 };
                 var loggerFactory = new LoggerFactory();
-                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
                 var mockScriptHostManager = new Mock<IScriptHostManager>();
                 var mockEventManager = new ScriptEventManager();
                 var environment = new TestEnvironment();
@@ -235,7 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WatchFiles = { "test.dll" }
                 };
                 var loggerFactory = new LoggerFactory();
-                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
                 var mockScriptHostManager = new Mock<IScriptHostManager>();
                 var mockEventManager = new ScriptEventManager();
                 var environment = new TestEnvironment();
@@ -307,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var loggerFactory = new LoggerFactory();
 
                 TaskCompletionSource stop = new TaskCompletionSource();
-                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
                 mockApplicationLifetime.Setup(m => m.StopApplication()).Callback(() => stop.TrySetResult());
 
                 TaskCompletionSource restart = new TaskCompletionSource();
@@ -372,7 +373,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FileWatchingEnabled = true
             };
             var loggerFactory = new LoggerFactory();
-            var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+            var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
             var mockEventManager = new ScriptEventManager();
             var environment = new TestEnvironment();

@@ -28,7 +28,6 @@ using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -52,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FixtureId = testId;
             RequestConfiguration = new HttpConfiguration();
             EventManager = new ScriptEventManager();
-            MockApplicationLifetime = new Mock<IApplicationLifetime>();
+            MockApplicationLifetime = new Mock<IHostApplicationLifetime>();
             LoggerProvider = new TestLoggerProvider();
 
             _rootPath = rootPath;
@@ -66,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestLoggerProvider LoggerProvider { get; }
 
-        public Mock<IApplicationLifetime> MockApplicationLifetime { get; }
+        public Mock<IHostApplicationLifetime> MockApplicationLifetime { get; }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
 
