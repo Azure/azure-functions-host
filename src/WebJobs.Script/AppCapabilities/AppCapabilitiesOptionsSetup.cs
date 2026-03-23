@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 
         /// <summary>
         /// Configures the <see cref="AppCapabilitiesOptions"/> by reading from known configuration sources.
-        /// Reads from host.json first, followed by worker-provided capabilities. 
+        /// Reads from host.json first, followed by worker-provided capabilities.
         /// Worker-provided capabilities will override any duplicates from configuration.
         /// </summary>
         /// <param name="options">The options instance to configure.</param>

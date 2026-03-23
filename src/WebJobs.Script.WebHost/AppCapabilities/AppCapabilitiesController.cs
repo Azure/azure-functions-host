@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
+using Microsoft.Azure.WebJobs.Script.WebHost.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
@@ -56,10 +57,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             IDictionary<string, string> capabilities = _capabilitiesOptions.CurrentValue;
 
-            if (capabilities.TryGetValue(name, out var value))
+            if (capabilities.ContainsKey(name))
             {
-                var trimmedValue = ValidateAndTrimValue(name, value);
-                return Ok(trimmedValue);
+                return Ok(capabilities[name]);
             }
 
             return NotFound();
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private (bool IsValid, string? ErrorMessage) ValidateResponseSize(IDictionary<string, string> capabilities)
         {
-            var serializedResponse = JsonSerializer.Serialize(capabilities);
+            var serializedResponse = JsonSerializer.Serialize(capabilities, DictionaryJsonContext.Default.IDictionaryStringString);
             var responseSize = System.Text.Encoding.UTF8.GetByteCount(serializedResponse);
 
             if (responseSize <= MaxResponseSizeBytes)
@@ -79,35 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _logger.LogError(errorMessage);
 
             return (false, errorMessage);
-        }
-
-        private string ValidateAndTrimValue(string name, string value)
-        {
-            if (value is null)
-            {
-                return value;
-            }
-
-            var valueSize = System.Text.Encoding.UTF8.GetByteCount(value);
-
-            if (valueSize <= MaxResponseSizeBytes)
-            {
-                return value;
-            }
-
-            _logger.LogWarning("Capability '{CapabilityName}' value size ({ValueSize} bytes) exceeds maximum allowed size ({MaxSize} bytes). Trimming value.", name, valueSize, MaxResponseSizeBytes);
-
-            // Trim the value to fit within the max size
-            var maxChars = MaxResponseSizeBytes;
-            var trimmedValue = value.Length > maxChars ? value[..maxChars] : value;
-
-            // Ensure the trimmed value doesn't exceed the byte limit
-            while (System.Text.Encoding.UTF8.GetByteCount(trimmedValue) > MaxResponseSizeBytes)
-            {
-                trimmedValue = trimmedValue[..^1];
-            }
-
-            return trimmedValue;
         }
     }
 }
