@@ -72,7 +72,6 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IEventGenerator>(services);
             AddMockedSingleton<IFunctionInvocationDispatcherFactory>(services);
             AddMockedSingleton<IHttpWorkerService>(services);
-            AddMockedSingleton<IHostApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
             AddMockedSingleton<ISharedMemoryManager>(services);
             AddMockedSingleton<IFunctionDataCache>(services);
