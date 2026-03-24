@@ -426,6 +426,8 @@ public class FunctionsResourceDetectorTests
     }
 
     [Theory]
+    // TODO: .NET 10 changed config binding semantics for empty string values.
+    // Update skipped assertions to match the new expected behavior once confirmed.
     [InlineData(null, "my-function-app", "my-function-app")]
     [InlineData("", "my-function-app", "my-function-app", Skip = "Net 10 breaking changes")]
     [InlineData(" ", "my-function-app", "my-function-app")]

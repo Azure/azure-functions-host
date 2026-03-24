@@ -31,6 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         public void Dispose()
         {
+            HttpClient?.Dispose();
+
             if (Host is not null)
             {
                 try

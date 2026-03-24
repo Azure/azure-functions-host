@@ -245,6 +245,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
+        // TODO: .NET 10 changed default config binding semantics for null values.
+        // Update the assertion to match the new expected default once the behavior is confirmed.
         [InlineData(null, true, Skip = "Net 10 breaking changes")] // default value
         [InlineData("true", true)]
         [InlineData("false", false)]
