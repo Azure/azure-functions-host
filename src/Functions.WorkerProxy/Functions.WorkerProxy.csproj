@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Microsoft.Azure.Functions.WorkerProxy</AssemblyName>
+    <RootNamespace>Microsoft.Azure.Functions.WorkerProxy</RootNamespace>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DisableImplicitNamespaceImports>false</DisableImplicitNamespaceImports>
+    <!-- Standalone tool; opt out of repo-level code-analysis ruleset. -->
+    <CodeAnalysisRuleSet />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.55.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.55.1" PrivateAssets="All" />
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf
+      Include="..\WebJobs.Script.Grpc\azure-functions-language-worker-protobuf\src\proto\**\*.proto"
+      GrpcServices="Server"
+      ProtoRoot="..\WebJobs.Script.Grpc\azure-functions-language-worker-protobuf\src\proto" />
+  </ItemGroup>
+
+</Project>

@@ -162,5 +162,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogicAppCodefulModeEnabled = "WORKFLOW_CODEFUL_ENABLED";
 
         public const string DrainOnApplicationStopping = "FUNCTIONS_ENABLE_DRAIN_ON_APP_STOPPING";
+
+        // External worker (compute separation)
+        public const string FunctionsWorkerExternalEnabled = "FUNCTIONS_WORKER_EXTERNAL_ENABLED";
+        public const string FunctionsWorkerExternalGrpcEndpoint = "FUNCTIONS_WORKER_EXTERNAL_GRPC_ENDPOINT";
     }
 }
