@@ -7,78 +7,55 @@ parameters:
   type: boolean
   default: false
 
-resources:
-  repositories:
-  - repository: 1es
-    type: git
-    name: 1ESPipelineTemplates/1ESPipelineTemplates
-    ref: refs/tags/release
-  - repository: eng
-    type: git
-    name: engineering
-    ref: refs/tags/release
+stages:
+- stage: Validate
+  jobs:
+  - job: Validate
+    templateContext:
+      type: validationJob
 
-variables:
-- template: /eng/ci/templates/variables/build.yml@self
-- template: /ci/variables/cfs.yml@eng
+    steps:
+    - pwsh: |
+        $source = "$(Build.SourceBranch)"
+        if (!($source -like "refs/tags/*-v*" || $source -like "refs/tags/v*" || $source -like "refs/heads/release/*" || $source -like "refs/heads/internal/release/*"))
+        {
+          Write-Host "##vso[task.logissue type=error]Invalid release branch. Branch must be a tag (v* or *-v*) or a release branch (release/*, internal/release/*)."
+          exit 1
+        }
+      displayName: Validate Source Branch
 
-extends:
-  template: v1/1ES.Official.PipelineTemplate.yml@1es
-  parameters:
-    pool:
-      name: 1es-pool-azfunc
-      image: 1es-windows-2022
-      os: windows
+- stage: Download
+  dependsOn: Validate
 
-    stages:
-    - stage: Validate
-      jobs:
-      - job: Validate
-        templateContext:
-          type: validationJob
+  jobs:
+  - job: DownloadPackages
+    displayName: Download release packages
 
-        steps:
-        - pwsh: |
-            $source = "$(Build.SourceBranch)"
-            if (!($source -like "refs/tags/*-v*" || $source -like "refs/tags/v*" || $source -like "refs/heads/release/*" || $source -like "refs/heads/internal/release/*"))
-            {
-              Write-Host "##vso[task.logissue type=error]Invalid release branch. Branch must be a tag (v* or *-v*) or a release branch (release/*, internal/release/*)."
-              exit 1
-            }
-          displayName: Validate Source Branch
+    templateContext:
+      outputParentDirectory: $(Build.ArtifactStagingDirectory)
+      outputs:
+      - output: pipelineArtifact
+        displayName: Publish release packages
+        path: $(Build.ArtifactStagingDirectory)/packages
+        artifact: drop_packages
 
-    - stage: Download
-      dependsOn: Validate
+    steps:
+    - ${{ each step in parameters.downloadSteps }}:
+      - ${{ step }}
 
-      jobs:
-      - job: DownloadPackages
-        displayName: Download release packages
-
-        templateContext:
-          outputParentDirectory: $(Build.ArtifactStagingDirectory)
-          outputs:
-          - output: pipelineArtifact
-            displayName: Publish release packages
-            path: $(Build.ArtifactStagingDirectory)/packages
-            artifact: drop_packages
-
-        steps:
-        - ${{ each step in parameters.downloadSteps }}:
-          - ${{ step }}
-
-    - stage: Release
-      dependsOn: Download
-      jobs:
-      - template: /ci/release-nuget-package.yml@eng
-        parameters:
-          isProduction: true
-          approvers: '[internal]\Azure Functions Core'
-          artifact: drop_packages
-          stagingFeed: public/pre-release
-          packages: |
-            **/*.nupkg
-            !**/*.symbols.nupkg
-          ${{ if eq(parameters.public, true) }}:
-            partnerDrop:
-              serviceConnection: azure-sdk-partner-drops
-              targetFolder: azure-functions/dotnet/${{ parameters.folder }}/$(Build.BuildNumber)
+- stage: Release
+  dependsOn: Download
+  jobs:
+  - template: /ci/release-nuget-package.yml@eng
+    parameters:
+      isProduction: true
+      approvers: '[internal]\Azure Functions Core'
+      artifact: drop_packages
+      stagingFeed: public/pre-release
+      packages: |
+        **/*.nupkg
+        !**/*.symbols.nupkg
+      ${{ if eq(parameters.public, true) }}:
+        partnerDrop:
+          serviceConnection: azure-sdk-partner-drops
+          targetFolder: azure-functions/dotnet/${{ parameters.folder }}/$(Build.BuildNumber)
