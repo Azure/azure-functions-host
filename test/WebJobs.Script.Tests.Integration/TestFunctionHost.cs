@@ -138,11 +138,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
                         }, ServiceLifetime.Singleton));
 
-                        // Register TestSecretManagerProvider before UseStartup so that
-                        // Startup's DefaultSecretManagerProvider (via TryAdd) wins, and
-                        // configureWebHostServices (e.g., SWA fixture) can then override
-                        // it. This preserves dev-branch ordering where PostConfigureServices
-                        // ran last and fixture overrides took precedence.
                         services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
                     });
 
@@ -178,7 +173,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             builder.ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
             {
-                /// REVIEW THIS
                 scriptHostWebJobsBuilder.AddAzureStorage();
                 configureScriptHostWebJobsBuilder?.Invoke(scriptHostWebJobsBuilder);
             })

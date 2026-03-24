@@ -29,17 +29,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         {
             var ex = new HttpException(StatusCodes.Status502BadGateway);
 
-            using (var server = await GetTestServer(_ => throw ex))
-            {
-                var client = server.CreateClient();
-                HttpResponseMessage response = await client.GetAsync(string.Empty);
+            using var host = await GetTestHost(_ => throw ex);
+            var server = host.GetTestServer();
+            var client = server.CreateClient();
+            HttpResponseMessage response = await client.GetAsync(string.Empty);
 
-                Assert.Equal(ex.StatusCode, (int)response.StatusCode);
+            Assert.Equal(ex.StatusCode, (int)response.StatusCode);
 
-                var log = _loggerProvider.GetAllLogMessages().Single(p => p.Category.Contains(nameof(ExceptionMiddleware)));
-                Assert.Equal("An unhandled host error has occurred.", log.FormattedMessage);
-                Assert.Same(ex, log.Exception);
-            }
+            var log = _loggerProvider.GetAllLogMessages().Single(p => p.Category.Contains(nameof(ExceptionMiddleware)));
+            Assert.Equal("An unhandled host error has occurred.", log.FormattedMessage);
+            Assert.Same(ex, log.Exception);
+
+            await host.StopAsync();
         }
 
         [Fact]
@@ -47,17 +48,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         {
             var ex = new Exception("Kaboom!");
 
-            using (var server = await GetTestServer(_ => throw ex))
-            {
-                var client = server.CreateClient();
-                HttpResponseMessage response = await client.GetAsync(string.Empty);
+            using var host = await GetTestHost(_ => throw ex);
+            var server = host.GetTestServer();
+            var client = server.CreateClient();
+            HttpResponseMessage response = await client.GetAsync(string.Empty);
 
-                Assert.Equal(StatusCodes.Status500InternalServerError, (int)response.StatusCode);
+            Assert.Equal(StatusCodes.Status500InternalServerError, (int)response.StatusCode);
 
-                var log = _loggerProvider.GetAllLogMessages().Single(p => p.Category.Contains(nameof(ExceptionMiddleware)));
-                Assert.Equal("An unhandled host error has occurred.", log.FormattedMessage);
-                Assert.Same(ex, log.Exception);
-            }
+            var log = _loggerProvider.GetAllLogMessages().Single(p => p.Category.Contains(nameof(ExceptionMiddleware)));
+            Assert.Equal("An unhandled host error has occurred.", log.FormattedMessage);
+            Assert.Same(ex, log.Exception);
+
+            await host.StopAsync();
         }
 
         [Fact]
@@ -65,14 +67,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         {
             var ex = new FunctionInvocationException("Kaboom!");
 
-            using (var server = await GetTestServer(_ => throw ex))
-            {
-                var client = server.CreateClient();
-                HttpResponseMessage response = await client.GetAsync(string.Empty);
+            using var host = await GetTestHost(_ => throw ex);
+            var server = host.GetTestServer();
+            var client = server.CreateClient();
+            HttpResponseMessage response = await client.GetAsync(string.Empty);
 
-                Assert.Equal(StatusCodes.Status500InternalServerError, (int)response.StatusCode);
-                Assert.Null(_loggerProvider.GetAllLogMessages().SingleOrDefault(p => p.Category.Contains(nameof(ExceptionMiddleware))));
-            }
+            Assert.Equal(StatusCodes.Status500InternalServerError, (int)response.StatusCode);
+            Assert.Null(_loggerProvider.GetAllLogMessages().SingleOrDefault(p => p.Category.Contains(nameof(ExceptionMiddleware))));
+
+            await host.StopAsync();
         }
 
         [Fact]
@@ -86,17 +89,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 throw ex;
             }
 
-            using (var server = await GetTestServer(c => WriteThenThrow(c)))
-            {
-                var client = server.CreateClient();
-                HttpResponseMessage response = await client.GetAsync(string.Empty);
+            using var host = await GetTestHost(c => WriteThenThrow(c));
+            var server = host.GetTestServer();
+            var client = server.CreateClient();
+            HttpResponseMessage response = await client.GetAsync(string.Empty);
 
-                // Because the response had already been written, this cannot change.
-                Assert.Equal(StatusCodes.Status200OK, (int)response.StatusCode);
-                Assert.Equal("Hi.", await response.Content.ReadAsStringAsync());
+            // Because the response had already been written, this cannot change.
+            Assert.Equal(StatusCodes.Status200OK, (int)response.StatusCode);
+            Assert.Equal("Hi.", await response.Content.ReadAsStringAsync());
 
-                var logs = _loggerProvider.GetAllLogMessages().Where(p => p.Category.Contains(nameof(ExceptionMiddleware)));
-                Assert.Collection(logs,
+            var logs = _loggerProvider.GetAllLogMessages().Where(p => p.Category.Contains(nameof(ExceptionMiddleware)));
+            Assert.Collection(logs,
                     m =>
                     {
                         Assert.Equal("An unhandled host error has occurred.", m.FormattedMessage);
@@ -108,10 +111,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                         Assert.Equal("The response has already started, the status code will not be modified.", m.FormattedMessage);
                         Assert.Equal("ResponseStarted", m.EventId.Name);
                     });
-            }
+
+            await host.StopAsync();
         }
 
-        private async Task<TestServer> GetTestServer(Func<HttpContext, Task> callback)
+        private async Task<IHost> GetTestHost(Func<HttpContext, Task> callback)
         {
             // The custom middleware relies on the host starting the request (thus invoking OnStarting),
             // so we need to create a test host to flow through the entire pipeline.
@@ -152,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
             await host.StartAsync();
 
-            return host.GetTestServer();
+            return host;
         }
     }
 }

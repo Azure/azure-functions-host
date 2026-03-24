@@ -240,10 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 var shareServiceClient = new ShareServiceClient(connectionString);
                 var shareClient = shareServiceClient.GetShareClient(contentShare);
 
-                if (!shareClient.Exists())
-                {
-                    await shareClient.CreateIfNotExistsAsync();
-                }
+                await shareClient.CreateIfNotExistsAsync();
 
                 return null;
             }
