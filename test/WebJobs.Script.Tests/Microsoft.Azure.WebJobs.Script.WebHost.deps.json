@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v10.0": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/4.1048.100-pr.26110.4": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/4.1049.100-ci.26173.11": {
         "dependencies": {
           "AspNetCore.HealthChecks.UI.Client": "9.0.0",
           "Azure.Security.KeyVault.Secrets": "4.6.0",
@@ -16,18 +16,14 @@
           "Microsoft.AspNetCore.Mvc.NewtonsoftJson": "10.0.0",
           "Microsoft.Azure.AppService.Middleware.Functions": "1.5.8",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
-          "Microsoft.Azure.Functions.NodeJsWorker": "3.12.0",
           "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption": "1.0.5",
-          "Microsoft.Azure.Functions.PowerShellWorker.PS7.4": "4.0.4581",
-          "Microsoft.Azure.Functions.PowerShellWorker.PS7.6": "4.0.4778",
-          "Microsoft.Azure.Functions.PythonWorker": "4.42.0",
           "Microsoft.Azure.Storage.File": "11.1.7",
-          "Microsoft.Azure.WebJobs.Script": "4.1048.100-pr.26110.4",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1048.100-pr.26110.4",
+          "Microsoft.Azure.WebJobs.Script": "4.1049.100-ci.26173.11",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1049.100-ci.26173.11",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.Security.Utilities.Core": "1.21.0",
-          "Microsoft.Azure.WebJobs.Script.Reference": "4.1048.0.0",
-          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1048.0.0"
+          "Microsoft.Azure.WebJobs.Script.Reference": "4.1049.0.0",
+          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1049.0.0"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.WebHost.dll": {}
@@ -76,7 +72,6 @@
       "Azure.Data.Tables/12.8.3": {
         "dependencies": {
           "Azure.Core": "1.50.0"
-          "System.Text.Json": "8.0.5"
         },
         "runtime": {
           "lib/netstandard2.0/Azure.Data.Tables.dll": {
@@ -115,7 +110,6 @@
       "Azure.Security.KeyVault.Secrets/4.6.0": {
         "dependencies": {
           "Azure.Core": "1.50.0"
-          "System.Text.Json": "8.0.5",
         },
         "runtime": {
           "lib/netstandard2.0/Azure.Security.KeyVault.Secrets.dll": {
@@ -127,7 +121,6 @@
       "Azure.Storage.Blobs/12.22.1": {
         "dependencies": {
           "Azure.Storage.Common": "12.25.0"
-          "System.Text.Json": "8.0.5"
         },
         "runtime": {
           "lib/net6.0/Azure.Storage.Blobs.dll": {
@@ -208,7 +201,6 @@
       "Grpc.Net.Client/2.55.0": {
         "dependencies": {
           "Grpc.Net.Common": "2.55.0"
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6"
         },
         "runtime": {
           "lib/net7.0/Grpc.Net.Client.dll": {
@@ -240,7 +232,6 @@
         }
       },
       "Microsoft.ApplicationInsights/2.23.0": {
-          "System.Diagnostics.DiagnosticSource": "10.0.2"
         "runtime": {
           "lib/netstandard2.0/Microsoft.ApplicationInsights.dll": {
             "assemblyVersion": "2.23.0.29",
@@ -257,7 +248,6 @@
           "Microsoft.ApplicationInsights.WindowsServer": "2.23.0",
           "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.23.0",
           "Microsoft.Extensions.Logging.ApplicationInsights": "2.23.0"
-          "System.Text.Encodings.Web": "8.0.0"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.ApplicationInsights.AspNetCore.dll": {
@@ -269,7 +259,6 @@
       "Microsoft.ApplicationInsights.DependencyCollector/2.23.0": {
         "dependencies": {
           "Microsoft.ApplicationInsights": "2.23.0"
-          "System.Diagnostics.DiagnosticSource": "10.0.2"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.AI.DependencyCollector.dll": {
@@ -304,7 +293,6 @@
       "Microsoft.ApplicationInsights.SnapshotCollector/1.4.6": {
         "dependencies": {
           "Microsoft.ApplicationInsights": "2.23.0"
-          "Microsoft.Extensions.Options": "9.0.6",
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.ApplicationInsights.SnapshotCollector.dll": {
@@ -319,7 +307,6 @@
           "Microsoft.ApplicationInsights.DependencyCollector": "2.23.0",
           "Microsoft.ApplicationInsights.PerfCounterCollector": "2.23.0",
           "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.23.0"
-          "System.Diagnostics.DiagnosticSource": "10.0.2"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.AI.WindowsServer.dll": {
@@ -351,8 +338,6 @@
           }
         }
       },
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
       "Microsoft.AspNetCore.Authentication.JwtBearer/10.0.0": {
         "dependencies": {
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.15.0"
@@ -364,25 +349,6 @@
           }
         }
       },
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
-          "Microsoft.Extensions.Configuration.Abstractions": "9.0.6",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6",
-          "Microsoft.Extensions.Hosting.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6",
-          "System.Diagnostics.DiagnosticSource": "10.0.2",
-          "Microsoft.Extensions.Hosting.Abstractions": "9.0.6"
-          "Microsoft.Extensions.Configuration.Abstractions": "9.0.6"
-          "System.Text.Encodings.Web": "8.0.0"
-          "Microsoft.Extensions.Options": "9.0.6",
-          "System.Text.Encodings.Web": "8.0.0"
-          "Microsoft.Extensions.FileProviders.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Primitives": "9.0.6"
       "Microsoft.AspNetCore.JsonPatch/10.0.0": {
         "dependencies": {
           "Newtonsoft.Json": "13.0.3"
@@ -394,11 +360,6 @@
           }
         }
       },
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
-          "Microsoft.Extensions.FileProviders.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "System.Diagnostics.DiagnosticSource": "10.0.2",
       "Microsoft.AspNetCore.Mvc.NewtonsoftJson/10.0.0": {
         "dependencies": {
           "Microsoft.AspNetCore.JsonPatch": "10.0.0",
@@ -412,7 +373,6 @@
           }
         }
       },
-          "Microsoft.Extensions.Primitives": "9.0.6"
       "Microsoft.AspNetCore.Mvc.WebApiCompatShim/2.3.0": {
         "dependencies": {
           "Microsoft.AspNet.WebApi.Client": "5.2.9"
@@ -432,10 +392,6 @@
           }
         }
       },
-          "Microsoft.Extensions.Primitives": "9.0.6"
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
-          "System.Text.Encodings.Web": "8.0.0"
       "Microsoft.Azure.AppService.Middleware/1.5.8": {
         "dependencies": {
           "Newtonsoft.Json": "13.0.3"
@@ -463,7 +419,6 @@
       "Microsoft.Azure.AppService.Middleware.Modules/1.5.8": {
         "dependencies": {
           "Microsoft.Azure.AppService.Middleware": "1.5.8",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
           "Microsoft.IdentityModel.Validators": "6.32.0",
           "Newtonsoft.Json": "13.0.3",
           "System.IdentityModel.Tokens.Jwt": "8.15.0"
@@ -480,7 +435,6 @@
           "Microsoft.Azure.AppService.Middleware": "1.5.8",
           "Microsoft.Azure.AppService.Middleware.Modules": "1.5.8",
           "Newtonsoft.Json": "13.0.3"
-          "System.Text.Encodings.Web": "8.0.0"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.AppService.Middleware.NetCore.dll": {
@@ -505,7 +459,6 @@
       "Microsoft.Azure.AppService.Proxy.Common/2.3.20240307.67": {
         "dependencies": {
           "Microsoft.AspNetCore.Razor.Language": "2.2.0",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
           "Newtonsoft.Json": "13.0.3",
           "System.Configuration.ConfigurationManager": "6.0.0",
           "System.Reactive.Linq": "5.0.0",
@@ -530,7 +483,6 @@
           }
         }
       },
-      "Microsoft.Azure.Functions.NodeJsWorker/3.12.0": {},
       "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption/1.0.5": {
         "runtime": {
           "lib/net6.0/Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption.dll": {
@@ -539,9 +491,6 @@
           }
         }
       },
-      "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.4581": {},
-      "Microsoft.Azure.Functions.PowerShellWorker.PS7.6/4.0.4778": {},
-      "Microsoft.Azure.Functions.PythonWorker/4.42.0": {},
       "Microsoft.Azure.KeyVault.Core/2.0.4": {
         "runtime": {
           "lib/netstandard1.5/Microsoft.Azure.KeyVault.Core.dll": {
@@ -576,8 +525,6 @@
       "Microsoft.Azure.WebJobs/3.0.45": {
         "dependencies": {
           "Microsoft.Azure.WebJobs.Core": "3.0.45",
-          "Microsoft.Extensions.Configuration.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
           "Newtonsoft.Json": "13.0.3",
           "System.Memory.Data": "8.0.1"
         },
@@ -642,7 +589,6 @@
           "Azure.Storage.Blobs": "12.22.1",
           "Microsoft.Azure.WebJobs": "3.0.45",
           "Microsoft.Extensions.Azure": "1.13.1"
-          "System.Text.Json": "8.0.5"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Host.Storage.dll": {
@@ -656,8 +602,7 @@
           "Azure.Identity": "1.17.1",
           "Microsoft.ApplicationInsights.AspNetCore": "2.23.0",
           "Microsoft.ApplicationInsights.SnapshotCollector": "1.4.6",
-          "Microsoft.Azure.WebJobs": "3.0.44",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
+          "Microsoft.Azure.WebJobs": "3.0.45"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Logging.ApplicationInsights.dll": {
@@ -923,10 +868,6 @@
         "dependencies": {
           "Azure.Core": "1.50.0",
           "Azure.Identity": "1.17.1"
-          "Microsoft.Extensions.Configuration.Abstractions": "9.0.6",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
         },
         "runtime": {
           "lib/net8.0/Microsoft.Extensions.Azure.dll": {
@@ -935,21 +876,7 @@
           }
         }
       },
-      "Microsoft.Extensions.Caching.Abstractions/5.0.0": {
-          "Microsoft.Extensions.Primitives": "9.0.6"
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.Caching.Abstractions.dll": {
-            "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.326.7603"
-          }
-          "Microsoft.Extensions.Caching.Abstractions": "5.0.0",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6",
-          "Microsoft.Extensions.Primitives": "9.0.6"
       "Microsoft.Extensions.Compliance.Abstractions/9.8.0": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Compliance.Abstractions.dll": {
             "assemblyVersion": "9.8.0.0",
@@ -957,17 +884,6 @@
           }
         }
       },
-          "Microsoft.Extensions.Configuration.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Primitives": "9.0.6"
-      "Microsoft.Extensions.Configuration.Abstractions/9.0.6": {
-          "Microsoft.Extensions.Primitives": "9.0.6"
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.625.26613"
-          "Microsoft.Extensions.Configuration.Abstractions": "9.0.6"
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6"
-      "Microsoft.Extensions.DependencyInjection.Abstractions/9.0.6": {
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.625.26613"
       "Microsoft.Extensions.DependencyModel/10.0.0": {
         "runtime": {
           "lib/net10.0/Microsoft.Extensions.DependencyModel.dll": {
@@ -976,35 +892,6 @@
           }
         }
       },
-          "Microsoft.Extensions.Diagnostics.Abstractions": "9.0.6",
-      "Microsoft.Extensions.Diagnostics.Abstractions/9.0.6": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6",
-          "System.Diagnostics.DiagnosticSource": "10.0.2"
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.625.26613"
-          "Microsoft.Extensions.Hosting.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
-      "Microsoft.Extensions.FileProviders.Abstractions/9.0.6": {
-          "Microsoft.Extensions.Primitives": "9.0.6"
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.625.26613"
-          "Microsoft.Extensions.FileProviders.Abstractions": "9.0.6"
-          "Microsoft.Extensions.FileProviders.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Hosting.Abstractions": "9.0.6",
-      "Microsoft.Extensions.Hosting.Abstractions/9.0.6": {
-          "Microsoft.Extensions.Configuration.Abstractions": "9.0.6",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Diagnostics.Abstractions": "9.0.6",
-          "Microsoft.Extensions.FileProviders.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6"
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.625.26613"
-          "Microsoft.Extensions.Configuration.Abstractions": "9.0.6",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
       "Microsoft.Extensions.Http.Polly/10.0.0": {
         "dependencies": {
           "Polly": "7.2.4",
@@ -1012,21 +899,11 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Extensions.Http.Polly.dll": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
             "assemblyVersion": "10.0.0.0",
             "fileVersion": "10.0.25.52411"
           }
         }
       },
-      "Microsoft.Extensions.Logging.Abstractions/9.0.6": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "System.Diagnostics.DiagnosticSource": "10.0.2"
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.625.26613"
       "Microsoft.Extensions.Logging.ApplicationInsights/2.23.0": {
         "dependencies": {
           "Microsoft.ApplicationInsights": "2.23.0"
@@ -1038,31 +915,9 @@
           }
         }
       },
-          "Microsoft.Extensions.Configuration.Abstractions": "9.0.6",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6",
-          "System.Text.Json": "8.0.5"
-      "Microsoft.Extensions.Options/9.0.6": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Primitives": "9.0.6"
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.625.26613"
-          "Microsoft.Extensions.Configuration.Abstractions": "9.0.6",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6",
-          "Microsoft.Extensions.Primitives": "9.0.6"
-      "Microsoft.Extensions.Primitives/9.0.6": {
-            "assemblyVersion": "9.0.0.0",
-            "fileVersion": "9.0.625.26613"
       "Microsoft.Extensions.Telemetry.Abstractions/9.8.0": {
         "dependencies": {
           "Microsoft.Extensions.Compliance.Abstractions": "9.8.0"
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6"
         },
         "runtime": {
           "lib/net9.0/Microsoft.Extensions.Telemetry.Abstractions.dll": {
@@ -1071,13 +926,9 @@
           }
         }
       },
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
-          "Microsoft.Extensions.Options": "9.0.6",
-          "System.Text.Encodings.Web": "8.0.0"
       "Microsoft.Identity.Client/4.78.0": {
         "dependencies": {
           "Microsoft.IdentityModel.Abstractions": "8.15.0"
-          "System.Diagnostics.DiagnosticSource": "10.0.2"
         },
         "runtime": {
           "lib/net8.0/Microsoft.Identity.Client.dll": {
@@ -1153,7 +1004,6 @@
       },
       "Microsoft.IdentityModel.Tokens/8.15.0": {
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
           "Microsoft.IdentityModel.Logging": "8.15.0"
         },
         "runtime": {
@@ -1177,7 +1027,6 @@
           }
         }
       },
-          "Microsoft.Extensions.Primitives": "9.0.6",
       "Microsoft.Security.Utilities.Core/1.21.0": {
         "runtime": {
           "lib/net9.0/Microsoft.Security.Utilities.Core.dll": {
@@ -1431,7 +1280,6 @@
       },
       "OpenTelemetry/1.14.0": {
         "dependencies": {
-          "Microsoft.Extensions.Diagnostics.Abstractions": "9.0.6",
           "OpenTelemetry.Api.ProviderBuilderExtensions": "1.14.0"
         },
         "runtime": {
@@ -1442,7 +1290,6 @@
         }
       },
       "OpenTelemetry.Api/1.14.0": {
-          "System.Diagnostics.DiagnosticSource": "10.0.2"
         "runtime": {
           "lib/net10.0/OpenTelemetry.Api.dll": {
             "assemblyVersion": "1.0.0.0",
@@ -1452,7 +1299,6 @@
       },
       "OpenTelemetry.Api.ProviderBuilderExtensions/1.14.0": {
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.6",
           "OpenTelemetry.Api": "1.14.0"
         },
         "runtime": {
@@ -1475,7 +1321,6 @@
       },
       "OpenTelemetry.Extensions.Hosting/1.14.0": {
         "dependencies": {
-          "Microsoft.Extensions.Hosting.Abstractions": "9.0.6",
           "OpenTelemetry": "1.14.0"
         },
         "runtime": {
@@ -1498,7 +1343,6 @@
       },
       "OpenTelemetry.Instrumentation.Http/1.14.0": {
         "dependencies": {
-          "Microsoft.Extensions.Options": "9.0.6",
           "OpenTelemetry.Api.ProviderBuilderExtensions": "1.14.0"
         },
         "runtime": {
@@ -1578,7 +1422,6 @@
       },
       "System.ClientModel/1.8.0": {
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "9.0.6",
           "System.Memory.Data": "8.0.1"
         },
         "runtime": {
@@ -1597,8 +1440,6 @@
           "lib/net6.0/System.Configuration.ConfigurationManager.dll": {
             "assemblyVersion": "6.0.0.0",
             "fileVersion": "6.0.21.52210"
-      "System.Diagnostics.DiagnosticSource/10.0.2": {
-            "fileVersion": "10.0.225.61305"
           }
         }
       },
@@ -1657,14 +1498,6 @@
           "lib/net8.0/System.IO.Hashing.dll": {
             "assemblyVersion": "8.0.0.0",
             "fileVersion": "8.0.23.53103"
-          }
-        }
-      },
-      "System.IO.Pipelines/10.0.3": {
-        "runtime": {
-          "lib/net8.0/System.IO.Pipelines.dll": {
-            "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.326.7603"
           }
         }
       },
@@ -1731,34 +1564,6 @@
             "assemblyVersion": "6.0.0.0",
             "fileVersion": "6.0.21.52210"
           }
-      "System.Text.Encodings.Web/8.0.0": {},
-        "runtime": {
-          "lib/net8.0/System.Text.Encodings.Web.dll": {
-            "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.326.7603"
-          }
-        },
-        "runtimeTargets": {
-          "runtimes/browser/lib/net8.0/System.Text.Encodings.Web.dll": {
-            "rid": "browser",
-            "assetType": "runtime",
-            "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.326.7603"
-          }
-        }
-      },
-      "System.Text.Json/8.0.5": {},
-        "dependencies": {
-          "System.IO.Pipelines": "10.0.3",
-          "System.Text.Encodings.Web": "10.0.3"
-        },
-        "runtime": {
-          "lib/net8.0/System.Text.Json.dll": {
-            "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.326.7603"
-          }
-        }
-      },
         }
       },
       "System.Windows.Extensions/6.0.0": {
@@ -1791,7 +1596,7 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script/4.1048.100-pr.26110.4": {
+      "Microsoft.Azure.WebJobs.Script/4.1049.100-ci.26173.11": {
         "dependencies": {
           "Azure.Data.Tables": "12.8.3",
           "Azure.Monitor.OpenTelemetry.Exporter": "1.5.0",
@@ -1823,43 +1628,43 @@
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.dll": {
-            "assemblyVersion": "4.1048.100-dev",
+            "fileVersion": "0.0.0.0"
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/4.1048.100-pr.26110.4": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/4.1049.100-ci.26173.11": {
         "dependencies": {
           "Grpc.AspNetCore": "2.55.0",
           "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.45",
-          "Microsoft.Azure.WebJobs.Script": "4.1048.100-pr.26110.4"
+          "Microsoft.Azure.WebJobs.Script": "4.1049.100-ci.26173.11",
           "Mono.Posix.NETStandard": "1.0.0"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
-            "assemblyVersion": "4.1048.100-dev",
+            "fileVersion": "0.0.0.0"
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Reference/4.1048.0.0": {
+      "Microsoft.Azure.WebJobs.Script.Reference/4.1049.0.0": {
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.dll": {
-            "assemblyVersion": "4.1048.0.0",
-            "fileVersion": "4.1048.100.26110"
+            "assemblyVersion": "4.1049.0.0",
+            "fileVersion": "4.1049.100.26173"
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1048.0.0": {
+      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1049.0.0": {
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
-            "assemblyVersion": "4.1048.0.0",
-            "fileVersion": "4.1048.100.26110"
+            "assemblyVersion": "4.1049.0.0",
+            "fileVersion": "4.1049.100.26173"
           }
         }
       }
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/4.1048.100-pr.26110.4": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/4.1049.100-ci.26173.11": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -2144,31 +1949,12 @@
       "path": "microsoft.azure.appservice.proxy.runtime/2.3.20240307.67",
       "hashPath": "microsoft.azure.appservice.proxy.runtime.2.3.20240307.67.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.NodeJsWorker/3.12.0": {
-      "sha512": "sha512-UPXxG1Gh29eFkwPtKl1mvw/Bnfcy77YUv+blqRqQDIC5XGTmBwyXCOXL6wyX8ze8PUiIby47O3lfLN+I4hOazw==",
-      "path": "microsoft.azure.functions.nodejsworker/3.12.0",
-      "hashPath": "microsoft.azure.functions.nodejsworker.3.12.0.nupkg.sha512"
     "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption/1.0.5": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-OjKhaXWVMO1+2nPvIzKzt6nZVqyUr3dQe8mdhYWsZDofxzbxExT2rGkCG4BqJtSMQMFI3IR9uOyoMesMPkKZbw==",
       "path": "microsoft.azure.functions.platform.metrics.linuxconsumption/1.0.5",
       "hashPath": "microsoft.azure.functions.platform.metrics.linuxconsumption.1.0.5.nupkg.sha512"
-    "Microsoft.Azure.Functions.PowerShellWorker.PS7.4/4.0.4581": {
-      "sha512": "sha512-6VjipKHxPr49zWJO8mzoXH7RWR9Qh6tI5MRh1xMgeqbLpzZ7h9ENFmVVE2ATBmxmz59VyImhs8yCd5OxY4I27A==",
-      "path": "microsoft.azure.functions.powershellworker.ps7.4/4.0.4581",
-      "hashPath": "microsoft.azure.functions.powershellworker.ps7.4.4.0.4581.nupkg.sha512"
-    "Microsoft.Azure.Functions.PowerShellWorker.PS7.6/4.0.4778": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-x0ztJxtPxlpLnvGZdX3rDN2KUEfL3JGLwZGi2pr3MI+bk25mjK/BMeYCHcNfYE4cyH6m6U+3Mi99KBVu29yzdg==",
-      "path": "microsoft.azure.functions.powershellworker.ps7.6/4.0.4778",
-      "hashPath": "microsoft.azure.functions.powershellworker.ps7.6.4.0.4778.nupkg.sha512"
-    },
-    "Microsoft.Azure.Functions.PythonWorker/4.42.0": {
-      "sha512": "sha512-peFZSd66uOhccQ6WDa0+LbesMHgNg/Nkq71yyto1ZA9RTbqSTsYVp+SJHiZCYAAzRKhk3TF5Mri1olBfwpOvUg==",
-      "path": "microsoft.azure.functions.pythonworker/4.42.0",
-      "hashPath": "microsoft.azure.functions.pythonworker.4.42.0.nupkg.sha512"
     },
     "Microsoft.Azure.KeyVault.Core/2.0.4": {
       "type": "package",
@@ -2303,10 +2089,6 @@
       "path": "microsoft.extensions.azure/1.13.1",
       "hashPath": "microsoft.extensions.azure.1.13.1.nupkg.sha512"
     },
-    "Microsoft.Extensions.Caching.Abstractions/5.0.0": {
-      "sha512": "sha512-bu8As90/SBAouMZ6fJ+qRNo1X+KgHGrVueFhhYi+E5WqEhcnp2HoWRFnMzXQ6g4RdZbvPowFerSbKNH4Dtg5yg==",
-      "path": "microsoft.extensions.caching.abstractions/5.0.0",
-      "hashPath": "microsoft.extensions.caching.abstractions.5.0.0.nupkg.sha512"
     "Microsoft.Extensions.Compliance.Abstractions/9.8.0": {
       "type": "package",
       "serviceable": true,
@@ -2317,40 +2099,16 @@
     "Microsoft.Extensions.DependencyModel/10.0.0": {
       "type": "package",
       "serviceable": true,
-    "Microsoft.Extensions.Configuration.Abstractions/9.0.6": {
-      "sha512": "sha512-3GgMIi2jP8g1fBW93Z9b9Unamc0SIsgyhiCmC91gq4loTixK9vQMuxxUsfJ1kRGwn+/FqLKwOHqmn0oYWn3Fvw==",
-      "path": "microsoft.extensions.configuration.abstractions/9.0.6",
-      "hashPath": "microsoft.extensions.configuration.abstractions.9.0.6.nupkg.sha512"
       "sha512": "sha512-RFYJR7APio/BiqdQunRq6DB+nDB6nc2qhHr77mlvZ0q0BT8PubMXN7XicmfzCbrDE/dzhBnUKBRXLTcqUiZDGg==",
-    "Microsoft.Extensions.DependencyInjection.Abstractions/9.0.6": {
-      "sha512": "sha512-0Zn6nR/6g+90MxskZyOOMPQvnPnrrGu6bytPwkV+azDcTtCSuQ1+GJUrg8Klmnrjk1i6zMpw2lXijl+tw7Q3kA==",
-      "path": "microsoft.extensions.dependencyinjection.abstractions/9.0.6",
-      "hashPath": "microsoft.extensions.dependencyinjection.abstractions.9.0.6.nupkg.sha512"
       "path": "microsoft.extensions.dependencymodel/10.0.0",
       "hashPath": "microsoft.extensions.dependencymodel.10.0.0.nupkg.sha512"
     },
-    "Microsoft.Extensions.Diagnostics.Abstractions/9.0.6": {
-      "sha512": "sha512-GIoXX7VDcTEsNM6yvffTBaOwnPQELGI5dzExR7L2O7AUkDsHBYIZawUbuwfq3cYzz8dIAAJotQYJMzH7qy27Ng==",
-      "path": "microsoft.extensions.diagnostics.abstractions/9.0.6",
-      "hashPath": "microsoft.extensions.diagnostics.abstractions.9.0.6.nupkg.sha512"
-    "Microsoft.Extensions.FileProviders.Abstractions/9.0.6": {
-      "sha512": "sha512-q9FPkSGVA9ipI255p3PBAvWNXas5Tzjyp/DwYSwT+46mIFw9fWZahsF6vHpoxLt5/vtANotH2sAm7HunuFIx9g==",
-      "path": "microsoft.extensions.fileproviders.abstractions/9.0.6",
-      "hashPath": "microsoft.extensions.fileproviders.abstractions.9.0.6.nupkg.sha512"
     "Microsoft.Extensions.Http.Polly/10.0.0": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-Jzb6e7kQc/iKDlMt8q8p9Q0rkUi75L/ZFHHTGM4mM6dJBn64YRUgW9k2/Zx7VnsIuu61r5Fhoa6075GTFYo5kg==",
-    "Microsoft.Extensions.Hosting.Abstractions/9.0.6": {
-      "sha512": "sha512-G9T95JbcG/wQpeVIzg0IMwxI+uTywDmbxWUWN2P0mdna35rmuTqgTrZ4SU5rcfUT3EJfbI9N4K8UyCAAc6QK8Q==",
-      "path": "microsoft.extensions.hosting.abstractions/9.0.6",
-      "hashPath": "microsoft.extensions.hosting.abstractions.9.0.6.nupkg.sha512"
       "path": "microsoft.extensions.http.polly/10.0.0",
       "hashPath": "microsoft.extensions.http.polly.10.0.0.nupkg.sha512"
-    "Microsoft.Extensions.Logging.Abstractions/9.0.6": {
-      "sha512": "sha512-LFnyBNK7WtFmKdnHu3v0HOYQ8BcjYuy0jdC9pgCJ/rbLKoJEG9/dBzSKMEeeWDbDeoWS0TIxOC8a9CM5ufca3A==",
-      "path": "microsoft.extensions.logging.abstractions/9.0.6",
-      "hashPath": "microsoft.extensions.logging.abstractions.9.0.6.nupkg.sha512"
     },
     "Microsoft.Extensions.Logging.ApplicationInsights/2.23.0": {
       "type": "package",
@@ -2359,14 +2117,6 @@
       "path": "microsoft.extensions.logging.applicationinsights/2.23.0",
       "hashPath": "microsoft.extensions.logging.applicationinsights.2.23.0.nupkg.sha512"
     },
-    "Microsoft.Extensions.Options/9.0.6": {
-      "sha512": "sha512-wUPhNM1zsI58Dy10xRdF2+pnsisiUuETg5ZBncyAEEUm/CQ9Q1vmivyUWH8RDbAlqyixf2dJNQ2XZb7HsKUEQw==",
-      "path": "microsoft.extensions.options/9.0.6",
-      "hashPath": "microsoft.extensions.options.9.0.6.nupkg.sha512"
-    "Microsoft.Extensions.Primitives/9.0.6": {
-      "sha512": "sha512-BHniU24QV67qp1pJknqYSofAPYGmijGI8D+ci9yfw33iuFdyOeB9lWTg78ThyYLyQwZw3s0vZ36VMb0MqbUuLw==",
-      "path": "microsoft.extensions.primitives/9.0.6",
-      "hashPath": "microsoft.extensions.primitives.9.0.6.nupkg.sha512"
     "Microsoft.Extensions.Telemetry.Abstractions/9.8.0": {
       "type": "package",
       "serviceable": true,
@@ -2654,10 +2404,6 @@
       "path": "system.configuration.configurationmanager/6.0.0",
       "hashPath": "system.configuration.configurationmanager.6.0.0.nupkg.sha512"
     },
-    "System.Diagnostics.DiagnosticSource/10.0.2": {
-      "sha512": "sha512-lYWBy8fKkJHaRcOuw30d67PrtVjR5754sz5Wl76s8P+vJ9FSThh9b7LIcTSODx1LY7NB3Srvg+JMnzd67qNZOw==",
-      "path": "system.diagnostics.diagnosticsource/10.0.2",
-      "hashPath": "system.diagnostics.diagnosticsource.10.0.2.nupkg.sha512"
     "System.Diagnostics.PerformanceCounter/6.0.0": {
       "type": "package",
       "serviceable": true,
@@ -2689,13 +2435,6 @@
     "System.IO.Hashing/8.0.0": {
       "type": "package",
       "serviceable": true,
-    "System.IO.Pipelines/10.0.3": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-WMxiA2jGdHnRBmoVK55YUq5VPaxW0Sg2frPtXV+urUMvpqHIga6lleV/YuryHIuGsAKVjQAjv6PrQ6IJpoLohQ==",
-      "path": "system.io.pipelines/10.0.3",
-      "hashPath": "system.io.pipelines.10.0.3.nupkg.sha512"
-    },
       "sha512": "sha512-ne1843evDugl0md7Fjzy6QjJrzsjh46ZKbhf8GwBXb5f/gw97J4bxMs0NQKifDuThh/f0bZ0e62NPl1jzTuRqA==",
       "path": "system.io.hashing/8.0.0",
       "hashPath": "system.io.hashing.8.0.0.nupkg.sha512"
@@ -2742,14 +2481,6 @@
       "path": "system.security.permissions/6.0.0",
       "hashPath": "system.security.permissions.6.0.0.nupkg.sha512"
     },
-    "System.Text.Encodings.Web/8.0.0": {
-      "sha512": "sha512-yev/k9GHAEGx2Rg3/tU6MQh4HGBXJs70y7j1LaM1i/ER9po+6nnQ6RRqTJn1E7Xu0fbIFK80Nh5EoODxrbxwBQ==",
-      "path": "system.text.encodings.web/8.0.0",
-      "hashPath": "system.text.encodings.web.8.0.0.nupkg.sha512"
-    "System.Text.Json/8.0.5": {
-      "sha512": "sha512-0f1B50Ss7rqxXiaBJyzUu9bWFOO2/zSlifZ/UNMdiIpDYe4cY4LQQicP4nirK1OS31I43rn062UIJ1Q9bpmHpg==",
-      "path": "system.text.json/8.0.5",
-      "hashPath": "system.text.json.8.0.5.nupkg.sha512"
     "System.Windows.Extensions/6.0.0": {
       "type": "package",
       "serviceable": true,
@@ -2764,22 +2495,22 @@
       "path": "yarp.reverseproxy/2.0.1",
       "hashPath": "yarp.reverseproxy.2.0.1.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script/4.1048.100-pr.26110.4": {
+    "Microsoft.Azure.WebJobs.Script/4.1049.100-ci.26173.11": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/4.1048.100-pr.26110.4": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/4.1049.100-ci.26173.11": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Reference/4.1048.0.0": {
+    "Microsoft.Azure.WebJobs.Script.Reference/4.1049.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1048.0.0": {
+    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1049.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
