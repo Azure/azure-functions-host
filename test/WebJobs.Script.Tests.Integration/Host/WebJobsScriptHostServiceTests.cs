@@ -35,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly string TestLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
 
         private readonly WebJobsScriptHostService _scriptHostService;
-        private readonly Mock<IHostApplicationLifetime> _mockApplicationLifetime;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly TestFunctionHost _testHost;
         private readonly Collection<string> _exceededCounters = new Collection<string>();
@@ -53,13 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 HealthCheckThreshold = 5
             };
             var wrappedHealthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(_healthMonitorOptions);
-
-            _mockApplicationLifetime = new Mock<IHostApplicationLifetime>(MockBehavior.Loose);
-            _mockApplicationLifetime.Setup(p => p.StopApplication())
-               .Callback(() =>
-               {
-                   _shutdownCalled = true;
-               });
 
             _mockEnvironment = new Mock<IEnvironment>();
             var mockServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
@@ -85,7 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 configureWebHostServices: services =>
                 {
                     services.AddSingleton<IOptions<HostHealthMonitorOptions>>(wrappedHealthMonitorOptions);
-                    services.AddSingleton<IHostApplicationLifetime>(_mockApplicationLifetime.Object);
                     services.AddSingleton<IEnvironment>(_mockEnvironment.Object);
                     services.AddSingleton<HostPerformanceManager>(mockHostPerformanceManager.Object);
 
@@ -101,6 +92,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 });
 
             _scriptHostService = _testHost.JobHostServices.GetService<IScriptHostManager>() as WebJobsScriptHostService;
+
+            // In .NET 10, IHostApplicationLifetime cannot be replaced in DI.
+            // Instead, hook into the real lifetime to track when StopApplication() is called.
+            var lifetime = _testHost.WebHostServices.GetService<IHostApplicationLifetime>();
+            lifetime.ApplicationStopping.Register(() => _shutdownCalled = true);
         }
 
         [Fact]
@@ -203,8 +199,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
             await TestHelpers.Await(() => _shutdownCalled);
 
-            Assert.Equal(ScriptHostState.Error, _scriptHostService.State);
-            _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Once);
+            // With real IHostApplicationLifetime, StopApplication() actually stops the host,
+            // so the state transitions through Error to Stopped.
+            Assert.True(_scriptHostService.State is ScriptHostState.Error or ScriptHostState.Stopped);
+            Assert.True(_shutdownCalled);
 
             // we expect a few restart iterations
             var scriptHostLogMessages = _testHost.GetScriptHostLogMessages();
@@ -248,7 +246,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 return allLogs.Contains("Host initialization: ConsecutiveErrors=3");
             });
             Assert.Equal(ScriptHostState.Error, _scriptHostService.State);
-            _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Never);
+            Assert.False(_shutdownCalled);
 
             // after a few retries, put the host back to health and verify
             // it starts successfully
