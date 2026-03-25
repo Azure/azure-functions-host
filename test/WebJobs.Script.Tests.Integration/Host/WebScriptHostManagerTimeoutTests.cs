@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                 Assert.Contains(messages, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
                 host.WebHost.Dispose();
             }
-            
+
             // Validates a bug where WebHost services were not being disposed on a function timeout
             Assert.True(_disposedService.IsDisposed, "Expected services to be disposed");
         }
