@@ -242,21 +242,6 @@ static string ResolveGrpcEndpoint(string[] args)
     return "http://localhost:50052";
 }
 
-static string ResolveHttpProxyEndpoint(string[] args)
-{
-    // 1. --http-proxy-endpoint <url> from command-line args
-    for (int i = 0; i < args.Length - 1; i++)
-    {
-        if (string.Equals(args[i], "--http-proxy-endpoint", StringComparison.OrdinalIgnoreCase))
-        {
-            return args[i + 1];
-        }
-    }
-
-    // 2. Default — matches the worker proxy's default HTTP proxy port
-    return "http://localhost:50053";
-}
-
 static int ResolveHttpPort(string[] args)
 {
     // 1. --http-port <port> from command-line args
