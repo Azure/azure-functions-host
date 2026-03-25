@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -61,6 +62,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             string result = provider.WaitForContent(TimeSpan.FromSeconds(1));
             Assert.Equal(expected, result);
         }
+
+        [Fact]
+        public void WaitForContent_WithConcurrentReset_DoesNotHang()
+        {
+            var provider = new HostJsonContentProvider();
+            provider.SetContent("{\"version\":\"2.0\"}");
+
+            // Reset with clearCache=false preserves content and re-creates _tcs.
+            // WaitForContent must read the new _tcs atomically under the lock.
+            provider.Reset(clearCache: false);
+
+            string result = null;
+            var task = Task.Run(() => result = provider.WaitForContent(TimeSpan.FromSeconds(2)));
+            bool completed = task.Wait(TimeSpan.FromSeconds(5));
+
+            Assert.True(completed, "WaitForContent should not hang after Reset(clearCache: false)");
+            Assert.Equal("{\"version\":\"2.0\"}", result);
+        }
+
+        [Fact]
+        public void WaitForContent_AfterResetClearCache_TimesOut()
+        {
+            var provider = new HostJsonContentProvider();
+            provider.SetContent("{\"version\":\"2.0\"}");
+
+            provider.Reset(clearCache: true);
+
+            Assert.Throws<TimeoutException>(() => provider.WaitForContent(TimeSpan.FromMilliseconds(100)));
+        }
     }
 
     public class ExternalWorkerOptionsTests
@@ -79,21 +109,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             var options = new ExternalWorkerOptions();
 
             Assert.Null(options.GrpcEndpoint);
-        }
-    }
-
-    public class WorkerConnectedEventTests
-    {
-        [Fact]
-        public void Constructor_SetsProperties()
-        {
-            string workerId = "worker-123";
-            string runtime = "dotnet-isolated";
-
-            var evt = new WorkerConnectedEvent(workerId, runtime);
-
-            Assert.Equal(workerId, evt.WorkerId);
-            Assert.Equal(runtime, evt.Runtime);
         }
     }
 
@@ -187,6 +202,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             Assert.True(provider.TryGet("AzureFunctionsJobHost:logging:logLevel:default", out string logLevel));
             Assert.Equal("Information", logLevel);
+        }
+    }
+
+    public class OutboundGrpcClientTests
+    {
+        [Fact]
+        public async Task DisposeAsync_CalledMultipleTimes_DoesNotThrow()
+        {
+            var eventManager = new Mock<IScriptEventManager>();
+            var logger = new Mock<ILogger<OutboundGrpcClient>>();
+            var client = new OutboundGrpcClient(eventManager.Object, logger.Object);
+
+            await client.DisposeAsync();
+            await client.DisposeAsync();
         }
     }
 }

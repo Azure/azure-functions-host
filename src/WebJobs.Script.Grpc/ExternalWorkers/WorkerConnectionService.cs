@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -36,19 +35,10 @@ internal class WorkerConnectionService : IHostedService, IAsyncDisposable
     private readonly ILogger _logger;
 
     private readonly ConcurrentDictionary<string, OutboundGrpcClient> _clients = new();
-    private readonly ConcurrentDictionary<string, ConnectedWorkerChannel> _pendingChannels = new();
-
-    private IDisposable _workerConnectedSubscription;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerConnectionService"/> class.
     /// </summary>
-    /// <param name="channelFactory">Factory for creating <see cref="ConnectedWorkerChannel"/> instances.</param>
-    /// <param name="channelManager">Manager that tracks active connected worker channels.</param>
-    /// <param name="eventManager">The event manager used for gRPC channel registration and event subscriptions.</param>
-    /// <param name="options">Options controlling external worker connectivity.</param>
-    /// <param name="hostJsonContentProvider">Provider that receives host.json content extracted from worker capabilities.</param>
-    /// <param name="loggerFactory">Logger factory for creating loggers.</param>
     public WorkerConnectionService(
         ConnectedWorkerChannelFactory channelFactory,
         IConnectedWorkerChannelManager channelManager,
@@ -75,9 +65,6 @@ internal class WorkerConnectionService : IHostedService, IAsyncDisposable
             return;
         }
 
-        _workerConnectedSubscription = _eventManager.OfType<WorkerConnectedEvent>()
-            .Subscribe(OnWorkerConnected);
-
         if (_options.GrpcEndpoint is not null)
         {
             string workerId = $"w_{Guid.NewGuid().ToString("N")[..8]}";
@@ -88,31 +75,23 @@ internal class WorkerConnectionService : IHostedService, IAsyncDisposable
     /// <inheritdoc/>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _workerConnectedSubscription?.Dispose();
-        _workerConnectedSubscription = null;
-
         foreach (var kvp in _clients)
         {
             await kvp.Value.DisposeAsync();
         }
 
         _clients.Clear();
-        _pendingChannels.Clear();
     }
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        _workerConnectedSubscription?.Dispose();
-        _workerConnectedSubscription = null;
-
         foreach (var kvp in _clients)
         {
             await kvp.Value.DisposeAsync();
         }
 
         _clients.Clear();
-        _pendingChannels.Clear();
     }
 
     private async Task ConnectWorkerAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
@@ -137,13 +116,12 @@ internal class WorkerConnectionService : IHostedService, IAsyncDisposable
         };
 
         var channel = _channelFactory.Create(workerId, workerConfig);
-        _pendingChannels[workerId] = channel;
-
         await channel.StartWorkerProcessAsync(cancellationToken);
 
         _logger.LogInformation("Waiting for worker '{workerId}' init handshake.", workerId);
         await channel.WaitForInitAsync(InitTimeout, cancellationToken);
 
+        // Extract host.json from worker capabilities.
         string hostJson = channel.GetCapabilityState("host_configuration_json");
         if (hostJson is not null)
         {
@@ -154,18 +132,9 @@ internal class WorkerConnectionService : IHostedService, IAsyncDisposable
         {
             _logger.LogWarning("Worker '{workerId}' did not provide host_configuration_json capability.", workerId);
         }
-    }
 
-    private void OnWorkerConnected(WorkerConnectedEvent evt)
-    {
-        if (_pendingChannels.TryRemove(evt.WorkerId, out var channel))
-        {
-            _logger.LogInformation("Worker '{workerId}' connected (runtime: {runtime}). Registering channel.", evt.WorkerId, evt.Runtime);
-            _channelManager.AddChannel(evt.WorkerId, channel);
-        }
-        else
-        {
-            _logger.LogWarning("Received WorkerConnectedEvent for unknown workerId '{workerId}'.", evt.WorkerId);
-        }
+        // Register the channel directly — no event needed.
+        _channelManager.AddChannel(workerId, channel);
+        _logger.LogInformation("Worker '{workerId}' connected and registered.", workerId);
     }
 }

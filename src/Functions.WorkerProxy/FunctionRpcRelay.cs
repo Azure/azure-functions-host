@@ -92,6 +92,11 @@ public sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         finally
         {
             await cts.CancelAsync();
+
+            // Observe both tasks to prevent unhandled exceptions.
+            try { await readTask; } catch { }
+            try { await writeTask; } catch { }
+
             _logger.LogInformation("[{Side}] stream disconnected", side);
         }
     }
@@ -102,32 +107,46 @@ public sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         string side,
         CancellationToken cancellationToken)
     {
-        while (await inbound.MoveNext(cancellationToken))
+        try
         {
-            var message = inbound.Current;
-            _logger.LogDebug("[{Side}] → {Content}", side, message.ContentCase);
-
-            if (string.Equals(side, "worker", StringComparison.Ordinal)
-                && message.ContentCase == StreamingMessage.ContentOneofCase.WorkerInitResponse)
+            while (await inbound.MoveNext(cancellationToken))
             {
-                if (!string.IsNullOrEmpty(_options.HostJsonPath))
+                var message = inbound.Current;
+                _logger.LogDebug("[{Side}] → {Content}", side, message.ContentCase);
+
+                if (string.Equals(side, "worker", StringComparison.Ordinal)
+                    && message.ContentCase == StreamingMessage.ContentOneofCase.WorkerInitResponse)
                 {
-                    string hostJson = await File.ReadAllTextAsync(_options.HostJsonPath, cancellationToken);
-                    message.WorkerInitResponse.Capabilities["host_configuration_json"] = hostJson;
-                    _logger.LogInformation("Injected host.json into WorkerInitResponse capabilities");
+                    if (!string.IsNullOrEmpty(_options.HostJsonPath))
+                    {
+                        string hostJson = await File.ReadAllTextAsync(_options.HostJsonPath, cancellationToken);
+                        message.WorkerInitResponse.Capabilities["host_configuration_json"] = hostJson;
+                        _logger.LogInformation("Injected host.json into WorkerInitResponse capabilities");
+                    }
+
+                    // Rewrite HttpUri to point at the proxy's HTTP port so the runtime
+                    // routes HTTP requests through the proxy rather than directly to the worker.
+                    if (message.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"))
+                    {
+                        string proxyHttpUri = $"http://localhost:{_options.HttpProxyPort}";
+                        message.WorkerInitResponse.Capabilities["HttpUri"] = proxyHttpUri;
+                        _logger.LogInformation("Rewrote HttpUri capability to {Uri}", proxyHttpUri);
+                    }
                 }
 
-                // Rewrite HttpUri to point at the proxy's HTTP port so the runtime
-                // routes HTTP requests through the proxy rather than directly to the worker.
-                if (message.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"))
-                {
-                    string proxyHttpUri = $"http://localhost:{_options.HttpProxyPort}";
-                    message.WorkerInitResponse.Capabilities["HttpUri"] = proxyHttpUri;
-                    _logger.LogInformation("Rewrote HttpUri capability to {Uri}", proxyHttpUri);
-                }
+                await writer.WriteAsync(message, cancellationToken);
             }
 
-            await writer.WriteAsync(message, cancellationToken);
+            writer.TryComplete();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            writer.TryComplete(ex);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            writer.TryComplete();
         }
     }
 

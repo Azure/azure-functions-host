@@ -77,9 +77,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         /// </exception>
         public string WaitForContent(TimeSpan timeout)
         {
-            if (_tcs.Task.Wait(timeout))
+            Task<string> task;
+            lock (_lock)
             {
-                return _tcs.Task.Result;
+                task = _tcs.Task;
+            }
+
+            if (task.Wait(timeout))
+            {
+                return task.Result;
             }
 
             throw new TimeoutException(

@@ -39,17 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
                    attemptCount: 0, environment, applicationHostOptions, sharedMemoryManager,
                    workerConcurrencyOptions, hostingConfigOptions, httpProxyService)
         {
-            WorkerInitTask.Task.ContinueWith(
-                t =>
-                {
-                    if (t.Result)
-                    {
-                        EventManager.Publish(new WorkerConnectedEvent(Id, WorkerConfig.Description.Language));
-                    }
-                },
-                CancellationToken.None,
-                TaskContinuationOptions.OnlyOnRanToCompletion,
-                TaskScheduler.Default);
         }
 
         /// <inheritdoc/>

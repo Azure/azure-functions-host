@@ -51,22 +51,38 @@ internal class OutboundGrpcClient : IAsyncDisposable
     /// <returns>A task that completes once the stream is established and background pumps are running.</returns>
     public Task ConnectAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
     {
-        _channel = GrpcChannel.ForAddress(endpoint);
-        var client = new FunctionRpc.FunctionRpcClient(_channel);
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _call = client.EventStream(cancellationToken: _cts.Token);
 
-        if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
+        try
         {
-            throw new InvalidOperationException($"No pre-registered gRPC channels found for worker '{workerId}'.");
+            _channel = GrpcChannel.ForAddress(endpoint);
+            var client = new FunctionRpc.FunctionRpcClient(_channel);
+            _call = client.EventStream(cancellationToken: _cts.Token);
+
+            if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
+            {
+                throw new InvalidOperationException($"No pre-registered gRPC channels found for worker '{workerId}'.");
+            }
+
+            _ = PushOutbound(workerId, _call.RequestStream, outbound.Reader, _cts.Token);
+            _ = PullInbound(workerId, _call.ResponseStream, inbound, _cts.Token);
+
+            _logger.LogDebug("Outbound gRPC client connected to {endpoint} for workerId: {workerId}", endpoint, workerId);
+
+            return Task.CompletedTask;
         }
+        catch
+        {
+            _call?.Dispose();
 
-        _ = PushOutbound(workerId, _call.RequestStream, outbound.Reader, _cts.Token);
-        _ = PullInbound(workerId, _call.ResponseStream, inbound, _cts.Token);
+            if (_channel is not null)
+            {
+                _channel.Dispose();
+            }
 
-        _logger.LogDebug("Outbound gRPC client connected to {endpoint} for workerId: {workerId}", endpoint, workerId);
-
-        return Task.CompletedTask;
+            _cts?.Dispose();
+            throw;
+        }
     }
 
     private async Task PushOutbound(

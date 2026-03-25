@@ -3,12 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
 {
@@ -91,56 +90,53 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
 
             _logger.LogInformation("Applying host.json configuration received from external worker.");
 
-            JObject hostJsonObject = JObject.Parse(hostJson);
-            ProcessObject(hostJsonObject);
+            // TODO: Align with HostJsonFileConfigurationProvider for production parity:
+            // - Apply HostConfigurationProfile settings before processing host.json
+            //   (GetConfigProfile loads profile-based overrides from the "configurationProfile" key)
+            // - Validate the "version" field (must be "2.0")
+            // - Handle "isDefaultHostConfig" flag (controls extension bundle defaults)
+            // - Add metrics logging (MetricEventNames.LoadHostConfigurationSource)
+
+            using JsonDocument doc = JsonDocument.Parse(hostJson);
+            ProcessElement(doc.RootElement);
         }
 
-        private void ProcessObject(JObject json)
+        private void ProcessElement(JsonElement element)
         {
-            foreach (JProperty property in json.Properties())
+            switch (element.ValueKind)
             {
-                _path.Push(property.Name);
-                ProcessToken(property.Value);
-                _path.Pop();
-            }
-        }
+                case JsonValueKind.Object:
+                    foreach (JsonProperty property in element.EnumerateObject())
+                    {
+                        _path.Push(property.Name);
+                        ProcessElement(property.Value);
+                        _path.Pop();
+                    }
+                    break;
 
-        private void ProcessToken(JToken token)
-        {
-            switch (token.Type)
-            {
-                case JTokenType.Object:
-                    ProcessObject(token.Value<JObject>());
+                case JsonValueKind.Array:
+                    int index = 0;
+                    foreach (JsonElement item in element.EnumerateArray())
+                    {
+                        _path.Push(index.ToString());
+                        ProcessElement(item);
+                        _path.Pop();
+                        index++;
+                    }
                     break;
-                case JTokenType.Array:
-                    ProcessArray(token.Value<JArray>());
-                    break;
-                case JTokenType.Integer:
-                case JTokenType.Float:
-                case JTokenType.String:
-                case JTokenType.Boolean:
-                case JTokenType.Null:
-                case JTokenType.Date:
-                case JTokenType.Raw:
-                case JTokenType.Bytes:
-                case JTokenType.TimeSpan:
+
+                case JsonValueKind.String:
+                case JsonValueKind.Number:
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                case JsonValueKind.Null:
                     string key = ConfigurationSectionNames.JobHost
                         + ConfigurationPath.KeyDelimiter
                         + ConfigurationPath.Combine(_path.Reverse());
-                    Data[key] = token.Value<JValue>().ToString(CultureInfo.InvariantCulture);
+                    Data[key] = element.ValueKind is JsonValueKind.Null
+                        ? null
+                        : element.ToString();
                     break;
-                default:
-                    break;
-            }
-        }
-
-        private void ProcessArray(JArray array)
-        {
-            for (int i = 0; i < array.Count; i++)
-            {
-                _path.Push(i.ToString());
-                ProcessToken(array[i]);
-                _path.Pop();
             }
         }
     }
