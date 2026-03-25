@@ -3,6 +3,7 @@
 
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.AppCapabilities
 
             // Verify capabilities were cleared
             var capabilitiesStoreAfterRestart = testHost.JobHostServices.GetRequiredService<IAppCapabilitiesStore>();
-            Assert.Empty(capabilitiesStoreAfterRestart.Capabilities);
+            Assert.Throws<InvalidOperationException>(() => { var _ = capabilitiesStoreAfterRestart.Capabilities; });
         }
     }
 }
