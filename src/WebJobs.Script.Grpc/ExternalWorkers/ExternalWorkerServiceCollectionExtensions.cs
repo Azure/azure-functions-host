@@ -5,6 +5,7 @@ using System;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -21,18 +22,18 @@ internal static class ExternalWorkerServiceCollectionExtensions
     /// so that <c>TryAddSingleton</c> registrations do not override the external worker implementations.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="environment">The environment used to read configuration values.</param>
+    /// <param name="configuration">The configuration used to read external worker settings.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddExternalWorkerServices(this IServiceCollection services, IEnvironment environment)
+    public static IServiceCollection AddExternalWorkerServices(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(environment);
+        ArgumentNullException.ThrowIfNull(configuration);
 
-        // Configure options from environment variables
+        // Configure options from configuration (backed by environment variables)
         services.Configure<ExternalWorkerOptions>(options =>
         {
             options.IsEnabled = true;
-            options.GrpcEndpoint = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsWorkerExternalGrpcEndpoint);
+            options.GrpcEndpoint = configuration[EnvironmentSettingNames.FunctionsWorkerExternalGrpcEndpoint];
         });
 
         // Core singletons
@@ -76,6 +77,11 @@ internal static class ExternalWorkerServiceCollectionExtensions
         // External workers provide their own metadata; script file validation is not applicable.
         services.Configure<FunctionMetadataOptions>(o => o.SkipScriptFileValidation = true);
 
+        // External workers don't use the local filesystem for app content.
+        // Disable directory creation and file watching.
+        services.Configure<ScriptJobHostOptions>(o => o.FileWatchingEnabled = false);
+        services.PostConfigure<ScriptApplicationHostOptions>(o => o.IsFileSystemReadOnly = true);
+
         // Register the external invocation dispatcher and its factory,
         // overriding the default FunctionInvocationDispatcherFactory registered by AddRpcScriptHostServices.
         services.AddSingleton<ConnectedWorkerInvocationDispatcher>();
@@ -86,11 +92,11 @@ internal static class ExternalWorkerServiceCollectionExtensions
 
     /// <summary>
     /// Returns <see langword="true"/> when the <c>FUNCTIONS_WORKER_EXTERNAL_ENABLED</c>
-    /// environment variable is set to <c>true</c> or <c>1</c>.
+    /// setting is set to <c>true</c> or <c>1</c>.
     /// </summary>
-    public static bool IsExternalWorkerEnabled(this IEnvironment environment)
+    public static bool IsExternalWorkerEnabled(this IConfiguration configuration)
     {
-        string value = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsWorkerExternalEnabled);
+        string value = configuration[EnvironmentSettingNames.FunctionsWorkerExternalEnabled];
 
         return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
             || string.Equals(value, "1", StringComparison.Ordinal);

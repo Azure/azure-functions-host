@@ -110,7 +110,7 @@ async Task HandleWorkerInit(IClientStreamWriter<StreamingMessage> stream, Stream
             },
             Capabilities =
             {
-                ["host_configuration_json"] = "{\"version\":\"2.0\",\"extensionBundle\":{\"id\":\"Microsoft.Azure.Functions.ExtensionBundle\",\"version\":\"[4.*, 5.0.0)\"}}",
+                ["host_configuration_json"] = "{\"version\":\"2.0\"}",
                 ["RpcHttpTriggerMetadataRemoved"] = "true",
                 ["RawHttpBodyBytes"] = "true",
                 ["HttpUri"] = $"http://localhost:{httpPort}"

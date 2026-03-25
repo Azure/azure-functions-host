@@ -42,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
             IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
             IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
+            IConfiguration configuration = rootServiceProvider.GetService<IConfiguration>();
             IEnvironment environment = rootServiceProvider.GetService<IEnvironment>();
 
             // In external worker mode, skip the file-based host.json configuration source.
@@ -49,7 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // We store the replacement source in builder properties so that AddScriptHost
             // can add it at the correct point in the ConfigureAppConfiguration pipeline
             // (before extension bundles are resolved).
-            if (environment.IsExternalWorkerEnabled())
+            bool isExternalWorker = configuration.IsExternalWorkerEnabled();
+            if (isExternalWorker)
             {
                 builder.Properties[ScriptConstants.SkipHostJsonConfigurationKey] = true;
 
@@ -81,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // In external worker mode, override the dispatcher factory with one that
                     // returns the ConnectedWorkerInvocationDispatcher. This must be registered
                     // after AddRpcScriptHostServices so the last-registered factory wins.
-                    if (environment.IsExternalWorkerEnabled())
+                    if (isExternalWorker)
                     {
                         webJobsBuilder.Services.AddExternalWorkerScriptHostServices(rootServiceProvider);
                     }

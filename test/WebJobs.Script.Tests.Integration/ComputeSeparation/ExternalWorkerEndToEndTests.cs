@@ -67,7 +67,7 @@ public class ExternalWorkerEndToEndTests : IAsyncLifetime, IDisposable
         _output.WriteLine($"Script root: {_scriptRootPath}");
 
         string workerProxyDll = FindBuiltDll(repoRoot, "src", "Functions.WorkerProxy");
-        string mockWorkerDll = FindBuiltDll(repoRoot, "tools", "compute-separation-harness", "MockWorker");
+        string mockWorkerDll = FindBuiltDll(repoRoot, "tools", "ComputeSeparation", "MockWorker");
         string runtimeDll = FindBuiltDll(repoRoot, "src", "WebJobs.Script.WebHost");
 
         _output.WriteLine($"Worker proxy DLL: {workerProxyDll}");

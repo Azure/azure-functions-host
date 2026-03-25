@@ -201,9 +201,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // The WorkerConnectionService hosted service must also be registered before
             // WebJobsScriptHostService so its StartAsync runs first (hosted services
             // start in registration order).
-            if (SystemEnvironment.Instance.IsExternalWorkerEnabled())
+            if (configuration.IsExternalWorkerEnabled())
             {
-                services.AddExternalWorkerServices(SystemEnvironment.Instance);
+                services.AddExternalWorkerServices(configuration);
             }
 
             services.AddCommonRpcServices();

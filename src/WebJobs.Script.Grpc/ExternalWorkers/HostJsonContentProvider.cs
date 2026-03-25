@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
     /// WebHost-level singleton that bridges the gRPC layer (where host.json content arrives
     /// via worker capabilities in <c>WorkerInitResponse</c>) and the ScriptHost configuration pipeline.
     /// <para>
-    /// In the M3 non-placeholder flow, <see cref="SetContent"/> is called by
+    /// In the non-placeholder flow, <see cref="SetContent"/> is called by
     /// <c>WorkerConnectionService</c> after extracting the <c>host_configuration_json</c>
     /// capability. Because <c>WorkerConnectionService</c> blocks in <c>StartAsync</c>,
     /// <see cref="WaitForContent"/> returns immediately when the configuration provider
