@@ -28,3 +28,9 @@
 * Do not emit "Act", "Arrange" or "Assert" comments.
 * Use Moq for mocking in tests.
 * Copy existing style in nearby files for test method names and capitalization.
+
+## Dependencies & Patterns
+
+* Prefer `System.Text.Json` over `Newtonsoft.Json` for new code. Only use Newtonsoft when interfacing with existing APIs that require it (e.g., `JObject`-based shared helpers).
+* In this repository, `Microsoft.Azure.WebJobs.Script.IEnvironment` is our internal interface for accessing process environment data (for example, environment variables and related flags). Do not introduce new usage of `IEnvironment` for reading configuration; prefer the standard `Microsoft.Extensions.Configuration.IConfiguration` abstraction instead. Existing `IEnvironment` usage in legacy code is acceptable but should not be extended beyond its current scope.
+* Do not use event-based communication (`IScriptEventManager` pub/sub) for new component coordination. Prefer direct method calls or `await`-based flows. The event manager's keyed state store (`TryAddWorkerState`/`TryGetWorkerState`) is acceptable when needed by existing infrastructure.
