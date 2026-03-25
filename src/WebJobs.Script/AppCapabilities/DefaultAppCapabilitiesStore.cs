@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 
             lock (_updateLock)
             {
-                // Only allow the first worker to register capabilities as all workers tied to a JobHost instance should have the same capabilities.
+                // Only allow the first caller to register capabilities
                 if (!_isInitialized)
                 {
                     foreach (var kvp in capabilities)

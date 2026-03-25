@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
@@ -45,8 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         {
             var result = _controller.GetCapabilities();
 
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var capabilities = (IDictionary<string, string>)okResult.Value;
+            var contentResult = Assert.IsType<ContentResult>(result);
+            Assert.Equal("application/json", contentResult.ContentType);
+
+            var capabilities = JsonSerializer.Deserialize<Dictionary<string, string>>(contentResult.Content);
+            Assert.NotNull(capabilities);
             Assert.Equal(3, capabilities.Count);
             Assert.Equal("value1", capabilities["feature1"]);
             Assert.Equal("value2", capabilities["feature2"]);
@@ -61,8 +64,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var result = _controller.GetCapabilities();
 
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var capabilities = (IDictionary<string, string>)okResult.Value;
+            var contentResult = Assert.IsType<ContentResult>(result);
+            Assert.Equal("application/json", contentResult.ContentType);
+
+            var capabilities = JsonSerializer.Deserialize<Dictionary<string, string>>(contentResult.Content);
+            Assert.NotNull(capabilities);
             Assert.Empty(capabilities);
         }
 
@@ -81,8 +87,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var result = _controller.GetCapabilities();
 
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var capabilities = (IDictionary<string, string>)okResult.Value;
+            var contentResult = Assert.IsType<ContentResult>(result);
+            Assert.Equal("application/json", contentResult.ContentType);
+
+            var capabilities = JsonSerializer.Deserialize<Dictionary<string, string>>(contentResult.Content);
+            Assert.NotNull(capabilities);
             Assert.Equal(10, capabilities.Count);
 
             _mockLogger.Verify(
@@ -149,8 +158,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         {
             var result = _controller.Get(name);
 
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.Equal(expectedValue, okResult.Value);
+            var contentResult = Assert.IsType<ContentResult>(result);
+            Assert.Equal("application/json", contentResult.ContentType);
+
+            var value = JsonSerializer.Deserialize<string>(contentResult.Content);
+            Assert.Equal(expectedValue, value);
         }
 
         [Theory]
@@ -180,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         {
             var result = _controller.Get("Feature1");
 
-            Assert.IsType<OkObjectResult>(result);
+            Assert.IsType<ContentResult>(result);
         }
 
         [Fact]
@@ -195,8 +207,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var result = _controller.Get("nullCapability");
 
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.Null(okResult.Value);
+            var contentResult = Assert.IsType<ContentResult>(result);
+            Assert.Equal("application/json", contentResult.ContentType);
+
+            var value = JsonSerializer.Deserialize<string>(contentResult.Content);
+            Assert.Null(value);
 
             _mockLogger.Verify(
                 x => x.Log(
@@ -206,6 +221,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Never);
+        }
+
+        [Fact]
+        public void Get_Returns413_WhenCapabilityValueExceedsLimit()
+        {
+            var options = new AppCapabilitiesOptions();
+            IDictionary<string, string> dict = (IDictionary<string, string>)options;
+
+            var largeValue = new string('z', ScriptConstants.MaxTriggersStringLength);
+            dict.Add("largeCapability", largeValue);
+
+            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(options);
+
+            var result = _controller.Get("largeCapability");
+
+            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status413PayloadTooLarge, statusCodeResult.StatusCode);
+
+            dynamic errorResponse = statusCodeResult.Value;
+            Assert.NotNull(errorResponse.error);
+            Assert.Contains("exceeds maximum allowed size", (string)errorResponse.error);
+        }
+
+        [Fact]
+        public void Get_LogsError_WhenCapabilityValueExceedsLimit()
+        {
+            var options = new AppCapabilitiesOptions();
+            IDictionary<string, string> dict = (IDictionary<string, string>)options;
+
+            var largeValue = new string('w', ScriptConstants.MaxTriggersStringLength);
+            dict.Add("largeCapability", largeValue);
+
+            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(options);
+
+            _controller.Get("largeCapability");
+
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("exceeds maximum allowed size")),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
         }
     }
 }

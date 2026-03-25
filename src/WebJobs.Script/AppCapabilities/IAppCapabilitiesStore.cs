@@ -29,14 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// </summary>
         /// <param name="capabilities">An enumerable containing key value pairs with the capabilities to set.</param>
         /// <returns>
-        /// <see langword="true"/> if the capabilities were applied; <see langword="false"/> if the store
-        /// had already been initialized and the provided capabilities were ignored.
+        /// <see langword="true"/> if the capabilities were applied; <see langword="false"/> if the
+        /// provided capabilities were ignored.
         /// </returns>
-        /// <remarks>
-        /// Implementations typically allow capabilities to be initialized once. After the capabilities
-        /// have been set the first time, subsequent calls may return <see langword="false"/> without
-        /// modifying the existing values.
-        /// </remarks>
         public bool TrySetAll(IEnumerable<KeyValuePair<string, string>> capabilities);
 
         /// <summary>

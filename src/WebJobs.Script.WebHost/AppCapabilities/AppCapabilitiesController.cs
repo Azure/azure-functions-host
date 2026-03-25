@@ -24,7 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IOptionsMonitor<AppCapabilitiesOptions> _capabilitiesOptions;
         private readonly ILogger<AppCapabilitiesController> _logger;
 
-        public AppCapabilitiesController(IOptionsMonitor<AppCapabilitiesOptions> capabilitiesOptions, ILogger<AppCapabilitiesController> logger)
+        public AppCapabilitiesController(IOptionsMonitor<AppCapabilitiesOptions> capabilitiesOptions,
+            ILogger<AppCapabilitiesController> logger)
         {
             _capabilitiesOptions = capabilitiesOptions;
             _logger = logger;
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return StatusCode(StatusCodes.Status413PayloadTooLarge, new { error = validationResult.ErrorMessage });
             }
 
-            return Ok(capabilities);
+            return Content(validationResult.SerializedResponse!, "application/json");
         }
 
         [HttpGet]
@@ -57,28 +58,51 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             IDictionary<string, string> capabilities = _capabilitiesOptions.CurrentValue;
 
-            if (capabilities.ContainsKey(name))
+            if (capabilities.TryGetValue(name, out var value))
             {
-                return Ok(capabilities[name]);
+                var validationResult = ValidateResponseSize(value);
+
+                if (!validationResult.IsValid)
+                {
+                    return StatusCode(StatusCodes.Status413PayloadTooLarge, new { error = validationResult.ErrorMessage });
+                }
+
+                return Content(validationResult.SerializedResponse!, "application/json");
             }
 
             return NotFound();
         }
 
-        private (bool IsValid, string? ErrorMessage) ValidateResponseSize(IDictionary<string, string> capabilities)
+        private (bool IsValid, string? ErrorMessage, string? SerializedResponse) ValidateResponseSize(IDictionary<string, string> capabilities)
         {
             var serializedResponse = JsonSerializer.Serialize(capabilities, DictionaryJsonContext.Default.IDictionaryStringString);
             var responseSize = System.Text.Encoding.UTF8.GetByteCount(serializedResponse);
 
             if (responseSize <= MaxResponseSizeBytes)
             {
-                return (true, null);
+                return (true, null, serializedResponse);
             }
 
             var errorMessage = $"Capabilities response size ({responseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).";
-            _logger.LogError(errorMessage);
+            _logger.LogError("Capabilities response size ({ResponseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).", responseSize, MaxResponseSizeBytes);
 
-            return (false, errorMessage);
+            return (false, errorMessage, null);
+        }
+
+        private (bool IsValid, string? ErrorMessage, string? SerializedResponse) ValidateResponseSize(string value)
+        {
+            var serializedValue = JsonSerializer.Serialize(value);
+            var responseSize = System.Text.Encoding.UTF8.GetByteCount(serializedValue);
+
+            if (responseSize <= MaxResponseSizeBytes)
+            {
+                return (true, null, serializedValue);
+            }
+
+            var errorMessage = $"Capability value size ({responseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).";
+            _logger.LogError("Capability value size ({ResponseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).", responseSize, MaxResponseSizeBytes);
+
+            return (false, errorMessage, serializedValue);
         }
     }
 }

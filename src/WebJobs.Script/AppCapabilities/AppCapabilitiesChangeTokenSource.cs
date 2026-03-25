@@ -30,9 +30,19 @@ internal sealed class AppCapabilitiesChangeTokenSource : IOptionsChangeTokenSour
 
     public void TriggerChange()
     {
-        var previousCts = Interlocked.Exchange(ref _cts, new CancellationTokenSource());
-        previousCts?.Cancel();
-        previousCts?.Dispose();
+        var newCts = new CancellationTokenSource();
+        var previousCts = Interlocked.Exchange(ref _cts, newCts);
+
+        if (previousCts is null)
+        {
+            // Object was disposed, don't leave the new CTS behind
+            Interlocked.CompareExchange(ref _cts, null, newCts);
+            newCts.Dispose();
+            return;
+        }
+
+        previousCts.Cancel();
+        previousCts.Dispose();
     }
 
     public void Dispose()
