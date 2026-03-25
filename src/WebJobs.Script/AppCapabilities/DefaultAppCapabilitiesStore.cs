@@ -20,7 +20,18 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             _optionsChangeTokenSource = optionsChangeTokenSource ?? throw new ArgumentNullException(nameof(optionsChangeTokenSource));
         }
 
-        public IReadOnlyDictionary<string, string> Capabilities => _capabilities;
+        public IReadOnlyDictionary<string, string> Capabilities
+        {
+            get
+            {
+                if (!_isInitialized)
+                {
+                    throw new InvalidOperationException("Capabilities have not been initialized.");
+                }
+
+                return _capabilities;
+            }
+        }
 
         public bool TrySetAll(IEnumerable<KeyValuePair<string, string>> capabilities)
         {

@@ -44,13 +44,20 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
                 AddCapabilitiesFromSection(optionsDict, capabilitiesSection);
             }
 
-            foreach (var kvp in _appCapabilitiesStore.Capabilities)
+            try
             {
-                if (optionsDict.ContainsKey(kvp.Key))
+                foreach (var kvp in _appCapabilitiesStore.Capabilities)
                 {
-                    _logger.LogDebug("Duplicate capability key found. Overriding existing value with a worker provided value.");
+                    if (optionsDict.ContainsKey(kvp.Key))
+                    {
+                        _logger.LogDebug("Duplicate capability key found. Overriding existing value with a worker provided value.");
+                    }
+                    optionsDict[kvp.Key] = kvp.Value;
                 }
-                optionsDict[kvp.Key] = kvp.Value;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogDebug(ex, "App capabilities store has not been initialized. Using configuration values only.");
             }
         }
 

@@ -210,6 +210,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.AppCapabilities
                                       l.FormattedMessage.Contains("worker provided value"));
         }
 
+        [Fact]
+        public void Configure_StoreNotInitialized_DoesNotThrow()
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "AzureFunctionsJobHost:appCapabilities:capability1", "hostValue1" },
+                    { "AzureFunctionsJobHost:appCapabilities:capability2", "hostValue2" }
+                })
+                .Build();
+
+            var mockStore = new Mock<IAppCapabilitiesStore>();
+            mockStore.Setup(s => s.Capabilities).Throws(new InvalidOperationException("Capabilities have not been initialized."));
+
+            var logger = new LoggerFactory().CreateLogger<AppCapabilitiesOptionsSetup>();
+            var setup = new AppCapabilitiesOptionsSetup(configuration, mockStore.Object, logger);
+            var options = new AppCapabilitiesOptions();
+
+            setup.Configure(options);
+
+            var optionsDict = (IDictionary<string, string>)options;
+            Assert.Equal(2, optionsDict.Count);
+            Assert.Equal("hostValue1", optionsDict["capability1"]);
+            Assert.Equal("hostValue2", optionsDict["capability2"]);
+        }
+
         private IConfiguration BuildHostJsonConfiguration(string hostJsonContent)
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);

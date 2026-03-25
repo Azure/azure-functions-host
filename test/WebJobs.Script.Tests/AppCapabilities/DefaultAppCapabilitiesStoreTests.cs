@@ -118,7 +118,7 @@ public class DefaultAppCapabilitiesStoreTests
         Assert.Single(store.Capabilities);
 
         store.Clear();
-        Assert.Empty(store.Capabilities);
+        Assert.Throws<InvalidOperationException>(() => store.Capabilities);
 
         var secondCapabilities = new List<KeyValuePair<string, string>>
         {
@@ -333,5 +333,37 @@ public class DefaultAppCapabilitiesStoreTests
         bool secondResult = store.TrySetAll(secondCapabilities);
         Assert.False(secondResult);
         Assert.Empty(store.Capabilities);
+    }
+
+    [Fact]
+    public void Capabilities_BeforeInitialization_ThrowsInvalidOperationException()
+    {
+        var changeTokenSource = new TestChangeTokenSource<AppCapabilitiesOptions>();
+        var store = new DefaultAppCapabilitiesStore(changeTokenSource);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => store.Capabilities);
+
+        Assert.Equal("Capabilities have not been initialized.", exception.Message);
+    }
+
+    [Fact]
+    public void Capabilities_AfterClear_ThrowsInvalidOperationException()
+    {
+        var changeTokenSource = new TestChangeTokenSource<AppCapabilitiesOptions>();
+        var store = new DefaultAppCapabilitiesStore(changeTokenSource);
+
+        var capabilities = new List<KeyValuePair<string, string>>
+        {
+            new KeyValuePair<string, string>("Key1", "Value1")
+        };
+
+        store.TrySetAll(capabilities);
+        Assert.Single(store.Capabilities);
+
+        store.Clear();
+
+        var exception = Assert.Throws<InvalidOperationException>(() => store.Capabilities);
+
+        Assert.Equal("Capabilities have not been initialized.", exception.Message);
     }
 }
