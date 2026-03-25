@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
 
             _logger.LogInformation("Applying host.json configuration received from external worker.");
 
-            // TODO: Align with HostJsonFileConfigurationProvider for production parity:
+            // [CS-TODO] Align with HostJsonFileConfigurationProvider for production parity:
             // - Apply HostConfigurationProfile settings before processing host.json
             //   (GetConfigProfile loads profile-based overrides from the "configurationProfile" key)
             // - Validate the "version" field (must be "2.0")

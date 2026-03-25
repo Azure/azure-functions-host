@@ -26,9 +26,9 @@ internal class OutboundGrpcClient : IAsyncDisposable
     private readonly IScriptEventManager _eventManager;
     private readonly ILogger _logger;
 
-    private GrpcChannel _channel;
-    private AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage> _call;
-    private CancellationTokenSource _cts;
+    private GrpcChannel? _channel;
+    private AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage>? _call;
+    private CancellationTokenSource? _cts;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OutboundGrpcClient"/> class.
@@ -166,20 +166,18 @@ internal class OutboundGrpcClient : IAsyncDisposable
 
     /// <summary>
     /// Cancels background pumps and releases the gRPC channel and call resources.
+    /// This method is idempotent and safe to call multiple times.
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        if (_cts is not null)
+        var cts = Interlocked.Exchange(ref _cts, null);
+        if (cts is not null)
         {
-            await _cts.CancelAsync();
-            _cts.Dispose();
+            await cts.CancelAsync();
+            cts.Dispose();
         }
 
-        _call?.Dispose();
-
-        if (_channel is not null)
-        {
-            _channel.Dispose();
-        }
+        Interlocked.Exchange(ref _call, null)?.Dispose();
+        Interlocked.Exchange(ref _channel, null)?.Dispose();
     }
 }

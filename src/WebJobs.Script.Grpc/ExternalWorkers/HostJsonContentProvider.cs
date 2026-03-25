@@ -20,8 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
     internal class HostJsonContentProvider
     {
         private readonly object _lock = new();
-        private TaskCompletionSource<string> _tcs = new();
-        private string _cachedContent;
+        private TaskCompletionSource<string> _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private string? _cachedContent;
 
         /// <summary>
         /// Stores the host.json content received from the external worker and unblocks
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
                     _cachedContent = null;
                 }
 
-                _tcs = new TaskCompletionSource<string>();
+                _tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
 
                 if (_cachedContent is not null)
                 {

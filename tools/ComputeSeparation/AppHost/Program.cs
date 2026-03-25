@@ -61,13 +61,4 @@ var mockWorker = builder.AddProject<Projects.MockWorker>("mock-worker")
     .WithArgs("--grpc-endpoint", workerGrpcEndpoint)
     .WaitFor(workerProxy);
 
-// TODO: Aspire's AddProject overrides ASPNETCORE_URLS with its own random ports,
-// which conflicts with the Functions host's port expectations. The processes start
-// and connect correctly (gRPC handshake completes) but the ScriptHost's second
-// build cycle doesn't pick up the external worker metadata provider, resulting in
-// no functions being loaded. This needs investigation into how Aspire manages
-// environment variables for projects with custom port requirements.
-//
-// For now, use the E2E integration test or the PowerShell script (start.ps1) to
-// verify the full flow.
 builder.Build().Run();

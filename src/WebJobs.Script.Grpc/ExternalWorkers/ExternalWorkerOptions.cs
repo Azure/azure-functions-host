@@ -17,5 +17,5 @@ internal class ExternalWorkerOptions
     /// Gets or sets the gRPC endpoint URI of the external worker to connect to.
     /// When set, the host will initiate an outbound gRPC connection to this endpoint on startup.
     /// </summary>
-    public string GrpcEndpoint { get; set; }
+    public string? GrpcEndpoint { get; set; }
 }
