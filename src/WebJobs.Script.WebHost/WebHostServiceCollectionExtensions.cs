@@ -101,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             services.AddSingleton<IScriptHostManager>(s => s.GetRequiredService<WebJobsScriptHostService>());
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
+            services.AddSingleton<IScriptApplicationLifetime, ScriptApplicationLifetime>();
             services.TryAddSingleton<IStandbyManager, StandbyManager>();
             services.TryAddSingleton<IServiceCollection>(services);
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();

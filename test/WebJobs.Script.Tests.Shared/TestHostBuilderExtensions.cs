@@ -90,6 +90,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IWorkerRuntimeResolver, ScriptHostWorkerRuntimeResolver>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
+            AddMockedSingleton<IScriptApplicationLifetime>(services);
             services.AddSingleton(_ => new WorkerConfigCacheInvalidator(null, null));
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();

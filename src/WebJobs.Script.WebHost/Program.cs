@@ -47,6 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 #endif
 
             return ExtensionsHost.CreateDefaultBuilder(args ?? Array.Empty<string>())
+                // Scope and build validation are intentionally disabled. The host uses a two-level
+                // DI hierarchy with cross-boundary service resolution that would fail generic scope
+                // validation. The custom DependencyValidator provides tighter, bespoke validation.
+                // This preserves the behavior of WebHost.CreateDefaultBuilder(), which also disabled
+                // scope validation in Production by default.
                 .UseDefaultServiceProvider((context, options) =>
                 {
                     options.ValidateScopes = false;

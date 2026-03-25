@@ -120,19 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     services.AddSingleton<HttpRequestQueue>();
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
-                    services.AddSingleton<IWebJobsExceptionHandler>(sp =>
-                    {
-                        // Resolve IHostApplicationLifetime from the root (web host) service provider.
-                        // The inner host registers its own IHostApplicationLifetime, but StopApplication()
-                        // must shut down the outer web host to fully stop the application.
-                        var lifetime = rootServiceProvider.GetService<IHostApplicationLifetime>()
-                            ?? sp.GetRequiredService<IHostApplicationLifetime>();
-
-                        return new WebScriptHostExceptionHandler(
-                            lifetime,
-                            sp.GetRequiredService<ILogger<WebScriptHostExceptionHandler>>(),
-                            sp.GetRequiredService<IScriptHostWorkerManager>());
-                    });
+                    services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
 
                     services.AddSingleton<DefaultScriptWebHookProvider>();
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());

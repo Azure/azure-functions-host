@@ -168,8 +168,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     _host.StopAsync().GetAwaiter().GetResult();
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Console.WriteLine($"Error stopping host during test cleanup: {ex.Message}");
                 }
 
                 _host.Dispose();

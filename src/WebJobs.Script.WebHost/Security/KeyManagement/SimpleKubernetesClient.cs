@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly HttpClient _httpClient;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
+        private readonly CancellationTokenSource _cts = new();
         private Action _watchCallback;
         private bool _disposed;
         private AutoRecoveringFileSystemWatcher _fileWatcher;
@@ -126,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             while (!_disposed)
                             {
                                 // Have we reached the end of the stream?
-                                if (await reader.ReadLineAsync() is null)
+                                if (await reader.ReadLineAsync(_cts.Token) is null)
                                 {
                                     break;
                                 }
@@ -134,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                                 _watchCallback?.Invoke();
                             }
                         }
-                        await Task.Delay(TimeSpan.FromSeconds(1));
+                        await Task.Delay(TimeSpan.FromSeconds(1), _cts.Token);
                     }
                 }
             }
@@ -334,6 +335,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (disposing)
                 {
+                    _cts.Cancel();
+                    _cts.Dispose();
                     _httpClient.Dispose();
                     _fileWatcher?.Dispose();
                 }

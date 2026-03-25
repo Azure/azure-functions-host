@@ -4,11 +4,9 @@
 using System;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -17,14 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
 {
     public class WebScriptHostExceptionHandlerTests
     {
-        private readonly Mock<IHostApplicationLifetime> _mockApplicationLifetime;
+        private readonly Mock<IScriptApplicationLifetime> _mockApplicationLifetime;
         private readonly Mock<ILogger<WebScriptHostExceptionHandler>> _mockLogger;
         private readonly Mock<IScriptHostWorkerManager> _mockWorkerManager;
         private readonly WebScriptHostExceptionHandler _exceptionHandler;
 
         public WebScriptHostExceptionHandlerTests()
         {
-            _mockApplicationLifetime = new Mock<IHostApplicationLifetime>(MockBehavior.Strict);
+            _mockApplicationLifetime = new Mock<IScriptApplicationLifetime>(MockBehavior.Strict);
             _mockLogger = new Mock<ILogger<WebScriptHostExceptionHandler>>();
             _mockWorkerManager = new Mock<IScriptHostWorkerManager>(MockBehavior.Strict);
 

@@ -1,5 +1,5 @@
 // Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the MIT License. See License.txt in the project root for license Informationrmation.
+// Licensed under the MIT License. See License.txt in the project root for license Information.
 
 using System;
 using System.Collections.Generic;
@@ -199,9 +199,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
             await TestHelpers.Await(() => _shutdownCalled);
 
-            // With real IHostApplicationLifetime, StopApplication() actually stops the host,
-            // so the state transitions through Error to Stopped.
-            Assert.True(_scriptHostService.State is ScriptHostState.Error or ScriptHostState.Stopped);
+            // StopApplication() is asynchronous — wait for the host state to transition.
+            await TestHelpers.Await(() => _scriptHostService.State is ScriptHostState.Error or ScriptHostState.Stopped);
+
             Assert.True(_shutdownCalled);
 
             // we expect a few restart iterations
