@@ -40,7 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         protected override Task<IEnumerable<IRpcWorkerChannel>> GetReadyChannelsAsync(ScriptInvocationContext invocationContext)
         {
             IEnumerable<IRpcWorkerChannel> channels = _channelManager.GetChannels().Values
-                .Where(c => c.IsChannelReadyForInvocations());
+                .Where(c => c.IsChannelReadyForInvocations())
+                .ToList();
 
             return Task.FromResult(channels);
         }

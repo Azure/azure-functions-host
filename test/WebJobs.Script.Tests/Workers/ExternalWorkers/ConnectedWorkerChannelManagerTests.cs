@@ -165,5 +165,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             Assert.NotNull(result);
             Assert.Same(channel.Object, result);
         }
+
+        [Fact]
+        public async Task WaitForChannelAsync_ConcurrentWaiters_BothReceiveChannel()
+        {
+            // Two callers wait concurrently. When a channel is added,
+            // both should wake up — neither should block until timeout.
+            var waitTask1 = _manager.WaitForChannelAsync(TimeSpan.FromSeconds(5));
+            var waitTask2 = _manager.WaitForChannelAsync(TimeSpan.FromSeconds(5));
+
+            await Task.Delay(50);
+            Assert.False(waitTask1.IsCompleted);
+            Assert.False(waitTask2.IsCompleted);
+
+            var channel = CreateMockChannel("worker1");
+            _manager.AddChannel("worker1", channel.Object);
+
+            // Both must complete within a reasonable time — not timeout.
+            var results = await Task.WhenAll(waitTask1, waitTask2);
+
+            Assert.Same(channel.Object, results[0]);
+            Assert.Same(channel.Object, results[1]);
+        }
     }
 }

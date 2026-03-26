@@ -82,7 +82,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
                             return channel;
                         }
 
-                        _channelAvailable = new TaskCompletionSource();
                         waitTask = _channelAvailable.Task;
                     }
 
