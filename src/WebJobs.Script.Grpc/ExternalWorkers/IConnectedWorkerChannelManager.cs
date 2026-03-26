@@ -17,17 +17,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         /// <summary>
         /// Registers a fully-initialized channel for an external worker.
         /// </summary>
-        void AddChannel(string workerId, ConnectedWorkerChannel channel);
+        void AddChannel(string workerId, IRpcWorkerChannel channel);
 
         /// <summary>
         /// Gets a specific channel by worker ID, or null if not found.
         /// </summary>
-        ConnectedWorkerChannel GetChannel(string workerId);
+        IRpcWorkerChannel GetChannel(string workerId);
 
         /// <summary>
         /// Gets all currently registered channels.
         /// </summary>
-        IReadOnlyDictionary<string, ConnectedWorkerChannel> GetChannels();
+        IReadOnlyDictionary<string, IRpcWorkerChannel> GetChannels();
 
         /// <summary>
         /// Shuts down and removes a specific channel, draining in-flight invocations first.

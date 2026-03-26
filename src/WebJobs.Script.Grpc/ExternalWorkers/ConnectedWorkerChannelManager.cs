@@ -17,12 +17,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
     /// </summary>
     internal class ConnectedWorkerChannelManager : IConnectedWorkerChannelManager
     {
-        private readonly ConcurrentDictionary<string, ConnectedWorkerChannel> _channels = new();
+        private readonly ConcurrentDictionary<string, IRpcWorkerChannel> _channels = new();
         private readonly object _channelAvailableLock = new();
         private TaskCompletionSource _channelAvailable = new();
 
         /// <inheritdoc/>
-        public void AddChannel(string workerId, ConnectedWorkerChannel channel)
+        public void AddChannel(string workerId, IRpcWorkerChannel channel)
         {
             lock (_channelAvailableLock)
             {
@@ -32,17 +32,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         }
 
         /// <inheritdoc/>
-        public ConnectedWorkerChannel GetChannel(string workerId)
+        public IRpcWorkerChannel GetChannel(string workerId)
             => _channels.TryGetValue(workerId, out var ch) ? ch : null;
 
         /// <inheritdoc/>
-        public IReadOnlyDictionary<string, ConnectedWorkerChannel> GetChannels()
+        public IReadOnlyDictionary<string, IRpcWorkerChannel> GetChannels()
             => _channels;
 
         /// <inheritdoc/>
         public async Task ShutdownChannelAsync(string workerId)
         {
-            ConnectedWorkerChannel channel = null;
+            IRpcWorkerChannel channel = null;
 
             lock (_channelAvailableLock)
             {
@@ -57,28 +57,37 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
             if (channel is not null)
             {
                 await channel.DrainInvocationsAsync();
-                channel.Dispose();
+                (channel as IDisposable)?.Dispose();
             }
         }
 
         /// <inheritdoc/>
         public async Task<IRpcWorkerChannel> WaitForChannelAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
         {
-            var ready = _channels.Values.FirstOrDefault(c => c.IsChannelReadyForInvocations());
-            if (ready is not null)
-            {
-                return ready;
-            }
-
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(timeout);
 
             try
             {
-                await _channelAvailable.Task.WaitAsync(cts.Token);
+                while (true)
+                {
+                    cts.Token.ThrowIfCancellationRequested();
 
-                return _channels.Values.FirstOrDefault(c => c.IsChannelReadyForInvocations())
-                    ?? _channels.Values.First();
+                    Task waitTask;
+                    lock (_channelAvailableLock)
+                    {
+                        var channel = _channels.Values.FirstOrDefault();
+                        if (channel is not null)
+                        {
+                            return channel;
+                        }
+
+                        _channelAvailable = new TaskCompletionSource();
+                        waitTask = _channelAvailable.Task;
+                    }
+
+                    await waitTask.WaitAsync(cts.Token);
+                }
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {

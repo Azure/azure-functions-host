@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         public ConnectedWorkerInvocationDispatcherTests()
         {
             _mockChannelManager.Setup(m => m.GetChannels())
-                .Returns(new Dictionary<string, ConnectedWorkerChannel>());
+                .Returns(new Dictionary<string, IRpcWorkerChannel>());
 
             _dispatcher = new ConnectedWorkerInvocationDispatcher(
                 _mockChannelManager.Object,
@@ -102,17 +102,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         }
 
         [Fact]
-        public void State_ReturnsInitializing_WhenNoChannels()
+        public void State_ReturnsDefault_WhenConstructed()
         {
-            Assert.Equal(FunctionInvocationDispatcherState.Initializing, _dispatcher.State);
+            Assert.Equal(FunctionInvocationDispatcherState.Default, _dispatcher.State);
         }
 
         [Fact]
-        public void State_ReturnsInitialized_WhenChannelReady()
+        public async Task State_ReturnsInitialized_AfterInitializeAsync()
         {
-            var channel = CreateReadyChannel("worker1");
-            _mockChannelManager.Setup(m => m.GetChannels())
-                .Returns(new Dictionary<string, ConnectedWorkerChannel> { ["worker1"] = channel });
+            var function = new FunctionMetadata { Name = "TestFunction" };
+
+            await _dispatcher.InitializeAsync(new[] { function });
 
             Assert.Equal(FunctionInvocationDispatcherState.Initialized, _dispatcher.State);
         }
@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             var function = new FunctionMetadata { Name = "TestFunction" };
             var functionId = function.GetFunctionId();
 
-            var channels = new Dictionary<string, ConnectedWorkerChannel>();
+            var channels = new Dictionary<string, IRpcWorkerChannel>();
             for (int i = 0; i < 3; i++)
             {
                 var ch = CreateReadyChannelWithBuffers($"worker{i}", new[] { function });
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             var channel = CreateReadyChannelWithBuffers("worker1", new[] { function });
             _mockChannelManager.Setup(m => m.GetChannels())
-                .Returns(new Dictionary<string, ConnectedWorkerChannel> { ["worker1"] = channel });
+                .Returns(new Dictionary<string, IRpcWorkerChannel> { ["worker1"] = channel });
 
             var context = CreateInvocationContext(function);
             await _dispatcher.InvokeAsync(context);
@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         {
             var channel = CreateReadyChannel("worker1");
             _mockChannelManager.Setup(m => m.GetChannels())
-                .Returns(new Dictionary<string, ConnectedWorkerChannel> { ["worker1"] = channel });
+                .Returns(new Dictionary<string, IRpcWorkerChannel> { ["worker1"] = channel });
 
             var function = new FunctionMetadata { Name = "NonExistentFunction" };
             var context = CreateInvocationContext(function);
@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             var function = new FunctionMetadata { Name = "TestFunction" };
             var functionId = function.GetFunctionId();
 
-            var channels = new Dictionary<string, ConnectedWorkerChannel>
+            var channels = new Dictionary<string, IRpcWorkerChannel>
             {
                 ["worker1"] = CreateTestChannel("worker1"),
                 ["worker2"] = CreateTestChannel("worker2")
@@ -210,7 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             var functionId = function.GetFunctionId();
 
             _mockChannelManager.Setup(m => m.GetChannels())
-                .Returns(new Dictionary<string, ConnectedWorkerChannel>());
+                .Returns(new Dictionary<string, IRpcWorkerChannel>());
 
             await _dispatcher.InitializeAsync(new[] { function });
 
@@ -229,9 +229,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         }
 
         [Fact]
-        public void ErrorEventsThreshold_ReturnsMaxValue()
+        public void ErrorEventsThreshold_Returns3()
         {
-            Assert.Equal(int.MaxValue, _dispatcher.ErrorEventsThreshold);
+            Assert.Equal(3, _dispatcher.ErrorEventsThreshold);
         }
     }
 }

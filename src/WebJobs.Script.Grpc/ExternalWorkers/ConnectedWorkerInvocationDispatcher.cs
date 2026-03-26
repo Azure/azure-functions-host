@@ -32,24 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
             : base(loadBalancer, scriptJobHostOptions, logger)
         {
             _channelManager = channelManager ?? throw new ArgumentNullException(nameof(channelManager));
+            State = FunctionInvocationDispatcherState.Default;
+            ErrorEventsThreshold = 3;
         }
-
-        /// <inheritdoc/>
-        public override FunctionInvocationDispatcherState State
-        {
-            get
-            {
-                bool anyReady = _channelManager.GetChannels().Values
-                    .Any(c => c.IsChannelReadyForInvocations());
-
-                return anyReady
-                    ? FunctionInvocationDispatcherState.Initialized
-                    : FunctionInvocationDispatcherState.Initializing;
-            }
-        }
-
-        /// <inheritdoc/>
-        public override int ErrorEventsThreshold => int.MaxValue;
 
         /// <inheritdoc/>
         protected override Task<IEnumerable<IRpcWorkerChannel>> GetReadyChannelsAsync(ScriptInvocationContext invocationContext)
@@ -71,6 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
                 return Task.CompletedTask;
             }
 
+            State = FunctionInvocationDispatcherState.Initializing;
+
             _functions = functions;
 
             foreach (var channel in _channelManager.GetChannels().Values)
@@ -79,6 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
             }
 
             AddLogUserCategory(functions);
+
+            State = FunctionInvocationDispatcherState.Initialized;
 
             return Task.CompletedTask;
         }
