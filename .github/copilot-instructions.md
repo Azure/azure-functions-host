@@ -28,6 +28,7 @@
 * Do not emit "Act", "Arrange" or "Assert" comments.
 * Use Moq for mocking in tests.
 * Copy existing style in nearby files for test method names and capitalization.
+* Do not use private reflection (e.g., `BindingFlags.NonPublic`, `GetField`, `GetProperty` with non-public flags) to access internal state in tests. If something needs to be tested, make it accessible through public or internal APIs, test-specific seams, or refactor the design to be testable without reflection.
 
 ## Dependencies & Patterns
 
