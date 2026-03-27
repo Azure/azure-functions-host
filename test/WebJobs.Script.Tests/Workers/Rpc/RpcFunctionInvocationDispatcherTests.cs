@@ -226,6 +226,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 Assert.True(((TestRpcWorkerChannel)currChannel).ExecutionContexts.Count > 0);
             }
+
+            var logMessages = _testLoggerProvider.GetAllLogMessages().Select(m => m.FormattedMessage).ToList();
+            Assert.Contains(logMessages, m => m.Contains("timed out"));
+            Assert.DoesNotContain(logMessages, m => m.Contains("completed during shutdown"));
+        }
+
+        [Fact]
+        public async Task ShutdownTests_WhenDrainCompletes_LogsCompleted()
+        {
+            int expectedProcessCount = 2;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, runtime: RpcWorkerConstants.NodeLanguageWorkerName);
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            foreach (var currChannel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
+            {
+                var initializedChannel = (TestRpcWorkerChannel)currChannel;
+                initializedChannel.ExecutionContexts.Add(Task.Factory.StartNew(() => { }));
+            }
+
+            await functionDispatcher.ShutdownAsync();
+
+            var logMessages = _testLoggerProvider.GetAllLogMessages().Select(m => m.FormattedMessage).ToList();
+            Assert.Contains(logMessages, m => m.Contains("completed during shutdown"));
+            Assert.DoesNotContain(logMessages, m => m.Contains("timed out"));
         }
 
         [Fact]
