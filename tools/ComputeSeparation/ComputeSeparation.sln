@@ -5,19 +5,19 @@ VisualStudioVersion = 18.3.11520.95 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{84CB62F0-D4BA-4A5F-B0A2-3732932BFE82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Functions.WorkerProxy", "src\Functions.WorkerProxy\Functions.WorkerProxy.csproj", "{3A511E89-ABB3-4BF3-A562-D243DADC0960}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Functions.WorkerProxy", "..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj", "{3A511E89-ABB3-4BF3-A562-D243DADC0960}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "src\WebJobs.Script\WebJobs.Script.csproj", "{8B8E76B3-C5BC-4ED6-B6FF-C18888B22816}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script", "..\..\src\WebJobs.Script\WebJobs.Script.csproj", "{8B8E76B3-C5BC-4ED6-B6FF-C18888B22816}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Grpc", "src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj", "{9B773EF9-2133-4A77-B1D1-E4E88B1061D5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Grpc", "..\..\src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj", "{9B773EF9-2133-4A77-B1D1-E4E88B1061D5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.WebHost", "src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "{49B11084-9350-4E3C-B69A-2C6DEBBCB489}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.WebHost", "..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "{49B11084-9350-4E3C-B69A-2C6DEBBCB489}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{110948B0-49A1-43AF-92E2-E365440C82F8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppHost", "tools\ComputeSeparation\AppHost\AppHost.csproj", "{E07A9874-7159-4079-B1D3-40DC787B0CF6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppHost", "AppHost\AppHost.csproj", "{E07A9874-7159-4079-B1D3-40DC787B0CF6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MockWorker", "tools\ComputeSeparation\MockWorker\MockWorker.csproj", "{4D9D96A9-609F-4737-9D3C-40D68D19E6D2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MockWorker", "MockWorker\MockWorker.csproj", "{4D9D96A9-609F-4737-9D3C-40D68D19E6D2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

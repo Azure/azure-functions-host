@@ -36,7 +36,7 @@ graph LR
 
 ## Quick Start
 
-Open `ComputeSeparation.sln` in Visual Studio, set **AppHost** as the startup project, and press **F5**.
+Open `tools/ComputeSeparation/ComputeSeparation.sln` in Visual Studio, set **AppHost** as the startup project, and press **F5**.
 
 Or from the command line:
 
