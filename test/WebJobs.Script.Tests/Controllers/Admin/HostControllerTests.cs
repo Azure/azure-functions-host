@@ -347,9 +347,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             scriptHostManagerMock.SetupGet(p => p.State).Returns(hostStatus);
             drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(drainModeEnabled);
 
-            var result = await _hostController.Resume(scriptHostManagerMock.Object, default);
-            var objectResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(expectedCode, objectResult.StatusCode);
+            var result = (StatusCodeResult)await _hostController.Resume(scriptHostManagerMock.Object, default);
+            Assert.Equal(expectedCode, result.StatusCode);
             scriptHostManagerMock.Verify(p => p.RestartHostAsync("test", It.IsAny<CancellationToken>()), Times.Never());
         }
 
@@ -466,6 +465,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     currentHostState = ScriptHostState.Stopping;
                     currentDrainModeManager = newDrainModeManager.Object;
                 })
+                .Returns(Task.CompletedTask);
+
+            var result = await _hostController.Resume(scriptHostManagerMock.Object, default);
+
+            var conflictResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status409Conflict, conflictResult.StatusCode);
+            scriptHostManagerMock.Verify(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()), Times.Once());
+        }
+
+        [Fact]
+        public async Task ResumeHost_RestartFailed_DrainManagerNotResolvable_Returns409Conflict()
+        {
+            // Simulates a failed restart where the new host's service provider can't resolve IDrainModeManager
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            var restartReason = "Resuming from drain mode.";
+
+            // Pre-restart: drain manager resolves and reports drain enabled
+            var oldDrainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            oldDrainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(true);
+
+            // After restart, service provider returns null (host failed to start)
+            IDrainModeManager currentDrainModeManager = oldDrainModeManager.Object;
+            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(() => currentDrainModeManager);
+
+            scriptHostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
+            scriptHostManagerMock
+                .Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()))
+                .Callback(() => currentDrainModeManager = null)
                 .Returns(Task.CompletedTask);
 
             var result = await _hostController.Resume(scriptHostManagerMock.Object, default);
