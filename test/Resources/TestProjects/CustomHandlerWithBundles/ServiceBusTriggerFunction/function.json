@@ -1,0 +1,10 @@
+{
+  "bindings": [
+    {
+      "type": "serviceBusTrigger",
+      "name": "trigger",
+      "direction": "in",
+      "queueName": "test-queue"
+    }
+  ]
+}

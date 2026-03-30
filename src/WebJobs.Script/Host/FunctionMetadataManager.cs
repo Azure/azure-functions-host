@@ -36,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
 
+        private bool _canTrustServices = false;
+
         public FunctionMetadataManager(
             IOptions<ScriptJobHostOptions> scriptOptions,
             IFunctionMetadataProvider functionMetadataProvider,
@@ -61,7 +63,15 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (e.NewHost is not null)
                 {
+                    _canTrustServices = true;
                     InitializeServices();
+                }
+                else
+                {
+                    // The previous host has disappeared so any services we pulled from the ServiceProvider can no longer be trusted. Some checks
+                    // (such as during bundle resolution) can happen *before* the ScriptHost is built so we cannot rely on any services we may have
+                    // resolved during placeholder mode.
+                    _canTrustServices = false;
                 }
             };
         }
@@ -196,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal bool IsScriptFileDetermined(FunctionMetadata functionMetadata)
         {
-            if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_metadataOptions.Value.SkipScriptFileValidation && !functionMetadata.IsProxy() && _servicesReset)
+            if (_canTrustServices && string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_metadataOptions.Value.SkipScriptFileValidation && !functionMetadata.IsProxy() && _servicesReset)
             {
                 // for functions in error, log the error and don't
                 // add to the functions collection

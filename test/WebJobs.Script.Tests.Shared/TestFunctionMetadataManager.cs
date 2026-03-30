@@ -30,7 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public static FunctionMetadataManager GetFunctionMetadataManager(IOptions<ScriptJobHostOptions> jobHostOptions, Mock<IScriptHostManager> managerMock,
-            IFunctionMetadataProvider functionMetadataProvider, IList<IFunctionProvider> functionProviders, ILoggerFactory loggerFactory, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
+            IFunctionMetadataProvider functionMetadataProvider, IList<IFunctionProvider> functionProviders, ILoggerFactory loggerFactory, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
+            IEnvironment environment = null)
         {
             var metadataOptions = new OptionsWrapper<FunctionMetadataOptions>(new FunctionMetadataOptions());
 
@@ -39,6 +40,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptionsMonitor<LanguageWorkerOptions>))).Returns(languageWorkerOptions);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(ILoggerFactory))).Returns(loggerFactory);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptions<FunctionMetadataOptions>))).Returns(metadataOptions);
+
+            // Set up IOptionsFactory<FunctionMetadataOptions> so InitializeServices() can create
+            // fresh options that run any registered IConfigureOptions<FunctionMetadataOptions>.
+            var mockFactory = new Mock<IOptionsFactory<FunctionMetadataOptions>>();
+            mockFactory.Setup(f => f.Create(It.IsAny<string>())).Returns(() => new FunctionMetadataOptions());
+            managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptionsFactory<FunctionMetadataOptions>))).Returns(mockFactory.Object);
 
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -61,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, managerMock.Object, loggerFactory, SystemEnvironment.Instance, languageWorkerOptions, metadataOptions);
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, managerMock.Object, loggerFactory, environment ?? SystemEnvironment.Instance, languageWorkerOptions, metadataOptions);
         }
 
         public static FunctionMetadataManager GetFunctionMetadataManagerWithDefaultHostConfig(IOptions<ScriptJobHostOptions> jobHostOptions,

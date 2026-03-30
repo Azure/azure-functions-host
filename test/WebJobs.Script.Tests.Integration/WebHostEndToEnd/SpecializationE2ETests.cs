@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _dotnetIsolatedEmptyScriptRoot = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
         private static readonly string _dotnetCustomHandlerPath = Path.GetFullPath($@"..\..\DotNetCustomHandler\{TestHelpers.BuildConfig}");
         private static readonly string _dotnetIsolatedWithBundlesPath = Path.GetFullPath($@"..\..\DotNetIsolatedWithBundles\{TestHelpers.BuildConfig}");
+        private static readonly string _customHandlerWithBundlesPath = Path.GetFullPath(@"..\..\..\..\test\Resources\TestProjects\CustomHandlerWithBundles");
 
         private static Action<IServiceCollection> _customizeScriptHostServices;
 
@@ -1036,6 +1037,68 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // This is not really a valid scenario, but we need to ensure it keeps working. Customers should not use
             // bundles with dotnet-isolated.
             AssertLanguageWorkerOptionsSetupCount(4);
+        }
+
+        /// <summary>
+        /// Regression test for ICM 769574841.
+        /// When a consumption plan placeholder starts as dotnet-isolated and specializes into a custom handler app
+        /// with bundles, the ScriptStartupTypeLocator must correctly load function metadata for functions with
+        /// no scriptFile (custom handler pattern). If IsScriptFileDetermined incorrectly excludes them because
+        /// _servicesReset is true and SkipScriptFileValidation is false (from placeholder host), the bindingsSet
+        /// will be empty and all bundle extensions with explicit bindings will be filtered out.
+        /// </summary>
+        [Fact]
+        public async Task Specialization_DotNetIsolatedToCustomHandler_FunctionMetadataLoadedCorrectly()
+        {
+            // Phase 1: Start in placeholder mode as dotnet-isolated
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder(_loggerProvider);
+
+            // Override the specialized script root to point to our custom handler app with bundles
+            builder.ConfigureAppConfiguration(config =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, _customHandlerWithBundlesPath },
+                });
+            });
+
+            // Hold the standby build so we can observe _buildCount == 1
+            await _pauseAfterStandbyHostBuild.WaitAsync();
+            _ = Task.Delay(3000).ContinueWith(_ => _pauseAfterStandbyHostBuild.Release());
+
+            IWebHost host = builder.Build();
+            var scriptHostService = host.Services.GetService<WebJobsScriptHostService>();
+            var standbyManager = host.Services.GetService<IStandbyManager>();
+
+            var standbyStart = Task.Run(async () => await scriptHostService.StartAsync(CancellationToken.None));
+
+            // Wait for the placeholder build to complete
+            await TestHelpers.Await(() => _buildCount.CurrentCount == 1);
+
+            // Phase 2: Specialize into a custom handler app
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "custom");
+
+            var specializeTask = Task.Run(async () => await standbyManager.SpecializeHostAsync());
+
+            await Task.WhenAll(standbyStart, specializeTask);
+
+            // Phase 3: Verify function metadata was loaded correctly after specialization.
+            // The FunctionMetadataManager should resolve IOptions<FunctionMetadataOptions> with
+            // SkipScriptFileValidation = true for custom handler apps, even after specialization.
+            // If not, IsScriptFileDetermined will exclude functions with no scriptFile.
+            var functionMetadataManager = host.Services.GetService<IFunctionMetadataManager>();
+            var metadata = functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false);
+
+            // Custom handler functions (no scriptFile) should NOT be excluded
+            Assert.True(metadata.Length > 0,
+                "Expected function metadata to be loaded for custom handler functions after specialization. " +
+                "If this fails, IsScriptFileDetermined is likely excluding functions with no scriptFile " +
+                "because _servicesReset=true and SkipScriptFileValidation=false (from placeholder host).");
         }
 
         [Theory]
