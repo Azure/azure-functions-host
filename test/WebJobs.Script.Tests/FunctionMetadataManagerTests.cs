@@ -7,7 +7,6 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -584,6 +583,64 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
+        }
+
+        /// <summary>
+        /// Regression test for https://github.com/Azure/azure-functions-host/issues/11676.
+        /// </summary>
+        [Fact]
+        public void LoadFunctionMetadata_AfterActiveHostChanged_CustomHandlerFunctionsWithNoScriptFile_AreNotExcluded()
+        {
+            // Arrange: create functions with trigger bindings but NO scriptFile (custom handler pattern)
+            var functionMetadataCollection = new Collection<FunctionMetadata>();
+
+            var eventHubFunction = new FunctionMetadata { Name = "event_hub_producer" };
+            eventHubFunction.Bindings.Add(new BindingMetadata { Type = "eventHubTrigger", Direction = BindingDirection.In });
+            // ScriptFile is intentionally null — custom handlers don't have one
+            functionMetadataCollection.Add(eventHubFunction);
+
+            var serviceBusFunction = new FunctionMetadata { Name = "failed_event_handler" };
+            serviceBusFunction.Bindings.Add(new BindingMetadata { Type = "serviceBusTrigger", Direction = BindingDirection.In });
+            functionMetadataCollection.Add(serviceBusFunction);
+
+            var mockFunctionErrors = new Dictionary<string, ICollection<string>>()
+                .ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            mockFunctionMetadataProvider
+                .Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), It.IsAny<bool>()))
+                .Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
+            mockFunctionMetadataProvider
+                .Setup(m => m.FunctionErrors).Returns(mockFunctionErrors);
+
+            var managerMock = new Mock<IScriptHostManager>();
+
+            // Key: SkipScriptFileValidation = false, simulating the placeholder host
+            // (which never registered RpcFunctionMetadataOptionsSetup)
+            FunctionMetadataManager testManager = TestFunctionMetadataManager.GetFunctionMetadataManager(
+                new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                managerMock,
+                mockFunctionMetadataProvider.Object,
+                new List<IFunctionProvider>(),
+                MockNullLoggerFactory.CreateLoggerFactory(),
+                new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            // Simulate placeholder host build completing: ActiveHostChanged fires with non-null host
+            managerMock.Raise(m => m.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, new Mock<IHost>().Object));
+
+            // Simulate host teardown before specialization: ActiveHostChanged fires with null host
+            // This sets _scriptHostInitialized = false, so IsScriptFileDetermined won't enforce scriptFile validation
+            managerMock.Raise(m => m.ActiveHostChanged += null, new ActiveHostChangedEventArgs(new Mock<IHost>().Object, null));
+
+            // Act: this is what ScriptStartupTypeLocator calls during the specialization build
+            var result = testManager.LoadFunctionMetadata(forceRefresh: true, includeCustomProviders: false);
+
+            // Assert: both functions should be loaded despite having no scriptFile.
+            // The bindings (eventHubTrigger, serviceBusTrigger) must be present for
+            // ScriptStartupTypeLocator to include the correct bundle extensions.
+            Assert.Equal(2, result.Length);
+            Assert.Contains(result, f => string.Equals(f.Name, "event_hub_producer", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(result, f => string.Equals(f.Name, "failed_event_handler", StringComparison.OrdinalIgnoreCase));
+            Assert.Empty(testManager.Errors);
         }
 
         private static FunctionMetadata GetTestFunctionMetadata(string scriptFile, string name = "testFunction")
