@@ -275,10 +275,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                     _logger.LogDebug("Starting a new host");
                     await scriptHostManager.RestartHostAsync("Resuming from drain mode.", CancellationToken.None);
 
-                    // Verify the restart succeeded and drain mode was actually disabled.
-                    // This handles race conditions where ApplicationStopping can abort the restart mid-execution.
-                    bool drainModeStillEnabled = drainModeManager.IsDrainModeEnabled;
+                    // Re-resolve IDrainModeManager from the new active host since RestartHostAsync
+                    // replaces ActiveHost, making the previously captured reference stale.
                     ScriptHostState postRestartState = scriptHostManager.State;
+                    bool drainModeStillEnabled;
+                    if (Utility.TryGetHostService(scriptHostManager, out IDrainModeManager postRestartDrainManager))
+                    {
+                        drainModeStillEnabled = postRestartDrainManager.IsDrainModeEnabled;
+                    }
+                    else
+                    {
+                        // If we can't resolve the drain manager from the new host, the restart likely failed.
+                        drainModeStillEnabled = true;
+                    }
+
                     if (drainModeStillEnabled || postRestartState != ScriptHostState.Running)
                     {
                         _logger.LogWarning($"Resume failed - host did not restart successfully. DrainModeEnabled: {drainModeStillEnabled}, HostState: {postRestartState}");

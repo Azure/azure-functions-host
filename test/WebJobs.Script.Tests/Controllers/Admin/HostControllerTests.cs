@@ -358,18 +358,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
-            var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
             var restartReason = "Resuming from drain mode.";
 
-            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
-            scriptHostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
-            scriptHostManagerMock.Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            // Pre-restart drain manager (old host) — drain mode enabled
+            var oldDrainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            oldDrainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(true);
 
-            // Setup drain mode to return true initially, then false after restart
-            drainModeManager.SetupSequence(x => x.IsDrainModeEnabled)
-                .Returns(true)  // First check - before restart
-                .Returns(false) // Second check - after restart
-                .Returns(false); // Additional reads (e.g., for status)
+            // Post-restart drain manager (new host) — drain mode disabled
+            var newDrainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            newDrainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(false);
+
+            // Model service-provider replacement: return old manager initially, new manager after restart
+            var currentDrainModeManager = oldDrainModeManager.Object;
+            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(() => currentDrainModeManager);
+            scriptHostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
+            scriptHostManagerMock
+                .Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()))
+                .Callback(() => currentDrainModeManager = newDrainModeManager.Object)
+                .Returns(Task.CompletedTask);
 
             var expectedBody = new ResumeStatus { State = ScriptHostState.Running };
             var result = (OkObjectResult)await _hostController.Resume(scriptHostManagerMock.Object, default);
@@ -411,18 +417,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ResumeHost_RestartAborted_DrainModeStillEnabled_Returns409Conflict()
         {
-            // Simulates race condition where ApplicationStopping is triggered during restart
+            // Simulates race condition where ApplicationStopping aborts restart — old host stays with drain enabled
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
-            var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
             var restartReason = "Resuming from drain mode.";
+
+            // Both pre- and post-restart drain managers report drain mode enabled (restart was aborted)
+            var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(true);
 
             serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
             scriptHostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
             scriptHostManagerMock.Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-
-            // Drain mode remains enabled after restart (restart was aborted)
-            drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(true);
 
             var result = await _hostController.Resume(scriptHostManagerMock.Object, default);
 
@@ -437,24 +443,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Simulates race condition where ApplicationStopping changes host state during restart
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
-            var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
             var restartReason = "Resuming from drain mode.";
 
-            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
+            // Pre-restart: drain enabled
+            var oldDrainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            oldDrainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(true);
 
-            // Use mutable locals instead of SetupSequence so multiple reads are supported
+            // Post-restart: drain disabled but host state is Stopping
+            var newDrainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            newDrainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(false);
+
+            var currentDrainModeManager = oldDrainModeManager.Object;
+            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(() => currentDrainModeManager);
+
             var currentHostState = ScriptHostState.Running;
             scriptHostManagerMock.SetupGet(p => p.State).Returns(() => currentHostState);
-
-            var isDrainModeEnabled = true;
-            drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(() => isDrainModeEnabled);
 
             scriptHostManagerMock
                 .Setup(p => p.RestartHostAsync(restartReason, It.IsAny<CancellationToken>()))
                 .Callback(() =>
                 {
                     currentHostState = ScriptHostState.Stopping;
-                    isDrainModeEnabled = false;
+                    currentDrainModeManager = newDrainModeManager.Object;
                 })
                 .Returns(Task.CompletedTask);
 
