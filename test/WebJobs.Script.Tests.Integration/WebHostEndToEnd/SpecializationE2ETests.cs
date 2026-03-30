@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static readonly string _dotnetIsolatedEmptyScriptRoot = Path.GetFullPath(@"..\..\..\..\EmptyScriptRoot");
         private static readonly string _dotnetCustomHandlerPath = Path.GetFullPath($@"..\..\DotNetCustomHandler\{TestHelpers.BuildConfig}");
         private static readonly string _dotnetIsolatedWithBundlesPath = Path.GetFullPath($@"..\..\DotNetIsolatedWithBundles\{TestHelpers.BuildConfig}");
+        private static readonly string _customHandlerWithBundlesPath = Path.GetFullPath(@"..\..\..\..\sample\CustomHandler");
 
         private static Action<IServiceCollection> _customizeScriptHostServices;
 
@@ -1036,6 +1037,71 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // This is not really a valid scenario, but we need to ensure it keeps working. Customers should not use
             // bundles with dotnet-isolated.
             AssertLanguageWorkerOptionsSetupCount(4);
+        }
+
+        /// <summary>
+        /// Regression test for https://github.com/Azure/azure-functions-host/issues/11676.        
+        /// </summary>
+        [Fact]
+        public async Task Specialization_DotNetIsolatedToCustomHandler_BundleExtensionsLoadCorrectly()
+        {
+            // Forces download of bundles.            
+            string downloadPath = $"{ConfigurationSectionNames.JobHost}__{ConfigurationSectionNames.ExtensionBundle}__DownloadPath";
+            using var path = new TestScopedEnvironmentVariable(downloadPath, Path.Combine(Path.GetTempPath(), "BundlesTests"));
+            using var coreTools = new TestScopedEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment, "1");
+
+            // Start in placeholder mode as dotnet-isolated
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "dotnet-isolated");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder(_loggerProvider, "HttpTrigger", "ServiceBusTriggerFunction", "EventHubTriggerFunction");
+
+            // Override the specialized script root to point to our custom handler app with bundles
+            builder.ConfigureAppConfiguration(config =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, _customHandlerWithBundlesPath },
+                });
+            });
+
+            using var testServer = new TestServer(builder);
+            var client = testServer.CreateClient();
+
+            // Warm up the placeholder
+            var response = await client.GetAsync("api/warmup");
+            Assert.True(response.IsSuccessStatusCode, _loggerProvider.GetLog());
+
+            // Specialize into a custom handler app
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "custom");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+
+            // Issue a request to trigger specialization. The custom handler won't respond, but
+            // this forces the host through the full specialization + extension loading flow.
+            response = await client.GetAsync("api/warmup");
+
+            // Wait for the host to settle after specialization
+            await TestHelpers.Await(() =>
+                    {
+                        var log = _loggerProvider.GetLog();
+                        // Wait until we see evidence that the specialized host has started
+                        return log.Contains("Host started") || log.Contains("function is in error") || log.Contains("No job functions found");
+                    }, timeout: 30000);
+
+            var log = _loggerProvider.GetLog();
+
+            // Verify the specialized host found our custom handler functions.
+            Assert.Contains("3 functions found (Host)", log);
+
+            // The critical check: after IsScriptFileDetermined runs, functions must NOT be excluded.
+            // With the bug, we'd see "0 functions loaded" from the ScriptStartupTypeLocator call
+            // because IsScriptFileDetermined excludes custom handler functions (no scriptFile).
+            Assert.DoesNotContain("0 functions loaded", log);
+
+            // The binding types from function.json must NOT be missing from the extension bundle.
+            Assert.DoesNotContain("were not found in the configured extension bundle", log);
         }
 
         [Theory]

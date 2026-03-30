@@ -1,0 +1,12 @@
+{
+  "bindings": [
+    {
+      "type": "eventHubTrigger",
+      "name": "event",
+      "direction": "in",
+      "connection": "EventHubConnection",
+      "eventHubName": "test-hub",
+      "consumerGroup": "$Default"
+    }
+  ]
+}
