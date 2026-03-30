@@ -7,7 +7,6 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -588,10 +587,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         /// <summary>
         /// Regression test for https://github.com/Azure/azure-functions-host/issues/11676.
-        /// After placeholder host build (ActiveHostChanged), _servicesReset is true and
-        /// SkipScriptFileValidation is false (placeholder doesn't register RpcFunctionMetadataOptionsSetup).
-        /// Custom handler functions have no scriptFile, so IsScriptFileDetermined would exclude them,
-        /// causing ScriptStartupTypeLocator to get an empty bindingsSet and filter out all bundle extensions.
         /// </summary>
         [Fact]
         public void LoadFunctionMetadata_AfterActiveHostChanged_CustomHandlerFunctionsWithNoScriptFile_AreNotExcluded()
@@ -619,10 +614,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var managerMock = new Mock<IScriptHostManager>();
 
-            // Simulate the environment after specialization: FUNCTIONS_WORKER_RUNTIME = "custom"
-            var testEnvironment = new TestEnvironment();
-            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "custom");
-
             // Key: SkipScriptFileValidation = false, simulating the placeholder host
             // (which never registered RpcFunctionMetadataOptionsSetup)
             FunctionMetadataManager testManager = TestFunctionMetadataManager.GetFunctionMetadataManager(
@@ -631,14 +622,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockFunctionMetadataProvider.Object,
                 new List<IFunctionProvider>(),
                 MockNullLoggerFactory.CreateLoggerFactory(),
-                new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()),
-                testEnvironment);
+                new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             // Simulate placeholder host build completing: ActiveHostChanged fires with non-null host
             managerMock.Raise(m => m.ActiveHostChanged += null, new ActiveHostChangedEventArgs(null, new Mock<IHost>().Object));
 
             // Simulate host teardown before specialization: ActiveHostChanged fires with null host
-            // This sets _canTrustServices = false, so IsScriptFileDetermined won't enforce scriptFile validation
+            // This sets _scriptHostInitialized = false, so IsScriptFileDetermined won't enforce scriptFile validation
             managerMock.Raise(m => m.ActiveHostChanged += null, new ActiveHostChangedEventArgs(new Mock<IHost>().Object, null));
 
             // Act: this is what ScriptStartupTypeLocator calls during the specialization build

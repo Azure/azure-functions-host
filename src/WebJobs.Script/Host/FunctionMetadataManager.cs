@@ -206,6 +206,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal bool IsScriptFileDetermined(FunctionMetadata functionMetadata)
         {
+            // If we do not have an initialized scriptHost, we cannot trust the _metadataOptions, so simply return true. This happens during bundle evaluation, for example, when
+            // we do not yet have a built scriptHost.
             if (_scriptHostInitialized && string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_metadataOptions.Value.SkipScriptFileValidation && !functionMetadata.IsProxy() && _servicesReset)
             {
                 // for functions in error, log the error and don't
