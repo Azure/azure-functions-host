@@ -6,6 +6,11 @@ parameters:
 - name: public
   type: boolean
   default: false
+- name: packages
+  type: string
+  default: |
+    **/*.nupkg
+    !**/*.symbols.nupkg
 
 stages:
 - stage: Validate
@@ -51,9 +56,7 @@ stages:
       approvers: '[internal]\Azure Functions Core'
       artifact: drop_packages
       stagingFeed: public/pre-release
-      packages: |
-        **/*.nupkg
-        !**/*.symbols.nupkg
+      packages: ${{ parameters.packages }}
       ${{ if eq(parameters.public, true) }}:
         partnerDrop:
           serviceConnection: azure-sdk-partner-drops

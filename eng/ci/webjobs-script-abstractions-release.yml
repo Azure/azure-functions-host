@@ -39,6 +39,9 @@ extends:
       parameters:
         public: ${{ parameters.public }}
         folder: azure-webjobs-script-abstractions
+        packages: |
+          **/*Abstractions*.nupkg
+          !**/*.symbols.nupkg
         downloadSteps:
         - task: DownloadPipelineArtifact@2
           displayName: Download Abstractions packages from host.official
