@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Xunit;
 
@@ -37,17 +38,17 @@ public class WebScriptHostHttpRoutesManagerTests
     [InlineData(new[] { "post" }, true)]
     [InlineData(new[] { "post", "put" }, true)]
     [InlineData(new[] { "DELETE" }, true)]
-    public void ShouldRegisterHeadNotAllowedRoute_NonGetNonHead_ReturnsTrue(string[] methods)
+    public void ShouldRegisterHeadNotAllowedRoute_NonGetNonHead_ReturnsTrue(string[] methods, bool _)
     {
         Assert.True(WebScriptHostHttpRoutesManager.ShouldRegisterHeadNotAllowedRoute(methods));
     }
 
     [Theory]
-    [InlineData(new[] { "get" })]
-    [InlineData(new[] { "head" })]
-    [InlineData(new[] { "get", "post" })]
-    [InlineData(new[] { "GET", "POST" })]
-    public void ShouldRegisterHeadNotAllowedRoute_HasGetOrHead_ReturnsFalse(string[] methods)
+    [InlineData(new[] { "get" }, false)]
+    [InlineData(new[] { "head" }, false)]
+    [InlineData(new[] { "get", "post" }, false)]
+    [InlineData(new[] { "GET", "POST" }, false)]
+    public void ShouldRegisterHeadNotAllowedRoute_HasGetOrHead_ReturnsFalse(string[] methods, bool _)
     {
         Assert.False(WebScriptHostHttpRoutesManager.ShouldRegisterHeadNotAllowedRoute(methods));
     }
