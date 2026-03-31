@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Functions.WorkerProxy;
 /// <param name="WorkerGrpcPort">Port the language worker connects to.</param>
 /// <param name="HttpProxyPort">Port the HTTP proxy listens on (rewritten into HttpUri capability).</param>
 /// <param name="HostJsonPath">Optional path to a host.json to inject into WorkerInitResponse capabilities.</param>
-public record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpProxyPort, string? HostJsonPath);
+internal record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpProxyPort, string? HostJsonPath);
 
 /// <summary>
 /// Relays <see cref="StreamingMessage"/> payloads bidirectionally between the
@@ -23,7 +23,7 @@ public record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpProx
 /// runtime and a host.json path is configured, the file contents are injected
 /// into the response's capabilities map under the key <c>host_configuration_json</c>.
 /// </summary>
-public sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
+internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 {
     private readonly RelayOptions _options;
     private readonly ILogger<FunctionRpcRelay> _logger;
