@@ -96,6 +96,11 @@ internal static class ExternalWorkerServiceCollectionExtensions
     /// </summary>
     public static bool IsExternalWorkerEnabled(this IConfiguration configuration)
     {
+        if (configuration is null)
+        {
+            return false;
+        }
+
         string value = configuration[EnvironmentSettingNames.FunctionsWorkerExternalEnabled];
 
         return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)

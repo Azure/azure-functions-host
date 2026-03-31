@@ -45,16 +45,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IConfiguration configuration = rootServiceProvider.GetService<IConfiguration>();
             IEnvironment environment = rootServiceProvider.GetService<IEnvironment>();
 
-            // In external worker mode, skip the file-based host.json configuration source.
-            // Host.json content is delivered by the worker via gRPC capabilities instead.
-            // We store the replacement source in builder properties so that AddScriptHost
+            // In external worker mode, host.json content is delivered by the worker via
+            // gRPC capabilities. We store the source in builder properties so AddScriptHost
             // can add it at the correct point in the ConfigureAppConfiguration pipeline
-            // (before extension bundles are resolved).
+            // (before extension bundles are resolved). The file-based source still runs but
+            // produces no keys if no file exists; our source's values take precedence.
             bool isExternalWorker = configuration.IsExternalWorkerEnabled();
             if (isExternalWorker)
             {
-                builder.Properties[ScriptConstants.SkipHostJsonConfigurationKey] = true;
-
                 var contentProvider = rootServiceProvider.GetRequiredService<HostJsonContentProvider>();
                 var hostJsonLogger = configLoggerFactory.CreateLogger<ExternalWorkerHostJsonConfigurationSource>();
                 builder.Properties[ScriptConstants.HostJsonConfigurationSourceKey] =
