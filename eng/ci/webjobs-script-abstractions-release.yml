@@ -20,7 +20,6 @@ resources:
   pipelines:
   - pipeline: OfficialBuild
     source: host.official
-    branch: release
 
 variables:
 - template: /eng/ci/templates/variables/build.yml@self
@@ -43,6 +42,15 @@ extends:
           **/*Abstractions*.nupkg
           !**/*.symbols.nupkg
         downloadSteps:
+        - pwsh: |
+            $branch = "$(resources.pipeline.OfficialBuild.sourceBranch)"
+            Write-Host "OfficialBuild source branch: $branch"
+            if (!($branch -like "refs/heads/release/*" -or $branch -like "refs/heads/internal/release/*" -or $branch -like "refs/tags/*-v*" -or $branch -like "refs/tags/v*"))
+            {
+              Write-Host "##vso[task.logissue type=error]Selected host.official run is from branch '$branch'. Only runs from release branches (release/*, internal/release/*) or release tags (*-v*, v*) produce stable packages."
+              exit 1
+            }
+          displayName: Validate OfficialBuild source branch
         - task: DownloadPipelineArtifact@2
           displayName: Download Abstractions packages from host.official
           inputs:
