@@ -4,6 +4,7 @@
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -43,7 +44,8 @@ public class FunctionInvocationMiddlewareTests
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
-        Assert.Equal("GET, POST", response.Headers.GetValues("Allow").Single());
+        string allow = string.Join(", ", response.Content.Headers.GetValues("Allow"));
+        Assert.Equal("GET, POST", allow);
     }
 
     [Fact]
@@ -66,32 +68,16 @@ public class FunctionInvocationMiddlewareTests
         var response = await client.GetAsync("/");
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
-        Assert.Equal("POST", response.Headers.GetValues("Allow").Single());
+        Assert.Equal("POST", response.Content.Headers.GetValues("Allow").Single());
     }
 
     [Fact]
     public async Task Invoke_HeadRequest_OnGetFunction_SuppressesResponseBody()
     {
-        var mockDescriptor = new Mock<FunctionDescriptor>();
-        mockDescriptor.SetupGet(d => d.HttpTriggerAttribute)
-            .Returns(new HttpTriggerAttribute(AuthorizationLevel.Anonymous, "get"));
-        mockDescriptor.Object.Name = "TestFunction";
-        mockDescriptor.Object.Metadata = new FunctionMetadata { Name = "TestFunction" };
-
-        var mockExecution = new Mock<IFunctionExecutionFeature>();
-        mockExecution.SetupGet(f => f.CanExecute).Returns(true);
-        mockExecution.SetupGet(f => f.Descriptor).Returns(mockDescriptor.Object);
-        mockExecution
-            .Setup(f => f.ExecuteAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<HttpRequest, CancellationToken>((req, _) =>
-            {
-                req.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] =
-                    new ContentResult { Content = "response body content", StatusCode = 200 };
-            })
-            .Returns(Task.CompletedTask);
+        var mockExecution = CreateMockFunctionExecution("TestFunction", "get");
 
         using var server = new TestServer(new WebHostBuilder()
-            .ConfigureServices(services => services.AddLogging())
+            .ConfigureServices(services => { services.AddLogging(); services.AddMvcCore(); })
             .Configure(app =>
             {
                 app.Use((ctx, next) =>
@@ -118,26 +104,10 @@ public class FunctionInvocationMiddlewareTests
     [Fact]
     public async Task Invoke_GetRequest_OnGetFunction_PreservesResponseBody()
     {
-        var mockDescriptor = new Mock<FunctionDescriptor>();
-        mockDescriptor.SetupGet(d => d.HttpTriggerAttribute)
-            .Returns(new HttpTriggerAttribute(AuthorizationLevel.Anonymous, "get"));
-        mockDescriptor.Object.Name = "TestFunction";
-        mockDescriptor.Object.Metadata = new FunctionMetadata { Name = "TestFunction" };
-
-        var mockExecution = new Mock<IFunctionExecutionFeature>();
-        mockExecution.SetupGet(f => f.CanExecute).Returns(true);
-        mockExecution.SetupGet(f => f.Descriptor).Returns(mockDescriptor.Object);
-        mockExecution
-            .Setup(f => f.ExecuteAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<HttpRequest, CancellationToken>((req, _) =>
-            {
-                req.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] =
-                    new ContentResult { Content = "response body content", StatusCode = 200 };
-            })
-            .Returns(Task.CompletedTask);
+        var mockExecution = CreateMockFunctionExecution("TestFunction", "get");
 
         using var server = new TestServer(new WebHostBuilder()
-            .ConfigureServices(services => services.AddLogging())
+            .ConfigureServices(services => { services.AddLogging(); services.AddMvcCore(); })
             .Configure(app =>
             {
                 app.Use((ctx, next) =>
@@ -158,5 +128,34 @@ public class FunctionInvocationMiddlewareTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         string body = await response.Content.ReadAsStringAsync();
         Assert.Equal("response body content", body);
+    }
+
+    private static Mock<IFunctionExecutionFeature> CreateMockFunctionExecution(string functionName, params string[] methods)
+    {
+        var mockDescriptor = new Mock<FunctionDescriptor>();
+        mockDescriptor.SetupGet(d => d.HttpTriggerAttribute)
+            .Returns(new HttpTriggerAttribute(AuthorizationLevel.Anonymous, methods));
+        mockDescriptor.Object.Name = functionName;
+        mockDescriptor.Object.Metadata = new FunctionMetadata { Name = functionName };
+
+        // LogCategory is a non-virtual get-only property set only by the parameterized
+        // constructor. Use reflection to set the compiler-generated backing field.
+        typeof(FunctionDescriptor)
+            .GetField("<LogCategory>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(mockDescriptor.Object, $"Function.{functionName}");
+
+        var mockExecution = new Mock<IFunctionExecutionFeature>();
+        mockExecution.SetupGet(f => f.CanExecute).Returns(true);
+        mockExecution.SetupGet(f => f.Descriptor).Returns(mockDescriptor.Object);
+        mockExecution
+            .Setup(f => f.ExecuteAsync(It.IsAny<HttpRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<HttpRequest, CancellationToken>((req, _) =>
+            {
+                req.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] =
+                    new ContentResult { Content = "response body content", StatusCode = 200 };
+            })
+            .Returns(Task.CompletedTask);
+
+        return mockExecution;
     }
 }
