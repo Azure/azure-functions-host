@@ -52,5 +52,7 @@ extends:
             buildVersionToDownload: specific
             runId: $(resources.pipeline.OfficialBuild.runID)
             artifact: drop_nuget
-            patterns: '**/*Abstractions*.nupkg'
+            patterns: |
+              **/*Abstractions*.nupkg
+              !**/*.symbols.nupkg
             path: $(Build.ArtifactStagingDirectory)/packages
