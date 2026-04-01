@@ -36,23 +36,21 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         /// <param name="options">The options instance to configure.</param>
         public void Configure(AppCapabilitiesOptions options)
         {
-            var optionsDict = (IDictionary<string, string>)options;
-
             var capabilitiesSection = _configuration.GetSection(ConfigurationSectionNames.AppCapabilities);
             if (capabilitiesSection.Exists())
             {
-                AddCapabilitiesFromSection(optionsDict, capabilitiesSection);
+                AddCapabilitiesFromSection(options, capabilitiesSection);
             }
 
             try
             {
                 foreach (var kvp in _appCapabilitiesStore.Capabilities)
                 {
-                    if (optionsDict.ContainsKey(kvp.Key))
+                    if (options.ContainsKey(kvp.Key))
                     {
                         _logger.LogDebug("Duplicate capability key found. Overriding existing value with a worker provided value.");
                     }
-                    optionsDict[kvp.Key] = kvp.Value;
+                    options[kvp.Key] = kvp.Value;
                 }
             }
             catch (InvalidOperationException ex)
