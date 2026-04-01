@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Azure.Functions.MockWorker</RootNamespace>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Standalone tool; opt out of repo-level code-analysis ruleset. -->
+    <CodeAnalysisRuleSet />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.Net.Client" Version="2.55.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.23.4" />
+    <PackageReference Include="Grpc.Tools" Version="2.55.1" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf
+      Include="..\..\..\src\WebJobs.Script.Grpc\azure-functions-language-worker-protobuf\src\proto\**\*.proto"
+      GrpcServices="Client"
+      ProtoRoot="..\..\..\src\WebJobs.Script.Grpc\azure-functions-language-worker-protobuf\src\proto" />
+  </ItemGroup>
+
+</Project>

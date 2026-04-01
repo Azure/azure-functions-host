@@ -107,6 +107,15 @@ namespace Microsoft.Azure.WebJobs.Script
                     HostJsonFileConfigurationOptions hostJsonConfigOptions = new(SystemEnvironment.Instance, applicationOptions);
                     configBuilder.Add(new HostJsonFileConfigurationSource(hostJsonConfigOptions, loggerFactory, metricsLogger));
                 }
+
+                // In external worker mode, add a configuration source that reads host.json
+                // content delivered by the worker via gRPC capabilities. This is added after
+                // the file-based source so its values take precedence (last-writer-wins).
+                if (context.Properties.TryGetValue(ScriptConstants.HostJsonConfigurationSourceKey, out object sourceObj)
+                    && sourceObj is IConfigurationSource externalSource)
+                {
+                    configBuilder.Add(externalSource);
+                }
                 // Adding hosting config into job host configuration
                 configBuilder.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
 
