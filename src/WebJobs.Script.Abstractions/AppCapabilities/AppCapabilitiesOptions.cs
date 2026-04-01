@@ -19,51 +19,69 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     {
         private IDictionary<string, string> Capabilities { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        ICollection<string> IDictionary<string, string>.Keys => Capabilities.Keys;
+        /// <inheritdoc />
+        public ICollection<string> Keys => Capabilities.Keys;
 
-        ICollection<string> IDictionary<string, string>.Values => Capabilities.Values;
+        /// <inheritdoc />
+        public ICollection<string> Values => Capabilities.Values;
 
-        int ICollection<KeyValuePair<string, string>>.Count => Capabilities.Count;
+        /// <inheritdoc />
+        public int Count => Capabilities.Count;
 
-        bool ICollection<KeyValuePair<string, string>>.IsReadOnly => Capabilities.IsReadOnly;
+        /// <inheritdoc />
+        public bool IsReadOnly => Capabilities.IsReadOnly;
 
-        string IDictionary<string, string>.this[string key]
+        /// <inheritdoc />
+        public string this[string key]
         {
             get => Capabilities[key];
             set => Capabilities[key] = value;
         }
 
-        void IDictionary<string, string>.Add(string key, string value)
+        /// <inheritdoc />
+        public void Add(string key, string value)
         {
             Capabilities.Add(key, value);
         }
 
-        void ICollection<KeyValuePair<string, string>>.Add(KeyValuePair<string, string> item)
+        /// <inheritdoc />
+        public void Add(KeyValuePair<string, string> item)
         {
             Capabilities.Add(item);
         }
 
-        void ICollection<KeyValuePair<string, string>>.Clear()
+        /// <inheritdoc />
+        public void Clear()
         {
             Capabilities.Clear();
         }
 
-        bool ICollection<KeyValuePair<string, string>>.Contains(KeyValuePair<string, string> item)
+        /// <summary>
+        /// Determines whether the <see cref="AppCapabilitiesOptions"/> contains the specified key-value pair.
+        /// Key comparison is case-insensitive.
+        /// </summary>
+        public bool Contains(KeyValuePair<string, string> item)
         {
             return Capabilities.Contains(item);
         }
 
-        bool IDictionary<string, string>.ContainsKey(string key)
+        /// <summary>
+        /// Determines whether the <see cref="AppCapabilitiesOptions"/> contains the specified key.
+        /// Key comparison is case-insensitive.
+        /// </summary>
+        public bool ContainsKey(string key)
         {
             return Capabilities.ContainsKey(key);
         }
 
-        void ICollection<KeyValuePair<string, string>>.CopyTo(KeyValuePair<string, string>[] array, int arrayIndex)
+        /// <inheritdoc />
+        public void CopyTo(KeyValuePair<string, string>[] array, int arrayIndex)
         {
             Capabilities.CopyTo(array, arrayIndex);
         }
 
-        IEnumerator<KeyValuePair<string, string>> IEnumerable<KeyValuePair<string, string>>.GetEnumerator()
+        /// <inheritdoc />
+        public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
         {
             return Capabilities.GetEnumerator();
         }
@@ -73,17 +91,20 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             return ((IEnumerable)Capabilities).GetEnumerator();
         }
 
-        bool IDictionary<string, string>.Remove(string key)
+        /// <inheritdoc />
+        public bool Remove(string key)
         {
             return Capabilities.Remove(key);
         }
 
-        bool ICollection<KeyValuePair<string, string>>.Remove(KeyValuePair<string, string> item)
+        /// <inheritdoc />
+        public bool Remove(KeyValuePair<string, string> item)
         {
             return Capabilities.Remove(item);
         }
 
-        bool IDictionary<string, string>.TryGetValue(string key, out string value)
+        /// <inheritdoc />
+        public bool TryGetValue(string key, out string value)
         {
             return Capabilities.TryGetValue(key, out value!);
         }
