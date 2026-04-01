@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryWorkerConfig = "Host.LanguageWorkerConfig";
 
         public const string SkipHostJsonConfigurationKey = "MS_SkipHostJsonConfiguration";
+        public const string HostJsonConfigurationSourceKey = "MS_HostJsonConfigurationSource";
         public const string SkipHostInitializationKey = "MS_SkipHostInitialization";
 
         public const string SupportsDeferredBindingKey = "SupportsDeferredBinding";
