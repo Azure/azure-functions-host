@@ -51,6 +51,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Waits for the worker to complete the WorkerInitResponse handshake.
+        /// </summary>
+        /// <param name="timeout">Maximum time to wait for initialization.</param>
+        /// <param name="cancellationToken">Token to cancel the wait.</param>
+        /// <returns>A task that completes when the worker has initialized.</returns>
+        public Task WaitForInitAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            return WorkerInitTask.Task.WaitAsync(timeout, cancellationToken);
+        }
+
+        /// <summary>
+        /// Returns the value of the specified capability reported by the worker during initialization,
+        /// or <see langword="null"/> if the capability was not present.
+        /// </summary>
+        /// <param name="capability">The capability key to look up.</param>
+        /// <returns>The capability value, or <see langword="null"/>.</returns>
+        public string GetCapabilityState(string capability) => WorkerCapabilities.GetCapabilityState(capability);
+
         /// <inheritdoc/>
         protected override void DisposeWorkerResources()
         {

@@ -7,4 +7,5 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Integration")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Shared")]
+[assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.WebHost")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
