@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using Microsoft.Extensions.Options;
 
+#nullable enable
+
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
     internal sealed class DefaultAppCapabilitiesStore : IAppCapabilitiesStore
