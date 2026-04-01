@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <VersionPrefix>1.0.4</VersionPrefix>
+    <VersionPrefix>1.0.5</VersionPrefix>
     <UpdateBuildNumber Condition="'$(IsReleaseCI)' == 'true'">true</UpdateBuildNumber>
   </PropertyGroup>
 </Project>
