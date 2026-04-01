@@ -36,6 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
 
+        // Some services are pulled from the ScriptHost when it is built. But it can also be shut down and there are periods
+        // where metadata is retrieved without any active host. Some checks in this class need to know this to know whether it can
+        // trust the services it is using.
+        private bool _scriptHostInitialized = false;
+
         public FunctionMetadataManager(
             IOptions<ScriptJobHostOptions> scriptOptions,
             IFunctionMetadataProvider functionMetadataProvider,
@@ -61,7 +66,12 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (e.NewHost is not null)
                 {
+                    _scriptHostInitialized = true;
                     InitializeServices();
+                }
+                else
+                {
+                    _scriptHostInitialized = false;
                 }
             };
         }
@@ -196,7 +206,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal bool IsScriptFileDetermined(FunctionMetadata functionMetadata)
         {
-            if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_metadataOptions.Value.SkipScriptFileValidation && !functionMetadata.IsProxy() && _servicesReset)
+            // If we do not have an initialized scriptHost, we cannot trust the _metadataOptions, so simply return true. This happens during bundle evaluation, for example, when
+            // we do not yet have a built scriptHost.
+            if (_scriptHostInitialized && string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_metadataOptions.Value.SkipScriptFileValidation && !functionMetadata.IsProxy() && _servicesReset)
             {
                 // for functions in error, log the error and don't
                 // add to the functions collection
