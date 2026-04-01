@@ -613,8 +613,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 _logger.EnteringRestart(reason);
 
-                _appCapabilitiesStore.Clear();
-
                 // If anything is mid-startup, cancel it.
                 _startupLoopTokenSource?.Cancel();
                 foreach (var startupOperation in _activeStartupOperations.Keys)
@@ -645,6 +643,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     var previousHost = ActiveHost;
                     ActiveHost = null;
+                    _appCapabilitiesStore.Clear();
 
                     var activeOperation = BeginStartupOperation(cancellationToken);
 

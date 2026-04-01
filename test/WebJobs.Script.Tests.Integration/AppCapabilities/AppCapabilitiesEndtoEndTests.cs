@@ -44,9 +44,9 @@ public class AppCapabilitiesEndToEndTests
             Assert.Equal("10", capabilitiesStore.Capabilities["MaxConcurrency"]);
 
             // Get the options before restart
-            var optionsBeforeRestart = fixture.Host.JobHostServices.GetService<Microsoft.Extensions.Options.IOptions<AppCapabilitiesOptions>>();
+            var optionsBeforeRestart = fixture.Host.JobHostServices.GetService<Microsoft.Extensions.Options.IOptionsMonitor<AppCapabilitiesOptions>>();
             Assert.NotNull(optionsBeforeRestart);
-            var optionsValueBefore = optionsBeforeRestart.Value;
+            var optionsValueBefore = optionsBeforeRestart.CurrentValue;
             Assert.Equal(3, ((System.Collections.Generic.ICollection<System.Collections.Generic.KeyValuePair<string, string>>)optionsValueBefore).Count);
 
             // Trigger a host restart

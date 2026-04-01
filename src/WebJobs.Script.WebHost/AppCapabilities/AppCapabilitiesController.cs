@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             var errorMessage = $"Capability value size ({responseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).";
             _logger.LogError("Capability value size ({ResponseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).", responseSize, MaxResponseSizeBytes);
 
-            return (false, errorMessage, serializedValue);
+            return (false, errorMessage, null);
         }
     }
 }

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
@@ -14,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         private readonly ConcurrentDictionary<string, string> _capabilities = new(StringComparer.OrdinalIgnoreCase);
         private readonly object _updateLock = new();
         private bool _isInitialized = false;
+        private ImmutableDictionary<string, string>? _cachedCapabilities;
 
         public DefaultAppCapabilitiesStore(IOptionsChangeTokenSource<AppCapabilitiesOptions> optionsChangeTokenSource)
         {
@@ -24,12 +26,15 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         {
             get
             {
-                if (!_isInitialized)
+                lock (_updateLock)
                 {
-                    throw new InvalidOperationException("Capabilities have not been initialized.");
-                }
+                    if (!_isInitialized)
+                    {
+                        throw new InvalidOperationException("Capabilities have not been initialized.");
+                    }
 
-                return _capabilities;
+                    return _cachedCapabilities ??= _capabilities.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase);
+                }
             }
         }
 
@@ -71,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             {
                 _capabilities.Clear();
                 _isInitialized = false;
+                _cachedCapabilities = null;
             }
 
             TriggerChangeNotification();
