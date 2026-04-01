@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using System.Net.Http;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
@@ -16,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -23,7 +25,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -40,7 +41,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
             IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
             IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
+            IConfiguration configuration = rootServiceProvider.GetService<IConfiguration>();
             IEnvironment environment = rootServiceProvider.GetService<IEnvironment>();
+
+            // In external worker mode, host.json content is delivered by the worker via
+            // gRPC capabilities. We store the source in builder properties so AddScriptHost
+            // can add it at the correct point in the ConfigureAppConfiguration pipeline
+            // (before extension bundles are resolved). The file-based source still runs but
+            // produces no keys if no file exists; our source's values take precedence.
+            bool isExternalWorker = configuration.IsExternalWorkerEnabled();
+            if (isExternalWorker)
+            {
+                var contentProvider = rootServiceProvider.GetRequiredService<HostJsonContentProvider>();
+                var hostJsonLogger = configLoggerFactory.CreateLogger<ExternalWorkerHostJsonConfigurationSource>();
+                builder.Properties[ScriptConstants.HostJsonConfigurationSourceKey] =
+                    new ExternalWorkerHostJsonConfigurationSource(contentProvider, hostJsonLogger);
+            }
 
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootServices, validator))
                 .ConfigureServices(services =>
@@ -60,6 +76,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
                     webJobsBuilder.Services.AddRpcScriptHostServices();
+
+                    // In external worker mode, override the dispatcher factory with one that
+                    // returns the ConnectedWorkerInvocationDispatcher. This must be registered
+                    // after AddRpcScriptHostServices so the last-registered factory wins.
+                    if (isExternalWorker)
+                    {
+                        webJobsBuilder.Services.AddExternalWorkerScriptHostServices(rootServiceProvider);
+                    }
 
                     // Adds necessary Azure-based services to the ScriptHost, which will use the host-provided IAzureBlobStorageProvider registered below.
                     webJobsBuilder.AddAzureStorageCoreServices();
@@ -185,6 +209,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             foreach (IConfigureBuilder<TBuilder> configureBuilder in services.GetServices<IConfigureBuilder<TBuilder>>())
             {
                 configureBuilder.Configure(builder);
+            }
+        }
+
+        /// <summary>
+        /// Replaces the file-based <see cref="HostJsonFileConfigurationSource"/> with an
+        /// <see cref="ExternalWorkerHostJsonConfigurationSource"/> that reads host.json content
+        /// delivered by the external worker via gRPC capabilities.
+        /// </summary>
+        private static void ReplaceHostJsonConfigurationSource(
+            IConfigurationBuilder configurationBuilder,
+            IServiceProvider rootServiceProvider,
+            ILoggerFactory loggerFactory)
+        {
+            for (int i = 0; i < configurationBuilder.Sources.Count; i++)
+            {
+                if (configurationBuilder.Sources[i] is HostJsonFileConfigurationSource)
+                {
+                    var contentProvider = rootServiceProvider.GetRequiredService<HostJsonContentProvider>();
+                    var logger = loggerFactory.CreateLogger<ExternalWorkerHostJsonConfigurationSource>();
+                    configurationBuilder.Sources[i] = new ExternalWorkerHostJsonConfigurationSource(contentProvider, logger);
+                    break;
+                }
             }
         }
 

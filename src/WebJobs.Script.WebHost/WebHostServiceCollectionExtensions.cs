@@ -195,6 +195,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Register common services with the WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);
+
+            // External worker services must be registered before AddCommonRpcServices
+            // so that TryAddSingleton<IWorkerFunctionMetadataProvider> does not override
+            // the ConnectedWorkerFunctionMetadataProvider registration.
+            // The WorkerConnectionService hosted service must also be registered before
+            // WebJobsScriptHostService so its StartAsync runs first (hosted services
+            // start in registration order).
+            if (configuration.IsExternalWorkerEnabled())
+            {
+                services.AddExternalWorkerServices(configuration);
+            }
+
             services.AddCommonRpcServices();
 
             services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
