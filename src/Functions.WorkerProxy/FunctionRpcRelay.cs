@@ -14,7 +14,13 @@ namespace Microsoft.Azure.Functions.WorkerProxy;
 /// <param name="WorkerGrpcPort">Port the language worker connects to.</param>
 /// <param name="HttpProxyPort">Port the HTTP proxy listens on (rewritten into HttpUri capability).</param>
 /// <param name="HostJsonPath">Optional path to a host.json to inject into WorkerInitResponse capabilities.</param>
-internal record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpProxyPort, string? HostJsonPath);
+/// <param name="HttpProxyEndpoint">
+/// Full URL advertised in the <c>HttpUri</c> capability so the runtime routes HTTP
+/// requests through this proxy. Defaults to <c>http://localhost:{HttpProxyPort}</c>;
+/// override when running in containers where <c>localhost</c> is not reachable across
+/// container boundaries.
+/// </param>
+internal record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpProxyPort, string? HostJsonPath, string HttpProxyEndpoint);
 
 /// <summary>
 /// Relays <see cref="StreamingMessage"/> payloads bidirectionally between the
@@ -124,13 +130,12 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                         _logger.LogInformation("Injected host.json into WorkerInitResponse capabilities");
                     }
 
-                    // Rewrite HttpUri to point at the proxy's HTTP port so the runtime
+                    // Rewrite HttpUri to point at the proxy's HTTP endpoint so the runtime
                     // routes HTTP requests through the proxy rather than directly to the worker.
                     if (message.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"))
                     {
-                        string proxyHttpUri = $"http://localhost:{_options.HttpProxyPort}";
-                        message.WorkerInitResponse.Capabilities["HttpUri"] = proxyHttpUri;
-                        _logger.LogInformation("Rewrote HttpUri capability to {Uri}", proxyHttpUri);
+                        message.WorkerInitResponse.Capabilities["HttpUri"] = _options.HttpProxyEndpoint;
+                        _logger.LogInformation("Rewrote HttpUri capability to {Uri}", _options.HttpProxyEndpoint);
                     }
                 }
 
