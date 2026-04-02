@@ -1,0 +1,12 @@
+# ── ComputeSeparation Docker ignore ──────────────────────────────────────────
+# Keeps the build context lean when building container images via Aspire.
+.git
+.vs
+.vscode
+out/
+test/
+sample/
+*.sln
+**/*.user
+**/bin/
+**/obj/

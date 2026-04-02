@@ -16,8 +16,9 @@ int workerGrpcPort = GetIntArg(args, "--worker-grpc-port", 50052);
 int httpProxyPort = GetIntArg(args, "--http-proxy-port", 50053);
 string workerHttpEndpoint = GetStringArg(args, "--worker-http-endpoint", "http://localhost:8080");
 string? hostJsonPath = GetStringArgOrNull(args, "--host-json-path");
+string httpProxyEndpoint = GetStringArg(args, "--http-proxy-endpoint", $"http://localhost:{httpProxyPort}");
 
-builder.Services.AddSingleton(new RelayOptions(runtimeGrpcPort, workerGrpcPort, httpProxyPort, hostJsonPath));
+builder.Services.AddSingleton(new RelayOptions(runtimeGrpcPort, workerGrpcPort, httpProxyPort, hostJsonPath, httpProxyEndpoint));
 builder.Services.AddSingleton<FunctionRpcRelay>();
 builder.Services.AddGrpc();
 builder.Services.AddHttpForwarder();
