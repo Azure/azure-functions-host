@@ -13,6 +13,7 @@ trigger:
     - dev
     - in-proc
     - release/*
+    - feature/*
 
 schedules:
   # Ensure we build nightly to catch any new CVEs and report SDL often.
@@ -30,6 +31,7 @@ pr:
     - dev
     - in-proc
     - release/*
+    - feature/*
 
 resources:
   repositories:

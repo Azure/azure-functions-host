@@ -1,0 +1,66 @@
+parameters:
+- name: public
+  displayName: Publish to nuget.org?
+  type: boolean
+  default: false
+
+trigger: none
+pr: none
+
+resources:
+  repositories:
+  - repository: 1es
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+  - repository: eng
+    type: git
+    name: engineering
+    ref: refs/tags/release
+  pipelines:
+  - pipeline: OfficialBuild
+    source: host.official
+
+variables:
+- template: /eng/ci/templates/variables/build.yml@self
+- template: /ci/variables/cfs.yml@eng
+
+extends:
+  template: v1/1ES.Official.PipelineTemplate.yml@1es
+  parameters:
+    pool:
+      name: 1es-pool-azfunc
+      image: 1es-windows-2022
+      os: windows
+
+    stages:
+    - template: /eng/ci/templates/official/pipelines/release.yml@self
+      parameters:
+        public: ${{ parameters.public }}
+        folder: azure-webjobs-script-abstractions
+        packages: |
+          **/*Abstractions*.nupkg
+          !**/*.symbols.nupkg
+        downloadSteps:
+        - pwsh: |
+            $branch = "$(resources.pipeline.OfficialBuild.sourceBranch)"
+            Write-Host "OfficialBuild source branch: $branch"
+            if (!($branch -like "refs/heads/release/*" -or $branch -like "refs/heads/internal/release/*" -or $branch -like "refs/tags/*-v*" -or $branch -like "refs/tags/v*"))
+            {
+              Write-Host "##vso[task.logissue type=error]Selected host.official run is from branch '$branch'. Only runs from release branches (release/*, internal/release/*) or release tags (*-v*, v*) produce stable packages."
+              exit 1
+            }
+          displayName: Validate OfficialBuild source branch
+        - task: DownloadPipelineArtifact@2
+          displayName: Download Abstractions packages from host.official
+          inputs:
+            source: specific
+            project: $(System.TeamProject)
+            pipeline: $(resources.pipeline.OfficialBuild.pipelineID)
+            buildVersionToDownload: specific
+            runId: $(resources.pipeline.OfficialBuild.runID)
+            artifact: drop_nuget
+            patterns: |
+              **/*Abstractions*.nupkg
+              !**/*.symbols.nupkg
+            path: $(Build.ArtifactStagingDirectory)/packages

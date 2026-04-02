@@ -1,0 +1,63 @@
+parameters:
+- name: downloadSteps
+  type: stepList
+- name: folder
+  type: string
+- name: public
+  type: boolean
+  default: false
+- name: packages
+  type: string
+  default: |
+    **/*.nupkg
+    !**/*.symbols.nupkg
+
+stages:
+- stage: Validate
+  jobs:
+  - job: Validate
+    templateContext:
+      type: validationJob
+
+    steps:
+    - pwsh: |
+        $source = "$(Build.SourceBranch)"
+        if (!($source -like "refs/tags/*-v*" || $source -like "refs/tags/v*" || $source -like "refs/heads/release/*" || $source -like "refs/heads/internal/release/*"))
+        {
+          Write-Host "##vso[task.logissue type=error]Invalid release branch. Branch must be a tag (v* or *-v*) or a release branch (release/*, internal/release/*)."
+          exit 1
+        }
+      displayName: Validate Source Branch
+
+- stage: Download
+  dependsOn: Validate
+  jobs:
+  - job: DownloadPackages
+    displayName: Download release packages
+
+    templateContext:
+      outputParentDirectory: $(Build.ArtifactStagingDirectory)
+      outputs:
+      - output: pipelineArtifact
+        displayName: Publish release packages
+        path: $(Build.ArtifactStagingDirectory)/packages
+        artifact: drop_packages
+
+    steps:
+    - ${{ each step in parameters.downloadSteps }}:
+      - ${{ step }}
+
+- stage: Release
+  dependsOn: Download
+  jobs:
+  - template: /ci/release-nuget-package.yml@eng
+    parameters:
+      isProduction: true
+      approvers: '[internal]\Azure Functions Core'
+      artifact: drop_packages
+      stagingFeed: public/pre-release
+      packages: ${{ parameters.packages }}
+      ${{ if eq(parameters.public, true) }}:
+        partnerDrop:
+          serviceConnection: azure-sdk-partner-drops
+          targetFolder: azure-functions/dotnet/${{ parameters.folder }}/$(Build.BuildNumber)
