@@ -32,7 +32,7 @@ graph LR
 ## Prerequisites
 
 - .NET SDK 8.0 (see `global.json`)
-- Docker (for the Azurite storage emulator container)
+- Docker (for the Azurite storage emulator container; also required for container mode)
 
 ## Quick Start
 
@@ -52,6 +52,24 @@ curl http://localhost:7071/api/HttpTrigger
 ```
 
 The Aspire dashboard is available at `http://localhost:15888` with logs and traces for all three processes.
+
+### Container Mode
+
+To run all components as Docker containers instead of local projects, use the
+**containers** launch profile or set `UseContainers=true`:
+
+```powershell
+# Via launch profile
+dotnet run --project tools/ComputeSeparation/AppHost/AppHost.csproj --launch-profile containers
+
+# Via environment variable
+$env:UseContainers = "true"
+dotnet run --project tools/ComputeSeparation/AppHost/AppHost.csproj
+```
+
+Aspire builds Dockerfiles for each component, creates a shared Docker network,
+and resolves endpoint references automatically — containers address each other by
+resource name rather than `localhost`.
 
 ## E2E Integration Test
 
