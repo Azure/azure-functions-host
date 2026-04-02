@@ -6,6 +6,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
@@ -104,9 +105,11 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
         }
 
         /// <inheritdoc />
-        public bool TryGetValue(string key, out string value)
+#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
+        public bool TryGetValue(string key, [MaybeNullWhen(false)] out string? value)
+#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         {
-            return Capabilities.TryGetValue(key, out value!);
+            return Capabilities.TryGetValue(key, out value);
         }
     }
 }
