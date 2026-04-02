@@ -80,14 +80,6 @@ public class WorkerAllocationApiTests : IAsyncLifetime, IDisposable
             .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        _mockConnectionManager
-            .Setup(m => m.GetWorkerStatus(It.IsAny<string>()))
-            .Returns<string>(id => new WorkerConnectionInfo
-            {
-                WorkerId = id,
-                State = WorkerConnectionState.Connecting
-            });
-
         var request = new { workerId = "w_test1234", grpcEndpoint = "http://10.0.1.42:50051" };
         var response = await SendAdminRequest(HttpMethod.Post, "admin/workers/assign", request);
 

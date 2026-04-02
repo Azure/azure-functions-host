@@ -41,10 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             };
 
             _mockConnectionManager
-                .Setup(m => m.GetWorkerStatus("w_test1234"))
-                .Returns(new WorkerConnectionInfo { WorkerId = "w_test1234", State = WorkerConnectionState.Connecting });
-
-            _mockConnectionManager
                 .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
@@ -102,15 +98,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 .Callback<string, Uri, CancellationToken>((id, _, _) => capturedWorkerId = id)
                 .Returns(Task.CompletedTask);
 
-            _mockConnectionManager
-                .Setup(m => m.GetWorkerStatus(It.IsAny<string>()))
-                .Returns<string>(id => new WorkerConnectionInfo { WorkerId = id, State = WorkerConnectionState.Connecting });
-
             var result = _controller.Assign(request);
 
-            Assert.IsType<AcceptedResult>(result);
-            Assert.NotNull(capturedWorkerId);
-            Assert.StartsWith("w_", capturedWorkerId);
+            var accepted = Assert.IsType<AcceptedResult>(result);
+            var info = Assert.IsType<WorkerConnectionInfo>(accepted.Value);
+            Assert.StartsWith("w_", info.WorkerId);
+            Assert.Equal(WorkerConnectionState.Connecting, info.State);
         }
 
         [Fact]

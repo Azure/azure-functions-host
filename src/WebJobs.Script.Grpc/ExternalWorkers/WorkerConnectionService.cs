@@ -38,6 +38,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     private readonly ConcurrentDictionary<string, OutboundGrpcClient> _clients = new();
     private readonly ConcurrentDictionary<string, WorkerConnectionInfo> _workerStates = new();
     private readonly TaskCompletionSource _scriptHostStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private int _firstWorkerClaimed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerConnectionService"/> class.
@@ -144,15 +145,24 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
             // Start or update the ScriptHost based on whether this is the first worker.
             // The first caller starts the ScriptHost; concurrent callers block until
             // startup completes, then call SetupChannel on the dispatcher.
-            if (_scriptHostStarted.TrySetResult())
+            if (Interlocked.CompareExchange(ref _firstWorkerClaimed, 1, 0) == 0)
             {
                 // First worker: start the ScriptHost. In external worker mode,
                 // WebJobsScriptHostService is not registered as an IHostedService,
                 // so the ScriptHost hasn't started yet. Now that a worker has delivered
                 // host.json and registered a channel, WaitForContent and WaitForChannelAsync
                 // will return immediately when the ScriptHost builds.
-                _logger.LogInformation("First worker connected. Starting ScriptHost.");
-                await ((IHostedService)_scriptHostManager).StartAsync(cancellationToken);
+                try
+                {
+                    _logger.LogInformation("First worker connected. Starting ScriptHost.");
+                    await ((IHostedService)_scriptHostManager).StartAsync(cancellationToken);
+                    _scriptHostStarted.TrySetResult();
+                }
+                catch (Exception ex)
+                {
+                    _scriptHostStarted.TrySetException(ex);
+                    throw;
+                }
             }
             else
             {

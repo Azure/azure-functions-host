@@ -72,6 +72,15 @@ public class WorkerController : Controller
 
         _logger.LogInformation("Received worker assign request for '{workerId}' at {endpoint}.", workerId, endpoint);
 
+        // Build the response before starting async work. ConnectWorkerAsync sets
+        // _workerStates on a background thread, so reading it immediately after
+        // fire-and-forget would race and likely return null.
+        var info = new WorkerConnectionInfo
+        {
+            WorkerId = workerId,
+            State = WorkerConnectionState.Connecting
+        };
+
         // Fire-and-forget: kick off the connection in the background,
         // matching the pattern used by HostController.Drain and InstanceController.Assign.
         _ = _connectionManager.ConnectWorkerAsync(workerId, endpoint, CancellationToken.None)
@@ -83,8 +92,6 @@ public class WorkerController : Controller
                         _logger.LogError(t.Exception, "Worker '{workerId}' connection failed.", workerId);
                     }
                 });
-
-        var info = _connectionManager.GetWorkerStatus(workerId);
 
         return Accepted(info);
     }
