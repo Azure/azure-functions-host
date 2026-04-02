@@ -133,6 +133,7 @@ message WorkerInitResponse {
   string worker_version = 1;
 
   // A map of worker supported features/capabilities
+  // These values are used internally for host-worker interactions
   map<string, string> capabilities = 2;
 
   // Status of the response
@@ -140,6 +141,10 @@ message WorkerInitResponse {
 
   // Worker metadata captured for telemetry purposes
   WorkerMetadata worker_metadata = 4;
+
+  // A map of application-level capabilities
+  // These features/capabilities are queried from admin endpoints in the host by third parties
+  map<string, string> app_capabilities = 5;
 }
 
 message WorkerMetadata {
