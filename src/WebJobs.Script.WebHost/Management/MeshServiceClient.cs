@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -140,6 +140,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             };
 
             var response = await SendAsync(operation);
+            response.EnsureSuccessStatusCode();
+        }
+
+        public async Task NotifyTriggersChanged(string contentHash)
+        {
+            _logger.LogDebug("Posting triggers changed notification to appserver.");
+
+            var response = await SendAsync(
+            [
+                KeyValuePair.Create(Operation, "update-triggers-timestamp"),
+                KeyValuePair.Create("content-hash", contentHash)
+            ]);
+
             response.EnsureSuccessStatusCode();
         }
 

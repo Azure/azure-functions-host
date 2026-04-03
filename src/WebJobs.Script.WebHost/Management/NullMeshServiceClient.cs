@@ -52,5 +52,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             return Task.CompletedTask;
         }
+
+        public Task NotifyTriggersChanged(string contentHash)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

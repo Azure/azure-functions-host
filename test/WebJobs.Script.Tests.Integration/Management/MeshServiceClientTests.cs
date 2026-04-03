@@ -261,6 +261,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             return expectedActivities.Aggregate(matchesOperation, (current, activity) => current && formData["content"].Contains(activity.FunctionName));
         }
 
+        private static bool IsNotifyTriggersChangedRequest(HttpRequestMessage request)
+        {
+            var formData = request.Content.ReadAsFormDataAsync().Result;
+            return string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
+                   string.Equals("update-triggers-timestamp", formData["operation"]) &&
+                   !string.IsNullOrEmpty(formData["content-hash"]);
+        }
+
+        [Fact]
+        public async Task NotifyTriggersChanged()
+        {
+            _handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK
+            });
+
+            await _meshServiceClient.NotifyTriggersChanged("abc123hash");
+
+            _handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
+                ItExpr.Is<HttpRequestMessage>(r => IsNotifyTriggersChangedRequest(r)),
+                ItExpr.IsAny<CancellationToken>());
+        }
+
         private class HelloWorldConverter : JsonConverter
         {
             public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)

@@ -372,6 +372,16 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Returns a value indicating whether the triggers sync signal path is enabled.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see cref="true"/> if triggers sync signal is enabled; otherwise, <see cref="false"/>.</returns>
+        public static bool IsTriggersSyncSignalEnabled(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(FunctionsTriggersSyncSignalEnabled) == "1";
+        }
+
+        /// <summary>
         /// Checks both WEBSITE_SKU and WEBSITE_SKU_NAME and returns true IFF one is
         /// set to "Dynamic".
         /// </summary>

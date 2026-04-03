@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public async Task<TriggersOperationResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
+        public virtual async Task<TriggersOperationResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
         {
             var result = new TriggersOperationResult
             {
@@ -304,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return _hashBlobClient;
         }
 
-        private async Task<SyncTriggersPayload> GetSyncTriggersPayload()
+        protected async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
             PrepareSyncTriggers();
 

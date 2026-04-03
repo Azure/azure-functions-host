@@ -144,7 +144,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
 
             // Management services
-            services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
+            if (SystemEnvironment.Instance.IsTriggersSyncSignalEnabled())
+            {
+                services.AddSingleton<IFunctionsSyncManager, SignalBasedFunctionsSyncManager>();
+            }
+            else
+            {
+                services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
+            }
+
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddHttpClient();
