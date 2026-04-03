@@ -92,6 +92,14 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     /// <inheritdoc/>
     public async Task ConnectWorkerAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
     {
+        // Reject duplicate worker IDs. The platform must disconnect the existing
+        // worker before assigning a new one with the same ID.
+        if (_workers.ContainsKey(workerId))
+        {
+            throw new InvalidOperationException(
+                $"Worker '{workerId}' already exists. Disconnect it before reassigning.");
+        }
+
         var info = new WorkerConnectionInfo
         {
             WorkerId = workerId,
@@ -189,6 +197,10 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
 
             throw;
         }
+        finally
+        {
+            worker.ConnectCompleted.TrySetResult();
+        }
     }
 
     /// <inheritdoc/>
@@ -201,6 +213,9 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
             return;
         }
 
+        // Wait for any in-flight ConnectWorkerAsync to finish before cleaning up.
+        await worker.ConnectCompleted.Task;
+
         worker.Info.State = WorkerConnectionState.Draining;
 
         try
@@ -211,7 +226,15 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
             // Dispose the outbound gRPC client.
             if (worker.Client is not null)
             {
-                await worker.Client.DisposeAsync();
+                try
+                {
+                    await worker.Client.DisposeAsync();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Client may have already been partially disposed during a failed connect.
+                }
+
                 worker.Client = null;
             }
 
@@ -275,5 +298,13 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
         public WorkerConnectionInfo Info { get; set; }
 
         public OutboundGrpcClient Client { get; set; }
+
+        /// <summary>
+        /// Gets a signal that indicates when <see cref="ConnectWorkerAsync"/> has
+        /// finished (success or failure).
+        /// <see cref="DisconnectWorkerAsync"/> awaits this before cleaning up to avoid
+        /// racing with an in-flight connection.
+        /// </summary>
+        public TaskCompletionSource ConnectCompleted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 }

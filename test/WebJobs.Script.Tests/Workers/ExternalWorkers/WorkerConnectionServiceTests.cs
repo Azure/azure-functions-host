@@ -130,6 +130,91 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             Assert.Equal(0, service.ActiveWorkerCount);
         }
 
+        [Fact]
+        public async Task ConnectWorkerAsync_DuplicateWorkerId_ThrowsAndPreservesExistingState()
+        {
+            var service = CreateMinimalService();
+
+            // First connect: will fail at AddGrpcChannels (mock TryAddWorkerState returns false),
+            // leaving the worker in Error state.
+            await Assert.ThrowsAnyAsync<Exception>(
+                () => service.ConnectWorkerAsync("w_dup", new Uri("http://localhost:50051"), CancellationToken.None));
+
+            var originalInfo = service.GetWorkerStatus("w_dup");
+            Assert.NotNull(originalInfo);
+            Assert.Equal(WorkerConnectionState.Error, originalInfo.State);
+
+            // Second connect with the same workerId should throw InvalidOperationException
+            // and the original state should remain unchanged.
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.ConnectWorkerAsync("w_dup", new Uri("http://localhost:50051"), CancellationToken.None));
+
+            var afterInfo = service.GetWorkerStatus("w_dup");
+            Assert.Equal(WorkerConnectionState.Error, afterInfo.State);
+            Assert.Same(originalInfo, afterInfo);
+        }
+
+        [Fact]
+        public async Task DisconnectWorkerAsync_WhileConnecting_WaitsForConnectToComplete()
+        {
+            var service = CreateMinimalService();
+
+            // Make AddGrpcChannels succeed but block inside it via a TCS so connect
+            // is mid-flight when we call disconnect.
+            var connectPaused = new TaskCompletionSource();
+            var connectCanProceed = new TaskCompletionSource();
+
+            // First call to TryAddWorkerState (inbound channel): succeed and signal pause
+            // Second call (outbound channel): wait for proceed signal, then succeed
+            int addCallCount = 0;
+            _mockEventManager
+                .Setup(m => m.TryAddWorkerState(It.IsAny<string>(), It.IsAny<object>()))
+                .Returns<string, object>((_, _) =>
+                {
+                    int call = Interlocked.Increment(ref addCallCount);
+                    if (call == 1)
+                    {
+                        // First add (inbound): succeed, signal that connect is paused
+                        connectPaused.TrySetResult();
+                        return true;
+                    }
+                    else if (call == 2)
+                    {
+                        // Second add (outbound): block until disconnect starts
+                        connectCanProceed.Task.GetAwaiter().GetResult();
+                        return true;
+                    }
+
+                    return true;
+                });
+
+            // Start connect in background — it will pause during AddGrpcChannels
+            var connectTask = Task.Run(() =>
+                service.ConnectWorkerAsync("w_race", new Uri("http://localhost:50051"), CancellationToken.None));
+
+            // Wait for connect to be mid-flight
+            await connectPaused.Task;
+
+            // Now call disconnect while connect is blocked
+            var disconnectTask = service.DisconnectWorkerAsync("w_race", CancellationToken.None);
+
+            // BUG: Without the TCS fix, disconnect completes immediately (state = Disconnected),
+            // then connect resumes and overwrites the state.
+            // With the fix, disconnect should wait for connect to finish first.
+
+            // Let connect proceed — it will fail at ConnectAsync since mocks aren't fully set up
+            connectCanProceed.TrySetResult();
+
+            // Both tasks should complete (connect will throw since gRPC won't actually connect)
+            await Assert.ThrowsAnyAsync<Exception>(() => connectTask);
+            await disconnectTask;
+
+            // Final state should be Disconnected (from disconnect), not Error (from connect)
+            var finalInfo = service.GetWorkerStatus("w_race");
+            Assert.NotNull(finalInfo);
+            Assert.Equal(WorkerConnectionState.Disconnected, finalInfo.State);
+        }
+
         private WorkerConnectionService CreateMinimalService(IOptions<ExternalWorkerOptions> options = null)
         {
             options ??= Options.Create(new ExternalWorkerOptions { IsEnabled = true });
