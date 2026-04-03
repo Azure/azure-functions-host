@@ -35,8 +35,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger _logger;
 
-    private readonly ConcurrentDictionary<string, OutboundGrpcClient> _clients = new();
-    private readonly ConcurrentDictionary<string, WorkerConnectionInfo> _workerStates = new();
+    private readonly ConcurrentDictionary<string, WorkerConnection> _workers = new();
     private readonly TaskCompletionSource _scriptHostStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _firstWorkerClaimed;
 
@@ -63,7 +62,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     }
 
     /// <inheritdoc/>
-    public int ActiveWorkerCount => _workerStates.Values.Count(s => s.State == WorkerConnectionState.Connected);
+    public int ActiveWorkerCount => _workers.Values.Count(w => w.Info.State == WorkerConnectionState.Connected);
 
     /// <inheritdoc/>
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -93,11 +92,14 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     /// <inheritdoc/>
     public async Task ConnectWorkerAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
     {
-        _workerStates[workerId] = new WorkerConnectionInfo
+        var info = new WorkerConnectionInfo
         {
             WorkerId = workerId,
             State = WorkerConnectionState.Connecting
         };
+
+        var worker = new WorkerConnection { Info = info };
+        _workers[workerId] = worker;
 
         try
         {
@@ -106,7 +108,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
             _eventManager.AddGrpcChannels(workerId);
 
             var client = new OutboundGrpcClient(_eventManager, _loggerFactory.CreateLogger<OutboundGrpcClient>());
-            _clients[workerId] = client;
+            worker.Client = client;
 
             await client.ConnectAsync(workerId, endpoint, cancellationToken);
 
@@ -176,22 +178,14 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
                 }
             }
 
-            _workerStates[workerId] = new WorkerConnectionInfo
-            {
-                WorkerId = workerId,
-                State = WorkerConnectionState.Connected
-            };
+            info.State = WorkerConnectionState.Connected;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to connect worker '{workerId}'.", workerId);
 
-            _workerStates[workerId] = new WorkerConnectionInfo
-            {
-                WorkerId = workerId,
-                State = WorkerConnectionState.Error,
-                ErrorMessage = ex.Message
-            };
+            info.State = WorkerConnectionState.Error;
+            info.ErrorMessage = ex.Message;
 
             throw;
         }
@@ -202,11 +196,12 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     {
         _logger.LogInformation("Disconnecting worker '{workerId}'.", workerId);
 
-        _workerStates[workerId] = new WorkerConnectionInfo
+        if (!_workers.TryGetValue(workerId, out var worker))
         {
-            WorkerId = workerId,
-            State = WorkerConnectionState.Draining
-        };
+            return;
+        }
+
+        worker.Info.State = WorkerConnectionState.Draining;
 
         try
         {
@@ -214,16 +209,13 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
             await _channelManager.ShutdownChannelAsync(workerId);
 
             // Dispose the outbound gRPC client.
-            if (_clients.TryRemove(workerId, out var client))
+            if (worker.Client is not null)
             {
-                await client.DisposeAsync();
+                await worker.Client.DisposeAsync();
+                worker.Client = null;
             }
 
-            _workerStates[workerId] = new WorkerConnectionInfo
-            {
-                WorkerId = workerId,
-                State = WorkerConnectionState.Disconnected
-            };
+            worker.Info.State = WorkerConnectionState.Disconnected;
 
             _logger.LogInformation("Worker '{workerId}' disconnected.", workerId);
         }
@@ -231,12 +223,8 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
         {
             _logger.LogError(ex, "Error disconnecting worker '{workerId}'.", workerId);
 
-            _workerStates[workerId] = new WorkerConnectionInfo
-            {
-                WorkerId = workerId,
-                State = WorkerConnectionState.Error,
-                ErrorMessage = ex.Message
-            };
+            worker.Info.State = WorkerConnectionState.Error;
+            worker.Info.ErrorMessage = ex.Message;
 
             throw;
         }
@@ -244,31 +232,48 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
 
     /// <inheritdoc/>
     public IReadOnlyList<WorkerConnectionInfo> GetWorkerStatuses()
-        => _workerStates.Values.ToList().AsReadOnly();
+        => _workers.Values.Select(w => w.Info).ToList().AsReadOnly();
 
     /// <inheritdoc/>
     public WorkerConnectionInfo GetWorkerStatus(string workerId)
-        => _workerStates.TryGetValue(workerId, out var info) ? info : null;
+        => _workers.TryGetValue(workerId, out var worker) ? worker.Info : null;
 
     /// <inheritdoc/>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        foreach (var kvp in _clients)
+        foreach (var kvp in _workers)
         {
-            await kvp.Value.DisposeAsync();
+            if (kvp.Value.Client is not null)
+            {
+                await kvp.Value.Client.DisposeAsync();
+            }
         }
 
-        _clients.Clear();
+        _workers.Clear();
     }
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        foreach (var kvp in _clients)
+        foreach (var kvp in _workers)
         {
-            await kvp.Value.DisposeAsync();
+            if (kvp.Value.Client is not null)
+            {
+                await kvp.Value.Client.DisposeAsync();
+            }
         }
 
-        _clients.Clear();
+        _workers.Clear();
+    }
+
+    /// <summary>
+    /// Internal tracking type that pairs a worker's API-visible state
+    /// with its gRPC client resource.
+    /// </summary>
+    private class WorkerConnection
+    {
+        public WorkerConnectionInfo Info { get; set; }
+
+        public OutboundGrpcClient Client { get; set; }
     }
 }

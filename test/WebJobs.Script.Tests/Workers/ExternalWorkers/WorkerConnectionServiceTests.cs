@@ -67,8 +67,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         {
             var service = CreateMinimalService();
 
-            // DisconnectWorkerAsync sets state to Draining, then calls ShutdownChannelAsync.
-            // No prior state needed — the method creates the state entry.
+            // Seed a worker entry. ConnectWorkerAsync writes to _workers immediately,
+            // then fails at AddGrpcChannels (mock returns false), leaving an Error entry.
+            await Assert.ThrowsAnyAsync<Exception>(
+                () => service.ConnectWorkerAsync("w_test", new Uri("http://localhost:50051"), CancellationToken.None));
+
             await service.DisconnectWorkerAsync("w_test", CancellationToken.None);
 
             _mockChannelManager.Verify(m => m.ShutdownChannelAsync("w_test"), Times.Once);
@@ -78,6 +81,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         public async Task DisconnectWorkerAsync_UpdatesStateToDraining()
         {
             var service = CreateMinimalService();
+
+            // Seed a worker entry via a failed connect.
+            await Assert.ThrowsAnyAsync<Exception>(
+                () => service.ConnectWorkerAsync("w_test", new Uri("http://localhost:50051"), CancellationToken.None));
 
             // Set up a delayed shutdown to observe the Draining state
             var tcs = new TaskCompletionSource();

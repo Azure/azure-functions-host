@@ -15,18 +15,18 @@ public class WorkerConnectionInfo
     /// Gets the platform-assigned worker identifier.
     /// </summary>
     [JsonProperty("workerId")]
-    public string WorkerId { get; init; }
+    public string WorkerId { get; set; }
 
     /// <summary>
     /// Gets the current connection state.
     /// </summary>
     [JsonProperty("state")]
-    public WorkerConnectionState State { get; init; }
+    public WorkerConnectionState State { get; set; }
 
     /// <summary>
     /// Gets the error message when <see cref="State"/> is <see cref="WorkerConnectionState.Error"/>.
     /// Null for all other states.
     /// </summary>
     [JsonProperty("errorMessage", NullValueHandling = NullValueHandling.Ignore)]
-    public string ErrorMessage { get; init; }
+    public string ErrorMessage { get; set; }
 }
