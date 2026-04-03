@@ -46,7 +46,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 "HostController.GetWorkerProcesses",
                 "HostController.Ping",
                 "InstanceController.GetHttpHealthStatus",
-                "InstanceController.GetInstanceInfo"
+                "InstanceController.GetInstanceInfo",
+                "WorkerController.Get",
+                "WorkerController.GetAll"
             };
 
             // looking for all GET actions that aren't marked with the ResourceContainsSecretsAttribute
