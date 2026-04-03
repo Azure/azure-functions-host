@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         }
 
         [Fact]
-        public async Task Delete_KnownWorker_Returns200()
+        public async Task Delete_KnownWorker_Returns204()
         {
             _mockConnectionManager
                 .Setup(m => m.GetWorkerStatus("w_1"))
@@ -181,20 +181,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             _mockConnectionManager
                 .Setup(m => m.DisconnectWorkerAsync("w_1", It.IsAny<CancellationToken>()))
-                .Callback(() =>
-                {
-                    // After disconnect, update the mock to return Disconnected state
-                    _mockConnectionManager
-                        .Setup(m => m.GetWorkerStatus("w_1"))
-                        .Returns(new WorkerConnectionInfo { WorkerId = "w_1", State = WorkerConnectionState.Disconnected });
-                })
                 .Returns(Task.CompletedTask);
 
             var result = await _controller.Delete("w_1", CancellationToken.None);
 
-            var ok = Assert.IsType<OkObjectResult>(result);
-            var info = Assert.IsType<WorkerConnectionInfo>(ok.Value);
-            Assert.Equal(WorkerConnectionState.Disconnected, info.State);
+            Assert.IsType<NoContentResult>(result);
         }
 
         [Fact]

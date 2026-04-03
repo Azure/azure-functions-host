@@ -187,28 +187,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         }
 
         [Fact]
-        public async Task DisconnectWorkerAsync_UpdatesStateToDraining()
+        public async Task DisconnectWorkerAsync_RemovesWorkerFromTracking()
         {
             SetupFullConnectMocks();
             var service = CreateService();
 
             await service.ConnectWorkerAsync("w_test", new Uri("http://localhost:50051"), CancellationToken.None);
+            Assert.NotNull(service.GetWorkerStatus("w_test"));
 
-            var tcs = new TaskCompletionSource();
+            // Observe Draining state mid-disconnect
             _mockChannelManager
                 .Setup(m => m.ShutdownChannelAsync("w_test"))
                 .Returns(() =>
                 {
                     var info = service.GetWorkerStatus("w_test");
                     Assert.Equal(WorkerConnectionState.Draining, info.State);
-                    tcs.SetResult();
                     return Task.CompletedTask;
                 });
 
             await service.DisconnectWorkerAsync("w_test", CancellationToken.None);
 
-            Assert.True(tcs.Task.IsCompleted);
-            Assert.Equal(WorkerConnectionState.Disconnected, service.GetWorkerStatus("w_test").State);
+            Assert.Null(service.GetWorkerStatus("w_test"));
+            Assert.Equal(0, service.ActiveWorkerCount);
         }
 
         [Fact]
@@ -263,8 +263,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             await connectTask;
             await disconnectTask;
 
+            // After disconnect, worker should be removed from tracking
             var finalInfo = service.GetWorkerStatus("w_race");
-            Assert.Equal(WorkerConnectionState.Disconnected, finalInfo.State);
+            Assert.Null(finalInfo);
         }
 
         [Fact]

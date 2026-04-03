@@ -93,8 +93,6 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     /// <inheritdoc/>
     public async Task ConnectWorkerAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
     {
-        // Reject duplicate worker IDs. The platform must disconnect the existing
-        // worker before assigning a new one with the same ID.
         if (_workers.ContainsKey(workerId))
         {
             throw new InvalidOperationException(
@@ -193,6 +191,10 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
         {
             _logger.LogError(ex, "Failed to connect worker '{workerId}'.", workerId);
 
+            // Clean up partially-created resources so the platform can retry
+            // after calling DELETE to clear the Error state.
+            await CleanupWorkerResourcesAsync(workerId, worker);
+
             info.State = WorkerConnectionState.Error;
             info.ErrorMessage = ex.Message;
 
@@ -221,26 +223,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
 
         try
         {
-            // ShutdownChannelAsync drains in-flight invocations, then disposes the channel.
-            await _channelManager.ShutdownChannelAsync(workerId);
-
-            // Dispose the outbound gRPC client.
-            if (worker.Client is not null)
-            {
-                try
-                {
-                    await worker.Client.DisposeAsync();
-                }
-                catch (ObjectDisposedException)
-                {
-                    // Client may have already been partially disposed during a failed connect.
-                }
-
-                worker.Client = null;
-            }
-
-            worker.Info.State = WorkerConnectionState.Disconnected;
-
+            await RemoveWorkerAsync(workerId, worker);
             _logger.LogInformation("Worker '{workerId}' disconnected.", workerId);
         }
         catch (Exception ex)
@@ -265,15 +248,20 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     /// <inheritdoc/>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        foreach (var kvp in _workers)
+        foreach (string workerId in _workers.Keys)
         {
-            if (kvp.Value.Client is not null)
+            if (_workers.TryGetValue(workerId, out var worker))
             {
-                await kvp.Value.Client.DisposeAsync();
+                try
+                {
+                    await RemoveWorkerAsync(workerId, worker);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error during graceful shutdown of worker '{workerId}'.", workerId);
+                }
             }
         }
-
-        _workers.Clear();
     }
 
     /// <inheritdoc/>
@@ -283,11 +271,54 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
         {
             if (kvp.Value.Client is not null)
             {
-                await kvp.Value.Client.DisposeAsync();
+                try
+                {
+                    await kvp.Value.Client.DisposeAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error disposing gRPC client for worker '{workerId}'.", kvp.Key);
+                }
             }
         }
 
         _workers.Clear();
+    }
+
+    /// <summary>
+    /// Disposes the gRPC client, removes gRPC event channels, and drains the
+    /// worker channel. Does NOT remove the worker from <see cref="_workers"/>
+    /// so the Error state remains visible to callers.
+    /// </summary>
+    private async Task CleanupWorkerResourcesAsync(string workerId, WorkerConnection worker)
+    {
+        await _channelManager.ShutdownChannelAsync(workerId);
+
+        if (worker.Client is not null)
+        {
+            try
+            {
+                await worker.Client.DisposeAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Client may have already been partially disposed during a failed connect.
+            }
+
+            worker.Client = null;
+        }
+
+        _eventManager.RemoveGrpcChannels(workerId);
+    }
+
+    /// <summary>
+    /// Full cleanup: disposes resources and removes the worker from tracking.
+    /// Used by disconnect and stop, where the worker entry should not persist.
+    /// </summary>
+    private async Task RemoveWorkerAsync(string workerId, WorkerConnection worker)
+    {
+        await CleanupWorkerResourcesAsync(workerId, worker);
+        _workers.TryRemove(workerId, out _);
     }
 
     /// <summary>

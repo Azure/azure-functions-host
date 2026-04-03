@@ -145,8 +145,6 @@ public class WorkerController : Controller
 
         await _connectionManager.DisconnectWorkerAsync(workerId, cancellationToken);
 
-        info = _connectionManager.GetWorkerStatus(workerId);
-
-        return Ok(info);
+        return NoContent();
     }
 }
