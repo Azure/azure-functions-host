@@ -155,7 +155,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
                 try
                 {
                     _logger.LogInformation("First worker connected. Starting ScriptHost.");
-                    await ((IHostedService)_scriptHostManager).StartAsync(cancellationToken);
+                    await _scriptHostManager.StartAsync(cancellationToken);
                     _scriptHostStarted.TrySetResult();
                 }
                 catch (Exception ex)
