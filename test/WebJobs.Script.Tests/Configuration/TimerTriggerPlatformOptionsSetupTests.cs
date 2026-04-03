@@ -80,6 +80,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(NonCronScheduleBehavior.Allow, options.NonCronScheduleBehavior);
         }
 
+        [Theory]
+        [InlineData(NonCronScheduleBehavior.Allow, "\"Allow\"")]
+        [InlineData(NonCronScheduleBehavior.Warn, "\"Warn\"")]
+        [InlineData(NonCronScheduleBehavior.Error, "\"Error\"")]
+        public void Format_SerializesEnumAsString(NonCronScheduleBehavior behavior, string expected)
+        {
+            var options = new TimerTriggerPlatformOptions { NonCronScheduleBehavior = behavior };
+
+            string result = options.Format();
+
+            Assert.Contains(expected, result);
+        }
+
         private static TimerTriggerPlatformOptions ConfigureOptions(TestEnvironment environment)
         {
             var setup = new TimerTriggerPlatformOptionsSetup(environment);
