@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models;
 /// <summary>
 /// Request body for <c>POST /admin/workers/assign</c>.
 /// </summary>
-public class WorkerAssignRequest
+public sealed class WorkerAssignRequest
 {
     /// <summary>
     /// Gets or sets the platform-assigned worker identifier.

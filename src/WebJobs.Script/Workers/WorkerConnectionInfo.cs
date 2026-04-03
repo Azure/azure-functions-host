@@ -9,22 +9,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers;
 /// Tracks the connection state of an external worker.
 /// Used as the API response type for worker management endpoints.
 /// </summary>
-public class WorkerConnectionInfo
+public sealed class WorkerConnectionInfo
 {
     /// <summary>
-    /// Gets the platform-assigned worker identifier.
+    /// Gets or sets the platform-assigned worker identifier.
     /// </summary>
     [JsonProperty("workerId")]
     public string WorkerId { get; set; }
 
     /// <summary>
-    /// Gets the current connection state.
+    /// Gets or sets the current connection state.
     /// </summary>
     [JsonProperty("state")]
     public WorkerConnectionState State { get; set; }
 
     /// <summary>
-    /// Gets the error message when <see cref="State"/> is <see cref="WorkerConnectionState.Error"/>.
+    /// Gets or sets the error message when <see cref="State"/> is <see cref="WorkerConnectionState.Error"/>.
     /// Null for all other states.
     /// </summary>
     [JsonProperty("errorMessage", NullValueHandling = NullValueHandling.Ignore)]

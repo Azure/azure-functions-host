@@ -26,13 +26,13 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
 {
     private static readonly TimeSpan InitTimeout = TimeSpan.FromMinutes(2);
 
-    private readonly ConnectedWorkerChannelFactory _channelFactory;
+    private readonly IConnectedWorkerChannelFactory _channelFactory;
     private readonly IConnectedWorkerChannelManager _channelManager;
     private readonly IScriptEventManager _eventManager;
     private readonly IScriptHostManager _scriptHostManager;
+    private readonly IOutboundGrpcClientFactory _clientFactory;
     private readonly ExternalWorkerOptions _options;
     private readonly HostJsonContentProvider _hostJsonContentProvider;
-    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger _logger;
 
     private readonly ConcurrentDictionary<string, WorkerConnection> _workers = new();
@@ -43,10 +43,11 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     /// Initializes a new instance of the <see cref="WorkerConnectionService"/> class.
     /// </summary>
     public WorkerConnectionService(
-        ConnectedWorkerChannelFactory channelFactory,
+        IConnectedWorkerChannelFactory channelFactory,
         IConnectedWorkerChannelManager channelManager,
         IScriptEventManager eventManager,
         IScriptHostManager scriptHostManager,
+        IOutboundGrpcClientFactory clientFactory,
         IOptions<ExternalWorkerOptions> options,
         HostJsonContentProvider hostJsonContentProvider,
         ILoggerFactory loggerFactory)
@@ -55,9 +56,9 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
         _channelManager = channelManager ?? throw new ArgumentNullException(nameof(channelManager));
         _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
         _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
+        _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _hostJsonContentProvider = hostJsonContentProvider ?? throw new ArgumentNullException(nameof(hostJsonContentProvider));
-        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _logger = loggerFactory.CreateLogger<WorkerConnectionService>();
     }
 
@@ -115,7 +116,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
 
             _eventManager.AddGrpcChannels(workerId);
 
-            var client = new OutboundGrpcClient(_eventManager, _loggerFactory.CreateLogger<OutboundGrpcClient>());
+            var client = _clientFactory.Create();
             worker.Client = client;
 
             await client.ConnectAsync(workerId, endpoint, cancellationToken);
@@ -297,7 +298,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     {
         public WorkerConnectionInfo Info { get; set; }
 
-        public OutboundGrpcClient Client { get; set; }
+        public IOutboundGrpcClient Client { get; set; }
 
         /// <summary>
         /// Gets a signal that indicates when <see cref="ConnectWorkerAsync"/> has
