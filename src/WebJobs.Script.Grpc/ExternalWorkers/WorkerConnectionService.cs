@@ -84,7 +84,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
         {
             // API-driven path: no worker is connected at startup.
             // The ScriptHost will block at WaitForContent / WaitForChannelAsync
-            // until a worker is assigned via POST /admin/workers/assign.
+            // until a worker is linked via POST /admin/workers/link.
             // The WebHost layer (admin APIs) remains responsive during this time.
             _logger.LogInformation("No gRPC endpoint configured. Host will wait for worker assignment via admin API.");
         }

@@ -3,9 +3,7 @@
 
 using System;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -16,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 
 /// <summary>
 /// Controller for managing external worker connections in the compute separation model.
-/// Provides APIs for the platform to dynamically allocate and deallocate workers.
+/// Provides APIs for the platform to link worker pods to this runtime.
 /// </summary>
 public class WorkerController : Controller
 {
@@ -35,18 +33,18 @@ public class WorkerController : Controller
     }
 
     /// <summary>
-    /// Assigns a worker pod to this runtime. Initiates an outbound gRPC connection
-    /// to the worker sidecar and returns immediately. The connection and handshake
-    /// complete in the background. Poll <c>GET /admin/workers</c> to check status.
+    /// Links a worker pod to this runtime. Initiates an outbound gRPC connection
+    /// to the worker proxy and returns immediately. The connection and handshake
+    /// complete in the background.
     /// </summary>
     [HttpPost]
-    [Route("admin/workers/assign")]
+    [Route("admin/workers/link")]
     [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-    public IActionResult Assign([FromBody] WorkerAssignRequest request)
+    public IActionResult Link([FromBody] WorkerLinkRequest request)
     {
         if (_webHostEnvironment.InStandbyMode)
         {
-            return BadRequest("Cannot assign workers before the host has been specialized.");
+            return BadRequest("Cannot link workers before the host has been specialized.");
         }
 
         if (request is null)
@@ -70,7 +68,7 @@ public class WorkerController : Controller
             workerId = $"w_{Guid.NewGuid():N}"[..10];
         }
 
-        _logger.LogInformation("Received worker assign request for '{workerId}' at {endpoint}.", workerId, endpoint);
+        _logger.LogInformation("Received worker link request for '{workerId}' at {endpoint}.", workerId, endpoint);
 
         // Build the response before starting async work. ConnectWorkerAsync sets
         // _workerStates on a background thread, so reading it immediately after
@@ -94,57 +92,5 @@ public class WorkerController : Controller
                 });
 
         return Accepted(info);
-    }
-
-    /// <summary>
-    /// Returns the connection status for all tracked workers.
-    /// </summary>
-    [HttpGet]
-    [Route("admin/workers")]
-    [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-    public IActionResult GetAll()
-    {
-        return Ok(_connectionManager.GetWorkerStatuses());
-    }
-
-    /// <summary>
-    /// Returns the connection status for a single worker.
-    /// </summary>
-    [HttpGet]
-    [Route("admin/workers/{workerId}")]
-    [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-    public IActionResult Get(string workerId)
-    {
-        var info = _connectionManager.GetWorkerStatus(workerId);
-
-        if (info is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(info);
-    }
-
-    /// <summary>
-    /// Deallocates a worker. Drains in-flight invocations, closes the gRPC connection,
-    /// and removes the channel.
-    /// </summary>
-    [HttpDelete]
-    [Route("admin/workers/{workerId}")]
-    [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-    public async Task<IActionResult> Delete(string workerId, CancellationToken cancellationToken)
-    {
-        var info = _connectionManager.GetWorkerStatus(workerId);
-
-        if (info is null)
-        {
-            return NotFound();
-        }
-
-        _logger.LogInformation("Received worker deallocation request for '{workerId}'.", workerId);
-
-        await _connectionManager.DisconnectWorkerAsync(workerId, cancellationToken);
-
-        return NoContent();
     }
 }

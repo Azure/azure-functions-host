@@ -5,7 +5,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -20,17 +19,16 @@ using Xunit.Abstractions;
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
 
 /// <summary>
-/// End-to-end integration test that verifies the API-driven worker allocation flow.
+/// End-to-end integration test that verifies the API-driven worker linking flow.
 /// Unlike <see cref="ExternalWorkerEndToEndTests"/> which auto-connects via an environment
 /// variable, this test starts the runtime with no pre-configured worker endpoint and uses
-/// the <c>POST /admin/workers/assign</c> API to assign a worker at runtime.
+/// the <c>POST /admin/workers/link</c> API to link a worker at runtime.
 ///
 /// Flow:
 /// 1. Worker proxy + mock worker start as child processes
 /// 2. Runtime starts via TestFunctionHost (external worker enabled, no gRPC endpoint)
-/// 3. <c>POST /admin/workers/assign</c> connects the worker
+/// 3. <c>POST /admin/workers/link</c> connects the worker
 /// 4. <c>GET /api/HttpTrigger</c> invokes a function through the mock worker
-/// 5. <c>DELETE /admin/workers/{workerId}</c> deallocates the worker
 /// </summary>
 [Trait(TestTraits.Category, TestTraits.EndToEnd)]
 [Trait(TestTraits.Group, nameof(WorkerAllocationEndToEndTests))]
@@ -109,30 +107,29 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public async Task WorkerAllocationFlow_AssignInvokeAndDeallocate()
+    public async Task WorkerLinkFlow_LinkAndInvoke()
     {
         string masterKey = await _host.GetMasterKeyAsync();
         _output.WriteLine("Got master key for admin API calls.");
 
-        // 1. Assign a worker via the admin API.
-        var assignRequest = new
+        // 1. Link a worker via the admin API.
+        var linkRequest = new
         {
             workerId = "w_e2etest01",
-            grpcEndpoint = $"http://localhost:{RuntimeGrpcPort}"
+            podName = "worker-pod-e2e",
+            grpcEndpoint = $"http://localhost:{RuntimeGrpcPort}",
+            podKey = "test-key"
         };
 
-        var assignResponse = await SendAdminRequest(
-            masterKey, HttpMethod.Post, "admin/workers/assign", assignRequest);
+        var linkResponse = await SendAdminRequest(
+            masterKey, HttpMethod.Post, "admin/workers/link", linkRequest);
 
-        string assignBody = await assignResponse.Content.ReadAsStringAsync();
-        _output.WriteLine($"Assign response: {assignResponse.StatusCode} — {assignBody}");
-        Assert.Equal(HttpStatusCode.Accepted, assignResponse.StatusCode);
+        string linkBody = await linkResponse.Content.ReadAsStringAsync();
+        _output.WriteLine($"Link response: {linkResponse.StatusCode} — {linkBody}");
+        Assert.Equal(HttpStatusCode.Accepted, linkResponse.StatusCode);
 
-        // 2. Poll until the worker is connected and ScriptHost is running.
-        await WaitForWorkerStateAsync(masterKey, "w_e2etest01", "Connected", TimeSpan.FromMinutes(2));
-        _output.WriteLine("Worker is connected.");
-
-        await WaitForHostReadyAsync(masterKey, TimeSpan.FromMinutes(1));
+        // 2. Wait until the host is running (worker connected and ScriptHost started).
+        await WaitForHostReadyAsync(masterKey, TimeSpan.FromMinutes(2));
         _output.WriteLine("Host is ready.");
 
         // 3. Invoke a function through the mock worker.
@@ -142,40 +139,6 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
 
         Assert.Equal(HttpStatusCode.OK, invokeResponse.StatusCode);
         Assert.Contains("Hello from mock worker!", invokeBody);
-
-        // 4. Verify worker status via GET /admin/workers and GET /admin/workers/{workerId}.
-        var allWorkersResponse = await SendAdminRequest(masterKey, HttpMethod.Get, "admin/workers");
-        Assert.Equal(HttpStatusCode.OK, allWorkersResponse.StatusCode);
-        var allWorkers = JArray.Parse(await allWorkersResponse.Content.ReadAsStringAsync());
-        _output.WriteLine($"GET /admin/workers: {allWorkers}");
-        Assert.Single(allWorkers);
-        Assert.Equal("w_e2etest01", allWorkers[0]["workerId"]?.ToString());
-        Assert.Equal("Connected", allWorkers[0]["state"]?.ToString());
-
-        var singleWorkerResponse = await SendAdminRequest(masterKey, HttpMethod.Get, "admin/workers/w_e2etest01");
-        Assert.Equal(HttpStatusCode.OK, singleWorkerResponse.StatusCode);
-        var singleWorker = JObject.Parse(await singleWorkerResponse.Content.ReadAsStringAsync());
-        Assert.Equal("w_e2etest01", singleWorker["workerId"]?.ToString());
-        Assert.Equal("Connected", singleWorker["state"]?.ToString());
-        Assert.Null(singleWorker["errorMessage"]?.Value<string>());
-
-        // 5. Deallocate the worker.
-        var deleteResponse = await SendAdminRequest(
-            masterKey, HttpMethod.Delete, "admin/workers/w_e2etest01");
-
-        string deleteBody = await deleteResponse.Content.ReadAsStringAsync();
-        _output.WriteLine($"Delete response: {deleteResponse.StatusCode} — {deleteBody}");
-        Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
-
-        var deleteResult = JObject.Parse(deleteBody);
-        Assert.Equal("Disconnected", deleteResult["state"]?.ToString());
-
-        // 6. Verify the worker is no longer connected.
-        var statusResponse = await SendAdminRequest(masterKey, HttpMethod.Get, "admin/workers");
-        var workers = JArray.Parse(await statusResponse.Content.ReadAsStringAsync());
-        var worker = workers.FirstOrDefault(w => string.Equals(w["workerId"]?.ToString(), "w_e2etest01", StringComparison.Ordinal));
-        Assert.NotNull(worker);
-        Assert.NotEqual("Connected", worker["state"]?.ToString());
     }
 
     public Task DisposeAsync()
@@ -211,46 +174,6 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         }
 
         return await _host.HttpClient.SendAsync(request);
-    }
-
-    private async Task WaitForWorkerStateAsync(
-        string masterKey, string workerId, string expectedState, TimeSpan timeout)
-    {
-        var sw = Stopwatch.StartNew();
-
-        while (sw.Elapsed < timeout)
-        {
-            try
-            {
-                var response = await SendAdminRequest(masterKey, HttpMethod.Get, $"admin/workers/{workerId}");
-                if (response.StatusCode == HttpStatusCode.OK)
-                {
-                    var info = JObject.Parse(await response.Content.ReadAsStringAsync());
-                    string state = info["state"]?.ToString();
-                    _output.WriteLine($"Worker '{workerId}' state: {state} ({sw.Elapsed.TotalSeconds:F1}s)");
-
-                    if (string.Equals(state, expectedState, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return;
-                    }
-
-                    if (string.Equals(state, "Error", StringComparison.OrdinalIgnoreCase))
-                    {
-                        throw new InvalidOperationException(
-                            $"Worker '{workerId}' entered Error state: {info["errorMessage"]}");
-                    }
-                }
-            }
-            catch (HttpRequestException)
-            {
-                // Host not ready yet.
-            }
-
-            await Task.Delay(1000);
-        }
-
-        throw new TimeoutException(
-            $"Worker '{workerId}' did not reach '{expectedState}' state within {timeout.TotalSeconds}s.");
     }
 
     private async Task WaitForHostReadyAsync(string masterKey, TimeSpan timeout)

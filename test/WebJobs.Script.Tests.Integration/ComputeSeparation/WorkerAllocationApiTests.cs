@@ -2,15 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
@@ -22,7 +19,7 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
 
 /// <summary>
-/// Integration tests for the worker allocation admin APIs.
+/// Integration tests for the worker linking admin APIs.
 /// Uses TestFunctionHost with a mocked <see cref="IWorkerConnectionManager"/>
 /// to verify the full HTTP pipeline: routing, auth, serialization.
 /// </summary>
@@ -74,14 +71,14 @@ public class WorkerAllocationApiTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public async Task AssignWorker_Returns202_WithWorkerConnectionInfo()
+    public async Task LinkWorker_Returns202_WithWorkerConnectionInfo()
     {
         _mockConnectionManager
             .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var request = new { workerId = "w_test1234", grpcEndpoint = "http://10.0.1.42:50051" };
-        var response = await SendAdminRequest(HttpMethod.Post, "admin/workers/assign", request);
+        var request = new { workerId = "w_test1234", podName = "worker-pod-abc123", grpcEndpoint = "http://10.0.1.42:50051", podKey = "test-key" };
+        var response = await SendAdminRequest(HttpMethod.Post, "admin/workers/link", request);
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
@@ -91,103 +88,22 @@ public class WorkerAllocationApiTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public async Task AssignWorker_MissingEndpoint_Returns400()
+    public async Task LinkWorker_MissingEndpoint_Returns400()
     {
         var request = new { workerId = "w_test1234" };
-        var response = await SendAdminRequest(HttpMethod.Post, "admin/workers/assign", request);
+        var response = await SendAdminRequest(HttpMethod.Post, "admin/workers/link", request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetAllWorkers_ReturnsWorkerList()
-    {
-        _mockConnectionManager
-            .Setup(m => m.GetWorkerStatuses())
-            .Returns(new List<WorkerConnectionInfo>
-            {
-                new() { WorkerId = "w_1", State = WorkerConnectionState.Connected },
-                new() { WorkerId = "w_2", State = WorkerConnectionState.Connecting }
-            }.AsReadOnly());
-
-        var response = await SendAdminRequest(HttpMethod.Get, "admin/workers");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var body = JArray.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal(2, body.Count);
-        Assert.Equal("Connected", body[0]["state"]?.ToString());
-    }
-
-    [Fact]
-    public async Task GetWorker_KnownId_ReturnsWorkerInfo()
-    {
-        _mockConnectionManager
-            .Setup(m => m.GetWorkerStatus("w_1"))
-            .Returns(new WorkerConnectionInfo { WorkerId = "w_1", State = WorkerConnectionState.Connected });
-
-        var response = await SendAdminRequest(HttpMethod.Get, "admin/workers/w_1");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("w_1", body["workerId"]?.ToString());
-        Assert.Equal("Connected", body["state"]?.ToString());
-    }
-
-    [Fact]
-    public async Task GetWorker_UnknownId_Returns404()
-    {
-        _mockConnectionManager
-            .Setup(m => m.GetWorkerStatus("w_unknown"))
-            .Returns((WorkerConnectionInfo)null);
-
-        var response = await SendAdminRequest(HttpMethod.Get, "admin/workers/w_unknown");
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task DeleteWorker_Returns200_WithDisconnectedState()
-    {
-        _mockConnectionManager
-            .Setup(m => m.GetWorkerStatus("w_1"))
-            .Returns(new WorkerConnectionInfo { WorkerId = "w_1", State = WorkerConnectionState.Connected });
-
-        _mockConnectionManager
-            .Setup(m => m.DisconnectWorkerAsync("w_1", It.IsAny<CancellationToken>()))
-            .Callback(() =>
-            {
-                _mockConnectionManager
-                    .Setup(m => m.GetWorkerStatus("w_1"))
-                    .Returns(new WorkerConnectionInfo { WorkerId = "w_1", State = WorkerConnectionState.Disconnected });
-            })
-            .Returns(Task.CompletedTask);
-
-        var response = await SendAdminRequest(HttpMethod.Delete, "admin/workers/w_1");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("Disconnected", body["state"]?.ToString());
-    }
-
-    [Fact]
-    public async Task DeleteWorker_UnknownId_Returns404()
-    {
-        _mockConnectionManager
-            .Setup(m => m.GetWorkerStatus("w_unknown"))
-            .Returns((WorkerConnectionInfo)null);
-
-        var response = await SendAdminRequest(HttpMethod.Delete, "admin/workers/w_unknown");
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Fact]
     public async Task AdminEndpoint_WithoutAuth_Returns401()
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, "admin/workers");
+        var request = new HttpRequestMessage(HttpMethod.Post, "admin/workers/link");
+        request.Content = new StringContent(
+            JsonConvert.SerializeObject(new { grpcEndpoint = "http://10.0.1.42:50051" }),
+            Encoding.UTF8,
+            "application/json");
         var response = await _host.HttpClient.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

@@ -217,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // In external worker mode, the ScriptHost cannot start until a worker
             // connects and delivers host.json + function metadata. WorkerConnectionService
             // calls WebJobsScriptHostService.StartAsync() after the first worker connects
-            // (whether config-driven on startup or API-driven via POST /admin/workers/assign).
+            // (whether config-driven on startup or API-driven via POST /admin/workers/link).
             if (!configuration.IsExternalWorkerEnabled())
             {
                 services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
