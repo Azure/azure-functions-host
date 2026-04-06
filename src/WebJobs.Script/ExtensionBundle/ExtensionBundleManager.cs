@@ -23,8 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         private static readonly IReadOnlyDictionary<int, VersionRange> _allowedBundleVersionRanges =
             new Dictionary<int, VersionRange>()
             {
-                [6] = new VersionRange(new NuGetVersion("4.2.0"), true, new NuGetVersion("4.22.0"), true),
-                [8] = new VersionRange(new NuGetVersion("4.2.0"), true, new NuGetVersion("4.32.0"), true),
+                [6] = new VersionRange(new NuGetVersion("4.2.0"), false, new NuGetVersion("4.22.0"), false),
+                [8] = new VersionRange(null, false, new NuGetVersion("4.33.0"), false),
             };
 
         private readonly IEnvironment _environment;
