@@ -301,6 +301,10 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     ? VersionRange.CommonSubSet([versionRange, allowedRange])
                     : VersionRange.CommonSubSet([versionRange, allowedRange, configRange]);
             }
+            else
+            {
+                versionRange = VersionRange.CommonSubSet([versionRange, configRange]);
+            }
 
             return versionRange;
         }
