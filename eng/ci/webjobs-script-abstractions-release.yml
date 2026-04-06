@@ -38,6 +38,7 @@ extends:
       parameters:
         public: ${{ parameters.public }}
         folder: azure-webjobs-script-abstractions
+        package_name: Microsoft.Azure.WebJobs.Script.Abstractions
         packages: |
           **/*Abstractions*.nupkg
           !**/*.symbols.nupkg
