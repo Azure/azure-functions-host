@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 /// Controller for managing external worker connections in the compute separation model.
 /// Provides APIs for the platform to link worker pods to this runtime.
 /// </summary>
-public class WorkerController : Controller
+public sealed class WorkerController : Controller
 {
     private readonly IWorkerConnectionManager _connectionManager;
     private readonly IScriptWebHostEnvironment _webHostEnvironment;
@@ -42,14 +42,14 @@ public class WorkerController : Controller
     [Authorize(Policy = PolicyNames.AdminAuthLevel)]
     public IActionResult Link([FromBody] WorkerLinkRequest request)
     {
-        if (_webHostEnvironment.InStandbyMode)
-        {
-            return BadRequest("Cannot link workers before the host has been specialized.");
-        }
-
         if (request is null)
         {
             return BadRequest("Request body is required.");
+        }
+
+        if (_webHostEnvironment.InStandbyMode)
+        {
+            return BadRequest("Cannot link workers before the host has been specialized.");
         }
 
         if (string.IsNullOrWhiteSpace(request.GrpcEndpoint))
@@ -69,6 +69,16 @@ public class WorkerController : Controller
         }
 
         _logger.LogInformation("Received worker link request for '{workerId}' at {endpoint}.", workerId, endpoint);
+
+        // Check for duplicate before starting async work — return 409 Conflict.
+        // [CS-TODO] If a worker connection fails (Error state), the entry remains in _workers
+        // and a retry with the same workerId will be rejected with 409. There is currently no
+        // API to clear this state (DELETE was removed). May need a platform-side solution
+        // (e.g., always use a new workerId on retry) or a host-side cleanup mechanism.
+        if (_connectionManager.GetWorkerStatus(workerId) is not null)
+        {
+            return Conflict($"Worker '{workerId}' is already linked.");
+        }
 
         // Build the response before starting async work. ConnectWorkerAsync sets
         // _workerStates on a background thread, so reading it immediately after

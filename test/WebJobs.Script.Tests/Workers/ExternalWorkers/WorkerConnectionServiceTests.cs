@@ -195,16 +195,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             await service.ConnectWorkerAsync("w_test", new Uri("http://localhost:50051"), CancellationToken.None);
             Assert.NotNull(service.GetWorkerStatus("w_test"));
 
-            // Observe Draining state mid-disconnect
-            _mockChannelManager
-                .Setup(m => m.ShutdownChannelAsync("w_test"))
-                .Returns(() =>
-                {
-                    var info = service.GetWorkerStatus("w_test");
-                    Assert.Equal(WorkerConnectionState.Draining, info.State);
-                    return Task.CompletedTask;
-                });
-
             await service.DisconnectWorkerAsync("w_test", CancellationToken.None);
 
             Assert.Null(service.GetWorkerStatus("w_test"));

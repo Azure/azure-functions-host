@@ -120,5 +120,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             var badRequest = Assert.IsType<BadRequestObjectResult>(result);
             Assert.Contains("specialized", badRequest.Value.ToString());
         }
+
+        [Fact]
+        public void Link_DuplicateWorkerId_Returns409Conflict()
+        {
+            _mockConnectionManager
+                .Setup(m => m.GetWorkerStatus("w_test1234"))
+                .Returns(new WorkerConnectionInfo { WorkerId = "w_test1234", State = WorkerConnectionState.Connected });
+
+            var request = new WorkerLinkRequest
+            {
+                WorkerId = "w_test1234",
+                GrpcEndpoint = "http://10.0.1.42:50051"
+            };
+
+            var result = _controller.Link(request);
+
+            var conflict = Assert.IsType<ConflictObjectResult>(result);
+            Assert.Contains("already linked", conflict.Value.ToString());
+        }
     }
 }

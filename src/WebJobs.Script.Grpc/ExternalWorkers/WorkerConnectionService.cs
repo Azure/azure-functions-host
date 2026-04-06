@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 /// Implements <see cref="IWorkerConnectionManager"/> for API-driven worker allocation
 /// and supports config-driven startup connections.
 /// </summary>
-internal class WorkerConnectionService : IHostedService, IWorkerConnectionManager, IAsyncDisposable
+internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectionManager, IAsyncDisposable
 {
     private static readonly TimeSpan InitTimeout = TimeSpan.FromMinutes(2);
 
@@ -93,12 +93,6 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     /// <inheritdoc/>
     public async Task ConnectWorkerAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
     {
-        if (_workers.ContainsKey(workerId))
-        {
-            throw new InvalidOperationException(
-                $"Worker '{workerId}' already exists. Disconnect it before reassigning.");
-        }
-
         var info = new WorkerConnectionInfo
         {
             WorkerId = workerId,
@@ -106,7 +100,12 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
         };
 
         var worker = new WorkerConnection { Info = info };
-        _workers[workerId] = worker;
+
+        if (!_workers.TryAdd(workerId, worker))
+        {
+            throw new InvalidOperationException(
+                $"Worker '{workerId}' already exists. Disconnect it before reassigning.");
+        }
 
         try
         {
@@ -211,7 +210,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
     {
         _logger.LogInformation("Disconnecting worker '{workerId}'.", workerId);
 
-        if (!_workers.TryGetValue(workerId, out var worker))
+        if (!_workers.TryRemove(workerId, out var worker))
         {
             return;
         }
@@ -223,7 +222,7 @@ internal class WorkerConnectionService : IHostedService, IWorkerConnectionManage
 
         try
         {
-            await RemoveWorkerAsync(workerId, worker);
+            await CleanupWorkerResourcesAsync(workerId, worker);
             _logger.LogInformation("Worker '{workerId}' disconnected.", workerId);
         }
         catch (Exception ex)
