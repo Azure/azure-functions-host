@@ -20,6 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 {
     public class ExtensionBundleManager : IExtensionBundleManager
     {
+        private static readonly IReadOnlyDictionary<int, VersionRange> _allowedBundleVersionRanges =
+            new Dictionary<int, VersionRange>()
+            {
+                [6] = new VersionRange(new NuGetVersion("4.2.0"), true, new NuGetVersion("4.22.0"), true),
+                [8] = new VersionRange(new NuGetVersion("4.2.0"), true, new NuGetVersion("4.32.0"), true),
+            };
+
         private readonly IEnvironment _environment;
         private readonly ExtensionBundleOptions _options;
         private readonly FunctionsHostingConfigOptions _configOption;
@@ -253,16 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         internal string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions, string bundleId, FunctionsHostingConfigOptions configOption)
         {
             int dotnetVersion = typeof(string).Assembly.GetName().Version.Major;
-
-            // Limit the version range for v4.x bundles on .NET 6 to be between 4.2.0 and 4.22.0
-            // Return original version range if not .NET 6 or not v4.x bundle
-            var effectiveVersionRange = GetAdjustedVersion(dotnetVersion, versionRange, bundleId);
-
-            // Check if there is a max version configured in hosting config for the current dotnet version and bundle major version
-            if (TryGetMaxBundleVersionFromHostingConfig(bundleId, versionRange.MinVersion.Major, dotnetVersion, configOption, out NuGetVersion maxBundleVersion))
-            {
-                effectiveVersionRange = new VersionRange(effectiveVersionRange.MinVersion, effectiveVersionRange.IsMinInclusive, maxBundleVersion, true);
-            }
+            var effectiveVersionRange = GetAdjustedVersion(dotnetVersion, versionRange, bundleId, configOption);
 
             var bundleVersions = versions.Select(p =>
             {
@@ -280,29 +278,30 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return matchingVersion?.ToString();
         }
 
-        // Applies bundle version limits for .NET 6, using the default bundle if referencing a v4 major bundle version.
+        // Applies bundle version limits for apps based on .NET version and hosting config, using the default bundle if referencing a v4 major bundle version.
         // Does not apply version limit in placeholder mode. This will prevent bundle download in placeholder mode as long as a matching bundle is available.
-        private VersionRange GetAdjustedVersion(int dotnetVersion, VersionRange versionRange, string bundleId)
+        private VersionRange GetAdjustedVersion(int dotnetVersion, VersionRange versionRange, string bundleId, FunctionsHostingConfigOptions configOption)
         {
             if (_environment.IsPlaceholderModeEnabled()
-                || dotnetVersion != 6
                 || !string.Equals(bundleId, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
                 || versionRange.MinVersion.Major != ScriptConstants.ExtensionBundleV4MajorVersion)
             {
                 return versionRange;
             }
 
-            var effectiveMinVersion = new NuGetVersion(ScriptConstants.Net6MinimumV4BundleVersion);
-            var effectiveMaxVersion = new NuGetVersion(ScriptConstants.Net6MaximumV4BundleVersion);
+            VersionRange configRange = null;
+            if (TryGetMaxBundleVersionFromHostingConfig(bundleId, versionRange.MinVersion.Major, dotnetVersion, configOption, out NuGetVersion maxBundleVersion))
+            {
+                configRange = new VersionRange(versionRange.MinVersion, versionRange.IsMinInclusive, maxBundleVersion, true);
+            }
 
-            var minVersion = versionRange.MinVersion < effectiveMinVersion ? effectiveMinVersion : versionRange.MinVersion;
-            var maxVersion = versionRange.MaxVersion > effectiveMaxVersion ? effectiveMaxVersion : versionRange.MaxVersion;
+            if (_allowedBundleVersionRanges.TryGetValue(dotnetVersion, out VersionRange allowedRange))
+            {
+                versionRange = configRange is null
+                    ? VersionRange.CommonSubSet([versionRange, allowedRange])
+                    : VersionRange.CommonSubSet([versionRange, allowedRange, configRange]);
+            }
 
-            // Use the original inclusion values if it is within the min or max range.
-            bool isMinInclusive = versionRange.MinVersion > effectiveMinVersion && versionRange.IsMinInclusive;
-            bool isMaxInclusive = versionRange.MaxVersion < effectiveMaxVersion && versionRange.IsMaxInclusive;
-
-            versionRange = new VersionRange(minVersion, isMinInclusive, maxVersion, isMaxInclusive);
             return versionRange;
         }
 
