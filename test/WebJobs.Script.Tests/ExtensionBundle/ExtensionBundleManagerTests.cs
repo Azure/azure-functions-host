@@ -383,7 +383,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Theory]
         [InlineData("[3.*, 4.0.0)", "3.19.0", "3.19.0")]
         [InlineData("[4.*, 5.0.0)", "4.3.0", "4.3.0")]
-        [InlineData("[4.*, 4.3.0)", "4.30.0", "4.23.0")] // Existing behavior. We will override customers max range.
+        [InlineData("[4.*, 4.3.0)", "4.30.0", "4.23.0")] // Existing behavior. We will override the customer's max range.
 #if NET6_0
         [InlineData("[4.*, 5.0.0)", null, "4.3.0")]
         [InlineData("[4.*, 4.1.0)", null, "4.3.0")] // No overlap. Enforced net6 range will be used.
