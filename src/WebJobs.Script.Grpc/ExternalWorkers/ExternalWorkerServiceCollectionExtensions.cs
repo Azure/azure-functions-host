@@ -38,13 +38,15 @@ internal static class ExternalWorkerServiceCollectionExtensions
 
         // Core singletons
         services.AddSingleton<HostJsonContentProvider>();
-        services.AddSingleton<ConnectedWorkerChannelFactory>();
+        services.AddSingleton<IConnectedWorkerChannelFactory, ConnectedWorkerChannelFactory>();
         services.AddSingleton<IConnectedWorkerChannelManager, ConnectedWorkerChannelManager>();
+        services.AddSingleton<IOutboundGrpcClientFactory, OutboundGrpcClientFactory>();
 
         // WorkerConnectionService must start (and block until worker handshake completes)
         // before WebJobsScriptHostService builds the ScriptHost.
         services.AddSingleton<WorkerConnectionService>();
         services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<WorkerConnectionService>());
+        services.AddSingleton<IWorkerConnectionManager>(sp => sp.GetRequiredService<WorkerConnectionService>());
 
         // Replace the default metadata provider. This registration must happen before
         // AddCommonRpcServices(), which uses TryAddSingleton<IWorkerFunctionMetadataProvider>.

@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
     /// <summary>
     /// Factory for creating <see cref="ConnectedWorkerChannel"/> instances.
     /// </summary>
-    internal class ConnectedWorkerChannelFactory
+    internal sealed class ConnectedWorkerChannelFactory : IConnectedWorkerChannelFactory
     {
         private readonly IScriptEventManager _eventManager;
         private readonly IScriptHostManager _hostManager;
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         /// <summary>
         /// Creates a new <see cref="ConnectedWorkerChannel"/> for an externally-connected worker.
         /// </summary>
-        public ConnectedWorkerChannel Create(string workerId, RpcWorkerConfig workerConfig)
+        public IConnectedWorkerChannel Create(string workerId, RpcWorkerConfig workerConfig)
         {
             var logger = _loggerFactory.CreateLogger($"Worker.{workerId}");
             return new ConnectedWorkerChannel(

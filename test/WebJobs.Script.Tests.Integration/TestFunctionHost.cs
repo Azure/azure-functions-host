@@ -79,7 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Action<ILoggingBuilder> configureScriptHostLogging = null,
             Action<IServiceCollection> configureScriptHostServices = null,
             Action<IConfigurationBuilder> configureWebHostAppConfiguration = null,
-            bool addTestSettings = true)
+            bool addTestSettings = true,
+            bool skipHostStartupWait = false)
         {
             _appRoot = scriptPath;
 
@@ -204,7 +205,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var lifetime = WebHostServices.GetService<IApplicationLifetime>();
             lifetime.ApplicationStopping.Register(async () => await _testServer.Host.StopAsync());
 
-            StartAsync().GetAwaiter().GetResult();
+            if (!skipHostStartupWait)
+            {
+                StartAsync().GetAwaiter().GetResult();
+            }
 
             _stillRunningTimer = new Timer(StillRunningCallback, _testServer, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
 
