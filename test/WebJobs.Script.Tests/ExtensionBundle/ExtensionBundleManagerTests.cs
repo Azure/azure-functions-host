@@ -412,7 +412,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
         [Theory]
 #if NET8_0
-        // No host-config, built in cap of 4.32.0.
+        // No host-config, built in cap of 4.32.*.
         [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.32.0")]
         [InlineData("latest", "[4.*, 5.0.0)", null, "4.32.0")]
         [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.23.0")]
