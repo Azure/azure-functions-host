@@ -508,7 +508,27 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Microsoft.Azure.Cosmos.Client",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Cosmos.Core",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Cosmos.Direct",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Cosmos.Table",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.DocumentDB.Core",
       "resolutionPolicy": "private"
     },
     {
