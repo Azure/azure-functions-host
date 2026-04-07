@@ -104,10 +104,14 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
             return Capabilities.Remove(item);
         }
 
-        /// <inheritdoc />
-#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
-        public bool TryGetValue(string key, [MaybeNullWhen(false)] out string? value)
-#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
+        /// <inheritdoc cref="IDictionary{TKey, TValue}.TryGetValue"/>
+        public bool TryGetValue(string key, [MaybeNullWhen(false)] out string value)
+        {
+            return Capabilities.TryGetValue(key, out value);
+        }
+
+        /// <inheritdoc/>
+        bool IDictionary<string, string>.TryGetValue(string key, out string value)
         {
             return Capabilities.TryGetValue(key, out value);
         }
