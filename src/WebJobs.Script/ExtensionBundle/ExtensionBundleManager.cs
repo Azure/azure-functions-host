@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -16,15 +16,17 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using NuGet.Versioning;
 
+using BundleRangeId = (int DotnetMajor, int BundleMajor);
+
 namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 {
     public class ExtensionBundleManager : IExtensionBundleManager
     {
-        private static readonly IReadOnlyDictionary<int, VersionRange> _allowedBundleVersionRanges =
-            new Dictionary<int, VersionRange>()
+        private static readonly IReadOnlyDictionary<BundleRangeId, VersionRange> _allowedBundleVersionRanges =
+            new Dictionary<BundleRangeId, VersionRange>()
             {
-                [6] = new VersionRange(new NuGetVersion("4.2.0"), false, new NuGetVersion("4.22.0"), false),
-                [8] = new VersionRange(null, false, new NuGetVersion("4.33.0"), false),
+                [(6, 4)] = new VersionRange(new NuGetVersion("4.2.0"), false, new NuGetVersion("4.22.0"), false),
+                [(8, 4)] = new VersionRange(null, false, new NuGetVersion("4.33.0"), false),
             };
 
         private readonly IEnvironment _environment;
@@ -283,37 +285,44 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         private VersionRange GetAdjustedVersion(int dotnetVersion, VersionRange versionRange, string bundleId, FunctionsHostingConfigOptions configOption)
         {
             if (_environment.IsPlaceholderModeEnabled()
-                || !string.Equals(bundleId, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
-                || versionRange.MinVersion.Major != ScriptConstants.ExtensionBundleV4MajorVersion)
+                || !string.Equals(bundleId, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase))
             {
                 return versionRange;
             }
 
-            _allowedBundleVersionRanges.TryGetValue(dotnetVersion, out VersionRange allowedRange);
-            if (TryGetMaxBundleVersionFromHostingConfig(bundleId, versionRange.MinVersion.Major, dotnetVersion, configOption, out NuGetVersion maxBundleVersion))
+            static bool TryGetMaxBundleVersionFromHostingConfig(
+                BundleRangeId id, FunctionsHostingConfigOptions configOption, out NuGetVersion maxVersion)
             {
-                if (allowedRange != null)
+                string hostingConfig = $"Net{id.DotnetMajor}MaximumBundleV{id.BundleMajor}Version";
+                string hostingConfigValue = configOption.GetFeature(hostingConfig);
+                return NuGetVersion.TryParse(hostingConfigValue, out maxVersion);
+            }
+
+            BundleRangeId id = (dotnetVersion, versionRange.MinVersion.Major);
+            if (_allowedBundleVersionRanges.TryGetValue(id, out VersionRange allowedRange))
+            {
+                VersionRange intersection = VersionRange.CommonSubSet([allowedRange, versionRange]);
+                if (intersection.Equals(VersionRange.None))
                 {
-                    allowedRange = new VersionRange(allowedRange.MinVersion, allowedRange.IsMinInclusive, maxBundleVersion, false);
+                    // Rare case where there is 0 intersections between the allowed range and the user specified range.
+                    // In this case, we will force usage of the allowed range.
+                    _logger.LogWarning(
+                        "The specified extension bundle version range {userVersionRange} does not intersect with the allowed bundle version range {allowedVersionRange:} for .NET {dotnetMajor} and bundle major version {bundleMajor}. The allowed bundle version range will be used.",
+                        versionRange, allowedRange, id.DotnetMajor, id.BundleMajor);
+                    versionRange = allowedRange;
                 }
                 else
                 {
-                    allowedRange = new VersionRange(null, false, maxBundleVersion, false);
+                    versionRange = intersection;
                 }
             }
 
-            return allowedRange != null ? VersionRange.CommonSubSet([allowedRange, versionRange]) : versionRange;
-        }
+            if (TryGetMaxBundleVersionFromHostingConfig(id, configOption, out NuGetVersion maxBundleVersion))
+            {
+                versionRange = new VersionRange(versionRange.MinVersion, versionRange.IsMinInclusive, maxBundleVersion, true);
+            }
 
-        private bool TryGetMaxBundleVersionFromHostingConfig(string bundleId, int bundleVersion, int dotnetVersion, FunctionsHostingConfigOptions configOption, out NuGetVersion maxVersion)
-        {
-            maxVersion = null;
-            string hostingConfig = $"Net{dotnetVersion}MaximumBundleV{bundleVersion}Version";
-            string hostingConfigValue = configOption.GetFeature(hostingConfig);
-
-            return string.Equals(bundleId, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
-                && !string.IsNullOrEmpty(hostingConfigValue)
-                && NuGetVersion.TryParse(hostingConfigValue, out maxVersion);
+            return versionRange;
         }
 
         private NuGetVersion ResolvePlatformReleaseChannelVersion(IList<NuGetVersion> orderedByDescBundles) => _platformReleaseChannel.ToUpper() switch
