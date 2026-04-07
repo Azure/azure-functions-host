@@ -195,6 +195,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             {
                 throw new NotImplementedException();
             }
+
+            public Task StartAsync(CancellationToken cancellationToken = default)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         private class TestClass([ForwardingLogger] ILogger<TestClass> logger)

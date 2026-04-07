@@ -41,5 +41,13 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <returns>A <see cref="Task"/> that completes when the host is restarted.</returns>
         Task RestartHostAsync(string reason, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Starts the Script Host on demand. Used in external worker mode where
+        /// the host cannot start until a worker has connected and delivered
+        /// host.json and function metadata.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        Task StartAsync(CancellationToken cancellationToken);
     }
 }
