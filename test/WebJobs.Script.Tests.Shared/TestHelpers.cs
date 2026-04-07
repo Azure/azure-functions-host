@@ -691,6 +691,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 throw new NotImplementedException();
             }
+
+            Task IScriptHostManager.StartAsync(CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 /// bridges it to the in-process <see cref="Channel{T}"/> infrastructure consumed by
 /// <see cref="ConnectedWorkerChannel"/>.
 /// </summary>
-internal class OutboundGrpcClient : IAsyncDisposable
+internal class OutboundGrpcClient : IOutboundGrpcClient
 {
     private readonly IScriptEventManager _eventManager;
     private readonly ILogger _logger;

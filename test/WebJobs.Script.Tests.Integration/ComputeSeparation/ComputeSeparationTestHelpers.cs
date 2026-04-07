@@ -1,0 +1,198 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using Xunit.Abstractions;
+
+namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
+
+/// <summary>
+/// Shared helpers for compute separation E2E tests that launch child processes
+/// (worker proxy, mock worker, etc.).
+/// </summary>
+internal static class ComputeSeparationTestHelpers
+{
+    public static string FindRepoRoot()
+    {
+        string dir = Path.GetDirectoryName(typeof(ComputeSeparationTestHelpers).Assembly.Location);
+
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir, "WebJobs.Script.sln")))
+            {
+                return dir;
+            }
+
+            dir = Path.GetDirectoryName(dir);
+        }
+
+        throw new InvalidOperationException(
+            "Could not find the repository root (no WebJobs.Script.sln found in parent directories).");
+    }
+
+    public static string FindBuiltDll(string repoRoot, params string[] projectPathSegments)
+    {
+        string projectName = projectPathSegments.Last();
+
+        var knownAssemblyNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Functions.WorkerProxy"] = "Microsoft.Azure.Functions.WorkerProxy.dll",
+            ["MockWorker"] = "MockWorker.dll",
+            ["WebJobs.Script.WebHost"] = "Microsoft.Azure.WebJobs.Script.WebHost.dll"
+        };
+
+        string dllName = knownAssemblyNames.TryGetValue(projectName, out string name) ? name : $"{projectName}.dll";
+
+        var artifactFolderNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Functions.WorkerProxy"] = "Functions.WorkerProxy",
+            ["MockWorker"] = "MockWorker",
+            ["WebJobs.Script.WebHost"] = "WebJobs.Script.WebHost"
+        };
+
+        string artifactFolder = artifactFolderNames.TryGetValue(projectName, out string folder) ? folder : projectName;
+        string binDir = Path.Combine(repoRoot, "out", "bin", artifactFolder);
+
+        if (!Directory.Exists(binDir))
+        {
+            string projectDir = Path.Combine(new[] { repoRoot }.Concat(projectPathSegments).ToArray());
+            throw new InvalidOperationException(
+                $"Build output directory not found: {binDir}. " +
+                $"Build the project first: dotnet build {projectDir}");
+        }
+
+        string[] candidates = Directory.GetFiles(binDir, dllName, SearchOption.AllDirectories);
+        if (candidates.Length == 0)
+        {
+            string projectDir = Path.Combine(new[] { repoRoot }.Concat(projectPathSegments).ToArray());
+            throw new InvalidOperationException(
+                $"Could not find {dllName} under {binDir}. " +
+                $"Build the project first: dotnet build {projectDir}");
+        }
+
+        string preferredConfig = TestHelpers.BuildConfig;
+        string preferred = candidates.FirstOrDefault(c =>
+            c.Contains(Path.DirectorySeparatorChar + preferredConfig + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
+
+        return preferred ?? candidates
+            .OrderByDescending(f => new FileInfo(f).LastWriteTimeUtc)
+            .First();
+    }
+
+    public static Process StartManagedProcess(
+        ITestOutputHelper output,
+        string fileName,
+        string arguments,
+        ConcurrentBag<string> logSink,
+        string label,
+        IDictionary<string, string> environmentVariables = null)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            ErrorDialog = false
+        };
+
+        if (environmentVariables is not null)
+        {
+            foreach (var kvp in environmentVariables)
+            {
+                startInfo.Environment[kvp.Key] = kvp.Value;
+            }
+        }
+
+        var process = new Process
+        {
+            StartInfo = startInfo,
+            EnableRaisingEvents = true
+        };
+
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                string line = $"[{label}] {e.Data}";
+                logSink.Add(line);
+                output.WriteLine(line);
+            }
+        };
+
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is not null)
+            {
+                string line = $"[{label}:ERR] {e.Data}";
+                logSink.Add(line);
+                output.WriteLine(line);
+            }
+        };
+
+        output.WriteLine($"Starting {label}: {fileName} {arguments}");
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        return process;
+    }
+
+    public static void EnsureProcessRunning(Process process, string label, ConcurrentBag<string> logSink)
+    {
+        if (process.HasExited)
+        {
+            string logs = string.Join(Environment.NewLine, logSink);
+            throw new InvalidOperationException(
+                $"{label} process exited prematurely with code {process.ExitCode}. Logs:{Environment.NewLine}{logs}");
+        }
+    }
+
+    public static void KillProcess(ITestOutputHelper output, Process process, string label)
+    {
+        if (process is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!process.HasExited)
+            {
+                output.WriteLine($"Stopping {label} (PID {process.Id})...");
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(5000);
+            }
+        }
+        catch (Exception ex)
+        {
+            output.WriteLine($"Warning: failed to stop {label}: {ex.Message}");
+        }
+        finally
+        {
+            process.Dispose();
+        }
+    }
+
+    public static void TryDeleteDirectory(string path)
+    {
+        if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+        {
+            try
+            {
+                Directory.Delete(path, recursive: true);
+            }
+            catch
+            {
+                // Best-effort cleanup.
+            }
+        }
+    }
+}

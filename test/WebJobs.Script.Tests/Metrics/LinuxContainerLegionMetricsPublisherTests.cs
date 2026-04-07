@@ -273,6 +273,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             {
                 throw new NotImplementedException();
             }
+
+            public Task StartAsync(CancellationToken cancellationToken = default)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }
