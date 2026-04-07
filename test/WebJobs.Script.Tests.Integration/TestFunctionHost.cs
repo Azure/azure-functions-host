@@ -79,7 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Action<IServiceCollection> configureScriptHostServices = null,
             Action<IConfigurationBuilder> configureWebHostAppConfiguration = null,
             bool addTestSettings = true,
-            bool addStorageExtensions = true)
+            bool addStorageExtensions = true,            
+            bool skipHostStartupWait = false)
         {
             _appRoot = scriptPath;
 
@@ -260,7 +261,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             });
 
-            StartAsync().GetAwaiter().GetResult();
+            if (!skipHostStartupWait)
+            {
+                StartAsync().GetAwaiter().GetResult();
+            }
 
             _stillRunningTimer = new Timer(StillRunningCallback, _webHost, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
 

@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
     /// A worker channel for a worker that connected inbound — the host did not spawn a process.
     /// Lifecycle: the gRPC stream IS the lifecycle; disconnection → WorkerErrorEvent.
     /// </summary>
-    internal sealed class ConnectedWorkerChannel : WorkerChannel
+    internal sealed class ConnectedWorkerChannel : WorkerChannel, IConnectedWorkerChannel
     {
         internal ConnectedWorkerChannel(
             string workerId,
