@@ -3,7 +3,7 @@ parameters:
   type: stepList
 - name: folder
   type: string
-- name: package_name
+- name: packageName
   type: string
 - name: public
   type: boolean
@@ -52,7 +52,7 @@ stages:
     - pwsh: |
         $ErrorActionPreference = 'Stop'
 
-        $name = "${{ parameters.package_name }}".Trim()
+        $name = "${{ parameters.packageName }}".Trim()
         Write-Host "Getting version for $name"
         $package = Get-ChildItem -Path "$(Build.ArtifactStagingDirectory)/packages" -Recurse -Filter "$name.*.nupkg"
 
@@ -69,7 +69,7 @@ stages:
         $version = $package.Name.Trim("$name.").Trim('.nupkg')
         Write-Host "Package version: $version"
         Write-Host "##vso[build.updatebuildnumber]$version"
-        Write-Host "##vso[build.addbuildtag]${{ parameters.package_name }}"
+        Write-Host "##vso[build.addbuildtag]${{ parameters.packageName }}"
         Write-Host "##vso[build.addbuildtag]$version"
       displayName: Get package version
 
