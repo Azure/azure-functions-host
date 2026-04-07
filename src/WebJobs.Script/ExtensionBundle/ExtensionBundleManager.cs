@@ -301,20 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             BundleRangeId id = (dotnetVersion, versionRange.MinVersion.Major);
             if (_allowedBundleVersionRanges.TryGetValue(id, out VersionRange allowedRange))
             {
-                VersionRange intersection = VersionRange.CommonSubSet([allowedRange, versionRange]);
-                if (intersection.Equals(VersionRange.None))
-                {
-                    // Rare case where there is 0 intersections between the allowed range and the user specified range.
-                    // In this case, we will force usage of the allowed range.
-                    _logger.LogWarning(
-                        "The specified extension bundle version range {userVersionRange} does not intersect with the allowed bundle version range {allowedVersionRange:} for .NET {dotnetMajor} and bundle major version {bundleMajor}. The allowed bundle version range will be used.",
-                        versionRange, allowedRange, id.DotnetMajor, id.BundleMajor);
-                    versionRange = allowedRange;
-                }
-                else
-                {
-                    versionRange = intersection;
-                }
+                versionRange = VersionRange.CommonSubSet([allowedRange, versionRange]);
             }
 
             if (TryGetMaxBundleVersionFromHostingConfig(id, configOption, out NuGetVersion maxBundleVersion))
