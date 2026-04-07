@@ -32,10 +32,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "Microsoft.Azure.Storage.File",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Microsoft.Azure.Storage.Queue",
       "resolutionPolicy": "private"
     },

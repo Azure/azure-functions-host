@@ -16,7 +16,6 @@
     <PackageVersion Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.3.20240307.67" />
     <PackageVersion Include="Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption" Version="1.0.5" />
     <PackageVersion Include="Azure.Storage.Files.Shares" Version="12.24.0" />
-    <PackageVersion Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
     <PackageVersion Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageVersion Include="Microsoft.Extensions.Azure" Version="1.13.1" />
   </ItemGroup>

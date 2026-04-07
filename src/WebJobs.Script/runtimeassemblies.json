@@ -540,10 +540,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "Microsoft.Azure.Storage.File",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Microsoft.Azure.WebJobs",
       "resolutionPolicy": "minorMatchOrLower"
     },

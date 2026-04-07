@@ -58,7 +58,6 @@
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" />
     <PackageReference Include="Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption" />
     <PackageReference Include="Azure.Storage.Files.Shares" />
-    <PackageReference Include="Microsoft.Azure.Storage.File"/>
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" />
     <PackageReference Include="Microsoft.Security.Utilities.Core" />
   </ItemGroup>

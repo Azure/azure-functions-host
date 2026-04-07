@@ -17,7 +17,6 @@
           "Microsoft.Azure.AppService.Middleware.Functions": "1.5.8",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption": "1.0.5",
-          "Microsoft.Azure.Storage.File": "11.1.7",
           "Microsoft.Azure.WebJobs.Script": "4.1049.100-ci.26173.11",
           "Microsoft.Azure.WebJobs.Script.Grpc": "4.1049.100-ci.26173.11",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
@@ -488,37 +487,6 @@
           "lib/net6.0/Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption.dll": {
             "assemblyVersion": "1.0.0.0",
             "fileVersion": "1.0.5.0"
-          }
-        }
-      },
-      "Microsoft.Azure.KeyVault.Core/2.0.4": {
-        "runtime": {
-          "lib/netstandard1.5/Microsoft.Azure.KeyVault.Core.dll": {
-            "assemblyVersion": "2.0.0.0",
-            "fileVersion": "2.0.4.0"
-          }
-        }
-      },
-      "Microsoft.Azure.Storage.Common/11.1.7": {
-        "dependencies": {
-          "Microsoft.Azure.KeyVault.Core": "2.0.4",
-          "Newtonsoft.Json": "13.0.3"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.Azure.Storage.Common.dll": {
-            "assemblyVersion": "11.1.7.0",
-            "fileVersion": "11.1.7.0"
-          }
-        }
-      },
-      "Microsoft.Azure.Storage.File/11.1.7": {
-        "dependencies": {
-          "Microsoft.Azure.Storage.Common": "11.1.7"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.Azure.Storage.File.dll": {
-            "assemblyVersion": "11.1.7.0",
-            "fileVersion": "11.1.7.0"
           }
         }
       },
@@ -1955,27 +1923,6 @@
       "sha512": "sha512-OjKhaXWVMO1+2nPvIzKzt6nZVqyUr3dQe8mdhYWsZDofxzbxExT2rGkCG4BqJtSMQMFI3IR9uOyoMesMPkKZbw==",
       "path": "microsoft.azure.functions.platform.metrics.linuxconsumption/1.0.5",
       "hashPath": "microsoft.azure.functions.platform.metrics.linuxconsumption.1.0.5.nupkg.sha512"
-    },
-    "Microsoft.Azure.KeyVault.Core/2.0.4": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-BSdPbmZ1BvptdfgECniezEwfQLAyT11MsOm4btXdswjIm8BkLK9eX//yO8ExlafErJg1tAKpCxfNyLTHSlXJvA==",
-      "path": "microsoft.azure.keyvault.core/2.0.4",
-      "hashPath": "microsoft.azure.keyvault.core.2.0.4.nupkg.sha512"
-    },
-    "Microsoft.Azure.Storage.Common/11.1.7": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-qonfDPyO41vUb8PqHmzoD9yJuhB2K3afPHCe6eNv3kl/PKtddjR58BV++8zLE16K/1PMRInXiU+wJ8EJ+DnG7A==",
-      "path": "microsoft.azure.storage.common/11.1.7",
-      "hashPath": "microsoft.azure.storage.common.11.1.7.nupkg.sha512"
-    },
-    "Microsoft.Azure.Storage.File/11.1.7": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-puYZIcc2uZPvLdR5CKOLSN1sJtwWIXUc8qg3zNLQsQ0tVNZ76TLt0HLmup6x2n7/fVklB5ysLGpbGul2Ze/p/Q==",
-      "path": "microsoft.azure.storage.file/11.1.7",
-      "hashPath": "microsoft.azure.storage.file.11.1.7.nupkg.sha512"
     },
     "Microsoft.Azure.WebJobs/3.0.45": {
       "type": "package",
