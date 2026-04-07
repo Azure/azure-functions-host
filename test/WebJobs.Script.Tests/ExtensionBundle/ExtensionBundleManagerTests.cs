@@ -386,9 +386,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [InlineData("[4.*, 4.3.0)", "4.30.0", "4.23.0")] // Existing behavior. We will override customers max range.
 #if NET6_0
         [InlineData("[4.*, 5.0.0)", null, "4.3.0")]
-        [InlineData("[4.*, 4.1.0)", null, "4.3.0")] // No overlap. Enforced net6 range will be used.
+        [InlineData("[4.*, 4.1.0)", null, null)] // No overlap. Bundle will fail to resolve.
 #elif NET8_0
         [InlineData("[4.*, 5.0.0)", null, "4.32.0")]
+        [InlineData("[4.33.0, 5.0.0)", null, null)] // No overlap. Bundle will fail to resolve.
 #endif
         public void LimitMaxVersion(string versionRange, string hostConfigVersion, string expectedVersion)
         {
