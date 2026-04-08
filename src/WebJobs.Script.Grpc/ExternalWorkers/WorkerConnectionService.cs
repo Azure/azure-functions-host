@@ -357,6 +357,13 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// </summary>
     private async Task CleanupWorkerResourcesAsync(string workerId, WorkerConnection worker)
     {
+        // Unsubscribe from drain events before disposing the channel.
+        var channel = _channelManager.GetChannel(workerId);
+        if (channel is IConnectedWorkerChannel connectedChannel)
+        {
+            connectedChannel.DrainRequested -= OnWorkerDrainRequested;
+        }
+
         await _channelManager.ShutdownChannelAsync(workerId);
 
         if (worker.Client is not null)
