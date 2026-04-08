@@ -13,6 +13,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Microsoft.Azure.Functions.WorkerProxy.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.55.0" />
     <PackageReference Include="Grpc.Tools" Version="2.55.1" PrivateAssets="All" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.0.1" />

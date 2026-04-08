@@ -14,11 +14,13 @@ builder.WebHost.UseUrls();
 int runtimeGrpcPort = GetIntArg(args, "--runtime-grpc-port", 50051);
 int workerGrpcPort = GetIntArg(args, "--worker-grpc-port", 50052);
 int httpProxyPort = GetIntArg(args, "--http-proxy-port", 50053);
+int managementPort = GetIntArg(args, "--management-port", 50054);
 string workerHttpEndpoint = GetStringArg(args, "--worker-http-endpoint", "http://localhost:8080");
 string? hostJsonPath = GetStringArgOrNull(args, "--host-json-path");
 string httpProxyEndpoint = GetStringArg(args, "--http-proxy-endpoint", $"http://localhost:{httpProxyPort}");
 
 builder.Services.AddSingleton(new RelayOptions(runtimeGrpcPort, workerGrpcPort, httpProxyPort, hostJsonPath, httpProxyEndpoint));
+builder.Services.AddSingleton<WorkerPodStateManager>();
 builder.Services.AddSingleton<FunctionRpcRelay>();
 builder.Services.AddGrpc();
 builder.Services.AddHttpForwarder();
@@ -28,6 +30,7 @@ builder.WebHost.ConfigureKestrel(options =>
     options.ListenAnyIP(runtimeGrpcPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http2);
     options.ListenAnyIP(workerGrpcPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http2);
     options.ListenAnyIP(httpProxyPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http1);
+    options.ListenAnyIP(managementPort, listenOptions => listenOptions.Protocols = HttpProtocols.Http1);
 });
 
 var app = builder.Build();
@@ -48,6 +51,63 @@ app.Use(async (ctx, next) =>
 });
 
 app.MapGrpcService<FunctionRpcRelay>();
+
+// ---------------------------------------------------------------------------
+// Management API endpoints (minimal APIs for AOT compatibility).
+// Called by NNA on the management port.
+// ---------------------------------------------------------------------------
+
+var stateManager = app.Services.GetRequiredService<WorkerPodStateManager>();
+var relay = app.Services.GetRequiredService<FunctionRpcRelay>();
+
+app.MapGet("/ready", () =>
+{
+    return stateManager.CurrentStatus >= WorkerPodStatus.ReadyForRequest
+        ? Results.Ok()
+        : Results.StatusCode(503);
+});
+
+// [CS-TODO] Implement worker specialization. NNA calls this after /ready succeeds
+// with the app settings payload. The worker proxy should forward this to the language
+// worker as a FunctionEnvironmentReloadRequest over gRPC, causing the worker to
+// apply environment variables and load customer code.
+app.MapPost("/assign", () =>
+{
+    return Results.Ok();
+});
+
+app.MapPost("/drain", async () =>
+{
+    stateManager.UpdatePodStatus(WorkerPodStatus.Draining);
+    await relay.SendDrainRequestToRuntimeAsync();
+    return Results.Accepted();
+});
+
+app.MapPost("/instanceState", async (HttpContext ctx, CancellationToken cancellationToken) =>
+{
+    int clientRevisionId = 0;
+
+    // Read client's last known revision from request body (if present).
+    // Always attempt to read — ContentLength may be null for chunked requests.
+    try
+    {
+        var clientState = await ctx.Request.ReadFromJsonAsync<WorkerPodState>(cancellationToken);
+        clientRevisionId = clientState?.RevisionId ?? 0;
+    }
+    catch
+    {
+        // Empty body, malformed JSON, or no content — treat as revision 0 (return current state).
+    }
+
+    var result = await stateManager.WaitForChangeAsync(clientRevisionId, cancellationToken);
+
+    if (result is null)
+    {
+        return Results.NoContent();
+    }
+
+    return Results.Ok(result);
+});
 
 app.Run();
 
