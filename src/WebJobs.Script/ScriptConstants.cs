@@ -248,8 +248,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
 
         public static readonly string FunctionsHostingConfigSectionName = "FunctionsHostingConfig";
-        public static readonly string Net6MinimumV4BundleVersion = "4.2.0";
-        public static readonly string Net6MaximumV4BundleVersion = "4.22.0";
 
         // HTTP Proxying constants
         public static readonly string HttpProxyingEnabled = "HttpProxyingEnabled";

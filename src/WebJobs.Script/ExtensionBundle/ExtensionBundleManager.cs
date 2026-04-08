@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -16,10 +16,19 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using NuGet.Versioning;
 
+using BundleRangeId = (int DotnetMajor, int BundleMajor);
+
 namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 {
     public class ExtensionBundleManager : IExtensionBundleManager
     {
+        private static readonly IReadOnlyDictionary<BundleRangeId, VersionRange> _allowedBundleVersionRanges =
+            new Dictionary<BundleRangeId, VersionRange>()
+            {
+                [(6, 4)] = new VersionRange(new NuGetVersion("4.2.0"), false, new NuGetVersion("4.22.0"), false),
+                [(8, 4)] = new VersionRange(null, false, new NuGetVersion("4.33.0"), false),
+            };
+
         private readonly IEnvironment _environment;
         private readonly ExtensionBundleOptions _options;
         private readonly FunctionsHostingConfigOptions _configOption;
@@ -118,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         internal bool TryLocateExtensionBundle(out string bundlePath)
         {
             bundlePath = null;
-            string bundleMetatdataFile = null;
+            string bundleMetadataFile = null;
             var paths = new List<string>(_options.ProbingPaths)
                 {
                     _options.DownloadPath
@@ -136,8 +145,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     if (!string.IsNullOrEmpty(version))
                     {
                         bundlePath = Path.Combine(path, version);
-                        bundleMetatdataFile = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleMetadataFile);
-                        if (!string.IsNullOrEmpty(bundleMetatdataFile) && FileUtility.FileExists(bundleMetatdataFile))
+                        bundleMetadataFile = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleMetadataFile);
+                        if (!string.IsNullOrEmpty(bundleMetadataFile) && FileUtility.FileExists(bundleMetadataFile))
                         {
                             _logger.ExtensionBundleFound(bundlePath);
                             break;
@@ -154,9 +163,9 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         private async Task<string> DownloadExtensionBundleAsync(string version, HttpClient httpClient)
         {
-            string bundleMetatdataFile = Path.Combine(_options.DownloadPath, version, ScriptConstants.ExtensionBundleMetadataFile);
+            string bundleMetadataFile = Path.Combine(_options.DownloadPath, version, ScriptConstants.ExtensionBundleMetadataFile);
             string bundlePath = Path.Combine(_options.DownloadPath, version);
-            if (FileUtility.FileExists(bundleMetatdataFile))
+            if (FileUtility.FileExists(bundleMetadataFile))
             {
                 _logger.LogInformation($"Skipping bundle download since it already exists at path {bundlePath}");
                 return bundlePath;
@@ -179,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 ZipFile.ExtractToDirectory(zipFilePath, bundlePath);
                 _logger.ZipExtractionComplete();
             }
-            return FileUtility.FileExists(bundleMetatdataFile) ? bundlePath : null;
+            return FileUtility.FileExists(bundleMetadataFile) ? bundlePath : null;
         }
 
         private string GetBundleFlavorForCurrentEnvironment()
@@ -253,16 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         internal string FindBestVersionMatch(VersionRange versionRange, IEnumerable<string> versions, string bundleId, FunctionsHostingConfigOptions configOption)
         {
             int dotnetVersion = typeof(string).Assembly.GetName().Version.Major;
-
-            // Limit the version range for v4.x bundles on .NET 6 to be between 4.2.0 and 4.22.0
-            // Return original version range if not .NET 6 or not v4.x bundle
-            var effectiveVersionRange = GetAdjustedVersion(dotnetVersion, versionRange, bundleId);
-
-            // Check if there is a max version configured in hosting config for the current dotnet version and bundle major version
-            if (TryGetMaxBundleVersionFromHostingConfig(bundleId, versionRange.MinVersion.Major, dotnetVersion, configOption, out NuGetVersion maxBundleVersion))
-            {
-                effectiveVersionRange = new VersionRange(effectiveVersionRange.MinVersion, effectiveVersionRange.IsMinInclusive, maxBundleVersion, true);
-            }
+            var effectiveVersionRange = GetAdjustedVersion(dotnetVersion, versionRange, bundleId, configOption);
 
             var bundleVersions = versions.Select(p =>
             {
@@ -280,41 +280,36 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return matchingVersion?.ToString();
         }
 
-        // Applies bundle version limits for .NET 6, using the default bundle if referencing a v4 major bundle version.
+        // Applies bundle version limits for apps based on .NET version and hosting config, using the default bundle if referencing a v4 major bundle version.
         // Does not apply version limit in placeholder mode. This will prevent bundle download in placeholder mode as long as a matching bundle is available.
-        private VersionRange GetAdjustedVersion(int dotnetVersion, VersionRange versionRange, string bundleId)
+        private VersionRange GetAdjustedVersion(int dotnetVersion, VersionRange versionRange, string bundleId, FunctionsHostingConfigOptions configOption)
         {
             if (_environment.IsPlaceholderModeEnabled()
-                || dotnetVersion != 6
-                || !string.Equals(bundleId, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
-                || versionRange.MinVersion.Major != ScriptConstants.ExtensionBundleV4MajorVersion)
+                || !string.Equals(bundleId, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase))
             {
                 return versionRange;
             }
 
-            var effectiveMinVersion = new NuGetVersion(ScriptConstants.Net6MinimumV4BundleVersion);
-            var effectiveMaxVersion = new NuGetVersion(ScriptConstants.Net6MaximumV4BundleVersion);
+            static bool TryGetMaxBundleVersionFromHostingConfig(
+                BundleRangeId id, FunctionsHostingConfigOptions configOption, out NuGetVersion maxVersion)
+            {
+                string hostingConfig = $"Net{id.DotnetMajor}MaximumBundleV{id.BundleMajor}Version";
+                string hostingConfigValue = configOption.GetFeature(hostingConfig);
+                return NuGetVersion.TryParse(hostingConfigValue, out maxVersion);
+            }
 
-            var minVersion = versionRange.MinVersion < effectiveMinVersion ? effectiveMinVersion : versionRange.MinVersion;
-            var maxVersion = versionRange.MaxVersion > effectiveMaxVersion ? effectiveMaxVersion : versionRange.MaxVersion;
+            BundleRangeId id = (dotnetVersion, versionRange.MinVersion.Major);
+            if (_allowedBundleVersionRanges.TryGetValue(id, out VersionRange allowedRange))
+            {
+                versionRange = VersionRange.CommonSubSet([allowedRange, versionRange]);
+            }
 
-            // Use the original inclusion values if it is within the min or max range.
-            bool isMinInclusive = versionRange.MinVersion > effectiveMinVersion && versionRange.IsMinInclusive;
-            bool isMaxInclusive = versionRange.MaxVersion < effectiveMaxVersion && versionRange.IsMaxInclusive;
+            if (TryGetMaxBundleVersionFromHostingConfig(id, configOption, out NuGetVersion maxBundleVersion))
+            {
+                versionRange = new VersionRange(versionRange.MinVersion, versionRange.IsMinInclusive, maxBundleVersion, true);
+            }
 
-            versionRange = new VersionRange(minVersion, isMinInclusive, maxVersion, isMaxInclusive);
             return versionRange;
-        }
-
-        private bool TryGetMaxBundleVersionFromHostingConfig(string bundleId, int bundleVersion, int dotnetVersion, FunctionsHostingConfigOptions configOption, out NuGetVersion maxVersion)
-        {
-            maxVersion = null;
-            string hostingConfig = $"Net{dotnetVersion}MaximumBundleV{bundleVersion}Version";
-            string hostingConfigValue = configOption.GetFeature(hostingConfig);
-
-            return string.Equals(bundleId, ScriptConstants.DefaultExtensionBundleId, StringComparison.OrdinalIgnoreCase)
-                && !string.IsNullOrEmpty(hostingConfigValue)
-                && NuGetVersion.TryParse(hostingConfigValue, out maxVersion);
         }
 
         private NuGetVersion ResolvePlatformReleaseChannelVersion(IList<NuGetVersion> orderedByDescBundles) => _platformReleaseChannel.ToUpper() switch

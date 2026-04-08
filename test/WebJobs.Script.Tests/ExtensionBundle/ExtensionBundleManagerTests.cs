@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -383,10 +383,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         [Theory]
         [InlineData("[3.*, 4.0.0)", "3.19.0", "3.19.0")]
         [InlineData("[4.*, 5.0.0)", "4.3.0", "4.3.0")]
+        [InlineData("[4.*, 4.3.0)", "4.30.0", "4.23.0")] // Existing behavior. We will override the customer's max range.
 #if NET6_0
         [InlineData("[4.*, 5.0.0)", null, "4.3.0")]
+        [InlineData("[4.*, 4.1.0)", null, null)] // No overlap. Bundle will fail to resolve.
 #elif NET8_0
-        [InlineData("[4.*, 5.0.0)", null, "4.23.0")]
+        [InlineData("[4.*, 5.0.0)", null, "4.32.0")]
+        [InlineData("[4.33.0, 5.0.0)", null, null)] // No overlap. Bundle will fail to resolve.
 #endif
         public void LimitMaxVersion(string versionRange, string hostConfigVersion, string expectedVersion)
         {
@@ -410,13 +413,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
         [Theory]
 #if NET8_0
-        // No host-config max (full list available, no caps applied on .NET 8)
-        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.23.0")]
-        [InlineData("latest", "[4.*, 5.0.0)", null, "4.23.0")]
-        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.22.1")]
-        [InlineData("standard", "[4.*, 5.0.0)", null, "4.22.1")]
-        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.22.1")]
-        [InlineData("extended", "[4.*, 5.0.0)", null, "4.22.1")]
+        // No host-config, built in cap of 4.32.*.
+        [InlineData(ScriptConstants.LatestPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.32.0")]
+        [InlineData("latest", "[4.*, 5.0.0)", null, "4.32.0")]
+        [InlineData(ScriptConstants.StandardPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.23.0")]
+        [InlineData("standard", "[4.*, 5.0.0)", null, "4.23.0")]
+        [InlineData(ScriptConstants.ExtendedPlatformChannelNameUpper, "[4.*, 5.0.0)", null, "4.23.0")]
+        [InlineData("extended", "[4.*, 5.0.0)", null, "4.23.0")]
 
         // Host-config max at 4.22.0 (caps selection to <= 4.22.0)
         // Ordered (desc) after cap: 4.22.0, 4.3.0, 4.2.1, 4.2.0, 4.1.0, 4.0.2
@@ -898,7 +901,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         private IList<string> GetLargeVersionsList()
         {
             return new List<string>()
-            { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "4.2.1", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0", "4.22.0", "4.22.1", "4.23.0" };
+            { "3.7.0", "3.10.0", "3.11.0", "3.15.0", "3.14.0", "2.16.0", "3.13.0", "3.12.0", "3.9.1", "2.12.1", "2.18.0", "3.16.0", "2.19.0", "3.17.0", "4.0.2", "2.20.0", "3.18.0", "4.1.0", "4.2.0", "4.2.1", "2.21.0", "3.19.0", "3.19.2", "4.3.0", "3.20.0", "4.22.0", "4.22.1", "4.23.0", "4.32.0", "4.33.0" };
         }
 
         private Mock<ILogger> GetVerifiableMockLogger(string stringToVerify, LogLevel logLevel)
