@@ -8,6 +8,7 @@ jobs:
       **/ExtensionsMetadataGeneratorTests.csproj
       **/WebJobs.Script.Tests.csproj
       **/WebJobs.Script.Abstractions.Tests.csproj
+      **/Functions.WorkerProxy.Tests.csproj
 
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)

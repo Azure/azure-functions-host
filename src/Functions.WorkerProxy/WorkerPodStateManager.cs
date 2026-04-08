@@ -16,7 +16,9 @@ internal sealed class WorkerPodStateManager
     private readonly List<TaskCompletionSource<WorkerPodState>> _listeners = [];
 
     private WorkerPodStatus _currentStatus = WorkerPodStatus.None;
+    private WorkerPodStatus _previousStatus = WorkerPodStatus.None;
     private WorkerPodHealthStatus _currentHealthStatus = WorkerPodHealthStatus.None;
+    private WorkerPodHealthStatus _previousHealthStatus = WorkerPodHealthStatus.None;
     private int _revisionId;
 
     /// <summary>
@@ -39,6 +41,7 @@ internal sealed class WorkerPodStateManager
                 return;
             }
 
+            _previousStatus = _currentStatus;
             _currentStatus = newStatus;
             _revisionId++;
 
@@ -58,6 +61,7 @@ internal sealed class WorkerPodStateManager
                 return;
             }
 
+            _previousHealthStatus = _currentHealthStatus;
             _currentHealthStatus = newStatus;
             _revisionId++;
 
@@ -96,6 +100,10 @@ internal sealed class WorkerPodStateManager
         {
             return null;
         }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
         finally
         {
             lock (_lock)
@@ -122,10 +130,12 @@ internal sealed class WorkerPodStateManager
         {
             CurrentPodStatusTransition = new PodStatusTransition
             {
+                FromPodStatus = _previousStatus,
                 ToPodStatus = _currentStatus
             },
             CurrentPodHealthStatusTransition = new PodHealthStatusTransition
             {
+                FromPodStatus = _previousHealthStatus,
                 ToPodStatus = _currentHealthStatus
             },
             ChangeFlags = WorkerPodChangeFlags.PodStatus | WorkerPodChangeFlags.HealthStatus,
