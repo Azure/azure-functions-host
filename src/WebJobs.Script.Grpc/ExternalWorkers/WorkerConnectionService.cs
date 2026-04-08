@@ -215,7 +215,13 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     {
         _logger.LogInformation("Disconnecting worker '{workerId}'.", workerId);
 
-        if (!_workers.TryRemove(workerId, out var worker))
+        if (!_workers.TryGetValue(workerId, out var worker))
+        {
+            return;
+        }
+
+        // Atomically claim the disconnect — prevents double-disconnect races.
+        if (!worker.TryClaimDisconnect())
         {
             return;
         }
@@ -260,6 +266,9 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             // pause trigger listeners or enter a degraded state? For now we just disconnect.
 
             await CleanupWorkerResourcesAsync(workerId, worker);
+
+            // Remove from tracking only after cleanup succeeds.
+            _workers.TryRemove(workerId, out _);
             _logger.LogInformation("Worker '{workerId}' disconnected.", workerId);
         }
         catch (Exception ex)
@@ -383,6 +392,8 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// </summary>
     private class WorkerConnection
     {
+        private int _disconnecting;
+
         public WorkerConnectionInfo Info { get; set; }
 
         public IOutboundGrpcClient Client { get; set; }
@@ -394,5 +405,11 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         /// racing with an in-flight connection.
         /// </summary>
         public TaskCompletionSource ConnectCompleted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>
+        /// Atomically claims the disconnect operation. Returns <see langword="true"/> if this
+        /// caller is the first to claim it; subsequent callers get <see langword="false"/>.
+        /// </summary>
+        public bool TryClaimDisconnect() => Interlocked.CompareExchange(ref _disconnecting, 1, 0) == 0;
     }
 }
