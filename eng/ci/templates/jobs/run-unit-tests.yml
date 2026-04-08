@@ -46,6 +46,13 @@ jobs:
       arguments: -v m -c release --no-build
       projects: $(test_projects)
 
+  - script: |
+      docker build -f src/Functions.WorkerProxy/Dockerfile -t workerproxy-ci .
+      docker build -f src/WebJobs.Script.WebHost/Dockerfile -t runtime-ci .
+      docker build -f tools/ComputeSeparation/MockWorker/Dockerfile -t mockworker-ci .
+    displayName: Build Docker Images (Compute Separation)
+    condition: succeededOrFailed()
+
   - task: CopyFiles@2
     displayName: Copy deps.json
     condition: failed()
