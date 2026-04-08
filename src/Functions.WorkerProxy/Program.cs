@@ -88,17 +88,15 @@ app.MapPost("/instanceState", async (HttpContext ctx, CancellationToken cancella
     int clientRevisionId = 0;
 
     // Read client's last known revision from request body (if present).
-    if (ctx.Request.ContentLength > 0)
+    // Always attempt to read — ContentLength may be null for chunked requests.
+    try
     {
-        try
-        {
-            var clientState = await ctx.Request.ReadFromJsonAsync<WorkerPodState>(cancellationToken);
-            clientRevisionId = clientState?.RevisionId ?? 0;
-        }
-        catch
-        {
-            // If body can't be parsed, treat as revision 0 (return current state).
-        }
+        var clientState = await ctx.Request.ReadFromJsonAsync<WorkerPodState>(cancellationToken);
+        clientRevisionId = clientState?.RevisionId ?? 0;
+    }
+    catch
+    {
+        // Empty body, malformed JSON, or no content — treat as revision 0 (return current state).
     }
 
     var result = await stateManager.WaitForChangeAsync(clientRevisionId, cancellationToken);
