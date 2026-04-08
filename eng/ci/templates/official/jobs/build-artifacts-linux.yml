@@ -9,7 +9,7 @@ jobs:
     intermediate_path: $(Agent.TempDirectory)/linux_host
     drop_path: $(Build.ArtifactStagingDirectory)
     linux_drop_path: $(drop_path)/linux
-    build_args: '-v m -c $(configuration) -r $(runtime) --self-contained true'
+    build_args: '-v m -c $(configuration) -r $(runtime)'
 
   templateContext:
     outputParentDirectory: $(drop_path)
