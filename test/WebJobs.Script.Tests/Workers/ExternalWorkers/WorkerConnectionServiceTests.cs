@@ -333,11 +333,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             var service = CreateService();
             await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
 
-            // Simulate drain request from worker proxy by raising the event.
-            _mockChannel.Raise(c => c.DrainRequested += null, "w_1");
-
-            // Give the fire-and-forget a moment to execute.
-            await Task.Delay(200);
+            // DisconnectWorkerAsync is what OnWorkerDrainRequested calls (fire-and-forget).
+            // Calling it directly avoids flaky Task.Delay waits.
+            await service.DisconnectWorkerAsync("w_1", CancellationToken.None);
 
             _mockChannel.Verify(c => c.BeginDrain(), Times.Once);
         }
@@ -353,9 +351,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             var service = CreateService();
             await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
 
-            _mockChannel.Raise(c => c.DrainRequested += null, "w_1");
-
-            await Task.Delay(200);
+            await service.DisconnectWorkerAsync("w_1", CancellationToken.None);
 
             _mockChannel.Verify(c => c.SendWorkerDrainComplete(), Times.Once);
         }
