@@ -310,5 +310,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 _hostJsonContentProvider,
                 NullLoggerFactory.Instance);
         }
+
+        [Fact]
+        public async Task ConnectWorkerAsync_SubscribesToDrainRequestedEvent()
+        {
+            SetupFullConnectMocks();
+            var service = CreateService();
+
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            _mockChannel.VerifyAdd(c => c.DrainRequested += It.IsAny<Action<string>>(), Times.Once);
+        }
+
+        [Fact]
+        public async Task DrainWorker_MarksChannelAsDraining()
+        {
+            SetupFullConnectMocks();
+            _mockChannelManager
+                .Setup(m => m.GetChannel("w_1"))
+                .Returns(_mockChannel.Object);
+
+            var service = CreateService();
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            // DisconnectWorkerAsync is what OnWorkerDrainRequested calls (fire-and-forget).
+            // Calling it directly avoids flaky Task.Delay waits.
+            await service.DisconnectWorkerAsync("w_1", CancellationToken.None);
+
+            _mockChannel.Verify(c => c.BeginDrain(), Times.Once);
+        }
+
+        [Fact]
+        public async Task DrainWorker_SendsDrainComplete()
+        {
+            SetupFullConnectMocks();
+            _mockChannelManager
+                .Setup(m => m.GetChannel("w_1"))
+                .Returns(_mockChannel.Object);
+
+            var service = CreateService();
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            await service.DisconnectWorkerAsync("w_1", CancellationToken.None);
+
+            _mockChannel.Verify(c => c.SendWorkerDrainComplete(), Times.Once);
+        }
     }
 }

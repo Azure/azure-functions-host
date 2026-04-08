@@ -1,0 +1,73 @@
+### Compute Separation — E2E HTTP Testing
+###
+### These .http files are used with VS Code REST Client or Visual Studio
+### to test the compute separation admin APIs end-to-end.
+###
+### Prerequisites:
+###   1. Start the Aspire harness (or start the runtime manually)
+###   2. Get the master key from the runtime's admin API
+###
+### Variables — update these for your environment:
+
+@runtimeHost = http://localhost:7071
+@workerProxyHost = http://localhost:50054
+@masterKey = dev-master-key
+@workerGrpcEndpoint = http://localhost:50051
+
+### ============================================================
+### Runtime Admin APIs
+### ============================================================
+
+### Get host status
+GET {{runtimeHost}}/admin/host/status?code={{masterKey}}
+
+###
+
+### Link a worker to the runtime
+POST {{runtimeHost}}/admin/workers/link?code={{masterKey}}
+Content-Type: application/json
+
+{
+  "workerId": "w_test01",
+  "podName": "worker-pod-test01",
+  "grpcEndpoint": "{{workerGrpcEndpoint}}",
+  "podKey": "test-key"
+}
+
+###
+
+### Ping the host
+GET {{runtimeHost}}/admin/host/ping
+
+###
+
+### Invoke an HTTP trigger function (after worker is linked)
+GET {{runtimeHost}}/api/HttpTrigger
+
+### ============================================================
+### Worker Proxy Management APIs
+### ============================================================
+
+###
+
+### Check worker proxy readiness
+GET {{workerProxyHost}}/ready
+
+###
+
+### Trigger worker drain (scale-in scenario)
+### Worker proxy sends WorkerDrainRequest to runtime over gRPC,
+### runtime drains in-flight invocations and sends WorkerDrainComplete back.
+POST {{workerProxyHost}}/drain
+
+###
+
+### Poll worker pod state (long-polling)
+### Send with revisionId 0 to get current state immediately.
+### Send with the last known revisionId to block until state changes.
+POST {{workerProxyHost}}/instanceState
+Content-Type: application/json
+
+{
+  "revisionId": 0
+}

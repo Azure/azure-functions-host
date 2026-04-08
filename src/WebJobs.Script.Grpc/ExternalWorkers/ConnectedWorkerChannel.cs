@@ -22,6 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
     /// </summary>
     internal sealed class ConnectedWorkerChannel : WorkerChannel, IConnectedWorkerChannel
     {
+        private volatile bool _isDraining;
+
         internal ConnectedWorkerChannel(
             string workerId,
             IScriptEventManager eventManager,
@@ -42,7 +44,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         }
 
         /// <inheritdoc/>
+        public event Action<string> DrainRequested;
+
+        /// <inheritdoc/>
         public override IWorkerProcess WorkerProcess => null;
+
+        /// <inheritdoc/>
+        public bool IsDraining => _isDraining;
 
         /// <inheritdoc/>
         public override Task StartWorkerProcessAsync(CancellationToken cancellationToken)
@@ -69,6 +77,30 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         /// <param name="capability">The capability key to look up.</param>
         /// <returns>The capability value, or <see langword="null"/>.</returns>
         public string GetCapabilityState(string capability) => WorkerCapabilities.GetCapabilityState(capability);
+
+        /// <inheritdoc/>
+        public void BeginDrain() => _isDraining = true;
+
+        /// <inheritdoc/>
+        public override bool IsChannelReadyForInvocations()
+        {
+            return !_isDraining && base.IsChannelReadyForInvocations();
+        }
+
+        /// <inheritdoc/>
+        protected override void OnDrainRequested()
+        {
+            DrainRequested?.Invoke(Id);
+        }
+
+        /// <inheritdoc/>
+        public void SendWorkerDrainComplete()
+        {
+            SendStreamingMessage(new Grpc.Messages.StreamingMessage
+            {
+                WorkerDrainComplete = new Grpc.Messages.WorkerDrainComplete()
+            });
+        }
 
         /// <inheritdoc/>
         protected override void DisposeWorkerResources()
