@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
 using System.Net.Http;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
@@ -25,6 +24,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -209,28 +209,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             foreach (IConfigureBuilder<TBuilder> configureBuilder in services.GetServices<IConfigureBuilder<TBuilder>>())
             {
                 configureBuilder.Configure(builder);
-            }
-        }
-
-        /// <summary>
-        /// Replaces the file-based <see cref="HostJsonFileConfigurationSource"/> with an
-        /// <see cref="ExternalWorkerHostJsonConfigurationSource"/> that reads host.json content
-        /// delivered by the external worker via gRPC capabilities.
-        /// </summary>
-        private static void ReplaceHostJsonConfigurationSource(
-            IConfigurationBuilder configurationBuilder,
-            IServiceProvider rootServiceProvider,
-            ILoggerFactory loggerFactory)
-        {
-            for (int i = 0; i < configurationBuilder.Sources.Count; i++)
-            {
-                if (configurationBuilder.Sources[i] is HostJsonFileConfigurationSource)
-                {
-                    var contentProvider = rootServiceProvider.GetRequiredService<HostJsonContentProvider>();
-                    var logger = loggerFactory.CreateLogger<ExternalWorkerHostJsonConfigurationSource>();
-                    configurationBuilder.Sources[i] = new ExternalWorkerHostJsonConfigurationSource(contentProvider, logger);
-                    break;
-                }
             }
         }
 
