@@ -310,5 +310,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 _hostJsonContentProvider,
                 NullLoggerFactory.Instance);
         }
+
+        [Fact]
+        public async Task ConnectWorkerAsync_SubscribesToDrainRequestedEvent()
+        {
+            SetupFullConnectMocks();
+            var service = CreateService();
+
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            _mockChannel.VerifyAdd(c => c.DrainRequested += It.IsAny<Action<string>>(), Times.Once);
+        }
+
+        [Fact]
+        public async Task DrainWorker_MarksChannelAsDraining()
+        {
+            SetupFullConnectMocks();
+            _mockChannelManager
+                .Setup(m => m.GetChannel("w_1"))
+                .Returns(_mockChannel.Object);
+
+            var service = CreateService();
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            // Simulate drain request from worker proxy by raising the event.
+            _mockChannel.Raise(c => c.DrainRequested += null, "w_1");
+
+            // Give the fire-and-forget a moment to execute.
+            await Task.Delay(200);
+
+            _mockChannel.Verify(c => c.BeginDrain(), Times.Once);
+        }
+
+        [Fact]
+        public async Task DrainWorker_SendsDrainComplete()
+        {
+            SetupFullConnectMocks();
+            _mockChannelManager
+                .Setup(m => m.GetChannel("w_1"))
+                .Returns(_mockChannel.Object);
+
+            var service = CreateService();
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            _mockChannel.Raise(c => c.DrainRequested += null, "w_1");
+
+            await Task.Delay(200);
+
+            _mockChannel.Verify(c => c.SendWorkerDrainComplete(), Times.Once);
+        }
     }
 }

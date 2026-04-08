@@ -92,6 +92,14 @@ message StreamingMessage {
     
     // Worker responds after warming up with the warmup result
     WorkerWarmupResponse worker_warmup_response = 34;
+
+    // Worker proxy signals the runtime that this worker should be drained.
+    // Runtime should stop routing new invocations and drain in-flight ones.
+    WorkerDrainRequest worker_drain_request = 35;
+
+    // Runtime signals the worker proxy that drain is complete.
+    // All in-flight invocations have finished and the connection will be closed.
+    WorkerDrainComplete worker_drain_complete = 36;
     
   }
 }
@@ -458,6 +466,17 @@ message WorkerWarmupRequest {
 
 message WorkerWarmupResponse {
   StatusResult result = 1;
+}
+
+// Worker proxy signals the runtime that this worker should be drained.
+// The runtime should stop routing new invocations to this worker,
+// drain any in-flight invocations, and respond with WorkerDrainComplete.
+message WorkerDrainRequest {
+}
+
+// Runtime signals the worker proxy that drain is complete.
+// All in-flight invocations for this worker have finished.
+message WorkerDrainComplete {
 }
 
 // Used to encapsulate data which could be a variety of types

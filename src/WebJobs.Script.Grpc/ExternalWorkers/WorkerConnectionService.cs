@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectionManager, IAsyncDisposable
 {
     private static readonly TimeSpan InitTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan DrainTimeout = TimeSpan.FromMinutes(1);
 
     private readonly IConnectedWorkerChannelFactory _channelFactory;
     private readonly IConnectedWorkerChannelManager _channelManager;
@@ -148,6 +149,10 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
 
             // Register the channel directly — no event needed.
             _channelManager.AddChannel(workerId, channel);
+
+            // Subscribe to drain signals from the worker proxy.
+            channel.DrainRequested += OnWorkerDrainRequested;
+
             _logger.LogInformation("Worker '{workerId}' connected and registered.", workerId);
 
             // Start or update the ScriptHost based on whether this is the first worker.
@@ -218,10 +223,42 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         // Wait for any in-flight ConnectWorkerAsync to finish before cleaning up.
         await worker.ConnectCompleted.Task;
 
+        // Mark channel as draining so no new invocations are routed.
+        var channel = _channelManager.GetChannel(workerId);
+        if (channel is IConnectedWorkerChannel connectedChannel)
+        {
+            connectedChannel.BeginDrain();
+        }
+
         worker.Info.State = WorkerConnectionState.Draining;
+        _logger.LogInformation("Worker '{workerId}' marked as draining. Waiting for in-flight invocations.", workerId);
 
         try
         {
+            // Drain in-flight invocations with timeout before cleanup.
+            if (channel is not null)
+            {
+                try
+                {
+                    await channel.DrainInvocationsAsync()
+                        .WaitAsync(DrainTimeout, cancellationToken);
+                }
+                catch (TimeoutException)
+                {
+                    _logger.LogWarning("Drain timeout exceeded for worker '{workerId}'. Proceeding with disconnect.", workerId);
+                }
+
+                // Send WorkerDrainComplete to the worker proxy before closing the connection.
+                if (channel is IConnectedWorkerChannel drainedChannel)
+                {
+                    drainedChannel.SendWorkerDrainComplete();
+                    _logger.LogInformation("Sent WorkerDrainComplete to worker '{workerId}'.", workerId);
+                }
+            }
+
+            // [CS-TODO] When the last worker is drained (scale-in), should the runtime
+            // pause trigger listeners or enter a degraded state? For now we just disconnect.
+
             await CleanupWorkerResourcesAsync(workerId, worker);
             _logger.LogInformation("Worker '{workerId}' disconnected.", workerId);
         }
@@ -243,6 +280,26 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// <inheritdoc/>
     public WorkerConnectionInfo GetWorkerStatus(string workerId)
         => _workers.TryGetValue(workerId, out var worker) ? worker.Info : null;
+
+    /// <summary>
+    /// Event handler for <see cref="IConnectedWorkerChannel.DrainRequested"/>.
+    /// Fired when the worker proxy sends a <c>WorkerDrainRequest</c> over gRPC.
+    /// </summary>
+    private void OnWorkerDrainRequested(string workerId)
+    {
+        _logger.LogInformation("Received WorkerDrainRequest for worker '{workerId}'.", workerId);
+
+        // Fire-and-forget — disconnect (which includes drain) runs in the background.
+        _ = DisconnectWorkerAsync(workerId, CancellationToken.None).ContinueWith(
+            t =>
+            {
+                if (t.IsFaulted)
+                {
+                    _logger.LogError(t.Exception, "Error draining worker '{workerId}'.", workerId);
+                }
+            },
+            TaskScheduler.Default);
+    }
 
     /// <inheritdoc/>
     public async Task StopAsync(CancellationToken cancellationToken)
