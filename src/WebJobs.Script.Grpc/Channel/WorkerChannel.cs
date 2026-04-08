@@ -257,6 +257,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     case MsgType.InvocationResponse:
                         _ = InvokeResponse(msg.Message.InvocationResponse);
                         break;
+                    case MsgType.WorkerDrainRequest:
+                        OnDrainRequested();
+                        break;
                     default:
                         ProcessRegisteredGrpcCallbacks(msg);
                         break;
@@ -390,7 +393,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public bool IsChannelReadyForInvocations()
+        public virtual bool IsChannelReadyForInvocations()
         {
             return !_disposing && !_disposed
                 && _state.HasFlag(
@@ -1413,6 +1416,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             var evt = new OutboundGrpcEvent(_workerId, msg);
 
             return _outbound.TryWrite(evt) ? default : _outbound.WriteAsync(evt);
+        }
+
+        /// <summary>
+        /// Called when a <c>WorkerDrainRequest</c> message is received from the worker proxy.
+        /// Override in derived classes to handle drain signaling.
+        /// </summary>
+        protected virtual void OnDrainRequested()
+        {
         }
 
         protected void SendStreamingMessage(StreamingMessage msg)

@@ -7,7 +7,9 @@
 // Set the "UseContainers" configuration key (or USE_CONTAINERS env var) to "true"
 // to run all components as Docker containers instead of local projects.
 
+using System.Text;
 using Aspire.Hosting.Azure;
+using Azure.Storage.Blobs;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -20,6 +22,10 @@ const int workerGrpcPort = 50052;
 const int httpProxyPort = 50053;
 const int runtimePort = 7071;
 const int mockWorkerHttpPort = 8080;
+
+// --- Well-known values for local development ---
+const string HostId = "devhost";
+const string MasterKey = "dev-master-key";
 
 // Well-known Azurite storage emulator account key.
 // https://learn.microsoft.com/azure/storage/common/storage-use-azurite#well-known-storage-account-and-key
@@ -36,6 +42,41 @@ else
 {
     AddProjectResources(builder, storage);
 }
+
+// --- Seed well-known master key into Azurite ---
+// The runtime uses BlobStorageSecretsRepository, which reads from
+// azure-webjobs-secrets/{hostId}/host.json. We pre-seed this blob
+// so admin APIs can be called with a known key during development.
+builder.Eventing.Subscribe<ResourceReadyEvent>(storage.Resource, async (@event, ct) =>
+{
+    var blobEndpoint = storage.GetEndpoint("blob");
+
+    string scheme = await blobEndpoint.Property(EndpointProperty.Scheme).GetValueAsync(ct) ?? "http";
+    string host = await blobEndpoint.Property(EndpointProperty.IPV4Host).GetValueAsync(ct) ?? "127.0.0.1";
+    string port = await blobEndpoint.Property(EndpointProperty.Port).GetValueAsync(ct) ?? "10000";
+    string blobUrl = $"{scheme}://{host}:{port}/devstoreaccount1;";
+
+    string connectionString = $"DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey={AzuriteAccountKey};BlobEndpoint={blobUrl}";
+
+    var blobServiceClient = new BlobServiceClient(connectionString);
+    var containerClient = blobServiceClient.GetBlobContainerClient("azure-webjobs-secrets");
+    await containerClient.CreateIfNotExistsAsync(cancellationToken: ct);
+
+    string hostSecretsJson = $$"""
+        {
+          "masterKey": {
+            "name": "master",
+            "value": "{{MasterKey}}",
+            "encrypted": false
+          },
+          "functionKeys": [],
+          "systemKeys": []
+        }
+        """;
+
+    await containerClient.UploadBlobAsync($"{HostId}/host.json",
+        new BinaryData(Encoding.UTF8.GetBytes(hostSecretsJson)), ct);
+});
 
 builder.Build().Run();
 
@@ -54,9 +95,10 @@ static void AddProjectResources(
     var runtime = builder.AddProject<Projects.WebJobs_Script_WebHost>("runtime")
         .WithHttpEndpoint(runtimePort, runtimePort, name: "functions-http", isProxied: false)
         .WithEnvironment("FUNCTIONS_WORKER_EXTERNAL_ENABLED", "true")
-        .WithEnvironment("FUNCTIONS_WORKER_EXTERNAL_GRPC_ENDPOINT", runtimeGrpcEndpoint)
+        // .WithEnvironment("FUNCTIONS_WORKER_EXTERNAL_GRPC_ENDPOINT", runtimeGrpcEndpoint)
         .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "node")
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
+        .WithEnvironment("AzureFunctionsWebHost__hostid", HostId)
         .WithEnvironment("ASPNETCORE_URLS", runtimeUrl)
         .WithEnvironment(context =>
         {
@@ -133,6 +175,7 @@ static void AddContainerResources(
         })
         .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "node")
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
+        .WithEnvironment("AzureFunctionsWebHost__hostid", HostId)
         .WithEnvironment("ASPNETCORE_URLS", $"http://+:{runtimePort.ToString()}")
         .WithEnvironment(context =>
         {
@@ -151,7 +194,15 @@ static void ConfigureStorageConnectionString(
     var blob = storage.GetEndpoint("blob");
     var queue = storage.GetEndpoint("queue");
     var table = storage.GetEndpoint("table");
+
+    // Use IPV4Host (127.0.0.1) instead of Host/Url (localhost) to avoid IPv6 resolution
+    // issues with Azurite. This matches how Aspire's AzureStorageEmulatorConnectionString
+    // builds the connection string internally.
     context.EnvironmentVariables["AzureWebJobsStorage"] =
         ReferenceExpression.Create(
-            $"DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey={AzuriteAccountKey};BlobEndpoint={blob.Property(EndpointProperty.Url)}/devstoreaccount1;QueueEndpoint={queue.Property(EndpointProperty.Url)}/devstoreaccount1;TableEndpoint={table.Property(EndpointProperty.Url)}/devstoreaccount1;");
+            $"DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey={AzuriteAccountKey};{EmulatorEndpoint("BlobEndpoint", blob)}{EmulatorEndpoint("QueueEndpoint", queue)}{EmulatorEndpoint("TableEndpoint", table)}");
+
+    static ReferenceExpression EmulatorEndpoint(string key, EndpointReference endpoint)
+        => ReferenceExpression.Create(
+            $"{key}={endpoint.Property(EndpointProperty.Scheme)}://{endpoint.Property(EndpointProperty.IPV4Host)}:{endpoint.Property(EndpointProperty.Port)}/devstoreaccount1;");
 }

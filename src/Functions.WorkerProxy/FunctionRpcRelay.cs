@@ -33,6 +33,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 {
     private readonly RelayOptions _options;
     private readonly ILogger<FunctionRpcRelay> _logger;
+    private readonly WorkerPodStateManager _stateManager;
 
     // Channels that buffer messages flowing in each direction.
     private readonly Channel<StreamingMessage> _toWorker = Channel.CreateUnbounded<StreamingMessage>();
@@ -42,10 +43,26 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     private readonly TaskCompletionSource _runtimeConnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _workerConnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public FunctionRpcRelay(RelayOptions options, ILogger<FunctionRpcRelay> logger)
+    public FunctionRpcRelay(RelayOptions options, ILogger<FunctionRpcRelay> logger, WorkerPodStateManager stateManager)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
+    }
+
+    /// <summary>
+    /// Sends a <c>WorkerDrainRequest</c> to the runtime over the gRPC stream.
+    /// Called when NNA calls <c>POST /drain</c> on the worker proxy.
+    /// </summary>
+    public async Task SendDrainRequestToRuntimeAsync()
+    {
+        var message = new StreamingMessage
+        {
+            WorkerDrainRequest = new WorkerDrainRequest()
+        };
+
+        await _toRuntime.Writer.WriteAsync(message);
+        _logger.LogInformation("Sent WorkerDrainRequest to runtime.");
     }
 
     /// <inheritdoc />
@@ -70,6 +87,8 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         {
             _logger.LogInformation("Worker connected on port {Port}", localPort);
             _workerConnected.TrySetResult();
+            _stateManager.UpdatePodStatus(WorkerPodStatus.ReadyForRequest);
+            _stateManager.UpdateHealthStatus(WorkerPodHealthStatus.Healthy);
             await _runtimeConnected.Task.WaitAsync(context.CancellationToken);
 
             // Worker reads from _toWorker, writes into _toRuntime.
@@ -137,6 +156,17 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                         message.WorkerInitResponse.Capabilities["HttpUri"] = _options.HttpProxyEndpoint;
                         _logger.LogInformation("Rewrote HttpUri capability to {Uri}", _options.HttpProxyEndpoint);
                     }
+                }
+
+                // Intercept WorkerDrainComplete from runtime — update state machine.
+                // Do NOT forward drain messages to the language worker.
+                if (string.Equals(side, "runtime", StringComparison.Ordinal)
+                    && message.ContentCase == StreamingMessage.ContentOneofCase.WorkerDrainComplete)
+                {
+                    _logger.LogInformation("Received WorkerDrainComplete from runtime.");
+                    _stateManager.UpdatePodStatus(WorkerPodStatus.DrainCompleted);
+                    _stateManager.UpdatePodStatus(WorkerPodStatus.MarkForDeletion);
+                    continue; // Don't relay drain messages to the language worker.
                 }
 
                 await writer.WriteAsync(message, cancellationToken);

@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.2.0">
+<Project Sdk="Aspire.AppHost.Sdk/13.2.1">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -12,9 +12,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting" Version="13.2.0" />
-    <PackageReference Include="Aspire.Hosting.Azure.Storage" Version="13.2.0" />
-    <PackageReference Include="Aspire.Hosting.Docker" Version="13.2.0" />
+    <PackageReference Include="Aspire.Hosting" Version="13.2.1" />
+    <PackageReference Include="Aspire.Hosting.Azure.Storage" Version="13.2.1" />
+    <PackageReference Include="Aspire.Hosting.Docker" Version="13.2.1" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0" />
   </ItemGroup>
 
   <ItemGroup>
