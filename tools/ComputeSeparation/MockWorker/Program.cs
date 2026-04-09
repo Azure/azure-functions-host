@@ -11,11 +11,12 @@ const string FunctionName = "HttpTrigger";
 string functionId = Guid.NewGuid().ToString();
 
 // Start a simple HTTP server for HTTP proxying (the worker proxy forwards HTTP here).
+// Use "+" to listen on all interfaces (required for container networking).
 int httpPort = ResolveHttpPort(args);
 var httpListener = new HttpListener();
-httpListener.Prefixes.Add($"http://localhost:{httpPort}/");
+httpListener.Prefixes.Add($"http://+:{httpPort}/");
 httpListener.Start();
-Console.WriteLine($"[MockWorker] HTTP server listening on http://localhost:{httpPort}/");
+Console.WriteLine($"[MockWorker] HTTP server listening on http://+:{httpPort}/");
 
 // Handle HTTP requests on a background task.
 _ = Task.Run(async () =>
