@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using Microsoft.Extensions.Options;
@@ -14,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
     internal sealed class DefaultAppCapabilitiesStore : IAppCapabilitiesStore
     {
         private readonly IOptionsChangeTokenSource<AppCapabilitiesOptions> _optionsChangeTokenSource;
-        private readonly ConcurrentDictionary<string, string> _capabilities = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _capabilities = new(StringComparer.OrdinalIgnoreCase);
         private readonly object _updateLock = new();
         private bool _isInitialized = false;
         private ImmutableDictionary<string, string>? _cachedCapabilities;

@@ -76,6 +76,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private (bool IsValid, string? ErrorMessage, string? SerializedResponse) ValidateResponseSize(IDictionary<string, string> capabilities)
         {
             var serializedResponse = JsonSerializer.Serialize(capabilities, DictionaryJsonContext.Default.IDictionaryStringString);
+            return ValidateSerializedResponseSize(serializedResponse, "Capabilities response");
+        }
+
+        private (bool IsValid, string? ErrorMessage, string? SerializedResponse) ValidateResponseSize(string value)
+        {
+            var serializedValue = JsonSerializer.Serialize(value);
+            return ValidateSerializedResponseSize(serializedValue, "Capability value");
+        }
+
+        private (bool IsValid, string? ErrorMessage, string? SerializedResponse) ValidateSerializedResponseSize(string serializedResponse, string responseType)
+        {
             var responseSize = System.Text.Encoding.UTF8.GetByteCount(serializedResponse);
 
             if (responseSize <= MaxResponseSizeBytes)
@@ -83,24 +94,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return (true, null, serializedResponse);
             }
 
-            var errorMessage = $"Capabilities response size ({responseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).";
-            _logger.LogError("Capabilities response size ({ResponseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).", responseSize, MaxResponseSizeBytes);
-
-            return (false, errorMessage, null);
-        }
-
-        private (bool IsValid, string? ErrorMessage, string? SerializedResponse) ValidateResponseSize(string value)
-        {
-            var serializedValue = JsonSerializer.Serialize(value);
-            var responseSize = System.Text.Encoding.UTF8.GetByteCount(serializedValue);
-
-            if (responseSize <= MaxResponseSizeBytes)
-            {
-                return (true, null, serializedValue);
-            }
-
-            var errorMessage = $"Capability value size ({responseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).";
-            _logger.LogError("Capability value size ({ResponseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).", responseSize, MaxResponseSizeBytes);
+            var errorMessage = $"{responseType} size ({responseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).";
+            _logger.LogError("{ResponseType} size ({ResponseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).", responseType, responseSize, MaxResponseSizeBytes);
 
             return (false, errorMessage, null);
         }
