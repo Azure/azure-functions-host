@@ -8,6 +8,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <DisableImplicitNamespaceImports>false</DisableImplicitNamespaceImports>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
     <!-- Standalone tool; opt out of repo-level code-analysis ruleset. -->
     <CodeAnalysisRuleSet />
   </PropertyGroup>
@@ -17,9 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.55.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.55.1" PrivateAssets="All" />
-    <PackageReference Include="Yarp.ReverseProxy" Version="2.0.1" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.76.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.76.0" PrivateAssets="All" />
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
 
   <ItemGroup>

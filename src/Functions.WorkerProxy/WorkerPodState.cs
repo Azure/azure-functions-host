@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Functions.WorkerProxy;
 /// Pod status values for the worker proxy state machine.
 /// Matches the Go Proxy's <c>FunctionAppPodStatus</c> pattern.
 /// </summary>
-[JsonConverter(typeof(JsonStringEnumConverter))]
+[JsonConverter(typeof(JsonStringEnumConverter<WorkerPodStatus>))]
 internal enum WorkerPodStatus
 {
     None,
@@ -22,7 +22,7 @@ internal enum WorkerPodStatus
 /// <summary>
 /// Health status values for the worker proxy.
 /// </summary>
-[JsonConverter(typeof(JsonStringEnumConverter))]
+[JsonConverter(typeof(JsonStringEnumConverter<WorkerPodHealthStatus>))]
 internal enum WorkerPodHealthStatus
 {
     None,

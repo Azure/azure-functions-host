@@ -108,6 +108,7 @@ static void AddProjectResources(
         .WaitFor(storage);
 
     var workerProxy = builder.AddProject<Projects.Functions_WorkerProxy>("worker-proxy")
+        .WithHttpEndpoint(managementPort, managementPort, name: "management", isProxied: false)
         .WithArgs(
             "--runtime-grpc-port", runtimeGrpcPort.ToString(),
             "--worker-grpc-port", workerGrpcPort.ToString(),
@@ -137,7 +138,7 @@ static void AddContainerResources(
         .WithEndpoint(targetPort: runtimeGrpcPort, name: "proxy-runtime-grpc", scheme: "http")
         .WithEndpoint(targetPort: workerGrpcPort, name: "proxy-worker-grpc", scheme: "http")
         .WithEndpoint(targetPort: httpProxyPort, name: "http-proxy", scheme: "http")
-        .WithEndpoint(targetPort: managementPort, name: "management", scheme: "http")
+        .WithHttpEndpoint(managementPort, managementPort, name: "proxy-management")
         .WithArgs(
             "--runtime-grpc-port", runtimeGrpcPort.ToString(),
             "--worker-grpc-port", workerGrpcPort.ToString(),
@@ -189,7 +190,6 @@ static void AddContainerResources(
         })
         .WaitFor(storage);
 
-    workerProxy.WaitFor(runtime);
     mockWorker.WaitFor(workerProxy);
 }
 
