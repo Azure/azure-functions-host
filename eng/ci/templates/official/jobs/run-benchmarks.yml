@@ -43,12 +43,6 @@ jobs:
     crankExtraArguments: ${{ parameters.crankAdditionalArguments }}
 
   templateContext:
-    inputs:
-    - input: pipelineArtifact
-      artifactName: $(benchmarkArtifactName)
-      pipeline: BaselineResult
-      targetPath: $(baselineBenchmarkResultsDownloadDir)
-
     outputParentDirectory: $(traceDirectory)
     outputs:
       - output: pipelineArtifact
@@ -58,6 +52,20 @@ jobs:
         condition: always()
 
   steps:
+
+  # TODO: Re-enable baseline download and comparison once a baseline artifact with the new naming scheme exists.
+  # - task: DownloadPipelineArtifact@2
+  #   displayName: Download baseline benchmark results
+  #   continueOnError: true
+  #   inputs:
+  #     source: specific
+  #     project: $(System.TeamProject)
+  #     pipeline: $(resources.pipeline.BaselineResult.pipelineID)
+  #     runVersion: latestFromBranch
+  #     runBranch: $(benchmarkBaselineBranch)
+  #     tags: $(benchmarkBaselineTagName)
+  #     artifact: $(benchmarkArtifactName)
+  #     path: $(baselineBenchmarkResultsDownloadDir)
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
@@ -148,27 +156,27 @@ jobs:
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], variables['benchmarkBaselineBranch']))
     displayName: 'Tag Build as Baseline'
 
-  # Locate baseline benchmark result file from the downloaded baseline artifact.
-  - pwsh: |
-      $baselineDir = "$(baselineBenchmarkResultsDownloadDir)"
-      $fileNamePattern = "*_$(functionApp).json"
-
-      if (Test-Path $baselineDir -PathType Container) {
-          $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern -Recurse | Select-Object -First 1
-
-          if ($baselineFile) {
-              Write-Host "Found baseline benchmark result file: $($baselineFile.FullName)"
-              Write-Host "##vso[task.setvariable variable=baselineBenchmarkResultFilePath]$($baselineFile.FullName)"
-          } else {
-              Write-Host "No baseline benchmark result file matching the pattern '$fileNamePattern' found in directory '$baselineDir'."
-          }
-      } else {
-          Write-Host "The specified directory '$baselineDir' does not exist."
-      }
-    displayName: 'Set Baseline Benchmark Result File Path'
-
-  # Compare results with baseline
-  - pwsh: |
-      crank compare "$(baselineBenchmarkResultFilePath)" "$(benchmarkResultsJsonPath)"
-    condition: and(succeeded(), ne(variables['baselineBenchmarkResultFilePath'], ''))
-    displayName: 'Compare Results with Baseline'
+  # # Locate baseline benchmark result file from the downloaded baseline artifact.
+  # - pwsh: |
+  #     $baselineDir = "$(baselineBenchmarkResultsDownloadDir)"
+  #     $fileNamePattern = "*_$(functionApp).json"
+  #
+  #     if (Test-Path $baselineDir -PathType Container) {
+  #         $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern -Recurse | Select-Object -First 1
+  #
+  #         if ($baselineFile) {
+  #             Write-Host "Found baseline benchmark result file: $($baselineFile.FullName)"
+  #             Write-Host "##vso[task.setvariable variable=baselineBenchmarkResultFilePath]$($baselineFile.FullName)"
+  #         } else {
+  #             Write-Host "No baseline benchmark result file matching the pattern '$fileNamePattern' found in directory '$baselineDir'."
+  #         }
+  #     } else {
+  #         Write-Host "The specified directory '$baselineDir' does not exist."
+  #     }
+  #   displayName: 'Set Baseline Benchmark Result File Path'
+  #
+  # # Compare results with baseline
+  # - pwsh: |
+  #     crank compare "$(baselineBenchmarkResultFilePath)" "$(benchmarkResultsJsonPath)"
+  #   condition: and(succeeded(), ne(variables['baselineBenchmarkResultFilePath'], ''))
+  #   displayName: 'Compare Results with Baseline'
