@@ -1,6 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web.Http;
 using Azure;
 using Azure.Data.Tables;
 using Microsoft.AspNetCore.Hosting;
@@ -22,12 +28,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Web.Http;
 using Xunit;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 

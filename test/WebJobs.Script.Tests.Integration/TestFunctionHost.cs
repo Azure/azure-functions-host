@@ -37,6 +37,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
+
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestFunctionHost : IDisposable
