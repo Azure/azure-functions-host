@@ -355,5 +355,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             _mockChannel.Verify(c => c.SendWorkerDrainComplete(), Times.Once);
         }
+
+        [Fact]
+        public async Task DrainAndDisconnectAllAsync_DisconnectsAllWorkers()
+        {
+            SetupFullConnectMocks();
+
+            var mockClient1 = new Mock<IOutboundGrpcClient>();
+            var mockClient2 = new Mock<IOutboundGrpcClient>();
+            int createCount = 0;
+            _mockClientFactory
+                .Setup(f => f.Create())
+                .Returns(() => ++createCount == 1 ? mockClient1.Object : mockClient2.Object);
+
+            _mockEventManager
+                .Setup(m => m.TryAddWorkerState(It.IsAny<string>(), It.IsAny<object>()))
+                .Returns(true);
+
+            var service = CreateService();
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+            await service.ConnectWorkerAsync("w_2", new Uri("http://localhost:50052"), CancellationToken.None);
+
+            Assert.Equal(2, service.ActiveWorkerCount);
+
+            await service.DrainAndDisconnectAllAsync(CancellationToken.None);
+
+            Assert.Equal(0, service.ActiveWorkerCount);
+            Assert.Empty(service.GetWorkerStatuses());
+        }
+
+        [Fact]
+        public async Task ConnectWorkerAsync_WhileStopping_Throws()
+        {
+            SetupFullConnectMocks();
+
+            var mockClient1 = new Mock<IOutboundGrpcClient>();
+            _mockClientFactory
+                .Setup(f => f.Create())
+                .Returns(mockClient1.Object);
+
+            var service = CreateService();
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            // Initiate stop — this sets the _stopping flag
+            await service.DrainAndDisconnectAllAsync(CancellationToken.None);
+
+            // Attempting to connect a new worker after stop should fail
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.ConnectWorkerAsync("w_late", new Uri("http://localhost:50053"), CancellationToken.None));
+
+            Assert.Contains("stopping", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
     }
 }

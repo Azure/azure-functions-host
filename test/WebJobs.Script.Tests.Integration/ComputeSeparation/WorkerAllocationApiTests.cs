@@ -45,6 +45,8 @@ public class WorkerAllocationApiTests : IAsyncLifetime
                 services.AddSingleton(_mockConnectionManager.Object);
             });
 
+        // TestFunctionHost.StartAsync() already polls IsHostStarted() before
+        // the constructor returns, so the host is ready at this point.
         return Task.CompletedTask;
     }
 
@@ -52,6 +54,9 @@ public class WorkerAllocationApiTests : IAsyncLifetime
     {
         if (_host is not null)
         {
+            // Gracefully stop the host before deleting the temp directory. This stops
+            // hosted services (including FileMonitoringService) so file watchers won't
+            // fire after the directory is deleted, avoiding DirectoryNotFoundException.
             await _host.WebHost.StopAsync();
             _host.Dispose();
         }
@@ -106,6 +111,50 @@ public class WorkerAllocationApiTests : IAsyncLifetime
         var response = await _host.HttpClient.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Stop_Returns202()
+    {
+        var response = await SendAdminRequest(HttpMethod.Post, "admin/instance/stop");
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Stop_WithMockedWorkers_CallsDisconnect()
+    {
+        var drainCalled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // Link two workers first
+        _mockConnectionManager
+            .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _mockConnectionManager
+            .Setup(m => m.GetWorkerStatus(It.IsAny<string>()))
+            .Returns((WorkerConnectionInfo)null);
+        _mockConnectionManager
+            .Setup(m => m.DrainAndDisconnectAllAsync(It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                drainCalled.TrySetResult();
+                return Task.CompletedTask;
+            });
+
+        await SendAdminRequest(HttpMethod.Post, "admin/workers/link",
+            new { workerId = "w1", grpcEndpoint = "http://10.0.1.1:50051" });
+        await SendAdminRequest(HttpMethod.Post, "admin/workers/link",
+            new { workerId = "w2", grpcEndpoint = "http://10.0.1.2:50051" });
+
+        var response = await SendAdminRequest(HttpMethod.Post, "admin/instance/stop");
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+
+        // Wait for the fire-and-forget to invoke DrainAndDisconnectAllAsync.
+        await drainCalled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        _mockConnectionManager.Verify(
+            m => m.DrainAndDisconnectAllAsync(It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     private async Task<HttpResponseMessage> SendAdminRequest(HttpMethod method, string path, object body = null)

@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             instanceManager.Reset();
 
-            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider, testmetricslogger);
+            var instanceController = new InstanceController(environment, instanceManager, null, loggerFactory, startupContextProvider, testmetricslogger);
 
             var hostAssignmentContext = new HostAssignmentContext
             {
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerProvider = new TestLoggerProvider();
             loggerFactory.AddProvider(loggerProvider);
 
-            var instanceController = new InstanceController(null, null, loggerFactory, null, new TestMetricsLogger());
+            var instanceController = new InstanceController(null, null, null, loggerFactory, null, new TestMetricsLogger());
         
             var actionResult = instanceController.GetHttpHealthStatus();
             var okResult = actionResult as OkResult;
@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             instanceManager.Reset();
 
-            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider, testmetricslogger);
+            var instanceController = new InstanceController(environment, instanceManager, null, loggerFactory, startupContextProvider, testmetricslogger);
 
             var hostAssignmentContext = new HostAssignmentContext
             {
@@ -212,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             instanceManager.Reset();
 
-            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider, testmetricslogger);
+            var instanceController = new InstanceController(environment, instanceManager, null, loggerFactory, startupContextProvider, testmetricslogger);
 
             var hostAssignmentContext = new HostAssignmentContext
             {
@@ -258,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             instanceManager.Reset();
 
-            var instanceController = new InstanceController(environment, instanceManager.Object, loggerFactory,
+            var instanceController = new InstanceController(environment, instanceManager.Object, null, loggerFactory,
                 startupContextProvider, testmetricslogger);
             DefaultHttpContext context = new() { User = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
             {
@@ -307,7 +307,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerFactory = new LoggerFactory();
             var loggerProvider = new TestLoggerProvider();
             loggerFactory.AddProvider(loggerProvider);
-            var instanceController = new InstanceController(environment, null, loggerFactory, null, testmetricslogger);
+            var instanceController = new InstanceController(environment, null, null, loggerFactory, null, testmetricslogger);
 
             // HostAssignmentRequest is null
             var result = await instanceController.Assign(null);
@@ -352,7 +352,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerProvider = new TestLoggerProvider();
             loggerFactory.AddProvider(loggerProvider);
 
-            var instanceController = new InstanceController(environment, null, loggerFactory, null, testmetricslogger);
+            var instanceController = new InstanceController(environment, null, null, loggerFactory, null, testmetricslogger);
             DefaultHttpContext context = new()
             {
                 User = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]{}))
