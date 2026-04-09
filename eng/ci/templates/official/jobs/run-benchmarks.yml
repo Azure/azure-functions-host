@@ -69,6 +69,15 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  - task: UseDotNet@2 # Needed by crank
+    displayName: Install .NET 8
+    inputs:
+      packageType: sdk
+      version: 8.x
+
+  - script: dotnet --info
+    displayName: "Print .NET Environment Info"
+
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Agent tool
 
@@ -122,6 +131,29 @@ jobs:
           }
         } while (-not $Entity)
 
+  - pwsh: |
+      $xml = [xml](Get-Content "$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj")
+      $tfm = ($xml.Project.PropertyGroup | Where-Object { $_.TargetFramework } | Select-Object -First 1).TargetFramework.Trim()
+      # Extract major.minor version from TFM (e.g., "net10.0" -> "10.0")
+      $channelVersion = $tfm -replace '^net', ''
+      Write-Host "Detected TFM: $tfm (channel: $channelVersion)"
+
+      $metadataUrl = "https://builds.dotnet.microsoft.com/dotnet/release-metadata/$channelVersion/releases.json"
+      Write-Host "Fetching release metadata from: $metadataUrl"
+      $metadata = Invoke-RestMethod -Uri $metadataUrl
+      $release = $metadata.releases[0]
+
+      $sdkVersion = $release.sdk.version
+      $runtimeVersion = $release.runtime.version
+      $aspNetVersion = $release.'aspnetcore-runtime'.version
+
+      Write-Host "Resolved .NET versions - SDK: $sdkVersion, Runtime: $runtimeVersion, ASP.NET Core: $aspNetVersion"
+      Write-Host "##vso[task.setvariable variable=dotnetTfm]$tfm"
+      Write-Host "##vso[task.setvariable variable=dotnetSdkVersion]$sdkVersion"
+      Write-Host "##vso[task.setvariable variable=dotnetRuntimeVersion]$runtimeVersion"
+      Write-Host "##vso[task.setvariable variable=dotnetAspNetVersion]$aspNetVersion"
+    displayName: Resolve .NET version info for crank
+
   - task: AzureCLI@2
     inputs:
       azureSubscription: $(ServiceConnection)
@@ -129,6 +161,7 @@ jobs:
       scriptLocation: inlineScript
       inlineScript: |
         $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(Build.SourceVersion) --property buildNumber=$(Build.BuildNumber) --property buildId=$(Build.BuildId) --property sourceBranch=$(Build.SourceBranch) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
+        $crankArgs += " --hostruntime.framework $(dotnetTfm) --hostruntime.sdkVersion $(dotnetSdkVersion) --hostruntime.runtimeVersion $(dotnetRuntimeVersion) --hostruntime.aspNetCoreVersion $(dotnetAspNetVersion)"
         $crankArgs += " --hostruntime.options.traceOutput $(traceDirectory)/$(Build.BuildNumber)_$(functionApp)_$(Agent.OS)"
         $crankArgs += " --variable CrankAgentAppVm=$(appAgentHostName) --variable CrankAgentLoadVm=localhost --variable AspNetUrls=http://$(appAgentHostName):5000"
         $crankArgs += " $(crankExtraArguments)"
@@ -142,10 +175,47 @@ jobs:
     displayName: Run Benchmark
 
   - pwsh: |
+      $baseUrl = "http://$(appAgentHostName):5010/jobs/1"
+
+      # Try fetching build log (populated during dotnet build phase)
+      try {
+        $buildLogUrl = "$baseUrl/buildlog"
+        Write-Host "Fetching build logs from: $buildLogUrl"
+        $response = Invoke-WebRequest -Uri $buildLogUrl -Method GET -UseBasicParsing -ErrorAction Stop
+        if ($response.Content) {
+          Write-Host $response.Content
+        } else {
+          Write-Host "Build log is empty. If the job failed during SDK install (before build), the error details are in the 'Run Benchmark' step output above."
+        }
+      } catch {
+        Write-Host "Could not fetch build logs (job may have been deleted after failure): $_"
+      }
+
+      # Try fetching job state/error details
+      try {
+        Write-Host "`n--- Job State ---"
+        $response = Invoke-WebRequest -Uri $baseUrl -Method GET -UseBasicParsing -ErrorAction Stop
+        $job = $response.Content | ConvertFrom-Json
+        Write-Host "State: $($job.state)"
+        if ($job.error) {
+          Write-Host "Error: $($job.error)"
+        }
+      } catch {
+        Write-Host "Could not fetch job state (job may have been deleted after failure): $_"
+      }
+    condition: always()
+    displayName: Fetch Crank Build Logs
+
+  - pwsh: |
       $url = "http://$(appAgentHostName):5010/jobs/1/output"
       Write-Host "Fetching logs from: $url"
-      $response = Invoke-WebRequest -Uri $url -Method GET -UseBasicParsing
-      Write-Host $response.Content
+      try {
+        $response = Invoke-WebRequest -Uri $url -Method GET -UseBasicParsing -ErrorAction Stop
+        Write-Host $response.Content
+      } catch {
+        Write-Host "Could not fetch host logs: $_"
+      }
+    condition: always()
     displayName: Fetch Function Host Logs
 
   # Tag the build as a baseline if it originates from the specified branch.
