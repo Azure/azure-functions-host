@@ -48,4 +48,13 @@ public interface IWorkerConnectionManager
     /// </summary>
     /// <param name="workerId">The worker identifier.</param>
     WorkerConnectionInfo GetWorkerStatus(string workerId);
+
+    /// <summary>
+    /// Drains and disconnects all connected workers in parallel.
+    /// Each worker is drained (in-flight invocations complete with timeout),
+    /// sent a <c>WorkerDrainComplete</c> message, and then the gRPC connection is closed.
+    /// Used by the <c>/admin/instance/stop</c> endpoint for runtime-initiated stop.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task DrainAndDisconnectAllAsync(CancellationToken cancellationToken);
 }

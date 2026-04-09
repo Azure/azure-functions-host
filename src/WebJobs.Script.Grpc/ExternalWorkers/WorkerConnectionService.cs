@@ -38,7 +38,9 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
 
     private readonly ConcurrentDictionary<string, WorkerConnection> _workers = new();
     private readonly TaskCompletionSource _scriptHostStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly ReaderWriterLockSlim _lifecycleLock = new();
     private int _firstWorkerClaimed;
+    private volatile bool _stopping;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerConnectionService"/> class.
@@ -94,6 +96,11 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// <inheritdoc/>
     public async Task ConnectWorkerAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
     {
+        if (_stopping)
+        {
+            throw new InvalidOperationException("Cannot connect new workers while the runtime is stopping.");
+        }
+
         var info = new WorkerConnectionInfo
         {
             WorkerId = workerId,
@@ -102,11 +109,39 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
 
         var worker = new WorkerConnection { Info = info };
 
-        if (!_workers.TryAdd(workerId, worker))
+        // Hold the read lock only for the _stopping re-check and TryAdd.
+        // This guarantees the worker is visible in _workers before
+        // DrainAndDisconnectAllAsync can snapshot the dictionary.
+        // IMPORTANT: No await allowed inside this lock — ReaderWriterLockSlim is thread-affine.
+        _lifecycleLock.EnterReadLock();
+
+        try
         {
-            throw new InvalidOperationException(
-                $"Worker '{workerId}' already exists. Disconnect it before reassigning.");
+            if (_stopping)
+            {
+                throw new InvalidOperationException("Cannot connect new workers while the runtime is stopping.");
+            }
+
+            if (!_workers.TryAdd(workerId, worker))
+            {
+                throw new InvalidOperationException(
+                    $"Worker '{workerId}' already exists. Disconnect it before reassigning.");
+            }
         }
+        finally
+        {
+            _lifecycleLock.ExitReadLock();
+        }
+
+        // The rest of connect runs outside the lock. The worker is in _workers,
+        // so DrainAndDisconnectAllAsync will find it and await ConnectCompleted
+        // before cleaning up.
+        await ConnectWorkerCoreAsync(workerId, endpoint, worker, cancellationToken);
+    }
+
+    private async Task ConnectWorkerCoreAsync(string workerId, Uri endpoint, WorkerConnection worker, CancellationToken cancellationToken)
+    {
+        var info = worker.Info;
 
         try
         {
@@ -234,6 +269,11 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         if (channel is IConnectedWorkerChannel connectedChannel)
         {
             connectedChannel.BeginDrain();
+
+            // Notify the worker proxy it should enter the Draining state.
+            // In worker-initiated drain the proxy already knows,
+            // but sending this is idempotent and keeps the code path simple.
+            connectedChannel.SendWorkerDrainRequest();
         }
 
         worker.Info.State = WorkerConnectionState.Draining;
@@ -290,6 +330,41 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     public WorkerConnectionInfo GetWorkerStatus(string workerId)
         => _workers.TryGetValue(workerId, out var worker) ? worker.Info : null;
 
+    /// <inheritdoc/>
+    public async Task DrainAndDisconnectAllAsync(CancellationToken cancellationToken)
+    {
+        IList<string> workerIds;
+
+        // Hold the write lock to atomically set _stopping and snapshot _workers.
+        // This guarantees no in-flight ConnectWorkerAsync can TryAdd between
+        // setting the flag and taking the snapshot.
+        // IMPORTANT: No await allowed inside this lock — ReaderWriterLockSlim is thread-affine.
+        _lifecycleLock.EnterWriteLock();
+
+        try
+        {
+            _stopping = true;
+            workerIds = _workers.Keys.ToList();
+        }
+        finally
+        {
+            _lifecycleLock.ExitWriteLock();
+        }
+
+        if (workerIds.Count == 0)
+        {
+            _logger.LogInformation("No workers connected. Nothing to drain.");
+            return;
+        }
+
+        _logger.LogInformation("Draining and disconnecting {count} worker(s).", workerIds.Count);
+
+        var tasks = workerIds.Select(id => DisconnectWorkerAsync(id, cancellationToken));
+        await Task.WhenAll(tasks);
+
+        _logger.LogInformation("All workers drained and disconnected.");
+    }
+
     /// <summary>
     /// Event handler for <see cref="IConnectedWorkerChannel.DrainRequested"/>.
     /// Fired when the worker proxy sends a <c>WorkerDrainRequest</c> over gRPC.
@@ -313,25 +388,25 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// <inheritdoc/>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        foreach (string workerId in _workers.Keys)
+        // Reuse the same drain path as /admin/instance/stop so workers get
+        // the full graceful shutdown (BeginDrain → DrainInvocations →
+        // SendWorkerDrainComplete) and the _stopping flag + lifecycle lock
+        // prevent races with in-flight connects.
+        try
         {
-            if (_workers.TryGetValue(workerId, out var worker))
-            {
-                try
-                {
-                    await RemoveWorkerAsync(workerId, worker);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error during graceful shutdown of worker '{workerId}'.", workerId);
-                }
-            }
+            await DrainAndDisconnectAllAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error during graceful shutdown of workers.");
         }
     }
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
+        _lifecycleLock.Dispose();
+
         foreach (var kvp in _workers)
         {
             if (kvp.Value.Client is not null)
@@ -381,16 +456,6 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         }
 
         _eventManager.RemoveGrpcChannels(workerId);
-    }
-
-    /// <summary>
-    /// Full cleanup: disposes resources and removes the worker from tracking.
-    /// Used by disconnect and stop, where the worker entry should not persist.
-    /// </summary>
-    private async Task RemoveWorkerAsync(string workerId, WorkerConnection worker)
-    {
-        await CleanupWorkerResourcesAsync(workerId, worker);
-        _workers.TryRemove(workerId, out _);
     }
 
     /// <summary>

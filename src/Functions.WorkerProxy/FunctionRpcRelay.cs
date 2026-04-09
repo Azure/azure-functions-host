@@ -158,6 +158,17 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                     }
                 }
 
+                // Intercept WorkerDrainRequest from runtime — update state machine.
+                // In runtime-initiated stop, the runtime sends this to notify
+                // the proxy to enter Draining state. Do NOT forward to the language worker.
+                if (string.Equals(side, "runtime", StringComparison.Ordinal)
+                    && message.ContentCase == StreamingMessage.ContentOneofCase.WorkerDrainRequest)
+                {
+                    _logger.LogInformation("Received WorkerDrainRequest from runtime.");
+                    _stateManager.UpdatePodStatus(WorkerPodStatus.Draining);
+                    continue;
+                }
+
                 // Intercept WorkerDrainComplete from runtime — update state machine.
                 // Do NOT forward drain messages to the language worker.
                 if (string.Equals(side, "runtime", StringComparison.Ordinal)
