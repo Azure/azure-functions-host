@@ -11,10 +11,12 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 
+[Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
 public class NodeHostRestartEndToEndTests
 {
     [Fact]
@@ -32,7 +34,7 @@ public class NodeHostRestartEndToEndTests
             await fixture.InitializeAsync();
             var channelManager = fixture.Host.WebHostServices.GetService<IWebHostRpcWorkerChannelManager>();
             var scriptHostManager = fixture.Host.WebHostServices.GetService<IScriptHostManager>();
-            var appHostLifecycle = fixture.Host.JobHostServices.GetService<IApplicationLifetime>();
+            var appHostLifecycle = fixture.Host.JobHostServices.GetService<IHostApplicationLifetime>();
             var semaphore = new SemaphoreSlim(0, 1);
             registration = appHostLifecycle.ApplicationStopping.Register(() =>
             {

@@ -8,10 +8,12 @@ using System.Threading.Tasks;
 using Azure.Data.Tables;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Extensions.Configuration;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EStorage)]
     public class AzureTableStorageProviderTests : IClassFixture<AzuriteFixture>
     {
         private readonly AzuriteFixture _azurite;

@@ -28,24 +28,13 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Xml;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestFunctionHost : IDisposable
     {
         private readonly ScriptApplicationHostOptions _hostOptions;
-        private readonly TestServer _testServer;
+        private readonly IHost _webHost;
         private readonly string _appRoot;
         private readonly string _webHostInstanceId = Guid.NewGuid().ToString()[..8];
         // we need to capture every provider created by host restarts
@@ -68,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Action<ILoggingBuilder> configureScriptHostLogging = null,
             Action<IServiceCollection> configureScriptHostServices = null,
             Action<IConfigurationBuilder> configureWebHostAppConfiguration = null)
-            : this(scriptPath, Path.Combine(Path.GetTempPath(), @"Functions"), Path.Combine(Path.GetTempPath(), @"FunctionsData"), configureWebHostServices, configureScriptHostWebJobsBuilder,
+            : this(scriptPath, Path.Combine(Path.GetTempPath(), "Functions"), Path.Combine(Path.GetTempPath(), @"FunctionsData"), configureWebHostServices, configureScriptHostWebJobsBuilder,
                 configureScriptHostAppConfiguration, configureScriptHostLogging, configureScriptHostServices, configureWebHostAppConfiguration)
         {
         }
@@ -84,6 +73,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _appRoot = scriptPath;
 
+            // Ensure each host instance gets a unique log directory to prevent
+            // FileSystemWatcher cross-contamination between hosts sharing the same path.
+            logPath = Path.Combine(logPath, Guid.NewGuid().ToString("N")[..8]);
+
             _hostOptions = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
@@ -94,111 +87,141 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 HasParentScope = true
             };
 
-            var builder = new WebHostBuilder()
-                .ConfigureLogging(b =>
+            var builder = new HostBuilder()
+                .ConfigureWebHost(webHostBuilder =>
                 {
-                    _webHostLoggerProvider = new(_webHostInstanceId);
-                    b.AddProvider(_webHostLoggerProvider);
-
-                    b.AddFilter<TestLoggerProvider>(null, LogLevel.Trace)
-                     .AddFilter<TestLoggerProvider>("Microsoft.AspNet", LogLevel.Warning)
-                     .AddFilter<TestLoggerProvider>("Azure.Core", LogLevel.Warning);
-                })
-                .ConfigureServices(services =>
-                {
-                    services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
-                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), sp =>
+                    webHostBuilder.ConfigureLogging(b =>
                     {
-                        _hostOptions.RootServiceProvider = sp;
-                        return new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions);
-                    }, ServiceLifetime.Singleton));
-                    services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), sp =>
-                    {
-                        _hostOptions.RootServiceProvider = sp;
-                        return TestHelpers.CreateOptionsMonitor(_hostOptions);
-                    }, ServiceLifetime.Singleton));
-                    services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
-                    services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataManager), sp =>
-                    {
-                        var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
-                        var scriptManager = sp.GetService<IScriptHostManager>();
-                        var loggerFactory = sp.GetService<ILoggerFactory>();
-                        var environment = sp.GetService<IEnvironment>();
+                        _webHostLoggerProvider = new(_webHostInstanceId);
+                        b.AddProvider(_webHostLoggerProvider);
 
-                        return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
-                    }, ServiceLifetime.Singleton));
-
-                    services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
-                    services.SkipDependencyValidation();
-
-                    // Allows us to configure services as the last step, thereby overriding anything
-                    services.AddSingleton(new PostConfigureServices(configureWebHostServices));
-
-                    // This is a missing registration from WebHost project that isn't in this test host
-                    // App Capabilities services
-                    services.AddSingleton<IAppCapabilitiesStore, DefaultAppCapabilitiesStore>();
-                    services.AddSingleton<IOptionsChangeTokenSource<AppCapabilitiesOptions>, AppCapabilitiesChangeTokenSource>();
-                })
-                .ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
-                {
-                    /// REVIEW THIS
-                    scriptHostWebJobsBuilder.AddAzureStorage();
-                    configureScriptHostWebJobsBuilder?.Invoke(scriptHostWebJobsBuilder);
-                })
-                .ConfigureScriptHostAppConfiguration(scriptHostConfigurationBuilder =>
-                {
-                    if (addTestSettings)
-                    {
-                        scriptHostConfigurationBuilder.AddTestSettings();
-                    }
-                    configureScriptHostAppConfiguration?.Invoke(scriptHostConfigurationBuilder);
-                })
-                .ConfigureScriptHostLogging(scriptHostLoggingBuilder =>
-                {
-                    scriptHostLoggingBuilder.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>(s =>
-                    {
-                        var options = s.GetService<IOptions<ScriptJobHostOptions>>();
-                        var shortInstanceId = options.Value.InstanceId[..8];
-                        var loggerProvider = new TestLoggerProvider($"{_webHostInstanceId}->{shortInstanceId}");
-                        _scriptHostLoggerProviders.Add(loggerProvider);
-                        return loggerProvider;
+                        b.AddFilter<TestLoggerProvider>(null, LogLevel.Trace)
+                         .AddFilter<TestLoggerProvider>("Microsoft.AspNet", LogLevel.Warning)
+                         .AddFilter<TestLoggerProvider>("Azure.Core", LogLevel.Warning);
                     });
-                    scriptHostLoggingBuilder.AddFilter<TestLoggerProvider>(null, LogLevel.Trace);
-                    scriptHostLoggingBuilder.AddFilter<TestLoggerProvider>("Microsoft.AspNet", LogLevel.Warning);
-                    scriptHostLoggingBuilder.AddFilter<TestLoggerProvider>("Azure.Core", LogLevel.Warning);
-                    configureScriptHostLogging?.Invoke(scriptHostLoggingBuilder);
-                })
-                .ConfigureScriptHostServices(scriptHostServices =>
-                {
-                    scriptHostServices.AddOptions<AppCapabilitiesOptions>();
-                    scriptHostServices.ConfigureOptions<AppCapabilitiesOptionsSetup>();
 
-                    configureScriptHostServices?.Invoke(scriptHostServices);
-                })
-                .ConfigureAppConfiguration((builderContext, config) =>
-                {
-                    // replace the default environment source with our own
-                    IConfigurationSource envVarsSource = config.Sources.OfType<EnvironmentVariablesConfigurationSource>().FirstOrDefault();
-                    if (envVarsSource != null)
+                    webHostBuilder.UseTestServer();
+
+                    // On the dev branch (WebHostBuilder), ConfigureServices lambdas run
+                    // BEFORE UseStartup's Startup.ConfigureServices. Since Startup registers
+                    // IFunctionMetadataManager via AddSingleton (not TryAdd), the Startup
+                    // registration was appended after the test's Replace and became the "last"
+                    // registration — the one DI resolves. This meant the REAL
+                    // FunctionMetadataManager (with WorkerFunctionMetadataProvider) was used.
+                    //
+                    // With HostBuilder.ConfigureWebHost, host-level ConfigureServices runs
+                    // AFTER Startup, so Replace would find and remove Startup's registration,
+                    // leaving only the test's custom one (with null WorkerFunctionMetadataProvider).
+                    // This broke tests that depend on WebHost channel initialization via
+                    // WorkerFunctionMetadataProvider.InitializeChannelAsync.
+                    //
+                    // To preserve dev behavior, register the Replace BEFORE UseStartup so
+                    // Startup's AddSingleton runs after and becomes the effective registration.
+                    webHostBuilder.ConfigureServices(services =>
                     {
-                        config.Sources.Remove(envVarsSource);
-                    }
+                        services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataManager), sp =>
+                        {
+                            var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+                            var scriptManager = sp.GetService<IScriptHostManager>();
+                            var loggerFactory = sp.GetService<ILoggerFactory>();
+                            var environment = sp.GetService<IEnvironment>();
 
-                    config.Add(new ScriptEnvironmentVariablesConfigurationSource());
-                    if (addTestSettings)
+                            return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
+                        }, ServiceLifetime.Singleton));
+
+                        services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
+                    });
+
+                    webHostBuilder.UseStartup<TestStartup>();
+
+                    // In .NET 10, UseStartup<T> eagerly activates the startup class via
+                    // ActivatorUtilities, so it cannot resolve services registered later.
+                    // Apply configureWebHostServices after UseStartup instead of injecting
+                    // it into TestStartup's constructor via PostConfigureServices.
+                    if (configureWebHostServices is not null)
                     {
-                        config.AddTestSettings();
+                        webHostBuilder.ConfigureServices(configureWebHostServices);
                     }
-                    configureWebHostAppConfiguration?.Invoke(config);
-                })
-                .UseStartup<TestStartup>();
+                });
 
-            _testServer = new TestServer(builder) { BaseAddress = new Uri("https://localhost/") };
+            builder.ConfigureServices(services =>
+            {
+                services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), sp =>
+                {
+                    _hostOptions.RootServiceProvider = sp;
+                    return new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions);
+                }, ServiceLifetime.Singleton));
+                services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), sp =>
+                {
+                    _hostOptions.RootServiceProvider = sp;
+                    return TestHelpers.CreateOptionsMonitor(_hostOptions);
+                }, ServiceLifetime.Singleton));
+                services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
 
-            HttpClient = _testServer.CreateClient();
+                services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
+                services.SkipDependencyValidation();
+            });
+
+            builder.ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
+            {
+                scriptHostWebJobsBuilder.AddAzureStorage();
+                configureScriptHostWebJobsBuilder?.Invoke(scriptHostWebJobsBuilder);
+            })
+            .ConfigureScriptHostAppConfiguration(scriptHostConfigurationBuilder =>
+            {
+                if (addTestSettings)
+                {
+                    scriptHostConfigurationBuilder.AddTestSettings();
+                }
+                configureScriptHostAppConfiguration?.Invoke(scriptHostConfigurationBuilder);
+            })
+            .ConfigureScriptHostLogging(scriptHostLoggingBuilder =>
+            {
+                scriptHostLoggingBuilder.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>(s =>
+                {
+                    var options = s.GetService<IOptions<ScriptJobHostOptions>>();
+                    var shortInstanceId = options.Value.InstanceId[..8];
+                    var loggerProvider = new TestLoggerProvider($"{_webHostInstanceId}->{shortInstanceId}");
+                    _scriptHostLoggerProviders.Add(loggerProvider);
+                    return loggerProvider;
+                });
+                scriptHostLoggingBuilder.AddFilter<TestLoggerProvider>(null, LogLevel.Trace);
+                scriptHostLoggingBuilder.AddFilter<TestLoggerProvider>("Microsoft.AspNet", LogLevel.Warning);
+                scriptHostLoggingBuilder.AddFilter<TestLoggerProvider>("Azure.Core", LogLevel.Warning);
+                configureScriptHostLogging?.Invoke(scriptHostLoggingBuilder);
+            })
+            .ConfigureScriptHostServices(scriptHostServices =>
+            {
+                configureScriptHostServices?.Invoke(scriptHostServices);
+            })
+            .ConfigureAppConfiguration((builderContext, config) =>
+            {
+                // replace the default environment source with our own
+                IConfigurationSource envVarsSource = config.Sources.OfType<EnvironmentVariablesConfigurationSource>().FirstOrDefault();
+                if (envVarsSource != null)
+                {
+                    config.Sources.Remove(envVarsSource);
+                }
+
+                config.Add(new ScriptEnvironmentVariablesConfigurationSource());
+                if (addTestSettings)
+                {
+                    config.AddTestSettings();
+                }
+                configureWebHostAppConfiguration?.Invoke(config);
+            });
+
+            _webHost = builder.Build();
+
+            // The original code used new TestServer(builder) which internally starts the server.
+            // With the HostBuilder pattern, we must explicitly start the host so that the
+            // TestServer (registered via UseTestServer) initializes its application pipeline.
+            _webHost.StartAsync().GetAwaiter().GetResult();
+
+            HttpClient = _webHost.GetTestClient();
             HttpClient.Timeout = TimeSpan.FromMinutes(5);
 
-            var environment = _testServer.Services.GetService<IEnvironment>();
+            var environment = _webHost.Services.GetService<IEnvironment>();
             if (environment.IsAppService())
             {
                 // host is configured to simulate an AppService environment
@@ -206,16 +229,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 HttpClient.DefaultRequestHeaders.Add(ScriptConstants.AntaresLogIdHeaderName, "xyz");
             }
 
-            var manager = _testServer.Host.Services.GetService<IScriptHostManager>();
+            var manager = _webHost.Services.GetService<IScriptHostManager>();
             _hostService = manager as WebJobsScriptHostService;
 
             // Wire up StopApplication calls as they behave in hosted scenarios
-            var lifetime = WebHostServices.GetService<IApplicationLifetime>();
-            lifetime.ApplicationStopping.Register(async () => await _testServer.Host.StopAsync());
+            var lifetime = WebHostServices.GetService<IHostApplicationLifetime>();
+            lifetime.ApplicationStopping.Register(async () =>
+            {
+                try
+                {
+                    await _webHost.StopAsync();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Host may already be disposed during test cleanup.
+                }
+            });
 
             StartAsync().GetAwaiter().GetResult();
 
-            _stillRunningTimer = new Timer(StillRunningCallback, _testServer, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+            _stillRunningTimer = new Timer(StillRunningCallback, _webHost, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
 
             // store off a bit of the creation stack for easier debugging if this host doesn't shut down.
             var stack = new StackTrace(true).ToString().Split(Environment.NewLine).Take(5);
@@ -229,11 +262,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public IServiceProvider JobHostServices => _hostService.Services;
 
-        public IServiceProvider WebHostServices => _testServer.Host.Services;
+        public IServiceProvider WebHostServices => _webHost.Services;
 
         public ScriptJobHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
-        public ISecretManagerProvider SecretManagerProvider => _testServer.Host.Services.GetService<ISecretManagerProvider>();
+        public ISecretManagerProvider SecretManagerProvider => _webHost.Services.GetService<ISecretManagerProvider>();
 
         public ISecretManager SecretManager => SecretManagerProvider.Current;
 
@@ -243,12 +276,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public HttpClient HttpClient { get; private set; }
 
+        public IHost WebHost => _webHost;
+
         /// <summary>
         /// Create a new HttpClient without default test configuration.
         /// </summary>
         public HttpClient CreateHttpClient()
         {
-            var httpClient = _testServer.CreateClient();
+            var httpClient = _webHost.GetTestClient();
             httpClient.Timeout = TimeSpan.FromMinutes(5);
 
             return httpClient;
@@ -458,8 +493,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (!_isDisposed)
             {
                 HttpClient.Dispose();
-                _testServer.Dispose();
-
+                
                 _stillRunningTimer?.Change(-1, -1);
                 _stillRunningTimer?.Dispose();
 
@@ -481,18 +515,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private class TestStartup
         {
             private WebHost.Startup _startup;
-            private readonly PostConfigureServices _postConfigure;
 
-            public TestStartup(IConfiguration configuration, PostConfigureServices postConfigure)
+            public TestStartup(IConfiguration configuration)
             {
                 _startup = new WebHost.Startup(configuration);
-                _postConfigure = postConfigure;
             }
 
             public void ConfigureServices(IServiceCollection services)
             {
                 _startup.ConfigureServices(services);
-                _postConfigure?.ConfigureServices(services);
             }
 
             public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
@@ -523,7 +554,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger(), mockWorkerRuntimeResolver.Object);
             var defaultProvider = new FunctionMetadataProvider(NullLogger<FunctionMetadataProvider>.Instance, null, metadataProvider, new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), SystemEnvironment.Instance);
-            var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), defaultProvider, manager, factory, environment, mockOptions.Object, metadataOptions);
+
+            // In .NET 10, the IFunctionMetadataManager singleton may be resolved before the
+            // script host is initialized, so ActiveHost is null and GetService returns null.
+            // Provide a default ScriptJobHostOptions so _scriptOptions is never null at
+            // construction time. InitializeServices() will replace it with the real options
+            // once ActiveHostChanged fires.
+            var scriptOptions = managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>()
+                ?? Options.Create(new ScriptJobHostOptions());
+            var metadataManager = new FunctionMetadataManager(scriptOptions, defaultProvider, manager, factory, environment, mockOptions.Object, metadataOptions);
 
             return metadataManager;
         }
@@ -543,21 +582,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public bool IsLegacyExtensionBundle() => true;
 
             public string GetOutdatedBundleVersion() { return string.Empty; /* no-op for test */ }
-        }
-
-        private class PostConfigureServices
-        {
-            private readonly Action<IServiceCollection> _postConfigure;
-
-            public PostConfigureServices(Action<IServiceCollection> postConfigure)
-            {
-                _postConfigure = postConfigure;
-            }
-
-            public void ConfigureServices(IServiceCollection services)
-            {
-                _postConfigure?.Invoke(services);
-            }
         }
     }
 }

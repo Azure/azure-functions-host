@@ -32,10 +32,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "Microsoft.Azure.Storage.File",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Microsoft.Azure.Storage.Queue",
       "resolutionPolicy": "private"
     },
@@ -620,6 +616,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.VisualBasic.Core",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "Microsoft.Win32.Primitives",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -780,11 +780,19 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Data.DataSetExtensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "System.Diagnostics.Contracts",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
       "name": "System.Diagnostics.Debug",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Diagnostics.DiagnosticSource",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -829,6 +837,14 @@
     },
     {
       "name": "System.Dynamic.Runtime",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Formats.Asn1",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Formats.Tar",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -920,6 +936,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Linq.AsyncEnumerable",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "System.Linq.Expressions",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -948,6 +968,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Net.Http.Json",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "System.Net.HttpListener",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -972,11 +996,19 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Net.Quic",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "System.Net.Requests",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
       "name": "System.Net.Security",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Net.ServerSentEvents",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -1017,6 +1049,10 @@
     },
     {
       "name": "System.ObjectModel",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Private.CoreLib",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -1104,6 +1140,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Runtime.CompilerServices.Unsafe",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "System.Runtime.CompilerServices.VisualC",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -1120,11 +1160,19 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Runtime.InteropServices.JavaScript",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "System.Runtime.InteropServices.RuntimeInformation",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
       "name": "System.Runtime.InteropServices.WindowsRuntime",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Runtime.Intrinsics",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -1165,6 +1213,10 @@
     },
     {
       "name": "System.Security.Claims",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Security.Cryptography",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -1244,11 +1296,23 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Text.Encodings.Web",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Text.Json",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "System.Text.RegularExpressions",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
       "name": "System.Threading",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Threading.AccessControl",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {

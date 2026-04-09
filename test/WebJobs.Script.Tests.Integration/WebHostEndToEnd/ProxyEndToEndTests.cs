@@ -19,11 +19,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
     public class ProxyEndToEndTests : IClassFixture<ProxyEndToEndTests.TestFixture>
     {
         private readonly ScriptSettingsManager _settingsManager;

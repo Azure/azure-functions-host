@@ -3,6 +3,7 @@ Microsoft.AspNetCore.dll
 Microsoft.AspNetCore.Antiforgery.dll
 Microsoft.AspNetCore.Authentication.dll
 Microsoft.AspNetCore.Authentication.Abstractions.dll
+Microsoft.AspNetCore.Authentication.BearerToken.dll
 Microsoft.AspNetCore.Authentication.Cookies.dll
 Microsoft.AspNetCore.Authentication.Core.dll
 Microsoft.AspNetCore.Authentication.JwtBearer.dll
@@ -11,6 +12,7 @@ Microsoft.AspNetCore.Authorization.dll
 Microsoft.AspNetCore.Authorization.Policy.dll
 Microsoft.AspNetCore.Components.dll
 Microsoft.AspNetCore.Components.Authorization.dll
+Microsoft.AspNetCore.Components.Endpoints.dll
 Microsoft.AspNetCore.Components.Forms.dll
 Microsoft.AspNetCore.Components.Server.dll
 Microsoft.AspNetCore.Components.Web.dll
@@ -60,8 +62,12 @@ Microsoft.AspNetCore.Mvc.RazorPages.dll
 Microsoft.AspNetCore.Mvc.TagHelpers.dll
 Microsoft.AspNetCore.Mvc.ViewFeatures.dll
 Microsoft.AspNetCore.Mvc.WebApiCompatShim.dll
+Microsoft.AspNetCore.OutputCaching.dll
+Microsoft.AspNetCore.RateLimiting.dll
 Microsoft.AspNetCore.Razor.dll
 Microsoft.AspNetCore.Razor.Runtime.dll
+Microsoft.AspNetCore.Razor.Language.dll
+Microsoft.AspNetCore.RequestDecompression.dll
 Microsoft.AspNetCore.ResponseCaching.dll
 Microsoft.AspNetCore.ResponseCaching.Abstractions.dll
 Microsoft.AspNetCore.ResponseCompression.dll
@@ -71,6 +77,7 @@ Microsoft.AspNetCore.Routing.Abstractions.dll
 Microsoft.AspNetCore.Server.HttpSys.dll
 Microsoft.AspNetCore.Server.Kestrel.dll
 Microsoft.AspNetCore.Server.Kestrel.Core.dll
+Microsoft.AspNetCore.Server.Kestrel.Transport.NamedPipes.dll
 Microsoft.AspNetCore.Server.Kestrel.Transport.Quic.dll
 Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.dll
 Microsoft.AspNetCore.Session.dll
@@ -78,6 +85,7 @@ Microsoft.AspNetCore.SignalR.dll
 Microsoft.AspNetCore.SignalR.Common.dll
 Microsoft.AspNetCore.SignalR.Core.dll
 Microsoft.AspNetCore.SignalR.Protocols.Json.dll
+Microsoft.AspNetCore.StaticAssets.dll
 Microsoft.AspNetCore.StaticFiles.dll
 Microsoft.AspNetCore.WebSockets.dll
 Microsoft.AspNetCore.WebUtilities.dll
@@ -95,7 +103,6 @@ Microsoft.Azure.WebJobs.Script.Grpc.dll
 Microsoft.Azure.WebJobs.Script.WebHost.dll
 Microsoft.Azure.WebSites.DataProtection.dll
 Microsoft.CSharp.dll
-Microsoft.DotNet.PlatformAbstractions.dll
 Microsoft.Extensions.Caching.Abstractions.dll
 Microsoft.Extensions.Caching.Memory.dll
 Microsoft.Extensions.Configuration.dll
@@ -112,6 +119,7 @@ Microsoft.Extensions.Configuration.Xml.dll
 Microsoft.Extensions.DependencyInjection.dll
 Microsoft.Extensions.DependencyInjection.Abstractions.dll
 Microsoft.Extensions.DependencyModel.dll
+Microsoft.Extensions.Diagnostics.Abstractions.dll
 Microsoft.Extensions.Diagnostics.HealthChecks.dll
 Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions.dll
 Microsoft.Extensions.Features.dll
@@ -140,7 +148,9 @@ Microsoft.Extensions.Options.dll
 Microsoft.Extensions.Options.ConfigurationExtensions.dll
 Microsoft.Extensions.Options.DataAnnotations.dll
 Microsoft.Extensions.Primitives.dll
+Microsoft.Extensions.Validation.dll
 Microsoft.Extensions.WebEncoders.dll
+Microsoft.IdentityModel.Abstractions.dll
 Microsoft.IdentityModel.Logging.dll
 Microsoft.IdentityModel.Protocols.dll
 Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
@@ -192,6 +202,8 @@ System.Drawing.dll
 System.Drawing.Primitives.dll
 System.Dynamic.Runtime.dll
 System.Formats.Asn1.dll
+System.Formats.Cbor.dll
+System.Formats.Tar.dll
 System.Globalization.dll
 System.Globalization.Calendars.dll
 System.Globalization.Extensions.dll
@@ -214,6 +226,7 @@ System.IO.Pipes.dll
 System.IO.Pipes.AccessControl.dll
 System.IO.UnmanagedMemoryStream.dll
 System.Linq.dll
+System.Linq.AsyncEnumerable.dll
 System.Linq.Expressions.dll
 System.Linq.Parallel.dll
 System.Linq.Queryable.dll
@@ -232,6 +245,7 @@ System.Net.Primitives.dll
 System.Net.Quic.dll
 System.Net.Requests.dll
 System.Net.Security.dll
+System.Net.ServerSentEvents.dll
 System.Net.ServicePoint.dll
 System.Net.Sockets.dll
 System.Net.WebClient.dll
@@ -265,6 +279,7 @@ System.Runtime.CompilerServices.VisualC.dll
 System.Runtime.Extensions.dll
 System.Runtime.Handles.dll
 System.Runtime.InteropServices.dll
+System.Runtime.InteropServices.JavaScript.dll
 System.Runtime.InteropServices.RuntimeInformation.dll
 System.Runtime.Intrinsics.dll
 System.Runtime.Loader.dll
@@ -277,6 +292,7 @@ System.Runtime.Serialization.Xml.dll
 System.Security.dll
 System.Security.AccessControl.dll
 System.Security.Claims.dll
+System.Security.Cryptography.dll
 System.Security.Cryptography.Algorithms.dll
 System.Security.Cryptography.Cng.dll
 System.Security.Cryptography.Csp.dll
@@ -299,8 +315,10 @@ System.Text.Encodings.Web.dll
 System.Text.Json.dll
 System.Text.RegularExpressions.dll
 System.Threading.dll
+System.Threading.AccessControl.dll
 System.Threading.Channels.dll
 System.Threading.Overlapped.dll
+System.Threading.RateLimiting.dll
 System.Threading.Tasks.dll
 System.Threading.Tasks.Dataflow.dll
 System.Threading.Tasks.Extensions.dll

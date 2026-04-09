@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -18,6 +19,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EControllers)]
     public class HostIdValidatorTests
     {
         private readonly string _testHostId = "test-host-id";
@@ -25,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly HostIdValidator _hostIdValidator;
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
-        private readonly Mock<IApplicationLifetime> _mockApplicationLifetime;
+        private readonly Mock<IHostApplicationLifetime> _mockApplicationLifetime;
         private BlobContainerClient _blobContainerClient;
         private bool _storageConfigured;
 
@@ -52,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             mockBlobStorageProvider.Setup(p => p.TryCreateHostingBlobContainerClient(out _blobContainerClient)).Returns(() => _storageConfigured);
 
             var hostNameProvider = new HostNameProvider(_environment);
-            _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
+            _mockApplicationLifetime = new Mock<IHostApplicationLifetime>(MockBehavior.Strict);
             _hostIdValidator = new HostIdValidator(_environment, mockBlobStorageProvider.Object, _mockApplicationLifetime.Object, hostNameProvider, logger);
 
             _storageConfigured = true;

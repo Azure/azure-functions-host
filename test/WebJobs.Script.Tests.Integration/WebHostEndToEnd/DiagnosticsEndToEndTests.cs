@@ -10,11 +10,13 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
     public class DiagnosticsEndToEndTests
     {
         private const string _scriptRoot = @"TestScripts\CSharp";

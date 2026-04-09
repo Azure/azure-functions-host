@@ -40,6 +40,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
 
             await CustomListener.RunAsync("one");
 
+            var jobhost = host.JobHostServices.GetRequiredService<IScriptJobHost>();
+            await jobhost.StopAsync();
+            await host.WebHost.StopAsync();
+            host.WebHost.Dispose();
             host.Dispose();
 
             // In this scenario, the logger throws an exception before we enter the try/catch for the function invocation.

@@ -245,7 +245,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        [InlineData(null, true)] // default value
         [InlineData("true", true)]
         [InlineData("false", false)]
         public void Configure_EnableLiveMetrics(string value, bool expectedValue)

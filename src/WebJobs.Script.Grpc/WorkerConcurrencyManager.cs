@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
@@ -27,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcherFactory _functionInvocationDispatcherFactory;
         private readonly IEnvironment _environment;
-        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly long _memoryLimit = AppServicesHostingUtility.GetMemoryLimitBytes();
         private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _functionsHostingConfigOptionsMonitor;
         private readonly Func<Task> _stopApplication;
@@ -45,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IEnvironment environment,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptionsMonitor,
-            IApplicationLifetime applicationLifetime,
+            IHostApplicationLifetime applicationLifetime,
             ILoggerFactory loggerFactory)
         {
             _functionInvocationDispatcherFactory = functionInvocationDispatcherFactory ?? throw new ArgumentNullException(nameof(functionInvocationDispatcherFactory));

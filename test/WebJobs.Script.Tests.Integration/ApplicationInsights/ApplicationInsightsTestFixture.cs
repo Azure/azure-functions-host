@@ -88,8 +88,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public void Dispose()
         {
-            TestHost?.Dispose();
-            HttpClient?.Dispose();
+            try
+            {
+                TestHost.WebHost.StopAsync().GetAwaiter().GetResult();
+                TestHost.WebHost.Dispose();
+                TestHost?.Dispose();
+                HttpClient?.Dispose();
+            }
+            catch (Exception)
+            {
+            }
 
             // App Insights takes 2 seconds to flush telemetry and because our container
             // is disposed on a background task, it doesn't block. So waiting here to ensure

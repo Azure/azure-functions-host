@@ -4,6 +4,9 @@ trigger:
     - dev
     - in-proc
     - release/*
+  tags:
+    include:
+    - '*'
 
 resources:
   repositories:

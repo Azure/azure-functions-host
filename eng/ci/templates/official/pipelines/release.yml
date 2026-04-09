@@ -3,6 +3,8 @@ parameters:
   type: stepList
 - name: folder
   type: string
+- name: packageName
+  type: string
 - name: public
   type: boolean
   default: false
@@ -46,6 +48,30 @@ stages:
     steps:
     - ${{ each step in parameters.downloadSteps }}:
       - ${{ step }}
+
+    - pwsh: |
+        $ErrorActionPreference = 'Stop'
+
+        $name = "${{ parameters.packageName }}".Trim()
+        Write-Host "Getting version for $name"
+        $package = Get-ChildItem -Path "$(Build.ArtifactStagingDirectory)/packages" -Recurse -Filter "$name.*.nupkg"
+
+        if ($package.Count -eq 0) {
+          Write-Host "##vso[task.logissue type=error;]Could not find package $name."
+          exit 1
+        }
+
+        if ($package.Count -gt 1) {
+          Write-Host "##vso[task.logissue type=error;]Too many packages matched $name."
+          exit 1
+        }
+
+        $version = $package.Name.Trim("$name.").Trim('.nupkg')
+        Write-Host "Package version: $version"
+        Write-Host "##vso[build.updatebuildnumber]$version"
+        Write-Host "##vso[build.addbuildtag]${{ parameters.packageName }}"
+        Write-Host "##vso[build.addbuildtag]$version"
+      displayName: Get package version
 
 - stage: Release
   dependsOn: Download

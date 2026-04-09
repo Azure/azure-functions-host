@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
 using Moq;
+using Microsoft.WebJobs.Script.Tests;
 using WebJobs.Script.Tests;
 using Xunit;
 
@@ -24,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     /// <summary>
     /// Class to run tests for Multi Language Runtime
     /// </summary>
+    [Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
     public class MultiLanguageEndToEndTests : IDisposable
     {
         /// <summary>

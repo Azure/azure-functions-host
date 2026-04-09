@@ -20,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
@@ -34,10 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         protected TestLoggerProvider _loggerProvider;
         protected string _expectedScriptPath;
         protected HttpClient _httpClient;
-        protected TestServer _httpServer;
         protected readonly object _originalTimeZoneInfoCache = GetCachedTimeZoneInfo();
         protected TestMetricsLogger _metricsLogger;
-
+        protected IHost _webHost;
         private const string TestSiteName = "test-site-name";
 
         public StandbyManagerE2ETestBase()
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        protected async Task<IWebHostBuilder> CreateWebHostBuilderAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
+        protected async Task<IHostBuilder> CreateWebHostBuilderAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
         {
             var httpConfig = new HttpConfiguration();
             var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
@@ -75,36 +75,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             var testMetricsTracker = new TestMetricsTracker();
-            var webHostBuilder = Program.CreateWebHostBuilder()
-                .ConfigureAppConfiguration(c =>
+            var builder = new HostBuilder()
+                .ConfigureWebHost(webHostBuilder =>
                 {
-                    // This source reads from AzureWebJobsScriptRoot, which does not work
-                    // with the custom paths that these tests are using.
-                    var source = c.Sources.OfType<WebScriptHostConfigurationSource>().SingleOrDefault();
-                    if (source != null)
+                    webHostBuilder.UseTestServer();
+
+                    // Register test overrides BEFORE UseStartup so that
+                    // ScriptApplicationHostOptionsSetup (registered by Startup.ConfigureServices)
+                    // runs after and correctly applies the standby path in placeholder mode.
+                    // In GenericWebHostBuilder, UseStartup and ConfigureServices both map to
+                    // HostBuilder.ConfigureServices in call order, so ordering matters here.
+                    webHostBuilder.ConfigureServices(services =>
                     {
-                        c.Sources.Remove(source);
-                    }
-                    c.AddTestSettings();
+                        services.ConfigureAll<ScriptApplicationHostOptions>(o =>
+                        {
+                            o.IsSelfHost = true;
+                            o.LogPath = Path.Combine(uniqueTestRootPath, "logs");
+                            o.SecretsPath = Path.Combine(uniqueTestRootPath, "secrets");
+                            o.ScriptPath = _expectedScriptPath = scriptRootPath;
+                        });
+
+                        services.AddSingleton<IEnvironment>(_ => environment);
+                        services.AddSingleton<IMetricsLogger>(_ => _metricsLogger);
+                        services.AddSingleton<ILinuxConsumptionMetricsTracker>(_ => testMetricsTracker);
+                    });
+
+                    webHostBuilder.UseStartup<WebHost.Startup>();
+                    webHostBuilder.ConfigureAppConfiguration(c =>
+                    {
+                        // This source reads from AzureWebJobsScriptRoot, which does not work
+                        // with the custom paths that these tests are using.
+                        var source = c.Sources.OfType<WebScriptHostConfigurationSource>().SingleOrDefault();
+                        if (source != null)
+                        {
+                            c.Sources.Remove(source);
+                        }
+                        c.AddTestSettings();
+                    });
                 })
                 .ConfigureLogging(c =>
                 {
                     c.AddProvider(_loggerProvider);
                     c.AddFilter((cat, lev) => true);
-                })
-                .ConfigureServices(c =>
-                {
-                    c.ConfigureAll<ScriptApplicationHostOptions>(o =>
-                    {
-                        o.IsSelfHost = true;
-                        o.LogPath = Path.Combine(uniqueTestRootPath, "logs");
-                        o.SecretsPath = Path.Combine(uniqueTestRootPath, "secrets");
-                        o.ScriptPath = _expectedScriptPath = scriptRootPath;
-                    });
-
-                    c.AddSingleton<IEnvironment>(_ => environment);
-                    c.AddSingleton<IMetricsLogger>(_ => _metricsLogger);
-                    c.AddSingleton<ILinuxConsumptionMetricsTracker>(_ => testMetricsTracker);
                 })
                 .ConfigureScriptHostLogging(b =>
                 {
@@ -121,14 +133,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .ConfigureScriptHostAppConfiguration(ConfigureScriptHostConfiguration);
 
-            return webHostBuilder;
+            return builder;
         }
 
-        protected async Task<IWebHost> InitializeTestHostAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
+        protected async Task<IHost> InitializeTestHostAsync(string testDirName, IEnvironment environment, string websiteSiteName = TestSiteName)
         {
             var webHostBuilder = await CreateWebHostBuilderAsync(testDirName, environment, websiteSiteName);
-            _httpServer = new TestServer(webHostBuilder);
-            _httpClient = _httpServer.CreateClient();
+            _webHost = webHostBuilder.Build();
+            await _webHost.StartAsync();
+
+            _httpClient = _webHost.GetTestClient();
             _httpClient.BaseAddress = new Uri("https://localhost/");
 
             TestHelpers.WaitForWebHost(_httpClient);
@@ -137,9 +151,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.NotNull(traces.Single(p => p.FormattedMessage.StartsWith("Host is in standby mode")));
 
-            _expectedHostId = await _httpServer.Host.Services.GetService<IHostIdProvider>().GetHostIdAsync(CancellationToken.None);
+            _expectedHostId = await _webHost.Services.GetService<IHostIdProvider>().GetHostIdAsync(CancellationToken.None);
 
-            return _httpServer.Host;
+            return _webHost;
         }
 
 
@@ -161,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         protected async Task<string[]> ListFunctions()
         {
-            var secretManager = _httpServer.Host.Services.GetService<ISecretManagerProvider>().Current;
+            var secretManager = _webHost.Services.GetService<ISecretManagerProvider>().Current;
             var keys = await secretManager.GetHostSecretsAsync();
             string key = keys.MasterKey;
 
@@ -196,8 +210,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public virtual void Dispose()
         {
             _loggerProvider?.Dispose();
-            _httpServer?.Dispose();
             _httpClient?.Dispose();
+
+            if (_webHost is not null)
+            {
+                try
+                {
+                    _webHost.StopAsync().GetAwaiter().GetResult();
+                }
+                catch
+                {
+                }
+
+                _webHost.Dispose();
+            }
+
             CleanupTestDirectory();
         }
     }

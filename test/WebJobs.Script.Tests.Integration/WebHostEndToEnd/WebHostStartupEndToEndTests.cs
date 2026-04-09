@@ -23,6 +23,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd;
 
+[Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
 public class WebHostStartupEndToEndTests
 {
     private static readonly string _scriptRootConfigPath = ConfigurationPath.Combine(ConfigurationSectionNames.WebHost, nameof(ScriptApplicationHostOptions.ScriptPath));
@@ -77,8 +78,9 @@ public class WebHostStartupEndToEndTests
         var loggerProvider = new TestLoggerProvider();
         var builder = CreateHostBuilder(loggerProvider, "FunctionExecutionContext");
 
-        using var testServer = new TestServer(builder);
-        var client = testServer.CreateClient();
+        using var host = builder.Build();
+        await host.StartAsync();
+        var client = host.GetTestClient();
 
         var response = await client.GetAsync("api/functionexecutioncontext");
         response.EnsureSuccessStatusCode();
@@ -102,7 +104,7 @@ public class WebHostStartupEndToEndTests
         TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(LanguageWorkerOptions));
     }
 
-    private static IWebHostBuilder CreateHostBuilder(TestLoggerProvider loggerProvider, params string[] functions)
+    private static IHostBuilder CreateHostBuilder(TestLoggerProvider loggerProvider, params string[] functions)
     {
         var environment = new TestEnvironment(new Dictionary<string, string>
         {
@@ -110,11 +112,10 @@ public class WebHostStartupEndToEndTests
             { EnvironmentSettingNames.AzureWebsiteContainerReady, "1" },
         });
 
-        return Program.CreateWebHostBuilder()
-            .ConfigureLogging(b =>
+        return Program.CreateHostBuilder()
+            .ConfigureWebHost(webHostBuilder =>
             {
-                b.AddProvider(loggerProvider);
-                b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Debug);
+                webHostBuilder.UseTestServer();
             })
             .ConfigureAppConfiguration(c =>
             {
@@ -122,6 +123,11 @@ public class WebHostStartupEndToEndTests
                 {
                     { _scriptRootConfigPath, @"TestScripts\CSharp" }
                 });
+            })
+            .ConfigureLogging(b =>
+            {
+                b.AddProvider(loggerProvider);
+                b.AddFilter<TestLoggerProvider>("Microsoft.Azure.WebJobs", LogLevel.Debug);
             })
             .ConfigureServices((bc, s) =>
             {

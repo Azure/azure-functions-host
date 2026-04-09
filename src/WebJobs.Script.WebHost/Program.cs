@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
+using ExtensionsHost = Microsoft.Extensions.Hosting.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -25,18 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             InitializeProcess();
 
-            var host = BuildWebHost(args);
+            var host = BuildHost(args);
 
             host.RunAsync()
                 .Wait();
         }
 
-        public static IWebHost BuildWebHost(string[] args)
+        public static IHost BuildHost(string[] args)
         {
-            return CreateWebHostBuilder(args).UseIIS().Build();
+            return CreateHostBuilder(args)
+                .Build();
         }
 
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args = null)
+        public static IHostBuilder CreateHostBuilder(string[] args = null)
         {
             // Setting this env variable to test placeholder scenarios locally.
 #if PLACEHOLDER_SIMULATION
@@ -44,60 +46,75 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "0");
 #endif
 
-            return AspNetCore.WebHost.CreateDefaultBuilder(args)
-                .ConfigureKestrel(o =>
+            return ExtensionsHost.CreateDefaultBuilder(args ?? Array.Empty<string>())
+                // Scope and build validation are intentionally disabled. The host uses a two-level
+                // DI hierarchy with cross-boundary service resolution that would fail generic scope
+                // validation. The custom DependencyValidator provides tighter, bespoke validation.
+                // This preserves the behavior of WebHost.CreateDefaultBuilder(), which also disabled
+                // scope validation in Production by default.
+                .UseDefaultServiceProvider((context, options) =>
                 {
-                    o.Limits.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
+                    options.ValidateScopes = false;
+                    options.ValidateOnBuild = false;
                 })
-                .UseSetting(WebHostDefaults.EnvironmentKey, Environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey))
-                .ConfigureServices(services =>
+                .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    services.Configure<IISServerOptions>(o =>
-                    {
-                        o.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
-                    });
-                })
-                .ConfigureAppConfiguration((builderContext, config) =>
-                {
-                    // replace the default environment source with our own
-                    IConfigurationSource envVarsSource = config.Sources.OfType<EnvironmentVariablesConfigurationSource>().FirstOrDefault();
-                    if (envVarsSource != null)
-                    {
-                        config.Sources.Remove(envVarsSource);
-                    }
+                    webBuilder
+                        .ConfigureKestrel(o =>
+                        {
+                            o.Limits.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
+                        })
+                        .UseSetting(WebHostDefaults.EnvironmentKey, Environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey))
+                        .ConfigureServices(services =>
+                        {
+                            services.Configure<IISServerOptions>(o =>
+                            {
+                                o.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
+                            });
+                        })
+                        .ConfigureAppConfiguration((builderContext, config) =>
+                        {
+                            // replace the default environment source with our own
+                            IConfigurationSource envVarsSource = config.Sources.OfType<EnvironmentVariablesConfigurationSource>().FirstOrDefault();
+                            if (envVarsSource != null)
+                            {
+                                config.Sources.Remove(envVarsSource);
+                            }
 
-                    config.Add(new ScriptEnvironmentVariablesConfigurationSource());
+                            config.Add(new ScriptEnvironmentVariablesConfigurationSource());
 
-                    config.Add(new WebScriptHostConfigurationSource
-                    {
-                        IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppService(),
-                        IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsAnyLinuxConsumption(),
-                        IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppService()
-                    });
-                    config.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
+                            config.Add(new WebScriptHostConfigurationSource
+                            {
+                                IsAppServiceEnvironment = SystemEnvironment.Instance.IsAppService(),
+                                IsLinuxContainerEnvironment = SystemEnvironment.Instance.IsAnyLinuxConsumption(),
+                                IsLinuxAppServiceEnvironment = SystemEnvironment.Instance.IsLinuxAppService()
+                            });
+                            config.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
 
-                    var hostingEnvironmentConfigFilePath = SystemEnvironment.Instance.GetFunctionsHostingEnvironmentConfigFilePath();
-                    if (!string.IsNullOrEmpty(hostingEnvironmentConfigFilePath))
-                    {
-                        config.AddJsonFile(hostingEnvironmentConfigFilePath, optional: true, reloadOnChange: false);
-                    }
-                })
-                .ConfigureLogging((context, loggingBuilder) =>
-                {
-                    loggingBuilder.ClearProviders();
+                            var hostingEnvironmentConfigFilePath = SystemEnvironment.Instance.GetFunctionsHostingEnvironmentConfigFilePath();
+                            if (!string.IsNullOrEmpty(hostingEnvironmentConfigFilePath))
+                            {
+                                config.AddJsonFile(hostingEnvironmentConfigFilePath, optional: true, reloadOnChange: false);
+                            }
+                        })
+                        .ConfigureLogging((context, loggingBuilder) =>
+                        {
+                            loggingBuilder.ClearProviders();
 
-                    loggingBuilder.AddDefaultWebJobsFilters();
-                    loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
-                    loggingBuilder.AddForwardingLogger();
-                    loggingBuilder.Services.AddSingleton<DeferredLoggerProvider>();
-                    loggingBuilder.Services.AddSingleton<ILoggerProvider>(s => s.GetRequiredService<DeferredLoggerProvider>());
-                    loggingBuilder.Services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
-                    if (context.HostingEnvironment.IsDevelopment())
-                    {
-                        loggingBuilder.AddConsole();
-                    }
-                })
-                .UseStartup<Startup>();
+                            loggingBuilder.AddDefaultWebJobsFilters();
+                            loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
+                            loggingBuilder.AddForwardingLogger();
+                            loggingBuilder.Services.AddSingleton<DeferredLoggerProvider>();
+                            loggingBuilder.Services.AddSingleton<ILoggerProvider>(s => s.GetRequiredService<DeferredLoggerProvider>());
+                            loggingBuilder.Services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();
+                            if (context.HostingEnvironment.IsDevelopment())
+                            {
+                                loggingBuilder.AddConsole();
+                            }
+                        })
+                        .UseStartup<Startup>()
+                        .UseIIS();
+                });
         }
 
         /// <summary>

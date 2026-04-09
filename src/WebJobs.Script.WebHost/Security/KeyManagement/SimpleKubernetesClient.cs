@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly HttpClient _httpClient;
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
+        private readonly CancellationTokenSource _cts = new();
         private Action _watchCallback;
         private bool _disposed;
         private AutoRecoveringFileSystemWatcher _fileWatcher;
@@ -96,9 +97,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task RunWatcher()
         {
+            // watch API requests terminate after 4 minutes
             while (!_disposed)
             {
-                // watch API requests terminate after 4 minutes
                 await RunWatcherInternal();
             }
         }
@@ -123,13 +124,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         using (var response = await noTimeoutClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
                         using (var reader = new StreamReader(await response.Content.ReadAsStreamAsync()))
                         {
-                            while (!reader.EndOfStream && !_disposed)
+                            while (!_disposed)
                             {
-                                reader.ReadLine(); // Read the line-json update
+                                // Have we reached the end of the stream?
+                                if (await reader.ReadLineAsync(_cts.Token) is null)
+                                {
+                                    break;
+                                }
+
                                 _watchCallback?.Invoke();
                             }
                         }
-                        await Task.Delay(TimeSpan.FromSeconds(1));
+                        await Task.Delay(TimeSpan.FromSeconds(1), _cts.Token);
                     }
                 }
             }
@@ -297,7 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var privateChain = new X509Chain();
                 privateChain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
 
-                var caCert = new X509Certificate2(CaFile);
+                var caCert = X509CertificateLoader.LoadCertificateFromFile(CaFile);
                 // https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509chainpolicy?view=netcore-2.2
                 // Add CA cert to the chain store to include it in the chain check.
                 privateChain.ChainPolicy.ExtraStore.Add(caCert);
@@ -329,6 +335,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (disposing)
                 {
+                    _cts.Cancel();
+                    _cts.Dispose();
                     _httpClient.Dispose();
                     _fileWatcher?.Dispose();
                 }

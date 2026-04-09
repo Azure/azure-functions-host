@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -36,15 +35,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public async Task<bool> MountCifs(string connectionString, string contentShare, string targetPath)
         {
-            var sa = CloudStorageAccount.Parse(connectionString);
-            var key = Convert.ToBase64String(sa.Credentials.ExportKey());
+            var settings = ParseStorageConnectionString(connectionString);
+            var accountName = settings["AccountName"];
+            var accountKey = settings["AccountKey"];
+            var endpointSuffix = settings.TryGetValue("EndpointSuffix", out var suffix) ? suffix : "core.windows.net";
+            var fileHost = settings.TryGetValue("FileEndpoint", out var fileEndpoint)
+                ? new Uri(fileEndpoint).Host
+                : $"{accountName}.file.{endpointSuffix}";
 
             HttpResponseMessage responseMessage = await SendAsync(new[]
             {
                 new KeyValuePair<string, string>(Operation, "cifs"),
-                new KeyValuePair<string, string>("host", sa.FileEndpoint.Host),
-                new KeyValuePair<string, string>("accountName", sa.Credentials.AccountName),
-                new KeyValuePair<string, string>("accountKey", key),
+                new KeyValuePair<string, string>("host", fileHost),
+                new KeyValuePair<string, string>("accountName", accountName),
+                new KeyValuePair<string, string>("accountKey", accountKey),
                 new KeyValuePair<string, string>("contentShare", contentShare),
                 new KeyValuePair<string, string>("targetPath", targetPath),
             });
@@ -168,6 +172,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             return serialized;
+        }
+
+        private static Dictionary<string, string> ParseStorageConnectionString(string connectionString)
+        {
+            return connectionString
+                .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Split('=', 2))
+                .Where(parts => parts.Length == 2)
+                .ToDictionary(parts => parts[0].Trim(), parts => parts[1].Trim(), StringComparer.OrdinalIgnoreCase);
         }
     }
 }

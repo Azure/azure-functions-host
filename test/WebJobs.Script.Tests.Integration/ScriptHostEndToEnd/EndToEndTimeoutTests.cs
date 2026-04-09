@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
+    [Trait(TestTraits.Group, TestTraits.NonE2EAppInsights)]
     public class EndToEndTimeoutTests
     {
         private static readonly ScriptSettingsManager SettingsManager = ScriptSettingsManager.Instance;
@@ -57,10 +59,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                  // We do not expect 'Done' to be written here.
                  Assert.NotEmpty(logs);
                  Assert.False(logs.Any(l => l.EndsWith("Done")));
+                 return Task.CompletedTask;
              });
         }
 
-        private async Task RunTokenTest(string scenario, Action<IEnumerable<string>> verify)
+        private async Task RunTokenTest(string scenario, Func<IEnumerable<string>, Task> verify)
         {
             string functionName = "TimeoutToken";
             TestHelpers.ClearFunctionLogs(functionName);
@@ -79,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 var exception = GetExceptionHandler(host).TimeoutExceptionInfos.Single().SourceException;
                 Assert.IsType<FunctionTimeoutException>(exception);
 
-                verify(_loggerProvider.GetAllLogMessages().Where(t => t.FormattedMessage != null).Select(t => t.FormattedMessage));
+                await verify(_loggerProvider.GetAllLogMessages().Where(t => t.FormattedMessage != null).Select(t => t.FormattedMessage));
             }
         }
 
@@ -118,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
         private IHostBuilder CreateTimeoutHostBuilder(string scriptPath, TimeSpan timeout, string functionName)
         {
-            var builder = new HostBuilder()
+            var builder = Program.CreateHostBuilder()
                .ConfigureDefaultTestWebScriptHost(b =>
                {
                    b.Services.Configure<ScriptJobHostOptions>(o =>

@@ -14,9 +14,9 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Eventing.File;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly ScriptJobHostOptions _scriptOptions;
         private readonly IScriptEventManager _eventManager;
-        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IEnvironment _environment;
         private readonly string _hostLogPath;
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private object _stopWatchersLock = new object();
         private long _suspensionRequestsCount = 0;
 
-        public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IApplicationLifetime applicationLifetime, IScriptHostManager scriptHostManager, IEnvironment environment)
+        public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IHostApplicationLifetime applicationLifetime, IScriptHostManager scriptHostManager, IEnvironment environment)
         {
             _scriptOptions = scriptOptions.Value;
             _eventManager = eventManager;
