@@ -70,7 +70,7 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
-      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -f net8.0 -p:PlaceholderSimulation=true
+      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -p:PlaceholderSimulation=true
       workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
 
   - pwsh: |
