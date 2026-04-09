@@ -103,6 +103,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         }
 
         /// <inheritdoc/>
+        public void SendWorkerDrainRequest()
+        {
+            SendStreamingMessage(new Grpc.Messages.StreamingMessage
+            {
+                WorkerDrainRequest = new Grpc.Messages.WorkerDrainRequest()
+            });
+        }
+
+        /// <inheritdoc/>
         protected override void DisposeWorkerResources()
         {
         }

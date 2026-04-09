@@ -44,6 +44,12 @@ GET {{runtimeHost}}/admin/host/ping
 ### Invoke an HTTP trigger function (after worker is linked)
 GET {{runtimeHost}}/api/HttpTrigger
 
+###
+
+### Stop the runtime instance (full runtime stop)
+### Drains host listeners, disconnects all workers, sends WorkerDrainComplete to each.
+POST {{runtimeHost}}/admin/instance/stop?code={{masterKey}}
+
 ### ============================================================
 ### Worker Proxy Management APIs
 ### ============================================================

@@ -46,4 +46,12 @@ internal interface IConnectedWorkerChannel : IRpcWorkerChannel
     /// Sends a <c>WorkerDrainComplete</c> message to the worker proxy over gRPC.
     /// </summary>
     void SendWorkerDrainComplete();
+
+    /// <summary>
+    /// Sends a <c>WorkerDrainRequest</c> message to the worker proxy over gRPC.
+    /// Used in runtime-initiated stop to notify the proxy it should
+    /// enter the <c>Draining</c> state. Idempotent — safe to send even if the proxy
+    /// already initiated the drain.
+    /// </summary>
+    void SendWorkerDrainRequest();
 }

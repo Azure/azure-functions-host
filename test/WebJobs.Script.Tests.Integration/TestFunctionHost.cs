@@ -489,6 +489,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             HttpResponseMessage response = await HttpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string body = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[TestFunctionHost] GetHostStatusAsync returned {(int)response.StatusCode}: {body}");
+            }
+
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsAsync<HostStatus>();
         }
@@ -506,7 +513,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (!_isDisposed)
             {
                 HttpClient.Dispose();
-                
+
                 _stillRunningTimer?.Change(-1, -1);
                 _stillRunningTimer?.Dispose();
 
@@ -521,8 +528,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public async Task<bool> IsHostStarted()
         {
-            HostStatus status = await GetHostStatusAsync();
-            return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
+            try
+            {
+                HostStatus status = await GetHostStatusAsync();
+                return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
+            }
+            catch (HttpRequestException ex)
+            {
+                // Host may return non-success status codes transiently during startup.
+                // Log details to help diagnose flaky test failures.
+                Console.WriteLine($"[TestFunctionHost] IsHostStarted check failed: {ex.Message}");
+                Console.WriteLine($"[TestFunctionHost] Host logs at time of failure:");
+                Console.WriteLine(GetLog());
+                throw;
+            }
         }
 
         private class TestStartup
