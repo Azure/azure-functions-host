@@ -10,7 +10,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -23,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
 /// Uses TestFunctionHost with a mocked <see cref="IWorkerConnectionManager"/>
 /// to verify the full HTTP pipeline: routing, auth, serialization.
 /// </summary>
-public class WorkerAllocationApiTests : IAsyncLifetime, IDisposable
+public class WorkerAllocationApiTests : IAsyncLifetime
 {
     private readonly Mock<IWorkerConnectionManager> _mockConnectionManager;
     private readonly string _tempDir;
@@ -36,7 +35,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime, IDisposable
         Directory.CreateDirectory(_tempDir);
     }
 
-    public async Task InitializeAsync()
+    public Task InitializeAsync()
     {
         _host = new TestFunctionHost(
             _tempDir,
@@ -46,16 +45,16 @@ public class WorkerAllocationApiTests : IAsyncLifetime, IDisposable
                 services.AddSingleton(_mockConnectionManager.Object);
             });
 
-        // TestFunctionHost starts automatically in its constructor.
-        // Wait for the host to be ready.
-        await Task.Delay(TimeSpan.FromSeconds(1));
+        return Task.CompletedTask;
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
-
-    public void Dispose()
+    public async Task DisposeAsync()
     {
-        _host?.Dispose();
+        if (_host is not null)
+        {
+            await _host.WebHost.StopAsync();
+            _host.Dispose();
+        }
 
         try
         {

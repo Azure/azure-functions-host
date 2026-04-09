@@ -20,6 +20,7 @@ bool useContainers = string.Equals(
 const int runtimeGrpcPort = 50051;
 const int workerGrpcPort = 50052;
 const int httpProxyPort = 50053;
+const int managementPort = 50054;
 const int runtimePort = 7071;
 const int mockWorkerHttpPort = 8080;
 
@@ -110,7 +111,8 @@ static void AddProjectResources(
         .WithArgs(
             "--runtime-grpc-port", runtimeGrpcPort.ToString(),
             "--worker-grpc-port", workerGrpcPort.ToString(),
-            "--http-proxy-port", httpProxyPort.ToString())
+            "--http-proxy-port", httpProxyPort.ToString(),
+            "--management-port", managementPort.ToString())
         .WaitFor(runtime);
 
     var mockWorker = builder.AddProject<Projects.MockWorker>("mock-worker")
@@ -135,10 +137,12 @@ static void AddContainerResources(
         .WithEndpoint(targetPort: runtimeGrpcPort, name: "proxy-runtime-grpc", scheme: "http")
         .WithEndpoint(targetPort: workerGrpcPort, name: "proxy-worker-grpc", scheme: "http")
         .WithEndpoint(targetPort: httpProxyPort, name: "http-proxy", scheme: "http")
+        .WithEndpoint(targetPort: managementPort, name: "management", scheme: "http")
         .WithArgs(
             "--runtime-grpc-port", runtimeGrpcPort.ToString(),
             "--worker-grpc-port", workerGrpcPort.ToString(),
-            "--http-proxy-port", httpProxyPort.ToString());
+            "--http-proxy-port", httpProxyPort.ToString(),
+            "--management-port", managementPort.ToString());
 
     // Tell the proxy its externally-reachable HTTP proxy URL (used in the HttpUri
     // capability rewrite) and the mock worker's HTTP endpoint for reverse-proxying.
@@ -162,6 +166,8 @@ static void AddContainerResources(
         {
             context.EnvironmentVariables["WORKER_HTTP_ENDPOINT"] = mockWorkerHttpEndpoint.Property(EndpointProperty.Url);
             context.EnvironmentVariables["HTTP_PROXY_ENDPOINT"] = proxyHttpEndpoint.Property(EndpointProperty.Url);
+            var runtimeGrpcEndpont = workerProxy.Resource.GetEndpoint("proxy-runtime-grpc");
+            context.EnvironmentVariables["RUNTIME_GRPC_ENDPOINT"] = runtimeGrpcEndpont.Property(EndpointProperty.Url);
         });
 
     // --- Runtime (container) ---
@@ -171,7 +177,7 @@ static void AddContainerResources(
         .WithEnvironment(context =>
         {
             var runtimeGrpc = workerProxy.GetEndpoint("proxy-runtime-grpc");
-            context.EnvironmentVariables["FUNCTIONS_WORKER_EXTERNAL_GRPC_ENDPOINT"] = runtimeGrpc.Property(EndpointProperty.Url);
+            // context.EnvironmentVariables["FUNCTIONS_WORKER_EXTERNAL_GRPC_ENDPOINT"] = runtimeGrpc.Property(EndpointProperty.Url);
         })
         .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "node")
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
