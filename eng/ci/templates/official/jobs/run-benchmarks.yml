@@ -30,7 +30,7 @@ jobs:
     agentId: ${{ parameters.functionAppName }}${{ parameters.os }}
     runDescription: ${{ parameters.description }}
     functionApp: ${{ parameters.functionAppName }}
-    benchmarkArtifactName: benchmark_results_$(Agent.OS)_$(functionApp)
+    benchmarkArtifactName: AzFunc_${{ parameters.os }}_${{ parameters.functionAppName }}
     functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
     traceDirectory: $(Build.ArtifactStagingDirectory)/out
     benchmarkResultsJsonPath: $(traceDirectory)/BenchmarkResults/$(Build.BuildNumber)_$(functionApp).json
@@ -54,7 +54,7 @@ jobs:
       - output: pipelineArtifact
         displayName: Publish artifacts
         path: $(traceDirectory)
-        artifact: AzFunc_$(Build.BuildNumber)_${{ parameters.os }}_${{ parameters.functionAppName }}
+        artifact: $(benchmarkArtifactName)
         condition: always()
 
   steps:
@@ -154,7 +154,7 @@ jobs:
       $fileNamePattern = "*_$(functionApp).json"
 
       if (Test-Path $baselineDir -PathType Container) {
-          $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern | Select-Object -First 1
+          $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern -Recurse | Select-Object -First 1
 
           if ($baselineFile) {
               Write-Host "Found baseline benchmark result file: $($baselineFile.FullName)"
