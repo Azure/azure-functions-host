@@ -5,14 +5,14 @@
 ###
 ### Prerequisites:
 ###   1. Start the Aspire harness (or start the runtime manually)
-###   2. Get the master key from the runtime's admin API
+###   2. Select either the 'project' (default) or 'container' environment, based on how you started Aspire.
 ###
 ### Variables — update these for your environment:
+### Select "project" or "container" environment to toggle workerGrpcEndpoint.
 
 @runtimeHost = http://localhost:7071
 @workerProxyHost = http://localhost:50054
 @masterKey = dev-master-key
-@workerGrpcEndpoint = http://localhost:50051
 
 ### ============================================================
 ### Runtime Admin APIs

@@ -1,11 +1,11 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Functions.WorkerProxy;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Azure.Functions.WorkerProxy;
 using Yarp.ReverseProxy.Forwarder;
 
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args });
+var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
 
 // Prevent Aspire (or other orchestrators) from overriding our Kestrel configuration
 // via ASPNETCORE_URLS. The worker proxy manages its own ports explicitly.
@@ -24,6 +24,11 @@ builder.Services.AddSingleton<WorkerPodStateManager>();
 builder.Services.AddSingleton<FunctionRpcRelay>();
 builder.Services.AddGrpc();
 builder.Services.AddHttpForwarder();
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.TypeInfoResolverChain.Insert(0, WorkerProxyJsonContext.Default);
+});
 
 builder.WebHost.ConfigureKestrel(options =>
 {
@@ -91,7 +96,7 @@ app.MapPost("/instanceState", async (HttpContext ctx, CancellationToken cancella
     // Always attempt to read — ContentLength may be null for chunked requests.
     try
     {
-        var clientState = await ctx.Request.ReadFromJsonAsync<WorkerPodState>(cancellationToken);
+        var clientState = await ctx.Request.ReadFromJsonAsync(WorkerProxyJsonContext.Default.WorkerPodState, cancellationToken);
         clientRevisionId = clientState?.RevisionId ?? 0;
     }
     catch
