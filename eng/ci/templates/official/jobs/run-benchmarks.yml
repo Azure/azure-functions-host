@@ -131,29 +131,6 @@ jobs:
           }
         } while (-not $Entity)
 
-  - pwsh: |
-      $xml = [xml](Get-Content "$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj")
-      $tfm = ($xml.Project.PropertyGroup | Where-Object { $_.TargetFramework } | Select-Object -First 1).TargetFramework.Trim()
-      # Extract major.minor version from TFM (e.g., "net10.0" -> "10.0")
-      $channelVersion = $tfm -replace '^net', ''
-      Write-Host "Detected TFM: $tfm (channel: $channelVersion)"
-
-      $metadataUrl = "https://builds.dotnet.microsoft.com/dotnet/release-metadata/$channelVersion/releases.json"
-      Write-Host "Fetching release metadata from: $metadataUrl"
-      $metadata = Invoke-RestMethod -Uri $metadataUrl
-      $release = $metadata.releases[0]
-
-      $sdkVersion = $release.sdk.version
-      $runtimeVersion = $release.runtime.version
-      $aspNetVersion = $release.'aspnetcore-runtime'.version
-
-      Write-Host "Resolved .NET versions - SDK: $sdkVersion, Runtime: $runtimeVersion, ASP.NET Core: $aspNetVersion"
-      Write-Host "##vso[task.setvariable variable=dotnetTfm]$tfm"
-      Write-Host "##vso[task.setvariable variable=dotnetSdkVersion]$sdkVersion"
-      Write-Host "##vso[task.setvariable variable=dotnetRuntimeVersion]$runtimeVersion"
-      Write-Host "##vso[task.setvariable variable=dotnetAspNetVersion]$aspNetVersion"
-    displayName: Resolve .NET version info for crank
-
   - task: AzureCLI@2
     inputs:
       azureSubscription: $(ServiceConnection)
@@ -161,7 +138,7 @@ jobs:
       scriptLocation: inlineScript
       inlineScript: |
         $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(Build.SourceVersion) --property buildNumber=$(Build.BuildNumber) --property buildId=$(Build.BuildId) --property sourceBranch=$(Build.SourceBranch) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
-        $crankArgs += " --hostruntime.framework $(dotnetTfm) --hostruntime.sdkVersion $(dotnetSdkVersion) --hostruntime.runtimeVersion $(dotnetRuntimeVersion) --hostruntime.aspNetCoreVersion $(dotnetAspNetVersion)"
+        $crankArgs += " --hostruntime.framework net10.0 --hostruntime.sdkVersion 10.0.103 --hostruntime.runtimeVersion 10.0.5 --hostruntime.aspNetCoreVersion 10.0.5"
         $crankArgs += " --hostruntime.options.traceOutput $(traceDirectory)/$(Build.BuildNumber)_$(functionApp)_$(Agent.OS)"
         $crankArgs += " --variable CrankAgentAppVm=$(appAgentHostName) --variable CrankAgentLoadVm=localhost --variable AspNetUrls=http://$(appAgentHostName):5000"
         $crankArgs += " $(crankExtraArguments)"
