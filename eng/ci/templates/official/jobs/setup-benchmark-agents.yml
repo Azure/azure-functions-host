@@ -34,6 +34,12 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  - task: UseDotNet@2 # Needed by crank
+    displayName: Install .NET 8
+    inputs:
+      packageType: sdk
+      version: 8.x
+
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Agent tool
 
