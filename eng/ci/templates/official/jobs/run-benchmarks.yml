@@ -138,7 +138,6 @@ jobs:
       scriptLocation: inlineScript
       inlineScript: |
         $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(Build.SourceVersion) --property buildNumber=$(Build.BuildNumber) --property buildId=$(Build.BuildId) --property sourceBranch=$(Build.SourceBranch) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
-        $crankArgs += " --hostruntime.sdkVersion 10.0.103 --hostruntime.runtimeVersion 10.0.5"
         $crankArgs += " --hostruntime.options.traceOutput $(traceDirectory)/$(Build.BuildNumber)_$(functionApp)_$(Agent.OS)"
         $crankArgs += " --variable CrankAgentAppVm=$(appAgentHostName) --variable CrankAgentLoadVm=localhost --variable AspNetUrls=http://$(appAgentHostName):5000"
         $crankArgs += " $(crankExtraArguments)"
