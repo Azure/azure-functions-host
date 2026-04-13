@@ -125,8 +125,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                 if (_placeholderLanguageWorkersList.Count() != 0)
                 {
-                    return Task.WhenAll(_placeholderLanguageWorkersList.Select(runtime =>
-                    _webHostRpcWorkerChannelManager.InitializeChannelAsync(_languageWorkerOptions.CurrentValue.WorkerConfigs, runtime)));
+                    var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
+                    var runtimesToInit = _placeholderLanguageWorkersList
+                        .Where(runtime =>
+                        {
+                            var config = workerConfigs?.FirstOrDefault(c =>
+                                string.Equals(c.Description?.Language, runtime, StringComparison.OrdinalIgnoreCase));
+                            if (config?.Description?.SkipPlaceholderInit == true)
+                            {
+                                _logger.LogDebug("Skipping placeholder channel initialization for runtime: {runtime} (skipPlaceholderInit=true)", runtime);
+                                return false;
+                            }
+                            return true;
+                        });
+
+                    if (runtimesToInit.Any())
+                    {
+                        return Task.WhenAll(runtimesToInit.Select(runtime =>
+                            _webHostRpcWorkerChannelManager.InitializeChannelAsync(workerConfigs, runtime)));
+                    }
                 }
             }
             return Task.CompletedTask;

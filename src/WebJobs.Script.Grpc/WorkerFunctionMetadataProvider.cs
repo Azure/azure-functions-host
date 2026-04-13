@@ -62,6 +62,19 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _logger.LogInformation("Fetching metadata for workerRuntime: {workerRuntime}", _workerRuntime);
 
+            // Skip worker init in placeholder mode if the runtime opts out (e.g., native/compiled runtimes
+            // where the worker binary doesn't exist until deployment).
+            if (_environment.IsPlaceholderModeEnabled())
+            {
+                var config = workerConfigs?.FirstOrDefault(c =>
+                    string.Equals(c.Description?.Language, _workerRuntime, StringComparison.OrdinalIgnoreCase));
+                if (config?.Description?.SkipPlaceholderInit == true)
+                {
+                    _logger.LogInformation("Skipping worker initialization in placeholder mode for runtime: {workerRuntime} (skipPlaceholderInit=true)", _workerRuntime);
+                    return new FunctionMetadataResult(false, ImmutableArray<FunctionMetadata>.Empty);
+                }
+            }
+
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
             _logger.ReadingFunctionMetadataFromProvider(_metadataProviderName);
 

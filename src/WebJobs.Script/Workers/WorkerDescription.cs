@@ -26,6 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public string ExecutableWorkingDirectory { get; set; }
 
         /// <summary>
+        /// Gets or sets whether to skip initializing this worker during placeholder mode.
+        /// When true, the host will not attempt to start the worker process in placeholder mode.
+        /// Used by runtimes where the worker binary is deployed at specialization time (e.g., native/compiled runtimes).
+        /// </summary>
+        public bool SkipPlaceholderInit { get; set; }
+
+        /// <summary>
         /// Gets or sets the default path to the worker.
         /// </summary>
         public string DefaultWorkerPath { get; set; }
