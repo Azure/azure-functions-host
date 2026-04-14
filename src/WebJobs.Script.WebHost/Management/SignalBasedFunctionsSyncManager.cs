@@ -18,8 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
     {
         private readonly IMeshServiceClient _meshServiceClient;
         private readonly ILogger _logger;
-        private readonly IScriptWebHostEnvironment _webHostEnvironment;
-        private readonly IEnvironment _environment;
 
         public SignalBasedFunctionsSyncManager(
             IHostIdProvider hostIdProvider,
@@ -39,40 +37,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             _meshServiceClient = meshServiceClient;
             _logger = logger;
-            _webHostEnvironment = webHostEnvironment;
-            _environment = environment;
         }
 
-        public override async Task<TriggersOperationResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
+        // Overrides the default settriggers HTTP call to instead notify the mesh service
+        // with a content hash of the triggers payload
+        protected override async Task<(bool Success, string ErrorMessage)> SetTriggersAsync(string content)
         {
-            var result = new TriggersOperationResult
-            {
-                Success = true
-            };
-
-            if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
-            {
-                result.Success = false;
-                result.Error = "Invalid environment for SyncTriggers operation.";
-                _logger.LogWarning(result.Error);
-
-                return result;
-            }
-
             try
             {
-                var payload = await GetSyncTriggersPayload();
-                string contentHash = ComputeContentHash(payload.Content);
+                string contentHash = ComputeContentHash(content);
                 await _meshServiceClient.NotifyTriggersChanged(contentHash);
+
+                return (true, null);
             }
             catch (Exception ex)
             {
-                result.Success = false;
-                result.Error = "Failed to notify triggers changed.";
-                _logger.LogError(ex, result.Error);
-            }
+                string message = "Failed to notify triggers changed.";
+                _logger.LogError(ex, message);
 
-            return result;
+                return (false, message);
+            }
         }
 
         private static string ComputeContentHash(string content)

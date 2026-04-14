@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public virtual async Task<TriggersOperationResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
+        public async Task<TriggersOperationResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
         {
             var result = new TriggersOperationResult
             {
@@ -304,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return _hashBlobClient;
         }
 
-        protected async Task<SyncTriggersPayload> GetSyncTriggersPayload()
+        private async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
             PrepareSyncTriggers();
 
@@ -730,7 +730,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         // This function will call POST https://{app}.azurewebsites.net/operation/settriggers with the content
         // of triggers. It'll verify app ownership using a site token valid for 5 minutes. It should be plenty.
-        private async Task<(bool Success, string ErrorMessage)> SetTriggersAsync(string content)
+        protected virtual async Task<(bool Success, string ErrorMessage)> SetTriggersAsync(string content)
         {
             // sanitize the content before logging
             var sanitizedContent = JToken.Parse(content);

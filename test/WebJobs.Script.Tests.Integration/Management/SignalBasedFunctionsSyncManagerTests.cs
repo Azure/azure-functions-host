@@ -50,46 +50,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns("1");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns("appName.azurewebsites.net");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(ScriptConstants.FlexConsumptionSku);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
 
             _mockMeshServiceClient = new Mock<IMeshServiceClient>();
-            _mockFunctionMetadataManager = new Mock<IFunctionMetadataManager>();
-            _mockFunctionMetadataManager.Setup(p => p.GetFunctionMetadata(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
-                .Returns(ImmutableArray<FunctionMetadata>.Empty);
-            _mockHostIdProvider = new Mock<IHostIdProvider>();
-            _mockHostIdProvider.Setup(p => p.GetHostIdAsync(It.IsAny<CancellationToken>())).ReturnsAsync("testhostid");
 
-            var mockAppHostOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
-            mockAppHostOptions.Setup(p => p.CurrentValue).Returns(new ScriptApplicationHostOptions
-            {
-                ScriptPath = "somePath"
-            });
-            _appHostOptions = mockAppHostOptions.Object;
-
-            var mockHostingConfigOptions = new Mock<IOptions<FunctionsHostingConfigOptions>>();
-            mockHostingConfigOptions.Setup(p => p.Value).Returns(new FunctionsHostingConfigOptions());
-            _hostingConfigOptions = mockHostingConfigOptions.Object;
-
-            _signalSyncManager = new SignalBasedFunctionsSyncManager(
-                _mockHostIdProvider.Object,
-                _appHostOptions,
-                NullLogger<SignalBasedFunctionsSyncManager>.Instance,
-                Mock.Of<IHttpClientFactory>(),
-                Mock.Of<ISecretManagerProvider>(),
-                _mockWebHostEnvironment.Object,
-                _mockEnvironment.Object,
-                new HostNameProvider(_mockEnvironment.Object),
-                _mockFunctionMetadataManager.Object,
-                Mock.Of<IAzureBlobStorageProvider>(),
-                _hostingConfigOptions,
-                Mock.Of<IScriptHostManager>(),
-                _mockMeshServiceClient.Object);
-        }
-
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task TrySyncTriggers_NotifiesWithContentHash(bool isBackgroundSync)
-        {
             var metadata = new FunctionMetadata
             {
                 Name = "TestFunction",
@@ -109,11 +73,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 }
             });
 
+            _mockFunctionMetadataManager = new Mock<IFunctionMetadataManager>();
             _mockFunctionMetadataManager.Setup(p => p.GetFunctionMetadata(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
                 .Returns(ImmutableArray.Create(metadata));
 
-            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
+            _mockHostIdProvider = new Mock<IHostIdProvider>();
+            _mockHostIdProvider.Setup(p => p.GetHostIdAsync(It.IsAny<CancellationToken>())).ReturnsAsync("testhostid");
 
+            var mockAppHostOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
+            mockAppHostOptions.Setup(p => p.CurrentValue).Returns(new ScriptApplicationHostOptions
+            {
+                ScriptPath = "somePath"
+            });
+            _appHostOptions = mockAppHostOptions.Object;
+
+            var mockHostingConfigOptions = new Mock<IOptions<FunctionsHostingConfigOptions>>();
+            mockHostingConfigOptions.Setup(p => p.Value).Returns(new FunctionsHostingConfigOptions());
+            _hostingConfigOptions = mockHostingConfigOptions.Object;
+
+            var configuration = ScriptSettingsManager.BuildDefaultConfiguration();
+            var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configuration);
+
+            _signalSyncManager = new SignalBasedFunctionsSyncManager(
+                _mockHostIdProvider.Object,
+                _appHostOptions,
+                NullLogger<SignalBasedFunctionsSyncManager>.Instance,
+                Mock.Of<IHttpClientFactory>(),
+                Mock.Of<ISecretManagerProvider>(),
+                _mockWebHostEnvironment.Object,
+                _mockEnvironment.Object,
+                new HostNameProvider(_mockEnvironment.Object),
+                _mockFunctionMetadataManager.Object,
+                azureBlobStorageProvider,
+                _hostingConfigOptions,
+                Mock.Of<IScriptHostManager>(),
+                _mockMeshServiceClient.Object);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task TrySyncTriggers_NotifiesWithContentHash(bool isBackgroundSync)
+        {
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 var syncResult = await _signalSyncManager.TrySyncTriggersAsync(isBackgroundSync);
