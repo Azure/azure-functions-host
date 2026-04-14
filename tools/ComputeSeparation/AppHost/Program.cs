@@ -28,6 +28,10 @@ const int mockWorkerHttpPort = 8080;
 const string HostId = "devhost";
 const string MasterKey = "dev-master-key";
 
+// Well-known encryption key for local dev specialization (/admin/instance/assign).
+// 64 hex chars = 32 bytes (256-bit AES key). Must match the pre-encrypted payload in compute-separation.http.
+const string ContainerEncryptionKey = "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248F6B038A61BACE9D7";
+
 // Well-known Azurite storage emulator account key.
 // https://learn.microsoft.com/azure/storage/common/storage-use-azurite#well-known-storage-account-and-key
 const string AzuriteAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
@@ -101,6 +105,10 @@ static void AddProjectResources(
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
         .WithEnvironment("AzureFunctionsWebHost__hostid", HostId)
         .WithEnvironment("ASPNETCORE_URLS", runtimeUrl)
+        .WithEnvironment("WEBSITE_PLACEHOLDER_MODE", "1")
+        .WithEnvironment("WEBSITE_SKU", "FlexConsumption")
+        .WithEnvironment("CONTAINER_ENCRYPTION_KEY", ContainerEncryptionKey)
+        .WithEnvironment("MESH_INIT_URI", "http://localhost:6060")
         .WithEnvironment(context =>
         {
             ConfigureStorageConnectionString(context, storage);
@@ -184,8 +192,11 @@ static void AddContainerResources(
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
         .WithEnvironment("AzureFunctionsWebHost__hostid", HostId)
         .WithEnvironment("ASPNETCORE_URLS", $"http://+:{runtimePort.ToString()}")
-        .WithEnvironment(context =>
-        {
+        .WithEnvironment("WEBSITE_PLACEHOLDER_MODE", "1")
+        .WithEnvironment("WEBSITE_SKU", "FlexConsumption")
+        .WithEnvironment("CONTAINER_ENCRYPTION_KEY", ContainerEncryptionKey)
+        .WithEnvironment("MESH_INIT_URI", "http://localhost:6060")
+        .WithEnvironment(context =>        {
             ConfigureStorageConnectionString(context, storage);
         })
         .WaitFor(storage);

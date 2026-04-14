@@ -77,7 +77,7 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
             _workerProxyLogs,
             "WorkerProxy");
 
-        await Task.Delay(3000);
+        await Task.Delay(2000);
         ComputeSeparationTestHelpers.EnsureProcessRunning(_workerProxyProcess, "WorkerProxy", _workerProxyLogs);
 
         // 2. Start the mock worker.
@@ -88,7 +88,7 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
             _mockWorkerLogs,
             "MockWorker");
 
-        await Task.Delay(3000);
+        await ComputeSeparationTestHelpers.WaitForWorkerProxyReadyAsync(ManagementPort, _output);
         ComputeSeparationTestHelpers.EnsureProcessRunning(_mockWorkerProcess, "MockWorker", _mockWorkerLogs);
 
         // 3. Start the runtime via TestFunctionHost.

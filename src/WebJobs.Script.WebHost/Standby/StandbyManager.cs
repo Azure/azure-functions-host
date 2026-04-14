@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -127,6 +128,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize))
             {
+                // In external worker mode, there are no local language workers to specialize
+                // and no ScriptHost to restart. The platform will link workers via
+                // POST /admin/workers/link, which triggers ScriptHost startup via
+                // WorkerConnectionService. All we do here is apply environment settings
+                // so the ScriptHost starts with the right configuration when triggered.
+                if (_configuration.IsExternalWorkerEnabled())
+                {
+                    _logger.LogInformation("External worker mode enabled. Skipping local worker specialization and host restart.");
+                    return;
+                }
+
                 await _workerManager.SpecializeAsync();
             }
 

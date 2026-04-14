@@ -37,8 +37,8 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     private readonly ILogger _logger;
 
     private readonly ConcurrentDictionary<string, WorkerConnection> _workers = new();
-    private readonly TaskCompletionSource _scriptHostStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ReaderWriterLockSlim _lifecycleLock = new();
+    private TaskCompletionSource _scriptHostStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _firstWorkerClaimed;
     private volatile bool _stopping;
 
@@ -191,8 +191,8 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             _logger.LogInformation("Worker '{workerId}' connected and registered.", workerId);
 
             // Start or update the ScriptHost based on whether this is the first worker.
-            // The first caller starts the ScriptHost; concurrent callers block until
-            // startup completes, then call SetupChannel on the dispatcher.
+            // The first caller either starts or waits for the ScriptHost; concurrent
+            // callers block until startup completes, then call SetupChannel.
             if (Interlocked.CompareExchange(ref _firstWorkerClaimed, 1, 0) == 0)
             {
                 // First worker: start the ScriptHost. In external worker mode,
@@ -200,15 +200,22 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
                 // so the ScriptHost hasn't started yet. Now that a worker has delivered
                 // host.json and registered a channel, WaitForContent and WaitForChannelAsync
                 // will return immediately when the ScriptHost builds.
+                var tcs = _scriptHostStarted;
                 try
                 {
                     _logger.LogInformation("First worker connected. Starting ScriptHost.");
                     await _scriptHostManager.StartAsync(cancellationToken);
-                    _scriptHostStarted.TrySetResult();
+                    tcs.TrySetResult();
                 }
                 catch (Exception ex)
                 {
-                    _scriptHostStarted.TrySetException(ex);
+                    // Fault the current TCS so any concurrent waiters get the exception
+                    // (they'll propagate it and the platform can retry those workers too).
+                    // Replace the TCS BEFORE releasing the gate so the next winner sees
+                    // a fresh TCS, not the faulted one.
+                    tcs.TrySetException(ex);
+                    _scriptHostStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    Interlocked.Exchange(ref _firstWorkerClaimed, 0);
                     throw;
                 }
             }
@@ -405,8 +412,6 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        _lifecycleLock.Dispose();
-
         foreach (var kvp in _workers)
         {
             if (kvp.Value.Client is not null)
@@ -423,6 +428,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         }
 
         _workers.Clear();
+        _lifecycleLock.Dispose();
     }
 
     /// <summary>
