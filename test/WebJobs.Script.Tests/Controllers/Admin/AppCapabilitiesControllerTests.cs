@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
@@ -45,10 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         {
             var result = _controller.GetCapabilities();
 
-            var contentResult = Assert.IsType<ContentResult>(result);
-            Assert.Equal("application/json", contentResult.ContentType);
-
-            var capabilities = JsonSerializer.Deserialize<Dictionary<string, string>>(contentResult.Content);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var capabilities = Assert.IsAssignableFrom<IDictionary<string, string>>(okResult.Value);
             Assert.NotNull(capabilities);
             Assert.Equal(3, capabilities.Count);
             Assert.Equal("value1", capabilities["feature1"]);
@@ -64,10 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var result = _controller.GetCapabilities();
 
-            var contentResult = Assert.IsType<ContentResult>(result);
-            Assert.Equal("application/json", contentResult.ContentType);
-
-            var capabilities = JsonSerializer.Deserialize<Dictionary<string, string>>(contentResult.Content);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var capabilities = Assert.IsAssignableFrom<IDictionary<string, string>>(okResult.Value);
             Assert.NotNull(capabilities);
             Assert.Empty(capabilities);
         }
@@ -87,10 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var result = _controller.GetCapabilities();
 
-            var contentResult = Assert.IsType<ContentResult>(result);
-            Assert.Equal("application/json", contentResult.ContentType);
-
-            var capabilities = JsonSerializer.Deserialize<Dictionary<string, string>>(contentResult.Content);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var capabilities = Assert.IsAssignableFrom<IDictionary<string, string>>(okResult.Value);
             Assert.NotNull(capabilities);
             Assert.Equal(10, capabilities.Count);
 
@@ -105,38 +97,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         }
 
         [Fact]
-        public void GetCapabilities_Returns413_WhenResponseSizeExceedsLimit()
+        public void GetCapabilities_Returns500_WhenValidationFails()
         {
-            var options = new AppCapabilitiesOptions();
-            IDictionary<string, string> dict = (IDictionary<string, string>)options;
+            var validationException = new OptionsValidationException(
+                "AppCapabilitiesOptions",
+                typeof(AppCapabilitiesOptions),
+                new[] { "Capabilities size exceeds maximum allowed size." });
 
-            var largeValue = new string('x', ScriptConstants.MaxTriggersStringLength / 2);
-            dict.Add("capability1", largeValue);
-            dict.Add("capability2", largeValue);
-            dict.Add("capability3", largeValue);
-
-            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(options);
+            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Throws(validationException);
 
             var result = _controller.GetCapabilities();
 
             var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(StatusCodes.Status413PayloadTooLarge, statusCodeResult.StatusCode);
+            Assert.Equal(500, statusCodeResult.StatusCode);
 
             dynamic errorResponse = statusCodeResult.Value;
             Assert.NotNull(errorResponse.error);
-            Assert.Contains("exceeds maximum allowed size", (string)errorResponse.error);
+            Assert.Contains("Capabilities size exceeds maximum allowed size.", (string)errorResponse.error);
         }
 
         [Fact]
-        public void GetCapabilities_LogsError_WhenResponseExceedsLimit()
+        public void GetCapabilities_LogsError_WhenValidationFails()
         {
-            var options = new AppCapabilitiesOptions();
-            IDictionary<string, string> dict = (IDictionary<string, string>)options;
+            var validationException = new OptionsValidationException(
+                "AppCapabilitiesOptions",
+                typeof(AppCapabilitiesOptions),
+                new[] { "Capabilities size exceeds maximum allowed size." });
 
-            var largeValue = new string('y', ScriptConstants.MaxTriggersStringLength);
-            dict.Add("largeCapability", largeValue);
-
-            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(options);
+            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Throws(validationException);
 
             _controller.GetCapabilities();
 
@@ -144,8 +132,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("exceeds maximum allowed size")),
-                    It.IsAny<Exception>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Capabilities validation failed")),
+                    It.Is<Exception>(ex => ex == validationException),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
         }
@@ -158,10 +146,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         {
             var result = _controller.Get(name);
 
-            var contentResult = Assert.IsType<ContentResult>(result);
-            Assert.Equal("application/json", contentResult.ContentType);
-
-            var value = JsonSerializer.Deserialize<string>(contentResult.Content);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var value = Assert.IsType<string>(okResult.Value);
             Assert.Equal(expectedValue, value);
         }
 
@@ -173,7 +159,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         {
             var result = _controller.Get(name);
 
-            Assert.IsType<NotFoundResult>(result);
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            dynamic errorResponse = notFoundResult.Value;
+            Assert.NotNull(errorResponse.error);
+            Assert.Contains($"Capability '{name}' not found.", (string)errorResponse.error);
         }
 
         [Fact]
@@ -184,15 +173,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var result = _controller.Get("anyFeature");
 
-            Assert.IsType<NotFoundResult>(result);
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            dynamic errorResponse = notFoundResult.Value;
+            Assert.NotNull(errorResponse.error);
+            Assert.Contains("Capability 'anyFeature' not found.", (string)errorResponse.error);
         }
 
         [Fact]
-        public void Get_IsCaseInsensitive()
+        public void Get_IsCaseSensitive()
         {
             var result = _controller.Get("Feature1");
 
-            Assert.IsType<ContentResult>(result);
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            dynamic errorResponse = notFoundResult.Value;
+            Assert.NotNull(errorResponse.error);
+            Assert.Contains("Capability 'Feature1' not found.", (string)errorResponse.error);
         }
 
         [Fact]
@@ -207,11 +202,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var result = _controller.Get("nullCapability");
 
-            var contentResult = Assert.IsType<ContentResult>(result);
-            Assert.Equal("application/json", contentResult.ContentType);
-
-            var value = JsonSerializer.Deserialize<string>(contentResult.Content);
-            Assert.Null(value);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Null(okResult.Value);
 
             _mockLogger.Verify(
                 x => x.Log(
@@ -224,36 +216,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         }
 
         [Fact]
-        public void Get_Returns413_WhenCapabilityValueExceedsLimit()
+        public void Get_Returns500_WhenValidationFails()
         {
-            var options = new AppCapabilitiesOptions();
-            IDictionary<string, string> dict = (IDictionary<string, string>)options;
+            var validationException = new OptionsValidationException(
+                "AppCapabilitiesOptions",
+                typeof(AppCapabilitiesOptions),
+                new[] { "Capabilities size exceeds maximum allowed size." });
 
-            var largeValue = new string('z', ScriptConstants.MaxTriggersStringLength);
-            dict.Add("largeCapability", largeValue);
-
-            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(options);
+            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Throws(validationException);
 
             var result = _controller.Get("largeCapability");
 
             var statusCodeResult = Assert.IsType<ObjectResult>(result);
-            Assert.Equal(StatusCodes.Status413PayloadTooLarge, statusCodeResult.StatusCode);
+            Assert.Equal(500, statusCodeResult.StatusCode);
 
             dynamic errorResponse = statusCodeResult.Value;
             Assert.NotNull(errorResponse.error);
-            Assert.Contains("exceeds maximum allowed size", (string)errorResponse.error);
+            Assert.Contains("Capabilities size exceeds maximum allowed size.", (string)errorResponse.error);
         }
 
         [Fact]
-        public void Get_LogsError_WhenCapabilityValueExceedsLimit()
+        public void Get_LogsError_WhenValidationFails()
         {
-            var options = new AppCapabilitiesOptions();
-            IDictionary<string, string> dict = (IDictionary<string, string>)options;
+            var validationException = new OptionsValidationException(
+                "AppCapabilitiesOptions",
+                typeof(AppCapabilitiesOptions),
+                new[] { "Capabilities size exceeds maximum allowed size." });
 
-            var largeValue = new string('w', ScriptConstants.MaxTriggersStringLength);
-            dict.Add("largeCapability", largeValue);
-
-            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(options);
+            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Throws(validationException);
 
             _controller.Get("largeCapability");
 
@@ -261,8 +251,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("exceeds maximum allowed size")),
-                    It.IsAny<Exception>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Capabilities validation failed")),
+                    It.Is<Exception>(ex => ex == validationException),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
         }

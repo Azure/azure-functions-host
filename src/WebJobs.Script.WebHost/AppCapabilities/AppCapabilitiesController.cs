@@ -2,12 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
-using Microsoft.Azure.WebJobs.Script.WebHost.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
@@ -19,8 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     public sealed class AppCapabilitiesController : Controller
     {
-        // Use the same limit as MaxTriggersStringLength for consistency with similar admin APIs
-        private const int MaxResponseSizeBytes = ScriptConstants.MaxTriggersStringLength;
         private readonly IOptionsMonitor<AppCapabilitiesOptions> _capabilitiesOptions;
         private readonly ILogger<AppCapabilitiesController> _logger;
 
@@ -38,15 +33,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [ResourceContainsSecrets]
         public IActionResult GetCapabilities()
         {
-            IDictionary<string, string> capabilities = _capabilitiesOptions.CurrentValue;
-            var validationResult = ValidateResponseSize(capabilities);
-
-            if (!validationResult.IsValid)
+            try
             {
-                return StatusCode(StatusCodes.Status413PayloadTooLarge, new { error = validationResult.ErrorMessage });
+                IDictionary<string, string> capabilities = _capabilitiesOptions.CurrentValue;
+                return Ok(capabilities);
             }
-
-            return Content(validationResult.SerializedResponse!, "application/json");
+            catch (OptionsValidationException ex)
+            {
+                _logger.LogError(ex, "Capabilities validation failed.");
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
         [HttpGet]
@@ -56,48 +52,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [ResourceContainsSecrets]
         public IActionResult Get(string name)
         {
-            IDictionary<string, string> capabilities = _capabilitiesOptions.CurrentValue;
-
-            if (capabilities.TryGetValue(name, out var value))
+            try
             {
-                var validationResult = ValidateResponseSize(value);
+                IDictionary<string, string> capabilities = _capabilitiesOptions.CurrentValue;
 
-                if (!validationResult.IsValid)
+                if (capabilities.TryGetValue(name, out string? value))
                 {
-                    return StatusCode(StatusCodes.Status413PayloadTooLarge, new { error = validationResult.ErrorMessage });
+                    return Ok(value);
                 }
-
-                return Content(validationResult.SerializedResponse!, "application/json");
+                else
+                {
+                    return NotFound(new { error = $"Capability '{name}' not found." });
+                }
             }
-
-            return NotFound();
-        }
-
-        private (bool IsValid, string? ErrorMessage, string? SerializedResponse) ValidateResponseSize(IDictionary<string, string> capabilities)
-        {
-            var serializedResponse = JsonSerializer.Serialize(capabilities, DictionaryJsonContext.Default.IDictionaryStringString);
-            return ValidateSerializedResponseSize(serializedResponse, "Capabilities response");
-        }
-
-        private (bool IsValid, string? ErrorMessage, string? SerializedResponse) ValidateResponseSize(string value)
-        {
-            var serializedValue = JsonSerializer.Serialize(value);
-            return ValidateSerializedResponseSize(serializedValue, "Capability value");
-        }
-
-        private (bool IsValid, string? ErrorMessage, string? SerializedResponse) ValidateSerializedResponseSize(string serializedResponse, string responseType)
-        {
-            var responseSize = System.Text.Encoding.UTF8.GetByteCount(serializedResponse);
-
-            if (responseSize <= MaxResponseSizeBytes)
+            catch (OptionsValidationException ex)
             {
-                return (true, null, serializedResponse);
+                _logger.LogError(ex, "Capabilities validation failed.");
+                return StatusCode(500, new { error = ex.Message });
             }
-
-            var errorMessage = $"{responseType} size ({responseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).";
-            _logger.LogError("{ResponseType} size ({ResponseSize} bytes) exceeds maximum allowed size ({MaxResponseSizeBytes} bytes).", responseType, responseSize, MaxResponseSizeBytes);
-
-            return (false, errorMessage, null);
         }
     }
 }

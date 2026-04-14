@@ -92,6 +92,7 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IOptionsChangeTokenSource<AppCapabilitiesOptions>, AppCapabilitiesChangeTokenSource>();
             services.AddOptions<AppCapabilitiesOptions>();
             services.ConfigureOptions<AppCapabilitiesOptionsSetup>();
+            services.AddSingleton<IValidateOptions<AppCapabilitiesOptions>, AppCapabilitiesOptionsValidator>();
             services.AddSingleton<IWorkerRuntimeResolver, ScriptHostWorkerRuntimeResolver>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);

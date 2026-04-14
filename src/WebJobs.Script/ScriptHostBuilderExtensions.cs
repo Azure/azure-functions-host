@@ -357,6 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddOptions<AppCapabilitiesOptions>();
                 services.ConfigureOptions<AppCapabilitiesOptionsSetup>();
+                services.AddSingleton<IValidateOptions<AppCapabilitiesOptions>, AppCapabilitiesOptionsValidator>();
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
 

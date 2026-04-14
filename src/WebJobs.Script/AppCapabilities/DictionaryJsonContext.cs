@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost.AppCapabilities
+namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 {
     [JsonSerializable(typeof(IDictionary<string, string>))]
     internal partial class DictionaryJsonContext : JsonSerializerContext;

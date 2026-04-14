@@ -23,9 +23,9 @@ internal sealed class AppCapabilitiesChangeTokenSource : IOptionsChangeTokenSour
 
     public IChangeToken GetChangeToken()
     {
-        var cts = _cts ?? throw new ObjectDisposedException(nameof(AppCapabilitiesChangeTokenSource));
+        ObjectDisposedException.ThrowIf(_cts is null, this);
 
-        return new CancellationChangeToken(cts.Token);
+        return new CancellationChangeToken(_cts.Token);
     }
 
     public void TriggerChange()
