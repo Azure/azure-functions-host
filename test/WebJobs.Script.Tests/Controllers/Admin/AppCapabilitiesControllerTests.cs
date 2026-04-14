@@ -180,14 +180,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         }
 
         [Fact]
-        public void Get_IsCaseSensitive()
+        public void Get_IsCaseInsensitive()
         {
             var result = _controller.Get("Feature1");
-
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic errorResponse = notFoundResult.Value;
-            Assert.NotNull(errorResponse.error);
-            Assert.Contains("Capability 'Feature1' not found.", (string)errorResponse.error);
+            Assert.IsType<OkObjectResult>(result);
         }
 
         [Fact]
