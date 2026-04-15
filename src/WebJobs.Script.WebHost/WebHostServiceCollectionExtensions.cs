@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 services.AddExternalWorkerServices(configuration);
             }
 
-            services.AddCommonRpcServices();
+            services.AddCommonRpcServices(skipInitializationService: configuration.IsExternalWorkerEnabled());
 
             services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
