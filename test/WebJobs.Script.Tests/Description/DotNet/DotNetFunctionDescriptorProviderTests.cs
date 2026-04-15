@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 b.AddAzureStorageCoreServices();
                 b.AddAzureStorageBlobs();
-                b.AddAzueStorageQueues();
+                b.AddAzureStorageQueues();
             }).Build();
 
             FunctionBinding functionBinding = TestHelpers.CreateBindingFromHost(_host, json);

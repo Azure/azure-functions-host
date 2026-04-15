@@ -268,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 b.AddAzureStorageCoreServices();
                 b.AddAzureStorageBlobs();
-                b.AddAzueStorageQueues();
+                b.AddAzureStorageQueues();
             }).Build();
 
             Collection<FunctionBinding> inputBindings = new Collection<FunctionBinding>()

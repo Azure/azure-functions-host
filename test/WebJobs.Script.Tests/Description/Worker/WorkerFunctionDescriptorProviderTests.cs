@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 b.AddAzureStorageCoreServices();
                 b.AddAzureStorageBlobs();
-                b.AddAzueStorageQueues();
+                b.AddAzureStorageQueues();
             },
             o =>
             {
