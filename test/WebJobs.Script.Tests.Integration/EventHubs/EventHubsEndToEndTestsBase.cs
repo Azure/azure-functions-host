@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
 
             // Second, there's an EventHub trigger listener on the events which will write a blob.
             // Once the blob is written, we know both sender & listener are working.
-            var resultBlob = _fixture.TestOutputContainer.GetBlockBlobReference(testData);
+            var resultBlob = _fixture.TestOutputContainer.GetBlobClient(testData);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
                 userMessageCallback: _fixture.Host.GetLog);
 

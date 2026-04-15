@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage.Queue;
+using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,11 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 
             string id = Guid.NewGuid().ToString();
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
-            CloudQueueMessage message = new CloudQueueMessage(messageContent);
 
-            await _fixture.TestQueue.AddMessageAsync(message);
+            await _fixture.TestQueue.SendMessageAsync(messageContent);
 
-            var resultBlob = _fixture.TestOutputContainer.GetBlockBlobReference(id);
+            var resultBlob = _fixture.TestOutputContainer.GetBlobClient(id);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
             Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
         }

@@ -12,13 +12,12 @@ using System.Runtime;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using Azure.Storage.Sas;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
@@ -1558,11 +1557,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // this app has a QueueTrigger reading from "myqueue-items"
             // add a few messages there before stopping the host
             var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageValue);
-            CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference("myqueue-items");
+            var queueServiceClient = new QueueServiceClient(storageValue);
+            var queue = queueServiceClient.GetQueueClient("myqueue-items");
             await queue.CreateIfNotExistsAsync();
-            await queue.ClearAsync();
+            await queue.ClearMessagesAsync();
 
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestDataFunction", "QueueFunction");
 
@@ -1605,7 +1603,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 while (keepRunning)
                 {
-                    await queue.AddMessageAsync(new CloudQueueMessage("test"));
+                    await queue.SendMessageAsync("test");
                 }
             });
 
@@ -1619,7 +1617,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             keepRunning = false;
             await messageTask;
-            await queue.ClearAsync();
+            await queue.ClearMessagesAsync();
 
             var completedLogs = _loggerProvider.GetAllLogMessages()
                 .Where(p => p.Category == "Function.QueueFunction")

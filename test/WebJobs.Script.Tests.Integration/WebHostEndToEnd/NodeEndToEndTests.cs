@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -12,8 +12,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Http;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.Queue;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -41,24 +42,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             // write a binary blob
             string name = Guid.NewGuid().ToString();
-            CloudBlockBlob inputBlob = Fixture.TestInputContainer.GetBlockBlobReference(name);
-            inputBlob.Metadata.Add("TestMetadataKey", "TestMetadataValue");
-            byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
-            using (var stream = await inputBlob.OpenWriteAsync())
+            var inputBlob = Fixture.TestInputContainer.GetBlobClient(name);
+            var metadata = new Dictionary<string, string>
             {
-                stream.Write(inputBytes, 0, inputBytes.Length);
-            }
+                { "TestMetadataKey", "TestMetadataValue" }
+            };
+            byte[] inputBytes = new byte[] { 1, 2, 3, 4, 5 };
+            await inputBlob.UploadAsync(new BinaryData(inputBytes), new BlobUploadOptions { Metadata = metadata });
 
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(name);
+            var resultBlob = Fixture.TestOutputContainer.GetBlobClient(name);
             await TestHelpers.WaitForBlobAsync(resultBlob);
 
-            byte[] resultBytes;
-            using (var resultStream = await resultBlob.OpenReadAsync())
-            using (var ms = new MemoryStream())
-            {
-                resultStream.CopyTo(ms);
-                resultBytes = ms.ToArray();
-            }
+            BlobDownloadResult downloadResult = await resultBlob.DownloadContentAsync();
+            byte[] resultBytes = downloadResult.Content.ToArray();
 
             JObject testResult = await GetFunctionTestResult("BlobTriggerToBlob");
             Assert.Equal(inputBytes, resultBytes);
@@ -68,8 +64,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var blobMetadata = (JObject)testResult["blobMetadata"];
             Assert.Equal($"test-input-node/{name}", (string)blobMetadata["path"]);
 
-            var metadata = (JObject)blobMetadata["metadata"];
-            Assert.Equal("TestMetadataValue", (string)metadata["testMetadataKey"]);
+            var metadataResult = (JObject)blobMetadata["metadata"];
+            Assert.Equal("TestMetadataValue", (string)metadataResult["testMetadataKey"]);
 
             var properties = (JObject)blobMetadata["properties"];
             Assert.Equal("application/octet-stream", (string)properties["contentType"]);
@@ -87,11 +83,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // write a binary queue message
             byte[] inputBytes = new byte[] { 1, 2, 3 };
-            CloudQueueMessage message = new CloudQueueMessage(inputBytes);
-            var queue = Fixture.QueueClient.GetQueueReference("test-input-byte");
+            var queue = Fixture.QueueServiceClient.GetQueueClient("test-input-byte");
             await queue.CreateIfNotExistsAsync();
-            await queue.ClearAsync();
-            await queue.AddMessageAsync(message);
+            await queue.ClearMessagesAsync();
+            await queue.SendMessageAsync(BinaryData.FromBytes(inputBytes));
 
             JObject testResult = await GetFunctionTestResult("QueueTriggerByteArray");
             Assert.True((bool)testResult["isBuffer"]);
@@ -236,8 +231,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             foreach (var blob in blobs)
             {
-                byte[] contents = new byte[4];
-                await blob.DownloadToByteArrayAsync(contents, 0);
+                BlobDownloadResult downloadResult = await blob.DownloadContentAsync();
+                byte[] contents = downloadResult.Content.ToArray();
                 int blobInt = BitConverter.ToInt32(contents, 0);
                 Assert.True(blobInt >= 0 && blobInt <= 3);
             }
@@ -256,14 +251,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await Fixture.Host.BeginFunctionAsync("Scenarios", input);
 
-            IEnumerable<CloudBlockBlob> blobs = null;
+            IEnumerable<BlobClient> blobs = null;
             await TestHelpers.Await(async () =>
             {
-                blobs = await TestHelpers.ListBlobsAsync(container);
+                var blobList = new List<BlobClient>();
+                await foreach (var blob in TestHelpers.ListBlobsAsync(container))
+                {
+                    blobList.Add(blob);
+                }
+                blobs = blobList;
                 return blobs.Count() == 1;
             });
 
-            var blobString = await blobs.Single().DownloadTextAsync();
+            var blobDownload = await blobs.Single().DownloadContentAsync();
+            var blobString = blobDownload.Value.Content.ToString();
             Assert.Equal("{\"nested\":{},\"array\":[{}],\"value\":\"value\"}", blobString);
         }
 
@@ -319,7 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify blob was written
             string blobName = $"TestPrefix-{id}-TestSuffix-BBB";
-            var outBlob = Fixture.TestOutputContainer.GetBlockBlobReference(blobName);
+            var outBlob = Fixture.TestOutputContainer.GetBlobClient(blobName);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(outBlob);
             Assert.Equal(expectedValue, result);
         }
@@ -795,20 +796,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await Fixture.Host.BeginFunctionAsync("MultipleOutputs", input);
 
             // verify all 3 output blobs were written
-            var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id1);
+            var blob = Fixture.TestOutputContainer.GetBlobClient(id1);
             await TestHelpers.WaitForBlobAsync(blob, Fixture.Host.GetLog);
-            string blobContent = await blob.DownloadTextAsync();
+            var blobDownload = await blob.DownloadContentAsync();
+            string blobContent = blobDownload.Value.Content.ToString();
             // TODO: why required?
             Assert.Equal("Test Blob 1", blobContent.TrimEnd('\0').Trim('"'));
 
-            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id2);
+            blob = Fixture.TestOutputContainer.GetBlobClient(id2);
             await TestHelpers.WaitForBlobAsync(blob);
-            blobContent = await blob.DownloadTextAsync();
+            blobDownload = await blob.DownloadContentAsync();
+            blobContent = blobDownload.Value.Content.ToString();
             Assert.Equal("Test Blob 2", blobContent.TrimEnd('\0').Trim('"'));
 
-            blob = Fixture.TestOutputContainer.GetBlockBlobReference(id3);
+            blob = Fixture.TestOutputContainer.GetBlobClient(id3);
             await TestHelpers.WaitForBlobAsync(blob);
-            blobContent = await blob.DownloadTextAsync();
+            blobDownload = await blob.DownloadContentAsync();
+            blobContent = blobDownload.Value.Content.ToString();
             Assert.Equal("Test Blob 3", blobContent.TrimEnd('\0').Trim('"'));
         }
 
@@ -827,9 +831,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await Fixture.Host.BeginFunctionAsync("MultipleInputs", input);
 
             // verify the correct output blob was written
-            var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id);
+            var blob = Fixture.TestOutputContainer.GetBlobClient(id);
             await TestHelpers.WaitForBlobAsync(blob);
-            var blobContent = await blob.DownloadTextAsync();
+            var blobDownload = await blob.DownloadContentAsync();
+            var blobContent = blobDownload.Value.Content.ToString();
             Assert.Equal("Test Entity 1, Test Entity 2", Utility.RemoveUtf8ByteOrderMark(blobContent.Trim()));
         }
 
@@ -894,8 +899,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 base.ConfigureScriptHost(webJobsBuilder);
 
-                webJobsBuilder.AddAzureStorage()
-                    .Services.Configure<ScriptJobHostOptions>(o =>
+                webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                     {
                         o.Functions =
                         [

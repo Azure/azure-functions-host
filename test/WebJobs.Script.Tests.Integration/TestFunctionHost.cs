@@ -173,7 +173,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             builder.ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
             {
-                scriptHostWebJobsBuilder.AddAzureStorage();
                 configureScriptHostWebJobsBuilder?.Invoke(scriptHostWebJobsBuilder);
             })
             .ConfigureScriptHostAppConfiguration(scriptHostConfigurationBuilder =>
