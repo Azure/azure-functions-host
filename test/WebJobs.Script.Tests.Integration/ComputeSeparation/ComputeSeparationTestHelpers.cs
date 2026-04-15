@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
@@ -194,5 +196,37 @@ internal static class ComputeSeparationTestHelpers
                 // Best-effort cleanup.
             }
         }
+    }
+
+    /// <summary>
+    /// Polls <c>GET /ready</c> on the worker proxy management endpoint until it returns 200,
+    /// replacing fixed <c>Task.Delay</c> waits after process startup.
+    /// </summary>
+    public static async Task WaitForWorkerProxyReadyAsync(int managementPort, ITestOutputHelper output, TimeSpan? timeout = null)
+    {
+        timeout ??= TimeSpan.FromSeconds(30);
+        using var client = new HttpClient { BaseAddress = new Uri($"http://localhost:{managementPort}") };
+        var sw = Stopwatch.StartNew();
+
+        while (sw.Elapsed < timeout)
+        {
+            try
+            {
+                var response = await client.GetAsync("/ready");
+                if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    output.WriteLine($"Worker proxy ready after {sw.Elapsed.TotalSeconds:F1}s.");
+                    return;
+                }
+            }
+            catch (HttpRequestException)
+            {
+                // Not listening yet.
+            }
+
+            await Task.Delay(250);
+        }
+
+        throw new TimeoutException($"Worker proxy did not become ready within {timeout.Value.TotalSeconds}s.");
     }
 }

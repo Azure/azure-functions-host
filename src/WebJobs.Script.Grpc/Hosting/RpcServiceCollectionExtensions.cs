@@ -58,7 +58,7 @@ public static class RpcServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddCommonRpcServices(this IServiceCollection services)
+    public static IServiceCollection AddCommonRpcServices(this IServiceCollection services, bool skipInitializationService = false)
     {
         ArgumentNullException.ThrowIfNull(services);
 
@@ -72,7 +72,13 @@ public static class RpcServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IConcurrencyThrottleProvider, WorkerChannelThrottleProvider>());
         services.AddSingleton<IWebHostWorkerManager, RpcWebHostWorkerManager>();
 
-        services.AddManagedHostedService<RpcInitializationService>();
+        // In external worker mode, there are no local worker channels or inbound gRPC
+        // server — workers connect outbound via the worker proxy. Skip the initialization
+        // service that starts the gRPC server and pre-warms local worker channels.
+        if (!skipInitializationService)
+        {
+            services.AddManagedHostedService<RpcInitializationService>();
+        }
 
         AddProcessRegistry(services);
 

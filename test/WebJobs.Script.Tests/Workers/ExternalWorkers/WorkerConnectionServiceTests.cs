@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -135,6 +136,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
 
             _mockHostManager.Verify(m => m.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ConnectWorkerAsync_FirstWorkerFails_SecondWorkerCanRetryAndSucceed()
+        {
+            SetupFullConnectMocks();
+
+            // First call to StartAsync fails, second succeeds.
+            int startAttempt = 0;
+            _mockHostManager
+                .Setup(m => m.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    if (++startAttempt == 1)
+                    {
+                        return Task.FromException(new InvalidOperationException("transient failure"));
+                    }
+
+                    return Task.CompletedTask;
+                });
+
+            var service = CreateService();
+
+            // First worker fails.
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.ConnectWorkerAsync("w_fail", new Uri("http://localhost:50051"), CancellationToken.None));
+
+            var failInfo = service.GetWorkerStatus("w_fail");
+            Assert.Equal(WorkerConnectionState.Error, failInfo.State);
+
+            // Second worker succeeds — the recovery path reset _firstWorkerClaimed.
+            await service.ConnectWorkerAsync("w_retry", new Uri("http://localhost:50052"), CancellationToken.None);
+
+            var retryInfo = service.GetWorkerStatus("w_retry");
+            Assert.Equal(WorkerConnectionState.Connected, retryInfo.State);
+            Assert.Equal(2, _mockHostManager.Invocations.Count(i => i.Method.Name == nameof(IScriptHostManager.StartAsync)));
         }
 
         [Fact]

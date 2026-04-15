@@ -138,6 +138,66 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(bool.TrueString, _testEnvironment.GetEnvironmentVariable(EnvironmentSettingNames.InitializedFromPlaceholder));
         }
 
+        [Fact]
+        public async Task Specialize_ExternalWorkerMode_SkipsWorkerSpecialization()
+        {
+            TestMetricsLogger metricsLogger = new TestMetricsLogger();
+            var hostNameProvider = new HostNameProvider(_testEnvironment);
+
+            // Simulate external worker mode by configuring the mock configuration to return "true"
+            _mockConfiguration
+                .Setup(c => c[EnvironmentSettingNames.FunctionsWorkerExternalEnabled])
+                .Returns("true");
+
+            var manager = new StandbyManager(
+                _mockHostManager.Object,
+                _mockLanguageWorkerChannelManager.Object,
+                _mockConfiguration.Object,
+                _mockWebHostEnvironment.Object,
+                _testEnvironment,
+                _mockOptionsMonitor.Object,
+                NullLogger<StandbyManager>.Instance,
+                hostNameProvider,
+                _mockApplicationLifetime.Object,
+                metricsLogger);
+
+            await manager.SpecializeHostAsync();
+
+            // SpecializeAsync, RestartHostAsync, and DelayUntilHostReadyAsync should NOT
+            // be called in external worker mode. The /link call triggers ScriptHost startup.
+            _mockLanguageWorkerChannelManager.Verify(
+                m => m.SpecializeAsync(), Times.Never);
+            _mockHostManager.Verify(
+                m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<System.Threading.CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task Specialize_StandardMode_CallsWorkerSpecialization()
+        {
+            TestMetricsLogger metricsLogger = new TestMetricsLogger();
+            var hostNameProvider = new HostNameProvider(_testEnvironment);
+
+            // No external worker setting → standard mode
+            var manager = new StandbyManager(
+                _mockHostManager.Object,
+                _mockLanguageWorkerChannelManager.Object,
+                _mockConfiguration.Object,
+                _mockWebHostEnvironment.Object,
+                _testEnvironment,
+                _mockOptionsMonitor.Object,
+                NullLogger<StandbyManager>.Instance,
+                hostNameProvider,
+                _mockApplicationLifetime.Object,
+                metricsLogger);
+
+            await manager.SpecializeHostAsync();
+
+            // SpecializeAsync SHOULD be called in standard mode
+            _mockLanguageWorkerChannelManager.Verify(
+                m => m.SpecializeAsync(), Times.Once);
+        }
+
         private bool AreExpectedMetricsGenerated(TestMetricsLogger metricsLogger)
         {
             return metricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationSpecializeHost) && metricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationSpecializeHost)

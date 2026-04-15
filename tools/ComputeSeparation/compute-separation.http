@@ -50,7 +50,38 @@ GET {{runtimeHost}}/api/HttpTrigger
 ### Drains host listeners, disconnects all workers, sends WorkerDrainComplete to each.
 POST {{runtimeHost}}/admin/instance/stop?code={{masterKey}}
 
+###
+
 ### ============================================================
+### Specialization Flow (Placeholder → Specialize → Link)
+### ============================================================
+
+### Specialize the runtime (simulate platform /assign call)
+### The payload is encrypted with the well-known CONTAINER_ENCRYPTION_KEY from
+### the Aspire harness (0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248F6B038A61BACE9D7).
+### Plaintext: {"SiteId":1234,"SiteName":"devhost","Environment":{"FUNCTIONS_WORKER_EXTERNAL_ENABLED":"true","FUNCTIONS_WORKER_RUNTIME":"node","WEBSITE_SITE_NAME":"devhost"}}
+POST {{runtimeHost}}/admin/instance/assign?code={{masterKey}}
+Content-Type: application/json
+
+{
+  "encryptedContext": "STOt1wkHpw6kqe5/g0bxkQ==.YhyWltLkQVJD0Q+z4nJQvZEjj+kMzBOFY0LzUwtk9ASao/7ZB8myX3rLO9JGGnGnoAn6zlQij2Vkt36Jpn6gl8vYGAol7E/cSDqvOTQyRclR1Xb7Ph227TIsJfc5x9M2312QxC+uUsuz/OLOfFcHjO25aZ2XWk4iI3lorGeXnLgYi97oIQd8jKNaa+qcGW0eG0t9Mi1a8DQ+EWt1pT5iKA==.l7sP0SVC5PPsmjsAf9df4iUs609Ck09VtyO6LEvhMVs="
+}
+
+###
+
+### After specialization, link the worker.
+### The /link call triggers ScriptHost startup and delivers host.json + function metadata.
+POST {{runtimeHost}}/admin/workers/link?code={{masterKey}}
+Content-Type: application/json
+
+{
+  "workerId": "w_test01",
+  "podName": "worker-pod-test01",
+  "grpcEndpoint": "{{workerGrpcEndpoint}}",
+  "podKey": "test-key"
+}
+
+###
 ### Worker Proxy Management APIs
 ### ============================================================
 
