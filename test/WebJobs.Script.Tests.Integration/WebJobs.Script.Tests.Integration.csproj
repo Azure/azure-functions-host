@@ -15,6 +15,7 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" NoWarn="NU1701" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Tables" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
     <PackageReference Include="Moq" />
     <PackageReference Include="xunit" />
