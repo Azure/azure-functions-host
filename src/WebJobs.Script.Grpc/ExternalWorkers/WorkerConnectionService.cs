@@ -222,7 +222,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             else
             {
                 // Wait for the first worker's StartAsync to complete before resolving the dispatcher.
-                await _scriptHostStarted.Task;
+                await _scriptHostStarted.Task.WaitAsync(cancellationToken);
 
                 if (Utility.TryGetHostService(_scriptHostManager, out ConnectedWorkerInvocationDispatcher dispatcher))
                 {
