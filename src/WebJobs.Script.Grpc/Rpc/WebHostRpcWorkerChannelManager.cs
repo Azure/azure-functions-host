@@ -321,9 +321,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         else
                                         {
                                             IRpcWorkerChannel workerChannel = channelTask.Result;
-                                            if (workerChannel != null)
+                                            if (workerChannel is not null)
                                             {
-                                                (channelTask.Result as IDisposable)?.Dispose();
+                                                workerChannel.Shutdown(null);
+                                                (workerChannel as IDisposable)?.Dispose();
                                             }
                                         }
                                         latencyEvent.Dispose();
@@ -362,6 +363,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             {
                                 try
                                 {
+                                    if (workerChannel is not null)
+                                    {
+                                        workerChannel.Shutdown(null);
+                                    }
+
                                     disposableWorkerChannel.Dispose();
                                 }
                                 catch (Exception ex)

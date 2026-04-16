@@ -506,6 +506,252 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(functionLoadLogs.Count() == 1);
         }
 
+        [Fact]
+        public async Task ShutdownChannelIfExistsAsync_CallsShutdownWithException()
+        {
+            var testChannel = new Mock<IRpcWorkerChannel>();
+            testChannel.Setup(c => c.Id).Returns("testWorker1");
+            testChannel.As<IDisposable>();
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, testChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, testChannel.Object);
+
+            var workerException = new InvalidOperationException("Worker failed");
+            bool result = await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, "testWorker1", workerException);
+
+            Assert.True(result);
+            await Task.Delay(100);
+            testChannel.Verify(c => c.Shutdown(workerException), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShutdownChannelIfExistsAsync_CallsShutdownWithNull_WhenNoException()
+        {
+            var testChannel = new Mock<IRpcWorkerChannel>();
+            testChannel.Setup(c => c.Id).Returns("testWorker1");
+            testChannel.As<IDisposable>();
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.NodeLanguageWorkerName, testChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.NodeLanguageWorkerName, testChannel.Object);
+
+            bool result = await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.NodeLanguageWorkerName, "testWorker1", null);
+
+            Assert.True(result);
+            await Task.Delay(100);
+            testChannel.Verify(c => c.Shutdown(null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShutdownChannelIfExistsAsync_DisposesChannel()
+        {
+            var testChannel = new Mock<IRpcWorkerChannel>();
+            testChannel.Setup(c => c.Id).Returns("testWorker1");
+            var disposableMock = testChannel.As<IDisposable>();
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, testChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, testChannel.Object);
+
+            bool result = await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, "testWorker1", null);
+
+            Assert.True(result);
+            await Task.Delay(100);
+            disposableMock.Verify(d => d.Dispose(), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShutdownChannelIfExistsAsync_ReturnsFalse_WhenChannelDoesNotExist()
+        {
+            var testChannel = new Mock<IRpcWorkerChannel>();
+            testChannel.Setup(c => c.Id).Returns("testWorker1");
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, testChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, testChannel.Object);
+
+            bool result = await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, "nonexistent", null);
+
+            Assert.False(result);
+            testChannel.Verify(c => c.Shutdown(It.IsAny<Exception>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ScheduleShutdownStandbyChannels_CallsShutdownWithNull_OnStandbyChannels()
+        {
+            _rpcWorkerChannelManager = CreateChannelManager(RpcWorkerConstants.JavaLanguageWorkerName);
+
+            var javaChannel = new Mock<IRpcWorkerChannel>();
+            javaChannel.Setup(c => c.Id).Returns("javaWorker");
+            javaChannel.As<IDisposable>();
+
+            var nodeChannel = new Mock<IRpcWorkerChannel>();
+            nodeChannel.Setup(c => c.Id).Returns("nodeWorker");
+            nodeChannel.As<IDisposable>();
+
+            var pythonChannel = new Mock<IRpcWorkerChannel>();
+            pythonChannel.Setup(c => c.Id).Returns("pythonWorker");
+            pythonChannel.As<IDisposable>();
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.NodeLanguageWorkerName, nodeChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.NodeLanguageWorkerName, nodeChannel.Object);
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.PythonLanguageWorkerName, pythonChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.PythonLanguageWorkerName, pythonChannel.Object);
+
+            _rpcWorkerChannelManager.ScheduleShutdownStandbyChannels();
+
+            await Task.Delay(200);
+
+            javaChannel.Verify(c => c.Shutdown(null), Times.Never, "Java channel should not be shutdown as it's the worker runtime");
+            nodeChannel.Verify(c => c.Shutdown(null), Times.Once, "Node channel should be shutdown as it's a standby channel");
+            pythonChannel.Verify(c => c.Shutdown(null), Times.Once, "Python channel should be shutdown as it's a standby channel");
+        }
+
+        [Fact]
+        public async Task ScheduleShutdownStandbyChannels_DisposesStandbyChannels()
+        {
+            _rpcWorkerChannelManager = CreateChannelManager(RpcWorkerConstants.JavaLanguageWorkerName);
+
+            var javaChannel = new Mock<IRpcWorkerChannel>();
+            javaChannel.Setup(c => c.Id).Returns("javaWorker");
+            var javaDisposable = javaChannel.As<IDisposable>();
+
+            var nodeChannel = new Mock<IRpcWorkerChannel>();
+            nodeChannel.Setup(c => c.Id).Returns("nodeWorker");
+            var nodeDisposable = nodeChannel.As<IDisposable>();
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.NodeLanguageWorkerName, nodeChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.NodeLanguageWorkerName, nodeChannel.Object);
+
+            _rpcWorkerChannelManager.ScheduleShutdownStandbyChannels();
+
+            await Task.Delay(200);
+
+            javaDisposable.Verify(d => d.Dispose(), Times.Never, "Java channel should not be disposed");
+            nodeDisposable.Verify(d => d.Dispose(), Times.Once, "Node channel should be disposed");
+        }
+
+        [Fact]
+        public async Task ScheduleShutdownStandbyChannels_DoesNotThrow_WhenChannelsAreNotDisposable()
+        {
+            _rpcWorkerChannelManager = CreateChannelManager(RpcWorkerConstants.JavaLanguageWorkerName);
+
+            var javaChannel = new Mock<IRpcWorkerChannel>();
+            javaChannel.Setup(c => c.Id).Returns("javaWorker");
+
+            var nodeChannel = new Mock<IRpcWorkerChannel>();
+            nodeChannel.Setup(c => c.Id).Returns("nodeWorker");
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.NodeLanguageWorkerName, nodeChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.NodeLanguageWorkerName, nodeChannel.Object);
+
+            _rpcWorkerChannelManager.ScheduleShutdownStandbyChannels();
+
+            await Task.Delay(200);
+
+            nodeChannel.Verify(c => c.Shutdown(null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShutdownChannelsAsync_CallsShutdownWithNull_OnAllChannels()
+        {
+            var javaChannel = new Mock<IRpcWorkerChannel>();
+            javaChannel.Setup(c => c.Id).Returns("javaWorker");
+            javaChannel.As<IDisposable>();
+
+            var nodeChannel = new Mock<IRpcWorkerChannel>();
+            nodeChannel.Setup(c => c.Id).Returns("nodeWorker");
+            nodeChannel.As<IDisposable>();
+
+            var pythonChannel = new Mock<IRpcWorkerChannel>();
+            pythonChannel.Setup(c => c.Id).Returns("pythonWorker");
+            pythonChannel.As<IDisposable>();
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.NodeLanguageWorkerName, nodeChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.NodeLanguageWorkerName, nodeChannel.Object);
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.PythonLanguageWorkerName, pythonChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.PythonLanguageWorkerName, pythonChannel.Object);
+
+            await _rpcWorkerChannelManager.ShutdownChannelsAsync();
+
+            javaChannel.Verify(c => c.Shutdown(null), Times.Once);
+            nodeChannel.Verify(c => c.Shutdown(null), Times.Once);
+            pythonChannel.Verify(c => c.Shutdown(null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShutdownChannelsAsync_DisposesAllChannels()
+        {
+            var javaChannel = new Mock<IRpcWorkerChannel>();
+            javaChannel.Setup(c => c.Id).Returns("javaWorker");
+            var javaDisposable = javaChannel.As<IDisposable>();
+
+            var nodeChannel = new Mock<IRpcWorkerChannel>();
+            nodeChannel.Setup(c => c.Id).Returns("nodeWorker");
+            var nodeDisposable = nodeChannel.As<IDisposable>();
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.NodeLanguageWorkerName, nodeChannel.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.NodeLanguageWorkerName, nodeChannel.Object);
+
+            await _rpcWorkerChannelManager.ShutdownChannelsAsync();
+
+            javaDisposable.Verify(d => d.Dispose(), Times.Once);
+            nodeDisposable.Verify(d => d.Dispose(), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShutdownChannelsAsync_ShutdownsMultipleChannelsOfSameLanguage()
+        {
+            var javaChannel1 = new Mock<IRpcWorkerChannel>();
+            javaChannel1.Setup(c => c.Id).Returns("javaWorker1");
+            javaChannel1.As<IDisposable>();
+
+            var javaChannel2 = new Mock<IRpcWorkerChannel>();
+            javaChannel2.Setup(c => c.Id).Returns("javaWorker2");
+            javaChannel2.As<IDisposable>();
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel1.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel1.Object);
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel2.Object);
+            _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel2.Object);
+
+            await _rpcWorkerChannelManager.ShutdownChannelsAsync();
+
+            javaChannel1.Verify(c => c.Shutdown(null), Times.Once);
+            javaChannel2.Verify(c => c.Shutdown(null), Times.Once);
+            Assert.Null(_rpcWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName));
+        }
+
+        [Fact]
+        public async Task ShutdownChannelsAsync_HandlesErroredChannels()
+        {
+            var javaChannel = new Mock<IRpcWorkerChannel>();
+            javaChannel.Setup(c => c.Id).Returns("javaWorker");
+            javaChannel.As<IDisposable>();
+
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
+            _rpcWorkerChannelManager.SetExceptionOnInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object, new Exception("Test exception"));
+
+            await _rpcWorkerChannelManager.ShutdownChannelsAsync();
+
+            Assert.Null(_rpcWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName));
+        }
+
         private WebHostRpcWorkerChannelManager CreateChannelManager(string workerRuntime, IRpcWorkerChannelFactory channelFactory = null, IMetricsLogger metrics = null,
             IConfiguration config = null)
         {
