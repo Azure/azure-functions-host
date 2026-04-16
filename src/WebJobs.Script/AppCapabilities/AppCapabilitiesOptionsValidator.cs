@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
@@ -15,11 +14,22 @@ namespace Microsoft.Azure.WebJobs.Script.AppCapabilities
 
         public ValidateOptionsResult Validate(string name, AppCapabilitiesOptions options)
         {
-            var serialized = JsonSerializer.Serialize(
-                (IDictionary<string, string>)options,
-                DictionaryJsonContext.Default.IDictionaryStringString);
+            IDictionary<string, string> capabilities = options;
 
-            var sizeBytes = Encoding.UTF8.GetByteCount(serialized);
+            var sizeBytes = 0;
+
+            foreach (var kvp in capabilities)
+            {
+                if (kvp.Key is not null)
+                {
+                    sizeBytes += Encoding.UTF8.GetByteCount(kvp.Key);
+                }
+
+                if (kvp.Value is not null)
+                {
+                    sizeBytes += Encoding.UTF8.GetByteCount(kvp.Value);
+                }
+            }
 
             if (sizeBytes > MaxCapabilitiesSizeBytes)
             {

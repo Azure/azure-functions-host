@@ -1,11 +1,13 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -41,7 +43,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             catch (OptionsValidationException ex)
             {
                 _logger.LogError(ex, "Capabilities validation failed.");
-                return StatusCode(500, new { error = ex.Message });
+                var errorResponse = new ErrorResponse(
+                    "InvalidAppCapabilities",
+                    "The application capabilities configuration is invalid. Please check the logs for more details.");
+                return StatusCode(500, errorResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unexpected error occurred while retrieving capabilities.");
+                var errorResponse = new ErrorResponse(
+                    "InternalServerError",
+                    "An unexpected error occurred while retrieving capabilities. Please check the logs for more details.");
+                return StatusCode(500, errorResponse);
             }
         }
 
@@ -62,13 +75,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
                 else
                 {
-                    return NotFound(new { error = $"Capability '{name}' not found." });
+                    var errorResponse = new ErrorResponse(
+                        "CapabilityNotFound",
+                        $"The capability '{name}' was not found.");
+                    return NotFound(errorResponse);
                 }
             }
             catch (OptionsValidationException ex)
             {
                 _logger.LogError(ex, "Capabilities validation failed.");
-                return StatusCode(500, new { error = ex.Message });
+                var errorResponse = new ErrorResponse(
+                    "InvalidAppCapabilities",
+                    "The application capabilities configuration is invalid. Please check the logs for more details.");
+                return StatusCode(500, errorResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unexpected error occurred while retrieving capability '{CapabilityName}'.", name);
+                var errorResponse = new ErrorResponse(
+                    "InternalServerError",
+                    "An unexpected error occurred while retrieving the capability. Please check the logs for more details.");
+                return StatusCode(500, errorResponse);
             }
         }
     }

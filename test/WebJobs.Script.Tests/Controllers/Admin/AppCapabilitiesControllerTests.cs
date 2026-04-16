@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -97,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         }
 
         [Fact]
-        public void GetCapabilities_Returns500_WhenValidationFails()
+        public void GetCapabilities_Returns500WithErrorResponse_WhenValidationFails()
         {
             var validationException = new OptionsValidationException(
                 "AppCapabilitiesOptions",
@@ -111,9 +112,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             var statusCodeResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, statusCodeResult.StatusCode);
 
-            dynamic errorResponse = statusCodeResult.Value;
-            Assert.NotNull(errorResponse.error);
-            Assert.Contains("Capabilities size exceeds maximum allowed size.", (string)errorResponse.error);
+            var errorResponse = Assert.IsType<ErrorResponse>(statusCodeResult.Value);
+            Assert.Equal("InvalidAppCapabilities", errorResponse.Code);
+            Assert.Equal("The application capabilities configuration is invalid. Please check the logs for more details.", errorResponse.Message);
         }
 
         [Fact]
@@ -138,6 +139,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
                 Times.Once);
         }
 
+        [Fact]
+        public void GetCapabilities_Returns500WithErrorResponse_WhenUnexpectedExceptionOccurs()
+        {
+            var unexpectedException = new InvalidOperationException("Unexpected error");
+
+            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Throws(unexpectedException);
+
+            var result = _controller.GetCapabilities();
+
+            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(500, statusCodeResult.StatusCode);
+
+            var errorResponse = Assert.IsType<ErrorResponse>(statusCodeResult.Value);
+            Assert.Equal("InternalServerError", errorResponse.Code);
+            Assert.Equal("An unexpected error occurred while retrieving capabilities. Please check the logs for more details.", errorResponse.Message);
+        }
+
+        [Fact]
+        public void GetCapabilities_LogsError_WhenUnexpectedExceptionOccurs()
+        {
+            var unexpectedException = new InvalidOperationException("Unexpected error");
+
+            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Throws(unexpectedException);
+
+            _controller.GetCapabilities();
+
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("An unexpected error occurred while retrieving capabilities")),
+                    It.Is<Exception>(ex => ex == unexpectedException),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+        }
+
         [Theory]
         [InlineData("feature1", "value1")]
         [InlineData("feature2", "value2")]
@@ -155,18 +192,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         [InlineData("nonExistentFeature")]
         [InlineData("unknownCapability")]
         [InlineData("")]
-        public void Get_ReturnsNotFound_WhenCapabilityDoesNotExist(string name)
+        public void Get_ReturnsNotFoundWithErrorResponse_WhenCapabilityDoesNotExist(string name)
         {
             var result = _controller.Get(name);
 
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic errorResponse = notFoundResult.Value;
-            Assert.NotNull(errorResponse.error);
-            Assert.Contains($"Capability '{name}' not found.", (string)errorResponse.error);
+            var errorResponse = Assert.IsType<ErrorResponse>(notFoundResult.Value);
+            Assert.Equal("CapabilityNotFound", errorResponse.Code);
+            Assert.Equal($"The capability '{name}' was not found.", errorResponse.Message);
         }
 
         [Fact]
-        public void Get_ReturnsNotFound_WhenCapabilitiesIsEmpty()
+        public void Get_ReturnsNotFoundWithErrorResponse_WhenCapabilitiesIsEmpty()
         {
             var emptyOptions = new AppCapabilitiesOptions();
             _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Returns(emptyOptions);
@@ -174,9 +211,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             var result = _controller.Get("anyFeature");
 
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            dynamic errorResponse = notFoundResult.Value;
-            Assert.NotNull(errorResponse.error);
-            Assert.Contains("Capability 'anyFeature' not found.", (string)errorResponse.error);
+            var errorResponse = Assert.IsType<ErrorResponse>(notFoundResult.Value);
+            Assert.Equal("CapabilityNotFound", errorResponse.Code);
+            Assert.Equal("The capability 'anyFeature' was not found.", errorResponse.Message);
         }
 
         [Fact]
@@ -212,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
         }
 
         [Fact]
-        public void Get_Returns500_WhenValidationFails()
+        public void Get_Returns500WithErrorResponse_WhenValidationFails()
         {
             var validationException = new OptionsValidationException(
                 "AppCapabilitiesOptions",
@@ -226,9 +263,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
             var statusCodeResult = Assert.IsType<ObjectResult>(result);
             Assert.Equal(500, statusCodeResult.StatusCode);
 
-            dynamic errorResponse = statusCodeResult.Value;
-            Assert.NotNull(errorResponse.error);
-            Assert.Contains("Capabilities size exceeds maximum allowed size.", (string)errorResponse.error);
+            var errorResponse = Assert.IsType<ErrorResponse>(statusCodeResult.Value);
+            Assert.Equal("InvalidAppCapabilities", errorResponse.Code);
+            Assert.Equal("The application capabilities configuration is invalid. Please check the logs for more details.", errorResponse.Message);
         }
 
         [Fact]
@@ -249,6 +286,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
                     It.IsAny<EventId>(),
                     It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Capabilities validation failed")),
                     It.Is<Exception>(ex => ex == validationException),
+                    It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public void Get_Returns500WithErrorResponse_WhenUnexpectedExceptionOccurs()
+        {
+            var unexpectedException = new InvalidOperationException("Unexpected error");
+
+            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Throws(unexpectedException);
+
+            var result = _controller.Get("someCapability");
+
+            var statusCodeResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(500, statusCodeResult.StatusCode);
+
+            var errorResponse = Assert.IsType<ErrorResponse>(statusCodeResult.Value);
+            Assert.Equal("InternalServerError", errorResponse.Code);
+            Assert.Equal("An unexpected error occurred while retrieving the capability. Please check the logs for more details.", errorResponse.Message);
+        }
+
+        [Fact]
+        public void Get_LogsErrorWithCapabilityName_WhenUnexpectedExceptionOccurs()
+        {
+            var unexpectedException = new InvalidOperationException("Unexpected error");
+
+            _mockCapabilitiesOptions.Setup(o => o.CurrentValue).Throws(unexpectedException);
+
+            _controller.Get("someCapability");
+
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("An unexpected error occurred while retrieving capability") && v.ToString().Contains("someCapability")),
+                    It.Is<Exception>(ex => ex == unexpectedException),
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
         }
