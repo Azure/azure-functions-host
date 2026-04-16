@@ -1676,20 +1676,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await client.GetAsync("api/HttpRequestDataFunction");
             response.EnsureSuccessStatusCode();
 
-            // Wait for the PowerShell standby channel to be disposed (cleanup is debounced)
+            // Wait for the PowerShell standby channel to be disposed (cleanup is debounced ~5s)
             await TestHelpers.Await(() =>
             {
                 var channels = webChannelManager.GetChannels(RpcWorkerConstants.PowerShellLanguageWorkerName);
                 return channels is null || channels.Count == 0;
             }, timeout: 15000);
 
-            // Verify dotnet-isolated channel was created
+            // Verify dotnet-isolated channel was created and survives the standby cleanup.
+            // ScheduleShutdownStandbyChannels disposes channels that don't match _workerRuntime.
             var dotnetChannels = webChannelManager.GetChannels(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+            Assert.NotNull(dotnetChannels);
+            Assert.Single(dotnetChannels);
+            var specializedChannel = await dotnetChannels.Single().Value.Task;
+            Assert.NotNull(specializedChannel);
+
+            // Wait for the host to finish disposing standby channels for non-matching runtimes
+            await Task.Delay(TimeSpan.FromSeconds(6));
+            dotnetChannels = webChannelManager.GetChannels(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
             Assert.NotNull(dotnetChannels);
             Assert.Single(dotnetChannels);
 
             var log = _loggerProvider.GetLog();
             Assert.Contains("Disposing standby channel for runtime:powershell", log);
+            Assert.DoesNotContain("Disposing standby channel for runtime:dotnet-isolated", log);
         }
 
         [Fact]
