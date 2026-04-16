@@ -165,7 +165,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             if (reloadCapabilities is not null)
             {
                 var envReloadResponse = reloadResponse.FunctionEnvironmentReloadResponse!;
-                var initCapabilities = initResponse.WorkerInitResponse.Capabilities;
+                var initCapabilities = initResponse.WorkerInitResponse!.Capabilities;
                 var strategy = envReloadResponse.CapabilitiesUpdateStrategy;
 
                 if (strategy == FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Replace)
