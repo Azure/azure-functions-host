@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
-        public async Task TrySyncTriggers_NotifiesWithContentHash(bool isBackgroundSync)
+        public async Task TrySyncTriggers_NotifiesMeshService(bool isBackgroundSync)
         {
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
                 _mockMeshServiceClient.Verify(
-                    m => m.NotifyTriggersChanged(It.IsAny<string>()),
+                    m => m.NotifyTriggersChanged(),
                     Times.Once);
             }
         }
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [InlineData(false)]
         public async Task TrySyncTriggers_NotifyFails_ReturnsError(bool isBackgroundSync)
         {
-            _mockMeshServiceClient.Setup(m => m.NotifyTriggersChanged(It.IsAny<string>()))
+            _mockMeshServiceClient.Setup(m => m.NotifyTriggersChanged())
                 .ThrowsAsync(new Exception("Connection refused"));
 
             using (var env = new TestScopedEnvironmentVariable(_vars))

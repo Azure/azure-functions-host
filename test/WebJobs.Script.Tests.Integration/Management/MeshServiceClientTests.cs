@@ -265,8 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             var formData = request.Content.ReadAsFormDataAsync().Result;
             return string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
-                   string.Equals("update-triggers-timestamp", formData["operation"]) &&
-                   !string.IsNullOrEmpty(formData["content-hash"]);
+                   string.Equals("update-triggers-timestamp", formData["operation"]);
         }
 
         [Fact]
@@ -279,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 StatusCode = HttpStatusCode.OK
             });
 
-            await _meshServiceClient.NotifyTriggersChanged("abc123hash");
+            await _meshServiceClient.NotifyTriggersChanged();
 
             _handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
                 ItExpr.Is<HttpRequestMessage>(r => IsNotifyTriggersChangedRequest(r)),

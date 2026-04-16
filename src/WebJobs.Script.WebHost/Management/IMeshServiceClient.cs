@@ -22,6 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         Task CreateBindMount(string sourcePath, string targetPath);
 
-        Task NotifyTriggersChanged(string contentHash);
+        Task NotifyTriggersChanged();
     }
 }

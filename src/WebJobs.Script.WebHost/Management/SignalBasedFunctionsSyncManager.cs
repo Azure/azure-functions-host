@@ -3,8 +3,6 @@
 
 using System;
 using System.Net.Http;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -40,13 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         // Overrides the default settriggers HTTP call to instead notify the mesh service
-        // with a content hash of the triggers payload
         protected override async Task<(bool Success, string ErrorMessage)> SetTriggersAsync(string content)
         {
             try
             {
-                string contentHash = ComputeContentHash(content);
-                await _meshServiceClient.NotifyTriggersChanged(contentHash);
+                await _meshServiceClient.NotifyTriggersChanged();
 
                 return (true, null);
             }
@@ -57,13 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 return (false, message);
             }
-        }
-
-        private static string ComputeContentHash(string content)
-        {
-            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(content));
-
-            return Convert.ToHexStringLower(hash);
         }
     }
 }

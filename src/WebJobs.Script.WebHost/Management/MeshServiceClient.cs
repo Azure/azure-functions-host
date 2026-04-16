@@ -143,14 +143,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             response.EnsureSuccessStatusCode();
         }
 
-        public async Task NotifyTriggersChanged(string contentHash)
+        public async Task NotifyTriggersChanged()
         {
             _logger.LogDebug("Posting triggers changed notification to appserver.");
 
             var response = await SendAsync(
             [
-                KeyValuePair.Create(Operation, "update-triggers-timestamp"),
-                KeyValuePair.Create("content-hash", contentHash)
+                KeyValuePair.Create(Operation, "update-triggers-timestamp")
             ]);
 
             response.EnsureSuccessStatusCode();
