@@ -1630,6 +1630,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task Specialization_PowerShellPlaceholder_SpecializesToDotNetIsolated()
+        {
+            // Start with PowerShell as the placeholder runtime
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder(_loggerProvider, "HttpRequestDataFunction");
+
+            // Add a config source backed by TestEnvironment so IConfiguration reflects
+            // runtime changes when _configuration.Reload() is called during specialization.
+            // This must be added last to override the in-memory snapshot from CreateStandbyHostBuilder.
+            builder.ConfigureAppConfiguration(c =>
+            {
+                c.Add(new TestEnvironmentConfigurationSource(_environment));
+                c.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, _dotnetIsolated60Path }
+                });
+            });
+
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
+
+            await host.StartAsync();
+
+            var client = host.GetTestClient();
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            // Verify PowerShell placeholder channel was created
+            var webChannelManager = host.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var powershellChannels = webChannelManager.GetChannels(RpcWorkerConstants.PowerShellLanguageWorkerName);
+            Assert.NotNull(powershellChannels);
+            Assert.Single(powershellChannels);
+
+            // Specialize: switch runtime from powershell to dotnet-isolated
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "6.0");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/HttpRequestDataFunction");
+            response.EnsureSuccessStatusCode();
+
+            // Wait for the PowerShell standby channel to be disposed (cleanup is debounced)
+            await TestHelpers.Await(() =>
+            {
+                var channels = webChannelManager.GetChannels(RpcWorkerConstants.PowerShellLanguageWorkerName);
+                return channels is null || channels.Count == 0;
+            }, timeout: 15000);
+
+            // Verify dotnet-isolated channel was created
+            var dotnetChannels = webChannelManager.GetChannels(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+            Assert.NotNull(dotnetChannels);
+            Assert.Single(dotnetChannels);
+
+            var log = _loggerProvider.GetLog();
+            Assert.Contains("Disposing standby channel for runtime:powershell", log);
+        }
+
+        [Fact]
         public async Task Specialization_Writes_WorkerStartupLogs()
         {
             // Create a test logger per-host so we can ensure logs go to the correct one when specializing
@@ -1937,6 +2000,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
 
                 Inner.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// An <see cref="IConfigurationSource"/> that reads from a <see cref="IEnvironment"/> instance.
+        /// When <see cref="IConfigurationRoot.Reload"/> is called, the provider re-reads the current
+        /// values from the environment, allowing tests to simulate environment variable changes
+        /// that flow through to <see cref="IConfiguration"/>.
+        /// </summary>
+        private sealed class TestEnvironmentConfigurationSource : IConfigurationSource
+        {
+            private readonly IEnvironment _environment;
+
+            public TestEnvironmentConfigurationSource(IEnvironment environment)
+            {
+                _environment = environment;
+            }
+
+            public IConfigurationProvider Build(IConfigurationBuilder builder)
+            {
+                return new Provider(_environment);
+            }
+
+            private sealed class Provider : ConfigurationProvider
+            {
+                private readonly IEnvironment _environment;
+
+                public Provider(IEnvironment environment)
+                {
+                    _environment = environment;
+                }
+
+                public override void Load()
+                {
+                    var runtime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                    if (runtime is not null)
+                    {
+                        Data[EnvironmentSettingNames.FunctionWorkerRuntime] = runtime;
+                    }
+                    else
+                    {
+                        Data.Remove(EnvironmentSettingNames.FunctionWorkerRuntime);
+                    }
+                }
             }
         }
     }
