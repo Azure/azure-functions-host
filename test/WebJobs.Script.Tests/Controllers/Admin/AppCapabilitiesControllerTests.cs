@@ -304,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var errorResponse = Assert.IsType<ErrorResponse>(statusCodeResult.Value);
             Assert.Equal("InternalServerError", errorResponse.Code);
-            Assert.Equal("An unexpected error occurred while retrieving the capability. Please check the logs for more details.", errorResponse.Message);
+            Assert.Equal("An unexpected error occurred while retrieving capabilities. Please check the logs for more details.", errorResponse.Message);
         }
 
         [Fact]

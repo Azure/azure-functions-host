@@ -20,6 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     {
         private readonly IOptionsMonitor<AppCapabilitiesOptions> _capabilitiesOptions;
         private readonly ILogger<AppCapabilitiesController> _logger;
+        private static readonly ErrorResponse _capabilitiesValidationErrorResponse = new ErrorResponse(
+            "InvalidAppCapabilities",
+            "The application capabilities configuration is invalid. Please check the logs for more details.");
+
+        private static readonly ErrorResponse _internalErrorResponse = new ErrorResponse(
+            "InternalServerError",
+            "An unexpected error occurred while retrieving capabilities. Please check the logs for more details.");
 
         public AppCapabilitiesController(IOptionsMonitor<AppCapabilitiesOptions> capabilitiesOptions,
             ILogger<AppCapabilitiesController> logger)
@@ -43,18 +50,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             catch (OptionsValidationException ex)
             {
                 _logger.LogError(ex, "Capabilities validation failed.");
-                var errorResponse = new ErrorResponse(
-                    "InvalidAppCapabilities",
-                    "The application capabilities configuration is invalid. Please check the logs for more details.");
-                return StatusCode(500, errorResponse);
+                return StatusCode(500, _capabilitiesValidationErrorResponse);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An unexpected error occurred while retrieving capabilities.");
-                var errorResponse = new ErrorResponse(
-                    "InternalServerError",
-                    "An unexpected error occurred while retrieving capabilities. Please check the logs for more details.");
-                return StatusCode(500, errorResponse);
+                return StatusCode(500, _internalErrorResponse);
             }
         }
 
@@ -84,18 +85,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             catch (OptionsValidationException ex)
             {
                 _logger.LogError(ex, "Capabilities validation failed.");
-                var errorResponse = new ErrorResponse(
-                    "InvalidAppCapabilities",
-                    "The application capabilities configuration is invalid. Please check the logs for more details.");
-                return StatusCode(500, errorResponse);
+                return StatusCode(500, _capabilitiesValidationErrorResponse);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An unexpected error occurred while retrieving capability '{CapabilityName}'.", name);
-                var errorResponse = new ErrorResponse(
-                    "InternalServerError",
-                    "An unexpected error occurred while retrieving the capability. Please check the logs for more details.");
-                return StatusCode(500, errorResponse);
+                return StatusCode(500, _internalErrorResponse);
             }
         }
     }
