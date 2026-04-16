@@ -11,7 +11,8 @@
             "direction": "in",
             "tableName": "test",
             "partitionKey": "AAA",
-            "rowKey": "001"
+            "filter": "RowKey eq '001'",
+            "take": 1
         },
         {
             "type": "table",

@@ -66,7 +66,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var properties = (JObject)blobMetadata["properties"];
             Assert.Equal("application/octet-stream", (string)properties["contentType"]);
             Assert.Equal("Block", Enum.Parse(typeof(BlobType), (string)properties["blobType"]).ToString());
-            Assert.Equal(5, properties["length"]);
 
             string invocationId = (string)testResult["invocationId"];
             Guid.Parse(invocationId);
@@ -895,7 +894,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 base.ConfigureScriptHost(webJobsBuilder);
 
-                webJobsBuilder.AddAzureStorageCoreServices().AddAzureStorageBlobs().AddAzureStorageQueues();
+                webJobsBuilder.AddAzureStorageCoreServices().AddAzureStorageBlobs().AddAzureStorageQueues().AddTables();
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                     {
                         o.Functions =

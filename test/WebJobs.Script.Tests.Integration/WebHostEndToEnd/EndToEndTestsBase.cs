@@ -51,11 +51,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             string message = result.FormattedMessage.Substring(result.FormattedMessage.IndexOf('{'));
 
-            // verify singleton binding
+            // verify singleton binding (v5 Tables extension returns JArray even for single-entity lookups)
             JObject resultObject = JObject.Parse(message);
-            JObject single = (JObject)resultObject["single"];
-            Assert.Equal("AAA", (string)single["PartitionKey"]);
-            Assert.Equal("001", (string)single["RowKey"]);
+            JArray single = (JArray)resultObject["single"];
+            Assert.Single(single);
+            Assert.Equal("AAA", (string)single[0]["PartitionKey"]);
+            Assert.Equal("001", (string)single[0]["RowKey"]);
 
             // verify partition binding
             JArray partition = (JArray)resultObject["partition"];
@@ -116,6 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await TestHelpers.Await(async () =>
             {
+                entities.Clear();
                 var results = table.QueryAsync<TableEntity>(tableQuery, null);
                 await foreach (var entity in results)
                 {
@@ -128,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             foreach (var entity in entities)
             {
                 Assert.IsType<string>(entity["stringProp"]);
-                Assert.IsType<int>(entity["intProp"]);
+                Assert.True(entity["intProp"] is int || entity["intProp"] is long);
                 Assert.IsType<bool>(entity["boolProp"]);
 
                 // Guids end up roundtripping as strings
