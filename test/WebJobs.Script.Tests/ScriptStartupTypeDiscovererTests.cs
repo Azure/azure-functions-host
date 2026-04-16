@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading extension bundle")));
             }
 
-            Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading startup extension 'Storage")));
+            Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading startup extension 'AzureStorageBlobs'")));
             AssertNoErrors(traces);
         }
 
@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Extension Bundle not loaded")));
             if (extensionConfigured)
             {
-                Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading startup extension 'Storage")));
+                Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading startup extension 'AzureStorageBlobs'")));
             }
 
             AssertNoErrors(traces);
@@ -709,7 +709,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public static ExtensionInstall BlobStorage(bool includeBinding = false)
             {
                 string[] bindings = includeBinding ? ["blob"] : [];
-                return new("Storage", typeof(AzureStorageBlobsWebJobsStartup), bindings);
+                return new("AzureStorageBlobs", typeof(AzureStorageBlobsWebJobsStartup), bindings);
             }
 
             public static ExtensionInstall SendGrid(bool includeBinding = false)

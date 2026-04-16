@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         {
             private readonly TestScopedEnvironmentVariable _scopedEnvironment;
 
-            public TestFixture() : base(@"TestScripts\CSharp", "csharp", RpcWorkerConstants.DotNetLanguageWorkerName, addTestSettings: false)
+            public TestFixture() : base(@"TestScripts\CSharp", "csharp", RpcWorkerConstants.DotNetLanguageWorkerName, addTestSettings: false, addStorageExtensions: false)
             {
                 // SWA generates their own key and sets via AzureWebEncryptionKey
                 // This should take precedence over the default key

@@ -42,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private int _workerProcessCount;
         private string _functionsWorkerRuntimeVersion;
         private bool _addTestSettings;
+        private bool _addStorageExtensions;
 
         protected EndToEndTestFixture(
             string rootPath,
@@ -49,7 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsWorkerRuntime,
             int workerProcessesCount = 1,
             string functionsWorkerRuntimeVersion = null,
-            bool addTestSettings = true)
+            bool addTestSettings = true,
+            bool addStorageExtensions = true)
         {
             FixtureId = testId;
             _rootPath = rootPath;
@@ -57,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _workerProcessCount = workerProcessesCount;
             _functionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion;
             _addTestSettings = addTestSettings;
+            _addStorageExtensions = addStorageExtensions;
         }
 
         public BlobContainerClient TestInputContainer { get; private set; }
@@ -151,6 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string azuriteConnectionString = _azurite.GetConnectionString();
             Host = new TestFunctionHost(_copiedRootPath, logPath, addTestSettings: _addTestSettings,
+                addStorageExtensions: _addStorageExtensions,
                 configureScriptHostWebJobsBuilder: webJobsBuilder =>
                 {
                     ConfigureScriptHost(webJobsBuilder);

@@ -1557,7 +1557,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // this app has a QueueTrigger reading from "myqueue-items"
             // add a few messages there before stopping the host
             var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
-            var queueServiceClient = new QueueServiceClient(storageValue);
+            var queueServiceClient = new QueueServiceClient(storageValue, new QueueClientOptions
+            {
+                MessageEncoding = QueueMessageEncoding.Base64
+            });
             var queue = queueServiceClient.GetQueueClient("myqueue-items");
             await queue.CreateIfNotExistsAsync();
             await queue.ClearMessagesAsync();
