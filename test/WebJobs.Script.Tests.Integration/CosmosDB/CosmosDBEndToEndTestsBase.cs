@@ -3,6 +3,8 @@
 
 using System;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using Microsoft.Azure.Cosmos;
 using Xunit;
 

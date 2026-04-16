@@ -899,6 +899,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 base.ConfigureScriptHost(webJobsBuilder);
 
+                webJobsBuilder.AddAzureStorageCoreServices().AddAzureStorageBlobs().AddAzureStorageQueues();
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                     {
                         o.Functions =

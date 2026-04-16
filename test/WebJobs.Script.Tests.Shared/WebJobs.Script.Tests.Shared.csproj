@@ -6,7 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Storage.Blob" />
     <PackageReference Include="Moq" />
     <PackageReference Include="xunit"/>
   </ItemGroup>

@@ -108,6 +108,8 @@ public class NodeHostRestartEndToEndTests
         {
             base.ConfigureScriptHost(webJobsBuilder);
 
+            webJobsBuilder.AddAzureStorageCoreServices().AddAzureStorageBlobs().AddAzureStorageQueues();
+
             webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
             {
                 o.Functions = new[]

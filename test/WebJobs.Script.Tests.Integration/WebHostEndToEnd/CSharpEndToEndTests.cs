@@ -569,6 +569,8 @@ namespace SecondaryDependency
             {
                 base.ConfigureScriptHost(webJobsBuilder);
 
+                webJobsBuilder.AddAzureStorageCoreServices().AddAzureStorageBlobs().AddAzureStorageQueues();
+
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {
                     // Only load the functions we care about

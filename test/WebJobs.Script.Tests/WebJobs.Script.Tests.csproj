@@ -22,7 +22,6 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.SendGrid" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Tables" />
-    <PackageReference Include="Microsoft.Azure.Storage.Blob" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
     <PackageReference Include="Moq" />
