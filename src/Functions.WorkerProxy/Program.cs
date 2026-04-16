@@ -48,7 +48,11 @@ app.Use(async (ctx, next) =>
 {
     if (ctx.Connection.LocalPort == httpProxyPort)
     {
+        var logger = ctx.RequestServices.GetRequiredService<ILogger<FunctionRpcRelay>>();
+        logger.LogDebug("[HTTP Proxy] Received {Method} {Path} on port {Port}, forwarding to {Destination}",
+            ctx.Request.Method, ctx.Request.Path, httpProxyPort, workerHttpEndpoint);
         await forwarder.SendAsync(ctx, workerHttpEndpoint, httpClient);
+        logger.LogDebug("[HTTP Proxy] Forwarded request completed with status {StatusCode}", ctx.Response.StatusCode);
         return;
     }
 
@@ -72,13 +76,42 @@ app.MapGet("/ready", () =>
         : Results.StatusCode(503);
 });
 
-// [CS-TODO] Implement worker specialization. NNA calls this after /ready succeeds
-// with the app settings payload. The worker proxy should forward this to the language
-// worker as a FunctionEnvironmentReloadRequest over gRPC, causing the worker to
-// apply environment variables and load customer code.
-app.MapPost("/assign", () =>
+// Worker specialization. NNA calls this after /ready succeeds with the app settings
+// payload. The worker proxy drives the full init + specialization + metadata prefetch
+// sequence with the worker, caching all responses for later replay to the runtime.
+app.MapPost("/admin/worker/assign", async (HttpContext ctx, CancellationToken cancellationToken) =>
 {
-    return Results.Ok();
+    WorkerAssignRequest? assignRequest;
+    try
+    {
+        assignRequest = await ctx.Request.ReadFromJsonAsync(WorkerProxyJsonContext.Default.WorkerAssignRequest, cancellationToken);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest($"Invalid request body: {ex.Message}");
+    }
+
+    if (assignRequest is null)
+    {
+        return Results.BadRequest("Request body is required.");
+    }
+
+    var envVars = assignRequest.Environment ?? new Dictionary<string, string>();
+    var functionAppDirectory = assignRequest.FunctionAppDirectory ?? "/home/site/wwwroot";
+
+    try
+    {
+        await relay.SpecializeWorkerAsync(envVars, functionAppDirectory, cancellationToken);
+        return Results.Ok();
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Conflict(ex.Message);
+    }
+    catch (OperationCanceledException)
+    {
+        return Results.StatusCode(504);
+    }
 });
 
 app.MapPost("/drain", async () =>

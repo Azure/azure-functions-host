@@ -1043,6 +1043,14 @@ namespace Microsoft.Azure.WebJobs.Script
         // WORKER_INDEXING_DISABLED contains the customers app name worker indexing is then disabled for that customer only
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, FunctionsHostingConfigOptions functionsHostingConfigOptions)
         {
+            // In external (compute separation) mode the worker always provides metadata
+            // via ConnectedWorkerFunctionMetadataProvider. No local workerConfig is needed.
+            if (string.Equals(environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsWorkerExternalEnabled),
+                "true", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
             // NOTE: Enabling the worker indexing for Logic Apps with codeful mode enabled.
             if (environment.IsLogicApp() && !environment.IsLogicAppCodefulModeEnabled())
             {
