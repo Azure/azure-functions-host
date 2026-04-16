@@ -186,7 +186,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             if (!string.IsNullOrEmpty(azuriteConnectionString))
             {
-                QueueServiceClient = new QueueServiceClient(azuriteConnectionString);
+                QueueServiceClient = QueueServiceClient = new QueueServiceClient(azuriteConnectionString, new QueueClientOptions
+                {
+                    MessageEncoding = QueueMessageEncoding.Base64
+                });
                 BlobServiceClient = new BlobServiceClient(azuriteConnectionString);
                 TableServiceClient = new TableServiceClient(azuriteConnectionString);
 
@@ -293,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 batch.Add(new TableTransactionAction(TableTransactionActionType.Delete, entity));
             }
 
-            if (batch.Count != 0)
+            if (batch.Count is not 0)
             {
                 await table.SubmitTransactionAsync(batch);
             }

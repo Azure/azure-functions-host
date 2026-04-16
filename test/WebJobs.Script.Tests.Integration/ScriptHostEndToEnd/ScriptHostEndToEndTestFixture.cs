@@ -105,7 +105,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             string connectionString = _azurite.GetConnectionString();
-            QueueServiceClient = new QueueServiceClient(connectionString);
+            QueueServiceClient = QueueServiceClient = new QueueServiceClient(connectionString, new QueueClientOptions
+            {
+                MessageEncoding = QueueMessageEncoding.Base64
+            });
             BlobServiceClient = new BlobServiceClient(connectionString);
             TableServiceClient = new TableServiceClient(connectionString);
 

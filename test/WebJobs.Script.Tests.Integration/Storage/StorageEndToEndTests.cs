@@ -1,8 +1,5 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
-using Azure.Storage.Queues;
-using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
