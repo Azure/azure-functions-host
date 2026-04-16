@@ -72,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         if (removedChannels.TryRemove(removedChannel.Id, out IRpcWorkerChannel _))
                         {
                             _logger.LogDebug("Disposing language worker channel with id:{workerId}", removedChannel.Id);
+                            removedChannel.Shutdown(null);
                             (removedChannel as IDisposable)?.Dispose();
                         }
                     }
