@@ -14,13 +14,10 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Azure.Storage.Queues;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -28,7 +25,6 @@ using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -69,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             var properties = (JObject)blobMetadata["properties"];
             Assert.Equal("application/octet-stream", (string)properties["contentType"]);
-            Assert.Equal("BlockBlob", Enum.Parse(typeof(BlobType), (string)properties["blobType"]).ToString());
+            Assert.Equal("Block", Enum.Parse(typeof(BlobType), (string)properties["blobType"]).ToString());
             Assert.Equal(5, properties["length"]);
 
             string invocationId = (string)testResult["invocationId"];
