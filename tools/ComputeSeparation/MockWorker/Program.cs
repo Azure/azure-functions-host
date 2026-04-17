@@ -83,6 +83,10 @@ while (await call.ResponseStream.MoveNext(CancellationToken.None))
             await HandleWorkerStatus(call.RequestStream, msg);
             break;
 
+        case StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest:
+            await HandleEnvironmentReload(call.RequestStream, msg);
+            break;
+
         default:
             Console.WriteLine($"[MockWorker]   (ignored)");
             break;
@@ -121,6 +125,24 @@ async Task HandleWorkerInit(IClientStreamWriter<StreamingMessage> stream, Stream
 
     await stream.WriteAsync(response);
     Console.WriteLine("[MockWorker] → Sent WorkerInitResponse (Success)");
+}
+
+async Task HandleEnvironmentReload(IClientStreamWriter<StreamingMessage> stream, StreamingMessage msg)
+{
+    var dir = msg.FunctionEnvironmentReloadRequest?.FunctionAppDirectory ?? "(none)";
+    Console.WriteLine($"[MockWorker]   FunctionAppDirectory={dir}");
+
+    var response = new StreamingMessage
+    {
+        RequestId = msg.RequestId,
+        FunctionEnvironmentReloadResponse = new FunctionEnvironmentReloadResponse
+        {
+            Result = new StatusResult { Status = StatusResult.Types.Status.Success }
+        }
+    };
+
+    await stream.WriteAsync(response);
+    Console.WriteLine("[MockWorker] → Sent FunctionEnvironmentReloadResponse (Success)");
 }
 
 async Task HandleFunctionMetadata(IClientStreamWriter<StreamingMessage> stream, StreamingMessage msg)
