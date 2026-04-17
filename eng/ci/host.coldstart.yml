@@ -61,6 +61,10 @@ resources:
     type: git
     name: engineering
     ref: refs/tags/release
+  - repository: functions-release
+    type: git
+    name: internal/functions-release
+    ref: refs/heads/main
 
 variables:
   - template: /eng/ci/templates/variables/coldstart.yml@self
