@@ -1638,12 +1638,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var builder = CreateStandbyHostBuilder(_loggerProvider, "HttpRequestDataFunction");
 
-            // Add a config source backed by TestEnvironment so IConfiguration reflects
-            // runtime changes when _configuration.Reload() is called during specialization.
-            // This must be added last to override the in-memory snapshot from CreateStandbyHostBuilder.
             builder.ConfigureAppConfiguration(c =>
             {
-                c.Add(new TestEnvironmentConfigurationSource(_environment));
                 c.AddInMemoryCollection(new Dictionary<string, string>
                 {
                     { _scriptRootConfigPath, _dotnetIsolated60Path }
@@ -1867,6 +1863,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
 
                     c.AddInMemoryCollection(inMemorySettings);
+
+                    // Bridge TestEnvironment into IConfiguration so that _configuration.Reload()
+                    // picks up env var changes made during specialization — matching production
+                    // where ScriptEnvironmentVariablesConfigurationSource reads real process env vars.
+                    c.Add(new TestEnvironmentConfigurationSource(_environment));
                 })
                 .ConfigureLogging(b =>
                 {
