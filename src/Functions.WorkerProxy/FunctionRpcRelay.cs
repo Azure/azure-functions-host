@@ -497,6 +497,12 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                     {
                         _logger.LogInformation("Received WorkerDrainComplete from runtime.");
                         _stateManager.UpdatePodStatus(WorkerPodStatus.MarkedForDeletion);
+
+                        // CS-TODO: After drain completes, consider sending WorkerTerminate to the
+                        // worker with a grace period, then waiting for the worker to disconnect
+                        // before the proxy itself shuts down. Today the platform owns worker
+                        // process lifetime (DeletePod), but WorkerTerminate would let the worker
+                        // clean up gracefully if it advertises HandlesWorkerTerminateMessage.
                         continue;
                     }
                 }
@@ -506,6 +512,15 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             }
 
             forwardWriter.TryComplete();
+
+            // If the runtime disconnected while we were draining, treat stream closure
+            // as an implicit drain-complete — the runtime may have sent WorkerDrainComplete
+            // but the stream was torn down before we could read it.
+            if (side == RelaySide.Runtime && _stateManager.CurrentStatus == WorkerPodStatus.Draining)
+            {
+                _logger.LogInformation("Runtime stream closed while draining. Transitioning to MarkedForDeletion.");
+                _stateManager.UpdatePodStatus(WorkerPodStatus.MarkedForDeletion);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
