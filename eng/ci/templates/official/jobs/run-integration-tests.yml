@@ -201,6 +201,14 @@ jobs:
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
+    displayName: Build compute separation dependencies
+    condition: succeededOrFailed()
+    inputs:
+      command: build
+      arguments: -v m -c release
+      projects: tools/ComputeSeparation/ComputeSeparation.sln
+
+  - task: DotNetCoreCLI@2
     displayName: Compute separation end to end tests
     condition: succeededOrFailed()
     inputs:
