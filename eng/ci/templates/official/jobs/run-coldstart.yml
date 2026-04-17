@@ -140,6 +140,15 @@ jobs:
         Write-Host "##vso[task.complete result=Failed;]One or more JIT trace files could not be found."
         exit 1
       }
+
+      # Display release notes if present
+      $releaseNotesPath = Join-Path $sourceDir "release_notes.md"
+      if (Test-Path $releaseNotesPath) {
+        Write-Host "Release notes ($releaseNotesPath):"
+        Get-Content $releaseNotesPath -Raw | Write-Host
+      } else {
+        Write-Host "No release notes found at: $releaseNotesPath"
+      }
     displayName: Copy JIT trace files from functions-release
 
   # # For JIT trace generation, ensure the app is configured with a storage account so the authentication flow can be executed end-to-end.
