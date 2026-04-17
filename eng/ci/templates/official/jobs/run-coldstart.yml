@@ -153,12 +153,6 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
-  - task: UseDotNet@2
-    displayName: Install .NET 10
-    inputs:
-      packageType: sdk
-      version: 10.x
-
   - script: dotnet --info
     displayName: "Print .NET Environment Info"
 
