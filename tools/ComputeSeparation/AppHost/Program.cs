@@ -89,6 +89,9 @@ builder.Build().Run();
 /// <summary>
 /// Project mode – runs every component as a local .NET project (default).
 /// </summary>
+// CS-TODO: Project mode currently uses MockWorker for the worker side. Replace with a
+// real .NET Isolated worker (SampleIsolatedApp via FunctionsNetHost) to match container
+// mode and validate the full end-to-end flow with real function execution locally.
 static void AddProjectResources(
     IDistributedApplicationBuilder builder,
     IResourceBuilder<AzureStorageResource> storage)
@@ -142,11 +145,18 @@ static void AddContainerResources(
     string repoRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 
     // --- Worker Proxy (container) ---
+    // CS-TODO: The host.json bind mount is a temporary workaround. Once assembly streaming
+    // is implemented in a future milestone, the worker will transmit host.json content over
+    // gRPC and this bind mount can be removed.
+    string hostJsonSource = Path.Combine(repoRoot, "tools", "ComputeSeparation", "SampleIsolatedApp", "host.json");
+
     var workerProxy = builder.AddDockerfile("worker-proxy", repoRoot, "src/Functions.WorkerProxy/Dockerfile")
         .WithEndpoint(targetPort: runtimeGrpcPort, name: "proxy-runtime-grpc", scheme: "http")
         .WithEndpoint(targetPort: workerGrpcPort, name: "proxy-worker-grpc", scheme: "http")
         .WithEndpoint(targetPort: httpProxyPort, name: "http-proxy", scheme: "http")
         .WithHttpEndpoint(managementPort, managementPort, name: "proxy-management")
+        .WithBindMount(hostJsonSource, "/home/site/wwwroot/host.json", isReadOnly: true)
+        .WithEnvironment("Logging__LogLevel__Default", "Debug")
         .WithArgs(
             "--runtime-grpc-port", runtimeGrpcPort.ToString(),
             "--worker-grpc-port", workerGrpcPort.ToString(),
@@ -154,26 +164,37 @@ static void AddContainerResources(
             "--management-port", managementPort.ToString());
 
     // Tell the proxy its externally-reachable HTTP proxy URL (used in the HttpUri
-    // capability rewrite) and the mock worker's HTTP endpoint for reverse-proxying.
+    // capability rewrite) and the worker's HTTP endpoint for reverse-proxying.
     var proxyHttpEndpoint = workerProxy.GetEndpoint("http-proxy");
 
-    // --- Mock Worker (container) ---
-    var mockWorker = builder.AddDockerfile("mock-worker", repoRoot, "tools/ComputeSeparation/MockWorker/Dockerfile")
-        .WithEndpoint(targetPort: mockWorkerHttpPort, name: "mock-http", scheme: "http")
+    // --- Sample Isolated Worker (container) ---
+    // Uses FunctionsNetHost + pre-baked SampleIsolatedApp at /home/site/wwwroot.
+    // Fixed container name so the proxy can reach it via Docker DNS on any port,
+    // bypassing Aspire's reverse proxy (which only forwards declared endpoints).
+    const string workerContainerName = "isolated-worker";
+
+    var isolatedWorker = builder.AddDockerfile("isolated-worker", repoRoot, "tools/ComputeSeparation/SampleIsolatedApp/Dockerfile")
+        .WithContainerName(workerContainerName)
+        .WithEndpoint(targetPort: mockWorkerHttpPort, name: "worker-http", scheme: "http")
         .WithEnvironment(context =>
         {
             var grpcEndpoint = workerProxy.GetEndpoint("proxy-worker-grpc");
             context.EnvironmentVariables["FUNCTIONS_GRPC_HOST"] = grpcEndpoint.Property(EndpointProperty.Host);
             context.EnvironmentVariables["FUNCTIONS_GRPC_PORT"] = grpcEndpoint.Property(EndpointProperty.Port);
         })
+        // Add a second HTTP listener on all interfaces (0.0.0.0) at the known port so the
+        // proxy can reach it across Docker container boundaries. The SDK's default listener
+        // binds to localhost only, which is unreachable from other containers.
+        .WithEnvironment("FUNCTIONS_HTTP_PORT", mockWorkerHttpPort.ToString())
         .WaitFor(workerProxy);
 
-    // Wire proxy env vars that depend on mock-worker being defined.
-    var mockWorkerHttpEndpoint = mockWorker.GetEndpoint("mock-http");
+    // Wire proxy env vars that depend on the worker being defined.
+    // Use the Docker container name + fixed port directly (not Aspire's *.dev.internal proxy)
+    // so the proxy can reach the worker's HTTP listener across container boundaries.
     workerProxy
         .WithEnvironment(context =>
         {
-            context.EnvironmentVariables["WORKER_HTTP_ENDPOINT"] = mockWorkerHttpEndpoint.Property(EndpointProperty.Url);
+            context.EnvironmentVariables["WORKER_HTTP_ENDPOINT"] = $"http://{workerContainerName}:{mockWorkerHttpPort}";
             context.EnvironmentVariables["HTTP_PROXY_ENDPOINT"] = proxyHttpEndpoint.Property(EndpointProperty.Url);
             var runtimeGrpcEndpont = workerProxy.Resource.GetEndpoint("proxy-runtime-grpc");
             context.EnvironmentVariables["RUNTIME_GRPC_ENDPOINT"] = runtimeGrpcEndpont.Property(EndpointProperty.Url);
@@ -196,12 +217,14 @@ static void AddContainerResources(
         .WithEnvironment("WEBSITE_SKU", "FlexConsumption")
         .WithEnvironment("CONTAINER_ENCRYPTION_KEY", ContainerEncryptionKey)
         .WithEnvironment("MESH_INIT_URI", "http://localhost:6060")
-        .WithEnvironment(context =>        {
+        .WithEnvironment("CONSOLE_LOGGING_DISABLED", "1")
+        .WithEnvironment(context =>
+        {
             ConfigureStorageConnectionString(context, storage);
         })
         .WaitFor(storage);
 
-    mockWorker.WaitFor(workerProxy);
+    isolatedWorker.WaitFor(workerProxy);
 }
 
 static void ConfigureStorageConnectionString(

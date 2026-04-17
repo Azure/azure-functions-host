@@ -1,101 +1,112 @@
 ### Compute Separation — E2E HTTP Testing
 ###
-### These .http files are used with VS Code REST Client or Visual Studio
-### to test the compute separation admin APIs end-to-end.
+### These requests exercise the compute separation admin APIs end-to-end.
+### Run them top-to-bottom to simulate the full platform orchestration flow.
 ###
 ### Prerequisites:
-###   1. Start the Aspire harness (or start the runtime manually)
-###   2. Select either the 'project' (default) or 'container' environment, based on how you started Aspire.
+###   1. Start the Aspire harness: dotnet run --project tools/ComputeSeparation/AppHost
+###      (use --UseContainers true for container mode)
+###   2. Wait for all resources to show as Running in the Aspire dashboard.
 ###
-### Variables — update these for your environment:
-### Select "project" or "container" environment to toggle workerGrpcEndpoint.
+### The encrypted payloads use the well-known CONTAINER_ENCRYPTION_KEY from the
+### Aspire harness: 0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248F6B038A61BACE9D7
 
 @runtimeHost = http://localhost:7071
 @workerProxyHost = http://localhost:50054
 @masterKey = dev-master-key
 
 ### ============================================================
-### Runtime Admin APIs
+### Full Orchestration Flow
+### ============================================================
+###
+### This mirrors what the platform (RCP → NNA) does in production:
+###
+###   1. Wait for worker proxy readiness
+###   2. Specialize the worker (/admin/worker/assign on worker proxy)
+###      → Proxy drives: WorkerInit → EnvReload → MetadataPrefetch
+###      → Proxy caches all responses for later replay
+###   3. Specialize the runtime (/admin/instance/assign on runtime)
+###      → Runtime exits placeholder mode, applies app settings
+###   4. Link the worker to the runtime (/admin/workers/link on runtime)
+###      → Runtime connects to proxy gRPC, receives cached init + metadata
+###      → ScriptHost starts, functions loaded, host becomes Running
+###   5. Invoke a function (GET /api/HttpTrigger)
+###      → Runtime → Proxy (gRPC invocation + HTTP forward) → Worker
+###
 ### ============================================================
 
-### Get host status
-GET {{runtimeHost}}/admin/host/status?code={{masterKey}}
-
-###
-
-### Link a worker to the runtime
-POST {{runtimeHost}}/admin/workers/link?code={{masterKey}}
-Content-Type: application/json
-
-{
-  "workerId": "w_test01",
-  "podName": "worker-pod-test01",
-  "grpcEndpoint": "{{workerGrpcEndpoint}}",
-  "podKey": "test-key"
-}
-
-###
-
-### Ping the host
-GET {{runtimeHost}}/admin/host/ping
-
-###
-
-### Invoke an HTTP trigger function (after worker is linked)
-GET {{runtimeHost}}/api/HttpTrigger
-
-###
-
-### Stop the runtime instance (full runtime stop)
-### Drains host listeners, disconnects all workers, sends WorkerDrainComplete to each.
-POST {{runtimeHost}}/admin/instance/stop?code={{masterKey}}
-
-###
-
-### ============================================================
-### Specialization Flow (Placeholder → Specialize → Link)
-### ============================================================
-
-### Specialize the runtime (simulate platform /assign call)
-### The payload is encrypted with the well-known CONTAINER_ENCRYPTION_KEY from
-### the Aspire harness (0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248F6B038A61BACE9D7).
-### Plaintext: {"SiteId":1234,"SiteName":"devhost","Environment":{"FUNCTIONS_WORKER_EXTERNAL_ENABLED":"true","FUNCTIONS_WORKER_RUNTIME":"node","WEBSITE_SITE_NAME":"devhost"}}
-POST {{runtimeHost}}/admin/instance/assign?code={{masterKey}}
-Content-Type: application/json
-
-{
-  "encryptedContext": "STOt1wkHpw6kqe5/g0bxkQ==.YhyWltLkQVJD0Q+z4nJQvZEjj+kMzBOFY0LzUwtk9ASao/7ZB8myX3rLO9JGGnGnoAn6zlQij2Vkt36Jpn6gl8vYGAol7E/cSDqvOTQyRclR1Xb7Ph227TIsJfc5x9M2312QxC+uUsuz/OLOfFcHjO25aZ2XWk4iI3lorGeXnLgYi97oIQd8jKNaa+qcGW0eG0t9Mi1a8DQ+EWt1pT5iKA==.l7sP0SVC5PPsmjsAf9df4iUs609Ck09VtyO6LEvhMVs="
-}
-
-###
-
-### After specialization, link the worker.
-### The /link call triggers ScriptHost startup and delivers host.json + function metadata.
-POST {{runtimeHost}}/admin/workers/link?code={{masterKey}}
-Content-Type: application/json
-
-{
-  "workerId": "w_test01",
-  "podName": "worker-pod-test01",
-  "grpcEndpoint": "{{workerGrpcEndpoint}}",
-  "podKey": "test-key"
-}
-
-###
-### Worker Proxy Management APIs
-### ============================================================
-
-###
-
-### Check worker proxy readiness
+### Step 1: Check worker proxy readiness
+### NNA polls this until the worker has connected to the proxy via gRPC.
 GET {{workerProxyHost}}/ready
 
 ###
 
-### Trigger worker drain (scale-in scenario)
-### Worker proxy sends WorkerDrainRequest to runtime over gRPC,
-### runtime drains in-flight invocations and sends WorkerDrainComplete back.
-POST {{workerProxyHost}}/drain
+### Step 2: Specialize the worker
+### NNA calls this after /ready succeeds. The proxy drives the full
+### init + specialization + metadata prefetch sequence with the worker,
+### caching all responses for later replay to the runtime.
+POST {{workerProxyHost}}/admin/worker/assign
+Content-Type: application/json
+
+{
+  "environment": {
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "WEBSITE_SITE_NAME": "devhost"
+  },
+  "functionAppDirectory": "/home/site/wwwroot"
+}
+
+###
+
+### Step 3: Specialize the runtime (simulate platform /assign call)
+### NNA calls this to take the runtime out of placeholder mode.
+### The payload is AES-256-CBC encrypted with CONTAINER_ENCRYPTION_KEY.
+### Plaintext: {"SiteId":1234,"SiteName":"devhost","Environment":{"FUNCTIONS_WORKER_EXTERNAL_ENABLED":"true","FUNCTIONS_WORKER_RUNTIME":"dotnet-isolated","WEBSITE_SITE_NAME":"devhost"}}
+POST {{runtimeHost}}/admin/instance/assign?code={{masterKey}}
+Content-Type: application/json
+
+{
+  "encryptedContext": "5HK2jK+MejSDtjZXWzDIMA==.gGbJ+jcHOTTTOfMY81WR+b51MrKffae+WonFrjoYdQC5GS5hqRW0Bvgvmbze5Y6SgWxTD30vvZnv3lKYWKB0KotvpgjyxMBCyYtbQYKdCM7sScZlvh0vgSOzgxJO6xqJySzW7w/gWYXAKnJvYBUrMFzw9656+YwEQ8osVPsuJGld9Fy2lND3nwgKvbxpcZde/3k2mt0OWOPHvKgHi9Z6duS7OFYeFuRbFHbJ0I/GVrg=.l7sP0SVC5PPsmjsAf9df4iUs609Ck09VtyO6LEvhMVs="
+}
+
+###
+
+### Step 4: Link the worker to the runtime
+### RCP calls this after both sides are specialized. The runtime establishes
+### an outbound gRPC connection to the worker proxy. The proxy replays cached
+### StartStream, WorkerInitResponse (with host.json + capabilities), and
+### FunctionMetadataResponse. This triggers ScriptHost startup and function loading.
+POST {{runtimeHost}}/admin/workers/link?code={{masterKey}}
+Content-Type: application/json
+
+{
+  "workerId": "w_test01",
+  "podName": "worker-pod-test01",
+  "grpcEndpoint": "{{workerGrpcEndpoint}}",
+  "podKey": "test-key"
+}
+
+###
+
+### Step 5: Invoke a function (after host reaches Running state)
+### The runtime routes the HTTP request through the proxy to the worker.
+### gRPC InvocationRequest flows runtime → proxy → worker.
+### HTTP request flows runtime → proxy HTTP port → worker HTTP listener.
+GET {{runtimeHost}}/api/HttpTrigger
+
+###
+
+### ============================================================
+### Diagnostics & Monitoring
+### ============================================================
+
+### Get host status (check state, function count, worker count)
+GET {{runtimeHost}}/admin/host/status?code={{masterKey}}
+
+###
+
+### Ping the host (lightweight health check)
+GET {{runtimeHost}}/admin/host/ping
 
 ###
 
@@ -108,3 +119,20 @@ Content-Type: application/json
 {
   "revisionId": 0
 }
+
+###
+
+### ============================================================
+### Lifecycle Management
+### ============================================================
+
+### Trigger worker drain (scale-in scenario)
+### Worker proxy sends WorkerDrainRequest to runtime over gRPC.
+### Runtime drains in-flight invocations and sends WorkerDrainComplete back.
+POST {{workerProxyHost}}/drain
+
+###
+
+### Stop the runtime instance (full runtime stop)
+### Drains host listeners, disconnects all workers, sends WorkerDrainComplete to each.
+POST {{runtimeHost}}/admin/instance/stop?code={{masterKey}}
