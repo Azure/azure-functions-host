@@ -24,10 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             "InvalidAppCapabilities",
             "The application capabilities configuration is invalid. Please check the logs for more details.");
 
-        private static readonly ErrorResponse _internalErrorResponse = new ErrorResponse(
-            "InternalServerError",
-            "An unexpected error occurred while retrieving capabilities. Please check the logs for more details.");
-
         public AppCapabilitiesController(IOptionsMonitor<AppCapabilitiesOptions> capabilitiesOptions,
             ILogger<AppCapabilitiesController> logger)
         {
@@ -55,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An unexpected error occurred while retrieving capabilities.");
-                return StatusCode(500, _internalErrorResponse);
+                return StatusCode(500, ErrorResponse.InternalServerError("An unexpected error occurred while retrieving capabilities. Please check the logs for more details."));
             }
         }
 
@@ -76,9 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
                 else
                 {
-                    var errorResponse = new ErrorResponse(
-                        "CapabilityNotFound",
-                        $"The capability '{name}' was not found.");
+                    var errorResponse = ErrorResponse.NotFound($"The capability '{name}' was not found.");
                     return NotFound(errorResponse);
                 }
             }
@@ -90,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An unexpected error occurred while retrieving capability '{CapabilityName}'.", name);
-                return StatusCode(500, _internalErrorResponse);
+                return StatusCode(500, ErrorResponse.InternalServerError("An unexpected error occurred while retrieving capabilities. Please check the logs for more details."));
             }
         }
     }

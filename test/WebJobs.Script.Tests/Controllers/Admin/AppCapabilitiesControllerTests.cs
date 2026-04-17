@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             var errorResponse = Assert.IsType<ErrorResponse>(notFoundResult.Value);
-            Assert.Equal("CapabilityNotFound", errorResponse.Code);
+            Assert.Equal("NotFound", errorResponse.Code);
             Assert.Equal($"The capability '{name}' was not found.", errorResponse.Message);
         }
 
@@ -212,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Admin
 
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
             var errorResponse = Assert.IsType<ErrorResponse>(notFoundResult.Value);
-            Assert.Equal("CapabilityNotFound", errorResponse.Code);
+            Assert.Equal("NotFound", errorResponse.Code);
             Assert.Equal("The capability 'anyFeature' was not found.", errorResponse.Message);
         }
 

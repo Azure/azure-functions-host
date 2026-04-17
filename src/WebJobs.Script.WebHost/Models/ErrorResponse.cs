@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -49,6 +49,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public static ErrorResponse BadArgument(string message, string target = null)
         {
             return new("BadArgument", message) { Target = target };
+        }
+
+        public static ErrorResponse NotFound(string message, string target = null)
+        {
+            return new("NotFound", message) { Target = target };
+        }
+
+        public static ErrorResponse InternalServerError(string message, string target = null)
+        {
+            return new("InternalServerError", message) { Target = target };
         }
     }
 
