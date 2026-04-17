@@ -83,6 +83,10 @@ variables:
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
+    sdl:
+      sourceRepositoriesToScan:
+        exclude:
+          - repository: functions-release
     pool:
       name: 1es-pool-azfunc-benchmarking
       image: 1es-windows-2022-benchmark-runner-vanilla
