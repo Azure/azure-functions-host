@@ -226,7 +226,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         while (sw.Elapsed < TimeSpan.FromMinutes(2))
         {
             linkResponse = await SendAdminRequest(
-                masterKey, HttpMethod.Post, "admin/workers/link",
+                masterKey, HttpMethod.Put, "admin/workers/w_spec_e2e01",
                 new
                 {
                     workerId = "w_spec_e2e01",

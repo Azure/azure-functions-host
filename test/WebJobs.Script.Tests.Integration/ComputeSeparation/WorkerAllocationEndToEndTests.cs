@@ -22,12 +22,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
 /// End-to-end integration test that verifies the API-driven worker linking flow.
 /// Unlike <see cref="ExternalWorkerEndToEndTests"/> which auto-connects via an environment
 /// variable, this test starts the runtime with no pre-configured worker endpoint and uses
-/// the <c>POST /admin/workers/link</c> API to link a worker at runtime.
+/// the <c>PUT /admin/workers/{workerId}</c> API to link a worker at runtime.
 ///
 /// Flow:
 /// 1. Worker proxy + mock worker start as child processes
 /// 2. Runtime starts via TestFunctionHost (external worker enabled, no gRPC endpoint)
-/// 3. <c>POST /admin/workers/link</c> connects the worker
+/// 3. <c>PUT /admin/workers/{workerId}</c> connects the worker
 /// 4. <c>GET /api/HttpTrigger</c> invokes a function through the mock worker
 /// </summary>
 [Trait(TestTraits.Category, TestTraits.EndToEnd)]
@@ -123,7 +123,7 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         };
 
         var linkResponse = await SendAdminRequest(
-            masterKey, HttpMethod.Post, "admin/workers/link", linkRequest);
+            masterKey, HttpMethod.Put, $"admin/workers/{linkRequest.workerId}", linkRequest);
 
         string linkBody = await linkResponse.Content.ReadAsStringAsync();
         _output.WriteLine($"Link response: {linkResponse.StatusCode} — {linkBody}");
@@ -157,7 +157,7 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         };
 
         var linkResponse = await SendAdminRequest(
-            masterKey, HttpMethod.Post, "admin/workers/link", linkRequest);
+            masterKey, HttpMethod.Put, $"admin/workers/{linkRequest.workerId}", linkRequest);
         Assert.Equal(HttpStatusCode.Accepted, linkResponse.StatusCode);
 
         // 2. Wait for host ready.
@@ -172,8 +172,8 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         _output.WriteLine($"Worker proxy state before stop: {state}");
         Assert.Equal("ReadyForRequest", state["currentPodStatusTransition"]?["toPodStatus"]?.ToString());
 
-        // 4. Call /admin/instance/stop.
-        var stopResponse = await SendAdminRequest(masterKey, HttpMethod.Post, "admin/instance/stop");
+        // 4. Call /admin/host/stop.
+        var stopResponse = await SendAdminRequest(masterKey, HttpMethod.Post, "admin/host/stop");
         _output.WriteLine($"Stop response: {stopResponse.StatusCode}");
         Assert.Equal(HttpStatusCode.Accepted, stopResponse.StatusCode);
 

@@ -6,13 +6,13 @@ using Newtonsoft.Json;
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models;
 
 /// <summary>
-/// Request body for <c>POST /admin/workers/link</c>.
+/// Request body for <c>PUT /admin/workers/{workerId}</c>.
 /// </summary>
-public sealed class WorkerLinkRequest
+public sealed class ExternalWorkerInfo
 {
     /// <summary>
     /// Gets or sets the platform-assigned worker identifier.
-    /// If null, the host generates one.
+    /// Optional in the body; when provided it must match the worker id specified in the route.
     /// </summary>
     [JsonProperty("workerId")]
     public string WorkerId { get; set; }
@@ -26,7 +26,7 @@ public sealed class WorkerLinkRequest
     /// <summary>
     /// Gets or sets the gRPC endpoint URI of the worker proxy (required).
     /// </summary>
-    /// <example>http://10.0.1.42:50051</example>
+    /// <example>http://10.0.1.42:50051.</example>
     [JsonProperty("grpcEndpoint")]
     public string GrpcEndpoint { get; set; }
 

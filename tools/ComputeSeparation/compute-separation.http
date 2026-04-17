@@ -27,7 +27,7 @@
 ###      → Proxy caches all responses for later replay
 ###   3. Specialize the runtime (/admin/instance/assign on runtime)
 ###      → Runtime exits placeholder mode, applies app settings
-###   4. Link the worker to the runtime (/admin/workers/link on runtime)
+###   4. Link a worker to the runtime (PUT /admin/workers/{workerId} on runtime)
 ###      → Runtime connects to proxy gRPC, receives cached init + metadata
 ###      → ScriptHost starts, functions loaded, host becomes Running
 ###   5. Invoke a function (GET /api/HttpTrigger)
@@ -71,12 +71,12 @@ Content-Type: application/json
 
 ###
 
-### Step 4: Link the worker to the runtime
+### Step 4: Link a worker to the runtime
 ### RCP calls this after both sides are specialized. The runtime establishes
 ### an outbound gRPC connection to the worker proxy. The proxy replays cached
 ### StartStream, WorkerInitResponse (with host.json + capabilities), and
 ### FunctionMetadataResponse. This triggers ScriptHost startup and function loading.
-POST {{runtimeHost}}/admin/workers/link?code={{masterKey}}
+PUT {{runtimeHost}}/admin/workers/w_test01?code={{masterKey}}
 Content-Type: application/json
 
 {
@@ -135,4 +135,40 @@ POST {{workerProxyHost}}/drain
 
 ### Stop the runtime instance (full runtime stop)
 ### Drains host listeners, disconnects all workers, sends WorkerDrainComplete to each.
-POST {{runtimeHost}}/admin/instance/stop?code={{masterKey}}
+POST {{runtimeHost}}/admin/host/stop?code={{masterKey}}
+
+### ============================================================
+### Runtime State APIs (compute separation)
+### ============================================================
+
+### Get this runtime instance's state snapshot.
+### Returns the same payload that is published to the mesh service as
+### 'publish-runtime-state': maxLinkedWorkers, linkedWorkerCount,
+### totalRequestSlots, totalAvailableRequestSlots.
+### Returns 503 if compute separation is not enabled.
+GET {{runtimeHost}}/admin/instance/state?code={{masterKey}}
+
+###
+
+### Reserve request slots from the runtime's pool.
+### Returns 200 + granted count on success,
+### 503 if compute separation is not enabled.
+POST {{runtimeHost}}/admin/request-slots/leases?code={{masterKey}}
+Content-Type: application/json
+
+{
+  "count": 5
+}
+
+###
+
+### Release previously-acquired request slots back to the pool.
+### Over-releases are clamped at the current leased count (never goes negative).
+### Returns 200 with no body on success; the caller should treat transport
+### failures as non-fatal and continue local accounting.
+DELETE {{runtimeHost}}/admin/request-slots/leases?code={{masterKey}}
+Content-Type: application/json
+
+{
+  "count": 5
+}

@@ -159,12 +159,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             var service = CreateService();
 
-            // First worker fails.
+            // First worker fails. Failed connects are removed from tracking so
+            // the platform can immediately retry the same workerId without an
+            // explicit DELETE; the failure surfaces only via the thrown exception.
             await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.ConnectWorkerAsync("w_fail", new Uri("http://localhost:50051"), CancellationToken.None));
 
-            var failInfo = service.GetWorkerStatus("w_fail");
-            Assert.Equal(WorkerConnectionState.Error, failInfo.State);
+            Assert.Null(service.GetWorkerStatus("w_fail"));
 
             // Second worker succeeds — the recovery path reset _firstWorkerClaimed.
             await service.ConnectWorkerAsync("w_retry", new Uri("http://localhost:50052"), CancellationToken.None);
@@ -194,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         }
 
         [Fact]
-        public async Task ConnectWorkerAsync_Failure_SetsErrorState()
+        public async Task ConnectWorkerAsync_Failure_RemovesWorkerAndPropagatesException()
         {
             SetupFullConnectMocks();
             _mockGrpcClient
@@ -203,12 +204,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             var service = CreateService();
 
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => service.ConnectWorkerAsync("w_fail", new Uri("http://localhost:50051"), CancellationToken.None));
 
-            var info = service.GetWorkerStatus("w_fail");
-            Assert.Equal(WorkerConnectionState.Error, info.State);
-            Assert.Equal("connection refused", info.ErrorMessage);
+            Assert.Equal("connection refused", ex.Message);
+            Assert.Null(service.GetWorkerStatus("w_fail"));
+            Assert.DoesNotContain(service.GetWorkerStatuses(), w => w.WorkerId == "w_fail");
         }
 
         [Fact]
@@ -334,6 +335,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         }
 
         private WorkerConnectionService CreateService(IOptions<ExternalWorkerOptions> options = null)
+            => CreateService(options, null);
+
+        private WorkerConnectionService CreateService(IOptions<ExternalWorkerOptions> options, IRuntimeStateManager runtimeStateManager)
         {
             options ??= Options.Create(new ExternalWorkerOptions { IsEnabled = true });
 
@@ -345,6 +349,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 _mockClientFactory.Object,
                 options,
                 _hostJsonContentProvider,
+                runtimeStateManager ?? Mock.Of<IRuntimeStateManager>(),
                 NullLoggerFactory.Instance);
         }
 
@@ -442,6 +447,218 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 () => service.ConnectWorkerAsync("w_late", new Uri("http://localhost:50053"), CancellationToken.None));
 
             Assert.Contains("stopping", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public async Task ConnectWorkerAsync_CallsOnWorkerLinkedAndOnWorkerCapacityAvailable()
+        {
+            SetupFullConnectMocks();
+            var mockRuntimeState = new Mock<IRuntimeStateManager>(MockBehavior.Strict);
+            mockRuntimeState.Setup(m => m.OnWorkerLinked("w_1"));
+            mockRuntimeState.Setup(m => m.OnWorkerCapacityAvailable("w_1", It.IsAny<int>()));
+
+            var service = CreateService(null, mockRuntimeState.Object);
+
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            mockRuntimeState.Verify(m => m.OnWorkerLinked("w_1"), Times.Once);
+            mockRuntimeState.Verify(m => m.OnWorkerCapacityAvailable("w_1", It.Is<int>(n => n > 0)), Times.Once);
+        }
+
+        [Fact]
+        public async Task ConnectWorkerAsync_CallsOnWorkerLinkedBeforeOnWorkerCapacityAvailable()
+        {
+            SetupFullConnectMocks();
+            var sequence = new System.Collections.Generic.List<string>();
+            var mockRuntimeState = new Mock<IRuntimeStateManager>();
+            mockRuntimeState
+                .Setup(m => m.OnWorkerLinked(It.IsAny<string>()))
+                .Callback<string>(id => sequence.Add($"linked:{id}"));
+            mockRuntimeState
+                .Setup(m => m.OnWorkerCapacityAvailable(It.IsAny<string>(), It.IsAny<int>()))
+                .Callback<string, int>((id, _) => sequence.Add($"capacity:{id}"));
+
+            var service = CreateService(null, mockRuntimeState.Object);
+
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            Assert.Equal(new[] { "linked:w_1", "capacity:w_1" }, sequence);
+        }
+
+        [Fact]
+        public async Task ConnectWorkerAsync_Failure_LinkedButNoCapacityPublished()
+        {
+            SetupFullConnectMocks();
+            _mockGrpcClient
+                .Setup(c => c.ConnectAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("connection refused"));
+
+            var mockRuntimeState = new Mock<IRuntimeStateManager>();
+            var service = CreateService(null, mockRuntimeState.Object);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.ConnectWorkerAsync("w_fail", new Uri("http://localhost:50051"), CancellationToken.None));
+
+            mockRuntimeState.Verify(m => m.OnWorkerLinked("w_fail"), Times.Once);
+            mockRuntimeState.Verify(m => m.OnWorkerCapacityAvailable(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+
+            // OnWorkerLinked must be reversed by OnWorkerUnlinked, otherwise a failed
+            // connect permanently inflates LinkedWorkerCount and can eventually block
+            // the platform from linking new workers.
+            mockRuntimeState.Verify(m => m.OnWorkerUnlinked("w_fail"), Times.Once);
+
+            // The worker must also be removed from the service's tracking so the
+            // platform can retry the same workerId after clearing the Error state.
+            Assert.Null(service.GetWorkerStatus("w_fail"));
+            Assert.DoesNotContain(service.GetWorkerStatuses(), w => w.WorkerId == "w_fail");
+        }
+
+        [Fact]
+        public async Task DisconnectWorkerAsync_Failure_RemovesWorkerAndUnlinks()
+        {
+            SetupFullConnectMocks();
+            _mockChannelManager
+                .Setup(m => m.GetChannel("w_fail"))
+                .Returns(_mockChannel.Object);
+
+            // Make the drain throw a non-timeout exception so we hit the catch block.
+            _mockChannel
+                .Setup(c => c.DrainInvocationsAsync())
+                .ThrowsAsync(new InvalidOperationException("drain failed"));
+
+            var mockRuntimeState = new Mock<IRuntimeStateManager>();
+            var service = CreateService(null, mockRuntimeState.Object);
+
+            await service.ConnectWorkerAsync("w_fail", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.DisconnectWorkerAsync("w_fail", CancellationToken.None));
+
+            // Even on a failed disconnect the worker must not linger as "linked",
+            // otherwise LinkedWorkerCount drifts upward across retries.
+            mockRuntimeState.Verify(m => m.OnWorkerUnlinked("w_fail"), Times.Once);
+            Assert.Null(service.GetWorkerStatus("w_fail"));
+            Assert.DoesNotContain(service.GetWorkerStatuses(), w => w.WorkerId == "w_fail");
+        }
+
+        [Fact]
+        public async Task DisconnectWorkerAsync_CallsCapacityUnavailableThenUnlinked()
+        {
+            SetupFullConnectMocks();
+            _mockChannelManager
+                .Setup(m => m.GetChannel("w_1"))
+                .Returns(_mockChannel.Object);
+
+            var sequence = new System.Collections.Generic.List<string>();
+            var mockRuntimeState = new Mock<IRuntimeStateManager>();
+            mockRuntimeState
+                .Setup(m => m.OnWorkerLinked(It.IsAny<string>()))
+                .Callback<string>(id => sequence.Add($"linked:{id}"));
+            mockRuntimeState
+                .Setup(m => m.OnWorkerCapacityAvailable(It.IsAny<string>(), It.IsAny<int>()))
+                .Callback<string, int>((id, _) => sequence.Add($"capacity:{id}"));
+            mockRuntimeState
+                .Setup(m => m.OnWorkerCapacityUnavailable(It.IsAny<string>()))
+                .Callback<string>(id => sequence.Add($"capacity-unavailable:{id}"));
+            mockRuntimeState
+                .Setup(m => m.OnWorkerUnlinked(It.IsAny<string>()))
+                .Callback<string>(id => sequence.Add($"unlinked:{id}"));
+
+            var service = CreateService(null, mockRuntimeState.Object);
+
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+            await service.DisconnectWorkerAsync("w_1", CancellationToken.None);
+
+            Assert.Equal(
+                new[] { "linked:w_1", "capacity:w_1", "capacity-unavailable:w_1", "unlinked:w_1" },
+                sequence);
+        }
+
+        [Fact]
+        public async Task DisconnectWorkerAsync_CapacityUnavailableHappensBeforeChannelBeginDrain()
+        {
+            SetupFullConnectMocks();
+            _mockChannelManager
+                .Setup(m => m.GetChannel("w_1"))
+                .Returns(_mockChannel.Object);
+
+            var sequence = new System.Collections.Generic.List<string>();
+            var mockRuntimeState = new Mock<IRuntimeStateManager>();
+            mockRuntimeState
+                .Setup(m => m.OnWorkerCapacityUnavailable(It.IsAny<string>()))
+                .Callback<string>(id => sequence.Add($"capacity-unavailable:{id}"));
+            _mockChannel
+                .Setup(c => c.BeginDrain())
+                .Callback(() => sequence.Add("begin-drain"));
+
+            var service = CreateService(null, mockRuntimeState.Object);
+
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+            sequence.Clear();
+            await service.DisconnectWorkerAsync("w_1", CancellationToken.None);
+
+            int capacityIdx = sequence.IndexOf("capacity-unavailable:w_1");
+            int drainIdx = sequence.IndexOf("begin-drain");
+            Assert.True(capacityIdx >= 0);
+            Assert.True(drainIdx >= 0);
+            Assert.True(capacityIdx < drainIdx, $"Expected capacity withdraw before BeginDrain, got sequence: {string.Join(",", sequence)}");
+        }
+
+        [Fact]
+        public async Task DrainAndDisconnectAllAsync_CallsSetStoppingOnce()
+        {
+            SetupFullConnectMocks();
+
+            var mockClient1 = new Mock<IOutboundGrpcClient>();
+            var mockClient2 = new Mock<IOutboundGrpcClient>();
+            int createCount = 0;
+            _mockClientFactory
+                .Setup(f => f.Create())
+                .Returns(() => ++createCount == 1 ? mockClient1.Object : mockClient2.Object);
+
+            var mockRuntimeState = new Mock<IRuntimeStateManager>();
+            var service = CreateService(null, mockRuntimeState.Object);
+
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+            await service.ConnectWorkerAsync("w_2", new Uri("http://localhost:50052"), CancellationToken.None);
+
+            await service.DrainAndDisconnectAllAsync(CancellationToken.None);
+
+            mockRuntimeState.Verify(m => m.SetStopping(), Times.Once);
+        }
+
+        [Fact]
+        public async Task DrainAndDisconnectAllAsync_CallsSetStoppingBeforeAnyWorkerUnlinked()
+        {
+            SetupFullConnectMocks();
+
+            var mockClient1 = new Mock<IOutboundGrpcClient>();
+            var mockClient2 = new Mock<IOutboundGrpcClient>();
+            int createCount = 0;
+            _mockClientFactory
+                .Setup(f => f.Create())
+                .Returns(() => ++createCount == 1 ? mockClient1.Object : mockClient2.Object);
+
+            var sequence = new System.Collections.Generic.List<string>();
+            var mockRuntimeState = new Mock<IRuntimeStateManager>();
+            mockRuntimeState
+                .Setup(m => m.SetStopping())
+                .Callback(() => sequence.Add("stopping"));
+            mockRuntimeState
+                .Setup(m => m.OnWorkerUnlinked(It.IsAny<string>()))
+                .Callback<string>(id => sequence.Add($"unlinked:{id}"));
+
+            var service = CreateService(null, mockRuntimeState.Object);
+            await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
+            await service.ConnectWorkerAsync("w_2", new Uri("http://localhost:50052"), CancellationToken.None);
+
+            await service.DrainAndDisconnectAllAsync(CancellationToken.None);
+
+            int stoppingIdx = sequence.IndexOf("stopping");
+            Assert.True(stoppingIdx >= 0);
+            Assert.All(
+                sequence.Where(s => s.StartsWith("unlinked:", StringComparison.Ordinal)),
+                unlinked => Assert.True(sequence.IndexOf(unlinked) > stoppingIdx));
         }
     }
 }

@@ -82,7 +82,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime
             .Returns(Task.CompletedTask);
 
         var request = new { workerId = "w_test1234", podName = "worker-pod-abc123", grpcEndpoint = "http://10.0.1.42:50051", podKey = "test-key" };
-        var response = await SendAdminRequest(HttpMethod.Post, "admin/workers/link", request);
+        var response = await SendAdminRequest(HttpMethod.Put, "admin/workers/w_test1234", request);
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
@@ -95,7 +95,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime
     public async Task LinkWorker_MissingEndpoint_Returns400()
     {
         var request = new { workerId = "w_test1234" };
-        var response = await SendAdminRequest(HttpMethod.Post, "admin/workers/link", request);
+        var response = await SendAdminRequest(HttpMethod.Put, "admin/workers/w_test1234", request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -103,7 +103,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime
     [Fact]
     public async Task AdminEndpoint_WithoutAuth_Returns401()
     {
-        var request = new HttpRequestMessage(HttpMethod.Post, "admin/workers/link");
+        var request = new HttpRequestMessage(HttpMethod.Put, "admin/workers/w_test1234");
         request.Content = new StringContent(
             JsonConvert.SerializeObject(new { grpcEndpoint = "http://10.0.1.42:50051" }),
             Encoding.UTF8,
@@ -116,7 +116,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime
     [Fact]
     public async Task Stop_Returns202()
     {
-        var response = await SendAdminRequest(HttpMethod.Post, "admin/instance/stop");
+        var response = await SendAdminRequest(HttpMethod.Post, "admin/host/stop");
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
     }
@@ -141,12 +141,12 @@ public class WorkerAllocationApiTests : IAsyncLifetime
                 return Task.CompletedTask;
             });
 
-        await SendAdminRequest(HttpMethod.Post, "admin/workers/link",
+        await SendAdminRequest(HttpMethod.Put, "admin/workers/w1",
             new { workerId = "w1", grpcEndpoint = "http://10.0.1.1:50051" });
-        await SendAdminRequest(HttpMethod.Post, "admin/workers/link",
+        await SendAdminRequest(HttpMethod.Put, "admin/workers/w2",
             new { workerId = "w2", grpcEndpoint = "http://10.0.1.2:50051" });
 
-        var response = await SendAdminRequest(HttpMethod.Post, "admin/instance/stop");
+        var response = await SendAdminRequest(HttpMethod.Post, "admin/host/stop");
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
         // Wait for the fire-and-forget to invoke DrainAndDisconnectAllAsync.
