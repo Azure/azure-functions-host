@@ -83,6 +83,8 @@ variables:
 extends:
   template: v1/1ES.Unofficial.PipelineTemplate.yml@1es
   parameters:
+    # Exclude functions-release from SDL source analysis. It only contains release
+    # pipeline configs and JIT trace data files, not source code built by this pipeline.
     sdl:
       sourceRepositoriesToScan:
         exclude:
