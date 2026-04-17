@@ -7,8 +7,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.WebJobs.Script.Tests;
+using Newtonsoft.Json;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -28,6 +30,7 @@ public class ExternalWorkerEndToEndTests : IAsyncLifetime, IDisposable
     private const int RuntimeGrpcPort = 60051;
     private const int WorkerGrpcPort = 60052;
     private const int HttpProxyPort = 60053;
+    private const int ManagementPort = 60054;
 
     private readonly ITestOutputHelper _output;
     private readonly ConcurrentBag<string> _workerProxyLogs = new();
@@ -62,7 +65,7 @@ public class ExternalWorkerEndToEndTests : IAsyncLifetime, IDisposable
         _workerProxyProcess = ComputeSeparationTestHelpers.StartManagedProcess(
             _output,
             "dotnet",
-            $"\"{workerProxyDll}\" --runtime-grpc-port {RuntimeGrpcPort} --worker-grpc-port {WorkerGrpcPort} --http-proxy-port {HttpProxyPort}",
+            $"\"{workerProxyDll}\" --runtime-grpc-port {RuntimeGrpcPort} --worker-grpc-port {WorkerGrpcPort} --http-proxy-port {HttpProxyPort} --management-port {ManagementPort}",
             _workerProxyLogs,
             "WorkerProxy");
 
@@ -79,6 +82,18 @@ public class ExternalWorkerEndToEndTests : IAsyncLifetime, IDisposable
 
         await Task.Delay(3000);
         ComputeSeparationTestHelpers.EnsureProcessRunning(_mockWorkerProcess, "MockWorker", _mockWorkerLogs);
+
+        await ComputeSeparationTestHelpers.WaitForWorkerProxyReadyAsync(ManagementPort, _output);
+
+        // 2b. Assign the worker — drives init + specialize + metadata prefetch
+        //     so cached responses are ready when the runtime connects.
+        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
+        var assignResponse = await proxyClient.PostAsync("/admin/worker/assign",
+            new StringContent(
+                JsonConvert.SerializeObject(new { environment = new { FUNCTIONS_WORKER_RUNTIME = "node" }, functionAppDirectory = "/home/site/wwwroot" }),
+                Encoding.UTF8, "application/json"));
+        _output.WriteLine($"Worker assign response: {assignResponse.StatusCode}");
+        Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
 
         // 3. Start the Functions runtime in-process via TestFunctionHost.
         //    Config-driven mode: GRPC_ENDPOINT is set so WorkerConnectionService
