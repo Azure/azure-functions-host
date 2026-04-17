@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Microsoft.WebJobs.Script.Tests;
@@ -274,6 +275,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 configureScriptHostServices: s =>
                 {
                     s.AddSingleton(syncTriggerMock.Object);
+                },
+                configureWebHostAppConfiguration: config =>
+                {
+                    // Surface environment variables from TestEnvironment into IConfiguration,
+                    // matching production where ScriptEnvironmentVariablesConfigurationSource
+                    // reads real process env vars.
+                    string workerRuntime = testEnvironment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                    if (workerRuntime is not null)
+                    {
+                        config.AddInMemoryCollection(new Dictionary<string, string>
+                        {
+                            [EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime
+                        });
+                    }
                 });
 
             return host;
