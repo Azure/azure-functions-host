@@ -201,6 +201,15 @@ jobs:
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
+    displayName: Compute separation end to end tests
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: Compute separation end to end tests
+      arguments: '--filter "Group=ExternalWorkerEndToEndTests" $(test_args)'
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
     displayName: Release verification tests
     condition: ${{ eq(variables.is_release, true) }}
     inputs:

@@ -7,7 +7,8 @@ namespace Microsoft.Azure.Functions.WorkerProxy;
 
 /// <summary>
 /// Pod status values for the worker proxy state machine.
-/// Matches the Go Proxy's <c>FunctionAppPodStatus</c> pattern.
+/// Workers use only <c>ReadyForRequest</c>, <c>Draining</c>, and <c>MarkedForDeletion</c>
+/// in signal state. Workers do not use <c>MarkedForStop</c>.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter<WorkerPodStatus>))]
 internal enum WorkerPodStatus
@@ -15,72 +16,89 @@ internal enum WorkerPodStatus
     None,
     ReadyForRequest,
     Draining,
-    DrainCompleted,
-    MarkForDeletion
+    MarkedForDeletion
 }
 
 /// <summary>
-/// Health status values for the worker proxy.
+/// Drain reason values accepted by <c>POST /admin/worker/drain</c>.
+/// The first accepted reason is persisted for the lifetime of the worker pod.
 /// </summary>
-[JsonConverter(typeof(JsonStringEnumConverter<WorkerPodHealthStatus>))]
-internal enum WorkerPodHealthStatus
+[JsonConverter(typeof(JsonStringEnumConverter<DrainReason>))]
+internal enum DrainReason
 {
-    None,
-    Healthy,
-    Unhealthy
+    IdleScaleIn,
+    RuntimeStopping,
+    ReplaceWorkerKeepRuntime,
+    OrphanCleanup
 }
 
 /// <summary>
-/// Change flags indicating what changed in the state (bitmask).
-/// Same pattern as Go Proxy's <c>FunctionsPodStatusChangeFlags</c>.
+/// Replacement policy derived from the accepted drain reason.
+/// Once first published in <c>Draining</c>, the value remains unchanged through <c>MarkedForDeletion</c>.
 /// </summary>
-[Flags]
-internal enum WorkerPodChangeFlags
+[JsonConverter(typeof(JsonStringEnumConverter<ReplacementPolicy>))]
+internal enum ReplacementPolicy
 {
-    None = 0,
-    PodStatus = 1,
-    HealthStatus = 2
+    NoReplacement,
+    SameRuntimeRefill
 }
 
 /// <summary>
-/// State transition record for the worker pod.
+/// Worker instance state returned by <c>POST /admin/infra/instanceState</c>.
+/// Matches the platform-facing <c>FunctionsWorkerPod</c> schema defined in the Goal 3 design doc.
 /// </summary>
-internal sealed class PodStatusTransition
+internal sealed class WorkerInstanceState
 {
-    [JsonPropertyName("fromPodStatus")]
-    public WorkerPodStatus FromPodStatus { get; set; }
+    [JsonPropertyName("functionsContainerType")]
+    public string FunctionsContainerType { get; set; } = "FunctionsWorkerPod";
 
-    [JsonPropertyName("toPodStatus")]
-    public WorkerPodStatus ToPodStatus { get; set; }
+    [JsonPropertyName("podName")]
+    public string PodName { get; set; } = string.Empty;
+
+    [JsonPropertyName("revision")]
+    public int Revision { get; set; }
+
+    [JsonPropertyName("state")]
+    public WorkerInstanceStateDetails State { get; set; } = new();
 }
 
 /// <summary>
-/// Health status transition record.
+/// Nested state details within the <see cref="WorkerInstanceState"/> response.
 /// </summary>
-internal sealed class PodHealthStatusTransition
+internal sealed class WorkerInstanceStateDetails
 {
-    [JsonPropertyName("fromPodStatus")]
-    public WorkerPodHealthStatus FromPodStatus { get; set; }
+    [JsonPropertyName("podStatus")]
+    public WorkerPodStatus PodStatus { get; set; }
 
-    [JsonPropertyName("toPodStatus")]
-    public WorkerPodHealthStatus ToPodStatus { get; set; }
+    [JsonPropertyName("runtimePodName")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? RuntimePodName { get; set; }
+
+    [JsonPropertyName("functionGroupName")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FunctionGroupName { get; set; }
+
+    [JsonPropertyName("isAlwaysReady")]
+    public bool IsAlwaysReady { get; set; }
+
+    [JsonPropertyName("replacementPolicy")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReplacementPolicy? ReplacementPolicy { get; set; }
 }
 
 /// <summary>
-/// Worker pod state returned by the <c>/instanceState</c> endpoint.
-/// Follows the same structure as the Go Proxy's <c>FunctionsPodState</c>.
+/// Request payload for <c>POST /admin/worker/drain</c>.
 /// </summary>
-internal sealed class WorkerPodState
+internal sealed class WorkerDrainRequest
 {
-    [JsonPropertyName("currentPodStatusTransition")]
-    public PodStatusTransition CurrentPodStatusTransition { get; set; } = new();
+    public DrainReason Reason { get; set; }
+}
 
-    [JsonPropertyName("currentPodHealthStatusTransition")]
-    public PodHealthStatusTransition CurrentPodHealthStatusTransition { get; set; } = new();
-
-    [JsonPropertyName("changeFlags")]
-    public WorkerPodChangeFlags ChangeFlags { get; set; }
-
-    [JsonPropertyName("revisionId")]
-    public int RevisionId { get; set; }
+/// <summary>
+/// Request payload for <c>POST /admin/infra/instanceState</c> polling.
+/// Contains the client's last known revision so the pod can long-poll until a change occurs.
+/// </summary>
+internal sealed class InstanceStatePollRequest
+{
+    public int Revision { get; set; }
 }

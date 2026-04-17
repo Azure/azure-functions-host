@@ -19,4 +19,25 @@ internal sealed class WorkerAssignRequest
     /// Path to the customer function app directory. Defaults to <c>/home/site/wwwroot</c>.
     /// </summary>
     public string? FunctionAppDirectory { get; set; }
+
+    /// <summary>
+    /// Function app name for signal identity.
+    /// </summary>
+    public string? FunctionAppName { get; set; }
+
+    /// <summary>
+    /// Function app identifier for signal identity.
+    /// </summary>
+    public string? FunctionAppId { get; set; }
+
+    /// <summary>
+    /// Function group name that defines the worker's inventory bucket.
+    /// <c>"http"</c> is the explicit HTTP worker bucket; <c>""</c> or <c>null</c> is the default non-HTTP bucket.
+    /// </summary>
+    public string? FunctionGroupName { get; set; }
+
+    /// <summary>
+    /// Whether this worker is provisioned for always-ready (always-on) scenarios.
+    /// </summary>
+    public bool? IsAlwaysReady { get; set; }
 }

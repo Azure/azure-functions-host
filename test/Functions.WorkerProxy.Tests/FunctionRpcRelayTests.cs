@@ -14,7 +14,7 @@ public class FunctionRpcRelayTests : IDisposable
 
     public FunctionRpcRelayTests()
     {
-        _stateManager = new WorkerPodStateManager();
+        _stateManager = new WorkerPodStateManager(new RelayOptions(50051, 50052, 50053, null, "http://localhost:50053", "test-pod"));
         _tempDir = Path.Combine(Path.GetTempPath(), $"RelayTest_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
     }
@@ -27,7 +27,7 @@ public class FunctionRpcRelayTests : IDisposable
 
     private FunctionRpcRelay CreateRelay(string? hostJsonPath = null)
     {
-        var options = new RelayOptions(50051, 50052, 50053, hostJsonPath, "http://localhost:50053");
+        var options = new RelayOptions(50051, 50052, 50053, hostJsonPath, "http://localhost:50053", "test-pod");
         return new FunctionRpcRelay(options, NullLogger<FunctionRpcRelay>.Instance, _stateManager);
     }
 
@@ -178,7 +178,7 @@ public class FunctionRpcRelayTests : IDisposable
     [Fact]
     public void Constructor_NullLogger_Throws()
     {
-        var options = new RelayOptions(50051, 50052, 50053, null, "http://localhost:50053");
+        var options = new RelayOptions(50051, 50052, 50053, null, "http://localhost:50053", "test-pod");
         Assert.Throws<ArgumentNullException>(() =>
             new FunctionRpcRelay(options, null!, _stateManager));
     }
@@ -186,7 +186,7 @@ public class FunctionRpcRelayTests : IDisposable
     [Fact]
     public void Constructor_NullStateManager_Throws()
     {
-        var options = new RelayOptions(50051, 50052, 50053, null, "http://localhost:50053");
+        var options = new RelayOptions(50051, 50052, 50053, null, "http://localhost:50053", "test-pod");
         Assert.Throws<ArgumentNullException>(() =>
             new FunctionRpcRelay(options, NullLogger<FunctionRpcRelay>.Instance, null!));
     }

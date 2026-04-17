@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
 /// and invokes a function through the mock worker.
 /// </summary>
 [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-[Trait(TestTraits.Group, nameof(SpecializationEndToEndTests))]
+[Trait(TestTraits.Group, nameof(ExternalWorkerEndToEndTests))]
 public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFixture<AzuriteFixture>
 {
     private const int RuntimeGrpcPort = 60071;

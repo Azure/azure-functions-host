@@ -29,7 +29,8 @@ internal enum RelaySide
 /// override when running in containers where <c>localhost</c> is not reachable across
 /// container boundaries.
 /// </param>
-internal record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpProxyPort, string? HostJsonPath, string HttpProxyEndpoint);
+/// <param name="PodName">Identity of this worker pod for <c>instanceState</c> publication.</param>
+internal record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpProxyPort, string? HostJsonPath, string HttpProxyEndpoint, string PodName);
 
 /// <summary>
 /// Manages the gRPC relay between the Functions runtime and a language worker.
@@ -222,13 +223,13 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 
     /// <summary>
     /// Sends a <c>WorkerDrainRequest</c> to the runtime over the gRPC stream.
-    /// Called when NNA calls <c>POST /drain</c> on the worker proxy.
+    /// Called when NNA calls <c>POST /admin/worker/drain</c> on the worker proxy.
     /// </summary>
     public async Task SendDrainRequestToRuntimeAsync()
     {
         var message = new StreamingMessage
         {
-            WorkerDrainRequest = new WorkerDrainRequest()
+            WorkerDrainRequest = new Microsoft.Azure.WebJobs.Script.Grpc.Messages.WorkerDrainRequest()
         };
 
         await _toRuntime.Writer.WriteAsync(message);
@@ -269,8 +270,6 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             // Start the relay immediately. The proxy needs to read worker messages
             // (for /assign) and write to the worker (WorkerInitRequest, etc.) before
             // the runtime connects.
-            _stateManager.UpdateHealthStatus(WorkerPodHealthStatus.Healthy);
-
             await RelayAsync(requestStream, responseStream, _toRuntime, _toWorker, RelaySide.Worker, context.CancellationToken);
         }
     }
@@ -489,7 +488,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                     if (message.ContentCase == StreamingMessage.ContentOneofCase.WorkerDrainRequest)
                     {
                         _logger.LogInformation("Received WorkerDrainRequest from runtime.");
-                        _stateManager.UpdatePodStatus(WorkerPodStatus.Draining);
+                        _stateManager.AcceptDrain(DrainReason.RuntimeStopping);
                         continue;
                     }
 
@@ -497,8 +496,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                     if (message.ContentCase == StreamingMessage.ContentOneofCase.WorkerDrainComplete)
                     {
                         _logger.LogInformation("Received WorkerDrainComplete from runtime.");
-                        _stateManager.UpdatePodStatus(WorkerPodStatus.DrainCompleted);
-                        _stateManager.UpdatePodStatus(WorkerPodStatus.MarkForDeletion);
+                        _stateManager.UpdatePodStatus(WorkerPodStatus.MarkedForDeletion);
                         continue;
                     }
                 }

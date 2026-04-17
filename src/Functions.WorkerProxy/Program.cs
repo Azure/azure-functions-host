@@ -18,8 +18,12 @@ int managementPort = GetIntArg(args, "--management-port", 50054);
 string workerHttpEndpoint = GetStringArg(args, "--worker-http-endpoint", "http://localhost:8080");
 string? hostJsonPath = GetStringArgOrNull(args, "--host-json-path");
 string httpProxyEndpoint = GetStringArg(args, "--http-proxy-endpoint", $"http://localhost:{httpProxyPort}");
+string podName = GetStringArg(args, "--pod-name",
+    Environment.GetEnvironmentVariable("COMPUTERNAME")
+    ?? Environment.GetEnvironmentVariable("POD_NAME")
+    ?? System.Net.Dns.GetHostName());
 
-builder.Services.AddSingleton(new RelayOptions(runtimeGrpcPort, workerGrpcPort, httpProxyPort, hostJsonPath, httpProxyEndpoint));
+builder.Services.AddSingleton(new RelayOptions(runtimeGrpcPort, workerGrpcPort, httpProxyPort, hostJsonPath, httpProxyEndpoint, podName));
 builder.Services.AddSingleton<WorkerPodStateManager>();
 builder.Services.AddSingleton<FunctionRpcRelay>();
 builder.Services.AddGrpc();
@@ -69,16 +73,17 @@ app.MapGrpcService<FunctionRpcRelay>();
 var stateManager = app.Services.GetRequiredService<WorkerPodStateManager>();
 var relay = app.Services.GetRequiredService<FunctionRpcRelay>();
 
-app.MapGet("/ready", () =>
+app.MapGet("/admin/worker/ready", () =>
 {
-    return stateManager.CurrentStatus >= WorkerPodStatus.ReadyForRequest
+    return stateManager.CurrentStatus == WorkerPodStatus.ReadyForRequest
         ? Results.Ok()
         : Results.StatusCode(503);
 });
 
-// Worker specialization. NNA calls this after /ready succeeds with the app settings
-// payload. The worker proxy drives the full init + specialization + metadata prefetch
-// sequence with the worker, caching all responses for later replay to the runtime.
+// Worker specialization. NNA calls this after /admin/worker/ready succeeds with the
+// app settings payload. The worker proxy drives the full init + specialization +
+// metadata prefetch sequence with the worker, caching all responses for later replay
+// to the runtime.
 app.MapPost("/admin/worker/assign", async (HttpContext ctx, CancellationToken cancellationToken) =>
 {
     WorkerAssignRequest? assignRequest;
@@ -99,6 +104,9 @@ app.MapPost("/admin/worker/assign", async (HttpContext ctx, CancellationToken ca
     var envVars = assignRequest.Environment ?? new Dictionary<string, string>();
     var functionAppDirectory = assignRequest.FunctionAppDirectory ?? "/home/site/wwwroot";
 
+    // Store identity fields for instanceState publication.
+    stateManager.SetAssignMetadata(assignRequest.FunctionGroupName, assignRequest.IsAlwaysReady ?? false);
+
     try
     {
         await relay.SpecializeWorkerAsync(envVars, functionAppDirectory, cancellationToken);
@@ -114,30 +122,48 @@ app.MapPost("/admin/worker/assign", async (HttpContext ctx, CancellationToken ca
     }
 });
 
-app.MapPost("/drain", async () =>
+app.MapPost("/admin/worker/drain", async (HttpContext ctx, CancellationToken cancellationToken) =>
 {
-    stateManager.UpdatePodStatus(WorkerPodStatus.Draining);
-    await relay.SendDrainRequestToRuntimeAsync();
+    WorkerDrainRequest? drainRequest;
+    try
+    {
+        drainRequest = await ctx.Request.ReadFromJsonAsync(WorkerProxyJsonContext.Default.WorkerDrainRequest, cancellationToken);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest($"Invalid request body: {ex.Message}");
+    }
+
+    if (drainRequest is null)
+    {
+        return Results.BadRequest("Request body with 'reason' is required.");
+    }
+
+    if (stateManager.AcceptDrain(drainRequest.Reason))
+    {
+        await relay.SendDrainRequestToRuntimeAsync();
+    }
+
     return Results.Accepted();
 });
 
-app.MapPost("/instanceState", async (HttpContext ctx, CancellationToken cancellationToken) =>
+app.MapPost("/admin/infra/instanceState", async (HttpContext ctx, CancellationToken cancellationToken) =>
 {
-    int clientRevisionId = 0;
+    int clientRevision = 0;
 
     // Read client's last known revision from request body (if present).
     // Always attempt to read — ContentLength may be null for chunked requests.
     try
     {
-        var clientState = await ctx.Request.ReadFromJsonAsync(WorkerProxyJsonContext.Default.WorkerPodState, cancellationToken);
-        clientRevisionId = clientState?.RevisionId ?? 0;
+        var pollRequest = await ctx.Request.ReadFromJsonAsync(WorkerProxyJsonContext.Default.InstanceStatePollRequest, cancellationToken);
+        clientRevision = pollRequest?.Revision ?? 0;
     }
     catch
     {
         // Empty body, malformed JSON, or no content — treat as revision 0 (return current state).
     }
 
-    var result = await stateManager.WaitForChangeAsync(clientRevisionId, cancellationToken);
+    var result = await stateManager.WaitForChangeAsync(clientRevision, cancellationToken);
 
     if (result is null)
     {
