@@ -51,12 +51,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             return new("BadArgument", message) { Target = target };
         }
 
-        public static ErrorResponse NotFound(string message, string target = null)
+        public static ErrorResponse NotFound(string message = "The specified resource was not found.", string target = null)
         {
             return new("NotFound", message) { Target = target };
         }
 
-        public static ErrorResponse InternalServerError(string message, string target = null)
+        public static ErrorResponse InternalServerError(string message = "An internal server error occurred.", string target = null)
         {
             return new("InternalServerError", message) { Target = target };
         }
