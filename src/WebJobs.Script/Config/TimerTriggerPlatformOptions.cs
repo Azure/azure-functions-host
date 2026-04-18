@@ -25,6 +25,6 @@ public sealed class TimerTriggerPlatformOptions : IOptionsFormatter
     }
 }
 
-[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization, WriteIndented = true)]
+[JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Serialization, WriteIndented = true, UseStringEnumConverter = true)]
 [JsonSerializable(typeof(TimerTriggerPlatformOptions))]
 internal partial class TimerTriggerPlatformOptionsJsonContext : JsonSerializerContext;

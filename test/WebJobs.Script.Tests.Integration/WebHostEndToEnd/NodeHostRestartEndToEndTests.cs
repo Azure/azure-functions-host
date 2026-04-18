@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -108,14 +108,15 @@ public class NodeHostRestartEndToEndTests
         {
             base.ConfigureScriptHost(webJobsBuilder);
 
-            webJobsBuilder.AddAzureStorage()
-                .Services.Configure<ScriptJobHostOptions>(o =>
+            webJobsBuilder.AddAzureStorageCoreServices().AddAzureStorageBlobs().AddAzureStorageQueues();
+
+            webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+            {
+                o.Functions = new[]
                 {
-                    o.Functions = new[]
-                    {
-                        "HttpTrigger"
-                    };
-                });
+                    "HttpTrigger"
+                };
+            });
 
             webJobsBuilder.Services.AddOptions<LanguageWorkerOptions>()
                 .PostConfigure(o =>

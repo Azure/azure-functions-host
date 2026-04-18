@@ -4,11 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Threading.Tasks;
 using Azure.Data.Tables;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.Queue;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -53,11 +51,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             string message = result.FormattedMessage.Substring(result.FormattedMessage.IndexOf('{'));
 
-            // verify singleton binding
+            // verify singleton binding (v5 Tables extension returns JArray even for single-entity lookups)
             JObject resultObject = JObject.Parse(message);
-            JObject single = (JObject)resultObject["single"];
-            Assert.Equal("AAA", (string)single["PartitionKey"]);
-            Assert.Equal("001", (string)single["RowKey"]);
+            JArray single = (JArray)resultObject["single"];
+            Assert.Single(single);
+            Assert.Equal("AAA", (string)single[0]["PartitionKey"]);
+            Assert.Equal("001", (string)single[0]["RowKey"]);
 
             // verify partition binding
             JArray partition = (JArray)resultObject["partition"];
@@ -118,6 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await TestHelpers.Await(async () =>
             {
+                entities.Clear();
                 var results = table.QueryAsync<TableEntity>(tableQuery, null);
                 await foreach (var entity in results)
                 {
@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             foreach (var entity in entities)
             {
                 Assert.IsType<string>(entity["stringProp"]);
-                Assert.IsType<int>(entity["intProp"]);
+                Assert.True(entity["intProp"] is int || entity["intProp"] is long);
                 Assert.IsType<bool>(entity["boolProp"]);
 
                 // Guids end up roundtripping as strings
@@ -159,11 +159,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string id = Guid.NewGuid().ToString();
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
-            CloudQueueMessage message = new CloudQueueMessage(messageContent);
 
-            await Fixture.TestQueue.AddMessageAsync(message);
+            await Fixture.TestQueue.SendMessageAsync(messageContent);
 
-            var resultBlob = Fixture.TestOutputContainer.GetBlockBlobReference(id);
+            var resultBlob = Fixture.TestOutputContainer.GetBlobClient(id);
             string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
             Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
 
@@ -237,7 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         //    await WaitForMobileTableRecordAsync("Item", idToCheck, textToCheck);
         //}
 
-        protected async Task<IEnumerable<CloudBlockBlob>> Scenario_RandGuidBinding_GeneratesRandomIDs()
+        protected async Task<IEnumerable<BlobClient>> Scenario_RandGuidBinding_GeneratesRandomIDs()
         {
             var container = await GetEmptyContainer("scenarios-output");
 
@@ -254,11 +253,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await Fixture.Host.BeginFunctionAsync("Scenarios", input);
             }
 
-            IEnumerable<CloudBlockBlob> blobs = null;
+            IEnumerable<BlobClient> blobs = null;
 
             await TestHelpers.Await(async () =>
             {
-                blobs = await TestHelpers.ListBlobsAsync(container);
+                var blobList = new List<BlobClient>();
+                await foreach (var blob in TestHelpers.ListBlobsAsync(container))
+                {
+                    blobList.Add(blob);
+                }
+                blobs = blobList;
                 return blobs.Count() == 3;
             });
 
@@ -266,10 +270,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return blobs;
         }
 
-        protected async Task<CloudBlobContainer> GetEmptyContainer(string containerName)
+        protected async Task<BlobContainerClient> GetEmptyContainer(string containerName)
         {
-            var container = Fixture.BlobClient.GetContainerReference(containerName);
-            if (!await container.CreateIfNotExistsAsync())
+            var container = Fixture.BlobServiceClient.GetBlobContainerClient(containerName);
+            var exists = await container.ExistsAsync();
+            if (!exists.Value)
+            {
+                await container.CreateAsync();
+            }
+            else
             {
                 await TestHelpers.ClearContainerAsync(container);
             }

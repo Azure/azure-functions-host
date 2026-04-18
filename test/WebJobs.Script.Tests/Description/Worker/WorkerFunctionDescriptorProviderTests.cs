@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -38,7 +37,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _host = new HostBuilder().ConfigureDefaultTestWebScriptHost(b =>
             {
-                b.AddAzureStorage();
+                b.AddAzureStorageCoreServices();
+                b.AddAzureStorageBlobs();
+                b.AddAzureStorageQueues();
             },
             o =>
             {

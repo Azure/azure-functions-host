@@ -3,8 +3,9 @@
 
 using System;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.Storage.Queue;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
@@ -27,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             var dbName = "TriggerItemDb";
 
-            var resultBlob = _fixture.TestOutputContainer.GetBlockBlobReference("cosmosdbtriggere2e-completed");
+            var resultBlob = _fixture.TestOutputContainer.GetBlobClient("cosmosdbtriggere2e-completed");
             await resultBlob.DeleteIfExistsAsync();
 
             string id = Guid.NewGuid().ToString();
@@ -60,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             var queue = await _fixture.GetNewQueue("cosmosdb-input");
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
-            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
+            await queue.SendMessageAsync(messageContent);
 
             // And wait for the text to be updated
             dynamic updatedDoc = await WaitForItemAsync(id, dbName, "This was updated!");
@@ -85,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
 
             var queue = await _fixture.GetNewQueue("cosmosdb-input-multiple");
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
-            await queue.AddMessageAsync(new CloudQueueMessage(messageContent));
+            await queue.SendMessageAsync(messageContent);
 
             // And wait for the text to be updated
             await WaitForItemAsync(id, dbName, "Hello from Node with multiple input bindings!");

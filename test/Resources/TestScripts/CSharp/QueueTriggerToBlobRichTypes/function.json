@@ -1,4 +1,4 @@
-﻿{
+{
   "bindings": [
     {
       "type": "queueTrigger",
@@ -9,7 +9,7 @@
     {
       "type": "blob",
       "name": "output",
-      "direction": "inout",
+      "direction": "out",
       "path": "test-output-csharp/{id}"
     }
   ]

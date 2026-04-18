@@ -10,8 +10,8 @@ using System.Threading.Tasks;
 using Azure;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
@@ -564,7 +564,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public Uri BlobSasConnectionUri { get; private set; }
 
-            public CloudBlobContainer BlobContainer { get; private set; }
+            public BlobContainerClient BlobContainer { get; private set; }
 
             public SecretClient SecretClient { get; private set; }
 
@@ -588,11 +588,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 if (RepositoryType == SecretsRepositoryType.BlobStorageSas)
                 {
                     BlobSasConnectionUri = await TestHelpers.CreateBlobContainerSas(BlobConnectionString, "azure-webjobs-secrets-sas");
-                    BlobContainer = new CloudBlobContainer(BlobSasConnectionUri);
+                    BlobContainer = new BlobContainerClient(BlobSasConnectionUri);
                 }
                 else
                 {
-                    BlobContainer = CloudStorageAccount.Parse(BlobConnectionString).CreateCloudBlobClient().GetContainerReference("azure-webjobs-secrets");
+                    var blobServiceClient = new BlobServiceClient(BlobConnectionString);
+                    BlobContainer = blobServiceClient.GetBlobContainerClient("azure-webjobs-secrets");
                 }
 
                 await ClearAllBlobSecrets();
@@ -679,11 +680,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private async Task WriteSecretsBlobAndUpdateSentinelFile(string functionNameOrHost, string fileText, bool createSentinelFile = true)
             {
                 string blobPath = RelativeBlobPath(functionNameOrHost);
-                CloudBlockBlob secretBlob = BlobContainer.GetBlockBlobReference(blobPath);
+                BlobClient secretBlob = BlobContainer.GetBlobClient(blobPath);
 
-                using (StreamWriter writer = new StreamWriter(await secretBlob.OpenWriteAsync()))
+                using (var stream = new MemoryStream())
+                using (var writer = new StreamWriter(stream))
                 {
                     writer.Write(fileText);
+                    writer.Flush();
+                    stream.Position = 0;
+                    await secretBlob.UploadAsync(stream, overwrite: true);
                 }
 
                 if (createSentinelFile)
@@ -748,9 +753,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 string blobText = null;
                 string blobPath = RelativeBlobPath(functionNameOrHost);
-                if (await BlobContainer.GetBlockBlobReference(blobPath).ExistsAsync())
+                BlobClient blobClient = BlobContainer.GetBlobClient(blobPath);
+                if (await blobClient.ExistsAsync())
                 {
-                    blobText = await BlobContainer.GetBlockBlobReference(blobPath).DownloadTextAsync();
+                    var response = await blobClient.DownloadContentAsync();
+                    blobText = response.Value.Content.ToString();
                 }
                 return ScriptSecretSerializer.DeserializeSecrets(type, blobText);
             }
@@ -825,11 +832,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     await BlobContainer.CreateIfNotExistsAsync();
                 }
 
-                var blobs = await BlobContainer.ListBlobsSegmentedAsync(prefix: TestSiteName.ToLowerInvariant(), useFlatBlobListing: true,
-                    blobListingDetails: BlobListingDetails.None, maxResults: 100, currentToken: null, options: null, operationContext: null);
-                foreach (IListBlobItem blob in blobs.Results)
+                await foreach (BlobItem blobItem in BlobContainer.GetBlobsAsync(prefix: TestSiteName.ToLowerInvariant()))
                 {
-                    await BlobContainer.GetBlockBlobReference(((CloudBlockBlob)blob).Name).DeleteIfExistsAsync();
+                    await BlobContainer.GetBlobClient(blobItem.Name).DeleteIfExistsAsync();
                 }
             }
 

@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Extensions.SendGrid;
 using Microsoft.Azure.WebJobs.Extensions.Storage;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GetExtensionsStartupTypes_UsesDefaultMinVersion()
         {
-            InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+            InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
             var binPath = Path.Combine(_directory.Path, "bin");
 
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
@@ -108,8 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(null, "4.17.0", "4.0.4")]
         public async Task GetExtensionsStartupTypes_AcceptsRequiredBundleVersions(string minBundleVersion, string actualBundleVersion, string minExtensionVersion)
         {
-            // "TypeName": , Microsoft.Azure.WebJobs.Extensions.Storage, Version=4.0.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
-            string binPath = InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
 
             if (string.IsNullOrEmpty(actualBundleVersion))
             {
@@ -140,18 +140,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading extension bundle")));
             }
 
-            Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading startup extension 'Storage")));
+            Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading startup extension 'AzureStorageBlobs'")));
             AssertNoErrors(traces);
         }
 
         [Theory]
         [InlineData("4.12.0", "4.9.0", null)]
-        [InlineData(null, "4.9.0", "4.0.6")]
-        [InlineData("4.12.0", "4.9.0", "4.0.6")]
+        [InlineData(null, "4.9.0", "5.4.0")]
+        [InlineData("4.12.0", "4.9.0", "5.4.0")]
         public async Task GetExtensionsStartupTypes_RejectsRequiredBundleVersions(string minBundleVersion, string actualBundleVersion, string minExtensionVersion)
         {
-            // "TypeName": , Microsoft.Azure.WebJobs.Extensions.Storage, Version=4.0.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
-            string binPath = InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
             if (string.IsNullOrEmpty(actualBundleVersion))
             {
                 _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
@@ -184,10 +183,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("4.12.0", false, "4.0.4")]
         public async Task GetExtensionsStartupTypes_AcceptsRequiredExtensionVersions(string minBundleVersion, bool extensionConfigured, string minExtensionVersion)
         {
-            // "TypeName": , Microsoft.Azure.WebJobs.Extensions.Storage, Version=4.0.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
             if (extensionConfigured)
             {
-                InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+                InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
             }
 
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
@@ -201,18 +199,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Extension Bundle not loaded")));
             if (extensionConfigured)
             {
-                Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading startup extension 'Storage")));
+                Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Loading startup extension 'AzureStorageBlobs'")));
             }
 
             AssertNoErrors(traces);
         }
 
         [Theory]
-        [InlineData(null, "4.0.6")]
-        [InlineData("4.12.0", "4.0.6")]
+        [InlineData(null, "5.4.0")]
+        [InlineData("4.12.0", "5.4.0")]
         public async Task GetExtensionsStartupTypes_RejectsRequiredExtensionVersions(string minBundleVersion, string minExtensionVersion)
         {
-            string binPath = InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
             // Act
@@ -222,13 +220,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Assert
             var traces = _loggerProvider.GetAllLogMessages();
             Assert.True(traces.Any(m => m.FormattedMessage.Contains($"Extension Bundle not loaded")));
-            Assert.True(traces.Any(m => m.FormattedMessage.Contains($"ExtensionStartupType AzureStorageWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.Storage, Version=4.0.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' does not meet the required minimum version of 4.0.6")));
+            Assert.True(traces.Any(m => m.FormattedMessage.Contains($"ExtensionStartupType AzureStorageBlobsWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.Storage.Blobs, Version=5.3.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8' does not meet the required minimum version of 5.4.0.")));
         }
 
         [Fact]
         public async Task GetExtensionsStartupTypes_FiltersBuiltinExtensionsAsync()
         {
-            InstallExtensions(ExtensionInstall.Http(), ExtensionInstall.Timers(), ExtensionInstall.Storage());
+            InstallExtensions(ExtensionInstall.Http(), ExtensionInstall.Timers(), ExtensionInstall.BlobStorage());
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
             // Act
@@ -239,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Assert
             AreExpectedMetricsGenerated();
             Assert.Single(types);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{typeof(HttpWebJobsStartup).AssemblyQualifiedName}' belongs to a builtin extension")));
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{typeof(ExtensionsWebJobsStartup).AssemblyQualifiedName}' belongs to a builtin extension")));
             AssertNoErrors(traces);
@@ -267,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GetExtensionsStartupTypes_ValidExtensionBundle_FiltersBuiltinExtensionsAsync()
         {
-            string binPath = InstallExtensions(ExtensionInstall.Http(), ExtensionInstall.Timers(), ExtensionInstall.Storage());
+            string binPath = InstallExtensions(ExtensionInstall.Http(), ExtensionInstall.Timers(), ExtensionInstall.BlobStorage());
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
             _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(GetBundleDetails());
             _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
@@ -280,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Assert
             Assert.Single(types);
             AreExpectedMetricsGenerated();
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{typeof(HttpWebJobsStartup).AssemblyQualifiedName}' belongs to a builtin extension")));
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"The extension startup type '{typeof(ExtensionsWebJobsStartup).AssemblyQualifiedName}' belongs to a builtin extension")));
             AssertNoErrors(traces);
@@ -308,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GetExtensionsStartupTypes_BundlesConfiguredBindingsNotConfigured_LoadsAllExtensions()
         {
-            string binPath = InstallExtensions(ExtensionInstall.Storage(), ExtensionInstall.SendGrid());
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(), ExtensionInstall.SendGrid());
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
             _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
             _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(GetBundleDetails());
@@ -320,15 +318,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Assert
             AreExpectedMetricsGenerated();
-            Assert.Equal(types.Count(), 2);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
+            Assert.Equal(2, types.Count());
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.FirstOrDefault().FullName);
             AssertNoErrors(traces);
         }
 
         [Fact]
         public async Task GetExtensionsStartupTypes_BundlesNotConfiguredBindingsNotConfigured_LoadsAllExtensions()
         {
-            InstallExtensions(ExtensionInstall.Storage());
+            InstallExtensions(ExtensionInstall.BlobStorage());
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
             // Act
@@ -339,14 +337,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Assert
             AreExpectedMetricsGenerated();
             Assert.Single(types);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
             AssertNoErrors(traces);
         }
 
         [Fact]
         public async Task GetExtensionsStartupTypes_BundlesConfiguredBindingsConfigured_PerformsSelectiveLoading()
         {
-            InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+            InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
             _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(Path.Combine(_directory.Path, "bin"));
             _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(GetBundleDetails());
@@ -359,7 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //Assert
             AreExpectedMetricsGenerated();
             Assert.Single(types);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
             AssertNoErrors(traces);
         }
 
@@ -368,7 +366,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(true)]
         public async Task GetExtensionsStartupTypes_LegacyBundles_UsesExtensionBundleBinaries(bool hasPrecompiledFunctions)
         {
-            string binPath = InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
             _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
             _bundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(true);
@@ -386,13 +384,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //Assert
             AreExpectedMetricsGenerated();
             Assert.Single(types);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
         }
 
         [Fact]
         public async Task GetExtensionsStartupTypes_WorkerRuntimeNotSetForNodeApp_LoadsExtensionBundle()
         {
-            string binPath = InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
             _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
             _bundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
@@ -411,7 +409,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(loadingExtensionBundle);
             AreExpectedMetricsGenerated();
             Assert.Single(types);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
         }
 
         [Theory(Skip = "This test is failing on CI and needs to be fixed.")]
@@ -458,7 +456,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             AreExpectedMetricsGenerated();
             Assert.Single(types);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
         }
 
         [Theory]
@@ -466,7 +464,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(true)]
         public async Task GetExtensionsStartupTypes_NonLegacyBundles_UsesBundlesForNonPrecompiledFunctions(bool hasPrecompiledFunctions)
         {
-            InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+            InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
             string bundlePath = hasPrecompiledFunctions ? "FakePath" : _directory.Path;
             var binPath = Path.Combine(_directory.Path, "bin");
 
@@ -483,13 +481,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             //Assert
             AreExpectedMetricsGenerated();
             Assert.Single(types);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.Single().FullName);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
         }
 
         [Fact]
         public async Task GetExtensionsStartupTypes_BundlesNotConfiguredBindingsConfigured_LoadsAllExtensions()
         {
-            InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+            InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
             // Act
@@ -499,31 +497,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Assert
             AreExpectedMetricsGenerated();
             Assert.Equal(types.Count(), 2);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.FirstOrDefault().FullName);
         }
 
         [Fact]
         public async Task GetExtensionsStartupTypes_NoBindings_In_ExtensionJson()
         {
-            ExtensionInstall storage1 = new("AzureStorageBlobs", typeof(AzureStorageWebJobsStartup));
-            ExtensionInstall storage2 = new("Storage", typeof(AzureStorageWebJobsStartup))
-            {
-                HintPath = "Microsoft.Azure.WebJobs.Extensions.Storage.dll"
-            };
+            ExtensionInstall storage1 = new("AzureStorageBlobs", typeof(AzureStorageBlobsWebJobsStartup));
+            ExtensionInstall storage2 = new("SendGrid", typeof(SendGridWebJobsStartup));
 
             string binPath = InstallExtensions(storage1, storage2);
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-            _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(new ExtensionBundleDetails() { Id = "bundleID", Version = "1.0.0" });
+            _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(GetBundleDetails());
             _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
 
-            // Act
             ScriptStartupTypeLocator discoverer = CreateSystemUnderTest();
             var types = await discoverer.GetExtensionsStartupTypesAsync();
+            var traces = _loggerProvider.GetAllLogMessages();
 
-            // Assert
             AreExpectedMetricsGenerated();
-            Assert.Equal(types.Count(), 2);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
+            Assert.Equal(2, types.Count());
+            Assert.Contains(types, t => t.FullName == typeof(AzureStorageBlobsWebJobsStartup).FullName);
+            AssertNoErrors(traces);
         }
 
         [Fact]
@@ -580,7 +575,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task GetExtensionsStartupTypes_WorkerIndexing_PerformsSelectiveLoading()
         {
-            string binPath = InstallExtensions(ExtensionInstall.Storage(true), ExtensionInstall.SendGrid(true));
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(true), ExtensionInstall.SendGrid(true));
             _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(new ExtensionBundleDetails() { Id = "bundleID", Version = "1.0.0" });
             _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
             _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
@@ -595,7 +590,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             //Assert that filtering did not take place because of worker indexing
             Assert.True(types.Count() == 1);
-            Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.ElementAt(0).FullName);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.ElementAt(0).FullName);
             AssertNoErrors(traces);
         }
 
@@ -643,8 +638,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 [
                     new()
                     {
-                        Name = "AzureStorageWebJobsStartup",
-                        AssemblyName = "Microsoft.Azure.WebJobs.Extensions.Storage",
+                        Name = "AzureStorageBlobsWebJobsStartup",
+                        AssemblyName = "Microsoft.Azure.WebJobs.Extensions.Storage.Blobs",
                         MinimumAssemblyVersion = minExtensionVersion
                     }
                 ];
@@ -711,16 +706,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public string HintPath { get; init; }
 
-            public static ExtensionInstall Storage(bool includeBinding = false)
+            public static ExtensionInstall BlobStorage(bool includeBinding = false)
             {
                 string[] bindings = includeBinding ? ["blob"] : [];
-                return new("Storage", typeof(AzureStorageWebJobsStartup), bindings);
+                return new("AzureStorageBlobs", typeof(AzureStorageBlobsWebJobsStartup), bindings);
             }
 
             public static ExtensionInstall SendGrid(bool includeBinding = false)
             {
                 string[] bindings = includeBinding ? ["sendGrid"] : [];
-                return new("SendGrid", typeof(AzureStorageWebJobsStartup), bindings);
+                return new("SendGrid", typeof(SendGridWebJobsStartup), bindings);
             }
 
             public static ExtensionInstall Timers()

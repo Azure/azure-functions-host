@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -30,7 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _host = new HostBuilder().ConfigureDefaultTestWebScriptHost(b =>
             {
-                b.AddAzureStorage();
+                b.AddAzureStorageCoreServices();
+                b.AddAzureStorageBlobs();
+                b.AddAzureStorageQueues();
             }).Build();
 
             FunctionBinding functionBinding = TestHelpers.CreateBindingFromHost(_host, json);

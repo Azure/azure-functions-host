@@ -8,7 +8,10 @@ jobs:
       functionshost:
         localFolder: '{{HostLocation}}'
     project: functionshost/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
-    readyStateText: 'Application started.'
+    framework: net10.0
+    sdkVersion: '10.0.103'
+    runtimeVersion: '10.0.5'
+    aspNetCoreVersion: '10.0.5'
     environmentVariables:
       FUNCTIONS_WORKER_RUNTIME: '{{FunctionsWorkerRuntime}}'
       AzureWebJobsScriptRoot: '{{FunctionAppPath}}'

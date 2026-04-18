@@ -78,7 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Action<ILoggingBuilder> configureScriptHostLogging = null,
             Action<IServiceCollection> configureScriptHostServices = null,
             Action<IConfigurationBuilder> configureWebHostAppConfiguration = null,
-            bool addTestSettings = true)
+            bool addTestSettings = true,
+            bool addStorageExtensions = true)
         {
             _appRoot = scriptPath;
 
@@ -173,7 +174,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             builder.ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
             {
-                scriptHostWebJobsBuilder.AddAzureStorage();
+                if (addStorageExtensions)
+                {
+                    scriptHostWebJobsBuilder.AddAzureStorageCoreServices().AddAzureStorageBlobs().AddAzureStorageQueues().AddTables();
+                }
+
                 configureScriptHostWebJobsBuilder?.Invoke(scriptHostWebJobsBuilder);
             })
             .ConfigureScriptHostAppConfiguration(scriptHostConfigurationBuilder =>

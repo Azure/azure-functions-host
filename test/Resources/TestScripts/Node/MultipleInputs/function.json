@@ -17,7 +17,8 @@
             "direction": "in",
             "tableName": "test",
             "partitionKey": "AAA",
-            "rowKey": "{rk1}"
+            "filter": "RowKey eq '{rk1}'",
+            "take": 1
         },
         {
             "type": "table",
@@ -25,7 +26,8 @@
             "direction": "in",
             "tableName": "test",
             "partitionKey": "AAA",
-            "rowKey": "{rk2}"
+            "filter": "RowKey eq '{rk2}'",
+            "take": 1
         }
     ]
 }

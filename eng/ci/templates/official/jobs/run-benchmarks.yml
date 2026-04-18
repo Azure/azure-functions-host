@@ -30,10 +30,10 @@ jobs:
     agentId: ${{ parameters.functionAppName }}${{ parameters.os }}
     runDescription: ${{ parameters.description }}
     functionApp: ${{ parameters.functionAppName }}
-    benchmarkArtifactName: benchmark_results_$(Agent.OS)_$(functionApp)
+    benchmarkArtifactName: AzFunc_${{ parameters.os }}_${{ parameters.functionAppName }}
     functionAppOutputPath: $(Build.ArtifactStagingDirectory)/FunctionApps/$(functionApp)
     traceDirectory: $(Build.ArtifactStagingDirectory)/out
-    benchmarkResultsJsonPath: $(traceDirectory)/BenchmarkResults/$(Build.BuildNumber)_$(functionApp).json
+    benchmarkResultsJsonPath: $(traceDirectory)/BenchmarkResults/$(originalBuildNumber)_$(functionApp).json
     functionsWorkerRuntime: 'dotnet-isolated'
     configFilePath: "./eng/perf/http.benchmarks.yml"
     hostLocation: "./../../"
@@ -54,12 +54,24 @@ jobs:
       - output: pipelineArtifact
         displayName: Publish artifacts
         path: $(traceDirectory)
-        artifact: AzFunc_$(Build.BuildNumber)_${{ parameters.os }}_${{ parameters.functionAppName }}
+        artifact: $(benchmarkArtifactName)
         condition: always()
 
   steps:
 
+  # Capture the original build number before any parallel stage's dotnet build
+  # updates it via UpdateAzDoBuildNumber in eng/build/Version.targets.
+  - pwsh: |
+      Write-Host "##vso[task.setvariable variable=originalBuildNumber]$(Build.BuildNumber)"
+    displayName: Capture original build number
+
   - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: UseDotNet@2 # Needed by crank
+    displayName: Install .NET 8
+    inputs:
+      packageType: sdk
+      version: 8.x
 
   - script: dotnet tool install -g Microsoft.Crank.Agent --version "0.2.0-*"
     displayName: Install Microsoft.Crank.Agent tool
@@ -121,7 +133,7 @@ jobs:
       scriptLocation: inlineScript
       inlineScript: |
         $crankArgs = "--config $(configFilePath) --scenario hellohttp --profile win2022 --load.options.reuseBuild true --description `"$(runDescription)`" --command-line-property --no-measurements --json $(benchmarkResultsJsonPath) --property sourceVersion=$(Build.SourceVersion) --property buildNumber=$(Build.BuildNumber) --property buildId=$(Build.BuildId) --property sourceBranch=$(Build.SourceBranch) --variable FunctionsWorkerRuntime=$(functionsWorkerRuntime) --variable HostLocation=$(hostLocation) --variable FunctionAppPath=$(functionAppOutputPath)"
-        $crankArgs += " --hostruntime.options.traceOutput $(traceDirectory)/$(Build.BuildNumber)_$(functionApp)_$(Agent.OS)"
+        $crankArgs += " --hostruntime.options.traceOutput $(traceDirectory)/$(originalBuildNumber)_$(functionApp)_$(Agent.OS)"
         $crankArgs += " --variable CrankAgentAppVm=$(appAgentHostName) --variable CrankAgentLoadVm=localhost --variable AspNetUrls=http://$(appAgentHostName):5000"
         $crankArgs += " $(crankExtraArguments)"
         $command = "crank $crankArgs"
@@ -154,7 +166,7 @@ jobs:
       $fileNamePattern = "*_$(functionApp).json"
 
       if (Test-Path $baselineDir -PathType Container) {
-          $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern | Select-Object -First 1
+          $baselineFile = Get-ChildItem -Path $baselineDir -Filter $fileNamePattern -Recurse | Select-Object -First 1
 
           if ($baselineFile) {
               Write-Host "Found baseline benchmark result file: $($baselineFile.FullName)"

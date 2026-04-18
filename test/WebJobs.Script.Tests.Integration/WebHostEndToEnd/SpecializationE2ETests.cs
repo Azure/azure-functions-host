@@ -12,13 +12,12 @@ using System.Runtime;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
+using Azure.Storage.Queues;
 using Azure.Storage.Sas;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
@@ -1558,11 +1557,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // this app has a QueueTrigger reading from "myqueue-items"
             // add a few messages there before stopping the host
             var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageValue);
-            CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference("myqueue-items");
+            var queueServiceClient = new QueueServiceClient(storageValue, new QueueClientOptions
+            {
+                MessageEncoding = QueueMessageEncoding.Base64
+            });
+            var queue = queueServiceClient.GetQueueClient("myqueue-items");
             await queue.CreateIfNotExistsAsync();
-            await queue.ClearAsync();
+            await queue.ClearMessagesAsync();
 
             var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "HttpRequestDataFunction", "QueueFunction");
 
@@ -1605,7 +1606,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 while (keepRunning)
                 {
-                    await queue.AddMessageAsync(new CloudQueueMessage("test"));
+                    await queue.SendMessageAsync("test");
                 }
             });
 
@@ -1619,7 +1620,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             keepRunning = false;
             await messageTask;
-            await queue.ClearAsync();
+            await queue.ClearMessagesAsync();
 
             var completedLogs = _loggerProvider.GetAllLogMessages()
                 .Where(p => p.Category == "Function.QueueFunction")
@@ -1627,6 +1628,75 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.NotEmpty(completedLogs.Where(p => p.Level == LogLevel.Information));
             Assert.Empty(completedLogs.Where(p => p.Level == LogLevel.Error));
+        }
+
+        [Fact]
+        public async Task Specialization_PowerShellPlaceholder_SpecializesToDotNetIsolated()
+        {
+            // Start with PowerShell as the placeholder runtime
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+
+            var builder = CreateStandbyHostBuilder(_loggerProvider, "HttpRequestDataFunction");
+
+            builder.ConfigureAppConfiguration(c =>
+            {
+                c.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { _scriptRootConfigPath, _dotnetIsolated60Path }
+                });
+            });
+
+            await using var stoppable = new StoppableHost(builder.Build());
+
+            var host = stoppable.Inner;
+
+            await host.StartAsync();
+
+            var client = host.GetTestClient();
+            var response = await client.GetAsync("api/warmup");
+            response.EnsureSuccessStatusCode();
+
+            // Verify PowerShell placeholder channel was created
+            var webChannelManager = host.Services.GetService<IWebHostRpcWorkerChannelManager>();
+            var powershellChannels = webChannelManager.GetChannels(RpcWorkerConstants.PowerShellLanguageWorkerName);
+            Assert.NotNull(powershellChannels);
+            Assert.Single(powershellChannels);
+
+            // Specialize: switch runtime from powershell to dotnet-isolated
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "6.0");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("api/HttpRequestDataFunction");
+            response.EnsureSuccessStatusCode();
+
+            // Wait for the PowerShell standby channel to be disposed (cleanup is debounced ~5s)
+            await TestHelpers.Await(() =>
+            {
+                var channels = webChannelManager.GetChannels(RpcWorkerConstants.PowerShellLanguageWorkerName);
+                return channels is null || channels.Count == 0;
+            }, timeout: 15000);
+
+            // Verify dotnet-isolated channel was created and survives the standby cleanup.
+            // ScheduleShutdownStandbyChannels disposes channels that don't match _workerRuntime.
+            var dotnetChannels = webChannelManager.GetChannels(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+            Assert.NotNull(dotnetChannels);
+            Assert.Single(dotnetChannels);
+            var specializedChannel = await dotnetChannels.Single().Value.Task;
+            Assert.NotNull(specializedChannel);
+
+            // Wait for the host to finish disposing standby channels for non-matching runtimes
+            await Task.Delay(TimeSpan.FromSeconds(6));
+            dotnetChannels = webChannelManager.GetChannels(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+            Assert.NotNull(dotnetChannels);
+            Assert.Single(dotnetChannels);
+
+            var log = _loggerProvider.GetLog();
+            Assert.Contains("Disposing standby channel for runtime:powershell", log);
+            Assert.DoesNotContain("Disposing standby channel for runtime:dotnet-isolated", log);
         }
 
         [Fact]
@@ -1794,6 +1864,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
 
                     c.AddInMemoryCollection(inMemorySettings);
+
+                    // Bridge TestEnvironment into IConfiguration so that _configuration.Reload()
+                    // picks up env var changes made during specialization — matching production
+                    // where ScriptEnvironmentVariablesConfigurationSource reads real process env vars.
+                    c.Add(new TestEnvironmentConfigurationSource(_environment));
                 })
                 .ConfigureLogging(b =>
                 {
@@ -1937,6 +2012,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
 
                 Inner.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// An <see cref="IConfigurationSource"/> that reads from a <see cref="IEnvironment"/> instance.
+        /// When <see cref="IConfigurationRoot.Reload"/> is called, the provider re-reads the current
+        /// values from the environment, allowing tests to simulate environment variable changes
+        /// that flow through to <see cref="IConfiguration"/>.
+        /// </summary>
+        private sealed class TestEnvironmentConfigurationSource : IConfigurationSource
+        {
+            private readonly IEnvironment _environment;
+
+            public TestEnvironmentConfigurationSource(IEnvironment environment)
+            {
+                _environment = environment;
+            }
+
+            public IConfigurationProvider Build(IConfigurationBuilder builder)
+            {
+                return new Provider(_environment);
+            }
+
+            private sealed class Provider : ConfigurationProvider
+            {
+                private readonly IEnvironment _environment;
+
+                public Provider(IEnvironment environment)
+                {
+                    _environment = environment;
+                }
+
+                public override void Load()
+                {
+                    var runtime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                    if (runtime is not null)
+                    {
+                        Data[EnvironmentSettingNames.FunctionWorkerRuntime] = runtime;
+                    }
+                    else
+                    {
+                        Data.Remove(EnvironmentSettingNames.FunctionWorkerRuntime);
+                    }
+                }
             }
         }
     }
