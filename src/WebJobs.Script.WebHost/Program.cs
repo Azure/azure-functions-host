@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using Microsoft.AspNetCore.Builder;
@@ -16,7 +17,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
-using ExtensionsHost = Microsoft.Extensions.Hosting.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -38,20 +38,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .Build();
         }
 
+        /// <summary>
+        /// Creates an <see cref="IHostBuilder"/> with only the services the Functions host requires.
+        /// </summary>
+        /// <remarks>
+        /// A bare <see cref="HostBuilder"/> is used instead of <c>Host.CreateDefaultBuilder</c>
+        /// because the Functions host manages its own logging, configuration, and metrics.
+        /// </remarks>
         public static IHostBuilder CreateHostBuilder(string[] args = null)
         {
-            // Setting this env variable to test placeholder scenarios locally.
 #if PLACEHOLDER_SIMULATION
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "0");
 #endif
 
-            return ExtensionsHost.CreateDefaultBuilder(args ?? Array.Empty<string>())
-                // Scope and build validation are intentionally disabled. The host uses a two-level
-                // DI hierarchy with cross-boundary service resolution that would fail generic scope
-                // validation. The custom DependencyValidator provides tighter, bespoke validation.
-                // This preserves the behavior of WebHost.CreateDefaultBuilder(), which also disabled
-                // scope validation in Production by default.
+            return new HostBuilder()
+                .UseContentRoot(Directory.GetCurrentDirectory())
+                .ConfigureHostConfiguration(config =>
+                {
+                    if (args is { Length: > 0 })
+                    {
+                        config.AddCommandLine(args);
+                    }
+                })
+                // Scope and build validation are disabled because the host uses a two-level
+                // DI hierarchy with cross-boundary service resolution. The custom
+                // DependencyValidator provides bespoke validation instead.
                 .UseDefaultServiceProvider((context, options) =>
                 {
                     options.ValidateScopes = false;
@@ -74,9 +86,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         })
                         .ConfigureAppConfiguration((builderContext, config) =>
                         {
-                            // replace the default environment source with our own
+                            // Replace the default environment variables source with one
+                            // that is aware of Functions-specific settings.
                             IConfigurationSource envVarsSource = config.Sources.OfType<EnvironmentVariablesConfigurationSource>().FirstOrDefault();
-                            if (envVarsSource != null)
+                            if (envVarsSource is not null)
                             {
                                 config.Sources.Remove(envVarsSource);
                             }
@@ -91,14 +104,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             });
                             config.Add(new FunctionsHostingConfigSource(SystemEnvironment.Instance));
 
+                            if (builderContext.HostingEnvironment.IsDevelopment())
+                            {
+                                config.AddUserSecrets<Program>(optional: true);
+                            }
+
                             var hostingEnvironmentConfigFilePath = SystemEnvironment.Instance.GetFunctionsHostingEnvironmentConfigFilePath();
                             if (!string.IsNullOrEmpty(hostingEnvironmentConfigFilePath))
                             {
                                 config.AddJsonFile(hostingEnvironmentConfigFilePath, optional: true, reloadOnChange: false);
                             }
+
+                            if (args is { Length: > 0 })
+                            {
+                                config.AddCommandLine(args);
+                            }
                         })
                         .ConfigureLogging((context, loggingBuilder) =>
                         {
+                            loggingBuilder.Configure(options =>
+                            {
+                                options.ActivityTrackingOptions =
+                                    ActivityTrackingOptions.SpanId |
+                                    ActivityTrackingOptions.TraceId |
+                                    ActivityTrackingOptions.ParentId;
+                            });
+
                             loggingBuilder.ClearProviders();
 
                             loggingBuilder.AddDefaultWebJobsFilters();
