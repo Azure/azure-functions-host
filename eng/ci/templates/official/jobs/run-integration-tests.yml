@@ -210,7 +210,7 @@ jobs:
       projects: $(test_projects)
 
   - task: AzurePowerShell@5
-    condition: always()
+    condition: and(always(), ne(variables['LeaseBlob'], ''))
     displayName: Checkin secrets
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal

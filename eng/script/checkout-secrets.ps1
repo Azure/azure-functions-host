@@ -44,7 +44,7 @@ While($true) {
           Write-Host "  Lease broken. Will attempt to acquire on next pass."
         }
       } catch {
-        # best effort
+        Write-Host "##vso[task.logissue type=warning]Unable to inspect or break stale lease on '${name}'. Continuing. $($_.Exception.Message)"
       }
       continue
     }
