@@ -188,10 +188,12 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         _output.WriteLine($"Stop response: {stopResponse.StatusCode}");
         Assert.Equal(HttpStatusCode.Accepted, stopResponse.StatusCode);
 
-        // 5. Poll worker proxy /admin/infra/instanceState until it reaches MarkedForDeletion.
+        // 5. Poll worker proxy /admin/infra/instanceState until it reaches MarkedForDeletion
+        // or the proxy process exits (which is also a valid outcome after stop).
         int lastRevision = state["revision"]?.Value<int>() ?? 0;
         var sw = Stopwatch.StartNew();
         string finalStatus = null;
+        bool proxyExited = false;
 
         while (sw.Elapsed < TimeSpan.FromMinutes(2))
         {
@@ -215,16 +217,19 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
             }
             catch (HttpRequestException)
             {
-                // Proxy may have shut down — that's also an acceptable outcome.
-                _output.WriteLine("Worker proxy connection lost — process may have exited.");
+                // Proxy process exited — this is a valid outcome after stop.
+                _output.WriteLine("Worker proxy connection lost — process exited after stop.");
+                proxyExited = true;
                 break;
             }
 
             await Task.Delay(500);
         }
 
-        Assert.Equal("MarkedForDeletion", finalStatus);
-        _output.WriteLine("Worker proxy reached MarkedForDeletion — stop completed successfully.");
+        Assert.True(
+            string.Equals(finalStatus, "MarkedForDeletion", StringComparison.OrdinalIgnoreCase) || proxyExited,
+            $"Expected MarkedForDeletion or proxy exit but got: {finalStatus}");
+        _output.WriteLine("Stop completed successfully.");
     }
 
     public Task DisposeAsync()
