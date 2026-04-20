@@ -8,7 +8,8 @@ function AcquireLease($blob) {
 }
 
 # use this for tracking metadata in lease blobs
-$buildName = "3.0." + $env:buildNumber + "_" + $env:SYSTEM_JOBDISPLAYNAME
+$buildName = "$env:BUILD_BUILDID - $env:BUILD_BUILDNUMBER ($env:SYSTEM_JOBDISPLAYNAME)"
+$buildUrl = "$env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI$env:SYSTEM_TEAMPROJECT/_build/results?buildId=$env:BUILD_BUILDID"
 
 Import-Module Az.Storage
 
@@ -42,6 +43,7 @@ While($true) {
       try {
         $blob.ICloudBlob.FetchAttributes()
         $blob.ICloudBlob.Metadata["Build"] = $buildName
+        $blob.ICloudBlob.Metadata["BuildUrl"] = $buildUrl
         $accessCondition = New-Object -TypeName Microsoft.Azure.Storage.AccessCondition
         $accessCondition.LeaseId = $token
         $blob.ICloudBlob.SetMetadata($accessCondition)
