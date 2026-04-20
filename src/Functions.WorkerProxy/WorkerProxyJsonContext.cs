@@ -5,8 +5,10 @@ using System.Text.Json.Serialization;
 
 namespace Microsoft.Azure.Functions.WorkerProxy;
 
-[JsonSerializable(typeof(WorkerPodState))]
+[JsonSerializable(typeof(WorkerInstanceState))]
 [JsonSerializable(typeof(WorkerAssignRequest))]
+[JsonSerializable(typeof(WorkerDrainRequest))]
+[JsonSerializable(typeof(InstanceStatePollRequest))]
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 internal partial class WorkerProxyJsonContext : JsonSerializerContext
 {

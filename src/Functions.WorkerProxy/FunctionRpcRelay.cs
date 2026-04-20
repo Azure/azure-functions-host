@@ -4,6 +4,7 @@
 using System.Threading.Channels;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using GrpcWorkerDrainRequest = Microsoft.Azure.WebJobs.Script.Grpc.Messages.WorkerDrainRequest;
 
 namespace Microsoft.Azure.Functions.WorkerProxy;
 
@@ -29,7 +30,8 @@ internal enum RelaySide
 /// override when running in containers where <c>localhost</c> is not reachable across
 /// container boundaries.
 /// </param>
-internal record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpProxyPort, string? HostJsonPath, string HttpProxyEndpoint);
+/// <param name="PodName">Identity of this worker pod for <c>instanceState</c> publication.</param>
+internal record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpProxyPort, string? HostJsonPath, string HttpProxyEndpoint, string PodName);
 
 /// <summary>
 /// Manages the gRPC relay between the Functions runtime and a language worker.
@@ -222,13 +224,13 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 
     /// <summary>
     /// Sends a <c>WorkerDrainRequest</c> to the runtime over the gRPC stream.
-    /// Called when NNA calls <c>POST /drain</c> on the worker proxy.
+    /// Called when NNA calls <c>POST /admin/worker/drain</c> on the worker proxy.
     /// </summary>
     public async Task SendDrainRequestToRuntimeAsync()
     {
         var message = new StreamingMessage
         {
-            WorkerDrainRequest = new WorkerDrainRequest()
+            WorkerDrainRequest = new GrpcWorkerDrainRequest()
         };
 
         await _toRuntime.Writer.WriteAsync(message);
@@ -269,8 +271,6 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             // Start the relay immediately. The proxy needs to read worker messages
             // (for /assign) and write to the worker (WorkerInitRequest, etc.) before
             // the runtime connects.
-            _stateManager.UpdateHealthStatus(WorkerPodHealthStatus.Healthy);
-
             await RelayAsync(requestStream, responseStream, _toRuntime, _toWorker, RelaySide.Worker, context.CancellationToken);
         }
     }
@@ -489,7 +489,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                     if (message.ContentCase == StreamingMessage.ContentOneofCase.WorkerDrainRequest)
                     {
                         _logger.LogInformation("Received WorkerDrainRequest from runtime.");
-                        _stateManager.UpdatePodStatus(WorkerPodStatus.Draining);
+                        _stateManager.AcceptDrain(DrainReason.RuntimeStopping);
                         continue;
                     }
 
@@ -497,8 +497,13 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                     if (message.ContentCase == StreamingMessage.ContentOneofCase.WorkerDrainComplete)
                     {
                         _logger.LogInformation("Received WorkerDrainComplete from runtime.");
-                        _stateManager.UpdatePodStatus(WorkerPodStatus.DrainCompleted);
-                        _stateManager.UpdatePodStatus(WorkerPodStatus.MarkForDeletion);
+                        _stateManager.UpdatePodStatus(WorkerPodStatus.MarkedForDeletion);
+
+                        // CS-TODO: After drain completes, consider sending WorkerTerminate to the
+                        // worker with a grace period, then waiting for the worker to disconnect
+                        // before the proxy itself shuts down. Today the platform owns worker
+                        // process lifetime (DeletePod), but WorkerTerminate would let the worker
+                        // clean up gracefully if it advertises HandlesWorkerTerminateMessage.
                         continue;
                     }
                 }
@@ -508,6 +513,15 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             }
 
             forwardWriter.TryComplete();
+
+            // If the runtime disconnected while we were draining, treat stream closure
+            // as an implicit drain-complete — the runtime may have sent WorkerDrainComplete
+            // but the stream was torn down before we could read it.
+            if (side == RelaySide.Runtime && _stateManager.CurrentStatus == WorkerPodStatus.Draining)
+            {
+                _logger.LogInformation("Runtime stream closed while draining. Transitioning to MarkedForDeletion.");
+                _stateManager.UpdatePodStatus(WorkerPodStatus.MarkedForDeletion);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

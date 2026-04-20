@@ -199,7 +199,7 @@ internal static class ComputeSeparationTestHelpers
     }
 
     /// <summary>
-    /// Polls <c>GET /ready</c> on the worker proxy management endpoint until it returns 200,
+    /// Polls <c>GET /admin/worker/ready</c> on the worker proxy management endpoint until it returns 200,
     /// replacing fixed <c>Task.Delay</c> waits after process startup.
     /// </summary>
     public static async Task WaitForWorkerProxyReadyAsync(int managementPort, ITestOutputHelper output, TimeSpan? timeout = null)
@@ -212,7 +212,7 @@ internal static class ComputeSeparationTestHelpers
         {
             try
             {
-                var response = await client.GetAsync("/ready");
+                var response = await client.GetAsync("/admin/worker/ready");
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
                     output.WriteLine($"Worker proxy ready after {sw.Elapsed.TotalSeconds:F1}s.");

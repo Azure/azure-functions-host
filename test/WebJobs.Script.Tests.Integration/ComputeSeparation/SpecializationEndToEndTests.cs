@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
 /// and invokes a function through the mock worker.
 /// </summary>
 [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-[Trait(TestTraits.Group, nameof(SpecializationEndToEndTests))]
+[Trait(TestTraits.Group, nameof(ExternalWorkerEndToEndTests))]
 public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFixture<AzuriteFixture>
 {
     private const int RuntimeGrpcPort = 60071;
@@ -195,7 +195,17 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         var secretManager = _webHost.Services.GetService<ISecretManagerProvider>().Current;
         string masterKey = (await secretManager.GetHostSecretsAsync()).MasterKey;
 
-        // 1. Specialize via /admin/instance/assign with encrypted context.
+        // 2. Assign the worker — drives init + specialize + metadata prefetch
+        //    so cached responses are ready when the runtime links.
+        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
+        var workerAssignResponse = await proxyClient.PostAsync("/admin/worker/assign",
+            new StringContent(
+                JsonConvert.SerializeObject(new { environment = new { FUNCTIONS_WORKER_RUNTIME = "node" }, functionAppDirectory = "/home/site/wwwroot" }),
+                Encoding.UTF8, "application/json"));
+        _output.WriteLine($"Worker assign response: {workerAssignResponse.StatusCode}");
+        Assert.Equal(HttpStatusCode.OK, workerAssignResponse.StatusCode);
+
+        // 3. Specialize via /admin/instance/assign with encrypted context.
         var assignmentContext = new HostAssignmentContext
         {
             SiteId = 1234,
@@ -219,7 +229,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         _output.WriteLine($"Assign response: {assignResponse.StatusCode}");
         Assert.Equal(HttpStatusCode.Accepted, assignResponse.StatusCode);
 
-        // 2. Link a worker.
+        // 4. Link a worker.
         var sw = Stopwatch.StartNew();
         HttpResponseMessage linkResponse = null;
 
@@ -247,7 +257,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         _output.WriteLine($"Link response: {linkResponse?.StatusCode}");
         Assert.Equal(HttpStatusCode.Accepted, linkResponse?.StatusCode);
 
-        // 3. Wait for host to reach Running state.
+        // 5. Wait for host to reach Running state.
         await TestHelpers.Await(
             () =>
             {
@@ -265,7 +275,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
 
         _output.WriteLine("Host is running.");
 
-        // 4. Invoke a function.
+        // 6. Invoke a function.
         var invokeResponse = await _httpClient.GetAsync("/api/HttpTrigger");
         string invokeBody = await invokeResponse.Content.ReadAsStringAsync();
         _output.WriteLine($"Invoke: {invokeResponse.StatusCode} — {invokeBody}");

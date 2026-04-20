@@ -21,7 +21,7 @@
 ###
 ### This mirrors what the platform (RCP → NNA) does in production:
 ###
-###   1. Wait for worker proxy readiness
+###   1. Wait for worker proxy readiness (/admin/worker/ready on worker proxy)
 ###   2. Specialize the worker (/admin/worker/assign on worker proxy)
 ###      → Proxy drives: WorkerInit → EnvReload → MetadataPrefetch
 ###      → Proxy caches all responses for later replay
@@ -37,12 +37,12 @@
 
 ### Step 1: Check worker proxy readiness
 ### NNA polls this until the worker has connected to the proxy via gRPC.
-GET {{workerProxyHost}}/ready
+GET {{workerProxyHost}}/admin/worker/ready
 
 ###
 
 ### Step 2: Specialize the worker
-### NNA calls this after /ready succeeds. The proxy drives the full
+### NNA calls this after /admin/worker/ready succeeds. The proxy drives the full
 ### init + specialization + metadata prefetch sequence with the worker,
 ### caching all responses for later replay to the runtime.
 POST {{workerProxyHost}}/admin/worker/assign
@@ -110,14 +110,16 @@ GET {{runtimeHost}}/admin/host/ping
 
 ###
 
-### Poll worker pod state (long-polling)
-### Send with revisionId 0 to get current state immediately.
-### Send with the last known revisionId to block until state changes.
-POST {{workerProxyHost}}/instanceState
+### Poll worker instance state (long-polling)
+### Send with revision 0 to get current state immediately.
+### Send with the last known revision to block until state changes.
+### Response follows the FunctionsWorkerPod schema:
+###   { functionsContainerType, podName, revision, state: { podStatus, runtimePodName, ... } }
+POST {{workerProxyHost}}/admin/infra/instanceState
 Content-Type: application/json
 
 {
-  "revisionId": 0
+  "revision": 0
 }
 
 ###
@@ -127,9 +129,15 @@ Content-Type: application/json
 ### ============================================================
 
 ### Trigger worker drain (scale-in scenario)
-### Worker proxy sends WorkerDrainRequest to runtime over gRPC.
+### Worker proxy accepts the drain reason, maps it to a replacement policy,
+### transitions to Draining, and sends WorkerDrainRequest to runtime over gRPC.
 ### Runtime drains in-flight invocations and sends WorkerDrainComplete back.
-POST {{workerProxyHost}}/drain
+POST {{workerProxyHost}}/admin/worker/drain
+Content-Type: application/json
+
+{
+  "reason": "IdleScaleIn"
+}
 
 ###
 

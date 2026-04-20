@@ -5,21 +5,35 @@ namespace Microsoft.Azure.Functions.WorkerProxy;
 
 /// <summary>
 /// Manages the internal state machine for the worker pod and provides
-/// long-polling notifications for <c>/instanceState</c>.
-/// Thread-safe. Follows the same pattern as the Go Proxy's <c>FunctionsRecord</c>.
+/// long-polling notifications for <c>POST /admin/infra/instanceState</c>.
+/// Thread-safe. Publishes the <c>FunctionsWorkerPod</c> schema defined in the Goal 3 design doc.
 /// </summary>
 internal sealed class WorkerPodStateManager
 {
     private static readonly TimeSpan LongPollTimeout = TimeSpan.FromSeconds(60);
 
     private readonly object _lock = new();
-    private readonly List<TaskCompletionSource<WorkerPodState>> _listeners = [];
+    private readonly List<TaskCompletionSource<WorkerInstanceState>> _listeners = [];
+    private readonly string _podName;
 
     private WorkerPodStatus _currentStatus = WorkerPodStatus.None;
-    private WorkerPodStatus _previousStatus = WorkerPodStatus.None;
-    private WorkerPodHealthStatus _currentHealthStatus = WorkerPodHealthStatus.None;
-    private WorkerPodHealthStatus _previousHealthStatus = WorkerPodHealthStatus.None;
     private int _revisionId;
+
+    // Identity fields set during assign.
+    private string? _functionGroupName;
+    private bool _isAlwaysReady;
+
+    // Correlation — set after link (future).
+    private string? _runtimePodName;
+
+    // Drain state — first-reason-wins, sticky replacementPolicy.
+    private DrainReason? _drainReason;
+    private ReplacementPolicy? _replacementPolicy;
+
+    public WorkerPodStateManager(RelayOptions options)
+    {
+        _podName = options?.PodName ?? throw new ArgumentNullException(nameof(options));
+    }
 
     /// <summary>
     /// Gets the current pod status.
@@ -27,6 +41,14 @@ internal sealed class WorkerPodStateManager
     public WorkerPodStatus CurrentStatus
     {
         get { lock (_lock) { return _currentStatus; } }
+    }
+
+    /// <summary>
+    /// Gets whether a drain has already been accepted.
+    /// </summary>
+    public bool IsDraining
+    {
+        get { lock (_lock) { return _drainReason is not null; } }
     }
 
     /// <summary>
@@ -41,7 +63,6 @@ internal sealed class WorkerPodStateManager
                 return;
             }
 
-            _previousStatus = _currentStatus;
             _currentStatus = newStatus;
             _revisionId++;
 
@@ -50,19 +71,14 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Updates the health status and notifies all long-polling listeners.
+    /// Stores identity fields from the assign request so they appear in <c>instanceState</c> responses.
     /// </summary>
-    public void UpdateHealthStatus(WorkerPodHealthStatus newStatus)
+    public void SetAssignMetadata(string? functionGroupName, bool isAlwaysReady)
     {
         lock (_lock)
         {
-            if (_currentHealthStatus == newStatus)
-            {
-                return;
-            }
-
-            _previousHealthStatus = _currentHealthStatus;
-            _currentHealthStatus = newStatus;
+            _functionGroupName = functionGroupName;
+            _isAlwaysReady = isAlwaysReady;
             _revisionId++;
 
             NotifyListeners();
@@ -70,24 +86,64 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Returns the current state if it has changed since <paramref name="clientRevisionId"/>,
+    /// Sets the linked runtime pod name for correlation in <c>instanceState</c> responses.
+    /// </summary>
+    public void SetRuntimePodName(string runtimePodName)
+    {
+        lock (_lock)
+        {
+            _runtimePodName = runtimePodName;
+            _revisionId++;
+
+            NotifyListeners();
+        }
+    }
+
+    /// <summary>
+    /// Accepts a drain request with the given reason. First-reason-wins: subsequent calls
+    /// are idempotent and do not change the persisted reason or derived replacement policy.
+    /// Transitions <c>podStatus</c> to <see cref="WorkerPodStatus.Draining"/>.
+    /// </summary>
+    /// <returns><see langword="true"/> if this was the first accepted drain; <see langword="false"/> if already draining.</returns>
+    public bool AcceptDrain(DrainReason reason)
+    {
+        lock (_lock)
+        {
+            if (_drainReason is not null)
+            {
+                // Already draining — idempotent success, first reason wins.
+                return false;
+            }
+
+            _drainReason = reason;
+            _replacementPolicy = MapReasonToPolicy(reason, _functionGroupName);
+            _currentStatus = WorkerPodStatus.Draining;
+            _revisionId++;
+
+            NotifyListeners();
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Returns the current state if it has changed since <paramref name="clientRevision"/>,
     /// otherwise blocks until a state change occurs or the long-poll timeout expires.
     /// </summary>
-    /// <param name="clientRevisionId">The client's last known revision ID.</param>
+    /// <param name="clientRevision">The client's last known revision.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The current state if changed, or <see langword="null"/> on timeout (204 No Content).</returns>
-    public async Task<WorkerPodState?> WaitForChangeAsync(int clientRevisionId, CancellationToken cancellationToken)
+    public async Task<WorkerInstanceState?> WaitForChangeAsync(int clientRevision, CancellationToken cancellationToken)
     {
-        TaskCompletionSource<WorkerPodState>? listener = null;
+        TaskCompletionSource<WorkerInstanceState>? listener = null;
 
         lock (_lock)
         {
-            if (_revisionId != clientRevisionId)
+            if (_revisionId != clientRevision)
             {
                 return BuildState();
             }
 
-            listener = new TaskCompletionSource<WorkerPodState>(TaskCreationOptions.RunContinuationsAsynchronously);
+            listener = new TaskCompletionSource<WorkerInstanceState>(TaskCreationOptions.RunContinuationsAsynchronously);
             _listeners.Add(listener);
         }
 
@@ -116,7 +172,7 @@ internal sealed class WorkerPodStateManager
     /// <summary>
     /// Returns the current state snapshot.
     /// </summary>
-    public WorkerPodState GetCurrentState()
+    public WorkerInstanceState GetCurrentState()
     {
         lock (_lock)
         {
@@ -124,22 +180,21 @@ internal sealed class WorkerPodStateManager
         }
     }
 
-    private WorkerPodState BuildState()
+    private WorkerInstanceState BuildState()
     {
-        return new WorkerPodState
+        return new WorkerInstanceState
         {
-            CurrentPodStatusTransition = new PodStatusTransition
+            FunctionsContainerType = "FunctionsWorkerPod",
+            PodName = _podName,
+            Revision = _revisionId,
+            State = new WorkerInstanceStateDetails
             {
-                FromPodStatus = _previousStatus,
-                ToPodStatus = _currentStatus
-            },
-            CurrentPodHealthStatusTransition = new PodHealthStatusTransition
-            {
-                FromPodStatus = _previousHealthStatus,
-                ToPodStatus = _currentHealthStatus
-            },
-            ChangeFlags = WorkerPodChangeFlags.PodStatus | WorkerPodChangeFlags.HealthStatus,
-            RevisionId = _revisionId
+                PodStatus = _currentStatus,
+                RuntimePodName = _runtimePodName,
+                FunctionGroupName = _functionGroupName,
+                IsAlwaysReady = _isAlwaysReady,
+                ReplacementPolicy = _replacementPolicy
+            }
         };
     }
 
@@ -152,5 +207,16 @@ internal sealed class WorkerPodStateManager
         }
 
         _listeners.Clear();
+    }
+
+    private static ReplacementPolicy MapReasonToPolicy(DrainReason reason, string? functionGroupName)
+    {
+        if (reason == DrainReason.ReplaceWorkerKeepRuntime
+            && string.Equals(functionGroupName, "http", StringComparison.OrdinalIgnoreCase))
+        {
+            return ReplacementPolicy.SameRuntimeRefill;
+        }
+
+        return ReplacementPolicy.NoReplacement;
     }
 }
