@@ -713,8 +713,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public static ExtensionInstall QueueStorage(bool includeBinding = false)
             {
-                string[] bindings = includeBinding ? ["sendGrid"] : [];
-                return new("SendGrid", typeof(AzureStorageQueuesWebJobsStartup), bindings);
+                string[] bindings = includeBinding ? ["queue"] : [];
+                return new("AzureStorageQueues", typeof(AzureStorageQueuesWebJobsStartup), bindings);
             }
 
             public static ExtensionInstall Timers()
