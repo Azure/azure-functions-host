@@ -1,7 +1,7 @@
 <Project>
 
   <!-- Individual workers are in their own props file. -->
-  <Import Project="$(MSBuildThisFileDirectory)Workers.*.props" />
+  <Import Project="$(MSBuildThisFileDirectory)Workers.*.props" Condition="'$(ExcludeWorkers)' != 'true'" />
 
   <!-- Remove all worker items from the ReadyToRun publish list -->
   <Target Name="ExcludeWorkers" AfterTargets="ComputeFilesToPublish" BeforeTargets="ResolveReadyToRunCompilers" Condition="'$(PublishReadyToRun)' == 'true'">
