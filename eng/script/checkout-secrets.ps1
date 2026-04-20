@@ -31,6 +31,21 @@ While($true) {
     Write-Host "  ${name}: $leaseStatus"
     
     if ($leaseStatus -eq "Locked") {
+      try {
+        $blob.ICloudBlob.FetchAttributes()
+        $lastModified = $blob.ICloudBlob.Properties.LastModified
+        if ($lastModified -ne $null -and $lastModified.UtcDateTime -lt (Get-Date).AddHours(-6).ToUniversalTime()) {
+          $age = [math]::Round(((Get-Date).ToUniversalTime() - $lastModified.UtcDateTime).TotalHours, 1)
+          $build = $blob.ICloudBlob.Metadata["Build"]
+          $url = $blob.ICloudBlob.Metadata["BuildUrl"]
+          Write-Host "##vso[task.logissue type=warning]Stale lease detected on '${name}' (locked for ${age}h). Build: ${build} | URL: ${url}"
+          Write-Host "  Breaking stale lease on ${name}."
+          $blob.ICloudBlob.BreakLease([TimeSpan]::Zero, $null, $null, $null)
+          Write-Host "  Lease broken. Will attempt to acquire on next pass."
+        }
+      } catch {
+        # best effort
+      }
       continue
     }
 
