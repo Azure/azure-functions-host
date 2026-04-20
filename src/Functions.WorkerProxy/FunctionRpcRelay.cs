@@ -4,6 +4,7 @@
 using System.Threading.Channels;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using GrpcWorkerDrainRequest = Microsoft.Azure.WebJobs.Script.Grpc.Messages.WorkerDrainRequest;
 
 namespace Microsoft.Azure.Functions.WorkerProxy;
 
@@ -229,7 +230,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     {
         var message = new StreamingMessage
         {
-            WorkerDrainRequest = new Microsoft.Azure.WebJobs.Script.Grpc.Messages.WorkerDrainRequest()
+            WorkerDrainRequest = new GrpcWorkerDrainRequest()
         };
 
         await _toRuntime.Writer.WriteAsync(message);

@@ -44,6 +44,14 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Gets whether a drain has already been accepted.
+    /// </summary>
+    public bool IsDraining
+    {
+        get { lock (_lock) { return _drainReason is not null; } }
+    }
+
+    /// <summary>
     /// Updates the pod status and notifies all long-polling listeners.
     /// </summary>
     public void UpdatePodStatus(WorkerPodStatus newStatus)

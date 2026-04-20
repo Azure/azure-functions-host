@@ -91,7 +91,7 @@ internal sealed class WorkerInstanceStateDetails
 /// </summary>
 internal sealed class WorkerDrainRequest
 {
-    public DrainReason Reason { get; set; }
+    public DrainReason? Reason { get; set; }
 }
 
 /// <summary>

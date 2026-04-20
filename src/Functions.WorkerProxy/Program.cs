@@ -73,12 +73,7 @@ app.MapGrpcService<FunctionRpcRelay>();
 var stateManager = app.Services.GetRequiredService<WorkerPodStateManager>();
 var relay = app.Services.GetRequiredService<FunctionRpcRelay>();
 
-app.MapGet("/admin/worker/ready", () =>
-{
-    return stateManager.CurrentStatus == WorkerPodStatus.ReadyForRequest
-        ? Results.Ok()
-        : Results.StatusCode(503);
-});
+app.MapGet("/admin/worker/ready", () => ManagementApiHandlers.HandleReady(stateManager));
 
 // Worker specialization. NNA calls this after /admin/worker/ready succeeds with the
 // app settings payload. The worker proxy drives the full init + specialization +
@@ -96,30 +91,7 @@ app.MapPost("/admin/worker/assign", async (HttpContext ctx, CancellationToken ca
         return Results.BadRequest($"Invalid request body: {ex.Message}");
     }
 
-    if (assignRequest is null)
-    {
-        return Results.BadRequest("Request body is required.");
-    }
-
-    var envVars = assignRequest.Environment ?? new Dictionary<string, string>();
-    var functionAppDirectory = assignRequest.FunctionAppDirectory ?? "/home/site/wwwroot";
-
-    // Store identity fields for instanceState publication.
-    stateManager.SetAssignMetadata(assignRequest.FunctionGroupName, assignRequest.IsAlwaysReady ?? false);
-
-    try
-    {
-        await relay.SpecializeWorkerAsync(envVars, functionAppDirectory, cancellationToken);
-        return Results.Ok();
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Conflict(ex.Message);
-    }
-    catch (OperationCanceledException)
-    {
-        return Results.StatusCode(504);
-    }
+    return await ManagementApiHandlers.HandleAssignAsync(assignRequest, stateManager, relay, cancellationToken);
 });
 
 app.MapPost("/admin/worker/drain", async (HttpContext ctx, CancellationToken cancellationToken) =>
@@ -134,17 +106,8 @@ app.MapPost("/admin/worker/drain", async (HttpContext ctx, CancellationToken can
         return Results.BadRequest($"Invalid request body: {ex.Message}");
     }
 
-    if (drainRequest is null)
-    {
-        return Results.BadRequest("Request body with 'reason' is required.");
-    }
-
-    if (stateManager.AcceptDrain(drainRequest.Reason))
-    {
-        await relay.SendDrainRequestToRuntimeAsync();
-    }
-
-    return Results.Accepted();
+    var logger = ctx.RequestServices.GetRequiredService<ILogger<FunctionRpcRelay>>();
+    return await ManagementApiHandlers.HandleDrainAsync(drainRequest, stateManager, relay, logger);
 });
 
 app.MapPost("/admin/infra/instanceState", async (HttpContext ctx, CancellationToken cancellationToken) =>
@@ -163,14 +126,7 @@ app.MapPost("/admin/infra/instanceState", async (HttpContext ctx, CancellationTo
         // Empty body, malformed JSON, or no content — treat as revision 0 (return current state).
     }
 
-    var result = await stateManager.WaitForChangeAsync(clientRevision, cancellationToken);
-
-    if (result is null)
-    {
-        return Results.NoContent();
-    }
-
-    return Results.Ok(result);
+    return await ManagementApiHandlers.HandleInstanceStateAsync(clientRevision, stateManager, cancellationToken);
 });
 
 app.Run();

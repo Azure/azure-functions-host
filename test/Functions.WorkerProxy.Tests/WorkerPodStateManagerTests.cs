@@ -312,4 +312,52 @@ public class WorkerPodStateManagerTests
         // ReadyForRequest (+1) + SetAssignMetadata would add if called, AcceptDrain (+1), MarkedForDeletion (+1) = 3
         Assert.Equal(3, state.Revision);
     }
+
+    // --- IsDraining tests ---
+
+    [Fact]
+    public void IsDraining_FalseInitially()
+    {
+        var manager = CreateManager();
+
+        Assert.False(manager.IsDraining);
+    }
+
+    [Fact]
+    public void IsDraining_TrueAfterAcceptDrain()
+    {
+        var manager = CreateManager();
+        manager.UpdatePodStatus(WorkerPodStatus.ReadyForRequest);
+
+        manager.AcceptDrain(DrainReason.IdleScaleIn);
+
+        Assert.True(manager.IsDraining);
+    }
+
+    [Fact]
+    public void IsDraining_TrueAfterMarkedForDeletion()
+    {
+        var manager = CreateManager();
+        manager.UpdatePodStatus(WorkerPodStatus.ReadyForRequest);
+
+        manager.AcceptDrain(DrainReason.IdleScaleIn);
+        manager.UpdatePodStatus(WorkerPodStatus.MarkedForDeletion);
+
+        Assert.True(manager.IsDraining);
+    }
+
+    [Fact]
+    public void IsDraining_FalseWhenRuntimeInitiatedDrainViaUpdatePodStatus()
+    {
+        // UpdatePodStatus(Draining) without AcceptDrain — e.g. runtime gRPC path.
+        // IsDraining checks _drainReason, not _currentStatus.
+        var manager = CreateManager();
+        manager.UpdatePodStatus(WorkerPodStatus.ReadyForRequest);
+        manager.UpdatePodStatus(WorkerPodStatus.Draining);
+
+        // IsDraining is false because no reason was accepted via AcceptDrain.
+        // The runtime gRPC path calls AcceptDrain(RuntimeStopping) so in practice
+        // this scenario shouldn't occur, but the property reflects reason acceptance.
+        Assert.False(manager.IsDraining);
+    }
 }
