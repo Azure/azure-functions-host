@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
 /// </list>
 /// </summary>
 [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-[Trait(TestTraits.Group, nameof(WorkerAssignAndLinkEndToEndTests))]
+[Trait(TestTraits.Group, nameof(ExternalWorkerEndToEndTests))]
 public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
 {
     private const int RuntimeGrpcPort = 60081;

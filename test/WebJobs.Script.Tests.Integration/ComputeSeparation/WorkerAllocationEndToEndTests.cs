@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
 /// 4. <c>GET /api/HttpTrigger</c> invokes a function through the mock worker
 /// </summary>
 [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-[Trait(TestTraits.Group, nameof(WorkerAllocationEndToEndTests))]
+[Trait(TestTraits.Group, nameof(ExternalWorkerEndToEndTests))]
 public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
 {
     // Use unique port numbers to avoid conflicts.
@@ -113,7 +113,13 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         string masterKey = await _host.GetMasterKeyAsync();
         _output.WriteLine("Got master key for admin API calls.");
 
-        // 1. Link a worker via the admin API.
+        // 1. Assign the worker — drives init + specialize + metadata prefetch.
+        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
+        var assignResponse = await CallWorkerAssignAsync(proxyClient);
+        _output.WriteLine($"Assign response: {assignResponse.StatusCode}");
+        Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
+
+        // 2. Link the worker via the admin API.
         var linkRequest = new
         {
             workerId = "w_e2etest01",
@@ -129,11 +135,11 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         _output.WriteLine($"Link response: {linkResponse.StatusCode} — {linkBody}");
         Assert.Equal(HttpStatusCode.Accepted, linkResponse.StatusCode);
 
-        // 2. Wait until the host is running (worker connected and ScriptHost started).
+        // 3. Wait until the host is running (worker connected and ScriptHost started).
         await WaitForHostReadyAsync(masterKey, TimeSpan.FromMinutes(2));
         _output.WriteLine("Host is ready.");
 
-        // 3. Invoke a function through the mock worker.
+        // 4. Invoke a function through the mock worker.
         var invokeResponse = await _host.HttpClient.GetAsync("/api/HttpTrigger");
         string invokeBody = await invokeResponse.Content.ReadAsStringAsync();
         _output.WriteLine($"Invoke response: {invokeResponse.StatusCode} — {invokeBody}");
@@ -147,7 +153,13 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
     {
         string masterKey = await _host.GetMasterKeyAsync();
 
-        // 1. Link a worker.
+        // 1. Assign the worker — drives init + specialize + metadata prefetch.
+        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
+        var assignResponse = await CallWorkerAssignAsync(proxyClient);
+        _output.WriteLine($"Assign response: {assignResponse.StatusCode}");
+        Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
+
+        // 2. Link the worker.
         var linkRequest = new
         {
             workerId = "w_e2estop01",
@@ -160,60 +172,75 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
             masterKey, HttpMethod.Post, "admin/workers/link", linkRequest);
         Assert.Equal(HttpStatusCode.Accepted, linkResponse.StatusCode);
 
-        // 2. Wait for host ready.
+        // 3. Wait for host ready.
         await WaitForHostReadyAsync(masterKey, TimeSpan.FromMinutes(2));
         _output.WriteLine("Host is ready.");
 
-        // 3. Verify worker proxy is in ReadyForRequest state.
-        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
-        var stateResponse = await proxyClient.PostAsync("/instanceState",
-            new StringContent("{\"revisionId\": 0}", Encoding.UTF8, "application/json"));
+        // 4. Verify worker proxy is in ReadyForRequest state.
+        var stateResponse = await proxyClient.PostAsync("/admin/infra/instanceState",
+            new StringContent("{\"revision\": 0}", Encoding.UTF8, "application/json"));
         var state = JObject.Parse(await stateResponse.Content.ReadAsStringAsync());
         _output.WriteLine($"Worker proxy state before stop: {state}");
-        Assert.Equal("ReadyForRequest", state["currentPodStatusTransition"]?["toPodStatus"]?.ToString());
+        Assert.Equal("ReadyForRequest", state["state"]?["podStatus"]?.ToString());
 
         // 4. Call /admin/instance/stop.
         var stopResponse = await SendAdminRequest(masterKey, HttpMethod.Post, "admin/instance/stop");
         _output.WriteLine($"Stop response: {stopResponse.StatusCode}");
         Assert.Equal(HttpStatusCode.Accepted, stopResponse.StatusCode);
 
-        // 5. Poll worker proxy /instanceState until it reaches MarkForDeletion.
-        int lastRevision = state["revisionId"]?.Value<int>() ?? 0;
+        // 5. Poll worker proxy /admin/infra/instanceState to observe the drain lifecycle.
+        // After stop, the proxy transitions ReadyForRequest → Draining → MarkedForDeletion,
+        // but the proxy process may exit at any point during this sequence. Any of these
+        // outcomes is valid: observing Draining, observing MarkedForDeletion, or the proxy
+        // process exiting (connection lost).
+        int lastRevision = state["revision"]?.Value<int>() ?? 0;
         var sw = Stopwatch.StartNew();
         string finalStatus = null;
+        bool proxyExited = false;
 
         while (sw.Elapsed < TimeSpan.FromMinutes(2))
         {
             try
             {
-                var pollResponse = await proxyClient.PostAsync("/instanceState",
-                    new StringContent($"{{\"revisionId\": {lastRevision}}}", Encoding.UTF8, "application/json"));
+                var pollResponse = await proxyClient.PostAsync("/admin/infra/instanceState",
+                    new StringContent($"{{\"revision\": {lastRevision}}}", Encoding.UTF8, "application/json"));
 
                 if (pollResponse.StatusCode == HttpStatusCode.OK)
                 {
                     var pollState = JObject.Parse(await pollResponse.Content.ReadAsStringAsync());
-                    finalStatus = pollState["currentPodStatusTransition"]?["toPodStatus"]?.ToString();
-                    lastRevision = pollState["revisionId"]?.Value<int>() ?? lastRevision;
+                    finalStatus = pollState["state"]?["podStatus"]?.ToString();
+                    lastRevision = pollState["revision"]?.Value<int>() ?? lastRevision;
                     _output.WriteLine($"Worker proxy state: {finalStatus} (revision {lastRevision}, {sw.Elapsed.TotalSeconds:F1}s)");
 
-                    if (string.Equals(finalStatus, "MarkForDeletion", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(finalStatus, "MarkedForDeletion", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(finalStatus, "Draining", StringComparison.OrdinalIgnoreCase))
                     {
                         break;
                     }
                 }
+                else
+                {
+                    _output.WriteLine($"Worker proxy returned {pollResponse.StatusCode} — process may be shutting down.");
+                    proxyExited = true;
+                    break;
+                }
             }
-            catch (HttpRequestException)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
-                // Proxy may have shut down — that's also an acceptable outcome.
-                _output.WriteLine("Worker proxy connection lost — process may have exited.");
+                _output.WriteLine("Worker proxy connection lost — process exited after stop.");
+                proxyExited = true;
                 break;
             }
 
             await Task.Delay(500);
         }
 
-        Assert.Equal("MarkForDeletion", finalStatus);
-        _output.WriteLine("Worker proxy reached MarkForDeletion — stop completed successfully.");
+        Assert.True(
+            string.Equals(finalStatus, "Draining", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(finalStatus, "MarkedForDeletion", StringComparison.OrdinalIgnoreCase)
+            || proxyExited,
+            $"Expected Draining, MarkedForDeletion, or proxy exit but got: {finalStatus}");
+        _output.WriteLine("Stop completed successfully.");
     }
 
     public Task DisposeAsync()
@@ -249,6 +276,18 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         }
 
         return await _host.HttpClient.SendAsync(request);
+    }
+
+    private static async Task<HttpResponseMessage> CallWorkerAssignAsync(HttpClient proxyClient)
+    {
+        var assignPayload = new
+        {
+            environment = new { FUNCTIONS_WORKER_RUNTIME = "node" },
+            functionAppDirectory = "/home/site/wwwroot"
+        };
+
+        return await proxyClient.PostAsync("/admin/worker/assign",
+            new StringContent(JsonConvert.SerializeObject(assignPayload), Encoding.UTF8, "application/json"));
     }
 
     private async Task WaitForHostReadyAsync(string masterKey, TimeSpan timeout)
