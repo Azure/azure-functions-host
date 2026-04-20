@@ -16,7 +16,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
-using ExtensionsHost = Microsoft.Extensions.Hosting.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -46,7 +45,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "0");
 #endif
 
-            return ExtensionsHost.CreateDefaultBuilder(args ?? Array.Empty<string>())
+            args ??= Array.Empty<string>();
+
+            // Build a minimal IHostBuilder that registers only the configuration and logging
+            // defaults the Functions host actually uses, equivalent to what the legacy
+            // WebHost.CreateDefaultBuilder provided. Host.CreateDefaultBuilder adds additional
+            // defaults (metrics, host option bindings, startup validation) that the Functions
+            // host does not need and that inflate startup cost.
+            return new HostBuilder()
+                .UseContentRoot(Environment.CurrentDirectory)
+                .ConfigureAppConfiguration((hostingContext, config) =>
+                {
+                    IHostEnvironment env = hostingContext.HostingEnvironment;
+                    config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                          .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true);
+
+                    // Match net8 WebHost.CreateDefaultBuilder: load user secrets in Development
+                    // so devs can `dotnet user-secrets set` against the WebHost's UserSecretsId
+                    // (see WebJobs.Script.WebHost.csproj). No-op in Production.
+                    if (env.IsDevelopment())
+                    {
+                        config.AddUserSecrets<Program>(optional: true);
+                    }
+
+                    config.AddEnvironmentVariables();
+                    if (args.Length > 0)
+                    {
+                        config.AddCommandLine(args);
+                    }
+                })
                 // Scope and build validation are intentionally disabled. The host uses a two-level
                 // DI hierarchy with cross-boundary service resolution that would fail generic scope
                 // validation. The custom DependencyValidator provides tighter, bespoke validation.
@@ -99,6 +126,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         })
                         .ConfigureLogging((context, loggingBuilder) =>
                         {
+                            // Match the net8 WebHost.CreateDefaultBuilder baseline: bind log filter
+                            // levels from the "Logging" configuration section and enable activity
+                            // tracking for scopes. ClearProviders() below only clears ILoggerProvider
+                            // registrations, so these option bindings are preserved.
+                            loggingBuilder.Configure(options =>
+                            {
+                                options.ActivityTrackingOptions = ActivityTrackingOptions.SpanId
+                                    | ActivityTrackingOptions.TraceId
+                                    | ActivityTrackingOptions.ParentId;
+                            });
+                            loggingBuilder.AddConfiguration(context.Configuration.GetSection("Logging"));
+
                             loggingBuilder.ClearProviders();
 
                             loggingBuilder.AddDefaultWebJobsFilters();
@@ -114,6 +153,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         })
                         .UseStartup<Startup>()
                         .UseIIS();
+                })
+                // Register command-line args on host configuration AFTER ConfigureWebHostDefaults
+                // so the cmdline provider is the last source added. Host-level settings such as
+                // --urls, --environment, and --contentRoot then win over any ASPNETCORE_-prefixed
+                // environment variables, matching the net8 WebHost.CreateDefaultBuilder priority
+                // (which copied cmdline values into the web host via UseSetting).
+                .ConfigureHostConfiguration(config =>
+                {
+                    if (args.Length > 0)
+                    {
+                        config.AddCommandLine(args);
+                    }
                 });
         }
 
