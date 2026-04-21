@@ -1,7 +1,7 @@
 <Project>
 
-  <!-- Individual workers are in their own props file. -->
-  <Import Project="$(MSBuildThisFileDirectory)Workers.*.props" Condition="'$(ExcludeWorkers)' != 'true'" />
+  <!-- Individual workers are in their own props file. Skip restore entirely when SkipWorkerPackages is set. -->
+  <Import Project="$(MSBuildThisFileDirectory)Workers.*.props" Condition="'$(SkipWorkerPackages)' != 'true'" />
 
   <!-- Remove all worker items from the ReadyToRun publish list -->
   <Target Name="ExcludeWorkers" AfterTargets="ComputeFilesToPublish" BeforeTargets="ResolveReadyToRunCompilers" Condition="'$(PublishReadyToRun)' == 'true'">
@@ -12,7 +12,7 @@
   </Target>
 
   <!-- Add all worker items back to the publish list -->
-  <Target Name="ReAddWorkersToPublish" AfterTargets="CreateReadyToRunImages" BeforeTargets="CopyFilesToPublishDirectory" Condition="'$(PublishWorkers)' != 'false'">
+  <Target Name="ReAddWorkersToPublish" AfterTargets="CreateReadyToRunImages" BeforeTargets="CopyFilesToPublishDirectory" Condition="'$(PublishWorkers)' != 'false' and '$(SkipWorkerPackages)' != 'true'">
     <ItemGroup>
       <ResolvedFileToPublish Include="@(_WorkerPublishFiles)" />
     </ItemGroup>
