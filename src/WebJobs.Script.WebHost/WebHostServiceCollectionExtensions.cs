@@ -205,6 +205,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (configuration.IsExternalWorkerEnabled())
             {
                 services.AddExternalWorkerServices(configuration);
+
+                // Forwards runtime state changes (linked workers, request slot
+                // accounting) to the mesh service. Only relevant when compute
+                // separation is active.
+                services.AddSingleton<RuntimeStatePublisher>();
+                services.AddSingleton<IHostedService>(s => s.GetRequiredService<RuntimeStatePublisher>());
             }
 
             services.AddCommonRpcServices(skipInitializationService: configuration.IsExternalWorkerEnabled());
@@ -218,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // In external worker mode, the ScriptHost cannot start until a worker
             // connects and delivers host.json + function metadata. WorkerConnectionService
             // calls WebJobsScriptHostService.StartAsync() after the first worker connects
-            // (whether config-driven on startup or API-driven via POST /admin/workers/link).
+            // (whether config-driven on startup or API-driven via PUT /admin/workers/{workerId}).
             if (!configuration.IsExternalWorkerEnabled())
             {
                 services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());

@@ -1,10 +1,11 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
@@ -49,6 +50,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         public Task CreateBindMount(string sourcePath, string targetPath)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task PublishRuntimeState(RuntimeState state)
         {
             return Task.CompletedTask;
         }

@@ -1,12 +1,10 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -20,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     /// <summary>
     /// Controller responsible for instance operations such as specialization,
-    /// lifecycle management, and health checks.
+    /// health checks, and runtime state reporting.
     /// </summary>
     public class InstanceController : Controller
     {
@@ -122,64 +120,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         /// <summary>
-        /// Stops the runtime pod. Enables drain mode to stop trigger listeners
-        /// and stop accepting new invocations, then drains and disconnects all
-        /// connected external workers in parallel.
-        /// Called by the Go Proxy when the platform decides to stop the entire runtime pod.
+        /// Returns a snapshot of this runtime instance's state: linked worker
+        /// count and request-slot accounting. This is the same payload that is
+        /// published to the mesh service as <c>publish-runtime-state</c>.
         /// </summary>
+        /// <remarks>
+        /// Returns <c>503 Service Unavailable</c> when compute separation is not
+        /// enabled (no <see cref="IRuntimeStateManager"/> is registered).
+        /// </remarks>
         /// <example>
         /// <code>
-        /// POST /admin/instance/stop
+        /// GET /admin/instance/state
         /// </code>
         /// </example>
-        [HttpPost]
-        [Route("admin/instance/stop")]
+        [HttpGet]
+        [Route("admin/instance/state")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public IActionResult Stop()
+        public IActionResult GetState()
         {
-            _logger.LogInformation("Received request to stop the runtime instance.");
-
-            if (!Utility.TryGetHostService(_scriptHostManager, out IDrainModeManager drainModeManager))
+            var runtimeStateManager = HttpContext.RequestServices.GetService<IRuntimeStateManager>();
+            if (runtimeStateManager is null)
             {
-                _logger.LogWarning("Stop requested but ScriptHost is not ready (IDrainModeManager unavailable).");
+                _logger.LogWarning("GetState called but the external workers feature is not enabled.");
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
 
-            // IWorkerConnectionManager is only registered when external workers are enabled.
-            // In non-compute-separation scenarios, /stop still drains the host but has no workers to disconnect.
-            var connectionManager = HttpContext.RequestServices.GetService<IWorkerConnectionManager>();
-
-            // Fire-and-forget: drain host listeners, then disconnect all workers.
-            _ = StopCoreAsync(drainModeManager, connectionManager)
-                .ContinueWith(
-                    t =>
-                    {
-                        if (t.IsFaulted)
-                        {
-                            _logger.LogError(t.Exception, "Error during runtime stop.");
-                        }
-                        else
-                        {
-                            _logger.LogInformation("Runtime stop completed.");
-                        }
-                    },
-                    TaskScheduler.Default);
-
-            return Accepted();
-        }
-
-        private async Task StopCoreAsync(IDrainModeManager drainModeManager, IWorkerConnectionManager connectionManager)
-        {
-            // Step 1: Stop trigger listeners and stop accepting new invocations.
-            _logger.LogInformation("Enabling drain mode.");
-            await drainModeManager.EnableDrainModeAsync(CancellationToken.None);
-
-            // Step 2: Drain in-flight invocations and disconnect all workers (if any).
-            if (connectionManager is not null)
-            {
-                _logger.LogInformation("Draining and disconnecting all workers.");
-                await connectionManager.DrainAndDisconnectAllAsync(CancellationToken.None);
-            }
+            return Ok(runtimeStateManager.GetState());
         }
     }
 }

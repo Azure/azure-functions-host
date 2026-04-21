@@ -108,7 +108,7 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
         Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
 
         // 2. Link the runtime to the worker proxy.
-        _output.WriteLine("Step 2: Calling /admin/workers/link on runtime.");
+        _output.WriteLine("Step 2: Calling PUT /admin/workers/{workerId} on runtime.");
         string masterKey = await _host.GetMasterKeyAsync();
         var linkResponse = await CallWorkerLinkAsync(masterKey);
         Assert.Equal(HttpStatusCode.Accepted, linkResponse.StatusCode);
@@ -131,7 +131,7 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
 
         // 1. Link first — runtime connects and sends WorkerInitRequest.
         //    The proxy blocks because specialization hasn't completed yet.
-        _output.WriteLine("Step 1: Calling /admin/workers/link on runtime (before assign).");
+        _output.WriteLine("Step 1: Calling PUT /admin/workers/{workerId} on runtime (before assign).");
         var linkResponse = await CallWorkerLinkAsync(masterKey);
         Assert.Equal(HttpStatusCode.Accepted, linkResponse.StatusCode);
 
@@ -173,7 +173,7 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
             podKey = "test-key"
         };
 
-        return await SendAdminRequest(masterKey, HttpMethod.Post, "admin/workers/link", linkRequest);
+        return await SendAdminRequest(masterKey, HttpMethod.Put, $"admin/workers/{linkRequest.workerId}", linkRequest);
     }
 
     private async Task AssertHttpTriggerInvocationAsync()

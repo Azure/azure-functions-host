@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -20,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public const string SquashFsOperation = "squashfs";
         public const string ZipOperation = "zip";
         public const string AddFES = "add-fes";
+        public const string PublishRuntimeStateOperation = "publish-runtime-state";
         private readonly HttpClient _client;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
@@ -112,6 +114,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             });
 
             _logger.LogInformation($"Posted health event status: {responseMessage.StatusCode}");
+        }
+
+        public async Task PublishRuntimeState(RuntimeState state)
+        {
+            if (state is null)
+            {
+                throw new ArgumentNullException(nameof(state));
+            }
+
+            _logger.LogDebug(
+                "Publishing runtime state: linkedWorkers={linkedWorkers}/{maxLinkedWorkers}, availableSlots={availableSlots}/{totalSlots}.",
+                state.LinkedWorkerCount,
+                state.MaxLinkedWorkers,
+                state.TotalAvailableRequestSlots,
+                state.TotalRequestSlots);
+
+            var response = await SendAsync(new[]
+            {
+                new KeyValuePair<string, string>(Operation, PublishRuntimeStateOperation),
+                new KeyValuePair<string, string>("content", Serialize(state)),
+            });
+
+            response.EnsureSuccessStatusCode();
         }
 
         public async Task CreateBindMount(string sourcePath, string targetPath)

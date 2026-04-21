@@ -1,10 +1,11 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
@@ -21,5 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         Task NotifyHealthEvent(ContainerHealthEventType healthEventType, Type source, string details);
 
         Task CreateBindMount(string sourcePath, string targetPath);
+
+        /// <summary>
+        /// Publishes the current <see cref="RuntimeState"/> snapshot to the mesh service
+        /// so the App Server can observe linked-worker and request-slot accounting.
+        /// </summary>
+        Task PublishRuntimeState(RuntimeState state);
     }
 }

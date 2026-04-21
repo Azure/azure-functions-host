@@ -41,6 +41,7 @@ internal static class ExternalWorkerServiceCollectionExtensions
         services.AddSingleton<IConnectedWorkerChannelFactory, ConnectedWorkerChannelFactory>();
         services.AddSingleton<IConnectedWorkerChannelManager, ConnectedWorkerChannelManager>();
         services.AddSingleton<IOutboundGrpcClientFactory, OutboundGrpcClientFactory>();
+        services.AddSingleton<IRuntimeStateManager, RuntimeStateManager>();
 
         // WorkerConnectionService must start (and block until worker handshake completes)
         // before WebJobsScriptHostService builds the ScriptHost.
