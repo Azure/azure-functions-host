@@ -520,8 +520,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             bool result = await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, "testWorker1", workerException);
 
             Assert.True(result);
-            await Task.Delay(100);
-            testChannel.Verify(c => c.Shutdown(workerException), Times.Once);
+            await TestHelpers.Await(() =>
+            {
+                testChannel.Verify(c => c.Shutdown(workerException), Times.Once);
+                return true;
+            }, pollingInterval: 50);
         }
 
         [Fact]
@@ -537,8 +540,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             bool result = await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.NodeLanguageWorkerName, "testWorker1", null);
 
             Assert.True(result);
-            await Task.Delay(100);
-            testChannel.Verify(c => c.Shutdown(null), Times.Once);
+            await TestHelpers.Await(() =>
+            {
+                testChannel.Verify(c => c.Shutdown(null), Times.Once);
+                return true;
+            }, pollingInterval: 50);
         }
 
         [Fact]
@@ -554,8 +560,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             bool result = await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, "testWorker1", null);
 
             Assert.True(result);
-            await Task.Delay(100);
-            disposableMock.Verify(d => d.Dispose(), Times.Once);
+            await TestHelpers.Await(() =>
+            {
+                disposableMock.Verify(d => d.Dispose(), Times.Once);
+                return true;
+            }, pollingInterval: 50);
         }
 
         [Fact]
@@ -576,6 +585,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ScheduleShutdownStandbyChannels_CallsShutdownWithNull_OnStandbyChannels()
         {
+            _optionsMonitor.CurrentValue.IsFileSystemReadOnly = false;
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, null);
             _rpcWorkerChannelManager = CreateChannelManager(RpcWorkerConstants.JavaLanguageWorkerName);
 
             var javaChannel = new Mock<IRpcWorkerChannel>();
@@ -601,11 +613,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _rpcWorkerChannelManager.ScheduleShutdownStandbyChannels();
 
-            await Task.Delay(200);
+            await TestHelpers.Await(() =>
+            {
+                nodeChannel.Verify(c => c.Shutdown(null), Times.Once, "Node channel should be shutdown as it's a standby channel");
+                pythonChannel.Verify(c => c.Shutdown(null), Times.Once, "Python channel should be shutdown as it's a standby channel");
+                return true;
+            }, pollingInterval: 50);
 
             javaChannel.Verify(c => c.Shutdown(null), Times.Never, "Java channel should not be shutdown as it's the worker runtime");
-            nodeChannel.Verify(c => c.Shutdown(null), Times.Once, "Node channel should be shutdown as it's a standby channel");
-            pythonChannel.Verify(c => c.Shutdown(null), Times.Once, "Python channel should be shutdown as it's a standby channel");
         }
 
         [Fact]
@@ -621,6 +636,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             nodeChannel.Setup(c => c.Id).Returns("nodeWorker");
             var nodeDisposable = nodeChannel.As<IDisposable>();
 
+            bool nodeDisposed = false;
+            nodeDisposable.Setup(d => d.Dispose()).Callback(() => nodeDisposed = true);
+
             _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
             _rpcWorkerChannelManager.SetInitializedWorkerChannel(RpcWorkerConstants.JavaLanguageWorkerName, javaChannel.Object);
 
@@ -629,10 +647,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _rpcWorkerChannelManager.ScheduleShutdownStandbyChannels();
 
-            await Task.Delay(200);
-
             javaDisposable.Verify(d => d.Dispose(), Times.Never, "Java channel should not be disposed");
-            nodeDisposable.Verify(d => d.Dispose(), Times.Once, "Node channel should be disposed");
+
+            await TestHelpers.Await(() => nodeDisposed, pollingInterval: 50);
+            Assert.True(nodeDisposed, "Node channel should be disposed");
         }
 
         [Fact]
@@ -654,9 +672,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _rpcWorkerChannelManager.ScheduleShutdownStandbyChannels();
 
-            await Task.Delay(200);
-
-            nodeChannel.Verify(c => c.Shutdown(null), Times.Once);
+            await TestHelpers.Await(() =>
+            {
+                nodeChannel.Verify(c => c.Shutdown(null), Times.Once);
+                return true;
+            }, pollingInterval: 50);
         }
 
         [Fact]
