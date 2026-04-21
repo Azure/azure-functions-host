@@ -133,13 +133,11 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
 
         string linkBody = await linkResponse.Content.ReadAsStringAsync();
         _output.WriteLine($"Link response: {linkResponse.StatusCode} — {linkBody}");
-        Assert.Equal(HttpStatusCode.Accepted, linkResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, linkResponse.StatusCode);
 
-        // 3. Wait until the host is running (worker connected and ScriptHost started).
+        // 3. Wait until the host is running (ScriptHost startup runs in background after link).
         await WaitForHostReadyAsync(masterKey, TimeSpan.FromMinutes(2));
         _output.WriteLine("Host is ready.");
-
-        // 4. Invoke a function through the mock worker.
         var invokeResponse = await _host.HttpClient.GetAsync("/api/HttpTrigger");
         string invokeBody = await invokeResponse.Content.ReadAsStringAsync();
         _output.WriteLine($"Invoke response: {invokeResponse.StatusCode} — {invokeBody}");
@@ -170,9 +168,9 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
 
         var linkResponse = await SendAdminRequest(
             masterKey, HttpMethod.Put, $"admin/workers/{linkRequest.workerId}", linkRequest);
-        Assert.Equal(HttpStatusCode.Accepted, linkResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, linkResponse.StatusCode);
 
-        // 3. Wait for host ready.
+        // 3. Wait for host ready (ScriptHost startup runs in background after link).
         await WaitForHostReadyAsync(masterKey, TimeSpan.FromMinutes(2));
         _output.WriteLine("Host is ready.");
 

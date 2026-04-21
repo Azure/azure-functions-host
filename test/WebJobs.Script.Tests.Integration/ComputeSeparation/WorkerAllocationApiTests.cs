@@ -75,7 +75,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task LinkWorker_Returns202_WithWorkerConnectionInfo()
+    public async Task LinkWorker_Returns200()
     {
         _mockConnectionManager
             .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
@@ -84,11 +84,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime
         var request = new { workerId = "w_test1234", podName = "worker-pod-abc123", grpcEndpoint = "http://10.0.1.42:50051", podKey = "test-key" };
         var response = await SendAdminRequest(HttpMethod.Put, "admin/workers/w_test1234", request);
 
-        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("w_test1234", body["workerId"]?.ToString());
-        Assert.Equal("Connecting", body["state"]?.ToString());
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
