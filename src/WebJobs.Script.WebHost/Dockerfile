@@ -4,17 +4,16 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /repo
 COPY . .
 RUN dotnet publish src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj \
-    -c Release -o /app/publish
+    -c Release -o /app/publish \
+    -p:SkipWorkerPackages=true -p:PublishWorkers=false \
+    && mkdir -p /app/publish/workers
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble
 WORKDIR /app
-COPY --from=build /app/publish .
 
-# In compute separation mode the runtime has no local workers — all function
-# execution happens on remote worker pods. Remove bundled worker binaries to
-# shrink the image. The empty directory must remain because the host probes it
-# at startup.
-RUN rm -rf /app/workers/* && mkdir -p /app/workers
+# Workers are excluded at build time via ExcludeWorkers + PublishWorkers=false.
+# In compute separation mode all execution happens on remote worker pods.
+COPY --from=build /app/publish .
 
 EXPOSE 7071
 ENTRYPOINT ["dotnet", "Microsoft.Azure.WebJobs.Script.WebHost.dll"]
