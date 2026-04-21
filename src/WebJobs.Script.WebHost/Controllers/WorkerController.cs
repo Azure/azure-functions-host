@@ -33,15 +33,20 @@ public sealed class WorkerController : Controller
     }
 
     /// <summary>
-    /// Links a worker pod to this runtime. Initiates an outbound gRPC connection
+    /// Links an external worker to this runtime. Initiates an outbound gRPC connection
     /// to the worker proxy and returns immediately. The connection and handshake
     /// complete in the background.
     /// </summary>
-    [HttpPost]
-    [Route("admin/workers/link")]
+    [HttpPut]
+    [Route("admin/workers/{workerId}")]
     [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-    public IActionResult Link([FromBody] WorkerLinkRequest request)
+    public IActionResult LinkWorker([FromRoute] string workerId, [FromBody] ExternalWorkerInfo request)
     {
+        if (string.IsNullOrWhiteSpace(workerId))
+        {
+            return BadRequest("Worker id is required in the route.");
+        }
+
         if (request is null)
         {
             return BadRequest("Request body is required.");
@@ -50,6 +55,12 @@ public sealed class WorkerController : Controller
         if (_webHostEnvironment.InStandbyMode)
         {
             return BadRequest("Cannot link workers before the host has been specialized.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.WorkerId) &&
+            !string.Equals(request.WorkerId, workerId, StringComparison.Ordinal))
+        {
+            return BadRequest($"Body '{nameof(request.WorkerId)}' '{request.WorkerId}' does not match route worker id '{workerId}'.");
         }
 
         if (string.IsNullOrWhiteSpace(request.GrpcEndpoint))
@@ -62,19 +73,11 @@ public sealed class WorkerController : Controller
             return BadRequest($"'{request.GrpcEndpoint}' is not a valid URI.");
         }
 
-        string workerId = request.WorkerId;
-        if (string.IsNullOrWhiteSpace(workerId))
-        {
-            workerId = $"w_{Guid.NewGuid():N}"[..10];
-        }
-
         _logger.LogInformation("Received worker link request for '{workerId}' at {endpoint}.", workerId, endpoint);
 
         // Check for duplicate before starting async work — return 409 Conflict.
-        // [CS-TODO] If a worker connection fails (Error state), the entry remains in _workers
-        // and a retry with the same workerId will be rejected with 409. There is currently no
-        // API to clear this state (DELETE was removed). May need a platform-side solution
-        // (e.g., always use a new workerId on retry) or a host-side cleanup mechanism.
+        // Failed connections are auto-removed by WorkerConnectionService so the
+        // platform can retry the same workerId without an explicit DELETE.
         if (_connectionManager.GetWorkerStatus(workerId) is not null)
         {
             return Conflict($"Worker '{workerId}' is already linked.");

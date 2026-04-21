@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 // In external worker mode, there are no local language workers to specialize
                 // and no ScriptHost to restart. The platform will link workers via
-                // POST /admin/workers/link, which triggers ScriptHost startup via
+                // PUT /admin/workers/{workerId}, which triggers ScriptHost startup via
                 // WorkerConnectionService. All we do here is apply environment settings
                 // so the ScriptHost starts with the right configuration when triggered.
                 if (_configuration.IsExternalWorkerEnabled())

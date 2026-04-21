@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -210,6 +210,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
                 ItExpr.Is<HttpRequestMessage>(r => IsCreateBindMountRequest(r, sourcePath, targetPath)),
                 ItExpr.IsAny<CancellationToken>());
+        }
+
+        private static bool IsPublishRuntimeStateRequest(HttpRequestMessage request, Microsoft.Azure.WebJobs.Script.Workers.RuntimeState expected)
+        {
+            var formData = request.Content.ReadAsFormDataAsync().Result;
+            if (!string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) ||
+                !string.Equals(MeshServiceClient.PublishRuntimeStateOperation, formData["operation"]) ||
+                !string.Equals(ContainerName, request.Headers.GetValues(ScriptConstants.ContainerInstanceHeader).FirstOrDefault()))
+            {
+                return false;
+            }
+
+            var payload = JsonConvert.DeserializeObject<Microsoft.Azure.WebJobs.Script.Workers.RuntimeState>(formData["content"]);
+            return payload.MaxLinkedWorkers == expected.MaxLinkedWorkers
+                && payload.LinkedWorkerCount == expected.LinkedWorkerCount
+                && payload.TotalRequestSlots == expected.TotalRequestSlots
+                && payload.TotalAvailableRequestSlots == expected.TotalAvailableRequestSlots;
+        }
+
+        [Fact]
+        public async Task PublishRuntimeState_SendsExpectedOperationAndPayload()
+        {
+            _handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK
+                });
+
+            var state = new Microsoft.Azure.WebJobs.Script.Workers.RuntimeState
+            {
+                MaxLinkedWorkers = 20,
+                LinkedWorkerCount = 3,
+                TotalRequestSlots = 48,
+                TotalAvailableRequestSlots = 40
+            };
+
+            await _meshServiceClient.PublishRuntimeState(state);
+
+            _handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
+                ItExpr.Is<HttpRequestMessage>(r => IsPublishRuntimeStateRequest(r, state)),
+                ItExpr.IsAny<CancellationToken>());
+        }
+
+        [Fact]
+        public async Task PublishRuntimeState_NullState_Throws()
+        {
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _meshServiceClient.PublishRuntimeState(null));
+        }
+
+        [Fact]
+        public async Task PublishRuntimeState_NonSuccessResponse_Throws()
+        {
+            _handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.InternalServerError
+                });
+
+            var state = new Microsoft.Azure.WebJobs.Script.Workers.RuntimeState();
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => _meshServiceClient.PublishRuntimeState(state));
         }
 
         [Fact]

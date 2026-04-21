@@ -536,5 +536,66 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
         }
+
+        /// <summary>
+        /// Stops the runtime pod. Enables drain mode to stop trigger listeners
+        /// and stop accepting new invocations, then drains and disconnects all
+        /// connected external workers in parallel.
+        /// Called by the Go Proxy when the platform decides to stop the entire runtime pod.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// POST /admin/host/stop
+        /// </code>
+        /// </example>
+        [HttpPost]
+        [Route("admin/host/stop")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public IActionResult Stop()
+        {
+            _logger.LogInformation("Received request to stop the runtime instance.");
+
+            if (!Utility.TryGetHostService(_scriptHostManager, out IDrainModeManager drainModeManager))
+            {
+                _logger.LogWarning("Stop requested but ScriptHost is not ready (IDrainModeManager unavailable).");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+
+            // IWorkerConnectionManager is only registered when external workers are enabled.
+            // In non-compute-separation scenarios, /stop still drains the host but has no workers to disconnect.
+            var connectionManager = HttpContext.RequestServices.GetService<IWorkerConnectionManager>();
+
+            // Fire-and-forget: drain host listeners, then disconnect all workers.
+            _ = StopCoreAsync(drainModeManager, connectionManager)
+                .ContinueWith(
+                    t =>
+                    {
+                        if (t.IsFaulted)
+                        {
+                            _logger.LogError(t.Exception, "Error during runtime stop.");
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Runtime stop completed.");
+                        }
+                    },
+                    TaskScheduler.Default);
+
+            return Accepted();
+        }
+
+        private async Task StopCoreAsync(IDrainModeManager drainModeManager, IWorkerConnectionManager connectionManager)
+        {
+            // Step 1: Stop trigger listeners and stop accepting new invocations.
+            _logger.LogInformation("Enabling drain mode.");
+            await drainModeManager.EnableDrainModeAsync(CancellationToken.None);
+
+            // Step 2: Drain in-flight invocations and disconnect all workers (if any).
+            if (connectionManager is not null)
+            {
+                _logger.LogInformation("Draining and disconnecting all workers.");
+                await connectionManager.DrainAndDisconnectAllAsync(CancellationToken.None);
+            }
+        }
     }
 }

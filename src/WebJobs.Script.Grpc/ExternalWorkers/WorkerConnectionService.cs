@@ -34,6 +34,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     private readonly IOutboundGrpcClientFactory _clientFactory;
     private readonly ExternalWorkerOptions _options;
     private readonly HostJsonContentProvider _hostJsonContentProvider;
+    private readonly IRuntimeStateManager _runtimeStateManager;
     private readonly ILogger _logger;
 
     private readonly ConcurrentDictionary<string, WorkerConnection> _workers = new();
@@ -53,6 +54,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         IOutboundGrpcClientFactory clientFactory,
         IOptions<ExternalWorkerOptions> options,
         HostJsonContentProvider hostJsonContentProvider,
+        IRuntimeStateManager runtimeStateManager,
         ILoggerFactory loggerFactory)
     {
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
@@ -62,6 +64,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _hostJsonContentProvider = hostJsonContentProvider ?? throw new ArgumentNullException(nameof(hostJsonContentProvider));
+        _runtimeStateManager = runtimeStateManager ?? throw new ArgumentNullException(nameof(runtimeStateManager));
         _logger = loggerFactory.CreateLogger<WorkerConnectionService>();
     }
 
@@ -87,7 +90,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         {
             // API-driven path: no worker is connected at startup.
             // The ScriptHost will block at WaitForContent / WaitForChannelAsync
-            // until a worker is linked via POST /admin/workers/link.
+            // until a worker is linked via PUT /admin/workers/{workerId}.
             // The WebHost layer (admin APIs) remains responsive during this time.
             _logger.LogInformation("No gRPC endpoint configured. Host will wait for worker assignment via admin API.");
         }
@@ -127,6 +130,11 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
                 throw new InvalidOperationException(
                     $"Worker '{workerId}' already exists. Disconnect it before reassigning.");
             }
+
+            // The worker is now linked for the purposes of RuntimeState accounting.
+            // It remains linked through any state transitions (Connecting, Connected,
+            // Draining, Error) until DisconnectWorkerAsync removes it from _workers.
+            _runtimeStateManager.OnWorkerLinked(workerId);
         }
         finally
         {
@@ -142,6 +150,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     private async Task ConnectWorkerCoreAsync(string workerId, Uri endpoint, WorkerConnection worker, CancellationToken cancellationToken)
     {
         var info = worker.Info;
+        bool connected = false;
 
         try
         {
@@ -231,15 +240,20 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
                 }
             }
 
+            // [CS-TODO] Replace with value reported by the worker during the init
+            // handshake (expected as a "max_concurrency" capability on
+            // WorkerInitResponse, parsed via channel.GetCapabilityState(...) like
+            // "host_configuration_json" above). Until then, hard-code per the App
+            // Server contract.
+            const int workerSlotCapacity = 16;
+            _runtimeStateManager.OnWorkerCapacityAvailable(workerId, workerSlotCapacity);
+
             info.State = WorkerConnectionState.Connected;
+            connected = true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to connect worker '{workerId}'.", workerId);
-
-            // Clean up partially-created resources so the platform can retry
-            // after calling DELETE to clear the Error state.
-            await CleanupWorkerResourcesAsync(workerId, worker);
 
             info.State = WorkerConnectionState.Error;
             info.ErrorMessage = ex.Message;
@@ -248,6 +262,27 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         }
         finally
         {
+            if (!connected)
+            {
+                // Clean up partially-created resources, drop the worker from
+                // tracking, and reverse the OnWorkerLinked accounting that
+                // ConnectWorkerAsync performed before invoking the core. Without
+                // this, a failed connect permanently inflates LinkedWorkerCount
+                // and can eventually block the platform from linking new workers
+                // once the configured maximum is reached.
+                try
+                {
+                    await CleanupWorkerResourcesAsync(workerId, worker);
+                }
+                catch (Exception cleanupEx)
+                {
+                    _logger.LogWarning(cleanupEx, "Cleanup after failed connect threw for worker '{workerId}'.", workerId);
+                }
+
+                _workers.TryRemove(workerId, out _);
+                _runtimeStateManager.OnWorkerUnlinked(workerId);
+            }
+
             worker.ConnectCompleted.TrySetResult();
         }
     }
@@ -270,6 +305,15 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
 
         // Wait for any in-flight ConnectWorkerAsync to finish before cleaning up.
         await worker.ConnectCompleted.Task;
+
+        // Withdraw this worker's capacity from the shared slot pool up front,
+        // before we start the (potentially long) drain. From this point on
+        // the worker won't serve new invocations, so its capacity must not be
+        // advertised to the App Server. The worker stays linked (visible in
+        // LinkedWorkerCount) until it is removed from _workers below.
+        // OnWorkerCapacityUnavailable is idempotent and a no-op if the worker
+        // never contributed capacity (e.g. connect failed before handshake).
+        _runtimeStateManager.OnWorkerCapacityUnavailable(workerId);
 
         // Mark channel as draining so no new invocations are routed.
         var channel = _channelManager.GetChannel(workerId);
@@ -312,10 +356,6 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             // [CS-TODO] When the last worker is drained (scale-in), should the runtime
             // pause trigger listeners or enter a degraded state? For now we just disconnect.
 
-            await CleanupWorkerResourcesAsync(workerId, worker);
-
-            // Remove from tracking only after cleanup succeeds.
-            _workers.TryRemove(workerId, out _);
             _logger.LogInformation("Worker '{workerId}' disconnected.", workerId);
         }
         catch (Exception ex)
@@ -326,6 +366,25 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             worker.Info.ErrorMessage = ex.Message;
 
             throw;
+        }
+        finally
+        {
+            // Always release resources and drop the worker from tracking, even
+            // when drain throws. Slot-pool capacity was already returned at the
+            // start of the drain; here we reverse the OnWorkerLinked accounting
+            // so a failed disconnect can't permanently inflate LinkedWorkerCount
+            // and eventually block the platform from linking new workers.
+            try
+            {
+                await CleanupWorkerResourcesAsync(workerId, worker);
+            }
+            catch (Exception cleanupEx)
+            {
+                _logger.LogWarning(cleanupEx, "Cleanup after disconnect threw for worker '{workerId}'.", workerId);
+            }
+
+            _workers.TryRemove(workerId, out _);
+            _runtimeStateManager.OnWorkerUnlinked(workerId);
         }
     }
 
@@ -357,6 +416,11 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         {
             _lifecycleLock.ExitWriteLock();
         }
+
+        // Tell the runtime-state manager immediately so GetState/AcquireSlots
+        // report zero slots for the entire drain window, rather than leaking
+        // capacity per-worker as each disconnect completes.
+        _runtimeStateManager.SetStopping();
 
         if (workerIds.Count == 0)
         {

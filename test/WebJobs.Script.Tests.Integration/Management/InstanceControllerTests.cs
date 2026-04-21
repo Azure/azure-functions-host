@@ -381,5 +381,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 testmetricslogger.EventsBegan.Contains(eventName) && 
                 testmetricslogger.EventsEnded.Contains(eventName));
         }
+
+        private static InstanceController CreateInstanceController(IRuntimeStateManager runtimeStateManager)
+        {
+            var loggerFactory = new LoggerFactory();
+            var environment = new TestEnvironment();
+            var metricsLogger = new TestMetricsLogger();
+            var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
+
+            var controller = new InstanceController(environment, null, null, loggerFactory, startupContextProvider, metricsLogger);
+
+            var services = new Mock<IServiceProvider>();
+            services.Setup(s => s.GetService(typeof(IRuntimeStateManager))).Returns(runtimeStateManager);
+
+            controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { RequestServices = services.Object }
+            };
+
+            return controller;
+        }
+        [Fact]
+        public void GetState_WhenExternalWorkersDisabled_Returns503()
+        {
+            var controller = CreateInstanceController(runtimeStateManager: null);
+
+            var result = controller.GetState();
+
+            var statusResult = Assert.IsType<StatusCodeResult>(result);
+            Assert.Equal(StatusCodes.Status503ServiceUnavailable, statusResult.StatusCode);
+        }
+
+        [Fact]
+        public void GetState_ReturnsSnapshot()
+        {
+            var state = new RuntimeState
+            {
+                MaxLinkedWorkers = 20,
+                LinkedWorkerCount = 3,
+                TotalRequestSlots = 48,
+                TotalAvailableRequestSlots = 40
+            };
+            var mock = new Mock<IRuntimeStateManager>();
+            mock.Setup(m => m.GetState()).Returns(state);
+
+            var controller = CreateInstanceController(mock.Object);
+
+            var result = controller.GetState();
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            var payload = Assert.IsType<RuntimeState>(ok.Value);
+            Assert.Equal(20, payload.MaxLinkedWorkers);
+            Assert.Equal(3, payload.LinkedWorkerCount);
+            Assert.Equal(48, payload.TotalRequestSlots);
+            Assert.Equal(40, payload.TotalAvailableRequestSlots);
+        }
     }
 }
