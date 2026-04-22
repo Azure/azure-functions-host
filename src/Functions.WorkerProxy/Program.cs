@@ -14,8 +14,12 @@ builder.WebHost.UseUrls();
 int runtimeGrpcPort = GetIntArg(args, "--runtime-grpc-port", 50051);
 int workerGrpcPort = GetIntArg(args, "--worker-grpc-port", 50052);
 int httpProxyPort = GetIntArg(args, "--http-proxy-port", 50053);
-int managementPort = GetIntArg(args, "--management-port", 50054);
-string workerHttpEndpoint = GetStringArg(args, "--worker-http-endpoint", "http://localhost:8080");
+int managementPort = GetIntArg(args, "--management-port", 80);
+// Optional override for the worker's HTTP endpoint. When null, the proxy uses the
+// HttpUri advertised by the worker in its WorkerInitResponse capabilities (dynamic
+// port chosen by the .NET isolated worker SDK). Override is primarily for the
+// Aspire dev harness and tests where the worker's port is known ahead of time.
+string? workerHttpEndpointOverride = GetStringArgOrNull(args, "--worker-http-endpoint");
 string? hostJsonPath = GetStringArgOrNull(args, "--host-json-path");
 string httpProxyEndpoint = GetStringArg(args, "--http-proxy-endpoint", $"http://localhost:{httpProxyPort}");
 string podName = GetStringArg(args, "--pod-name",
@@ -53,9 +57,22 @@ app.Use(async (ctx, next) =>
     if (ctx.Connection.LocalPort == httpProxyPort)
     {
         var logger = ctx.RequestServices.GetRequiredService<ILogger<FunctionRpcRelay>>();
+        var relayInstance = ctx.RequestServices.GetRequiredService<FunctionRpcRelay>();
+
+        // Prefer the HttpUri the worker advertised via gRPC WorkerInitResponse
+        // (dynamic port). Fall back to the CLI/env override when provided (dev harness).
+        string? destination = relayInstance.WorkerHttpEndpoint ?? workerHttpEndpointOverride;
+        if (string.IsNullOrWhiteSpace(destination))
+        {
+            logger.LogWarning("[HTTP Proxy] No worker HTTP endpoint available yet "
+                + "(worker has not reported HttpUri and no --worker-http-endpoint override). Returning 503.");
+            ctx.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return;
+        }
+
         logger.LogDebug("[HTTP Proxy] Received {Method} {Path} on port {Port}, forwarding to {Destination}",
-            ctx.Request.Method, ctx.Request.Path, httpProxyPort, workerHttpEndpoint);
-        await forwarder.SendAsync(ctx, workerHttpEndpoint, httpClient);
+            ctx.Request.Method, ctx.Request.Path, httpProxyPort, destination);
+        await forwarder.SendAsync(ctx, destination, httpClient);
         logger.LogDebug("[HTTP Proxy] Forwarded request completed with status {StatusCode}", ctx.Response.StatusCode);
         return;
     }

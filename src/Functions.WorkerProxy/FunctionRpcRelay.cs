@@ -72,6 +72,17 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     // TCS for correlating request/response pairs during /assign.
     internal TaskCompletionSource<StreamingMessage>? _pendingWorkerResponse;
 
+    // HTTP endpoint advertised by the worker in its WorkerInitResponse "HttpUri" capability.
+    // Populated once per worker lifetime (during /assign); read by the HTTP forwarding
+    // middleware to route invocations to the worker's dynamically-chosen port.
+    private volatile string? _workerHttpEndpoint;
+
+    /// <summary>
+    /// HTTP endpoint advertised by the worker via the <c>HttpUri</c> capability in
+    /// <c>WorkerInitResponse</c>. Null until the worker has completed init.
+    /// </summary>
+    public string? WorkerHttpEndpoint => _workerHttpEndpoint;
+
     // Guard against concurrent or repeated /assign calls.
     private int _specializationStarted;
 
@@ -353,9 +364,23 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             return;
         }
 
-        // Always set HttpUri to the proxy's endpoint. The worker may or may not have
-        // reported its own HttpUri — in container mode it often doesn't because
-        // its HTTP listener address isn't known at init time.
+        // Capture the worker's advertised HttpUri (dynamically-chosen port reported by
+        // the isolated worker SDK's HttpUriProvider) before we overwrite it. This is what
+        // the HTTP forwarding middleware will use as the YARP destination for invocations.
+        if (message.WorkerInitResponse.Capabilities.TryGetValue("HttpUri", out var advertisedUri)
+            && !string.IsNullOrWhiteSpace(advertisedUri))
+        {
+            _workerHttpEndpoint = advertisedUri;
+            _logger.LogInformation("Captured worker HttpUri '{Uri}' for HTTP invocation forwarding.", advertisedUri);
+        }
+        else
+        {
+            _logger.LogWarning("Worker did not advertise an HttpUri capability in WorkerInitResponse. "
+                + "HTTP forwarding will rely on the --worker-http-endpoint override if provided.");
+        }
+
+        // Overwrite HttpUri with the proxy's endpoint so the runtime routes HTTP requests
+        // through this proxy (and we can then forward to the worker's real endpoint).
         message.WorkerInitResponse.Capabilities["HttpUri"] = _options.HttpProxyEndpoint;
         _logger.LogInformation("Set HttpUri capability to {Uri}.", _options.HttpProxyEndpoint);
     }
