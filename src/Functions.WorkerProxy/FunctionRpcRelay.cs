@@ -75,7 +75,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     // HTTP endpoint advertised by the worker in its WorkerInitResponse "HttpUri" capability.
     // Populated once per worker lifetime (during /assign); read by the HTTP forwarding
     // middleware to route invocations to the worker's dynamically-chosen port.
-    private volatile string? _workerHttpEndpoint;
+    internal volatile string? _workerHttpEndpoint;
 
     /// <summary>
     /// HTTP endpoint advertised by the worker via the <c>HttpUri</c> capability in
@@ -195,6 +195,13 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             // Now that we know the function app directory, inject host.json and rewrite
             // the HttpUri capability so the runtime routes HTTP requests through this proxy.
             InjectHostJson(initResponse, functionAppDirectory);
+
+            // RewriteHttpUri MUST run AFTER the capability merge above. The merge produces
+            // the final, post-specialization capability set; rewriting before it would
+            // capture a stale or missing HttpUri (e.g. an init-only value that a Replace-
+            // strategy reload was supposed to drop). The
+            // SpecializeWorkerAsync_WorkerHttpEndpoint_* tests pin this ordering — if you
+            // reorder these calls and those tests still pass, the tests have rotted.
             RewriteHttpUri(initResponse);
 
             var capabilities = initResponse.WorkerInitResponse?.Capabilities;
@@ -375,8 +382,15 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         }
         else
         {
+            // Defense-in-depth: explicitly clear any previously-captured value so the
+            // post-rewrite state always reflects the capabilities we just observed.
+            // Today there is only one call site (post-merge in SpecializeWorkerAsync),
+            // so _workerHttpEndpoint is null here in practice — but if anyone adds a
+            // pre-merge capture or re-enables re-specialization, this branch must not
+            // silently leave a stale destination in place.
+            _workerHttpEndpoint = null;
             _logger.LogWarning("Worker did not advertise an HttpUri capability in WorkerInitResponse. "
-                + "HTTP forwarding will rely on the --worker-http-endpoint override if provided.");
+                + "HTTP forwarding will require the --worker-http-endpoint override; otherwise requests will return 503.");
         }
 
         // Overwrite HttpUri with the proxy's endpoint so the runtime routes HTTP requests

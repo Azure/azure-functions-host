@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Net;
+using System.Net.Sockets;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -10,13 +11,20 @@ const string WorkerId = "w_mock0001";
 const string FunctionName = "HttpTrigger";
 string functionId = Guid.NewGuid().ToString();
 
-// Start a simple HTTP server for HTTP proxying (the worker proxy forwards HTTP here).
-// Use "+" to listen on all interfaces (required for container networking).
-int httpPort = ResolveHttpPort(args);
+// Pick a free TCP port the same way the .NET isolated worker SDK's HttpUriProvider
+// does (see Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore.Utilities):
+// bind a socket to loopback:0, read the kernel-assigned port, then release it before
+// the real listener binds. This mirrors how a production worker advertises HttpUri,
+// so the worker proxy exercises the same dynamic-port discovery path it will hit
+// in deployed scenarios. There is intentionally no override.
+int httpPort = GetUnusedTcpPort();
+
+// Listen on loopback only (localhost) — same as the isolated worker SDK in production.
+// Cross-container scenarios are not supported by this mock; use SampleIsolatedApp for those.
 var httpListener = new HttpListener();
-httpListener.Prefixes.Add($"http://+:{httpPort}/");
+httpListener.Prefixes.Add($"http://localhost:{httpPort}/");
 httpListener.Start();
-Console.WriteLine($"[MockWorker] HTTP server listening on http://+:{httpPort}/");
+Console.WriteLine($"[MockWorker] HTTP server listening on http://localhost:{httpPort}/");
 
 // Handle HTTP requests on a background task.
 _ = Task.Run(async () =>
@@ -265,18 +273,14 @@ static string ResolveGrpcEndpoint(string[] args)
     return "http://localhost:50052";
 }
 
-static int ResolveHttpPort(string[] args)
+// Mirrors Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore.Utilities.GetUnusedTcpPort
+// from the .NET isolated worker SDK: bind a TCP socket to loopback with port 0, let the
+// kernel assign a free port, capture it via LocalEndPoint, then dispose the socket so the
+// real HttpListener can bind to that port. There is a brief TOCTOU window between dispose
+// and rebind, identical to the production code path.
+static int GetUnusedTcpPort()
 {
-    // 1. --http-port <port> from command-line args
-    for (int i = 0; i < args.Length - 1; i++)
-    {
-        if (string.Equals(args[i], "--http-port", StringComparison.OrdinalIgnoreCase)
-            && int.TryParse(args[i + 1], out int port))
-        {
-            return port;
-        }
-    }
-
-    // 2. Default — matches the worker proxy's default --worker-http-endpoint (http://localhost:8080)
-    return 8080;
+    using Socket tcpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+    tcpSocket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+    return ((IPEndPoint)tcpSocket.LocalEndPoint!).Port;
 }
