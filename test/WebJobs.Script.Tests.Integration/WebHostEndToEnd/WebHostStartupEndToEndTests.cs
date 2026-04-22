@@ -104,6 +104,17 @@ public class WebHostStartupEndToEndTests
         TestHelpers.AssertOptionLogged(allOptionsLogs, nameof(LanguageWorkerOptions));
     }
 
+    [Fact]
+    public void CreateHostBuilder_ConfiguresActivityTrackingOptions()
+    {
+        using var host = Program.CreateHostBuilder(args: null).Build();
+        var options = host.Services.GetRequiredService<IOptions<LoggerFactoryOptions>>().Value;
+
+        Assert.Equal(
+            ActivityTrackingOptions.SpanId | ActivityTrackingOptions.TraceId | ActivityTrackingOptions.ParentId,
+            options.ActivityTrackingOptions);
+    }
+
     private static IHostBuilder CreateHostBuilder(TestLoggerProvider loggerProvider, params string[] functions)
     {
         var environment = new TestEnvironment(new Dictionary<string, string>

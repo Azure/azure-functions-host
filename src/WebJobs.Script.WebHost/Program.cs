@@ -114,11 +114,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             {
                                 config.AddJsonFile(hostingEnvironmentConfigFilePath, optional: true, reloadOnChange: false);
                             }
-
-                            if (args is { Length: > 0 })
-                            {
-                                config.AddCommandLine(args);
-                            }
                         })
                         .ConfigureLogging((context, loggingBuilder) =>
                         {
