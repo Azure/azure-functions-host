@@ -95,6 +95,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
 
+            // Wait for the full connect pipeline (Phase 1 + Phase 2) to complete.
+            await service.WaitForWorkerConnectAsync("w_1");
+
             var info = service.GetWorkerStatus("w_1");
             Assert.Equal(WorkerConnectionState.Connected, info.State);
             Assert.Equal(1, service.ActiveWorkerCount);
@@ -135,6 +138,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             await service.ConnectWorkerAsync("w_1", new Uri("http://localhost:50051"), CancellationToken.None);
 
+            // ScriptHost startup runs in the background after the link returns.
+            await service.WaitForWorkerConnectAsync("w_1");
+
             _mockHostManager.Verify(m => m.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -159,16 +165,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             var service = CreateService();
 
-            // First worker fails. Failed connects are removed from tracking so
-            // the platform can immediately retry the same workerId without an
-            // explicit DELETE; the failure surfaces only via the thrown exception.
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.ConnectWorkerAsync("w_fail", new Uri("http://localhost:50051"), CancellationToken.None));
+            // First worker: Phase 1 (init handshake) succeeds so ConnectWorkerAsync
+            // returns without throwing. Phase 2 (ScriptHost startup) fails in the
+            // background and triggers full cleanup — the worker is removed from tracking.
+            await service.ConnectWorkerAsync("w_fail", new Uri("http://localhost:50051"), CancellationToken.None);
 
+            // Wait for the background Phase 2 to run, fail, and clean up.
+            await service.WaitForWorkerConnectAsync("w_fail");
+
+            // Worker is removed from tracking after Phase 2 failure (same as old behavior).
             Assert.Null(service.GetWorkerStatus("w_fail"));
 
             // Second worker succeeds — the recovery path reset _firstWorkerClaimed.
             await service.ConnectWorkerAsync("w_retry", new Uri("http://localhost:50052"), CancellationToken.None);
+
+            // Wait for the background Phase 2 to complete.
+            await service.WaitForWorkerConnectAsync("w_retry");
 
             var retryInfo = service.GetWorkerStatus("w_retry");
             Assert.Equal(WorkerConnectionState.Connected, retryInfo.State);
@@ -182,6 +194,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             var service = CreateService();
 
             await service.ConnectWorkerAsync("w_dup", new Uri("http://localhost:50051"), CancellationToken.None);
+
+            // Wait for the full connect pipeline (Phase 1 + Phase 2) to complete.
+            await service.WaitForWorkerConnectAsync("w_dup");
 
             var originalInfo = service.GetWorkerStatus("w_dup");
             Assert.Equal(WorkerConnectionState.Connected, originalInfo.State);

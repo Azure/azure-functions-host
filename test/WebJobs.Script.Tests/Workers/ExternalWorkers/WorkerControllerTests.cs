@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
@@ -27,10 +28,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             _mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             _mockWebHostEnvironment.Setup(e => e.InStandbyMode).Returns(false);
             _controller = new WorkerController(_mockConnectionManager.Object, _mockWebHostEnvironment.Object, NullLoggerFactory.Instance);
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            };
         }
 
         [Fact]
-        public void LinkWorker_ValidRequest_Returns202Accepted()
+        public async Task LinkWorker_ValidRequest_Returns200Ok()
         {
             var request = new ExternalWorkerInfo
             {
@@ -44,34 +49,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            var result = _controller.LinkWorker("w_test1234", request);
+            var result = await _controller.LinkWorker("w_test1234", request);
 
-            var accepted = Assert.IsType<AcceptedResult>(result);
-            var info = Assert.IsType<WorkerConnectionInfo>(accepted.Value);
-            Assert.Equal("w_test1234", info.WorkerId);
-            Assert.Equal(WorkerConnectionState.Connecting, info.State);
+            Assert.IsType<OkResult>(result);
         }
 
         [Fact]
-        public void LinkWorker_NullRequest_Returns400()
+        public async Task LinkWorker_NullRequest_Returns400()
         {
-            var result = _controller.LinkWorker("w_test1234", null);
+            var result = await _controller.LinkWorker("w_test1234", null);
 
             Assert.IsType<BadRequestObjectResult>(result);
         }
 
         [Fact]
-        public void LinkWorker_MissingEndpoint_Returns400()
+        public async Task LinkWorker_MissingEndpoint_Returns400()
         {
             var request = new ExternalWorkerInfo { WorkerId = "w_test1234" };
 
-            var result = _controller.LinkWorker("w_test1234", request);
+            var result = await _controller.LinkWorker("w_test1234", request);
 
             Assert.IsType<BadRequestObjectResult>(result);
         }
 
         [Fact]
-        public void LinkWorker_InvalidEndpoint_Returns400()
+        public async Task LinkWorker_InvalidEndpoint_Returns400()
         {
             var request = new ExternalWorkerInfo
             {
@@ -79,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 GrpcEndpoint = "not-a-valid-uri"
             };
 
-            var result = _controller.LinkWorker("w_test1234", request);
+            var result = await _controller.LinkWorker("w_test1234", request);
 
             Assert.IsType<BadRequestObjectResult>(result);
         }
@@ -88,21 +90,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void LinkWorker_MissingRouteWorkerId_Returns400(string routeWorkerId)
+        public async Task LinkWorker_MissingRouteWorkerId_Returns400(string routeWorkerId)
         {
             var request = new ExternalWorkerInfo
             {
                 GrpcEndpoint = "http://10.0.1.42:50051"
             };
 
-            var result = _controller.LinkWorker(routeWorkerId, request);
+            var result = await _controller.LinkWorker(routeWorkerId, request);
 
             var badRequest = Assert.IsType<BadRequestObjectResult>(result);
             Assert.Contains("route", badRequest.Value.ToString(), StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
-        public void LinkWorker_BodyIdMismatchesRouteId_Returns400()
+        public async Task LinkWorker_BodyIdMismatchesRouteId_Returns400()
         {
             var request = new ExternalWorkerInfo
             {
@@ -110,14 +112,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 GrpcEndpoint = "http://10.0.1.42:50051"
             };
 
-            var result = _controller.LinkWorker("w_routeid1", request);
+            var result = await _controller.LinkWorker("w_routeid1", request);
 
             var badRequest = Assert.IsType<BadRequestObjectResult>(result);
             Assert.Contains("does not match", badRequest.Value.ToString());
         }
 
         [Fact]
-        public void LinkWorker_NullBodyWorkerId_UsesRouteId()
+        public async Task LinkWorker_NullBodyWorkerId_UsesRouteId()
         {
             var request = new ExternalWorkerInfo
             {
@@ -128,16 +130,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 .Setup(m => m.ConnectWorkerAsync("w_routeid1", It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            var result = _controller.LinkWorker("w_routeid1", request);
+            var result = await _controller.LinkWorker("w_routeid1", request);
 
-            var accepted = Assert.IsType<AcceptedResult>(result);
-            var info = Assert.IsType<WorkerConnectionInfo>(accepted.Value);
-            Assert.Equal("w_routeid1", info.WorkerId);
-            Assert.Equal(WorkerConnectionState.Connecting, info.State);
+            Assert.IsType<OkResult>(result);
         }
 
         [Fact]
-        public void LinkWorker_BeforeSpecialization_Returns400()
+        public async Task LinkWorker_BeforeSpecialization_Returns400()
         {
             _mockWebHostEnvironment.Setup(e => e.InStandbyMode).Returns(true);
 
@@ -147,14 +146,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 GrpcEndpoint = "http://10.0.1.42:50051"
             };
 
-            var result = _controller.LinkWorker("w_test1234", request);
+            var result = await _controller.LinkWorker("w_test1234", request);
 
             var badRequest = Assert.IsType<BadRequestObjectResult>(result);
             Assert.Contains("specialized", badRequest.Value.ToString());
         }
 
         [Fact]
-        public void LinkWorker_DuplicateWorkerId_Returns409Conflict()
+        public async Task LinkWorker_DuplicateWorkerId_Returns409Conflict()
         {
             _mockConnectionManager
                 .Setup(m => m.GetWorkerStatus("w_test1234"))
@@ -166,10 +165,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 GrpcEndpoint = "http://10.0.1.42:50051"
             };
 
-            var result = _controller.LinkWorker("w_test1234", request);
+            var result = await _controller.LinkWorker("w_test1234", request);
 
             var conflict = Assert.IsType<ConflictObjectResult>(result);
             Assert.Contains("already linked", conflict.Value.ToString());
+        }
+
+        [Fact]
+        public async Task LinkWorker_ConnectionFails_Returns503()
+        {
+            var request = new ExternalWorkerInfo
+            {
+                WorkerId = "w_test1234",
+                GrpcEndpoint = "http://10.0.1.42:50051"
+            };
+
+            _mockConnectionManager
+                .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("gRPC connection failed"));
+
+            var result = await _controller.LinkWorker("w_test1234", request);
+
+            var objectResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status503ServiceUnavailable, objectResult.StatusCode);
+            Assert.Contains("connection failed", objectResult.Value.ToString());
+        }
+
+        [Fact]
+        public async Task LinkWorker_RuntimeStopping_Returns409()
+        {
+            var request = new ExternalWorkerInfo
+            {
+                WorkerId = "w_test1234",
+                GrpcEndpoint = "http://10.0.1.42:50051"
+            };
+
+            _mockConnectionManager
+                .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Cannot connect new workers while the runtime is stopping."));
+
+            var result = await _controller.LinkWorker("w_test1234", request);
+
+            var conflict = Assert.IsType<ConflictObjectResult>(result);
+            Assert.Contains("link rejected", conflict.Value.ToString());
         }
     }
 }

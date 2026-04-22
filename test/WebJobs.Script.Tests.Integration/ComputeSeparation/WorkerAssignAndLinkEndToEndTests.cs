@@ -111,9 +111,9 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
         _output.WriteLine("Step 2: Calling PUT /admin/workers/{workerId} on runtime.");
         string masterKey = await _host.GetMasterKeyAsync();
         var linkResponse = await CallWorkerLinkAsync(masterKey);
-        Assert.Equal(HttpStatusCode.Accepted, linkResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, linkResponse.StatusCode);
 
-        // 3. Wait for host to be running and invoke a function.
+        // 3. Wait for host to be running (ScriptHost startup runs in background after link).
         await WaitForHostReadyAsync(masterKey, TimeSpan.FromMinutes(2));
         await AssertHttpTriggerInvocationAsync();
     }
@@ -131,9 +131,10 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
 
         // 1. Link first — runtime connects and sends WorkerInitRequest.
         //    The proxy blocks because specialization hasn't completed yet.
+        //    With synchronous linking, the link call blocks until the handshake
+        //    completes, so we start it concurrently and assign afterward.
         _output.WriteLine("Step 1: Calling PUT /admin/workers/{workerId} on runtime (before assign).");
-        var linkResponse = await CallWorkerLinkAsync(masterKey);
-        Assert.Equal(HttpStatusCode.Accepted, linkResponse.StatusCode);
+        var linkTask = CallWorkerLinkAsync(masterKey);
 
         // Give the runtime a moment to connect and send WorkerInitRequest to the proxy.
         await Task.Delay(2000);
@@ -144,7 +145,11 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
         var assignResponse = await CallWorkerAssignAsync(proxyClient);
         Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
 
-        // 3. Wait for host to be running and invoke a function.
+        // 3. Wait for the link to complete (now unblocked by assign).
+        var linkResponse = await linkTask;
+        Assert.Equal(HttpStatusCode.OK, linkResponse.StatusCode);
+
+        // 4. Wait for host to be running (ScriptHost startup runs in background after link).
         await WaitForHostReadyAsync(masterKey, TimeSpan.FromMinutes(2));
         await AssertHttpTriggerInvocationAsync();
     }

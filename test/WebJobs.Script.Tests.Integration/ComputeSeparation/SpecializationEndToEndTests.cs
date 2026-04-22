@@ -245,7 +245,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
                     podKey = "test-key"
                 });
 
-            if (linkResponse.StatusCode == HttpStatusCode.Accepted)
+            if (linkResponse.StatusCode == HttpStatusCode.OK)
             {
                 break;
             }
@@ -255,7 +255,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         }
 
         _output.WriteLine($"Link response: {linkResponse?.StatusCode}");
-        Assert.Equal(HttpStatusCode.Accepted, linkResponse?.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, linkResponse?.StatusCode);
 
         // 5. Wait for host to reach Running state.
         await TestHelpers.Await(
