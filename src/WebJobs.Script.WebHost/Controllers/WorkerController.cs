@@ -2,8 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -33,14 +34,14 @@ public sealed class WorkerController : Controller
     }
 
     /// <summary>
-    /// Links an external worker to this runtime. Initiates an outbound gRPC connection
-    /// to the worker proxy and returns immediately. The connection and handshake
-    /// complete in the background.
+    /// Links an external worker to this runtime. Establishes an outbound gRPC
+    /// connection to the worker proxy, performs the init handshake, and returns
+    /// only after the worker is fully linked.
     /// </summary>
     [HttpPut]
     [Route("admin/workers/{workerId}")]
     [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-    public IActionResult LinkWorker([FromRoute] string workerId, [FromBody] ExternalWorkerInfo request)
+    public async Task<IActionResult> LinkWorker([FromRoute] string workerId, [FromBody] ExternalWorkerInfo request)
     {
         if (string.IsNullOrWhiteSpace(workerId))
         {
@@ -83,27 +84,26 @@ public sealed class WorkerController : Controller
             return Conflict($"Worker '{workerId}' is already linked.");
         }
 
-        // Build the response before starting async work. ConnectWorkerAsync sets
-        // _workerStates on a background thread, so reading it immediately after
-        // fire-and-forget would race and likely return null.
-        var info = new WorkerConnectionInfo
+        try
         {
-            WorkerId = workerId,
-            State = WorkerConnectionState.Connecting
-        };
-
-        // Fire-and-forget: kick off the connection in the background,
-        // matching the pattern used by HostController.Drain and InstanceController.Assign.
-        _ = _connectionManager.ConnectWorkerAsync(workerId, endpoint, CancellationToken.None)
-            .ContinueWith(
-                t =>
-                {
-                    if (t.IsFaulted)
-                    {
-                        _logger.LogError(t.Exception, "Worker '{workerId}' connection failed.", workerId);
-                    }
-                });
-
-        return Accepted(info);
+            await _connectionManager.ConnectWorkerAsync(workerId, endpoint, HttpContext.RequestAborted);
+            return Ok();
+        }
+        catch (InvalidOperationException ex)
+        {
+            var message = $"Worker '{workerId}' link rejected.";
+            _logger.LogWarning(ex, message);
+            return Conflict(message);
+        }
+        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw; // Let the framework handle client disconnection.
+        }
+        catch (Exception ex)
+        {
+            var message = $"Worker '{workerId}' connection failed.";
+            _logger.LogError(ex, message);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, message);
+        }
     }
 }

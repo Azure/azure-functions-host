@@ -39,6 +39,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
 
     private readonly ConcurrentDictionary<string, WorkerConnection> _workers = new();
     private readonly ReaderWriterLockSlim _lifecycleLock = new();
+    private readonly CancellationTokenSource _shutdownCts = new();
     private TaskCompletionSource _scriptHostStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _firstWorkerClaimed;
     private volatile bool _stopping;
@@ -128,7 +129,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             if (!_workers.TryAdd(workerId, worker))
             {
                 throw new InvalidOperationException(
-                    $"Worker '{workerId}' already exists. Disconnect it before reassigning.");
+                    $"Worker '{workerId}' is already linked.");
             }
 
             // The worker is now linked for the purposes of RuntimeState accounting.
@@ -141,150 +142,183 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             _lifecycleLock.ExitReadLock();
         }
 
-        // The rest of connect runs outside the lock. The worker is in _workers,
-        // so DrainAndDisconnectAllAsync will find it and await ConnectCompleted
-        // before cleaning up.
-        await ConnectWorkerCoreAsync(workerId, endpoint, worker, cancellationToken);
+        // Start the full connect pipeline (Phase 1 + Phase 2) in the background.
+        // We await only InitCompleted (Phase 1: init handshake) so the API can
+        // return 200 after the worker is linked. Phase 2 (ScriptHost startup)
+        // continues in the background. ConnectCompleted signals after the full
+        // pipeline finishes, which DisconnectWorkerAsync awaits before cleanup.
+        _ = ConnectWorkerCoreAsync(workerId, endpoint, worker, cancellationToken);
+        await worker.InitCompleted.Task;
     }
 
     private async Task ConnectWorkerCoreAsync(string workerId, Uri endpoint, WorkerConnection worker, CancellationToken cancellationToken)
     {
         var info = worker.Info;
-        bool connected = false;
 
         try
         {
-            _logger.LogInformation("Connecting to external worker '{workerId}' at {endpoint}.", workerId, endpoint);
+            var channel = await EstablishChannelAsync(workerId, endpoint, worker, cancellationToken);
 
-            _eventManager.AddGrpcChannels(workerId);
+            // Phase 1 complete — signal InitCompleted so ConnectWorkerAsync
+            // (and the API caller) can return 200.
+            worker.InitCompleted.TrySetResult();
 
-            var client = _clientFactory.Create();
-            worker.Client = client;
+            _logger.LogInformation("Worker '{workerId}' linked. Starting host setup.", workerId);
 
-            await client.ConnectAsync(workerId, endpoint, cancellationToken);
-
-            var workerConfig = new RpcWorkerConfig
-            {
-                Description = new RpcWorkerDescription
-                {
-                    Language = "external",
-                    WorkerDirectory = string.Empty
-                },
-                CountOptions = new WorkerProcessCountOptions()
-            };
-
-            var channel = _channelFactory.Create(workerId, workerConfig);
-            await channel.StartWorkerProcessAsync(cancellationToken);
-
-            _logger.LogInformation("Waiting for worker '{workerId}' init handshake.", workerId);
-            await channel.WaitForInitAsync(InitTimeout, cancellationToken);
-
-            // Extract host.json from worker capabilities.
-            string hostJson = channel.GetCapabilityState("host_configuration_json");
-            if (hostJson is not null)
-            {
-                _logger.LogDebug("Received host.json configuration from worker '{workerId}'.", workerId);
-                _hostJsonContentProvider.SetContent(hostJson);
-            }
-            else
-            {
-                _logger.LogWarning("Worker '{workerId}' did not provide host_configuration_json capability.", workerId);
-            }
-
-            // Register the channel directly — no event needed.
-            _channelManager.AddChannel(workerId, channel);
-
-            // Subscribe to drain signals from the worker proxy.
-            channel.DrainRequested += OnWorkerDrainRequested;
-
-            _logger.LogInformation("Worker '{workerId}' connected and registered.", workerId);
-
-            // Start or update the ScriptHost based on whether this is the first worker.
-            // The first caller either starts or waits for the ScriptHost; concurrent
-            // callers block until startup completes, then call SetupChannel.
-            if (Interlocked.CompareExchange(ref _firstWorkerClaimed, 1, 0) == 0)
-            {
-                // First worker: start the ScriptHost. In external worker mode,
-                // WebJobsScriptHostService is not registered as an IHostedService,
-                // so the ScriptHost hasn't started yet. Now that a worker has delivered
-                // host.json and registered a channel, WaitForContent and WaitForChannelAsync
-                // will return immediately when the ScriptHost builds.
-                var tcs = _scriptHostStarted;
-                try
-                {
-                    _logger.LogInformation("First worker connected. Starting ScriptHost.");
-                    await _scriptHostManager.StartAsync(cancellationToken);
-                    tcs.TrySetResult();
-                }
-                catch (Exception ex)
-                {
-                    // Fault the current TCS so any concurrent waiters get the exception
-                    // (they'll propagate it and the platform can retry those workers too).
-                    // Replace the TCS BEFORE releasing the gate so the next winner sees
-                    // a fresh TCS, not the faulted one.
-                    tcs.TrySetException(ex);
-                    _scriptHostStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                    Interlocked.Exchange(ref _firstWorkerClaimed, 0);
-                    throw;
-                }
-            }
-            else
-            {
-                // Wait for the first worker's StartAsync to complete before resolving the dispatcher.
-                await _scriptHostStarted.Task.WaitAsync(cancellationToken);
-
-                if (Utility.TryGetHostService(_scriptHostManager, out ConnectedWorkerInvocationDispatcher dispatcher))
-                {
-                    dispatcher.SetupChannel(channel);
-                    _logger.LogDebug("SetupChannel called for subsequent worker '{workerId}'.", workerId);
-                }
-            }
-
-            // [CS-TODO] Replace with value reported by the worker during the init
-            // handshake (expected as a "max_concurrency" capability on
-            // WorkerInitResponse, parsed via channel.GetCapabilityState(...) like
-            // "host_configuration_json" above). Until then, hard-code per the App
-            // Server contract.
-            const int workerSlotCapacity = 16;
-            _runtimeStateManager.OnWorkerCapacityAvailable(workerId, workerSlotCapacity);
-
-            info.State = WorkerConnectionState.Connected;
-            connected = true;
+            // Phase 2: ScriptHost startup and capacity advertisement.
+            // HTTP requests that arrive before Phase 2 completes will buffer
+            // in HostAvailabilityCheckMiddleware.DelayUntilHostReadyAsync().
+            //
+            // We await Phase 2 here (not fire-and-forget) so that
+            // ConnectCompleted signals only after the full pipeline finishes.
+            // This ensures DisconnectWorkerAsync won't tear down resources
+            // while Phase 2 is still running.
+            await CompleteWorkerSetupAsync(workerId, worker, channel, _shutdownCts.Token);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Failed to connect worker '{workerId}'.", workerId);
 
             info.State = WorkerConnectionState.Error;
             info.ErrorMessage = ex.Message;
 
-            throw;
+            // If Phase 1 failed, fault InitCompleted so the API caller gets the exception.
+            // If Phase 1 already succeeded, TrySetException is a no-op.
+            worker.InitCompleted.TrySetException(ex);
+
+            try
+            {
+                await CleanupWorkerResourcesAsync(workerId, worker);
+            }
+            catch (Exception cleanupEx)
+            {
+                _logger.LogWarning(cleanupEx, "Cleanup after failed connect threw for worker '{workerId}'.", workerId);
+            }
+
+            _workers.TryRemove(workerId, out _);
+            _runtimeStateManager.OnWorkerUnlinked(workerId);
         }
         finally
         {
-            if (!connected)
-            {
-                // Clean up partially-created resources, drop the worker from
-                // tracking, and reverse the OnWorkerLinked accounting that
-                // ConnectWorkerAsync performed before invoking the core. Without
-                // this, a failed connect permanently inflates LinkedWorkerCount
-                // and can eventually block the platform from linking new workers
-                // once the configured maximum is reached.
-                try
-                {
-                    await CleanupWorkerResourcesAsync(workerId, worker);
-                }
-                catch (Exception cleanupEx)
-                {
-                    _logger.LogWarning(cleanupEx, "Cleanup after failed connect threw for worker '{workerId}'.", workerId);
-                }
-
-                _workers.TryRemove(workerId, out _);
-                _runtimeStateManager.OnWorkerUnlinked(workerId);
-            }
-
+            // Signal that the full pipeline (Phase 1 + Phase 2) has finished.
+            // DisconnectWorkerAsync awaits this before cleaning up.
             worker.ConnectCompleted.TrySetResult();
         }
+    }
+
+    /// <summary>
+    /// Phase 1: Establishes the gRPC connection, performs the init handshake
+    /// (WorkerInitRequest/WorkerInitResponse), extracts host.json from
+    /// capabilities, and registers the channel. Returns after the worker
+    /// is linked and the init handshake has succeeded.
+    /// </summary>
+    private async Task<IConnectedWorkerChannel> EstablishChannelAsync(string workerId, Uri endpoint, WorkerConnection worker, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Connecting to external worker '{workerId}' at {endpoint}.", workerId, endpoint);
+
+        _eventManager.AddGrpcChannels(workerId);
+
+        var client = _clientFactory.Create();
+        worker.Client = client;
+
+        await client.ConnectAsync(workerId, endpoint, cancellationToken);
+
+        var workerConfig = new RpcWorkerConfig
+        {
+            Description = new RpcWorkerDescription
+            {
+                Language = "external",
+                WorkerDirectory = string.Empty
+            },
+            CountOptions = new WorkerProcessCountOptions()
+        };
+
+        var channel = _channelFactory.Create(workerId, workerConfig);
+        await channel.StartWorkerProcessAsync(cancellationToken);
+
+        _logger.LogInformation("Waiting for worker '{workerId}' init handshake.", workerId);
+        await channel.WaitForInitAsync(InitTimeout, cancellationToken);
+
+        // Extract host.json from worker capabilities.
+        string hostJson = channel.GetCapabilityState("host_configuration_json");
+        if (hostJson is not null)
+        {
+            _logger.LogDebug("Received host.json configuration from worker '{workerId}'.", workerId);
+            _hostJsonContentProvider.SetContent(hostJson);
+        }
+        else
+        {
+            _logger.LogWarning("Worker '{workerId}' did not provide host_configuration_json capability.", workerId);
+        }
+
+        // Register the channel directly — no event needed.
+        _channelManager.AddChannel(workerId, channel);
+
+        // Subscribe to drain signals from the worker proxy.
+        channel.DrainRequested += OnWorkerDrainRequested;
+
+        _logger.LogInformation("Worker '{workerId}' connected and registered.", workerId);
+
+        return channel;
+    }
+
+    /// <summary>
+    /// Phase 2: Starts the ScriptHost (first worker) or sets up the channel
+    /// for dispatch (subsequent workers), then advertises capacity. Runs in
+    /// the background after the API returns 200.
+    /// </summary>
+    private async Task CompleteWorkerSetupAsync(string workerId, WorkerConnection worker, IConnectedWorkerChannel channel, CancellationToken cancellationToken)
+    {
+        // Start or update the ScriptHost based on whether this is the first worker.
+        // The first caller either starts or waits for the ScriptHost; concurrent
+        // callers block until startup completes, then call SetupChannel.
+        if (Interlocked.CompareExchange(ref _firstWorkerClaimed, 1, 0) == 0)
+        {
+            // First worker: start the ScriptHost. In external worker mode,
+            // WebJobsScriptHostService is not registered as an IHostedService,
+            // so the ScriptHost hasn't started yet. Now that a worker has delivered
+            // host.json and registered a channel, WaitForContent and WaitForChannelAsync
+            // will return immediately when the ScriptHost builds.
+            var tcs = _scriptHostStarted;
+            try
+            {
+                _logger.LogInformation("First worker connected. Starting ScriptHost.");
+                await _scriptHostManager.StartAsync(cancellationToken);
+                tcs.TrySetResult();
+            }
+            catch (Exception ex)
+            {
+                // Fault the current TCS so any concurrent waiters get the exception
+                // (they'll propagate it and the platform can retry those workers too).
+                // Replace the TCS BEFORE releasing the gate so the next winner sees
+                // a fresh TCS, not the faulted one.
+                tcs.TrySetException(ex);
+                _scriptHostStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                Interlocked.Exchange(ref _firstWorkerClaimed, 0);
+                throw;
+            }
+        }
+        else
+        {
+            // Wait for the first worker's StartAsync to complete before resolving the dispatcher.
+            await _scriptHostStarted.Task.WaitAsync(cancellationToken);
+
+            if (Utility.TryGetHostService(_scriptHostManager, out ConnectedWorkerInvocationDispatcher dispatcher))
+            {
+                dispatcher.SetupChannel(channel);
+                _logger.LogDebug("SetupChannel called for subsequent worker '{workerId}'.", workerId);
+            }
+        }
+
+        // [CS-TODO] Replace with value reported by the worker during the init
+        // handshake (expected as a "max_concurrency" capability on
+        // WorkerInitResponse, parsed via channel.GetCapabilityState(...) like
+        // "host_configuration_json" above). Until then, hard-code per the App
+        // Server contract.
+        const int workerSlotCapacity = 16;
+        _runtimeStateManager.OnWorkerCapacityAvailable(workerId, workerSlotCapacity);
+
+        worker.Info.State = WorkerConnectionState.Connected;
     }
 
     /// <inheritdoc/>
@@ -396,6 +430,14 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     public WorkerConnectionInfo GetWorkerStatus(string workerId)
         => _workers.TryGetValue(workerId, out var worker) ? worker.Info : null;
 
+    /// <summary>
+    /// Waits for the full connect pipeline (Phase 1 + Phase 2) to complete for the
+    /// specified worker. Returns immediately if the worker is not tracked or has
+    /// already completed. Intended for test use only.
+    /// </summary>
+    internal Task WaitForWorkerConnectAsync(string workerId)
+        => _workers.TryGetValue(workerId, out var worker) ? worker.ConnectCompleted.Task : Task.CompletedTask;
+
     /// <inheritdoc/>
     public async Task DrainAndDisconnectAllAsync(CancellationToken cancellationToken)
     {
@@ -410,6 +452,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         try
         {
             _stopping = true;
+            _shutdownCts.Cancel();
             workerIds = _workers.Keys.ToList();
         }
         finally
@@ -493,6 +536,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
 
         _workers.Clear();
         _lifecycleLock.Dispose();
+        _shutdownCts.Dispose();
     }
 
     /// <summary>
@@ -541,10 +585,18 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         public IOutboundGrpcClient Client { get; set; }
 
         /// <summary>
-        /// Gets a signal that indicates when <see cref="ConnectWorkerAsync"/> has
-        /// finished (success or failure).
-        /// <see cref="DisconnectWorkerAsync"/> awaits this before cleaning up to avoid
-        /// racing with an in-flight connection.
+        /// Gets a signal that completes when Phase 1 (gRPC connect + init handshake +
+        /// channel registration) has finished (success or failure). The outer
+        /// <c>ConnectWorkerAsync</c> awaits this so the API can return 200 after the
+        /// init handshake while Phase 2 continues in the background.
+        /// </summary>
+        public TaskCompletionSource InitCompleted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>
+        /// Gets a signal that completes when the full connect pipeline (Phase 1 +
+        /// Phase 2) has finished. The outer <c>DisconnectWorkerAsync</c> awaits this
+        /// before cleaning up to avoid racing with an in-flight connection or
+        /// background setup.
         /// </summary>
         public TaskCompletionSource ConnectCompleted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 

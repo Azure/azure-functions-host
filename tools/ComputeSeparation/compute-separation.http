@@ -76,6 +76,9 @@ Content-Type: application/json
 ### an outbound gRPC connection to the worker proxy. The proxy replays cached
 ### StartStream, WorkerInitResponse (with host.json + capabilities), and
 ### FunctionMetadataResponse. This triggers ScriptHost startup and function loading.
+### Returns 200 OK after gRPC connection and init handshake succeed (capabilities
+### including host.json received). ScriptHost startup and function loading complete
+### in the background.
 PUT {{runtimeHost}}/admin/workers/w_test01?code={{masterKey}}
 Content-Type: application/json
 
