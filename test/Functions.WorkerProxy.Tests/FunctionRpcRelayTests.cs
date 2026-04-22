@@ -448,6 +448,183 @@ public class FunctionRpcRelayTests : IDisposable
         Assert.Equal("http://localhost:50053", cached["HttpUri"]);
     }
 
+    // --- WorkerHttpEndpoint capture tests ---
+    // These verify the dynamic port advertised by the worker via its WorkerInitResponse
+    // (or FunctionEnvironmentReloadResponse) "HttpUri" capability is correctly captured
+    // into FunctionRpcRelay.WorkerHttpEndpoint, which the HTTP forwarding middleware uses
+    // as the YARP destination. Real .NET-isolated, Python, and Node v4 workers all bind
+    // to a kernel-assigned loopback port at startup and advertise it here, so losing this
+    // value silently breaks HTTP invocation routing entirely.
+
+    [Fact]
+    public async Task SpecializeWorkerAsync_WorkerHttpEndpoint_CapturedFromInitResponse_MergeStrategy()
+    {
+        var relay = CreateRelay();
+        relay._workerConnected.TrySetResult();
+
+        var initCaps = new Dictionary<string, string>
+        {
+            ["HttpUri"] = "http://localhost:5001"
+        };
+
+        var workerTask = SimulateWorkerAsync(relay, initCapabilities: initCaps);
+        await Task.WhenAll(
+            relay.SpecializeWorkerAsync(new Dictionary<string, string>(), "/app", CancellationToken.None),
+            workerTask);
+
+        Assert.Equal("http://localhost:5001", relay.WorkerHttpEndpoint);
+    }
+
+    [Fact]
+    public async Task SpecializeWorkerAsync_WorkerHttpEndpoint_ReplaceStrategyWithoutHttpUri_DropsCapture()
+    {
+        // CapabilitiesUpdateStrategy.Replace means the reload-time set IS the new
+        // capability set — anything not in it is intentionally gone. If the worker
+        // advertised HttpUri at init time but omits it from a Replace reload, that's
+        // the worker explicitly signalling "I no longer expose an HTTP endpoint" (e.g.,
+        // a worker that dropped its in-process HTTP listener after specialization).
+        // The proxy must respect that and leave WorkerHttpEndpoint null so requests
+        // fall through to the override or 503, rather than continuing to route to a
+        // listener that no longer exists.
+        var relay = CreateRelay();
+        relay._workerConnected.TrySetResult();
+
+        var initCaps = new Dictionary<string, string>
+        {
+            ["HttpUri"] = "http://localhost:5001",
+            ["RawHttpBodyBytes"] = "true"
+        };
+
+        var reloadCaps = new Dictionary<string, string>
+        {
+            ["RpcHttpBodyOnly"] = "True"
+        };
+
+        var workerTask = SimulateWorkerAsync(relay,
+            initCapabilities: initCaps,
+            reloadCapabilities: reloadCaps,
+            reloadStrategy: FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Replace);
+
+        await Task.WhenAll(
+            relay.SpecializeWorkerAsync(new Dictionary<string, string>(), "/app", CancellationToken.None),
+            workerTask);
+
+        Assert.Null(relay.WorkerHttpEndpoint);
+    }
+
+    [Fact]
+    public async Task SpecializeWorkerAsync_WorkerHttpEndpoint_CapturedFromReloadCapabilities()
+    {
+        // Some workers (e.g., the Python HTTP v2 streaming path) advertise HttpUri
+        // only after specialization, in the FunctionEnvironmentReloadResponse rather
+        // than the initial WorkerInitResponse. The capture must work in that case too.
+        var relay = CreateRelay();
+        relay._workerConnected.TrySetResult();
+
+        var reloadCaps = new Dictionary<string, string>
+        {
+            ["HttpUri"] = "http://localhost:5002"
+        };
+
+        var workerTask = SimulateWorkerAsync(relay, reloadCapabilities: reloadCaps);
+        await Task.WhenAll(
+            relay.SpecializeWorkerAsync(new Dictionary<string, string>(), "/app", CancellationToken.None),
+            workerTask);
+
+        Assert.Equal("http://localhost:5002", relay.WorkerHttpEndpoint);
+    }
+
+    [Fact]
+    public async Task SpecializeWorkerAsync_WorkerHttpEndpoint_ReloadValueWinsOverInit()
+    {
+        // If the worker advertises HttpUri at both init and reload time, the reload
+        // value is more recent and therefore authoritative. This mirrors the merge
+        // semantics applied to every other capability.
+        var relay = CreateRelay();
+        relay._workerConnected.TrySetResult();
+
+        var initCaps = new Dictionary<string, string>
+        {
+            ["HttpUri"] = "http://localhost:5001"
+        };
+
+        var reloadCaps = new Dictionary<string, string>
+        {
+            ["HttpUri"] = "http://localhost:5099"
+        };
+
+        var workerTask = SimulateWorkerAsync(relay, initCapabilities: initCaps, reloadCapabilities: reloadCaps);
+        await Task.WhenAll(
+            relay.SpecializeWorkerAsync(new Dictionary<string, string>(), "/app", CancellationToken.None),
+            workerTask);
+
+        Assert.Equal("http://localhost:5099", relay.WorkerHttpEndpoint);
+    }
+
+    [Fact]
+    public async Task SpecializeWorkerAsync_WorkerHttpEndpoint_NullWhenWorkerNeverAdvertisesIt()
+    {
+        // Workers that don't support HttpUri at all (Java, PowerShell, Node v3, .NET
+        // isolated without the AspNetCore extension) should leave WorkerHttpEndpoint
+        // null. The middleware then falls back to the --worker-http-endpoint override
+        // or returns 503 if no override was provided.
+        var relay = CreateRelay();
+        relay._workerConnected.TrySetResult();
+
+        var workerTask = SimulateWorkerAsync(relay);
+        await Task.WhenAll(
+            relay.SpecializeWorkerAsync(new Dictionary<string, string>(), "/app", CancellationToken.None),
+            workerTask);
+
+        Assert.Null(relay.WorkerHttpEndpoint);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task SpecializeWorkerAsync_WorkerHttpEndpoint_NullWhenWorkerAdvertisesBlankValue(string blankValue)
+    {
+        // Defensive: a worker that advertises an empty/whitespace HttpUri is treated
+        // as if it advertised nothing, rather than producing a routing destination of
+        // "" that would later cause forwarder.SendAsync to throw.
+        var relay = CreateRelay();
+        relay._workerConnected.TrySetResult();
+
+        var initCaps = new Dictionary<string, string>
+        {
+            ["HttpUri"] = blankValue
+        };
+
+        var workerTask = SimulateWorkerAsync(relay, initCapabilities: initCaps);
+        await Task.WhenAll(
+            relay.SpecializeWorkerAsync(new Dictionary<string, string>(), "/app", CancellationToken.None),
+            workerTask);
+
+        Assert.Null(relay.WorkerHttpEndpoint);
+    }
+
+    [Fact]
+    public async Task SpecializeWorkerAsync_WorkerHttpEndpoint_RewriteWithoutHttpUri_ClearsPreviouslyCapturedValue()
+    {
+        // Defense-in-depth regression for the capture-clear contract: the rewrite path
+        // must reset _workerHttpEndpoint when the post-merge capabilities don't include
+        // HttpUri, even if a previous run had captured a value. Today there's only one
+        // call site so this can't happen via SpecializeWorkerAsync alone, but pre-seeding
+        // the field simulates the "second specialization" / "pre-merge capture added by
+        // a future refactor" scenarios. Without the explicit `_workerHttpEndpoint = null`
+        // in RewriteHttpUri's else branch, this test would silently retain "http://stale".
+        var relay = CreateRelay();
+        relay._workerConnected.TrySetResult();
+        relay._workerHttpEndpoint = "http://stale-from-previous-run:9999";
+
+        var workerTask = SimulateWorkerAsync(relay);
+        await Task.WhenAll(
+            relay.SpecializeWorkerAsync(new Dictionary<string, string>(), "/app", CancellationToken.None),
+            workerTask);
+
+        Assert.Null(relay.WorkerHttpEndpoint);
+    }
+
     // --- Env var forwarding tests ---
 
     [Fact]

@@ -72,6 +72,17 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     // TCS for correlating request/response pairs during /assign.
     internal TaskCompletionSource<StreamingMessage>? _pendingWorkerResponse;
 
+    // HTTP endpoint advertised by the worker in its WorkerInitResponse "HttpUri" capability.
+    // Populated once per worker lifetime (during /assign); read by the HTTP forwarding
+    // middleware to route invocations to the worker's dynamically-chosen port.
+    internal volatile string? _workerHttpEndpoint;
+
+    /// <summary>
+    /// HTTP endpoint advertised by the worker via the <c>HttpUri</c> capability in
+    /// <c>WorkerInitResponse</c>. Null until the worker has completed init.
+    /// </summary>
+    public string? WorkerHttpEndpoint => _workerHttpEndpoint;
+
     // Guard against concurrent or repeated /assign calls.
     private int _specializationStarted;
 
@@ -184,6 +195,13 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             // Now that we know the function app directory, inject host.json and rewrite
             // the HttpUri capability so the runtime routes HTTP requests through this proxy.
             InjectHostJson(initResponse, functionAppDirectory);
+
+            // RewriteHttpUri MUST run AFTER the capability merge above. The merge produces
+            // the final, post-specialization capability set; rewriting before it would
+            // capture a stale or missing HttpUri (e.g. an init-only value that a Replace-
+            // strategy reload was supposed to drop). The
+            // SpecializeWorkerAsync_WorkerHttpEndpoint_* tests pin this ordering — if you
+            // reorder these calls and those tests still pass, the tests have rotted.
             RewriteHttpUri(initResponse);
 
             var capabilities = initResponse.WorkerInitResponse?.Capabilities;
@@ -353,9 +371,30 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             return;
         }
 
-        // Always set HttpUri to the proxy's endpoint. The worker may or may not have
-        // reported its own HttpUri — in container mode it often doesn't because
-        // its HTTP listener address isn't known at init time.
+        // Capture the worker's advertised HttpUri (dynamically-chosen port reported by
+        // the isolated worker SDK's HttpUriProvider) before we overwrite it. This is what
+        // the HTTP forwarding middleware will use as the YARP destination for invocations.
+        if (message.WorkerInitResponse.Capabilities.TryGetValue("HttpUri", out var advertisedUri)
+            && !string.IsNullOrWhiteSpace(advertisedUri))
+        {
+            _workerHttpEndpoint = advertisedUri;
+            _logger.LogInformation("Captured worker HttpUri '{Uri}' for HTTP invocation forwarding.", advertisedUri);
+        }
+        else
+        {
+            // Defense-in-depth: explicitly clear any previously-captured value so the
+            // post-rewrite state always reflects the capabilities we just observed.
+            // Today there is only one call site (post-merge in SpecializeWorkerAsync),
+            // so _workerHttpEndpoint is null here in practice — but if anyone adds a
+            // pre-merge capture or re-enables re-specialization, this branch must not
+            // silently leave a stale destination in place.
+            _workerHttpEndpoint = null;
+            _logger.LogWarning("Worker did not advertise an HttpUri capability in WorkerInitResponse. "
+                + "HTTP forwarding will require the --worker-http-endpoint override; otherwise requests will return 503.");
+        }
+
+        // Overwrite HttpUri with the proxy's endpoint so the runtime routes HTTP requests
+        // through this proxy (and we can then forward to the worker's real endpoint).
         message.WorkerInitResponse.Capabilities["HttpUri"] = _options.HttpProxyEndpoint;
         _logger.LogInformation("Set HttpUri capability to {Uri}.", _options.HttpProxyEndpoint);
     }
