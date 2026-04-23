@@ -18,9 +18,29 @@
     <InternalsVisibleTo Include="Microsoft.Azure.Functions.WorkerProxy.Tests" />
   </ItemGroup>
 
+  <!--
+    Linked source: pull the parity-critical JWT helpers (key parser, OrdinalIgnoreCase
+    validators) from the runtime's own source tree so both assemblies validate
+    NNA-minted x-ms-site-tokens identically. The files live in
+    src/WebJobs.Script.WebHost so the runtime's own ScriptJwtBearerExtensions and
+    SecretsUtility consume them too — drift between the two implementations is
+    structurally impossible for the shared bits.
+
+    Files are listed explicitly (not globbed) so adding a new shared file is a
+    deliberate two-project change. The proxy publishes AOT; anything compiled
+    in here must be AOT-safe (no reflection, no dynamic codegen).
+  -->
+  <ItemGroup>
+    <Compile Include="..\WebJobs.Script.WebHost\Security\Authentication\Shared\SiteTokenKeyParser.cs"
+             LinkBase="Authentication\Shared" />
+    <Compile Include="..\WebJobs.Script.WebHost\Security\Authentication\Shared\SiteTokenValidators.cs"
+             LinkBase="Authentication\Shared" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.76.0" />
     <PackageReference Include="Grpc.Tools" Version="2.76.0" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
 

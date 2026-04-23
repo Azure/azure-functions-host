@@ -67,7 +67,8 @@ public class ExternalWorkerEndToEndTests : IAsyncLifetime, IDisposable
             "dotnet",
             $"\"{workerProxyDll}\" --runtime-grpc-port {RuntimeGrpcPort} --worker-grpc-port {WorkerGrpcPort} --http-proxy-port {HttpProxyPort} --management-port {ManagementPort}",
             _workerProxyLogs,
-            "WorkerProxy");
+            "WorkerProxy",
+            environmentVariables: ComputeSeparationTestHelpers.GetWorkerProxyAuthEnvironment());
 
         await Task.Delay(3000);
         ComputeSeparationTestHelpers.EnsureProcessRunning(_workerProxyProcess, "WorkerProxy", _workerProxyLogs);
@@ -87,7 +88,7 @@ public class ExternalWorkerEndToEndTests : IAsyncLifetime, IDisposable
 
         // 2b. Assign the worker — drives init + specialize + metadata prefetch
         //     so cached responses are ready when the runtime connects.
-        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
+        using var proxyClient = ComputeSeparationTestHelpers.CreateAuthenticatedWorkerProxyClient(ManagementPort);
         var assignResponse = await proxyClient.PostAsync("/admin/worker/assign",
             new StringContent(
                 JsonConvert.SerializeObject(new { environment = new { FUNCTIONS_WORKER_RUNTIME = "node" }, functionAppDirectory = "/home/site/wwwroot" }),
