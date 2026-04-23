@@ -21,5 +21,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Helpers
             Assert.Equal(keyBytes, SecretsUtility.ToKeyBytes(base64Key));
             Assert.Equal(keyBytes, Convert.FromBase64String(base64Key));
         }
+
+        [Fact]
+        public void ToKeyBytes_MalformedInput_Throws()
+        {
+            // Guards the runtime contract: SecretsUtility.ToKeyBytes (and the
+            // shared SiteTokenKeyParser it delegates to) must throw on malformed
+            // input. SecretsUtility.GetTokenIssuerSigningKeys relies on this to
+            // surface configuration errors at startup; silently swallowing would
+            // leave operators chasing 401s with no signal.
+            const string MalformedHex = "ZZ75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248F6B038A61BACE9D7";
+            Assert.Throws<FormatException>(() => SecretsUtility.ToKeyBytes(MalformedHex));
+            Assert.Throws<FormatException>(() => SecretsUtility.ToKeyBytes("not-base64-or-hex"));
+        }
     }
 }

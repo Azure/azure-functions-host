@@ -3,9 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Microsoft.Azure.Web.DataProtection;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication.Shared;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -73,16 +73,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static byte[] ToKeyBytes(this string hexOrBase64)
         {
-            // only support 32 bytes (256 bits) key length
-            if (hexOrBase64.Length == 64)
-            {
-                return Enumerable.Range(0, hexOrBase64.Length)
-                    .Where(x => x % 2 == 0)
-                    .Select(x => Convert.ToByte(hexOrBase64.Substring(x, 2), 16))
-                    .ToArray();
-            }
-
-            return Convert.FromBase64String(hexOrBase64);
+            // Shared with Functions.WorkerProxy via linked source so both
+            // assemblies decode encryption keys identically.
+            return SiteTokenKeyParser.ToKeyBytes(hexOrBase64);
         }
 
         public static SymmetricSecurityKey[] GetTokenIssuerSigningKeys()

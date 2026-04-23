@@ -6,9 +6,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.IdentityModel.Tokens;
 using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
@@ -19,6 +21,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
 /// </summary>
 internal static class ComputeSeparationTestHelpers
 {
+    private const string WorkerProxyAudience = "worker-proxy-compute-separation";
+    private static readonly byte[] WorkerProxySigningKeyBytes = TestHelpers.GenerateKeyBytes();
+    private static readonly string WorkerProxySigningKey = Convert.ToBase64String(WorkerProxySigningKeyBytes);
+
     public static string FindRepoRoot()
     {
         string dir = Path.GetDirectoryName(typeof(ComputeSeparationTestHelpers).Assembly.Location);
@@ -147,6 +153,24 @@ internal static class ComputeSeparationTestHelpers
         return process;
     }
 
+    public static IDictionary<string, string> GetWorkerProxyAuthEnvironment()
+        => new Dictionary<string, string>
+        {
+            [EnvironmentSettingNames.ContainerEncryptionKey] = WorkerProxySigningKey,
+            [EnvironmentSettingNames.WebsitePodName] = WorkerProxyAudience
+        };
+
+    public static HttpClient CreateAuthenticatedWorkerProxyClient(int managementPort)
+    {
+        var client = new HttpClient
+        {
+            BaseAddress = new Uri($"http://localhost:{managementPort}")
+        };
+
+        client.DefaultRequestHeaders.Add(ScriptConstants.SiteTokenHeaderName, CreateWorkerProxySiteToken());
+        return client;
+    }
+
     public static void EnsureProcessRunning(Process process, string label, ConcurrentBag<string> logSink)
     {
         if (process.HasExited)
@@ -228,5 +252,22 @@ internal static class ComputeSeparationTestHelpers
         }
 
         throw new TimeoutException($"Worker proxy did not become ready within {timeout.Value.TotalSeconds}s.");
+    }
+
+    private static string CreateWorkerProxySiteToken()
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Audience = WorkerProxyAudience,
+            Issuer = ScriptConstants.LegionCoreUri,
+            Expires = DateTime.UtcNow.AddHours(1),
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(WorkerProxySigningKeyBytes),
+                SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(token);
     }
 }

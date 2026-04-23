@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication.Jwt;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication.Shared;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -148,8 +149,8 @@ namespace Microsoft.Extensions.DependencyInjection
             if (signingKeys.Length > 0)
             {
                 result.IssuerSigningKeys = signingKeys;
-                result.AudienceValidator = AudienceValidator;
-                result.IssuerValidator = IssuerValidator;
+                result.AudienceValidator = SiteTokenValidators.AudienceValidator;
+                result.IssuerValidator = SiteTokenValidators.IssuerValidator;
                 result.ValidAudiences = GetValidAudiences();
                 result.ValidIssuers =
                 [
@@ -161,32 +162,6 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             return result;
-        }
-
-        private static string IssuerValidator(string issuer, SecurityToken securityToken, TokenValidationParameters validationParameters)
-        {
-            if (!validationParameters.ValidIssuers.Any(p => string.Equals(issuer, p, StringComparison.OrdinalIgnoreCase)))
-            {
-                throw new SecurityTokenInvalidIssuerException("IDX10205: Issuer validation failed.")
-                {
-                    InvalidIssuer = issuer,
-                };
-            }
-
-            return issuer;
-        }
-
-        private static bool AudienceValidator(IEnumerable<string> audiences, SecurityToken securityToken, TokenValidationParameters validationParameters)
-        {
-            foreach (string audience in audiences)
-            {
-                if (validationParameters.ValidAudiences.Any(p => string.Equals(audience, p, StringComparison.OrdinalIgnoreCase)))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private static void LogAuthenticationFailure(AuthenticationFailedContext context)
