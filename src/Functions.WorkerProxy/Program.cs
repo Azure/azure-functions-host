@@ -1,15 +1,13 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Net;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.Azure.Functions.WorkerProxy.Configuration;
 using Microsoft.Azure.Functions.WorkerProxy;
+using Microsoft.Azure.Functions.WorkerProxy.Authentication;
+using Microsoft.Azure.Functions.WorkerProxy.Configuration;
 using Microsoft.Azure.Functions.WorkerProxy.Diagnostics;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Options;
-using Microsoft.Azure.Functions.WorkerProxy.Authentication;
 using Yarp.ReverseProxy.Forwarder;
 
 var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
@@ -35,7 +33,7 @@ int runtimeGrpcPort = GetIntArg(args, builder.Configuration, "--runtime-grpc-por
 int workerGrpcPort = GetIntArg(args, builder.Configuration, "--worker-grpc-port", 50052);
 int httpProxyPort = GetIntArg(args, builder.Configuration, "--http-proxy-port", 50053);
 int managementPort = GetIntArg(args, builder.Configuration, "--management-port", 50054);
-string workerHttpEndpoint = GetStringArg(args, builder.Configuration, "--worker-http-endpoint", "http://localhost:8080");
+string workerHttpEndpointOverride = GetStringArg(args, builder.Configuration, "--worker-http-endpoint", "http://localhost:8080");
 string? hostJsonPath = GetStringArgOrNull(args, builder.Configuration, "--host-json-path");
 string httpProxyEndpoint = GetStringArg(args, builder.Configuration, "--http-proxy-endpoint", $"http://localhost:{httpProxyPort}");
 string? configuredPodName = GetStringArgOrNull(args, builder.Configuration, "--pod-name");
