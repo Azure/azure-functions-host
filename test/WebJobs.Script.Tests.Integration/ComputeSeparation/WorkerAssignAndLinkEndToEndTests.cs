@@ -66,7 +66,8 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
         _workerProxyProcess = ComputeSeparationTestHelpers.StartManagedProcess(
             _output, "dotnet",
             $"\"{workerProxyDll}\" --runtime-grpc-port {RuntimeGrpcPort} --worker-grpc-port {WorkerGrpcPort} --http-proxy-port {HttpProxyPort} --management-port {ManagementPort}",
-            _workerProxyLogs, "WorkerProxy");
+            _workerProxyLogs, "WorkerProxy",
+            environmentVariables: ComputeSeparationTestHelpers.GetWorkerProxyAuthEnvironment());
 
         await Task.Delay(2000);
         ComputeSeparationTestHelpers.EnsureProcessRunning(_workerProxyProcess, "WorkerProxy", _workerProxyLogs);
@@ -100,7 +101,7 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
     [Fact]
     public async Task AssignFirst_ThenLink_FullFlow()
     {
-        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
+        using var proxyClient = ComputeSeparationTestHelpers.CreateAuthenticatedWorkerProxyClient(ManagementPort);
 
         // 1. Assign first — drives init + specialize + metadata prefetch.
         _output.WriteLine("Step 1: Calling /admin/worker/assign on worker proxy.");
@@ -126,7 +127,7 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
     [Fact]
     public async Task LinkFirst_ThenAssign_FullFlow()
     {
-        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
+        using var proxyClient = ComputeSeparationTestHelpers.CreateAuthenticatedWorkerProxyClient(ManagementPort);
         string masterKey = await _host.GetMasterKeyAsync();
 
         // 1. Link first — runtime connects and sends WorkerInitRequest.

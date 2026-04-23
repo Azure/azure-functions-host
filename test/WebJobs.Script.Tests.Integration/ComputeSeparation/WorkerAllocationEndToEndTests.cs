@@ -75,7 +75,8 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
             "dotnet",
             $"\"{workerProxyDll}\" --runtime-grpc-port {RuntimeGrpcPort} --worker-grpc-port {WorkerGrpcPort} --http-proxy-port {HttpProxyPort} --management-port {ManagementPort}",
             _workerProxyLogs,
-            "WorkerProxy");
+            "WorkerProxy",
+            environmentVariables: ComputeSeparationTestHelpers.GetWorkerProxyAuthEnvironment());
 
         await Task.Delay(2000);
         ComputeSeparationTestHelpers.EnsureProcessRunning(_workerProxyProcess, "WorkerProxy", _workerProxyLogs);
@@ -114,7 +115,7 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         _output.WriteLine("Got master key for admin API calls.");
 
         // 1. Assign the worker — drives init + specialize + metadata prefetch.
-        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
+        using var proxyClient = ComputeSeparationTestHelpers.CreateAuthenticatedWorkerProxyClient(ManagementPort);
         var assignResponse = await CallWorkerAssignAsync(proxyClient);
         _output.WriteLine($"Assign response: {assignResponse.StatusCode}");
         Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
@@ -152,7 +153,7 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         string masterKey = await _host.GetMasterKeyAsync();
 
         // 1. Assign the worker — drives init + specialize + metadata prefetch.
-        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
+        using var proxyClient = ComputeSeparationTestHelpers.CreateAuthenticatedWorkerProxyClient(ManagementPort);
         var assignResponse = await CallWorkerAssignAsync(proxyClient);
         _output.WriteLine($"Assign response: {assignResponse.StatusCode}");
         Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);

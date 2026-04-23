@@ -87,7 +87,8 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         _workerProxyProcess = ComputeSeparationTestHelpers.StartManagedProcess(
             _output, "dotnet",
             $"\"{workerProxyDll}\" --runtime-grpc-port {RuntimeGrpcPort} --worker-grpc-port {WorkerGrpcPort} --http-proxy-port {HttpProxyPort} --management-port {ManagementPort}",
-            new(), "WorkerProxy");
+            new(), "WorkerProxy",
+            environmentVariables: ComputeSeparationTestHelpers.GetWorkerProxyAuthEnvironment());
 
         await Task.Delay(2000);
         ComputeSeparationTestHelpers.EnsureProcessRunning(_workerProxyProcess, "WorkerProxy", new());
@@ -197,7 +198,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
 
         // 2. Assign the worker — drives init + specialize + metadata prefetch
         //    so cached responses are ready when the runtime links.
-        using var proxyClient = new HttpClient { BaseAddress = new Uri($"http://localhost:{ManagementPort}") };
+        using var proxyClient = ComputeSeparationTestHelpers.CreateAuthenticatedWorkerProxyClient(ManagementPort);
         var workerAssignResponse = await proxyClient.PostAsync("/admin/worker/assign",
             new StringContent(
                 JsonConvert.SerializeObject(new { environment = new { FUNCTIONS_WORKER_RUNTIME = "node" }, functionAppDirectory = "/home/site/wwwroot" }),
