@@ -5,10 +5,11 @@ WORKDIR /repo
 
 COPY . .
 RUN dotnet publish src/Functions.WorkerProxy/Functions.WorkerProxy.csproj \
-    -c Release -r linux-x64 -o /app/publish
+    -c Release -r linux-x64 -o /app/publish \
+    && find /app/publish -maxdepth 1 \( -name '*.pdb' -o -name '*.dbg' \) -delete
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled
 WORKDIR /app
-COPY --from=build /app/publish/Microsoft.Azure.Functions.WorkerProxy .
+COPY --from=build /app/publish/ ./
 EXPOSE 80 50051 50052 50053
 ENTRYPOINT ["./Microsoft.Azure.Functions.WorkerProxy"]
