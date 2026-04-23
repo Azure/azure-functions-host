@@ -1,34 +1,47 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Net;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.Functions.WorkerProxy;
 using Microsoft.Azure.Functions.WorkerProxy.Authentication;
+using Microsoft.Azure.Functions.WorkerProxy.Configuration;
+using Microsoft.Azure.Functions.WorkerProxy.Diagnostics;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
+using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Forwarder;
 
 var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
+EnsureEnvironmentVariablesConfiguration(builder.Configuration);
+var workerProxyEnvironmentOptionsSetup = new WorkerProxyEnvironmentOptionsSetup(builder.Configuration);
+var workerProxyEnvironmentOptions = new WorkerProxyEnvironmentOptions();
+workerProxyEnvironmentOptionsSetup.Configure(workerProxyEnvironmentOptions);
 
 // Prevent Aspire (or other orchestrators) from overriding our Kestrel configuration
 // via ASPNETCORE_URLS. The worker proxy manages its own ports explicitly.
 builder.WebHost.UseUrls();
 
-int runtimeGrpcPort = GetIntArg(args, "--runtime-grpc-port", 50051);
-int workerGrpcPort = GetIntArg(args, "--worker-grpc-port", 50052);
-int httpProxyPort = GetIntArg(args, "--http-proxy-port", 50053);
-int managementPort = GetIntArg(args, "--management-port", 80);
-// Explicit override for the worker's HTTP endpoint. When set (via CLI arg or env var),
-// this takes precedence over the HttpUri the worker advertises in its WorkerInitResponse
-// capabilities. When null, the proxy falls back to the worker-advertised HttpUri
-// (dynamic port chosen by the worker SDK). The override exists for the Aspire dev
-// harness, tests, and any deployment where the operator wants to pin the worker port.
-string? workerHttpEndpointOverride = GetStringArgOrNull(args, "--worker-http-endpoint");
-string? hostJsonPath = GetStringArgOrNull(args, "--host-json-path");
-string httpProxyEndpoint = GetStringArg(args, "--http-proxy-endpoint", $"http://localhost:{httpProxyPort}");
-string podName = GetStringArg(args, "--pod-name",
-    Environment.GetEnvironmentVariable("COMPUTERNAME")
-    ?? Environment.GetEnvironmentVariable("POD_NAME")
-    ?? Dns.GetHostName());
+builder.Services.AddOptions<WorkerProxyEnvironmentOptions>();
+builder.Services.AddSingleton<IConfigureOptions<WorkerProxyEnvironmentOptions>>(workerProxyEnvironmentOptionsSetup);
+
+if (workerProxyEnvironmentOptions.IsFlexOrLegion)
+{
+    builder.Logging.ClearProviders();
+    builder.Logging.Services.AddSingleton<ILoggerProvider, MsFunctionLogsLoggerProvider>();
+}
+
+int runtimeGrpcPort = GetIntArg(args, builder.Configuration, "--runtime-grpc-port", 50051);
+int workerGrpcPort = GetIntArg(args, builder.Configuration, "--worker-grpc-port", 50052);
+int httpProxyPort = GetIntArg(args, builder.Configuration, "--http-proxy-port", 50053);
+int managementPort = GetIntArg(args, builder.Configuration, "--management-port", 50054);
+string? workerHttpEndpointOverride = GetStringArgOrNull(args, builder.Configuration, "--worker-http-endpoint");
+string? hostJsonPath = GetStringArgOrNull(args, builder.Configuration, "--host-json-path");
+string httpProxyEndpoint = GetStringArg(args, builder.Configuration, "--http-proxy-endpoint", $"http://localhost:{httpProxyPort}");
+string? configuredPodName = GetStringArgOrNull(args, builder.Configuration, "--pod-name");
+string podName = !string.IsNullOrWhiteSpace(configuredPodName)
+    ? configuredPodName
+    : !string.IsNullOrWhiteSpace(workerProxyEnvironmentOptions.ComputerName)
+        ? workerProxyEnvironmentOptions.ComputerName
+        : System.Net.Dns.GetHostName();
 
 builder.Services.AddSingleton(new RelayOptions(runtimeGrpcPort, workerGrpcPort, httpProxyPort, hostJsonPath, httpProxyEndpoint, podName));
 builder.Services.AddSingleton<WorkerPodStateManager>();
@@ -176,7 +189,7 @@ app.Run();
 // Argument helpers — check CLI args first, then environment variables.
 // ---------------------------------------------------------------------------
 
-static int GetIntArg(string[] args, string name, int defaultValue)
+static int GetIntArg(string[] args, IConfiguration configuration, string name, int defaultValue)
 {
     int idx = Array.IndexOf(args, name);
     if (idx >= 0 && idx + 1 < args.Length && int.TryParse(args[idx + 1], out int value))
@@ -185,7 +198,7 @@ static int GetIntArg(string[] args, string name, int defaultValue)
     }
 
     string envKey = ArgNameToEnvKey(name);
-    string? envValue = Environment.GetEnvironmentVariable(envKey);
+    string? envValue = configuration[envKey];
     if (envValue is not null && int.TryParse(envValue, out int envResult))
     {
         return envResult;
@@ -194,7 +207,7 @@ static int GetIntArg(string[] args, string name, int defaultValue)
     return defaultValue;
 }
 
-static string GetStringArg(string[] args, string name, string defaultValue)
+static string GetStringArg(string[] args, IConfiguration configuration, string name, string defaultValue)
 {
     int idx = Array.IndexOf(args, name);
     if (idx >= 0 && idx + 1 < args.Length)
@@ -204,10 +217,10 @@ static string GetStringArg(string[] args, string name, string defaultValue)
 
     string envKey = ArgNameToEnvKey(name);
 
-    return Environment.GetEnvironmentVariable(envKey) ?? defaultValue;
+    return configuration[envKey] ?? defaultValue;
 }
 
-static string? GetStringArgOrNull(string[] args, string name)
+static string? GetStringArgOrNull(string[] args, IConfiguration configuration, string name)
 {
     int idx = Array.IndexOf(args, name);
     if (idx >= 0 && idx + 1 < args.Length)
@@ -217,8 +230,18 @@ static string? GetStringArgOrNull(string[] args, string name)
 
     string envKey = ArgNameToEnvKey(name);
 
-    return Environment.GetEnvironmentVariable(envKey);
+    return configuration[envKey];
 }
 
 static string ArgNameToEnvKey(string name) =>
     name.TrimStart('-').Replace('-', '_').ToUpperInvariant();
+
+static void EnsureEnvironmentVariablesConfiguration(ConfigurationManager configuration)
+{
+    ArgumentNullException.ThrowIfNull(configuration);
+
+    if (!configuration.Sources.OfType<EnvironmentVariablesConfigurationSource>().Any())
+    {
+        configuration.AddEnvironmentVariables();
+    }
+}
