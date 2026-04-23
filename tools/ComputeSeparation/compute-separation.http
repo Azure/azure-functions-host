@@ -15,6 +15,12 @@
 @workerProxyHost = http://localhost:50054
 @masterKey = dev-master-key
 
+### Long-lived JWT for worker proxy /admin/* calls.
+### Signed with the dev CONTAINER_ENCRYPTION_KEY from AppHost/Program.cs.
+### Audience = WEBSITE_POD_NAME ("devhost-pod"), issuer = LegionCoreUri,
+### expires 2050-01-01.
+@workerProxyToken= eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJkZXZob3N0LXBvZCIsImlzcyI6Imh0dHBzOi8vbGVnaW9uLmNvcmUuYXp1cmV3ZWJzaXRlcy5uZXQiLCJleHAiOjI1MjQ2MDgwMDAsInN1YiI6ImRldiIsImlhdCI6MTc3Njg5MzY3NSwibmJmIjoxNzc2ODkzNjc1fQ.djEdgPlEeKeG3FBEDK1D-oMWvuppG7H9WAv-0kJQn-U
+
 ### ============================================================
 ### Full Orchestration Flow
 ### ============================================================
@@ -38,6 +44,7 @@
 ### Step 1: Check worker proxy readiness
 ### NNA polls this until the worker has connected to the proxy via gRPC.
 GET {{workerProxyHost}}/admin/worker/ready
+x-ms-site-token: {{workerProxyToken}}
 
 ###
 
@@ -47,6 +54,7 @@ GET {{workerProxyHost}}/admin/worker/ready
 ### caching all responses for later replay to the runtime.
 POST {{workerProxyHost}}/admin/worker/assign
 Content-Type: application/json
+x-ms-site-token: {{workerProxyToken}}
 
 {
   "environment": {
@@ -120,6 +128,7 @@ GET {{runtimeHost}}/admin/host/ping
 ###   { functionsContainerType, podName, revision, state: { podStatus, runtimePodName, ... } }
 POST {{workerProxyHost}}/admin/infra/instanceState
 Content-Type: application/json
+x-ms-site-token: {{workerProxyToken}}
 
 {
   "revision": 0
@@ -137,6 +146,7 @@ Content-Type: application/json
 ### Runtime drains in-flight invocations and sends WorkerDrainComplete back.
 POST {{workerProxyHost}}/admin/worker/drain
 Content-Type: application/json
+x-ms-site-token: {{workerProxyToken}}
 
 {
   "reason": "IdleScaleIn"

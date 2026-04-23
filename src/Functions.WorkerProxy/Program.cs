@@ -1,8 +1,10 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Net;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.Functions.WorkerProxy;
+using Microsoft.Azure.Functions.WorkerProxy.Authentication;
 using Yarp.ReverseProxy.Forwarder;
 
 var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
@@ -21,13 +23,14 @@ string httpProxyEndpoint = GetStringArg(args, "--http-proxy-endpoint", $"http://
 string podName = GetStringArg(args, "--pod-name",
     Environment.GetEnvironmentVariable("COMPUTERNAME")
     ?? Environment.GetEnvironmentVariable("POD_NAME")
-    ?? System.Net.Dns.GetHostName());
+    ?? Dns.GetHostName());
 
 builder.Services.AddSingleton(new RelayOptions(runtimeGrpcPort, workerGrpcPort, httpProxyPort, hostJsonPath, httpProxyEndpoint, podName));
 builder.Services.AddSingleton<WorkerPodStateManager>();
 builder.Services.AddSingleton<FunctionRpcRelay>();
 builder.Services.AddGrpc();
 builder.Services.AddHttpForwarder();
+builder.Services.AddContainerJwtAuth();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -63,23 +66,38 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapGrpcService<FunctionRpcRelay>();
 
 // ---------------------------------------------------------------------------
 // Management API endpoints (minimal APIs for AOT compatibility).
 // Called by NNA on the management port.
+//
+// /admin/worker/ready is anonymous — NNA polls it before specialization,
+// before any encryption key has been delivered, so it cannot present a
+// container-issued JWT. All other /admin endpoints require a valid
+// container-issued JWT (presented via either the standard Authorization:
+// Bearer header or the x-ms-site-token header), matching the runtime's
+// /admin/host/assign authentication.
 // ---------------------------------------------------------------------------
 
 var stateManager = app.Services.GetRequiredService<WorkerPodStateManager>();
 var relay = app.Services.GetRequiredService<FunctionRpcRelay>();
 
-app.MapGet("/admin/worker/ready", () => ManagementApiHandlers.HandleReady(stateManager));
+var admin = app.MapGroup("/admin");
+
+admin.MapGet("/worker/ready", () => ManagementApiHandlers.HandleReady(stateManager))
+    .AllowAnonymous();
+
+var adminAuthed = admin.MapGroup(string.Empty).RequireAuthorization();
 
 // Worker specialization. NNA calls this after /admin/worker/ready succeeds with the
 // app settings payload. The worker proxy drives the full init + specialization +
 // metadata prefetch sequence with the worker, caching all responses for later replay
 // to the runtime.
-app.MapPost("/admin/worker/assign", async (HttpContext ctx, CancellationToken cancellationToken) =>
+adminAuthed.MapPost("/worker/assign", async (HttpContext ctx, CancellationToken cancellationToken) =>
 {
     WorkerAssignRequest? assignRequest;
     try
@@ -94,7 +112,7 @@ app.MapPost("/admin/worker/assign", async (HttpContext ctx, CancellationToken ca
     return await ManagementApiHandlers.HandleAssignAsync(assignRequest, stateManager, relay, cancellationToken);
 });
 
-app.MapPost("/admin/worker/drain", async (HttpContext ctx, CancellationToken cancellationToken) =>
+adminAuthed.MapPost("/worker/drain", async (HttpContext ctx, CancellationToken cancellationToken) =>
 {
     WorkerDrainRequest? drainRequest;
     try
@@ -110,7 +128,7 @@ app.MapPost("/admin/worker/drain", async (HttpContext ctx, CancellationToken can
     return await ManagementApiHandlers.HandleDrainAsync(drainRequest, stateManager, relay, logger);
 });
 
-app.MapPost("/admin/infra/instanceState", async (HttpContext ctx, CancellationToken cancellationToken) =>
+adminAuthed.MapPost("/infra/instanceState", async (HttpContext ctx, CancellationToken cancellationToken) =>
 {
     int clientRevision = 0;
 

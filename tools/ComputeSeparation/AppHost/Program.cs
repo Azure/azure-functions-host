@@ -32,6 +32,11 @@ const string MasterKey = "dev-master-key";
 // 64 hex chars = 32 bytes (256-bit AES key). Must match the pre-encrypted payload in compute-separation.http.
 const string ContainerEncryptionKey = "0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248F6B038A61BACE9D7";
 
+// Well-known pod identity for the worker proxy in local dev. Used as the JWT
+// audience when minting tokens for /admin/worker/* and /admin/infra/* calls.
+// Must match the @workerProxyToken value in compute-separation.http.
+const string DevPodName = "devhost-pod";
+
 // Well-known Azurite storage emulator account key.
 // https://learn.microsoft.com/azure/storage/common/storage-use-azurite#well-known-storage-account-and-key
 const string AzuriteAccountKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==";
@@ -120,6 +125,11 @@ static void AddProjectResources(
 
     var workerProxy = builder.AddProject<Projects.Functions_WorkerProxy>("worker-proxy")
         .WithHttpEndpoint(managementPort, managementPort, name: "management", isProxied: false)
+        // Match the runtime's container identity so the proxy validates the
+        // same JWT tokens NNA mints for /admin/host/assign — see the
+        // ContainerJwtAuth helper. Audience for proxy tokens is WEBSITE_POD_NAME.
+        .WithEnvironment("CONTAINER_ENCRYPTION_KEY", ContainerEncryptionKey)
+        .WithEnvironment("WEBSITE_POD_NAME", DevPodName)
         .WithArgs(
             "--runtime-grpc-port", runtimeGrpcPort.ToString(),
             "--worker-grpc-port", workerGrpcPort.ToString(),
@@ -157,6 +167,9 @@ static void AddContainerResources(
         .WithHttpEndpoint(managementPort, managementPort, name: "proxy-management")
         .WithBindMount(hostJsonSource, "/home/site/wwwroot/host.json", isReadOnly: true)
         .WithEnvironment("Logging__LogLevel__Default", "Debug")
+        // See AddProjectResources for context — same JWT auth seeds in container mode.
+        .WithEnvironment("CONTAINER_ENCRYPTION_KEY", ContainerEncryptionKey)
+        .WithEnvironment("WEBSITE_POD_NAME", DevPodName)
         .WithArgs(
             "--runtime-grpc-port", runtimeGrpcPort.ToString(),
             "--worker-grpc-port", workerGrpcPort.ToString(),
