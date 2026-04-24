@@ -185,6 +185,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.StorageProvider
         }
 
         [Fact]
+        public async Task GetTokenAsync_DoubleSlashScope_AcceptsAndSucceeds()
+        {
+            var handler = new MockHandler(new BrokerResponse
+            {
+                Token = "double-slash-token",
+                ExpiresOn = DateTimeOffset.UtcNow.AddHours(1),
+            });
+
+            using var httpClient = new HttpClient(handler);
+            using var credential = new BrokerTokenCredential(TestEndpoint, TestApiKey, httpClient);
+
+            // Azure SDK appends /.default to resource URI https://storage.azure.com/, producing double slash
+            var context = new TokenRequestContext(new[] { "https://storage.azure.com//.default" });
+            var token = await credential.GetTokenAsync(context, CancellationToken.None);
+
+            token.Token.Should().Be("double-slash-token");
+        }
+
+        [Fact]
         public async Task GetTokenAsync_NoScopes_ThrowsArgumentException()
         {
             using var credential = new BrokerTokenCredential(TestEndpoint, TestApiKey);

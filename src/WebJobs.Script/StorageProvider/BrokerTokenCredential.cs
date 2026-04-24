@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private const string ApiKeyHeaderName = "X-Broker-Key";
         private const string StorageScope = "https://storage.azure.com/.default";
+        private const string StorageScopeDoubleSlash = "https://storage.azure.com//.default";
         private const string StorageResource = "https://storage.azure.com/";
 
         private static readonly TimeSpan RefreshBuffer = TimeSpan.FromMinutes(5);
@@ -129,6 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             var scope = requestContext.Scopes[0];
             bool isValidScope = string.Equals(scope, StorageScope, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(scope, StorageScopeDoubleSlash, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(scope, StorageResource, StringComparison.OrdinalIgnoreCase);
 
             if (!isValidScope)
