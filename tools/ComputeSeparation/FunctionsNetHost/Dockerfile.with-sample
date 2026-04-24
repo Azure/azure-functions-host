@@ -1,0 +1,63 @@
+# FunctionsNetHost — with sample function app baked in.
+#
+# Variant of ./Dockerfile that additionally publishes
+# tools/ComputeSeparation/SampleIsolatedApp and bakes its output into
+# /home/site/wwwroot/, so the image is self-sufficient without a customer
+# code mount. Used by the WSL real-images compute-separation test.
+#
+# Build context: repository root (same as ./Dockerfile).
+#
+# Usage (from azure-functions-host repo root):
+#   docker build -f tools/ComputeSeparation/FunctionsNetHost/Dockerfile.with-sample \
+#                -t <registry>/functions-worker-net-host-with-sample:latest .
+
+# --- Stage 1: Extract FunctionsNetHost from NuGet (matches ./Dockerfile) ---
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS extract-nethost
+
+WORKDIR /extract
+COPY NuGet.config .
+
+# Use dotnet restore with a minimal project to pull the NuGet package.
+RUN echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup><PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.14" /></ItemGroup></Project>' > /extract/Extract.csproj \
+    && dotnet restore Extract.csproj --configfile NuGet.config
+
+RUN CONTENT_DIR=$(find /root/.nuget/packages/microsoft.azure.functions.dotnetisolatednativehost/1.0.14/contentFiles/any/any/workers/dotnet-isolated -maxdepth 0) \
+    && cp "${CONTENT_DIR}/bin/FunctionsNetHost" /extract/ \
+    && cp "${CONTENT_DIR}/bin/libnethost.so" /extract/ \
+    && cp "${CONTENT_DIR}/worker.config.json" /extract/ \
+    && cp -r "${CONTENT_DIR}/bin/prelaunchapps" /extract/
+
+# --- Stage 2: Publish SampleIsolatedApp ---
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish-sample
+WORKDIR /repo
+COPY tools/ComputeSeparation/SampleIsolatedApp/ ./SampleIsolatedApp/
+RUN dotnet publish SampleIsolatedApp/SampleIsolatedApp.csproj \
+    -c Release -o /app/wwwroot
+
+# --- Stage 3: Final image ---
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble
+
+WORKDIR /app
+
+COPY --from=extract-nethost /extract/FunctionsNetHost ./
+COPY --from=extract-nethost /extract/libnethost.so ./
+COPY --from=extract-nethost /extract/worker.config.json ./
+COPY --from=extract-nethost /extract/prelaunchapps/ ./prelaunchapps/
+
+# Sample app pre-baked at the standard customer code path — no external mount needed.
+COPY --from=publish-sample /app/wwwroot/ /home/site/wwwroot/
+
+ENV HOME=/home
+ENV FUNCTIONS_GRPC_HOST=localhost
+# Worker-proxy's worker-facing gRPC listener defaults to 50052 (WorkerProxyGrpcWorkerPort
+# in the Legion WSL test; see FunctionsComputeSeparationTests.cs). FunctionsNetHost dials
+# this endpoint to register as the language worker.
+ENV FUNCTIONS_GRPC_PORT=50052
+
+# Entrypoint tees all stdout+stderr to /tmp/container-stdout.log so integration tests can
+# recover the full process log via `ctr tasks exec cat` even when the `ctr tasks attach`
+# log-capture approach misses the startup window. FunctionsNetHost's output isn't
+# interactive, so the tee has no side-effects; PID 1 is /bin/sh, which matches the base
+# ./Dockerfile (that already uses a wrapper shell).
+ENTRYPOINT ["/bin/sh", "-c", \
+    "/app/FunctionsNetHost FunctionsNetHost --functions-uri http://${FUNCTIONS_GRPC_HOST}:${FUNCTIONS_GRPC_PORT} --functions-request-id dev-request-id --functions-worker-id w_nethost01 --functions-grpc-max-message-length 134217728 2>&1 | tee /tmp/container-stdout.log"]

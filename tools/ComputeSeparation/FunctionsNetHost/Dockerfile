@@ -44,6 +44,8 @@ RUN mkdir -p /home/site/wwwroot
 
 ENV HOME=/home
 ENV FUNCTIONS_GRPC_HOST=localhost
+# Worker-proxy's worker-facing gRPC listener defaults to 50052 (WORKER_GRPC_PORT).
+# FunctionsNetHost dials this endpoint to register as the language worker.
 ENV FUNCTIONS_GRPC_PORT=50052
 
 ENTRYPOINT ["/bin/sh", "-c", \

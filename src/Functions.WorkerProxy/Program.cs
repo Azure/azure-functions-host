@@ -31,10 +31,15 @@ builder.Services.AddSingleton<IConfigureOptions<WorkerProxyEnvironmentOptions>>(
     builder.Logging.Services.AddSingleton<ILoggerProvider, WorkerProxyFileLoggerProvider>();
 }
 
-int runtimeGrpcPort = GetIntArg(args, builder.Configuration, "--runtime-grpc-port", 50051);
-int workerGrpcPort = GetIntArg(args, builder.Configuration, "--worker-grpc-port", 50052);
-int httpProxyPort = GetIntArg(args, builder.Configuration, "--http-proxy-port", 50053);
-int managementPort = GetIntArg(args, builder.Configuration, "--management-port", 50054);
+int runtimeGrpcPort = GetIntArg(args, builder.Configuration, "--runtime-grpc-port", 50053);
+int workerGrpcPort = GetIntArg(args, builder.Configuration, "--worker-grpc-port", 50054);
+int httpProxyPort = GetIntArg(args, builder.Configuration, "--http-proxy-port", 28080);
+int managementPort = GetIntArg(args, builder.Configuration, "--management-port", 80);
+// Explicit override for the worker's HTTP endpoint. When set (via CLI arg or env var),
+// this takes precedence over the HttpUri the worker advertises in its WorkerInitResponse
+// capabilities. When null, the proxy falls back to the worker-advertised HttpUri
+// (dynamic port chosen by the worker SDK). The override exists for the Aspire dev
+// harness, tests, and any deployment where the operator wants to pin the worker port.
 string? workerHttpEndpointOverride = GetStringArgOrNull(args, builder.Configuration, "--worker-http-endpoint");
 string? hostJsonPath = GetStringArgOrNull(args, builder.Configuration, "--host-json-path");
 string httpProxyEndpoint = GetStringArg(args, builder.Configuration, "--http-proxy-endpoint", $"http://localhost:{httpProxyPort}");
