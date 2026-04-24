@@ -8,7 +8,7 @@ RUN dotnet publish src/Functions.WorkerProxy/Functions.WorkerProxy.csproj \
     -c Release -r linux-x64 -o /app/publish \
     && find /app/publish -maxdepth 1 \( -name '*.pdb' -o -name '*.dbg' \) -delete
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble
 WORKDIR /app
 COPY --from=build /app/publish/ ./
 EXPOSE 80 50051 50052 50053
