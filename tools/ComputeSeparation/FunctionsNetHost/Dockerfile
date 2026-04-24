@@ -10,7 +10,7 @@
 #   docker build -f tools/ComputeSeparation/FunctionsNetHost/Dockerfile -t functions-nethost .
 #   docker run -v /path/to/app:/home/site/wwwroot \
 #              -e FUNCTIONS_GRPC_HOST=<proxy-host> \
-#              -e FUNCTIONS_GRPC_PORT=50052 \
+#              -e FUNCTIONS_GRPC_PORT=50054 \
 #              functions-nethost
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS extract-nethost
@@ -44,7 +44,9 @@ RUN mkdir -p /home/site/wwwroot
 
 ENV HOME=/home
 ENV FUNCTIONS_GRPC_HOST=localhost
-ENV FUNCTIONS_GRPC_PORT=50052
+# Worker-proxy's worker-facing gRPC listener defaults to 50054 (WORKER_GRPC_PORT).
+# FunctionsNetHost dials this endpoint to register as the language worker.
+ENV FUNCTIONS_GRPC_PORT=50054
 
 ENTRYPOINT ["/bin/sh", "-c", \
     "exec /app/FunctionsNetHost FunctionsNetHost --functions-uri http://${FUNCTIONS_GRPC_HOST}:${FUNCTIONS_GRPC_PORT} --functions-request-id dev-request-id --functions-worker-id w_nethost01 --functions-grpc-max-message-length 134217728"]

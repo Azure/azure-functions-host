@@ -11,5 +11,5 @@ RUN dotnet publish src/Functions.WorkerProxy/Functions.WorkerProxy.csproj \
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble
 WORKDIR /app
 COPY --from=build /app/publish/ ./
-EXPOSE 80 50051 50052 50053
+EXPOSE 80 28080 50053 50054
 ENTRYPOINT ["./Microsoft.Azure.Functions.WorkerProxy"]

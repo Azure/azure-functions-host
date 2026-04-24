@@ -1,0 +1,51 @@
+# Functions.WorkerProxy (gRPC relay + HTTP proxy) — with sample function app baked in.
+#
+# Variant of ./Dockerfile that also layers the SampleIsolatedApp publish output into
+# /home/site/wwwroot/. This is used by WSL compute-separation tests so the worker-proxy
+# can read host.json from {functionAppDirectory}/host.json (see
+# FunctionRpcRelay.InjectHostJson) without needing a shared volume mount to the
+# worker-net-host container's wwwroot.
+#
+# Build context: repository root (same as ./Dockerfile).
+#
+# Usage (from azure-functions-host repo root):
+#   docker build -f src/Functions.WorkerProxy/Dockerfile.with-sample \
+#                -t <registry>/functions-worker-proxy-with-sample:latest .
+
+# --- Stage 1: AOT-publish Functions.WorkerProxy ---
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble-aot AS build
+WORKDIR /repo
+
+COPY . .
+RUN dotnet publish src/Functions.WorkerProxy/Functions.WorkerProxy.csproj \
+    -c Release -r linux-x64 -o /app/publish \
+    && find /app/publish -maxdepth 1 \( -name '*.pdb' -o -name '*.dbg' \) -delete
+
+# --- Stage 2: Publish SampleIsolatedApp (for /home/site/wwwroot contents) ---
+# Only the published output (including host.json) is needed; FunctionsNetHost executes
+# the app inside the worker-net-host container, not here.
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish-sample
+WORKDIR /repo
+COPY tools/ComputeSeparation/SampleIsolatedApp/ ./SampleIsolatedApp/
+RUN dotnet publish SampleIsolatedApp/SampleIsolatedApp.csproj \
+    -c Release -o /app/wwwroot
+
+# --- Stage 3: Final image ---
+# NOTE: base is runtime-deps:10.0-noble (NOT -chiseled). The production worker-proxy
+# uses the chiseled variant for minimal size, but the chiseled image has no /bin/sh
+# or /bin/tee which blocks our ENTRYPOINT-based log capture. Since Dockerfile.with-sample
+# is a test-only variant already, accepting a larger base here is a worthwhile tradeoff
+# for reliable log capture. The product binary itself is identical.
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble
+WORKDIR /app
+COPY --from=build /app/publish/ ./
+COPY --from=publish-sample /app/wwwroot/ /home/site/wwwroot/
+EXPOSE 80 28080 50053 50054
+
+# Tee stdout+stderr to /tmp/container-stdout.log so the Legion WSL integration test can
+# recover the full process log via `ctr tasks exec cat /tmp/container-stdout.log` even
+# when the `ctr tasks attach` host-side capture misses the startup window.
+# Using bash + `exec` + process substitution so the worker-proxy PROCESS replaces the
+# shell as PID 1 (proper SIGTERM handling on pod shutdown) while its stdout/stderr are
+# simultaneously piped to the capture file and the container's real stdout.
+ENTRYPOINT ["/bin/bash", "-c", "exec ./Microsoft.Azure.Functions.WorkerProxy > >(tee /tmp/container-stdout.log) 2>&1"]
