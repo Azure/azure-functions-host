@@ -23,10 +23,12 @@ builder.WebHost.UseUrls();
 builder.Services.AddOptions<WorkerProxyEnvironmentOptions>();
 builder.Services.AddSingleton<IConfigureOptions<WorkerProxyEnvironmentOptions>>(workerProxyEnvironmentOptionsSetup);
 
-if (workerProxyEnvironmentOptions.IsFlexOrLegion)
+// [CS-TODO] Temporarily removing this gate; need to ensure it's the proper check
+// if (workerProxyEnvironmentOptions.IsFlexOrLegion)
 {
     builder.Logging.ClearProviders();
     builder.Logging.Services.AddSingleton<ILoggerProvider, MsFunctionLogsLoggerProvider>();
+    builder.Logging.Services.AddSingleton<ILoggerProvider, WorkerProxyFileLoggerProvider>();
 }
 
 int runtimeGrpcPort = GetIntArg(args, builder.Configuration, "--runtime-grpc-port", 50051);
