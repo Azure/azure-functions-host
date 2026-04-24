@@ -49,10 +49,10 @@ COPY --from=publish-sample /app/wwwroot/ /home/site/wwwroot/
 
 ENV HOME=/home
 ENV FUNCTIONS_GRPC_HOST=localhost
-# Worker-proxy's worker-facing gRPC listener defaults to 50052 (WorkerProxyGrpcWorkerPort
+# Worker-proxy's worker-facing gRPC listener defaults to 50054 (WorkerProxyGrpcWorkerPort
 # in the Legion WSL test; see FunctionsComputeSeparationTests.cs). FunctionsNetHost dials
 # this endpoint to register as the language worker.
-ENV FUNCTIONS_GRPC_PORT=50052
+ENV FUNCTIONS_GRPC_PORT=50054
 
 # Entrypoint tees all stdout+stderr to /tmp/container-stdout.log so integration tests can
 # recover the full process log via `ctr tasks exec cat` even when the `ctr tasks attach`
