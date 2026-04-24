@@ -198,8 +198,7 @@ static void AddContainerResources(
         // Add a second HTTP listener on all interfaces (0.0.0.0) at the known port so the
         // proxy can reach it across Docker container boundaries. The SDK's default listener
         // binds to localhost only, which is unreachable from other containers.
-        .WithEnvironment("FUNCTIONS_HTTP_PORT", mockWorkerHttpPort.ToString())
-        .WaitFor(workerProxy);
+        .WithEnvironment("FUNCTIONS_HTTP_PORT", mockWorkerHttpPort.ToString());
 
     // Wire proxy env vars that depend on the worker being defined.
     // Use the Docker container name + fixed port directly (not Aspire's *.dev.internal proxy)
@@ -236,8 +235,6 @@ static void AddContainerResources(
             ConfigureStorageConnectionString(context, storage);
         })
         .WaitFor(storage);
-
-    isolatedWorker.WaitFor(workerProxy);
 }
 
 static void ConfigureStorageConnectionString(

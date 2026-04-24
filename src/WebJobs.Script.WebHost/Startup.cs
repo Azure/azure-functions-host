@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,6 +31,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
         {
+            if (Configuration.IsExternalWorkerEnabled())
+            {
+                var startupLogger = loggerFactory.CreateLogger(LogCategories.Startup);
+
+                startupLogger.LogInformation(
+                    "External worker mode enabled at startup. '{settingName}' is set, so the root host registered external worker services.",
+                    EnvironmentSettingNames.FunctionsWorkerExternalEnabled);
+            }
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

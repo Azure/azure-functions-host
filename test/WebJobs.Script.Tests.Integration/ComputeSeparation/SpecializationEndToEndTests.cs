@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -193,6 +194,14 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
     [Fact]
     public async Task SpecializationFlow_AssignThenLinkThenInvoke()
     {
+        Assert.Contains(
+            _loggerProvider.GetAllLogMessages(),
+            m => string.Equals(m.Category, LogCategories.Startup, StringComparison.Ordinal)
+                && string.Equals(
+                    m.FormattedMessage,
+                    $"External worker mode enabled at startup. '{EnvironmentSettingNames.FunctionsWorkerExternalEnabled}' is set, so the root host registered external worker services.",
+                    StringComparison.Ordinal));
+
         var secretManager = _webHost.Services.GetService<ISecretManagerProvider>().Current;
         string masterKey = (await secretManager.GetHostSecretsAsync()).MasterKey;
 

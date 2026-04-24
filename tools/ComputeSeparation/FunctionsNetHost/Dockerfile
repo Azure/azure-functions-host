@@ -16,17 +16,19 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS extract-nethost
 
 WORKDIR /extract
-COPY NuGet.config .
 
-# Use dotnet restore with a minimal project to pull the NuGet package.
-RUN echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><ItemGroup><PackageReference Include="Microsoft.Azure.Functions.DotNetIsolatedNativeHost" Version="1.0.14" /></ItemGroup></Project>' > /extract/Extract.csproj \
-    && dotnet restore Extract.csproj --configfile NuGet.config
-
-RUN CONTENT_DIR=$(find /root/.nuget/packages/microsoft.azure.functions.dotnetisolatednativehost/1.0.14/contentFiles/any/any/workers/dotnet-isolated -maxdepth 0) \
-    && cp "${CONTENT_DIR}/bin/FunctionsNetHost" /extract/ \
-    && cp "${CONTENT_DIR}/bin/libnethost.so" /extract/ \
-    && cp "${CONTENT_DIR}/worker.config.json" /extract/ \
-    && cp -r "${CONTENT_DIR}/bin/prelaunchapps" /extract/
+# Build Linux FunctionsNetHost from source and stage the same files that the packaged native host provides.
+RUN apt-get update \
+    && apt-get install -y git clang zlib1g-dev \
+    && git clone --depth 1 --single-branch --branch brettsam/nethost_retry https://github.com/Azure/azure-functions-dotnet-worker.git /tmp/azure-functions-dotnet-worker \
+    && for tfm in net10.0 net9.0 net8.0; do \
+        version="${tfm#net}"; \
+        dotnet publish /tmp/azure-functions-dotnet-worker/host/src/PrelaunchApp/App.csproj -c Release -f "${tfm}" -p:UseAppHost=false -o "/extract/prelaunchapps/${version}"; \
+    done \
+    && dotnet publish /tmp/azure-functions-dotnet-worker/host/src/FunctionsNetHost/FunctionsNetHost.csproj -c Release -r linux-x64 -o /tmp/functionsnethost-linux \
+    && cp /tmp/functionsnethost-linux/FunctionsNetHost /extract/ \
+    && cp /tmp/functionsnethost-linux/libnethost.so /extract/ \
+    && cp /tmp/azure-functions-dotnet-worker/host/tools/build/worker.config.json /extract/
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble
 
