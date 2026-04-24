@@ -3,6 +3,7 @@
 
 using System;
 using System.IO.Abstractions;
+using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
@@ -361,6 +362,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // Adds necessary Azure services to create clients
             services.AddAzureClientsCore();
+
+            // Wrap the default AzureComponentFactory with BrokerAwareComponentFactory to support
+            // AzureWebJobsStorage__credential=Broker for token broker-mediated storage access.
+            var defaultFactoryDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(AzureComponentFactory));
+            if (defaultFactoryDescriptor?.ImplementationType != null)
+            {
+                services.Remove(defaultFactoryDescriptor);
+                services.AddSingleton<AzureComponentFactory>(sp =>
+                {
+                    AzureComponentFactory inner = (AzureComponentFactory)ActivatorUtilities.CreateInstance(sp, defaultFactoryDescriptor.ImplementationType);
+                    return new BrokerAwareComponentFactory(inner);
+                });
+            }
 
             // HostAzureBlobStorageProvider depends on JobHostInternalStorageOptions to support ability to provide a SAS blob container as the Hosting container.
             // This is registered in WebJobs.Host.Storage, but since IAzureBlobStorageProvider needs to be accessible in the WebHost layer,
