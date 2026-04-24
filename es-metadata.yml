@@ -1,0 +1,12 @@
+schemaVersion: 1.0.0
+providers:
+- provider: InventoryAsCode
+  version: 1.0.0
+  metadata:
+    isProduction: true
+    accountableOwners:
+      service: e8fdf03b-44f7-48d3-8653-a744c922a342
+    routing:
+      defaultAreaPath:
+        org: azfunc
+        path: internal\Azure Functions\Core
