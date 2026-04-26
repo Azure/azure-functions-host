@@ -39,10 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         {
             var request = new ExternalWorkerInfo
             {
-                WorkerId = "w_test1234",
-                PodName = "worker-pod-abc123",
-                GrpcEndpoint = "http://10.0.1.42:50051",
-                PodKey = "test-key"
+                WorkerPodName = "w_test1234",
+                WorkerGrpcEndpoint = "http://10.0.1.42:50051",
+                WorkerContainerEncryptionKey = "test-key"
             };
 
             _mockConnectionManager
@@ -65,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         [Fact]
         public async Task LinkWorker_MissingEndpoint_Returns400()
         {
-            var request = new ExternalWorkerInfo { WorkerId = "w_test1234" };
+            var request = new ExternalWorkerInfo { WorkerPodName = "w_test1234" };
 
             var result = await _controller.LinkWorker("w_test1234", request);
 
@@ -77,8 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         {
             var request = new ExternalWorkerInfo
             {
-                WorkerId = "w_test1234",
-                GrpcEndpoint = "not-a-valid-uri"
+                WorkerPodName = "w_test1234",
+                WorkerGrpcEndpoint = "not-a-valid-uri"
             };
 
             var result = await _controller.LinkWorker("w_test1234", request);
@@ -94,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         {
             var request = new ExternalWorkerInfo
             {
-                GrpcEndpoint = "http://10.0.1.42:50051"
+                WorkerGrpcEndpoint = "http://10.0.1.42:50051"
             };
 
             var result = await _controller.LinkWorker(routeWorkerId, request);
@@ -108,8 +107,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         {
             var request = new ExternalWorkerInfo
             {
-                WorkerId = "w_bodyid01",
-                GrpcEndpoint = "http://10.0.1.42:50051"
+                WorkerPodName = "w_bodyid01",
+                WorkerGrpcEndpoint = "http://10.0.1.42:50051"
             };
 
             var result = await _controller.LinkWorker("w_routeid1", request);
@@ -123,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         {
             var request = new ExternalWorkerInfo
             {
-                GrpcEndpoint = "http://10.0.1.42:50051"
+                WorkerGrpcEndpoint = "http://10.0.1.42:50051"
             };
 
             _mockConnectionManager
@@ -142,8 +141,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             var request = new ExternalWorkerInfo
             {
-                WorkerId = "w_test1234",
-                GrpcEndpoint = "http://10.0.1.42:50051"
+                WorkerPodName = "w_test1234",
+                WorkerGrpcEndpoint = "http://10.0.1.42:50051"
             };
 
             var result = await _controller.LinkWorker("w_test1234", request);
@@ -161,8 +160,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             var request = new ExternalWorkerInfo
             {
-                WorkerId = "w_test1234",
-                GrpcEndpoint = "http://10.0.1.42:50051"
+                WorkerPodName = "w_test1234",
+                WorkerGrpcEndpoint = "http://10.0.1.42:50051"
             };
 
             var result = await _controller.LinkWorker("w_test1234", request);
@@ -176,8 +175,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         {
             var request = new ExternalWorkerInfo
             {
-                WorkerId = "w_test1234",
-                GrpcEndpoint = "http://10.0.1.42:50051"
+                WorkerPodName = "w_test1234",
+                WorkerGrpcEndpoint = "http://10.0.1.42:50051"
             };
 
             _mockConnectionManager
@@ -196,8 +195,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         {
             var request = new ExternalWorkerInfo
             {
-                WorkerId = "w_test1234",
-                GrpcEndpoint = "http://10.0.1.42:50051"
+                WorkerPodName = "w_test1234",
+                WorkerGrpcEndpoint = "http://10.0.1.42:50051"
             };
 
             _mockConnectionManager

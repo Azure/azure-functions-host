@@ -99,6 +99,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 signingKeys.Add(new SymmetricSecurityKey(key.ToKeyBytes()));
             }
 
+            // Always accept tokens signed with CONTAINER_ENCRYPTION_KEY.
+            // Legion NNA always signs with this key, even after specialization
+            // sets WEBSITE_AUTH_ENCRYPTION_KEY which shadows it in TryGetEncryptionKey.
+            string containerKey = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey);
+            if (!string.IsNullOrEmpty(containerKey)
+                && !string.Equals(containerKey, defaultKey)
+                && !string.Equals(containerKey, key))
+            {
+                signingKeys.Add(new SymmetricSecurityKey(containerKey.ToKeyBytes()));
+            }
+
             return signingKeys.ToArray();
         }
 

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Microsoft.Azure.Functions.WorkerProxy.Supervisor</AssemblyName>
+    <RootNamespace>Microsoft.Azure.Functions.WorkerProxy.Supervisor</RootNamespace>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Standalone tool; opt out of repo-level code-analysis ruleset. -->
+    <CodeAnalysisRuleSet />
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Microsoft.Azure.Functions.WorkerProxy.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -75,6 +75,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Functions.WorkerProxy", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Functions.WorkerProxy.Tests", "test\Functions.WorkerProxy.Tests\Functions.WorkerProxy.Tests.csproj", "{52A072D5-49B2-4C36-A6BE-9FCB07C765DC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Functions.WorkerProxy.Supervisor", "src\Functions.WorkerProxy.Supervisor\Functions.WorkerProxy.Supervisor.csproj", "{113C6147-CB33-4D43-BFF8-05F6A734B147}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -175,6 +177,10 @@ Global
 		{52A072D5-49B2-4C36-A6BE-9FCB07C765DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{52A072D5-49B2-4C36-A6BE-9FCB07C765DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{52A072D5-49B2-4C36-A6BE-9FCB07C765DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{113C6147-CB33-4D43-BFF8-05F6A734B147}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{113C6147-CB33-4D43-BFF8-05F6A734B147}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{113C6147-CB33-4D43-BFF8-05F6A734B147}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{113C6147-CB33-4D43-BFF8-05F6A734B147}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -206,6 +212,7 @@ Global
 		{12894F85-EC35-440F-8706-A62372C285F6} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{88029299-B3E3-46BB-B5DF-57669DB10DBB} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{52A072D5-49B2-4C36-A6BE-9FCB07C765DC} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
+		{113C6147-CB33-4D43-BFF8-05F6A734B147} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
