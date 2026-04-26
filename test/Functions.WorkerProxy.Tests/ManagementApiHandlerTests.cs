@@ -119,6 +119,8 @@ public class ManagementApiHandlerTests
 
         var request = new WorkerAssignRequest
         {
+            FunctionAppName = "test-app",
+            FunctionAppId = 1,
             FunctionGroupName = "http",
             IsAlwaysReady = true,
             Environment = new Dictionary<string, string> { ["FUNCTIONS_WORKER_RUNTIME"] = "node" }

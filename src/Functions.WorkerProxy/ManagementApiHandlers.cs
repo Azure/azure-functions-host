@@ -39,7 +39,7 @@ internal static class ManagementApiHandlers
         var envVars = assignRequest.Environment ?? new Dictionary<string, string>();
         var functionAppDirectory = assignRequest.FunctionAppDirectory ?? "/home/site/wwwroot";
 
-        stateManager.SetAssignMetadata(assignRequest.FunctionGroupName, assignRequest.IsAlwaysReady ?? false);
+        stateManager.SetAssignMetadata(assignRequest.FunctionGroupName, assignRequest.IsAlwaysReady);
 
         try
         {

@@ -136,6 +136,15 @@ namespace Microsoft.Extensions.DependencyInjection
                 audiences.Add(string.Format(SiteUriFormat, runtimeSiteName));
             }
 
+            // Legion NNA mints JWT with audience = pod name. After specialization
+            // the pod name is no longer in the default audience list, so add it
+            // explicitly so LinkWorker and other NNA calls are accepted.
+            string podName = ScriptSettingsManager.Instance.GetSetting(WebsitePodName);
+            if (!string.IsNullOrEmpty(podName))
+            {
+                audiences.Add(podName);
+            }
+
             return audiences;
         }
 

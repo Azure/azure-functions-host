@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj" />
+    <ProjectReference Include="..\..\src\Functions.WorkerProxy.Supervisor\Functions.WorkerProxy.Supervisor.csproj" />
   </ItemGroup>
 
 </Project>

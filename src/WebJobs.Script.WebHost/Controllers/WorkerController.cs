@@ -58,20 +58,20 @@ public sealed class WorkerController : Controller
             return BadRequest("Cannot link workers before the host has been specialized.");
         }
 
-        if (!string.IsNullOrWhiteSpace(request.WorkerId) &&
-            !string.Equals(request.WorkerId, workerId, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(request.WorkerPodName) &&
+            !string.Equals(request.WorkerPodName, workerId, StringComparison.Ordinal))
         {
-            return BadRequest($"Body '{nameof(request.WorkerId)}' '{request.WorkerId}' does not match route worker id '{workerId}'.");
+            return BadRequest($"Body '{nameof(request.WorkerPodName)}' '{request.WorkerPodName}' does not match route worker id '{workerId}'.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.GrpcEndpoint))
+        if (string.IsNullOrWhiteSpace(request.WorkerGrpcEndpoint))
         {
-            return BadRequest($"'{nameof(request.GrpcEndpoint)}' is required.");
+            return BadRequest($"'{nameof(request.WorkerGrpcEndpoint)}' is required.");
         }
 
-        if (!Uri.TryCreate(request.GrpcEndpoint, UriKind.Absolute, out Uri endpoint))
+        if (!Uri.TryCreate(request.WorkerGrpcEndpoint, UriKind.Absolute, out Uri endpoint))
         {
-            return BadRequest($"'{request.GrpcEndpoint}' is not a valid URI.");
+            return BadRequest($"'{request.WorkerGrpcEndpoint}' is not a valid URI.");
         }
 
         _logger.LogInformation("Received worker link request for '{workerId}' at {endpoint}.", workerId, endpoint);
