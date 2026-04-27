@@ -5,14 +5,11 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ComputeSeparation;
@@ -96,7 +93,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime
     [Fact]
     public async Task LinkWorker_MissingEndpoint_Returns400()
     {
-        var request = new { workerId = "w_test1234" };
+        var request = new { WorkerPodName = "w_test1234" };
         var response = await SendAdminRequest(HttpMethod.Put, "admin/workers/w_test1234", request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -106,10 +103,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime
     public async Task AdminEndpoint_WithoutAuth_Returns401()
     {
         var request = new HttpRequestMessage(HttpMethod.Put, "admin/workers/w_test1234");
-        request.Content = new StringContent(
-            JsonConvert.SerializeObject(new { grpcEndpoint = "http://10.0.1.42:50051" }),
-            Encoding.UTF8,
-            "application/json");
+        request.Content = ComputeSeparationTestHelpers.CreateJsonContent(new { WorkerGrpcEndpoint = "http://10.0.1.42:50051" });
         var response = await _host.HttpClient.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -174,10 +168,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime
 
         if (body is not null)
         {
-            request.Content = new StringContent(
-                JsonConvert.SerializeObject(body),
-                Encoding.UTF8,
-                "application/json");
+            request.Content = ComputeSeparationTestHelpers.CreateJsonContent(body);
         }
 
         return await _host.HttpClient.SendAsync(request);

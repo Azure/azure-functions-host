@@ -7,12 +7,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.WebJobs.Script.Tests;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -121,16 +119,10 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
 
         // 2. Link the worker via the admin API.
-        var linkRequest = new
-        {
-            workerId = "w_e2etest01",
-            podName = "worker-pod-e2e",
-            grpcEndpoint = $"http://localhost:{RuntimeGrpcPort}",
-            podKey = "test-key"
-        };
+        var linkRequest = ComputeSeparationTestHelpers.CreateWorkerLinkRequest("w_e2etest01", RuntimeGrpcPort, HttpProxyPort);
 
         var linkResponse = await SendAdminRequest(
-            masterKey, HttpMethod.Put, $"admin/workers/{linkRequest.workerId}", linkRequest);
+            masterKey, HttpMethod.Put, "admin/workers/w_e2etest01", linkRequest);
 
         string linkBody = await linkResponse.Content.ReadAsStringAsync();
         _output.WriteLine($"Link response: {linkResponse.StatusCode} — {linkBody}");
@@ -159,16 +151,10 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
 
         // 2. Link the worker.
-        var linkRequest = new
-        {
-            workerId = "w_e2estop01",
-            podName = "worker-pod-stop",
-            grpcEndpoint = $"http://localhost:{RuntimeGrpcPort}",
-            podKey = "test-key"
-        };
+        var linkRequest = ComputeSeparationTestHelpers.CreateWorkerLinkRequest("w_e2estop01", RuntimeGrpcPort, HttpProxyPort);
 
         var linkResponse = await SendAdminRequest(
-            masterKey, HttpMethod.Put, $"admin/workers/{linkRequest.workerId}", linkRequest);
+            masterKey, HttpMethod.Put, "admin/workers/w_e2estop01", linkRequest);
         Assert.Equal(HttpStatusCode.OK, linkResponse.StatusCode);
 
         // 3. Wait for host ready (ScriptHost startup runs in background after link).
@@ -177,10 +163,10 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
 
         // 4. Verify worker proxy is in ReadyForRequest state.
         var stateResponse = await proxyClient.PostAsync("/admin/infra/instanceState",
-            new StringContent("{\"revision\": 0}", Encoding.UTF8, "application/json"));
-        var state = JObject.Parse(await stateResponse.Content.ReadAsStringAsync());
-        _output.WriteLine($"Worker proxy state before stop: {state}");
-        Assert.Equal("ReadyForRequest", state["state"]?["podStatus"]?.ToString());
+            ComputeSeparationTestHelpers.CreateJsonContent(new { revision = 0 }));
+        using var state = JsonDocument.Parse(await stateResponse.Content.ReadAsStringAsync());
+        _output.WriteLine($"Worker proxy state before stop: {state.RootElement}");
+        Assert.Equal("ReadyForRequest", state.RootElement.GetProperty("state").GetProperty("podStatus").GetString());
 
         // 4. Call /admin/host/stop.
         var stopResponse = await SendAdminRequest(masterKey, HttpMethod.Post, "admin/host/stop");
@@ -192,7 +178,7 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
         // but the proxy process may exit at any point during this sequence. Any of these
         // outcomes is valid: observing Draining, observing MarkedForDeletion, or the proxy
         // process exiting (connection lost).
-        int lastRevision = state["revision"]?.Value<int>() ?? 0;
+        int lastRevision = state.RootElement.GetProperty("revision").GetInt32();
         var sw = Stopwatch.StartNew();
         string finalStatus = null;
         bool proxyExited = false;
@@ -202,13 +188,13 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
             try
             {
                 var pollResponse = await proxyClient.PostAsync("/admin/infra/instanceState",
-                    new StringContent($"{{\"revision\": {lastRevision}}}", Encoding.UTF8, "application/json"));
+                    ComputeSeparationTestHelpers.CreateJsonContent(new { revision = lastRevision }));
 
                 if (pollResponse.StatusCode == HttpStatusCode.OK)
                 {
-                    var pollState = JObject.Parse(await pollResponse.Content.ReadAsStringAsync());
-                    finalStatus = pollState["state"]?["podStatus"]?.ToString();
-                    lastRevision = pollState["revision"]?.Value<int>() ?? lastRevision;
+                    using var pollState = JsonDocument.Parse(await pollResponse.Content.ReadAsStringAsync());
+                    finalStatus = pollState.RootElement.GetProperty("state").GetProperty("podStatus").GetString();
+                    lastRevision = pollState.RootElement.GetProperty("revision").GetInt32();
                     _output.WriteLine($"Worker proxy state: {finalStatus} (revision {lastRevision}, {sw.Elapsed.TotalSeconds:F1}s)");
 
                     if (string.Equals(finalStatus, "MarkedForDeletion", StringComparison.OrdinalIgnoreCase)
@@ -268,10 +254,7 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
 
         if (body is not null)
         {
-            request.Content = new StringContent(
-                JsonConvert.SerializeObject(body),
-                Encoding.UTF8,
-                "application/json");
+            request.Content = ComputeSeparationTestHelpers.CreateJsonContent(body);
         }
 
         return await _host.HttpClient.SendAsync(request);
@@ -279,14 +262,9 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
 
     private static async Task<HttpResponseMessage> CallWorkerAssignAsync(HttpClient proxyClient)
     {
-        var assignPayload = new
-        {
-            environment = new { FUNCTIONS_WORKER_RUNTIME = "node" },
-            functionAppDirectory = "/home/site/wwwroot"
-        };
-
-        return await proxyClient.PostAsync("/admin/worker/assign",
-            new StringContent(JsonConvert.SerializeObject(assignPayload), Encoding.UTF8, "application/json"));
+        return await proxyClient.PostAsync(
+            "/admin/worker/assign",
+            ComputeSeparationTestHelpers.CreateWorkerAssignRequestContent());
     }
 
     private async Task WaitForHostReadyAsync(string masterKey, TimeSpan timeout)
@@ -300,8 +278,8 @@ public class WorkerAllocationEndToEndTests : IAsyncLifetime, IDisposable
                 var response = await SendAdminRequest(masterKey, HttpMethod.Get, "admin/host/status");
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
-                    var status = JObject.Parse(await response.Content.ReadAsStringAsync());
-                    string state = status["state"]?.ToString();
+                    using var status = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                    string state = status.RootElement.GetProperty("state").GetString();
                     _output.WriteLine($"Host state: {state} ({sw.Elapsed.TotalSeconds:F1}s)");
 
                     if (string.Equals(state, "Running", StringComparison.OrdinalIgnoreCase))

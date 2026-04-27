@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -207,6 +208,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
     public class OutboundGrpcClientTests
     {
+        [Fact]
+        public void CreateGrpcChannelOptions_UsesSocketsHttpHandlerWithKeepAliveSettings()
+        {
+            var options = OutboundGrpcClient.CreateGrpcChannelOptions();
+
+            using var handler = Assert.IsType<SocketsHttpHandler>(options.HttpHandler);
+            Assert.Equal(OutboundGrpcClient.DefaultKeepAlivePingDelay, handler.KeepAlivePingDelay);
+            Assert.Equal(OutboundGrpcClient.DefaultKeepAlivePingTimeout, handler.KeepAlivePingTimeout);
+            Assert.Equal(HttpKeepAlivePingPolicy.Always, handler.KeepAlivePingPolicy);
+        }
+
         [Fact]
         public async Task DisposeAsync_CalledMultipleTimes_DoesNotThrow()
         {

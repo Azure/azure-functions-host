@@ -10,7 +10,6 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.WebJobs.Script.Tests;
-using Newtonsoft.Json;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -89,10 +88,9 @@ public class ExternalWorkerEndToEndTests : IAsyncLifetime, IDisposable
         // 2b. Assign the worker — drives init + specialize + metadata prefetch
         //     so cached responses are ready when the runtime connects.
         using var proxyClient = ComputeSeparationTestHelpers.CreateAuthenticatedWorkerProxyClient(ManagementPort);
-        var assignResponse = await proxyClient.PostAsync("/admin/worker/assign",
-            new StringContent(
-                JsonConvert.SerializeObject(new { environment = new { FUNCTIONS_WORKER_RUNTIME = "node" }, functionAppDirectory = "/home/site/wwwroot" }),
-                Encoding.UTF8, "application/json"));
+        var assignResponse = await proxyClient.PostAsync(
+            "/admin/worker/assign",
+            ComputeSeparationTestHelpers.CreateWorkerAssignRequestContent());
         _output.WriteLine($"Worker assign response: {assignResponse.StatusCode}");
         Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
 

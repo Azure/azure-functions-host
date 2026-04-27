@@ -9,6 +9,8 @@ using System.IO;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.IdentityModel.Tokens;
 using Xunit.Abstractions;
@@ -169,6 +171,50 @@ internal static class ComputeSeparationTestHelpers
 
         client.DefaultRequestHeaders.Add(ScriptConstants.SiteTokenHeaderName, CreateWorkerProxySiteToken());
         return client;
+    }
+
+    public static HttpContent CreateJsonContent(object payload)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+
+        return new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+    }
+
+    public static HttpContent CreateWorkerAssignRequestContent(
+        string workerRuntime = "node",
+        string functionAppName = "test-compute-sep-app",
+        int functionAppId = 1234,
+        string functionGroupName = "http",
+        bool isAlwaysReady = false,
+        string functionAppDirectory = "/home/site/wwwroot")
+    {
+        var assignPayload = new
+        {
+            FunctionAppName = functionAppName,
+            FunctionAppId = functionAppId,
+            FunctionGroupName = functionGroupName,
+            IsAlwaysReady = isAlwaysReady,
+            Environment = new Dictionary<string, string>
+            {
+                ["FUNCTIONS_WORKER_RUNTIME"] = workerRuntime
+            },
+            FunctionAppDirectory = functionAppDirectory
+        };
+
+        return CreateJsonContent(assignPayload);
+    }
+
+    public static object CreateWorkerLinkRequest(string workerId, int runtimeGrpcPort, int httpProxyPort)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
+
+        return new
+        {
+            WorkerPodName = workerId,
+            WorkerHttpEndpoint = $"http://localhost:{httpProxyPort}",
+            WorkerGrpcEndpoint = $"http://localhost:{runtimeGrpcPort}",
+            WorkerContainerEncryptionKey = WorkerProxySigningKey
+        };
     }
 
     public static void EnsureProcessRunning(Process process, string label, ConcurrentBag<string> logSink)
