@@ -496,10 +496,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public string GenerateAdminJwtToken(string audience = null, string issuer = null, byte[] key = null)
         {
+            return GenerateAdminJwtToken(DateTime.UtcNow.AddHours(1), audience, issuer, key);
+        }
+
+        public string GenerateAdminJwtToken(DateTime validUntil, string audience = null, string issuer = null, byte[] key = null, DateTime? notBefore = null)
+        {
             audience = audience ?? string.Format(ScriptConstants.SiteAzureFunctionsUriFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName));
             issuer = issuer ?? string.Format(ScriptConstants.ScmSiteUriFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName));
 
-            return JwtTokenHelper.CreateToken(DateTime.UtcNow.AddHours(1), audience, issuer, key);
+            return JwtTokenHelper.CreateToken(validUntil, audience, issuer, key, notBefore);
         }
 
         public void Dispose()

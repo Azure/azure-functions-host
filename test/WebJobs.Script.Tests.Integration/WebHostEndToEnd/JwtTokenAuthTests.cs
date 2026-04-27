@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -9,6 +10,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
@@ -149,6 +151,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
             Assert.Equal("Token validation failed.", validationError.FormattedMessage);
             Assert.True(validationError.Exception.Message.StartsWith("IDX10517: Signature validation failed."));
+        }
+
+        [Theory]
+        [InlineData(nameof(HttpRequestHeader.Authorization))]
+        [InlineData(ScriptConstants.SiteTokenHeaderName)]
+        public async Task InvokeAdminApi_ExpiredToken_Fails(string headerName)
+        {
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
+
+            // Create a token that is already expired 
+            // Default ClockSkew is 5 minutes; pick a lifetime comfortably outside that window.
+            string token = _fixture.Host.GenerateAdminJwtToken(
+                validUntil: DateTime.UtcNow.AddHours(-1),
+                notBefore: DateTime.UtcNow.AddHours(-2));
+
+            if (string.Compare(nameof(HttpRequestHeader.Authorization), headerName) == 0)
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+            else
+            {
+                request.Headers.Add(headerName, token);
+            }
+
+            _fixture.Host.ClearLogMessages();
+
+            var response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+            var validationError = _fixture.Host.GetScriptHostLogMessages().Single(p => p.Category == ScriptConstants.LogCategoryHostAuthentication && p.Level == LogLevel.Debug);
+            Assert.Equal(ScriptConstants.LogCategoryHostAuthentication, validationError.Category);
+            Assert.Equal("Token validation failed.", validationError.FormattedMessage);
+            Assert.IsType<SecurityTokenExpiredException>(validationError.Exception);
+            Assert.StartsWith("IDX10223: Lifetime validation failed.", validationError.Exception.Message);
         }
 
         [Fact]

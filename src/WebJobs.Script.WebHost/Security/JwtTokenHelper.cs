@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 {
     internal static class JwtTokenHelper
     {
-        public static string CreateToken(DateTime validUntil, string audience = null, string issuer = null, byte[] key = null)
+        public static string CreateToken(DateTime validUntil, string audience = null, string issuer = null, byte[] key = null, DateTime? notBefore = null)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             key = key ?? SecretsUtility.GetEncryptionKey();
@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             {
                 Audience = audience ?? ScriptConstants.AppServiceCoreUri,
                 Issuer = issuer ?? string.Format(ScriptConstants.SiteUriFormat, ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteName)),
+                NotBefore = notBefore,
                 Expires = validUntil,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
