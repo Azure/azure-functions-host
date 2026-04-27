@@ -14,6 +14,14 @@
 @runtimeHost = http://localhost:7071
 @workerProxyHost = http://localhost:50054
 @masterKey = dev-master-key
+@containerEncryptionKey = 0F75CA46E7EBDD39E4CA6B074D1F9A5972B849A55F91A248F6B038A61BACE9D7
+@functionAppName = devhost
+@functionAppId = 1234
+@functionGroupName = http
+@workerId = w_test01
+
+### Select the "project" or "container" environment from http-client.env.json
+### so Step 4 uses the correct proxy endpoints for the current run mode.
 
 ### Long-lived JWT for worker proxy /admin/* calls.
 ### Signed with the dev CONTAINER_ENCRYPTION_KEY from AppHost/Program.cs.
@@ -51,15 +59,22 @@ x-ms-site-token: {{workerProxyToken}}
 ### Step 2: Specialize the worker
 ### NNA calls this after /admin/worker/ready succeeds. The proxy drives the full
 ### init + specialization + metadata prefetch sequence with the worker,
-### caching all responses for later replay to the runtime.
+### caching all responses for later replay to the runtime. The assign payload
+### now includes function identity / inventory metadata in addition to env vars.
+### This endpoint is source-generated with a camelCase JSON contract, so keep
+### these property names camelCase.
 POST {{workerProxyHost}}/admin/worker/assign
 Content-Type: application/json
 x-ms-site-token: {{workerProxyToken}}
 
 {
+  "functionAppName": "{{functionAppName}}",
+  "functionAppId": {{functionAppId}},
+  "functionGroupName": "{{functionGroupName}}",
+  "isAlwaysReady": false,
   "environment": {
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-    "WEBSITE_SITE_NAME": "devhost"
+    "WEBSITE_SITE_NAME": "{{functionAppName}}"
   },
   "functionAppDirectory": "/home/site/wwwroot"
 }
@@ -86,15 +101,17 @@ Content-Type: application/json
 ### FunctionMetadataResponse. This triggers ScriptHost startup and function loading.
 ### Returns 200 OK after gRPC connection and init handshake succeed (capabilities
 ### including host.json received). ScriptHost startup and function loading complete
-### in the background.
-PUT {{runtimeHost}}/admin/workers/w_test01?code={{masterKey}}
+### in the background. In project mode the proxy endpoints are localhost ports;
+### in container mode override them to container-reachable values such as
+### http://worker-proxy:50051 and http://worker-proxy:50053.
+PUT {{runtimeHost}}/admin/workers/{{workerId}}?code={{masterKey}}
 Content-Type: application/json
 
 {
-  "workerId": "w_test01",
-  "podName": "worker-pod-test01",
-  "grpcEndpoint": "{{workerGrpcEndpoint}}",
-  "podKey": "test-key"
+  "WorkerPodName": "{{workerId}}",
+  "WorkerHttpEndpoint": "{{workerProxyHttpEndpoint}}",
+  "WorkerGrpcEndpoint": "{{workerProxyGrpcEndpoint}}",
+  "WorkerContainerEncryptionKey": "{{containerEncryptionKey}}"
 }
 
 ###

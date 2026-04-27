@@ -4,6 +4,7 @@
 #nullable enable
 
 using System;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -25,8 +26,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 /// </summary>
 internal class OutboundGrpcClient : IOutboundGrpcClient
 {
+    internal static readonly TimeSpan DefaultKeepAlivePingDelay = TimeSpan.FromSeconds(30);
+    internal static readonly TimeSpan DefaultKeepAlivePingTimeout = TimeSpan.FromSeconds(10);
+
     private readonly IScriptEventManager _eventManager;
     private readonly ILogger _logger;
+    private readonly Func<Uri, GrpcChannel> _channelFactory;
 
     private GrpcChannel? _channel;
     private AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage>? _call;
@@ -38,9 +43,18 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
     /// <param name="eventManager">The event manager that holds per-worker gRPC channels.</param>
     /// <param name="logger">Logger instance.</param>
     public OutboundGrpcClient(IScriptEventManager eventManager, ILogger<OutboundGrpcClient> logger)
+        : this(eventManager, logger, CreateGrpcChannel)
+    {
+    }
+
+    internal OutboundGrpcClient(
+        IScriptEventManager eventManager,
+        ILogger<OutboundGrpcClient> logger,
+        Func<Uri, GrpcChannel> channelFactory)
     {
         _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
     }
 
     /// <summary>
@@ -57,7 +71,7 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
 
         try
         {
-            _channel = GrpcChannel.ForAddress(endpoint);
+            _channel = _channelFactory(endpoint);
             var client = new FunctionRpc.FunctionRpcClient(_channel);
             _call = client.EventStream(cancellationToken: _cts.Token);
 
@@ -85,6 +99,29 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
             _cts?.Dispose();
             throw;
         }
+    }
+
+    internal static GrpcChannel CreateGrpcChannel(Uri endpoint)
+    {
+        return GrpcChannel.ForAddress(endpoint, CreateGrpcChannelOptions());
+    }
+
+    internal static GrpcChannelOptions CreateGrpcChannelOptions()
+    {
+        return new GrpcChannelOptions
+        {
+            HttpHandler = CreateHttpHandler()
+        };
+    }
+
+    private static SocketsHttpHandler CreateHttpHandler()
+    {
+        return new SocketsHttpHandler
+        {
+            KeepAlivePingDelay = DefaultKeepAlivePingDelay,
+            KeepAlivePingTimeout = DefaultKeepAlivePingTimeout,
+            KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always
+        };
     }
 
     private async Task PushOutbound(

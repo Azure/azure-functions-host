@@ -7,12 +7,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.WebJobs.Script.Tests;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -159,27 +157,16 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
 
     private static async Task<HttpResponseMessage> CallWorkerAssignAsync(HttpClient proxyClient)
     {
-        var assignPayload = new
-        {
-            environment = new { FUNCTIONS_WORKER_RUNTIME = "node" },
-            functionAppDirectory = "/home/site/wwwroot"
-        };
-
-        return await proxyClient.PostAsync("/admin/worker/assign",
-            new StringContent(JsonConvert.SerializeObject(assignPayload), Encoding.UTF8, "application/json"));
+        return await proxyClient.PostAsync(
+            "/admin/worker/assign",
+            ComputeSeparationTestHelpers.CreateWorkerAssignRequestContent());
     }
 
     private async Task<HttpResponseMessage> CallWorkerLinkAsync(string masterKey)
     {
-        var linkRequest = new
-        {
-            workerId = "w_assign_e2e",
-            podName = "worker-pod-assign-e2e",
-            grpcEndpoint = $"http://localhost:{RuntimeGrpcPort}",
-            podKey = "test-key"
-        };
+        var linkRequest = ComputeSeparationTestHelpers.CreateWorkerLinkRequest("w_assign_e2e", RuntimeGrpcPort, HttpProxyPort);
 
-        return await SendAdminRequest(masterKey, HttpMethod.Put, $"admin/workers/{linkRequest.workerId}", linkRequest);
+        return await SendAdminRequest(masterKey, HttpMethod.Put, "admin/workers/w_assign_e2e", linkRequest);
     }
 
     private async Task AssertHttpTriggerInvocationAsync()
@@ -219,8 +206,7 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
 
         if (body is not null)
         {
-            request.Content = new StringContent(
-                JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+            request.Content = ComputeSeparationTestHelpers.CreateJsonContent(body);
         }
 
         return await _host.HttpClient.SendAsync(request);
@@ -237,8 +223,8 @@ public class WorkerAssignAndLinkEndToEndTests : IAsyncLifetime, IDisposable
                 var response = await SendAdminRequest(masterKey, HttpMethod.Get, "admin/host/status");
                 if (response.StatusCode == HttpStatusCode.OK)
                 {
-                    var status = JObject.Parse(await response.Content.ReadAsStringAsync());
-                    string state = status["state"]?.ToString();
+                    using var status = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                    string state = status.RootElement.GetProperty("state").GetString();
                     _output.WriteLine($"Host state: {state} ({sw.Elapsed.TotalSeconds:F1}s)");
 
                     if (string.Equals(state, "Running", StringComparison.OrdinalIgnoreCase))
