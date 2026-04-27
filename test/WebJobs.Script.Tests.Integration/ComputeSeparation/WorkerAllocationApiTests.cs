@@ -78,10 +78,16 @@ public class WorkerAllocationApiTests : IAsyncLifetime
     public async Task LinkWorker_Returns200()
     {
         _mockConnectionManager
-            .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+            .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        var request = new { workerId = "w_test1234", podName = "worker-pod-abc123", grpcEndpoint = "http://10.0.1.42:50051", podKey = "test-key" };
+        var request = new
+        {
+            WorkerPodName = "w_test1234",
+            WorkerHttpEndpoint = "http://10.0.1.42:48830",
+            WorkerGrpcEndpoint = "http://10.0.1.42:50051",
+            WorkerContainerEncryptionKey = "test-key"
+        };
         var response = await SendAdminRequest(HttpMethod.Put, "admin/workers/w_test1234", request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -124,7 +130,7 @@ public class WorkerAllocationApiTests : IAsyncLifetime
 
         // Link two workers first
         _mockConnectionManager
-            .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+            .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         _mockConnectionManager
             .Setup(m => m.GetWorkerStatus(It.IsAny<string>()))
@@ -138,9 +144,17 @@ public class WorkerAllocationApiTests : IAsyncLifetime
             });
 
         await SendAdminRequest(HttpMethod.Put, "admin/workers/w1",
-            new { workerId = "w1", grpcEndpoint = "http://10.0.1.1:50051" });
+            new
+            {
+                WorkerPodName = "w1",
+                WorkerGrpcEndpoint = "http://10.0.1.1:50051"
+            });
         await SendAdminRequest(HttpMethod.Put, "admin/workers/w2",
-            new { workerId = "w2", grpcEndpoint = "http://10.0.1.2:50051" });
+            new
+            {
+                WorkerPodName = "w2",
+                WorkerGrpcEndpoint = "http://10.0.1.2:50051"
+            });
 
         var response = await SendAdminRequest(HttpMethod.Post, "admin/host/stop");
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);

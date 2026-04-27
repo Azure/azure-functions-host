@@ -100,6 +100,12 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// <inheritdoc/>
     public async Task ConnectWorkerAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
     {
+        await ConnectWorkerAsync(workerId, endpoint, workerHttpEndpoint: null, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task ConnectWorkerAsync(string workerId, Uri endpoint, Uri workerHttpEndpoint, CancellationToken cancellationToken)
+    {
         if (_stopping)
         {
             throw new InvalidOperationException("Cannot connect new workers while the runtime is stopping.");
@@ -147,17 +153,17 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         // return 200 after the worker is linked. Phase 2 (ScriptHost startup)
         // continues in the background. ConnectCompleted signals after the full
         // pipeline finishes, which DisconnectWorkerAsync awaits before cleanup.
-        _ = ConnectWorkerCoreAsync(workerId, endpoint, worker, cancellationToken);
+        _ = ConnectWorkerCoreAsync(workerId, endpoint, workerHttpEndpoint, worker, cancellationToken);
         await worker.InitCompleted.Task;
     }
 
-    private async Task ConnectWorkerCoreAsync(string workerId, Uri endpoint, WorkerConnection worker, CancellationToken cancellationToken)
+    private async Task ConnectWorkerCoreAsync(string workerId, Uri endpoint, Uri workerHttpEndpoint, WorkerConnection worker, CancellationToken cancellationToken)
     {
         var info = worker.Info;
 
         try
         {
-            var channel = await EstablishChannelAsync(workerId, endpoint, worker, cancellationToken);
+            var channel = await EstablishChannelAsync(workerId, endpoint, workerHttpEndpoint, worker, cancellationToken);
 
             // Phase 1 complete — signal InitCompleted so ConnectWorkerAsync
             // (and the API caller) can return 200.
@@ -212,7 +218,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// capabilities, and registers the channel. Returns after the worker
     /// is linked and the init handshake has succeeded.
     /// </summary>
-    private async Task<IConnectedWorkerChannel> EstablishChannelAsync(string workerId, Uri endpoint, WorkerConnection worker, CancellationToken cancellationToken)
+    private async Task<IConnectedWorkerChannel> EstablishChannelAsync(string workerId, Uri endpoint, Uri workerHttpEndpoint, WorkerConnection worker, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Connecting to external worker '{workerId}' at {endpoint}.", workerId, endpoint);
 
@@ -249,6 +255,12 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         else
         {
             _logger.LogWarning("Worker '{workerId}' did not provide host_configuration_json capability.", workerId);
+        }
+
+        if (workerHttpEndpoint is not null)
+        {
+            channel.OverrideHttpProxyEndpoint(workerHttpEndpoint);
+            _logger.LogInformation("Worker '{workerId}' HTTP proxy endpoint set to platform endpoint {endpoint}.", workerId, workerHttpEndpoint);
         }
 
         // Register the channel directly — no event needed.

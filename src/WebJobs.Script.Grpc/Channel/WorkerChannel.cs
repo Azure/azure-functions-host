@@ -186,6 +186,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             set => _state = value;
         }
 
+        /// <summary>
+        /// Sets the HTTP proxy endpoint used for forwarding HTTP trigger requests.
+        /// </summary>
+        internal void SetHttpProxyEndpoint(Uri endpoint) => _httpProxyEndpoint = endpoint;
+
         protected virtual void DisposeWorkerResources() { }
 
         public abstract Task StartWorkerProcessAsync(CancellationToken cancellationToken);

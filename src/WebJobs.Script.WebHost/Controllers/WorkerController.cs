@@ -74,6 +74,13 @@ public sealed class WorkerController : Controller
             return BadRequest($"'{request.WorkerGrpcEndpoint}' is not a valid URI.");
         }
 
+        Uri workerHttpEndpoint = null;
+        if (!string.IsNullOrWhiteSpace(request.WorkerHttpEndpoint) &&
+            !Uri.TryCreate(request.WorkerHttpEndpoint, UriKind.Absolute, out workerHttpEndpoint))
+        {
+            return BadRequest($"'{request.WorkerHttpEndpoint}' is not a valid URI.");
+        }
+
         _logger.LogInformation("Received worker link request for '{workerId}' at {endpoint}.", workerId, endpoint);
 
         // Check for duplicate before starting async work — return 409 Conflict.
@@ -86,7 +93,7 @@ public sealed class WorkerController : Controller
 
         try
         {
-            await _connectionManager.ConnectWorkerAsync(workerId, endpoint, HttpContext.RequestAborted);
+            await _connectionManager.ConnectWorkerAsync(workerId, endpoint, workerHttpEndpoint, HttpContext.RequestAborted);
             return Ok();
         }
         catch (InvalidOperationException ex)

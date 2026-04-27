@@ -131,6 +131,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         }
 
         [Fact]
+        public async Task ConnectWorkerAsync_WorkerHttpEndpointProvided_OverridesChannelHttpProxyEndpoint()
+        {
+            SetupFullConnectMocks();
+            var service = CreateService();
+            var workerHttpEndpoint = new Uri("http://100.64.112.16:48830");
+
+            await service.ConnectWorkerAsync(
+                "w_1",
+                new Uri("http://100.64.112.16:48831"),
+                workerHttpEndpoint,
+                CancellationToken.None);
+
+            _mockChannel.Verify(c => c.OverrideHttpProxyEndpoint(workerHttpEndpoint), Times.Once);
+        }
+
+        [Fact]
+        public async Task ConnectWorkerAsync_NoWorkerHttpEndpoint_DoesNotOverrideChannelHttpProxyEndpoint()
+        {
+            SetupFullConnectMocks();
+            var service = CreateService();
+
+            await service.ConnectWorkerAsync("w_1", new Uri("http://100.64.112.16:48831"), CancellationToken.None);
+
+            _mockChannel.Verify(c => c.OverrideHttpProxyEndpoint(It.IsAny<Uri>()), Times.Never);
+        }
+
+        [Fact]
         public async Task ConnectWorkerAsync_HappyPath_StartsScriptHost()
         {
             SetupFullConnectMocks();

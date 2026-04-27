@@ -45,12 +45,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             };
 
             _mockConnectionManager
-                .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+                .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var result = await _controller.LinkWorker("w_test1234", request);
 
             Assert.IsType<OkResult>(result);
+        }
+
+        [Fact]
+        public async Task LinkWorker_ValidRequest_PassesWorkerHttpEndpoint()
+        {
+            var request = new ExternalWorkerInfo
+            {
+                WorkerPodName = "w_test1234",
+                WorkerHttpEndpoint = "http://100.64.112.16:48830",
+                WorkerGrpcEndpoint = "http://100.64.112.16:48831",
+                WorkerContainerEncryptionKey = "test-key"
+            };
+
+            _mockConnectionManager
+                .Setup(m => m.ConnectWorkerAsync(
+                    "w_test1234",
+                    new Uri("http://100.64.112.16:48831"),
+                    new Uri("http://100.64.112.16:48830"),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var result = await _controller.LinkWorker("w_test1234", request);
+
+            Assert.IsType<OkResult>(result);
+            _mockConnectionManager.Verify(m => m.ConnectWorkerAsync(
+                "w_test1234",
+                new Uri("http://100.64.112.16:48831"),
+                new Uri("http://100.64.112.16:48830"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task LinkWorker_InvalidWorkerHttpEndpoint_Returns400()
+        {
+            var request = new ExternalWorkerInfo
+            {
+                WorkerPodName = "w_test1234",
+                WorkerHttpEndpoint = "not-a-valid-uri",
+                WorkerGrpcEndpoint = "http://10.0.1.42:50051"
+            };
+
+            var result = await _controller.LinkWorker("w_test1234", request);
+
+            Assert.IsType<BadRequestObjectResult>(result);
         }
 
         [Fact]
@@ -126,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             };
 
             _mockConnectionManager
-                .Setup(m => m.ConnectWorkerAsync("w_routeid1", It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+                .Setup(m => m.ConnectWorkerAsync("w_routeid1", It.IsAny<Uri>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             var result = await _controller.LinkWorker("w_routeid1", request);
@@ -180,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             };
 
             _mockConnectionManager
-                .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+                .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("gRPC connection failed"));
 
             var result = await _controller.LinkWorker("w_test1234", request);
@@ -200,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             };
 
             _mockConnectionManager
-                .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+                .Setup(m => m.ConnectWorkerAsync(It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Cannot connect new workers while the runtime is stopping."));
 
             var result = await _controller.LinkWorker("w_test1234", request);
