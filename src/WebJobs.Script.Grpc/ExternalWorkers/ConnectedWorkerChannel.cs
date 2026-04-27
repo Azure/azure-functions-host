@@ -112,6 +112,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         }
 
         /// <inheritdoc/>
+        public void OverrideHttpProxyEndpoint(Uri endpoint) => SetHttpProxyEndpoint(endpoint);
+
+        /// <inheritdoc/>
         protected override void DisposeWorkerResources()
         {
         }

@@ -31,6 +31,16 @@ public interface IWorkerConnectionManager
     Task ConnectWorkerAsync(string workerId, Uri endpoint, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Connects to an external worker and overrides the HTTP proxy endpoint used
+    /// for HTTP trigger forwarding.
+    /// </summary>
+    /// <param name="workerId">Platform-assigned worker identifier.</param>
+    /// <param name="endpoint">The gRPC endpoint URI of the worker sidecar.</param>
+    /// <param name="workerHttpEndpoint">The platform-routable HTTP endpoint of the worker sidecar, or <see langword="null" />.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task ConnectWorkerAsync(string workerId, Uri endpoint, Uri workerHttpEndpoint, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Disconnects an external worker. Drains in-flight invocations,
     /// closes the gRPC connection, and removes the channel.
     /// </summary>

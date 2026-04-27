@@ -54,4 +54,11 @@ internal interface IConnectedWorkerChannel : IRpcWorkerChannel
     /// already initiated the drain.
     /// </summary>
     void SendWorkerDrainRequest();
+
+    /// <summary>
+    /// Overrides the HTTP proxy endpoint used for forwarding HTTP trigger requests.
+    /// Used when the platform link request provides a routable endpoint that should
+    /// take precedence over the worker-advertised <c>HttpUri</c> capability.
+    /// </summary>
+    void OverrideHttpProxyEndpoint(Uri endpoint);
 }
