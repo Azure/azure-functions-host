@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -27,7 +27,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
-using Newtonsoft.Json;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -208,10 +207,9 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         // 2. Assign the worker — drives init + specialize + metadata prefetch
         //    so cached responses are ready when the runtime links.
         using var proxyClient = ComputeSeparationTestHelpers.CreateAuthenticatedWorkerProxyClient(ManagementPort);
-        var workerAssignResponse = await proxyClient.PostAsync("/admin/worker/assign",
-            new StringContent(
-                JsonConvert.SerializeObject(new { environment = new { FUNCTIONS_WORKER_RUNTIME = "node" }, functionAppDirectory = "/home/site/wwwroot" }),
-                Encoding.UTF8, "application/json"));
+        var workerAssignResponse = await proxyClient.PostAsync(
+            "/admin/worker/assign",
+            ComputeSeparationTestHelpers.CreateWorkerAssignRequestContent());
         _output.WriteLine($"Worker assign response: {workerAssignResponse.StatusCode}");
         Assert.Equal(HttpStatusCode.OK, workerAssignResponse.StatusCode);
 
@@ -229,7 +227,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         };
 
         string encryptedContext = EncryptionHelper.Encrypt(
-            JsonConvert.SerializeObject(assignmentContext),
+            JsonSerializer.Serialize(assignmentContext),
             Convert.FromBase64String(_encryptionKey));
 
         var assignResponse = await SendAdminRequest(
@@ -247,13 +245,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         {
             linkResponse = await SendAdminRequest(
                 masterKey, HttpMethod.Put, "admin/workers/w_spec_e2e01",
-                new
-                {
-                    workerId = "w_spec_e2e01",
-                    podName = "worker-pod-spec-e2e",
-                    grpcEndpoint = $"http://localhost:{RuntimeGrpcPort}",
-                    podKey = "test-key"
-                });
+                ComputeSeparationTestHelpers.CreateWorkerLinkRequest("w_spec_e2e01", RuntimeGrpcPort, HttpProxyPort));
 
             if (linkResponse.StatusCode == HttpStatusCode.OK)
             {
@@ -331,8 +323,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
 
         if (body is not null)
         {
-            request.Content = new StringContent(
-                JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+            request.Content = ComputeSeparationTestHelpers.CreateJsonContent(body);
         }
 
         return await _httpClient.SendAsync(request);
