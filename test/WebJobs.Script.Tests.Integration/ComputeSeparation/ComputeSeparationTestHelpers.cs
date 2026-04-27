@@ -190,15 +190,15 @@ internal static class ComputeSeparationTestHelpers
     {
         var assignPayload = new
         {
-            FunctionAppName = functionAppName,
-            FunctionAppId = functionAppId,
-            FunctionGroupName = functionGroupName,
-            IsAlwaysReady = isAlwaysReady,
-            Environment = new Dictionary<string, string>
+            functionAppName,
+            functionAppId,
+            functionGroupName,
+            isAlwaysReady,
+            environment = new Dictionary<string, string>
             {
                 ["FUNCTIONS_WORKER_RUNTIME"] = workerRuntime
             },
-            FunctionAppDirectory = functionAppDirectory
+            functionAppDirectory
         };
 
         return CreateJsonContent(assignPayload);

@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(true, "FlexConsumption", null, "1", "RandomPodName", "", "RandomPodName")] // Placeholder mode Flex Consumption
         [InlineData(true, "Dynamic", null, "1", null, "RandomContainerName", "RandomContainerName")] // Placeholder mode Linux Consumption on Legion
         [InlineData(true, "Dynamic", null, null, null, "RandomContainerName", "RandomContainerName")] // Placeholder mode Linux Consumption on Atlas
-        [InlineData(false, "FlexConsumption", null, "1", "RandomPodName", null, "https://RandomSiteName.azurewebsites.net/azurefunctions,https://RandomSiteName.azurewebsites.net")]
+        [InlineData(false, "FlexConsumption", null, "1", "RandomPodName", null, "https://RandomSiteName.azurewebsites.net/azurefunctions,https://RandomSiteName.azurewebsites.net,RandomPodName")]
         [InlineData(false, "Dynamic", null, null, null, "RandomContainerName", "https://RandomSiteName.azurewebsites.net/azurefunctions,https://RandomSiteName.azurewebsites.net")]
         [InlineData(false, "Dynamic", "123", null, null, null, "https://RandomSiteName.azurewebsites.net/azurefunctions,https://RandomSiteName.azurewebsites.net")]
         public void CreateTokenValidationParameters_HasExpectedAudiences(bool isPlaceholderModeEnabled, string sku,
