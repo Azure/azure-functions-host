@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -29,6 +30,12 @@ public class FunctionRpcRelayTests : IDisposable
     {
         var options = new RelayOptions(50051, 50052, 50053, hostJsonPath, "http://localhost:50053", "test-pod");
         return new FunctionRpcRelay(options, NullLogger<FunctionRpcRelay>.Instance, _stateManager);
+    }
+
+    private FunctionRpcRelay CreateRelay(ILogger<FunctionRpcRelay> logger, string? hostJsonPath = null)
+    {
+        var options = new RelayOptions(50051, 50052, 50053, hostJsonPath, "http://localhost:50053", "test-pod");
+        return new FunctionRpcRelay(options, logger, _stateManager);
     }
 
     private static StreamingMessage CreateWorkerInitResponse(Dictionary<string, string>? capabilities = null)
@@ -413,6 +420,53 @@ public class FunctionRpcRelayTests : IDisposable
         Assert.True(cached.ContainsKey("HttpUri"));
     }
 
+    [Fact]
+    public async Task SpecializeWorkerAsync_LogsIncomingAndFinalCapabilitiesAsSingleLineDictionaries()
+    {
+        string hostJsonContent = """{"version":"2.0","extensions":{"http":{"routePrefix":""}}}""";
+        File.WriteAllText(Path.Combine(_tempDir, "host.json"), hostJsonContent);
+
+        var logger = new TestLogger<FunctionRpcRelay>();
+        var relay = CreateRelay(logger);
+        relay._workerConnected.TrySetResult();
+
+        var initCaps = new Dictionary<string, string>
+        {
+            ["EnableUserCodeException"] = "True"
+        };
+
+        var reloadCaps = new Dictionary<string, string>
+        {
+            ["HttpUri"] = "http://localhost:9999",
+            ["RpcHttpBodyOnly"] = "True"
+        };
+
+        var expectedFinalCapabilities = new Dictionary<string, string>
+        {
+            ["EnableUserCodeException"] = "True",
+            ["HttpUri"] = "http://localhost:50053",
+            ["RpcHttpBodyOnly"] = "True",
+            ["host_configuration_json"] = hostJsonContent
+        };
+
+        var workerTask = SimulateWorkerAsync(relay, initCapabilities: initCaps, reloadCapabilities: reloadCaps);
+        await Task.WhenAll(
+            relay.SpecializeWorkerAsync(new Dictionary<string, string>(), _tempDir, CancellationToken.None),
+            workerTask);
+
+        Assert.Contains(logger.Messages, message => string.Equals(
+            message,
+            $"Worker capabilities received by proxy (Merge): {CapabilityLogFormatter.Format(reloadCaps)}",
+            StringComparison.Ordinal));
+
+        Assert.Contains(logger.Messages, message => string.Equals(
+            message,
+            $"WorkerProxy capabilities to runtime: {CapabilityLogFormatter.Format(expectedFinalCapabilities)}",
+            StringComparison.Ordinal));
+
+        Assert.DoesNotContain(logger.Messages, message => message.Contains("WorkerInitResponse capability:", StringComparison.Ordinal));
+    }
+
     // --- RewriteHttpUri tests ---
 
     [Fact]
@@ -765,6 +819,38 @@ public class FunctionRpcRelayTests : IDisposable
                 Result = new StatusResult { Status = StatusResult.Types.Status.Success }
             }
         });
+    }
+
+    private sealed class TestLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return NullScope.Instance;
+        }
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Messages.Add(formatter(state, exception));
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose()
+            {
+            }
+        }
     }
 
     private static async Task<Exception?> CaptureOutcomeAsync(Task task)

@@ -91,7 +91,9 @@ internal sealed class MsFunctionLogsLogger : ILogger
     internal static string NormalizeString(string? value, bool addEnclosingQuotes = true)
     {
         string normalized = value ?? string.Empty;
-        normalized = normalized.Replace(Environment.NewLine, " ", StringComparison.Ordinal);
+        normalized = normalized.Replace("\r\n", " ", StringComparison.Ordinal);
+        normalized = normalized.Replace("\r", " ", StringComparison.Ordinal);
+        normalized = normalized.Replace("\n", " ", StringComparison.Ordinal);
         normalized = normalized.Replace("\"", "'", StringComparison.Ordinal);
 
         return addEnclosingQuotes ? $"\"{normalized}\"" : normalized;
