@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 validUntil: DateTime.UtcNow.AddHours(-1),
                 notBefore: DateTime.UtcNow.AddHours(-2));
 
-            if (string.Compare(nameof(HttpRequestHeader.Authorization), headerName) == 0)
+            if (string.Equals(nameof(HttpRequestHeader.Authorization), headerName, StringComparison.Ordinal))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
