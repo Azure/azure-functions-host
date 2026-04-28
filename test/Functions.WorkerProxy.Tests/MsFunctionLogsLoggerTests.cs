@@ -24,12 +24,16 @@ public class MsFunctionLogsLoggerTests
         var lines = new List<string>();
         using var provider = new MsFunctionLogsLoggerProvider(lines.Add, CreateOptions("container-01", "Stamp-01", "TENANT-01"));
         ILogger logger = provider.CreateLogger("Microsoft.Azure.Functions.WorkerProxy.FunctionRpcRelay");
-        string summaryValue = $"line1{Environment.NewLine}\"summary\"";
-        var exception = new InvalidOperationException($"bad{Environment.NewLine}\"details\"");
+        string summaryValue = "line1\r\"cr\"\n\"lf\"\r\n\"crlf\"";
+        var exception = new InvalidOperationException("bad\r\"cr\"\n\"lf\"\r\n\"crlf\"");
 
         logger.LogError(exception, "summary {Value}", summaryValue);
 
-        Match match = TraceEventRegex.Match(Assert.Single(lines));
+        string line = Assert.Single(lines);
+        Assert.DoesNotContain('\r', line);
+        Assert.DoesNotContain('\n', line);
+
+        Match match = TraceEventRegex.Match(line);
 
         Assert.True(match.Success);
         Assert.Equal("2", match.Groups["Level"].Value);
@@ -88,10 +92,10 @@ public class MsFunctionLogsLoggerTests
     [Fact]
     public void NormalizeString_ReplacesNewLinesAndDoubleQuotes()
     {
-        string value = $"line1{Environment.NewLine}\"line2\"";
+        string value = "line1\r\"line2\"\n\"line3\"\r\n\"line4\"";
 
-        Assert.Equal("\"line1 'line2'\"", MsFunctionLogsLogger.NormalizeString(value));
-        Assert.Equal("line1 'line2'", MsFunctionLogsLogger.NormalizeString(value, addEnclosingQuotes: false));
+        Assert.Equal("\"line1 'line2' 'line3' 'line4'\"", MsFunctionLogsLogger.NormalizeString(value));
+        Assert.Equal("line1 'line2' 'line3' 'line4'", MsFunctionLogsLogger.NormalizeString(value, addEnclosingQuotes: false));
     }
 
     [Fact]

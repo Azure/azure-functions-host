@@ -178,8 +178,12 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             if (reloadCapabilities is not null)
             {
                 var envReloadResponse = reloadResponse.FunctionEnvironmentReloadResponse!;
-                var initCapabilities = initResponse.WorkerInitResponse!.Capabilities;
                 var strategy = envReloadResponse.CapabilitiesUpdateStrategy;
+                var initCapabilities = initResponse.WorkerInitResponse!.Capabilities;
+
+                _logger.LogInformation("Worker capabilities received by proxy ({Strategy}): {Capabilities}",
+                    strategy,
+                    CapabilityLogFormatter.Format(reloadCapabilities));
 
                 if (strategy == FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Replace)
                 {
@@ -204,14 +208,8 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             // reorder these calls and those tests still pass, the tests have rotted.
             RewriteHttpUri(initResponse);
 
-            var capabilities = initResponse.WorkerInitResponse?.Capabilities;
-            if (capabilities is not null)
-            {
-                foreach (var cap in capabilities)
-                {
-                    _logger.LogInformation("WorkerInitResponse capability: {Key} = {Value}", cap.Key, cap.Value);
-                }
-            }
+            _logger.LogInformation("WorkerProxy capabilities to runtime: {Capabilities}",
+                CapabilityLogFormatter.Format(initResponse.WorkerInitResponse!.Capabilities));
 
             // 3. FunctionsMetadataRequest → FunctionMetadataResponse (prefetch)
             _logger.LogInformation("Prefetching function metadata.");
