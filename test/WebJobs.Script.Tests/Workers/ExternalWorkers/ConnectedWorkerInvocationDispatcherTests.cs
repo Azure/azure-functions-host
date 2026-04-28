@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -63,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 new Mock<ISharedMemoryManager>().Object,
                 Options.Create(new WorkerConcurrencyOptions()),
                 Options.Create(new FunctionsHostingConfigOptions()),
+                new Mock<IAppCapabilitiesStore>().Object,
                 new Mock<IHttpProxyService>().Object);
         }
 

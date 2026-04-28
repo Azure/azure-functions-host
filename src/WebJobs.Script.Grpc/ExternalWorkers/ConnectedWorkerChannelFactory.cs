@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Http;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
         private readonly ISharedMemoryManager _sharedMemoryManager;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
+        private readonly IAppCapabilitiesStore _appCapabilitiesStore;
         private readonly IHttpProxyService _httpProxyService;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IMetricsLogger _metricsLogger;
@@ -37,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
             ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IAppCapabilitiesStore appCapabilitiesStore,
             IHttpProxyService httpProxyService,
             ILoggerFactory loggerFactory,
             IMetricsLogger metricsLogger)
@@ -48,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
             _sharedMemoryManager = sharedMemoryManager;
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _hostingConfigOptions = hostingConfigOptions;
+            _appCapabilitiesStore = appCapabilitiesStore;
             _httpProxyService = httpProxyService;
             _loggerFactory = loggerFactory;
             _metricsLogger = metricsLogger;
@@ -63,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
                 workerId, _eventManager, _hostManager, workerConfig,
                 logger, _metricsLogger, _environment, _applicationHostOptions,
                 _sharedMemoryManager, _workerConcurrencyOptions,
-                _hostingConfigOptions, _httpProxyService);
+                _hostingConfigOptions, _appCapabilitiesStore, _httpProxyService);
         }
     }
 }

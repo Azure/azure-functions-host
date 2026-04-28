@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -36,10 +37,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
             ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IAppCapabilitiesStore appCapabilitiesStore,
             IHttpProxyService httpProxyService)
             : base(workerId, eventManager, hostManager, workerConfig, logger, metricsLogger,
                    attemptCount: 0, environment, applicationHostOptions, sharedMemoryManager,
-                   workerConcurrencyOptions, hostingConfigOptions, httpProxyService)
+                   workerConcurrencyOptions, hostingConfigOptions, appCapabilitiesStore, httpProxyService)
         {
         }
 
