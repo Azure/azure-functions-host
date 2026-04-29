@@ -48,7 +48,7 @@ internal sealed class FunctionLogWriter
 
         if (line.Length > 0)
         {
-            WriteSupervisorMessage(2, $"workerproxy-process: {line}");
+            WriteSupervisorMessage(4, $"workerproxy-process: {line}");
         }
     }
 

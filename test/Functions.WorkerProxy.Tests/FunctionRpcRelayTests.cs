@@ -737,6 +737,23 @@ public class FunctionRpcRelayTests : IDisposable
         Assert.Equal(hostJsonContent, cached["host_configuration_json"]);
     }
 
+    [Fact]
+    public async Task SpecializeWorkerAsync_HostJsonRead_StartsBeforeEnvironmentReloadCompletes()
+    {
+        string hostJsonPath = Path.Combine(_tempDir, "host.json");
+        string hostJsonContent = """{"version":"2.0","source":"prefetched"}""";
+        File.WriteAllText(hostJsonPath, hostJsonContent);
+
+        var relay = CreateRelay();
+        relay._workerConnected.TrySetResult();
+
+        var workerTask = SimulateWorkerAsync(relay, onEnvReload: _ => File.Delete(hostJsonPath));
+        await relay.SpecializeWorkerAsync(new Dictionary<string, string>(), _tempDir, CancellationToken.None);
+
+        var cached = relay._cachedWorkerInitResponse!.WorkerInitResponse.Capabilities;
+        Assert.Equal(hostJsonContent, cached["host_configuration_json"]);
+    }
+
     // --- Helper methods ---
 
     /// <summary>
