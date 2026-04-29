@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -131,6 +132,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
             defaultWorkerProcessFactory.ApplyWorkerConcurrencyLimits(process.StartInfo);
             Assert.Equal(process.StartInfo.EnvironmentVariables.GetValueOrNull(name), expectedValue);
+        }
+
+        [Fact]
+        internal void DefaultWorkerProcessFactory_CreatesWorkingDirectory_WhenNotExists()
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), "functions-test-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Assert.False(Directory.Exists(tempDir));
+
+                var context = new RpcWorkerContext(
+                    "testId",
+                    500,
+                    "testWorkerId",
+                    new WorkerProcessArguments()
+                    {
+                        ExecutablePath = "test",
+                        ExecutableArguments = new List<string>(),
+                        WorkerArguments = new List<string>()
+                    },
+                    tempDir,
+                    new Uri("http://localhost"),
+                    new Dictionary<string, string>());
+
+                DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_testEnvironment, _loggerFactory);
+                Process childProcess = defaultWorkerProcessFactory.CreateWorkerProcess(context);
+
+                Assert.True(Directory.Exists(tempDir));
+                Assert.Equal(tempDir, childProcess.StartInfo.WorkingDirectory);
+                childProcess.Dispose();
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, recursive: true);
+                }
+            }
         }
 
         public IDictionary<string, string> GetTestEnvVars()

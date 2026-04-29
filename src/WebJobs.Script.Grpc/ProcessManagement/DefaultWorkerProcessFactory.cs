@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -40,6 +41,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 throw new ArgumentNullException(nameof(context.Arguments.ExecutablePath));
             }
+            // Ensure the working directory exists before starting the process.
+            // This handles cases where the directory structure hasn't been created yet,
+            // such as new deployment slots or apps with network restrictions blocking
+            // the control plane from initializing the default directory structure.
+            if (!string.IsNullOrEmpty(context.WorkingDirectory) && !Directory.Exists(context.WorkingDirectory))
+            {
+                try
+                {
+                    _logger.LogInformation("Working directory '{workingDirectory}' does not exist. Creating it.", context.WorkingDirectory);
+                    Directory.CreateDirectory(context.WorkingDirectory);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to create working directory '{workingDirectory}'. The worker process may fail to start.", context.WorkingDirectory);
+                }
+            }
+
             var startInfo = new ProcessStartInfo(context.Arguments.ExecutablePath)
             {
                 RedirectStandardOutput = true,
