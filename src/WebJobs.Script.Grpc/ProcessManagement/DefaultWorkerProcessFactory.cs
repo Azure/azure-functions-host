@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 throw new ArgumentNullException(nameof(context.Arguments.ExecutablePath));
             }
+
             // Ensure the working directory exists before starting the process.
             // This handles cases where the directory structure hasn't been created yet,
             // such as new deployment slots or apps with network restrictions blocking
