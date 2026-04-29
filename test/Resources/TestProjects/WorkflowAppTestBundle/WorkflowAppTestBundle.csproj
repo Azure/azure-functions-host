@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RunAnalyzers>false</RunAnalyzers>
+    <!--
+      This project produces a stand-alone DLL that is staged into a fake extension-bundle layout at
+      test runtime. It is not directly referenced by the integration tests project. See
+      WorkflowAppEndToEndTests for usage.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.45" />
+  </ItemGroup>
+
+</Project>
