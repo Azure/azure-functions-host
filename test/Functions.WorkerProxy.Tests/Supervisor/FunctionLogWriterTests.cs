@@ -30,7 +30,7 @@ public class FunctionLogWriterTests
         writer.WriteProcessLine("fatal \"boom\"");
 
         string line = output.ToString();
-        Assert.StartsWith("MS_FUNCTION_LOGS 2,,,,workerproxy.process,workerproxy.supervisor", line);
+        Assert.StartsWith("MS_FUNCTION_LOGS 4,,,,workerproxy.process,workerproxy.supervisor", line);
         Assert.Contains("\"workerproxy-process: fatal 'boom'\"", line);
         Assert.Contains(",4.1050.100,2026-04-25T12:34:56.0000000Z,", line);
         Assert.Contains(",CONTAINER-01,stamp-01,tenant-01,", line);

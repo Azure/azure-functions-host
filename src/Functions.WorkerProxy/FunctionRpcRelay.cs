@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Diagnostics;
 using System.Threading.Channels;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -47,6 +48,16 @@ internal record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpPr
 /// </summary>
 internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 {
+    private const string FunctionsNetHostRpcLogPrefix = "FunctionsNetHost:";
+
+    private enum HostJsonSource
+    {
+        FunctionAppDirectory,
+        ExplicitPath
+    }
+
+    private sealed record HostJsonReadResult(string Path, string Content, HostJsonSource Source);
+
     private readonly RelayOptions _options;
     private readonly ILogger<FunctionRpcRelay> _logger;
     private readonly WorkerPodStateManager _stateManager;
@@ -153,13 +164,22 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             // The worker SDK expects this env var to be set during FunctionLoad.
             reloadRequest.EnvironmentVariables.TryAdd("FUNCTIONS_APPLICATION_DIRECTORY", functionAppDirectory);
 
+            var hostJsonReadTask = ReadHostJsonAsync(functionAppDirectory, token);
+
             _logger.LogInformation("Sending FunctionEnvironmentReloadRequest (functionAppDirectory={dir}).", functionAppDirectory);
+            var reloadStart = Stopwatch.GetTimestamp();
             var reloadResponse = await SendAndWaitAsync(
                 new StreamingMessage { FunctionEnvironmentReloadRequest = reloadRequest },
                 StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadResponse,
                 token);
 
             var status = reloadResponse.FunctionEnvironmentReloadResponse?.Result?.Status;
+            var capabilitiesCount = reloadResponse.FunctionEnvironmentReloadResponse?.Capabilities.Count ?? 0;
+            _logger.LogInformation("Received FunctionEnvironmentReloadResponse. Status: {Status}, CapabilitiesCount: {CapabilitiesCount}, ElapsedMilliseconds: {ElapsedMilliseconds}.",
+                status,
+                capabilitiesCount,
+                Stopwatch.GetElapsedTime(reloadStart).TotalMilliseconds);
+
             if (status == StatusResult.Types.Status.Failure)
             {
                 var errorMsg = reloadResponse.FunctionEnvironmentReloadResponse?.Result?.Exception?.Message
@@ -198,7 +218,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 
             // Now that we know the function app directory, inject host.json and rewrite
             // the HttpUri capability so the runtime routes HTTP requests through this proxy.
-            InjectHostJson(initResponse, functionAppDirectory);
+            InjectHostJson(initResponse, await hostJsonReadTask);
 
             // RewriteHttpUri MUST run AFTER the capability merge above. The merge produces
             // the final, post-specialization capability set; rewriting before it would
@@ -331,6 +351,9 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     /// 2. Try the explicit <see cref="RelayOptions.HostJsonPath"/> override.
     /// </summary>
     internal void InjectHostJson(StreamingMessage message, string functionAppDirectory)
+        => InjectHostJson(message, ReadHostJson(functionAppDirectory));
+
+    private void InjectHostJson(StreamingMessage message, HostJsonReadResult? hostJson)
     {
         if (message.ContentCase != StreamingMessage.ContentOneofCase.WorkerInitResponse)
         {
@@ -339,27 +362,74 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 
         var capabilities = message.WorkerInitResponse.Capabilities;
 
+        if (hostJson is null)
+        {
+            _logger.LogWarning("No host.json found. The runtime will use a default configuration.");
+            return;
+        }
+
+        capabilities["host_configuration_json"] = hostJson.Content;
+        if (hostJson.Source == HostJsonSource.FunctionAppDirectory)
+        {
+            _logger.LogInformation("Injected host.json from function app directory '{path}'.", hostJson.Path);
+            return;
+        }
+
+        _logger.LogInformation("Injected host.json from explicit path '{path}'.", hostJson.Path);
+    }
+
+    private HostJsonReadResult? ReadHostJson(string? functionAppDirectory)
+    {
         // 1. Try reading from the function app directory.
         if (!string.IsNullOrEmpty(functionAppDirectory))
         {
             string appDirHostJson = Path.Combine(functionAppDirectory, "host.json");
             if (File.Exists(appDirHostJson))
             {
-                capabilities["host_configuration_json"] = File.ReadAllText(appDirHostJson);
-                _logger.LogInformation("Injected host.json from function app directory '{path}'.", appDirHostJson);
-                return;
+                return new HostJsonReadResult(
+                    appDirHostJson,
+                    File.ReadAllText(appDirHostJson),
+                    HostJsonSource.FunctionAppDirectory);
             }
         }
 
         // 2. Explicit HostJsonPath option.
         if (!string.IsNullOrEmpty(_options.HostJsonPath) && File.Exists(_options.HostJsonPath))
         {
-            capabilities["host_configuration_json"] = File.ReadAllText(_options.HostJsonPath);
-            _logger.LogInformation("Injected host.json from explicit path '{path}'.", _options.HostJsonPath);
-            return;
+            return new HostJsonReadResult(
+                _options.HostJsonPath,
+                File.ReadAllText(_options.HostJsonPath),
+                HostJsonSource.ExplicitPath);
         }
 
-        _logger.LogWarning("No host.json found. The runtime will use a default configuration.");
+        return null;
+    }
+
+    private async Task<HostJsonReadResult?> ReadHostJsonAsync(string? functionAppDirectory, CancellationToken cancellationToken)
+    {
+        // 1. Try reading from the function app directory.
+        if (!string.IsNullOrEmpty(functionAppDirectory))
+        {
+            string appDirHostJson = Path.Combine(functionAppDirectory, "host.json");
+            if (File.Exists(appDirHostJson))
+            {
+                return new HostJsonReadResult(
+                    appDirHostJson,
+                    await File.ReadAllTextAsync(appDirHostJson, cancellationToken),
+                    HostJsonSource.FunctionAppDirectory);
+            }
+        }
+
+        // 2. Explicit HostJsonPath option.
+        if (!string.IsNullOrEmpty(_options.HostJsonPath) && File.Exists(_options.HostJsonPath))
+        {
+            return new HostJsonReadResult(
+                _options.HostJsonPath,
+                await File.ReadAllTextAsync(_options.HostJsonPath, cancellationToken),
+                HostJsonSource.ExplicitPath);
+        }
+
+        return null;
     }
 
     private void RewriteHttpUri(StreamingMessage message)
@@ -451,6 +521,11 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                 if (side == RelaySide.Worker)
                 {
                     // --- Worker-side interception ---
+
+                    if (message.ContentCase == StreamingMessage.ContentOneofCase.RpcLog)
+                    {
+                        WriteFunctionsNetHostLogToConsole(message.RpcLog);
+                    }
 
                     // Cache StartStream and signal worker connected. Do NOT relay.
                     if (message.ContentCase == StreamingMessage.ContentOneofCase.StartStream)
@@ -569,6 +644,17 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         {
             forwardWriter.TryComplete();
         }
+    }
+
+    private static void WriteFunctionsNetHostLogToConsole(RpcLog? rpcLog)
+    {
+        var message = rpcLog?.Message;
+        if (message is null || !message.StartsWith(FunctionsNetHostRpcLogPrefix, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Console.WriteLine(message);
     }
 
     private static async Task WriteOutboundAsync(

@@ -19,8 +19,10 @@ WORKDIR /extract
 
 # Build Linux FunctionsNetHost from source and stage the same files that the packaged native host provides.
 RUN apt-get update \
-    && apt-get install -y git clang zlib1g-dev \
-    && git clone --depth 1 --single-branch --branch brettsam/nethost_retry https://github.com/Azure/azure-functions-dotnet-worker.git /tmp/azure-functions-dotnet-worker \
+    && apt-get install -y curl clang zlib1g-dev \
+    && mkdir -p /tmp/azure-functions-dotnet-worker \
+    && curl -fsSL "https://github.com/Azure/azure-functions-dotnet-worker/archive/409466bfbcd9a7c3c6a9c47fbda30248e6afaf68.tar.gz" \
+        | tar -xz --strip-components=1 -C /tmp/azure-functions-dotnet-worker \
     && for tfm in net10.0 net9.0 net8.0; do \
         version="${tfm#net}"; \
         dotnet publish /tmp/azure-functions-dotnet-worker/host/src/PrelaunchApp/App.csproj -c Release -f "${tfm}" -p:UseAppHost=false -o "/extract/prelaunchapps/${version}"; \
@@ -43,6 +45,7 @@ COPY --from=extract-nethost /extract/prelaunchapps/ ./prelaunchapps/
 RUN mkdir -p /home/site/wwwroot
 
 ENV HOME=/home
+ENV FUNCTIONS_WORKER_RUNTIME_VERSION=10.0
 ENV FUNCTIONS_GRPC_HOST=localhost
 # Worker-proxy's worker-facing gRPC listener defaults to 50054 (WORKER_GRPC_PORT).
 # FunctionsNetHost dials this endpoint to register as the language worker.
