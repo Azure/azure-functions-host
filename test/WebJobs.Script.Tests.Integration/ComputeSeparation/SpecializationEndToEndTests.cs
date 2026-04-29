@@ -66,6 +66,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         EnvironmentSettingNames.AzureWebsitePlaceholderMode,
         EnvironmentSettingNames.AzureWebsiteSku,
         EnvironmentSettingNames.FunctionsWorkerExternalEnabled,
+        EnvironmentSettingNames.FunctionWorkerRuntime,
         "AzureWebJobsStorage",
     ];
 
@@ -109,6 +110,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
         Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
         Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.FlexConsumptionSku);
         Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsWorkerExternalEnabled, "true");
+        Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
         Environment.SetEnvironmentVariable("AzureWebJobsStorage", storageConnection);
 
         _environment = new TestEnvironment(new Dictionary<string, string>
@@ -165,6 +167,7 @@ public class SpecializationEndToEndTests : IAsyncLifetime, IDisposable, IClassFi
                     c.AddInMemoryCollection([
                         KeyValuePair.Create("AzureWebJobsStorage", storageConnection),
                         KeyValuePair.Create(EnvironmentSettingNames.FunctionsWorkerExternalEnabled, "true"),
+                        KeyValuePair.Create(EnvironmentSettingNames.FunctionWorkerRuntime, "node"),
                     ]);
                 });
             })
