@@ -190,6 +190,12 @@ adminAuthed.MapPost("/infra/instanceState", async (HttpContext ctx, Cancellation
     return await ManagementApiHandlers.HandleInstanceStateAsync(clientRevision, stateManager, cancellationToken);
 });
 
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    app.Logger.LogInformation("WorkerProxy listening. runtimeGrpcPort={RuntimeGrpcPort}, workerGrpcPort={WorkerGrpcPort}, httpProxyPort={HttpProxyPort}, managementPort={ManagementPort}, httpProxyEndpoint={HttpProxyEndpoint}, podName={PodName}",
+         runtimeGrpcPort, workerGrpcPort, httpProxyPort, managementPort, httpProxyEndpoint, podName);
+});
+
 app.Run();
 
 // ---------------------------------------------------------------------------
