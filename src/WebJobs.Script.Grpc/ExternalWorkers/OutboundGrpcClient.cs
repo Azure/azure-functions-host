@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 /// </summary>
 internal class OutboundGrpcClient : IOutboundGrpcClient
 {
+    internal static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(5);
     internal static readonly TimeSpan DefaultKeepAlivePingDelay = TimeSpan.FromSeconds(30);
     internal static readonly TimeSpan DefaultKeepAlivePingTimeout = TimeSpan.FromSeconds(10);
 
@@ -118,6 +119,7 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
     {
         return new SocketsHttpHandler
         {
+            ConnectTimeout = DefaultConnectTimeout,
             KeepAlivePingDelay = DefaultKeepAlivePingDelay,
             KeepAlivePingTimeout = DefaultKeepAlivePingTimeout,
             KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always

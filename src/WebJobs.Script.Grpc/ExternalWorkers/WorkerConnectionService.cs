@@ -26,6 +26,8 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
 {
     private static readonly TimeSpan InitTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan DrainTimeout = TimeSpan.FromMinutes(1);
+    private static readonly int GrpcConnectMaxRetries = 3;
+    private static readonly TimeSpan GrpcConnectRetryDelay = TimeSpan.FromSeconds(2);
 
     private readonly IConnectedWorkerChannelFactory _channelFactory;
     private readonly IConnectedWorkerChannelManager _channelManager;
@@ -227,7 +229,30 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         var client = _clientFactory.Create();
         worker.Client = client;
 
-        await client.ConnectAsync(workerId, endpoint, cancellationToken);
+        // Retry gRPC connect with backoff. The SWIFT port mapping for the worker
+        // pod may not be routable immediately after pod creation, causing the TCP
+        // connect to hang until ConnectTimeout fires. Retrying gives SWIFT time
+        // to propagate while keeping the overall budget within the init timeout.
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await client.ConnectAsync(workerId, endpoint, cancellationToken);
+                break;
+            }
+            catch (Exception ex) when (attempt < GrpcConnectMaxRetries && !cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "gRPC connect attempt {attempt}/{maxRetries} failed for worker '{workerId}' at {endpoint}. Retrying in {delay}s.",
+                    attempt, GrpcConnectMaxRetries, workerId, endpoint, GrpcConnectRetryDelay.TotalSeconds);
+
+                // Dispose the failed client and create a fresh one for the next attempt.
+                await client.DisposeAsync();
+                client = _clientFactory.Create();
+                worker.Client = client;
+
+                await Task.Delay(GrpcConnectRetryDelay, cancellationToken);
+            }
+        }
 
         var workerConfig = new RpcWorkerConfig
         {
