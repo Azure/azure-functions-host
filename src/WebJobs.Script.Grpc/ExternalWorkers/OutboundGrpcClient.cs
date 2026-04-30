@@ -4,6 +4,7 @@
 #nullable enable
 
 using System;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Channels;
@@ -68,6 +69,9 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
     /// <returns>A task that completes once the stream is established and background pumps are running.</returns>
     public Task ConnectAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
     {
+        var connectStart = Stopwatch.GetTimestamp();
+        _logger.LogInformation("OutboundGrpcClient connect started. WorkerId: {workerId}, Endpoint: {endpoint}.", workerId, endpoint);
+
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         try
@@ -84,12 +88,14 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
             _ = PushOutbound(workerId, _call.RequestStream, outbound.Reader, _cts.Token);
             _ = PullInbound(workerId, _call.ResponseStream, inbound, _cts.Token);
 
-            _logger.LogDebug("Outbound gRPC client connected to {endpoint} for workerId: {workerId}", endpoint, workerId);
+            _logger.LogInformation("OutboundGrpcClient stream established. WorkerId: {workerId}, Endpoint: {endpoint}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, endpoint, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
 
             return Task.CompletedTask;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "OutboundGrpcClient connect failed. WorkerId: {workerId}, Endpoint: {endpoint}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, endpoint, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
+
             _call?.Dispose();
 
             if (_channel is not null)

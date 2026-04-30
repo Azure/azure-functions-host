@@ -118,6 +118,8 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         string functionAppDirectory,
         CancellationToken cancellationToken)
     {
+        var specializeStart = Stopwatch.GetTimestamp();
+
         if (Interlocked.CompareExchange(ref _specializationStarted, 1, 0) != 0)
         {
             throw new InvalidOperationException("Worker specialization has already been initiated.");
@@ -128,19 +130,21 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         var token = cts.Token;
 
         // Wait for the worker to have sent StartStream.
+        var workerConnectedWaitStart = Stopwatch.GetTimestamp();
         await _workerConnected.Task.WaitAsync(token);
-        _logger.LogInformation("Worker is connected. Starting specialization sequence.");
+        _logger.LogInformation("WorkerProxy specialization started. WorkerConnectedWaitElapsedMilliseconds: {workerConnectedWaitElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", Stopwatch.GetElapsedTime(workerConnectedWaitStart).TotalMilliseconds, Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
 
         try
         {
             // 1. WorkerInitRequest → WorkerInitResponse
-            _logger.LogInformation("Sending WorkerInitRequest to worker.");
+            var initStart = Stopwatch.GetTimestamp();
+            _logger.LogInformation("WorkerProxy sending WorkerInitRequest to worker.");
             var initResponse = await SendAndWaitAsync(
                 new StreamingMessage { WorkerInitRequest = new WorkerInitRequest() },
                 StreamingMessage.ContentOneofCase.WorkerInitResponse,
                 token);
 
-            _logger.LogInformation("Received WorkerInitResponse.");
+            _logger.LogInformation("WorkerProxy received WorkerInitResponse. StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", Stopwatch.GetElapsedTime(initStart).TotalMilliseconds, Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
 
             var initStatus = initResponse.WorkerInitResponse?.Result?.Status;
             if (initStatus == StatusResult.Types.Status.Failure)
@@ -166,7 +170,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 
             var hostJsonReadTask = ReadHostJsonAsync(functionAppDirectory, token);
 
-            _logger.LogInformation("Sending FunctionEnvironmentReloadRequest (functionAppDirectory={dir}).", functionAppDirectory);
+            _logger.LogInformation("WorkerProxy sending FunctionEnvironmentReloadRequest. FunctionAppDirectory: {dir}.", functionAppDirectory);
             var reloadStart = Stopwatch.GetTimestamp();
             var reloadResponse = await SendAndWaitAsync(
                 new StreamingMessage { FunctionEnvironmentReloadRequest = reloadRequest },
@@ -187,7 +191,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                 throw new InvalidOperationException(errorMsg);
             }
 
-            _logger.LogInformation("Worker specialization succeeded.");
+            _logger.LogInformation("WorkerProxy worker specialization succeeded. ElapsedMilliseconds: {elapsedMilliseconds}.", Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
 
             // The worker reports its full capabilities in the env reload response
             // (after specialization), not in the initial WorkerInitResponse. Apply
@@ -232,28 +236,31 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                 CapabilityLogFormatter.Format(initResponse.WorkerInitResponse!.Capabilities));
 
             // 3. FunctionsMetadataRequest → FunctionMetadataResponse (prefetch)
-            _logger.LogInformation("Prefetching function metadata.");
+            var metadataStart = Stopwatch.GetTimestamp();
+            _logger.LogInformation("WorkerProxy prefetching function metadata.");
             var metadataResponse = await SendAndWaitAsync(
                 new StreamingMessage { FunctionsMetadataRequest = new FunctionsMetadataRequest() },
                 StreamingMessage.ContentOneofCase.FunctionMetadataResponse,
                 token);
 
             _cachedFunctionMetadataResponse = metadataResponse;
-            _logger.LogInformation("Cached FunctionMetadataResponse.");
+            _logger.LogInformation("WorkerProxy cached FunctionMetadataResponse. StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", Stopwatch.GetElapsedTime(metadataStart).TotalMilliseconds, Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
 
             // Only cache the fully-mutated init response after all enrichment steps
             // have succeeded. This ensures the runtime never sees a stale/incomplete response.
             _cachedWorkerInitResponse = initResponse;
-            _logger.LogInformation("Cached WorkerInitResponse.");
+            _logger.LogInformation("WorkerProxy cached WorkerInitResponse. ElapsedMilliseconds: {elapsedMilliseconds}.", Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
 
             // Signal success — unblock any runtime waiting on WorkerInitRequest.
             _specializationCompleted.TrySetResult();
+            _logger.LogInformation("WorkerProxy specialization completed. TotalElapsedMilliseconds: {totalElapsedMilliseconds}.", Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
         }
         catch (Exception ex)
         {
             // Signal failure — the runtime-side await will throw, preventing it
             // from proceeding with a stale or missing cached response.
             _specializationCompleted.TrySetException(ex);
+            _logger.LogError(ex, "WorkerProxy specialization failed. TotalElapsedMilliseconds: {totalElapsedMilliseconds}.", Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
             throw;
         }
     }
@@ -284,17 +291,19 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 
         if (localPort == _options.RuntimeGrpcPort)
         {
-            _logger.LogInformation("Runtime connected on port {Port}", localPort);
+            var runtimeConnectStart = Stopwatch.GetTimestamp();
+            _logger.LogInformation("WorkerProxy runtime stream connected. Port: {Port}.", localPort);
             _runtimeConnected.TrySetResult();
 
             // Wait for the worker to be connected before starting the relay.
             await _workerConnected.Task.WaitAsync(context.CancellationToken);
+            _logger.LogInformation("WorkerProxy runtime stream observed worker connected. Port: {Port}, ElapsedMilliseconds: {elapsedMilliseconds}.", localPort, Stopwatch.GetElapsedTime(runtimeConnectStart).TotalMilliseconds);
 
             // Replay cached StartStream to the runtime.
             if (_cachedStartStream is not null)
             {
                 await responseStream.WriteAsync(_cachedStartStream);
-                _logger.LogInformation("Replayed cached StartStream to runtime.");
+                _logger.LogInformation("WorkerProxy replayed cached StartStream to runtime. Port: {Port}, ElapsedMilliseconds: {elapsedMilliseconds}.", localPort, Stopwatch.GetElapsedTime(runtimeConnectStart).TotalMilliseconds);
             }
 
             // Runtime reads from _toRuntime, writes into _toWorker.
@@ -302,7 +311,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         }
         else
         {
-            _logger.LogInformation("Worker connected on port {Port}", localPort);
+            _logger.LogInformation("WorkerProxy worker stream connected. Port: {Port}.", localPort);
 
             // Start the relay immediately. The proxy needs to read worker messages
             // (for /assign) and write to the worker (WorkerInitRequest, etc.) before
@@ -533,7 +542,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                         _cachedStartStream = message;
                         _workerConnected.TrySetResult();
                         _stateManager.UpdatePodStatus(WorkerPodStatus.ReadyForRequest);
-                        _logger.LogInformation("Cached StartStream from worker '{workerId}'.", message.StartStream?.WorkerId);
+                        _logger.LogInformation("WorkerProxy cached StartStream from worker. WorkerId: {workerId}.", message.StartStream?.WorkerId);
                         continue;
                     }
 
@@ -567,11 +576,13 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                     // Intercept WorkerInitRequest — respond from cache. Block until /assign completes.
                     if (message.ContentCase == StreamingMessage.ContentOneofCase.WorkerInitRequest)
                     {
-                        _logger.LogInformation("Runtime sent WorkerInitRequest. Waiting for specialization to complete.");
+                        var initReplayStart = Stopwatch.GetTimestamp();
+                        _logger.LogInformation("WorkerProxy runtime WorkerInitRequest received. Waiting for specialization to complete.");
 
                         try
                         {
                             await _specializationCompleted.Task.WaitAsync(cancellationToken);
+                            _logger.LogInformation("WorkerProxy specialization gate completed for runtime WorkerInitRequest. StepElapsedMilliseconds: {stepElapsedMilliseconds}.", Stopwatch.GetElapsedTime(initReplayStart).TotalMilliseconds);
                         }
                         catch (Exception ex) when (ex is not OperationCanceledException)
                         {
@@ -581,7 +592,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 
                         if (_cachedWorkerInitResponse is not null)
                         {
-                            _logger.LogInformation("Responding to runtime WorkerInitRequest from cache.");
+                            _logger.LogInformation("WorkerProxy responding to runtime WorkerInitRequest from cache. StepElapsedMilliseconds: {stepElapsedMilliseconds}.", Stopwatch.GetElapsedTime(initReplayStart).TotalMilliseconds);
                             await replyWriter.WriteAsync(_cachedWorkerInitResponse, cancellationToken);
                         }
 
@@ -592,7 +603,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                     if (message.ContentCase == StreamingMessage.ContentOneofCase.FunctionsMetadataRequest
                         && _cachedFunctionMetadataResponse is not null)
                     {
-                        _logger.LogInformation("Responding to runtime FunctionsMetadataRequest from cache.");
+                        _logger.LogInformation("WorkerProxy responding to runtime FunctionsMetadataRequest from cache.");
                         await replyWriter.WriteAsync(_cachedFunctionMetadataResponse, cancellationToken);
                         continue;
                     }

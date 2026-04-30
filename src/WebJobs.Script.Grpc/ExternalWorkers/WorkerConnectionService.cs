@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -108,6 +109,9 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// <inheritdoc/>
     public async Task ConnectWorkerAsync(string workerId, Uri endpoint, Uri workerHttpEndpoint, CancellationToken cancellationToken)
     {
+        var connectStart = Stopwatch.GetTimestamp();
+        _logger.LogInformation("RuntimeWorkerConnect started. WorkerId: {workerId}, Endpoint: {endpoint}, WorkerHttpEndpoint: {workerHttpEndpoint}.", workerId, endpoint, workerHttpEndpoint);
+
         if (_stopping)
         {
             throw new InvalidOperationException("Cannot connect new workers while the runtime is stopping.");
@@ -144,6 +148,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             // It remains linked through any state transitions (Connecting, Connected,
             // Draining, Error) until DisconnectWorkerAsync removes it from _workers.
             _runtimeStateManager.OnWorkerLinked(workerId);
+            _logger.LogInformation("RuntimeWorkerConnect worker registered. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
         }
         finally
         {
@@ -157,11 +162,13 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         // pipeline finishes, which DisconnectWorkerAsync awaits before cleanup.
         _ = ConnectWorkerCoreAsync(workerId, endpoint, workerHttpEndpoint, worker, cancellationToken);
         await worker.InitCompleted.Task;
+        _logger.LogInformation("RuntimeWorkerConnect init phase completed. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
     }
 
     private async Task ConnectWorkerCoreAsync(string workerId, Uri endpoint, Uri workerHttpEndpoint, WorkerConnection worker, CancellationToken cancellationToken)
     {
         var info = worker.Info;
+        var pipelineStart = Stopwatch.GetTimestamp();
 
         try
         {
@@ -170,6 +177,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             // Phase 1 complete — signal InitCompleted so ConnectWorkerAsync
             // (and the API caller) can return 200.
             worker.InitCompleted.TrySetResult();
+            _logger.LogInformation("RuntimeWorkerConnect phase 1 completed. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(pipelineStart).TotalMilliseconds);
 
             _logger.LogInformation("Worker '{workerId}' linked. Starting host setup.", workerId);
 
@@ -211,6 +219,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             // Signal that the full pipeline (Phase 1 + Phase 2) has finished.
             // DisconnectWorkerAsync awaits this before cleaning up.
             worker.ConnectCompleted.TrySetResult();
+            _logger.LogInformation("RuntimeWorkerConnect pipeline completed. WorkerId: {workerId}, State: {state}, TotalElapsedMilliseconds: {totalElapsedMilliseconds}.", workerId, info.State, Stopwatch.GetElapsedTime(pipelineStart).TotalMilliseconds);
         }
     }
 
@@ -222,9 +231,11 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// </summary>
     private async Task<IConnectedWorkerChannel> EstablishChannelAsync(string workerId, Uri endpoint, Uri workerHttpEndpoint, WorkerConnection worker, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Connecting to external worker '{workerId}' at {endpoint}.", workerId, endpoint);
+        var phaseStart = Stopwatch.GetTimestamp();
+        _logger.LogInformation("RuntimeWorkerConnect phase 1 started. WorkerId: {workerId}, Endpoint: {endpoint}, WorkerHttpEndpoint: {workerHttpEndpoint}.", workerId, endpoint, workerHttpEndpoint);
 
         _eventManager.AddGrpcChannels(workerId);
+        _logger.LogInformation("RuntimeWorkerConnect gRPC channels registered. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
 
         var client = _clientFactory.Create();
         worker.Client = client;
@@ -235,15 +246,19 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         // to propagate while keeping the overall budget within the init timeout.
         for (int attempt = 1; ; attempt++)
         {
+            var attemptStart = Stopwatch.GetTimestamp();
+            _logger.LogInformation("RuntimeWorkerConnect gRPC connect attempt started. WorkerId: {workerId}, Attempt: {attempt}, MaxRetries: {maxRetries}, Endpoint: {endpoint}.", workerId, attempt, GrpcConnectMaxRetries, endpoint);
+
             try
             {
                 await client.ConnectAsync(workerId, endpoint, cancellationToken);
+                _logger.LogInformation("RuntimeWorkerConnect gRPC connect attempt completed. WorkerId: {workerId}, Attempt: {attempt}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, attempt, Stopwatch.GetElapsedTime(attemptStart).TotalMilliseconds);
                 break;
             }
             catch (Exception ex) when (attempt < GrpcConnectMaxRetries && !cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning(ex, "gRPC connect attempt {attempt}/{maxRetries} failed for worker '{workerId}' at {endpoint}. Retrying in {delay}s.",
-                    attempt, GrpcConnectMaxRetries, workerId, endpoint, GrpcConnectRetryDelay.TotalSeconds);
+                _logger.LogWarning(ex, "RuntimeWorkerConnect gRPC connect attempt failed. WorkerId: {workerId}, Attempt: {attempt}, MaxRetries: {maxRetries}, Endpoint: {endpoint}, AttemptElapsedMilliseconds: {attemptElapsedMilliseconds}, RetryDelaySeconds: {retryDelaySeconds}.",
+                    workerId, attempt, GrpcConnectMaxRetries, endpoint, Stopwatch.GetElapsedTime(attemptStart).TotalMilliseconds, GrpcConnectRetryDelay.TotalSeconds);
 
                 // Dispose the failed client and create a fresh one for the next attempt.
                 await client.DisposeAsync();
@@ -253,6 +268,8 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
                 await Task.Delay(GrpcConnectRetryDelay, cancellationToken);
             }
         }
+
+        _logger.LogInformation("RuntimeWorkerConnect gRPC stream established. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
 
         var workerConfig = new RpcWorkerConfig
         {
@@ -265,10 +282,16 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         };
 
         var channel = _channelFactory.Create(workerId, workerConfig);
-        await channel.StartWorkerProcessAsync(cancellationToken);
+        _logger.LogInformation("RuntimeWorkerConnect channel created. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
 
-        _logger.LogInformation("Waiting for worker '{workerId}' init handshake.", workerId);
+        var channelStart = Stopwatch.GetTimestamp();
+        await channel.StartWorkerProcessAsync(cancellationToken);
+        _logger.LogInformation("RuntimeWorkerConnect channel inbound processing started. WorkerId: {workerId}, StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(channelStart).TotalMilliseconds, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
+
+        var initStart = Stopwatch.GetTimestamp();
+        _logger.LogInformation("RuntimeWorkerConnect init handshake wait started. WorkerId: {workerId}, TimeoutSeconds: {timeoutSeconds}.", workerId, InitTimeout.TotalSeconds);
         await channel.WaitForInitAsync(InitTimeout, cancellationToken);
+        _logger.LogInformation("RuntimeWorkerConnect init handshake completed. WorkerId: {workerId}, StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(initStart).TotalMilliseconds, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
 
         // Extract host.json from worker capabilities.
         string hostJson = channel.GetCapabilityState("host_configuration_json");
@@ -290,11 +313,12 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
 
         // Register the channel directly — no event needed.
         _channelManager.AddChannel(workerId, channel);
+        _logger.LogInformation("RuntimeWorkerConnect channel registered. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
 
         // Subscribe to drain signals from the worker proxy.
         channel.DrainRequested += OnWorkerDrainRequested;
 
-        _logger.LogInformation("Worker '{workerId}' connected and registered.", workerId);
+        _logger.LogInformation("RuntimeWorkerConnect phase 1 finished. WorkerId: {workerId}, TotalElapsedMilliseconds: {totalElapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
 
         return channel;
     }
@@ -306,6 +330,9 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     /// </summary>
     private async Task CompleteWorkerSetupAsync(string workerId, WorkerConnection worker, IConnectedWorkerChannel channel, CancellationToken cancellationToken)
     {
+        var setupStart = Stopwatch.GetTimestamp();
+        _logger.LogInformation("RuntimeWorkerSetup started. WorkerId: {workerId}.", workerId);
+
         // Start or update the ScriptHost based on whether this is the first worker.
         // The first caller either starts or waits for the ScriptHost; concurrent
         // callers block until startup completes, then call SetupChannel.
@@ -319,8 +346,10 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             var tcs = _scriptHostStarted;
             try
             {
-                _logger.LogInformation("First worker connected. Starting ScriptHost.");
+                var scriptHostStart = Stopwatch.GetTimestamp();
+                _logger.LogInformation("RuntimeWorkerSetup starting ScriptHost for first worker. WorkerId: {workerId}.", workerId);
                 await _scriptHostManager.StartAsync(cancellationToken);
+                _logger.LogInformation("RuntimeWorkerSetup ScriptHost started. WorkerId: {workerId}, StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(scriptHostStart).TotalMilliseconds, Stopwatch.GetElapsedTime(setupStart).TotalMilliseconds);
                 tcs.TrySetResult();
             }
             catch (Exception ex)
@@ -338,12 +367,15 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         else
         {
             // Wait for the first worker's StartAsync to complete before resolving the dispatcher.
+            var waitStart = Stopwatch.GetTimestamp();
+            _logger.LogInformation("RuntimeWorkerSetup waiting for ScriptHost before adding subsequent worker. WorkerId: {workerId}.", workerId);
             await _scriptHostStarted.Task.WaitAsync(cancellationToken);
+            _logger.LogInformation("RuntimeWorkerSetup ScriptHost wait completed. WorkerId: {workerId}, StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(waitStart).TotalMilliseconds, Stopwatch.GetElapsedTime(setupStart).TotalMilliseconds);
 
             if (Utility.TryGetHostService(_scriptHostManager, out ConnectedWorkerInvocationDispatcher dispatcher))
             {
                 dispatcher.SetupChannel(channel);
-                _logger.LogDebug("SetupChannel called for subsequent worker '{workerId}'.", workerId);
+                _logger.LogInformation("RuntimeWorkerSetup channel setup completed for subsequent worker. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(setupStart).TotalMilliseconds);
             }
         }
 
@@ -356,6 +388,7 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         _runtimeStateManager.OnWorkerCapacityAvailable(workerId, workerSlotCapacity);
 
         worker.Info.State = WorkerConnectionState.Connected;
+        _logger.LogInformation("RuntimeWorkerSetup completed. WorkerId: {workerId}, WorkerSlotCapacity: {workerSlotCapacity}, TotalElapsedMilliseconds: {totalElapsedMilliseconds}.", workerId, workerSlotCapacity, Stopwatch.GetElapsedTime(setupStart).TotalMilliseconds);
     }
 
     /// <inheritdoc/>
