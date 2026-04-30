@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         }
 
         [Fact]
-        internal void DefaultWorkerProcessFactory_CreatesWorkingDirectory_WhenNotExists()
+        public void DefaultWorkerProcessFactory_CreatesWorkingDirectory_WhenNotExists()
         {
             string tempDir = Path.Combine(Path.GetTempPath(), "functions-test-" + Guid.NewGuid().ToString("N"));
             try
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                     new Dictionary<string, string>());
 
                 DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_testEnvironment, _loggerFactory);
-                Process childProcess = defaultWorkerProcessFactory.CreateWorkerProcess(context);
+                using Process childProcess = defaultWorkerProcessFactory.CreateWorkerProcess(context);
 
                 Assert.True(Directory.Exists(tempDir));
                 Assert.Equal(tempDir, childProcess.StartInfo.WorkingDirectory);
