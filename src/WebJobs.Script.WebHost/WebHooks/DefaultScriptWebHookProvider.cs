@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -23,6 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // Map from an extension name to a http handler.
         private IDictionary<string, HttpHandler> _customHttpHandlers = new Dictionary<string, HttpHandler>(StringComparer.OrdinalIgnoreCase);
 
+        // Set of extension names whose IExtensionConfigProvider type is decorated with
+        // [AllowArmWebhookAccess], indicating the extension allows ARM-bridged requests.
+        private HashSet<string> _armAllowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         public DefaultScriptWebHookProvider(ISecretManagerProvider secretManagerProvider, HostNameProvider hostNameProvider)
         {
             _secretManagerProvider = secretManagerProvider;
@@ -32,6 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public bool TryGetHandler(string name, out HttpHandler handler)
         {
             return _customHttpHandlers.TryGetValue(name, out handler);
+        }
+
+        public bool IsArmAllowed(string extensionName)
+        {
+            return extensionName is not null && _armAllowedExtensions.Contains(extensionName);
         }
 
         // Exposed to extensions to get the URL for their http handler.
@@ -48,6 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var attrib = extensionType.GetCustomAttribute<ExtensionAttribute>();
             string name = (attrib?.ConfigurationSection ?? extensionType.Name).ToLowerInvariant();
             _customHttpHandlers[name] = handler;
+
+            if (extensionType.GetCustomAttribute<AllowArmWebhookAccessAttribute>() is not null)
+            {
+                _armAllowedExtensions.Add(name);
+            }
 
             return GetExtensionWebHookRoute(name);
         }

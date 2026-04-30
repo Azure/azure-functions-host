@@ -511,6 +511,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             if (provider.TryGetHandler(extensionName, out HttpHandler handler))
             {
                 var requestMessage = new HttpRequestMessageFeature(this.HttpContext).HttpRequestMessage;
+
+                // If ArmExtensionResourceFilter detected an ARM-bridged request, propagate the
+                // marker into the outgoing HttpRequestMessage so the extension can detect it
+                // (visible via both the modern Options API and the legacy Properties bag).
+                if (HttpContext.Items.TryGetValue(ScriptConstants.AzureFunctionsArmWebhookRequestKey, out object isArmRequest) && isArmRequest is true)
+                {
+                    requestMessage.Options.Set(new HttpRequestOptionsKey<bool>(ScriptConstants.AzureFunctionsArmWebhookRequestKey), true);
+                }
+
                 HttpResponseMessage response = await handler.ConvertAsync(requestMessage, token);
 
                 var result = new ObjectResult(response);
