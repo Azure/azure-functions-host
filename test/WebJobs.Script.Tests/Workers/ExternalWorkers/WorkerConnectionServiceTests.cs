@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             _mockEventManager = new Mock<IScriptEventManager>();
             _mockHostManager = new Mock<IScriptHostManager>();
             _mockGrpcClient = new Mock<IOutboundGrpcClient>();
+            _mockGrpcClient.Setup(c => c.InboundPumpTask).Returns(new TaskCompletionSource().Task);
             _mockClientFactory = new Mock<IOutboundGrpcClientFactory>();
             _mockClientFactory.Setup(f => f.Create()).Returns(_mockGrpcClient.Object);
             _mockChannel = new Mock<IConnectedWorkerChannel>();
@@ -701,6 +702,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             Assert.All(
                 sequence.Where(s => s.StartsWith("unlinked:", StringComparison.Ordinal)),
                 unlinked => Assert.True(sequence.IndexOf(unlinked) > stoppingIdx));
+        }
+
+        [Fact]
+        public async Task ConnectWorkerAsync_InboundPumpDiesEarly_RetriesAndSucceeds()
+        {
+            SetupFullConnectMocks();
+
+            // Make WaitForInitAsync block until cancelled (so the inbound pump death wins the race on first attempt)
+            // then succeed immediately on second attempt.
+            int initAttempt = 0;
+            _mockChannel
+                .Setup(c => c.WaitForInitAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .Returns<TimeSpan, CancellationToken>((_, ct) =>
+                {
+                    if (++initAttempt == 1)
+                    {
+                        // Block forever — the inbound pump death should win the race
+                        return Task.Delay(Timeout.Infinite, ct);
+                    }
+
+                    return Task.CompletedTask;
+                });
+
+            // First client: InboundPumpTask completes immediately (simulating worker gRPC not ready).
+            // Second client: InboundPumpTask never completes (healthy pump).
+            var failingClient = new Mock<IOutboundGrpcClient>();
+            failingClient.Setup(c => c.InboundPumpTask).Returns(Task.CompletedTask);
+
+            var healthyClient = new Mock<IOutboundGrpcClient>();
+            healthyClient.Setup(c => c.InboundPumpTask).Returns(new TaskCompletionSource().Task);
+
+            int createCount = 0;
+            _mockClientFactory
+                .Setup(f => f.Create())
+                .Returns(() => ++createCount == 1 ? failingClient.Object : healthyClient.Object);
+
+            var service = CreateService();
+
+            await service.ConnectWorkerAsync("w_retry", new Uri("http://localhost:50051"), CancellationToken.None);
+            await service.WaitForWorkerConnectAsync("w_retry");
+
+            var info = service.GetWorkerStatus("w_retry");
+            Assert.Equal(WorkerConnectionState.Connected, info.State);
+            Assert.True(createCount >= 2, $"Expected at least 2 client creations (retry), got {createCount}");
+        }
+
+        [Fact]
+        public async Task ConnectWorkerAsync_InboundPumpDiesOnAllAttempts_Fails()
+        {
+            SetupFullConnectMocks();
+
+            // WaitForInitAsync blocks forever — the inbound pump death should always win.
+            _mockChannel
+                .Setup(c => c.WaitForInitAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+                .Returns<TimeSpan, CancellationToken>((_, ct) => Task.Delay(Timeout.Infinite, ct));
+
+            // All clients: InboundPumpTask completes immediately (worker never ready).
+            _mockGrpcClient.Setup(c => c.InboundPumpTask).Returns(Task.CompletedTask);
+
+            var service = CreateService();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.ConnectWorkerAsync("w_fail", new Uri("http://localhost:50051"), CancellationToken.None));
+
+            Assert.Contains("inbound gRPC stream terminated", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Null(service.GetWorkerStatus("w_fail"));
         }
     }
 }
