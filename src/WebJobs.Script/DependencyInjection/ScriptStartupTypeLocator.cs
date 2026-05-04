@@ -187,10 +187,18 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     continue;
                 }
 
-                if (!bundleConfigured
-                    || extensionItem.Bindings is null || extensionItem.Bindings.Count == 0
-                    || (bindingsSet is not null
-                        && extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any()))
+                // Decide whether this extension is in scope for the configured bundle.
+                // When no bundle is configured, or the extension declares no bindings, we always
+                // load it. Otherwise we only load it if at least one of its bindings matches a
+                // binding type that some function in the app uses (computed into bindingsSet).
+                bool shouldLoadAllExtensions = !bundleConfigured
+                    || extensionItem.Bindings is null
+                    || extensionItem.Bindings.Count == 0;
+
+                bool shouldLoadThisExtension = bindingsSet is not null
+                    && extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any();
+
+                if (shouldLoadAllExtensions || shouldLoadThisExtension)
                 {
                     string startupExtensionName = extensionItem.Name ?? extensionItem.TypeName;
                     _logger.ScriptStartUpLoadingStartUpExtension(startupExtensionName);

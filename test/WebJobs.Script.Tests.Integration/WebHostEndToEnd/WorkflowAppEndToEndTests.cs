@@ -57,8 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
         // Mirrors the path convention used by SpecializationE2ETests for sibling test projects
         // built into out/bin/<ProjectName>/<BuildConfig>/.
-        private static readonly string s_bundleAssemblyPath =
-            Path.GetFullPath($@"..\..\WorkflowAppTestBundle\{TestHelpers.BuildConfig}\{BundleAssemblyFileName}");
+        private static readonly string s_bundleAssemblyPath = Path.GetFullPath(
+            Path.Combine("..", "..", "WorkflowAppTestBundle", TestHelpers.BuildConfig, BundleAssemblyFileName));
 
         // Script root copied into test output via the integration project's TestScripts glob.
         private static readonly string s_scriptRootPath = Path.GetFullPath(
