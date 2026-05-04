@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -27,8 +28,9 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
 {
     private static readonly TimeSpan InitTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan DrainTimeout = TimeSpan.FromMinutes(1);
-    private static readonly int GrpcConnectMaxRetries = 3;
+    private static readonly int GrpcConnectMaxRetries = 50;
     private static readonly TimeSpan GrpcConnectRetryDelay = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan GrpcInboundDeathRetryDelay = TimeSpan.FromSeconds(1);
 
     private readonly IConnectedWorkerChannelFactory _channelFactory;
     private readonly IConnectedWorkerChannelManager _channelManager;
@@ -244,6 +246,12 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
         // pod may not be routable immediately after pod creation, causing the TCP
         // connect to hang until ConnectTimeout fires. Retrying gives SWIFT time
         // to propagate while keeping the overall budget within the init timeout.
+        //
+        // The retry also covers early inbound pump death: when the worker's gRPC
+        // server isn't ready, the TCP connect succeeds (proxy accepts it) but
+        // PullInbound dies immediately on subchannel "Connection refused". We
+        // detect this by racing the init handshake against InboundPumpTask and
+        // retry the full connection establishment.
         for (int attempt = 1; ; attempt++)
         {
             var attemptStart = Stopwatch.GetTimestamp();
@@ -253,74 +261,122 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
             {
                 await client.ConnectAsync(workerId, endpoint, cancellationToken);
                 _logger.LogInformation("RuntimeWorkerConnect gRPC connect attempt completed. WorkerId: {workerId}, Attempt: {attempt}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, attempt, Stopwatch.GetElapsedTime(attemptStart).TotalMilliseconds);
-                break;
+
+                _logger.LogInformation("RuntimeWorkerConnect gRPC stream established. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
+
+                var workerConfig = new RpcWorkerConfig
+                {
+                    Description = new RpcWorkerDescription
+                    {
+                        Language = "external",
+                        WorkerDirectory = string.Empty
+                    },
+                    CountOptions = new WorkerProcessCountOptions()
+                };
+
+                var channel = _channelFactory.Create(workerId, workerConfig);
+                _logger.LogInformation("RuntimeWorkerConnect channel created. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
+
+                var channelStart = Stopwatch.GetTimestamp();
+                await channel.StartWorkerProcessAsync(cancellationToken);
+                _logger.LogInformation("RuntimeWorkerConnect channel inbound processing started. WorkerId: {workerId}, StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(channelStart).TotalMilliseconds, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
+
+                var initStart = Stopwatch.GetTimestamp();
+                _logger.LogInformation("RuntimeWorkerConnect init handshake wait started. WorkerId: {workerId}, TimeoutSeconds: {timeoutSeconds}.", workerId, InitTimeout.TotalSeconds);
+
+                // Race init handshake against early inbound pump death.
+                // If the worker's gRPC server isn't ready, PullInbound will fail
+                // almost immediately while WaitForInitAsync hangs for InitTimeout.
+                var initTask = channel.WaitForInitAsync(InitTimeout, cancellationToken);
+                var inboundTask = client.InboundPumpTask ?? Task.Delay(Timeout.Infinite, cancellationToken);
+                var completedTask = await Task.WhenAny(initTask, inboundTask);
+
+                if (completedTask != initTask)
+                {
+                    throw new InvalidOperationException(
+                        $"Worker '{workerId}' inbound gRPC stream terminated before init handshake completed. "
+                        + "The worker's gRPC server may not be ready yet.");
+                }
+
+                await initTask;
+                _logger.LogInformation("RuntimeWorkerConnect init handshake completed. WorkerId: {workerId}, StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(initStart).TotalMilliseconds, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
+
+                // Extract host.json from worker capabilities.
+                string hostJson = channel.GetCapabilityState("host_configuration_json");
+                if (hostJson is not null)
+                {
+                    _logger.LogDebug("Received host.json configuration from worker '{workerId}'.", workerId);
+                    _hostJsonContentProvider.SetContent(hostJson);
+                }
+                else
+                {
+                    _logger.LogWarning("Worker '{workerId}' did not provide host_configuration_json capability.", workerId);
+                }
+
+                if (workerHttpEndpoint is not null)
+                {
+                    channel.OverrideHttpProxyEndpoint(workerHttpEndpoint);
+                    _logger.LogInformation("Worker '{workerId}' HTTP proxy endpoint set to platform endpoint {endpoint}.", workerId, workerHttpEndpoint);
+                }
+
+                // Register the channel directly — no event needed.
+                _channelManager.AddChannel(workerId, channel);
+                _logger.LogInformation("RuntimeWorkerConnect channel registered. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
+
+                // Subscribe to drain signals from the worker proxy.
+                channel.DrainRequested += OnWorkerDrainRequested;
+
+                _logger.LogInformation("RuntimeWorkerConnect phase 1 finished. WorkerId: {workerId}, TotalElapsedMilliseconds: {totalElapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
+
+                return channel;
             }
             catch (Exception ex) when (attempt < GrpcConnectMaxRetries && !cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning(ex, "RuntimeWorkerConnect gRPC connect attempt failed. WorkerId: {workerId}, Attempt: {attempt}, MaxRetries: {maxRetries}, Endpoint: {endpoint}, AttemptElapsedMilliseconds: {attemptElapsedMilliseconds}, RetryDelaySeconds: {retryDelaySeconds}.",
-                    workerId, attempt, GrpcConnectMaxRetries, endpoint, Stopwatch.GetElapsedTime(attemptStart).TotalMilliseconds, GrpcConnectRetryDelay.TotalSeconds);
+                var isInboundDeath = ex is InvalidOperationException && ex.Message.Contains("inbound gRPC stream terminated", StringComparison.Ordinal);
+                var retryDelay = isInboundDeath ? GrpcInboundDeathRetryDelay : GrpcConnectRetryDelay;
+
+                // Log the gRPC failure detail from InboundPumpTask to distinguish:
+                // - StatusCode.Unavailable + "connection refused" = gRPC server not started
+                // - StatusCode.Unimplemented = server up but FunctionRpc not registered
+                // - TCP timeout / DeadlineExceeded = network connectivity issue
+                var inboundException = client.InboundPumpTask is { IsFaulted: true } faultedTask
+                    ? faultedTask.Exception?.InnerException
+                    : null;
+
+                var grpcStatusCode = inboundException is global::Grpc.Core.RpcException rpcEx ? rpcEx.StatusCode.ToString() : "N/A";
+                var grpcDetail = inboundException is global::Grpc.Core.RpcException rpcEx2 ? rpcEx2.Status.Detail : inboundException?.Message ?? "N/A";
+
+                _logger.LogWarning(ex, "RuntimeWorkerConnect gRPC connect attempt failed. WorkerId: {workerId}, Attempt: {attempt}, MaxRetries: {maxRetries}, Endpoint: {endpoint}, AttemptElapsedMilliseconds: {attemptElapsedMilliseconds}, RetryDelayMilliseconds: {retryDelayMilliseconds}, IsInboundDeath: {isInboundDeath}, InboundGrpcStatusCode: {inboundGrpcStatusCode}, InboundGrpcDetail: {inboundGrpcDetail}.",
+                    workerId, attempt, GrpcConnectMaxRetries, endpoint, Stopwatch.GetElapsedTime(attemptStart).TotalMilliseconds, retryDelay.TotalMilliseconds, isInboundDeath, grpcStatusCode, grpcDetail);
+
+                // Probe worker HTTP endpoint to distinguish container-not-started vs gRPC-not-ready.
+                // This helps rule out networking issues: if HTTP responds, the container is up
+                // and reachable, but gRPC specifically isn't ready yet.
+                if (isInboundDeath && workerHttpEndpoint is not null)
+                {
+                    try
+                    {
+                        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+                        var probeResponse = await httpClient.GetAsync(workerHttpEndpoint, cancellationToken);
+                        _logger.LogInformation("RuntimeWorkerConnect HTTP probe result. WorkerId: {workerId}, Attempt: {attempt}, WorkerHttpEndpoint: {workerHttpEndpoint}, HttpStatusCode: {httpStatusCode}.",
+                            workerId, attempt, workerHttpEndpoint, (int)probeResponse.StatusCode);
+                    }
+                    catch (Exception probeEx)
+                    {
+                        // HTTP probe failed — container may not be started or network unreachable.
+                        _logger.LogWarning("RuntimeWorkerConnect HTTP probe failed. WorkerId: {workerId}, Attempt: {attempt}, WorkerHttpEndpoint: {workerHttpEndpoint}, ProbeError: {probeError}.",
+                            workerId, attempt, workerHttpEndpoint, probeEx.Message);
+                    }
+                }
 
                 // Dispose the failed client and create a fresh one for the next attempt.
                 await client.DisposeAsync();
                 client = _clientFactory.Create();
                 worker.Client = client;
 
-                await Task.Delay(GrpcConnectRetryDelay, cancellationToken);
+                await Task.Delay(retryDelay, cancellationToken);
             }
         }
-
-        _logger.LogInformation("RuntimeWorkerConnect gRPC stream established. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
-
-        var workerConfig = new RpcWorkerConfig
-        {
-            Description = new RpcWorkerDescription
-            {
-                Language = "external",
-                WorkerDirectory = string.Empty
-            },
-            CountOptions = new WorkerProcessCountOptions()
-        };
-
-        var channel = _channelFactory.Create(workerId, workerConfig);
-        _logger.LogInformation("RuntimeWorkerConnect channel created. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
-
-        var channelStart = Stopwatch.GetTimestamp();
-        await channel.StartWorkerProcessAsync(cancellationToken);
-        _logger.LogInformation("RuntimeWorkerConnect channel inbound processing started. WorkerId: {workerId}, StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(channelStart).TotalMilliseconds, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
-
-        var initStart = Stopwatch.GetTimestamp();
-        _logger.LogInformation("RuntimeWorkerConnect init handshake wait started. WorkerId: {workerId}, TimeoutSeconds: {timeoutSeconds}.", workerId, InitTimeout.TotalSeconds);
-        await channel.WaitForInitAsync(InitTimeout, cancellationToken);
-        _logger.LogInformation("RuntimeWorkerConnect init handshake completed. WorkerId: {workerId}, StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(initStart).TotalMilliseconds, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
-
-        // Extract host.json from worker capabilities.
-        string hostJson = channel.GetCapabilityState("host_configuration_json");
-        if (hostJson is not null)
-        {
-            _logger.LogDebug("Received host.json configuration from worker '{workerId}'.", workerId);
-            _hostJsonContentProvider.SetContent(hostJson);
-        }
-        else
-        {
-            _logger.LogWarning("Worker '{workerId}' did not provide host_configuration_json capability.", workerId);
-        }
-
-        if (workerHttpEndpoint is not null)
-        {
-            channel.OverrideHttpProxyEndpoint(workerHttpEndpoint);
-            _logger.LogInformation("Worker '{workerId}' HTTP proxy endpoint set to platform endpoint {endpoint}.", workerId, workerHttpEndpoint);
-        }
-
-        // Register the channel directly — no event needed.
-        _channelManager.AddChannel(workerId, channel);
-        _logger.LogInformation("RuntimeWorkerConnect channel registered. WorkerId: {workerId}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
-
-        // Subscribe to drain signals from the worker proxy.
-        channel.DrainRequested += OnWorkerDrainRequested;
-
-        _logger.LogInformation("RuntimeWorkerConnect phase 1 finished. WorkerId: {workerId}, TotalElapsedMilliseconds: {totalElapsedMilliseconds}.", workerId, Stopwatch.GetElapsedTime(phaseStart).TotalMilliseconds);
-
-        return channel;
     }
 
     /// <summary>

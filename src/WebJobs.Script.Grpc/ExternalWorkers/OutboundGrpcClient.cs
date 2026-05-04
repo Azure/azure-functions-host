@@ -59,6 +59,9 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
     }
 
+    /// <inheritdoc/>
+    public Task? InboundPumpTask { get; private set; }
+
     /// <summary>
     /// Connects to the remote gRPC endpoint and starts the bidirectional message pump.
     /// </summary>
@@ -86,7 +89,7 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
             }
 
             _ = PushOutbound(workerId, _call.RequestStream, outbound.Reader, _cts.Token);
-            _ = PullInbound(workerId, _call.ResponseStream, inbound, _cts.Token);
+            InboundPumpTask = PullInbound(workerId, _call.ResponseStream, inbound, _cts.Token);
 
             _logger.LogInformation("OutboundGrpcClient stream established. WorkerId: {workerId}, Endpoint: {endpoint}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, endpoint, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
 
@@ -207,7 +210,18 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error pulling inbound messages from gRPC for workerId: {workerId}", workerId);
+            // Log full gRPC status detail to help diagnose whether the worker-proxy
+            // container is not started, gRPC service not registered, or network issue.
+            if (ex is global::Grpc.Core.RpcException rpcEx)
+            {
+                _logger.LogError(ex, "Error pulling inbound messages from gRPC for workerId: {workerId}. GrpcStatusCode: {grpcStatusCode}, GrpcStatusDetail: {grpcStatusDetail}.",
+                    workerId, rpcEx.StatusCode, rpcEx.Status.Detail);
+            }
+            else
+            {
+                _logger.LogError(ex, "Error pulling inbound messages from gRPC for workerId: {workerId}. ExceptionType: {exceptionType}.",
+                    workerId, ex.GetType().FullName);
+            }
         }
     }
 

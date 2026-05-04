@@ -5,6 +5,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
+#nullable enable
+
 namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 
 /// <summary>
@@ -13,6 +15,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 /// </summary>
 internal interface IOutboundGrpcClient : IAsyncDisposable
 {
+    /// <summary>
+    /// Gets the task representing the inbound message pump started by
+    /// <see cref="ConnectAsync"/>. Callers can race this against the init
+    /// handshake to detect early stream death (e.g. worker gRPC server not
+    /// ready). Returns <see langword="null"/> before <see cref="ConnectAsync"/>
+    /// has been called.
+    /// </summary>
+    Task? InboundPumpTask { get; }
+
     /// <summary>
     /// Connects to the remote gRPC endpoint and starts the bidirectional message pump.
     /// </summary>
