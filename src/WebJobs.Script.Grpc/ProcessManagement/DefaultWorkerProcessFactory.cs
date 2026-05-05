@@ -3,7 +3,6 @@
 
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -46,12 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             // This handles cases where the directory structure hasn't been created yet,
             // such as new deployment slots or apps with network restrictions blocking
             // the control plane from initializing the default directory structure.
-            if (!string.IsNullOrEmpty(context.WorkingDirectory) && !Directory.Exists(context.WorkingDirectory))
+            if (!string.IsNullOrEmpty(context.WorkingDirectory))
             {
                 try
                 {
-                    _logger.LogInformation("Working directory '{workingDirectory}' does not exist. Creating it.", context.WorkingDirectory);
-                    Directory.CreateDirectory(context.WorkingDirectory);
+                    FileUtility.EnsureDirectoryExists(context.WorkingDirectory);
                 }
                 catch (Exception ex)
                 {
