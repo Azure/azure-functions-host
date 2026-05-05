@@ -94,31 +94,42 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             // dotnet app precompiled -> Do not use bundles
             ExtensionRequirementsInfo extensionRequirements = GetExtensionRequirementsInfo();
             ImmutableArray<FunctionMetadata> functionMetadataCollection = ImmutableArray<FunctionMetadata>.Empty;
+            var isLogicApp = _environment.IsLogicApp();
+
             if (bundleConfigured)
             {
-                // refresh the cache immediately before we attempt to start a worker and get metadata for bundles
-                _workerConfigCacheInvalidator.InvalidateCacheForBundles();
-
                 ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
                 ValidateBundleRequirements(bundleDetails, extensionRequirements);
 
-                functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false);
-                bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                // Generate a HashSet of all the binding types used in the function app
-                foreach (var functionMetadata in functionMetadataCollection)
+                if (isLogicApp)
                 {
-                    foreach (var binding in functionMetadata.Bindings)
+                    // Logic Apps doesn't fetch metadata here, so there's no worker about to start
+                    // that would capture stale LanguageWorkerOptions. Defer invalidation to
+                    // post-build, after the bundle's IWebJobsConfigurationStartup has contributed
+                    // its languageWorkers:* entries to the JobHost IConfiguration.
+                    _workerConfigCacheInvalidator.EnableInvalidationForNextBuild();
+                }
+                else
+                {
+                    // refresh the cache immediately before we attempt to start a worker and get metadata for bundles
+                    _workerConfigCacheInvalidator.InvalidateCacheForBundles();
+
+                    functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false);
+                    bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var functionMetadata in functionMetadataCollection)
                     {
-                        bindingsSet.Add(binding.Type);
+                        foreach (var binding in functionMetadata.Bindings)
+                        {
+                            bindingsSet.Add(binding.Type);
+                        }
+                        isPrecompiledFunctionApp = isPrecompiledFunctionApp || functionMetadata.Language == DotNetScriptTypes.DotNetAssembly;
                     }
-                    isPrecompiledFunctionApp = isPrecompiledFunctionApp || functionMetadata.Language == DotNetScriptTypes.DotNetAssembly;
                 }
             }
 
             bool isDotnetIsolatedApp = Utility.IsDotnetIsolatedApp(_environment, functionMetadataCollection);
             bool isDotnetApp = isPrecompiledFunctionApp || isDotnetIsolatedApp;
-            var isLogicApp = _environment.IsLogicApp();
 
             if (_environment.IsPlaceholderModeEnabled())
             {
@@ -176,9 +187,14 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     continue;
                 }
 
-                if (!bundleConfigured
-                    || extensionItem.Bindings is null || extensionItem.Bindings.Count == 0
-                    || extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any())
+                // When no bundle is configured, or the extension declares no bindings, we always load it.
+                bool shouldLoadAllExtensions = !bundleConfigured
+                    || extensionItem.Bindings is null
+                    || extensionItem.Bindings.Count == 0;
+
+                if (shouldLoadAllExtensions
+                    // Load specific extensions if it is used by the functions in the app.
+                    || (bindingsSet is not null && extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any()))
                 {
                     string startupExtensionName = extensionItem.Name ?? extensionItem.TypeName;
                     _logger.ScriptStartUpLoadingStartUpExtension(startupExtensionName);

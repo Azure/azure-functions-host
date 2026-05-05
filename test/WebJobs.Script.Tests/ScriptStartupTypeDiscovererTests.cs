@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.ExtensionRequirements;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -521,6 +522,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task GetExtensionsStartupTypes_BundleConfigured_NullBindingsInJson_LoadsExtensionWithoutThrowing()
+        {
+            // Regression guard for the selective-loading short-circuit in
+            // ScriptStartupTypeLocator.GetExtensionsStartupTypesAsync. When an extension's
+            // "bindings" property is explicitly null in extensions.json, the null/empty check
+            // (shouldLoadAllExtensions) must short-circuit before extensionItem.Bindings.Intersect(...)
+            // is evaluated, otherwise a NullReferenceException is thrown.
+            string binPath = Path.Combine(_directory.Path, "bin");
+            Directory.CreateDirectory(binPath);
+
+            string assemblyPath = typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location;
+            File.Copy(assemblyPath, Path.Combine(binPath, Path.GetFileName(assemblyPath)), overwrite: true);
+
+            string extensionsJson = $$"""
+            {
+              "extensions": [
+                {
+                  "name": "AzureStorageBlobs",
+                  "typeName": "{{typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName}}",
+                  "bindings": null
+                }
+              ]
+            }
+            """;
+            File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensionsJson);
+
+            // Bundle configured + a function with a "blob" binding -> bindingsSet is non-null,
+            // which is the precondition that exposes the bug if the short-circuit is removed.
+            _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
+            _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(GetBundleDetails());
+
+            ScriptStartupTypeLocator discoverer = CreateSystemUnderTest();
+            var types = await discoverer.GetExtensionsStartupTypesAsync();
+            var traces = _loggerProvider.GetAllLogMessages();
+
+            AreExpectedMetricsGenerated();
+            Assert.Single(types);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
+            AssertNoErrors(traces);
+        }
+
+        [Fact]
         public async Task GetExtensionsStartupTypes_RejectsBundleBelowMinimumVersion()
         {
             var binPath = Path.Combine(_directory.Path, "bin");
@@ -611,6 +655,104 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             AssertNoErrors(traces);
         }
 
+        [Fact]
+        public async Task GetExtensionsStartupTypes_BundleConfigured_LogicApp_DoesNotFetchFunctionMetadata()
+        {
+            // Logic Apps does not use worker indexing and reads function metadata from disk via
+            // function.json, so the locator must skip the metadata-fetch on the bundle path.
+            // Calling GetFunctionMetadata(forceRefresh: true, ...) here would force a worker process
+            // to start before the bundle's IWebJobsConfigurationStartup contributes its
+            // languageWorkers:* entries, which is the timing trap PR #11582 introduced.
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, ScriptConstants.WorkFlowAppKind);
+
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(), ExtensionInstall.QueueStorage());
+            _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
+            _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(GetBundleDetails());
+
+            ScriptStartupTypeLocator discoverer = CreateSystemUnderTest();
+            await discoverer.GetExtensionsStartupTypesAsync();
+
+            _metadataManager.Verify(
+                m => m.GetFunctionMetadata(true, It.IsAny<bool>(), It.IsAny<bool>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task GetExtensionsStartupTypes_BundleConfigured_LogicApp_ArmsPostBuildCacheInvalidation()
+        {
+            // The Logic Apps bundle path must arm post-build invalidation so the worker-options
+            // cache is refreshed once the bundle's IWebJobsConfigurationStartup has contributed
+            // languageWorkers:<name>:workerDirectory entries to the JobHost IConfiguration.
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AppKind, ScriptConstants.WorkFlowAppKind);
+
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(), ExtensionInstall.QueueStorage());
+            _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
+            _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(GetBundleDetails());
+
+            var resolverTokenSource = new RefreshWorkerOptionsChangeTokenSource<WorkerConfigurationResolverOptions>();
+            var languageWorkerTokenSource = new RefreshWorkerOptionsChangeTokenSource<LanguageWorkerOptions>();
+            var invalidator = new WorkerConfigCacheInvalidator(resolverTokenSource, languageWorkerTokenSource);
+
+            ScriptStartupTypeLocator discoverer = CreateSystemUnderTest(workerConfigCacheInvalidator: invalidator);
+            await discoverer.GetExtensionsStartupTypesAsync();
+
+            // Snapshot tokens before triggering post-build invalidation so we can detect a refresh.
+            var resolverToken = resolverTokenSource.GetChangeToken();
+            var languageWorkerToken = languageWorkerTokenSource.GetChangeToken();
+
+            invalidator.InvalidateCachePostBuildIfEnabled();
+
+            Assert.True(resolverToken.HasChanged, "Post-build invalidation was not armed for the Logic Apps bundle path.");
+            Assert.True(languageWorkerToken.HasChanged, "Post-build invalidation was not armed for the Logic Apps bundle path.");
+        }
+
+        [Fact]
+        public async Task GetExtensionsStartupTypes_BundleConfigured_NotLogicApp_FetchesFunctionMetadata()
+        {
+            // Non-Logic-Apps bundle path is unchanged: the locator still fetches metadata in order
+            // to build the bindingsSet that filters which extensions to load.
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(), ExtensionInstall.QueueStorage());
+            _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
+            _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(GetBundleDetails());
+
+            ScriptStartupTypeLocator discoverer = CreateSystemUnderTest();
+            await discoverer.GetExtensionsStartupTypesAsync();
+
+            _metadataManager.Verify(
+                m => m.GetFunctionMetadata(true, It.IsAny<bool>(), false),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task GetExtensionsStartupTypes_BundleConfigured_NotLogicApp_DoesNotArmPostBuildCacheInvalidation()
+        {
+            // The non-Logic-Apps bundle path relies on InvalidateCacheForBundles (a no-op on first
+            // run) and must NOT arm post-build invalidation - that path is reserved for the
+            // no-bundles branch and the new Logic Apps branch.
+            string binPath = InstallExtensions(ExtensionInstall.BlobStorage(), ExtensionInstall.QueueStorage());
+            _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
+            _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(GetBundleDetails());
+
+            var resolverTokenSource = new RefreshWorkerOptionsChangeTokenSource<WorkerConfigurationResolverOptions>();
+            var languageWorkerTokenSource = new RefreshWorkerOptionsChangeTokenSource<LanguageWorkerOptions>();
+            var invalidator = new WorkerConfigCacheInvalidator(resolverTokenSource, languageWorkerTokenSource);
+
+            ScriptStartupTypeLocator discoverer = CreateSystemUnderTest(workerConfigCacheInvalidator: invalidator);
+            await discoverer.GetExtensionsStartupTypesAsync();
+
+            var resolverToken = resolverTokenSource.GetChangeToken();
+            var languageWorkerToken = languageWorkerTokenSource.GetChangeToken();
+
+            invalidator.InvalidateCachePostBuildIfEnabled();
+
+            Assert.False(resolverToken.HasChanged);
+            Assert.False(languageWorkerToken.HasChanged);
+        }
+
         private static void AssertNoErrors(IList<LogMessage> traces)
         {
             Assert.False(traces.Any(m => m.Level == LogLevel.Error || m.Level == LogLevel.Critical));
@@ -679,12 +821,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _metadataManager.Setup(m => m.GetFunctionMetadata(true, true, false)).Returns(result);
         }
 
-        private ScriptStartupTypeLocator CreateSystemUnderTest(string rootPath = null, ExtensionRequirementOptions extensionRequirements = null)
+        private ScriptStartupTypeLocator CreateSystemUnderTest(
+            string rootPath = null,
+            ExtensionRequirementOptions extensionRequirements = null,
+            WorkerConfigCacheInvalidator workerConfigCacheInvalidator = null)
         {
             LoggerFactory factory = new();
             factory.AddProvider(_loggerProvider);
             OptionsWrapper<ExtensionRequirementOptions> optionsWrapper = new(extensionRequirements ?? new());
-            WorkerConfigCacheInvalidator workerConfigCacheInvalidator = new(null, null);
+            workerConfigCacheInvalidator ??= new(null, null);
             return new(
                 rootPath ?? _directory.Path,
                 factory.CreateLogger<ScriptStartupTypeLocator>(),
