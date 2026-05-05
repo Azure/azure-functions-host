@@ -522,6 +522,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task GetExtensionsStartupTypes_BundleConfigured_NullBindingsInJson_LoadsExtensionWithoutThrowing()
+        {
+            // Regression guard for the selective-loading short-circuit in
+            // ScriptStartupTypeLocator.GetExtensionsStartupTypesAsync. When an extension's
+            // "bindings" property is explicitly null in extensions.json, the null/empty check
+            // (shouldLoadAllExtensions) must short-circuit before extensionItem.Bindings.Intersect(...)
+            // is evaluated, otherwise a NullReferenceException is thrown.
+            string binPath = Path.Combine(_directory.Path, "bin");
+            Directory.CreateDirectory(binPath);
+
+            string assemblyPath = typeof(AzureStorageBlobsWebJobsStartup).Assembly.Location;
+            File.Copy(assemblyPath, Path.Combine(binPath, Path.GetFileName(assemblyPath)), overwrite: true);
+
+            string extensionsJson = $$"""
+            {
+              "extensions": [
+                {
+                  "name": "AzureStorageBlobs",
+                  "typeName": "{{typeof(AzureStorageBlobsWebJobsStartup).AssemblyQualifiedName}}",
+                  "bindings": null
+                }
+              ]
+            }
+            """;
+            File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensionsJson);
+
+            // Bundle configured + a function with a "blob" binding -> bindingsSet is non-null,
+            // which is the precondition that exposes the bug if the short-circuit is removed.
+            _bundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            _bundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).ReturnsAsync(binPath);
+            _bundleManager.Setup(e => e.GetExtensionBundleDetails()).ReturnsAsync(GetBundleDetails());
+
+            ScriptStartupTypeLocator discoverer = CreateSystemUnderTest();
+            var types = await discoverer.GetExtensionsStartupTypesAsync();
+            var traces = _loggerProvider.GetAllLogMessages();
+
+            AreExpectedMetricsGenerated();
+            Assert.Single(types);
+            Assert.Equal(typeof(AzureStorageBlobsWebJobsStartup).FullName, types.Single().FullName);
+            AssertNoErrors(traces);
+        }
+
+        [Fact]
         public async Task GetExtensionsStartupTypes_RejectsBundleBelowMinimumVersion()
         {
             var binPath = Path.Combine(_directory.Path, "bin");
