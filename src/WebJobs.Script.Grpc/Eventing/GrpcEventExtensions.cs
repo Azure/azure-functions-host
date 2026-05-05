@@ -55,11 +55,11 @@ internal static class GrpcEventExtensions
     public static void RemoveGrpcChannels(this IScriptEventManager manager, string workerId)
     {
         // remove any channels, and shut them down
-        if (manager.TryGetWorkerState<Channel<InboundGrpcEvent>>(workerId, out var inbound))
+        if (manager.TryRemoveWorkerState<Channel<InboundGrpcEvent>>(workerId, out var inbound))
         {
             inbound.Writer.TryComplete();
         }
-        if (manager.TryGetWorkerState<Channel<OutboundGrpcEvent>>(workerId, out var outbound))
+        if (manager.TryRemoveWorkerState<Channel<OutboundGrpcEvent>>(workerId, out var outbound))
         {
             outbound.Writer.TryComplete();
         }
