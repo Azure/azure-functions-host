@@ -271,7 +271,9 @@ public class FunctionRpcRelayTests : IDisposable
 
         var workerTask = SimulateWorkerAsync(relay);
 
-        await relay.SpecializeWorkerAsync(new Dictionary<string, string>(), "/app", CancellationToken.None);
+        await Task.WhenAll(
+            relay.SpecializeWorkerAsync(new Dictionary<string, string>(), "/app", CancellationToken.None),
+            workerTask);
 
         Assert.NotNull(relay._cachedWorkerInitResponse);
         Assert.NotNull(relay._cachedFunctionMetadataResponse);
@@ -279,6 +281,21 @@ public class FunctionRpcRelayTests : IDisposable
         // Verify HttpUri was rewritten to the proxy endpoint.
         Assert.Equal("http://localhost:50053",
             relay._cachedWorkerInitResponse.WorkerInitResponse.Capabilities["HttpUri"]);
+    }
+
+    [Fact]
+    public async Task SpecializeWorkerAsync_CompletesBeforeMetadataPrefetchResponse()
+    {
+        var relay = CreateRelay();
+        relay._workerConnected.TrySetResult();
+
+        var workerTask = SimulateWorkerUntilMetadataRequestAsync(relay);
+        var specializeTask = relay.SpecializeWorkerAsync(new Dictionary<string, string>(), "/app", CancellationToken.None);
+
+        await specializeTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(workerTask.IsCompleted, "Specialization should have sent metadata prefetch before returning.");
+        Assert.NotNull(relay._cachedWorkerInitResponse);
+        Assert.Null(relay._cachedFunctionMetadataResponse);
     }
 
     [Fact]
@@ -747,8 +764,10 @@ public class FunctionRpcRelayTests : IDisposable
         var relay = CreateRelay();
         relay._workerConnected.TrySetResult();
 
-        var workerTask = SimulateWorkerAsync(relay, onEnvReload: _ => File.Delete(hostJsonPath));
-        await relay.SpecializeWorkerAsync(new Dictionary<string, string>(), _tempDir, CancellationToken.None);
+        var workerTask = SimulateWorkerAsync(relay);
+        await Task.WhenAll(
+            relay.SpecializeWorkerAsync(new Dictionary<string, string>(), _tempDir, CancellationToken.None),
+            workerTask);
 
         var cached = relay._cachedWorkerInitResponse!.WorkerInitResponse.Capabilities;
         Assert.Equal(hostJsonContent, cached["host_configuration_json"]);
@@ -836,6 +855,37 @@ public class FunctionRpcRelayTests : IDisposable
                 Result = new StatusResult { Status = StatusResult.Types.Status.Success }
             }
         });
+    }
+
+    private static async Task SimulateWorkerUntilMetadataRequestAsync(FunctionRpcRelay relay)
+    {
+        var initRequest = await relay._toWorker.Reader.ReadAsync();
+        Assert.Equal(StreamingMessage.ContentOneofCase.WorkerInitRequest, initRequest.ContentCase);
+
+        relay._pendingWorkerResponse!.TrySetResult(new StreamingMessage
+        {
+            WorkerInitResponse = new WorkerInitResponse
+            {
+                Result = new StatusResult { Status = StatusResult.Types.Status.Success }
+            }
+        });
+
+        var reloadRequest = await relay._toWorker.Reader.ReadAsync();
+        Assert.Equal(StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest, reloadRequest.ContentCase);
+
+        await Task.Delay(50);
+
+        relay._pendingWorkerResponse!.TrySetResult(new StreamingMessage
+        {
+            FunctionEnvironmentReloadResponse = new FunctionEnvironmentReloadResponse
+            {
+                Result = new StatusResult { Status = StatusResult.Types.Status.Success },
+                CapabilitiesUpdateStrategy = FunctionEnvironmentReloadResponse.Types.CapabilitiesUpdateStrategy.Merge
+            }
+        });
+
+        var metadataRequest = await relay._toWorker.Reader.ReadAsync();
+        Assert.Equal(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest, metadataRequest.ContentCase);
     }
 
     private sealed class TestLogger<T> : ILogger<T>

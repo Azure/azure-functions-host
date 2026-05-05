@@ -235,17 +235,6 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             _logger.LogInformation("WorkerProxy capabilities to runtime: {Capabilities}",
                 CapabilityLogFormatter.Format(initResponse.WorkerInitResponse!.Capabilities));
 
-            // 3. FunctionsMetadataRequest → FunctionMetadataResponse (prefetch)
-            var metadataStart = Stopwatch.GetTimestamp();
-            _logger.LogInformation("WorkerProxy prefetching function metadata.");
-            var metadataResponse = await SendAndWaitAsync(
-                new StreamingMessage { FunctionsMetadataRequest = new FunctionsMetadataRequest() },
-                StreamingMessage.ContentOneofCase.FunctionMetadataResponse,
-                token);
-
-            _cachedFunctionMetadataResponse = metadataResponse;
-            _logger.LogInformation("WorkerProxy cached FunctionMetadataResponse. StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", Stopwatch.GetElapsedTime(metadataStart).TotalMilliseconds, Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
-
             // Only cache the fully-mutated init response after all enrichment steps
             // have succeeded. This ensures the runtime never sees a stale/incomplete response.
             _cachedWorkerInitResponse = initResponse;
@@ -254,6 +243,12 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             // Signal success — unblock any runtime waiting on WorkerInitRequest.
             _specializationCompleted.TrySetResult();
             _logger.LogInformation("WorkerProxy specialization completed. TotalElapsedMilliseconds: {totalElapsedMilliseconds}.", Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
+
+            // 3. FunctionsMetadataRequest → FunctionMetadataResponse (opportunistic prefetch)
+            // This warms the cache for the runtime, but no longer blocks the
+            // specialization gate. If the runtime requests metadata before the cache
+            // is populated, the request is relayed to the worker normally.
+            _ = PrefetchFunctionMetadataAsync(specializeStart, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -262,6 +257,35 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             _specializationCompleted.TrySetException(ex);
             _logger.LogError(ex, "WorkerProxy specialization failed. TotalElapsedMilliseconds: {totalElapsedMilliseconds}.", Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
             throw;
+        }
+    }
+
+    private async Task PrefetchFunctionMetadataAsync(
+        long specializeStart,
+        CancellationToken cancellationToken)
+    {
+        var metadataStart = Stopwatch.GetTimestamp();
+        _logger.LogInformation("WorkerProxy prefetching function metadata.");
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromMinutes(2));
+
+        try
+        {
+            var metadataResponse = await SendAndWaitAsync(
+                new StreamingMessage { FunctionsMetadataRequest = new FunctionsMetadataRequest() },
+                StreamingMessage.ContentOneofCase.FunctionMetadataResponse,
+                cts.Token);
+
+            _cachedFunctionMetadataResponse = metadataResponse;
+            _logger.LogInformation("WorkerProxy cached FunctionMetadataResponse. StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", Stopwatch.GetElapsedTime(metadataStart).TotalMilliseconds, Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogWarning(ex, "WorkerProxy function metadata prefetch was canceled. StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", Stopwatch.GetElapsedTime(metadataStart).TotalMilliseconds, Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "WorkerProxy function metadata prefetch failed. StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", Stopwatch.GetElapsedTime(metadataStart).TotalMilliseconds, Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
         }
     }
 
