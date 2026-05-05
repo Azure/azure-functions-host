@@ -370,7 +370,12 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
                 }
 
                 // Dispose the failed client and create a fresh one for the next attempt.
+                // Also recreate the gRPC channels — the inbound channel may have been
+                // completed/closed by the failed PullInbound reader loop, causing all
+                // subsequent retries to fail immediately with ChannelClosedException.
                 await client.DisposeAsync();
+                _eventManager.RemoveGrpcChannels(workerId);
+                _eventManager.AddGrpcChannels(workerId);
                 client = _clientFactory.Create();
                 worker.Client = client;
 
