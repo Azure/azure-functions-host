@@ -29,8 +29,8 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     private static readonly TimeSpan InitTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan DrainTimeout = TimeSpan.FromMinutes(1);
     private static readonly int GrpcConnectMaxRetries = 50;
-    private static readonly TimeSpan GrpcConnectRetryDelay = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan GrpcInboundDeathRetryDelay = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan GrpcConnectRetryDelay = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan GrpcInboundDeathRetryDelay = TimeSpan.FromMilliseconds(500);
 
     private readonly IConnectedWorkerChannelFactory _channelFactory;
     private readonly IConnectedWorkerChannelManager _channelManager;
