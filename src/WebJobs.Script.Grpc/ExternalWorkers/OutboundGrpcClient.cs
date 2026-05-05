@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 internal class OutboundGrpcClient : IOutboundGrpcClient
 {
     internal static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(5);
+    internal static readonly TimeSpan DefaultReadyTimeout = TimeSpan.FromSeconds(1);
     internal static readonly TimeSpan DefaultKeepAlivePingDelay = TimeSpan.FromSeconds(30);
     internal static readonly TimeSpan DefaultKeepAlivePingTimeout = TimeSpan.FromSeconds(10);
 
@@ -70,7 +71,7 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
     /// <param name="endpoint">The URI of the remote <c>FunctionRpc</c> service.</param>
     /// <param name="cancellationToken">Token to cancel the connection attempt.</param>
     /// <returns>A task that completes once the stream is established and background pumps are running.</returns>
-    public Task ConnectAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
+    public async Task ConnectAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
     {
         var connectStart = Stopwatch.GetTimestamp();
         _logger.LogInformation("OutboundGrpcClient connect started. WorkerId: {workerId}, Endpoint: {endpoint}.", workerId, endpoint);
@@ -80,6 +81,14 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
         try
         {
             _channel = _channelFactory(endpoint);
+
+            using var readinessCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+            readinessCts.CancelAfter(DefaultReadyTimeout);
+
+            var readinessStart = Stopwatch.GetTimestamp();
+            await _channel.ConnectAsync(readinessCts.Token);
+            _logger.LogInformation("OutboundGrpcClient channel connected. WorkerId: {workerId}, Endpoint: {endpoint}, StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, endpoint, Stopwatch.GetElapsedTime(readinessStart).TotalMilliseconds, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
+
             var client = new FunctionRpc.FunctionRpcClient(_channel);
             _call = client.EventStream(cancellationToken: _cts.Token);
 
@@ -92,8 +101,6 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
             InboundPumpTask = PullInbound(workerId, _call.ResponseStream, inbound, _cts.Token);
 
             _logger.LogInformation("OutboundGrpcClient stream established. WorkerId: {workerId}, Endpoint: {endpoint}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, endpoint, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
-
-            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
