@@ -287,46 +287,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (sslPolicyErrors == SslPolicyErrors.None)
             {
-                // certificate is already valid
                 return true;
             }
-            else if (sslPolicyErrors == SslPolicyErrors.RemoteCertificateNameMismatch ||
-                sslPolicyErrors == SslPolicyErrors.RemoteCertificateNotAvailable)
+
+            if ((sslPolicyErrors & ~SslPolicyErrors.RemoteCertificateChainErrors) != 0)
             {
-                // api-server cert must exist and have the right subject
+                // Reject any error other than chain trust (e.g., name mismatch or
+                // missing certificate). The api-server certificate must have a SAN
+                // matching the request hostname.
                 return false;
             }
-            else if (sslPolicyErrors == SslPolicyErrors.RemoteCertificateChainErrors)
+
+            using X509Certificate2 caCert = X509CertificateLoader.LoadCertificateFromFile(CaFile);
+            return ValidateCertificateAgainstCustomCa(caCert, certificate, sslPolicyErrors);
+        }
+
+        // Builds a chain that trusts only the supplied cluster CA. With
+        // X509ChainTrustMode.CustomRootTrust, ChainPolicy.CustomTrustStore is the
+        // single accepted trust anchor — Build() returns true only when the
+        // server certificate chains up to caCert.
+        internal static bool ValidateCertificateAgainstCustomCa(
+            X509Certificate2 caCert,
+            X509Certificate2 certificate,
+            SslPolicyErrors sslPolicyErrors)
+        {
+            if (sslPolicyErrors == SslPolicyErrors.None)
             {
-                // only remaining error state is RemoteCertificateChainErrors
-                // check custom CA
-                var privateChain = new X509Chain();
-                privateChain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-
-                var caCert = X509CertificateLoader.LoadCertificateFromFile(CaFile);
-                // https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.x509certificates.x509chainpolicy?view=netcore-2.2
-                // Add CA cert to the chain store to include it in the chain check.
-                privateChain.ChainPolicy.ExtraStore.Add(caCert);
-                // Build the chain for `certificate` which should be the self-signed kubernetes api-server cert.
-                privateChain.Build(certificate);
-
-                foreach (X509ChainStatus chainStatus in privateChain.ChainStatus)
-                {
-                    if (chainStatus.Status != X509ChainStatusFlags.NoError &&
-                        // root CA cert is not always trusted.
-                        chainStatus.Status != X509ChainStatusFlags.UntrustedRoot)
-                    {
-                        return false;
-                    }
-                }
-
                 return true;
             }
-            else
+
+            if ((sslPolicyErrors & ~SslPolicyErrors.RemoteCertificateChainErrors) != 0)
             {
-                // Unknown sslPolicyErrors
                 return false;
             }
+
+            using var privateChain = new X509Chain();
+            privateChain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+            privateChain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+            privateChain.ChainPolicy.CustomTrustStore.Add(caCert);
+
+            return privateChain.Build(certificate);
         }
 
         private void Dispose(bool disposing)
