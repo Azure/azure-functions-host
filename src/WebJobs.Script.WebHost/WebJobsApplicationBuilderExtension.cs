@@ -44,7 +44,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<HttpRequestBodySizeMiddleware>();
             builder.UseMiddleware<SystemTraceMiddleware>();
             builder.UseMiddleware<HandleCancellationMiddleware>();
-            builder.UseMiddleware<HostnameFixupMiddleware>();
+
+            if (environment.FrontEndRoutingEnsured())
+            {
+                builder.UseMiddleware<HostnameFixupMiddleware>();
+            }
 
             // Health is registered early in the pipeline to ensure it can avoid failures from the rest of the pipeline.
             builder.UseHealthChecks();

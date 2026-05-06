@@ -11,3 +11,4 @@
 - Skip `WebJobsStorageHealthCheck` when no active script host is available (#11791)
 - Avoid false-positive connection string checks when constructing `BlobServiceClient` (#11794)
 - Fix .NET10 breaking change with connection-string prefixed env vars. (#11793)
+- Only register the host-name-fixup middleware on hosting environments where requests are routed through the Antares front end

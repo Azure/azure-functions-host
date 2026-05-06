@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0;
         }
 
-        private static bool FrontEndRoutingEnsured(this IEnvironment environment)
+        internal static bool FrontEndRoutingEnsured(this IEnvironment environment)
         {
             // Verify we're running on a sku that ensures all requests go through the
             // Antares Front End.
