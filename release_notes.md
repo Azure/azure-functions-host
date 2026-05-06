@@ -13,3 +13,4 @@
 - Fix .NET10 breaking change with connection-string prefixed env vars. (#11793)
 - Only register the host-name-fixup middleware on hosting environments where requests are routed through the Antares front end
 - Resolve correct `IHostApplicationLifetime` instance within certain ScriptHost services (#11798)
+- Fix function-key prefix matching in the Kubernetes secrets repository merge step

@@ -109,8 +109,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else
             {
-                // A function key is changing. Add all host and other functions keys
-                foreach (var key in currentKeys.Where(k => !k.Key.StartsWith($"{FunctionKeyPrefix}.{functionName}")))
+                // A function key is changing. Add all host and other function keys.
+                // Filter out the existing entries for the target function so we don't
+                // re-persist keys that were intentionally removed. Storage shape is
+                // "functions.{functionName}.{keyName}" (see line below and ReadFunctionSecrets),
+                // so the prefix to exclude is "functions.{functionName}." with a trailing dot.
+                var functionKeyPrefixForTarget = $"{FunctionKeyPrefix}{functionName}.";
+                foreach (var key in currentKeys.Where(k => !k.Key.StartsWith(functionKeyPrefixForTarget, StringComparison.Ordinal)))
                 {
                     newKeys.Add(key.Key, key.Value);
                 }
