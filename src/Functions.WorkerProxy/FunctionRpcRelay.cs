@@ -71,7 +71,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     internal readonly TaskCompletionSource _workerConnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     // Cached state from worker initialization (populated by SpecializeWorkerAsync).
-    private StreamingMessage? _cachedStartStream;
+    internal StreamingMessage? _cachedStartStream;
     internal StreamingMessage? _cachedWorkerInitResponse;
     internal StreamingMessage? _cachedFunctionMetadataResponse;
 
@@ -320,11 +320,10 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             _logger.LogInformation("WorkerProxy runtime stream connected. Port: {Port}, WorkerAlreadyConnected: {WorkerAlreadyConnected}.", localPort, workerAlreadyConnected);
             _runtimeConnected.TrySetResult();
 
-            // Start relay immediately without blocking on _workerConnected.
-            // StartStream is delivered via the _toRuntime channel (written by the
-            // worker-side handler before signaling _workerConnected). The runtime's
-            // WorkerInitRequest is still gated by _specializationCompleted in
-            // ReadInboundAsync, preserving correctness.
+            // Start relay immediately without blocking on _workerConnected. Each
+            // runtime stream gets StartStream replayed from cache once the worker has
+            // connected; WorkerInitRequest remains gated by _specializationCompleted
+            // in ReadInboundAsync, preserving correctness.
             await RelayAsync(requestStream, responseStream, _toWorker, _toRuntime, RelaySide.Runtime, context.CancellationToken);
             _logger.LogInformation("WorkerProxy runtime relay completed. Port: {Port}, TotalElapsedMilliseconds: {TotalElapsedMilliseconds}.", localPort, Stopwatch.GetElapsedTime(runtimeConnectTimestamp).TotalMilliseconds);
         }
@@ -495,7 +494,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         _logger.LogInformation("Set HttpUri capability to {Uri}.", _options.HttpProxyEndpoint);
     }
 
-    private async Task RelayAsync(
+    internal async Task RelayAsync(
         IAsyncStreamReader<StreamingMessage> inbound,
         IServerStreamWriter<StreamingMessage> outbound,
         Channel<StreamingMessage> sendChannel,
@@ -504,9 +503,14 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         CancellationToken cancellationToken)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var runtimeReplyChannel = side == RelaySide.Runtime
+            ? Channel.CreateUnbounded<StreamingMessage>()
+            : null;
 
-        var readTask = ReadInboundAsync(inbound, sendChannel.Writer, receiveChannel.Writer, side, cts.Token);
-        var writeTask = WriteOutboundAsync(receiveChannel.Reader, outbound, cts.Token);
+        var readTask = ReadInboundAsync(inbound, sendChannel.Writer, runtimeReplyChannel?.Writer ?? receiveChannel.Writer, side, cts.Token);
+        var writeTask = side == RelaySide.Runtime
+            ? WriteRuntimeOutboundAsync(receiveChannel.Reader, runtimeReplyChannel!.Reader, outbound, cts.Token)
+            : WriteOutboundAsync(receiveChannel.Reader, outbound, cts.Token);
 
         try
         {
@@ -515,9 +519,92 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         finally
         {
             await cts.CancelAsync();
+            runtimeReplyChannel?.Writer.TryComplete();
             try { await readTask; } catch { }
             try { await writeTask; } catch { }
             _logger.LogInformation("[{Side}] stream disconnected", side);
+        }
+    }
+
+    private async Task WriteRuntimeOutboundAsync(
+        ChannelReader<StreamingMessage> sharedReader,
+        ChannelReader<StreamingMessage> replyReader,
+        IServerStreamWriter<StreamingMessage> outbound,
+        CancellationToken cancellationToken)
+    {
+        await _workerConnected.Task.WaitAsync(cancellationToken);
+
+        var startStream = _cachedStartStream
+            ?? throw new InvalidOperationException("Worker connected before StartStream was cached.");
+
+        await outbound.WriteAsync(startStream);
+        _logger.LogInformation("WorkerProxy replayed cached StartStream to runtime. WorkerId: {workerId}.", startStream.StartStream?.WorkerId);
+
+        await WriteMergedOutboundAsync(sharedReader, replyReader, outbound, cancellationToken);
+    }
+
+    private static async Task WriteMergedOutboundAsync(
+        ChannelReader<StreamingMessage> sharedReader,
+        ChannelReader<StreamingMessage> replyReader,
+        IServerStreamWriter<StreamingMessage> outbound,
+        CancellationToken cancellationToken)
+    {
+        var sharedOpen = true;
+        var replyOpen = true;
+        Task<bool>? sharedWait = null;
+        Task<bool>? replyWait = null;
+
+        while (sharedOpen || replyOpen)
+        {
+            while (replyOpen && replyReader.TryRead(out var replyMessage))
+            {
+                await outbound.WriteAsync(replyMessage);
+            }
+
+            while (sharedOpen && sharedReader.TryRead(out var sharedMessage))
+            {
+                await outbound.WriteAsync(sharedMessage);
+            }
+
+            if (!sharedOpen && !replyOpen)
+            {
+                return;
+            }
+
+            if (replyOpen && replyWait is null)
+            {
+                replyWait = replyReader.WaitToReadAsync(cancellationToken).AsTask();
+            }
+
+            if (sharedOpen && sharedWait is null)
+            {
+                sharedWait = sharedReader.WaitToReadAsync(cancellationToken).AsTask();
+            }
+
+            if (replyWait is null)
+            {
+                sharedOpen = await sharedWait!;
+                sharedWait = null;
+            }
+            else if (sharedWait is null)
+            {
+                replyOpen = await replyWait;
+                replyWait = null;
+            }
+            else
+            {
+                var completed = await Task.WhenAny(replyWait, sharedWait);
+                if (completed == replyWait)
+                {
+                    replyOpen = await replyWait;
+                    replyWait = null;
+                }
+                else
+                {
+                    sharedOpen = await sharedWait;
+                    sharedWait = null;
+                }
+            }
         }
     }
 
@@ -555,16 +642,15 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                         WriteFunctionsNetHostLogToConsole(message.RpcLog);
                     }
 
-                    // Cache StartStream, write to runtime channel, then signal connected.
-                    // Writing to _toRuntime BEFORE signaling _workerConnected guarantees
-                    // StartStream is the first message delivered to the runtime.
+                    // Cache StartStream, then signal connected. Runtime streams replay
+                    // this cached message individually so reconnects do not depend on a
+                    // one-shot item in the shared _toRuntime channel.
                     if (message.ContentCase == StreamingMessage.ContentOneofCase.StartStream)
                     {
                         _cachedStartStream = message;
-                        await _toRuntime.Writer.WriteAsync(message, cancellationToken);
                         _workerConnected.TrySetResult();
                         _stateManager.UpdatePodStatus(WorkerPodStatus.ReadyForRequest);
-                        _logger.LogInformation("WorkerProxy cached StartStream from worker and queued for runtime. WorkerId: {workerId}.", message.StartStream?.WorkerId);
+                        _logger.LogInformation("WorkerProxy cached StartStream from worker. WorkerId: {workerId}.", message.StartStream?.WorkerId);
                         continue;
                     }
 
@@ -657,7 +743,10 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                 await forwardWriter.WriteAsync(message, cancellationToken);
             }
 
-            forwardWriter.TryComplete();
+            if (side == RelaySide.Worker)
+            {
+                forwardWriter.TryComplete();
+            }
 
             // If the runtime disconnected while we were draining, treat stream closure
             // as an implicit drain-complete — the runtime may have sent WorkerDrainComplete
@@ -670,12 +759,19 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            forwardWriter.TryComplete(ex);
+            if (side == RelaySide.Worker)
+            {
+                forwardWriter.TryComplete(ex);
+            }
+
             throw;
         }
         catch (OperationCanceledException)
         {
-            forwardWriter.TryComplete();
+            if (side == RelaySide.Worker)
+            {
+                forwardWriter.TryComplete();
+            }
         }
     }
 
