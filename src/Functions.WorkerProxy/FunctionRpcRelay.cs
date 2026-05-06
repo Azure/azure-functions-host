@@ -315,23 +315,18 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 
         if (localPort == _options.RuntimeGrpcPort)
         {
-            var runtimeConnectStart = Stopwatch.GetTimestamp();
-            _logger.LogInformation("WorkerProxy runtime stream connected. Port: {Port}.", localPort);
+            var runtimeConnectTimestamp = Stopwatch.GetTimestamp();
+            var workerAlreadyConnected = _workerConnected.Task.IsCompleted;
+            _logger.LogInformation("WorkerProxy runtime stream connected. Port: {Port}, WorkerAlreadyConnected: {WorkerAlreadyConnected}.", localPort, workerAlreadyConnected);
             _runtimeConnected.TrySetResult();
 
-            // Wait for the worker to be connected before starting the relay.
-            await _workerConnected.Task.WaitAsync(context.CancellationToken);
-            _logger.LogInformation("WorkerProxy runtime stream observed worker connected. Port: {Port}, ElapsedMilliseconds: {elapsedMilliseconds}.", localPort, Stopwatch.GetElapsedTime(runtimeConnectStart).TotalMilliseconds);
-
-            // Replay cached StartStream to the runtime.
-            if (_cachedStartStream is not null)
-            {
-                await responseStream.WriteAsync(_cachedStartStream);
-                _logger.LogInformation("WorkerProxy replayed cached StartStream to runtime. Port: {Port}, ElapsedMilliseconds: {elapsedMilliseconds}.", localPort, Stopwatch.GetElapsedTime(runtimeConnectStart).TotalMilliseconds);
-            }
-
-            // Runtime reads from _toRuntime, writes into _toWorker.
+            // Start relay immediately without blocking on _workerConnected.
+            // StartStream is delivered via the _toRuntime channel (written by the
+            // worker-side handler before signaling _workerConnected). The runtime's
+            // WorkerInitRequest is still gated by _specializationCompleted in
+            // ReadInboundAsync, preserving correctness.
             await RelayAsync(requestStream, responseStream, _toWorker, _toRuntime, RelaySide.Runtime, context.CancellationToken);
+            _logger.LogInformation("WorkerProxy runtime relay completed. Port: {Port}, TotalElapsedMilliseconds: {TotalElapsedMilliseconds}.", localPort, Stopwatch.GetElapsedTime(runtimeConnectTimestamp).TotalMilliseconds);
         }
         else
         {
@@ -560,13 +555,16 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                         WriteFunctionsNetHostLogToConsole(message.RpcLog);
                     }
 
-                    // Cache StartStream and signal worker connected. Do NOT relay.
+                    // Cache StartStream, write to runtime channel, then signal connected.
+                    // Writing to _toRuntime BEFORE signaling _workerConnected guarantees
+                    // StartStream is the first message delivered to the runtime.
                     if (message.ContentCase == StreamingMessage.ContentOneofCase.StartStream)
                     {
                         _cachedStartStream = message;
+                        await _toRuntime.Writer.WriteAsync(message, cancellationToken);
                         _workerConnected.TrySetResult();
                         _stateManager.UpdatePodStatus(WorkerPodStatus.ReadyForRequest);
-                        _logger.LogInformation("WorkerProxy cached StartStream from worker. WorkerId: {workerId}.", message.StartStream?.WorkerId);
+                        _logger.LogInformation("WorkerProxy cached StartStream from worker and queued for runtime. WorkerId: {workerId}.", message.StartStream?.WorkerId);
                         continue;
                     }
 
