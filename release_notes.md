@@ -6,3 +6,4 @@
 
 - Add usage telemetry for worker custom metrics and Azure Monitor diagnostic logging (#12034)
 - Suppress Storage queue and blob listener polling noise from telemetry by event name, preserving listener lifecycle and diagnostic logs (#11947)
+- Update Kubernetes API server certificate validation to chain only against the configured cluster CA
