@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Threading.Channels;
 using Xunit;
 
 namespace Microsoft.Azure.Functions.WorkerProxy.Tests;
@@ -773,7 +775,76 @@ public class FunctionRpcRelayTests : IDisposable
         Assert.Equal(hostJsonContent, cached["host_configuration_json"]);
     }
 
+    [Fact]
+    public async Task RuntimeRelay_Disconnect_DoesNotCompleteWorkerChannel()
+    {
+        var relay = CreateRelay();
+        relay._cachedStartStream = new StreamingMessage { StartStream = new StartStream { WorkerId = "worker-1" } };
+        relay._workerConnected.TrySetResult();
+
+        var runtimeInbound = Channel.CreateUnbounded<StreamingMessage>();
+        var runtimeOutbound = new TestServerStreamWriter<StreamingMessage>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        var relayTask = relay.RelayAsync(
+            new TestAsyncStreamReader<StreamingMessage>(runtimeInbound.Reader),
+            runtimeOutbound,
+            relay._toWorker,
+            Channel.CreateUnbounded<StreamingMessage>(),
+            RelaySide.Runtime,
+            cts.Token);
+
+        await runtimeOutbound.ReadAsync(cts.Token);
+        runtimeInbound.Writer.TryComplete();
+
+        await relayTask.WaitAsync(cts.Token);
+
+        await relay._toWorker.Writer.WriteAsync(new StreamingMessage { WorkerInitRequest = new WorkerInitRequest() }, cts.Token);
+        var written = await relay._toWorker.Reader.ReadAsync(cts.Token);
+        Assert.Equal(StreamingMessage.ContentOneofCase.WorkerInitRequest, written.ContentCase);
+    }
+
+    [Fact]
+    public async Task RuntimeRelay_Reconnect_ReplaysStartStreamEachTime()
+    {
+        var relay = CreateRelay();
+        relay._cachedStartStream = new StreamingMessage { StartStream = new StartStream { WorkerId = "worker-1" } };
+        relay._workerConnected.TrySetResult();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        var firstStartStream = await ConnectRuntimeAndReadStartStreamAsync(relay, cts.Token);
+        var secondStartStream = await ConnectRuntimeAndReadStartStreamAsync(relay, cts.Token);
+
+        Assert.Equal(StreamingMessage.ContentOneofCase.StartStream, firstStartStream.ContentCase);
+        Assert.Equal(StreamingMessage.ContentOneofCase.StartStream, secondStartStream.ContentCase);
+        Assert.Equal("worker-1", firstStartStream.StartStream.WorkerId);
+        Assert.Equal("worker-1", secondStartStream.StartStream.WorkerId);
+    }
+
     // --- Helper methods ---
+
+    private static async Task<StreamingMessage> ConnectRuntimeAndReadStartStreamAsync(
+        FunctionRpcRelay relay,
+        CancellationToken cancellationToken)
+    {
+        var runtimeInbound = Channel.CreateUnbounded<StreamingMessage>();
+        var runtimeOutbound = new TestServerStreamWriter<StreamingMessage>();
+
+        var relayTask = relay.RelayAsync(
+            new TestAsyncStreamReader<StreamingMessage>(runtimeInbound.Reader),
+            runtimeOutbound,
+            relay._toWorker,
+            Channel.CreateUnbounded<StreamingMessage>(),
+            RelaySide.Runtime,
+            cancellationToken);
+
+        var startStream = await runtimeOutbound.ReadAsync(cancellationToken);
+        runtimeInbound.Writer.TryComplete();
+        await relayTask.WaitAsync(cancellationToken);
+
+        return startStream;
+    }
 
     /// <summary>
     /// Simulates a worker responding to the relay's SpecializeWorkerAsync sequence.
@@ -930,6 +1001,47 @@ public class FunctionRpcRelayTests : IDisposable
         catch (Exception ex)
         {
             return ex;
+        }
+    }
+
+    private sealed class TestAsyncStreamReader<T>(ChannelReader<T> reader) : IAsyncStreamReader<T>
+    {
+        public T Current { get; private set; } = default!;
+
+        public async Task<bool> MoveNext(CancellationToken cancellationToken)
+        {
+            if (await reader.WaitToReadAsync(cancellationToken))
+            {
+                if (reader.TryRead(out var item))
+                {
+                    Current = item;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    private sealed class TestServerStreamWriter<T> : IServerStreamWriter<T>
+    {
+        private readonly Channel<T> _channel = Channel.CreateUnbounded<T>();
+
+        public WriteOptions? WriteOptions { get; set; }
+
+        public Task WriteAsync(T message)
+        {
+            return _channel.Writer.WriteAsync(message).AsTask();
+        }
+
+        public Task WriteAsync(T message, CancellationToken cancellationToken)
+        {
+            return _channel.Writer.WriteAsync(message, cancellationToken).AsTask();
+        }
+
+        public ValueTask<T> ReadAsync(CancellationToken cancellationToken)
+        {
+            return _channel.Reader.ReadAsync(cancellationToken);
         }
     }
 }
