@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -51,7 +52,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
                 ClaimsIdentity easyAuthIdentity = Context.Request.GetAppServiceIdentity();
                 if (easyAuthIdentity != null)
                 {
-                    claimsIdentities.Add(easyAuthIdentity);
+                    // The EasyAuth identity is materialized from a request header,
+                    // so its claims are not host-issued. Strip claim types that
+                    // affect host authorization decisions; those are owned by the
+                    // host's own key and JWT handlers.
+                    claimsIdentities.Add(SanitizeEasyAuthIdentity(easyAuthIdentity));
                 }
             }
 
@@ -80,6 +85,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             {
                 return AuthenticateResult.NoResult();
             }
+        }
+
+        // Authorization-related claim types that must be sourced from a host
+        // authentication handler (the key-based handler or the JWT/SWT
+        // validator) rather than from the EasyAuth identity built off the
+        // request header.
+        private static readonly HashSet<string> _privilegedClaimTypes = new(StringComparer.Ordinal)
+        {
+            SecurityConstants.AuthLevelClaimType,
+            SecurityConstants.AuthLevelKeyNameClaimType,
+            SecurityConstants.InvokeClaimType,
+            SecurityConstants.AssignUnencryptedClaimType,
+        };
+
+        internal static ClaimsIdentity SanitizeEasyAuthIdentity(ClaimsIdentity easyAuthIdentity)
+        {
+            IEnumerable<Claim> filteredClaims = easyAuthIdentity.Claims
+                .Where(c => !_privilegedClaimTypes.Contains(c.Type));
+
+            // Preserve NameClaimType / RoleClaimType so consumers reading the
+            // user identity (name, roles) keep working; rebuild without the
+            // host-authorization claim types.
+            return new ClaimsIdentity(
+                filteredClaims,
+                easyAuthIdentity.AuthenticationType,
+                easyAuthIdentity.NameClaimType,
+                easyAuthIdentity.RoleClaimType);
         }
 
         internal static Task<(string KeyName, AuthorizationLevel Level)> GetAuthorizationKeyInfoAsync(HttpRequest request, ISecretManagerProvider secretManagerProvider)

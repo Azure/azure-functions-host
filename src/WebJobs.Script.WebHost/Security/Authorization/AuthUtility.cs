@@ -15,15 +15,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
 {
     public class AuthUtility
     {
-        private static IEnumerable<IAuthorizationRequirement> _requirements = new[] { new FunctionAuthorizationRequirement() };
-        private static IEnumerable<string> _defaultAuthorizationSchemes = new[] { AuthLevelAuthenticationDefaults.AuthenticationScheme, JwtBearerDefaults.AuthenticationScheme };
-        private static AuthorizationPolicy _defaultPolicy = new AuthorizationPolicy(_requirements, _defaultAuthorizationSchemes);
+        private static readonly IEnumerable<IAuthorizationRequirement> _requirements = new[] { new FunctionAuthorizationRequirement() };
+        private static readonly IEnumerable<string> _defaultAuthorizationSchemes = new[] { AuthLevelAuthenticationDefaults.AuthenticationScheme, JwtBearerDefaults.AuthenticationScheme };
+        private static readonly AuthorizationPolicy _defaultPolicy = new AuthorizationPolicy(_requirements, _defaultAuthorizationSchemes);
 
         public static AuthorizationPolicy DefaultFunctionPolicy => _defaultPolicy;
 
         public static AuthorizationPolicy CreateFunctionPolicy(IEnumerable<string> schemes = null)
         {
             schemes = schemes ?? _defaultAuthorizationSchemes;
+
             return new AuthorizationPolicy(_requirements, schemes);
         }
 
@@ -35,8 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
                 return true;
             }
 
-            var claimLevels = principal
-                .FindAll(SecurityConstants.AuthLevelClaimType)
+            var claimLevels = GetTrustedClaims(principal, SecurityConstants.AuthLevelClaimType)
                 .Select(c => Enum.TryParse(c.Value, out AuthorizationLevel claimLevel) ? claimLevel : AuthorizationLevel.Anonymous)
                 .ToArray();
 
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
 
                 // Ensure we match the expected level and key name, if one is required
                 if (claimLevels.Any(l => l == requiredLevel) &&
-                   (keyName == null || string.Equals(principal.FindFirstValue(SecurityConstants.AuthLevelKeyNameClaimType), keyName, StringComparison.OrdinalIgnoreCase)))
+                   (keyName == null || string.Equals(GetTrustedClaims(principal, SecurityConstants.AuthLevelKeyNameClaimType).FirstOrDefault()?.Value, keyName, StringComparison.OrdinalIgnoreCase)))
                 {
                     return true;
                 }
@@ -67,7 +67,71 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
                 return true;
             }
 
-            return principal.HasClaim(SecurityConstants.InvokeClaimType, "true");
+            return PrincipalHasTrustedClaim(principal, SecurityConstants.InvokeClaimType, "true");
+        }
+
+        /// <summary>
+        /// Returns true when the principal carries a claim (<paramref name="type"/> = <paramref name="value"/>) on
+        /// an identity that was issued by one of the host's own authentication handlers — currently the key-based
+        /// handler and the JWT bearer validator. Other identities on the principal are ignored.
+        /// </summary>
+        internal static bool PrincipalHasTrustedClaim(ClaimsPrincipal principal, string type, string value)
+        {
+            if (principal is null)
+            {
+                return false;
+            }
+
+            foreach (ClaimsIdentity identity in principal.Identities)
+            {
+                if (!IsTrustedHostIdentity(identity))
+                {
+                    continue;
+                }
+
+                foreach (Claim claim in identity.FindAll(type))
+                {
+                    if (string.Equals(claim.Value, value, StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static IEnumerable<Claim> GetTrustedClaims(ClaimsPrincipal principal, string type)
+        {
+            if (principal is null)
+            {
+                yield break;
+            }
+
+            foreach (ClaimsIdentity identity in principal.Identities)
+            {
+                if (!IsTrustedHostIdentity(identity))
+                {
+                    continue;
+                }
+
+                foreach (Claim claim in identity.FindAll(type))
+                {
+                    yield return claim;
+                }
+            }
+        }
+
+        private static bool IsTrustedHostIdentity(ClaimsIdentity identity)
+        {
+            // Authorization-level and invoke claims are only honored when the
+            // identity carrying them was issued by one of the host's own
+            // authentication handlers (the key-based handler or the JWT bearer
+            // validator). Identities from other authentication schemes — for
+            // example the EasyAuth identity built from x-ms-client-principal —
+            // are not considered for these claims.
+            return identity is not null &&
+                string.Equals(identity.AuthenticationType, AuthLevelAuthenticationDefaults.AuthenticationScheme, StringComparison.Ordinal);
         }
     }
 }

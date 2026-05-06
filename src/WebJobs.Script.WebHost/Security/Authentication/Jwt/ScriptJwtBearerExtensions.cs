@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication.Jwt;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -77,7 +78,7 @@ namespace Microsoft.Extensions.DependencyInjection
                         claims.Add(new Claim(SecurityConstants.AssignUnencryptedClaimType, "true"));
                     }
 
-                    c.Principal.AddIdentity(new ClaimsIdentity(claims));
+                    c.Principal.AddIdentity(new ClaimsIdentity(claims, AuthLevelAuthenticationDefaults.AuthenticationScheme));
                     c.Success();
 
                     return Task.CompletedTask;

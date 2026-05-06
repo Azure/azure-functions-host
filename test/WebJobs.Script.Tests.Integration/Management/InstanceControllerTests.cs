@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
@@ -263,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             DefaultHttpContext context = new() { User = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
             {
                 new Claim(SecurityConstants.AssignUnencryptedClaimType, "true")
-            })) };
+            }, AuthLevelAuthenticationDefaults.AuthenticationScheme)) };
             instanceController.ControllerContext = new() { HttpContext = context };
 
             var hostAssignmentContext = new HostAssignmentContext

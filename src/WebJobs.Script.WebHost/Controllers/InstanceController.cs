@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
 
@@ -66,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
                 else
                 {
-                    if (!User.HasClaim(SecurityConstants.AssignUnencryptedClaimType, "true"))
+                    if (!AuthUtility.PrincipalHasTrustedClaim(User, SecurityConstants.AssignUnencryptedClaimType, "true"))
                     {
                         _logger.LogWarning("Required claims missing for invoking unencrypted assignment");
                         return Forbid();

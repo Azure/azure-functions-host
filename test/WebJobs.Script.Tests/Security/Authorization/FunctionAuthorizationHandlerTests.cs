@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Moq;
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authorization
                 claims.Add(new Claim(SecurityConstants.InvokeClaimType, invokeClaimValue));
             }
 
-            var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
+            var user = new ClaimsPrincipal(new ClaimsIdentity(claims, AuthLevelAuthenticationDefaults.AuthenticationScheme));
 
             var authHandlerContext = new AuthorizationHandlerContext(requirements, user, descriptor.Object);
             await authHandler.HandleAsync(authHandlerContext);
