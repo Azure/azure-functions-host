@@ -822,6 +822,103 @@ public class FunctionRpcRelayTests : IDisposable
         Assert.Equal("worker-1", secondStartStream.StartStream.WorkerId);
     }
 
+    [Fact]
+    public void TrackFunctionLoadRequest_LogsFunctionNameAndId()
+    {
+        var logger = new TestLogger<FunctionRpcRelay>();
+        var relay = CreateRelay(logger);
+
+        relay.TrackFunctionLoadRequest(new FunctionLoadRequest
+        {
+            FunctionId = "func-123",
+            Metadata = new RpcFunctionMetadata
+            {
+                Name = "HttpTrigger"
+            }
+        });
+
+        Assert.Contains(logger.Messages, message => string.Equals(
+            message,
+            "[Runtime] Forwarding FunctionLoadRequest. FunctionName=HttpTrigger, FunctionId=func-123",
+            StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void LogInvocationRequest_UsesTrackedFunctionNameAndTraceParent()
+    {
+        var logger = new TestLogger<FunctionRpcRelay>();
+        var relay = CreateRelay(logger);
+        relay.TrackFunctionMetadataResponse(new FunctionMetadataResponse
+        {
+            FunctionMetadataResults =
+            {
+                new RpcFunctionMetadata
+                {
+                    FunctionId = "func-123",
+                    Name = "HttpTrigger"
+                }
+            }
+        });
+
+        relay.LogInvocationRequest(RelaySide.Runtime, new InvocationRequest
+        {
+            FunctionId = "func-123",
+            InvocationId = "inv-456",
+            TraceContext = new RpcTraceContext
+            {
+                TraceParent = "00-abc"
+            }
+        });
+
+        Assert.Contains(logger.Messages, message => string.Equals(
+            message,
+            "[Runtime] Forwarding InvocationRequest. FunctionName=HttpTrigger, FunctionId=func-123, InvocationId=inv-456, TraceParent=00-abc",
+            StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void LogInvocationResponse_UsesTrackedInvocationContext()
+    {
+        var logger = new TestLogger<FunctionRpcRelay>();
+        var relay = CreateRelay(logger);
+
+        relay.TrackFunctionMetadataResponse(new FunctionMetadataResponse
+        {
+            FunctionMetadataResults =
+            {
+                new RpcFunctionMetadata
+                {
+                    FunctionId = "func-123",
+                    Name = "HttpTrigger"
+                }
+            }
+        });
+
+        relay.LogInvocationRequest(RelaySide.Runtime, new InvocationRequest
+        {
+            FunctionId = "func-123",
+            InvocationId = "inv-456",
+            TraceContext = new RpcTraceContext
+            {
+                TraceParent = "00-abc"
+            }
+        });
+
+        relay.LogInvocationResponse(RelaySide.Worker, new InvocationResponse
+        {
+            InvocationId = "inv-456",
+            Result = new StatusResult
+            {
+                Status = StatusResult.Types.Status.Success
+            }
+        });
+
+        Assert.Contains(logger.Messages, message => string.Equals(
+            message,
+            "[Worker] Forwarding InvocationResponse. FunctionName=HttpTrigger, FunctionId=func-123, InvocationId=inv-456, Result=Success, TraceParent=00-abc",
+            StringComparison.Ordinal));
+    }
+
     // --- Helper methods ---
 
     private static async Task<StreamingMessage> ConnectRuntimeAndReadStartStreamAsync(
