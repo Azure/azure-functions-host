@@ -247,6 +247,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ContainerManagement
 
             public int AcquireSlots(int requestedSlotCount) => 0;
 
+            public Task<int> AcquireSlotsAsync(
+                int requestedSlotCount,
+                TimeSpan timeout,
+                CancellationToken cancellationToken) => Task.FromResult(0);
+
             public void ReleaseSlots(int count)
             {
             }

@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     [Authorize(Policy = PolicyNames.AdminAuthLevel)]
     public class RequestSlotsController : Controller
     {
+        private static readonly TimeSpan AcquireLeaseCapacityTimeout = TimeSpan.FromSeconds(60);
+
         private readonly ILogger _logger;
 
         public RequestSlotsController(ILoggerFactory loggerFactory)
@@ -36,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         /// </remarks>
         [HttpPost]
         [Route("admin/request-slots/leases")]
-        public IActionResult AcquireLeases([FromBody] RequestSlotsLeaseRequest request)
+        public async Task<IActionResult> AcquireLeases([FromBody] RequestSlotsLeaseRequest request)
         {
             if (request is null)
             {
@@ -55,7 +59,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
 
-            int granted = runtimeStateManager.AcquireSlots(request.Count);
+            int granted = await runtimeStateManager.AcquireSlotsAsync(
+                request.Count,
+                AcquireLeaseCapacityTimeout,
+                HttpContext.RequestAborted);
+            if (granted == 0)
+            {
+                _logger.LogWarning(
+                    "Request-slot capacity was unavailable before timeout or runtime stop: requested {requested}, timeout {timeout}.",
+                    request.Count,
+                    AcquireLeaseCapacityTimeout);
+                return StatusCode(StatusCodes.Status429TooManyRequests);
+            }
+
             if (granted < request.Count)
             {
                 _logger.LogInformation(

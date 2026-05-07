@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
@@ -36,23 +38,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public void AcquireLeases_WhenExternalWorkersDisabled_Returns503()
+        public async Task AcquireLeases_WhenExternalWorkersDisabled_Returns503()
         {
             var controller = CreateController(runtimeStateManager: null);
 
-            var result = controller.AcquireLeases(new RequestSlotsLeaseRequest { Count = 5 });
+            var result = await controller.AcquireLeases(new RequestSlotsLeaseRequest { Count = 5 });
 
             var statusResult = Assert.IsType<StatusCodeResult>(result);
             Assert.Equal(StatusCodes.Status503ServiceUnavailable, statusResult.StatusCode);
         }
 
         [Fact]
-        public void AcquireLeases_NullBody_ReturnsBadRequest()
+        public async Task AcquireLeases_NullBody_ReturnsBadRequest()
         {
             var mock = new Mock<IRuntimeStateManager>(MockBehavior.Strict);
             var controller = CreateController(mock.Object);
 
-            var result = controller.AcquireLeases(null);
+            var result = await controller.AcquireLeases(null);
 
             Assert.IsType<BadRequestObjectResult>(result);
             mock.VerifyNoOtherCalls();
@@ -61,44 +63,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Theory]
         [InlineData(0)]
         [InlineData(-1)]
-        public void AcquireLeases_NonPositiveCount_ReturnsBadRequest(int count)
+        public async Task AcquireLeases_NonPositiveCount_ReturnsBadRequest(int count)
         {
             var mock = new Mock<IRuntimeStateManager>(MockBehavior.Strict);
             var controller = CreateController(mock.Object);
 
-            var result = controller.AcquireLeases(new RequestSlotsLeaseRequest { Count = count });
+            var result = await controller.AcquireLeases(new RequestSlotsLeaseRequest { Count = count });
 
             Assert.IsType<BadRequestObjectResult>(result);
             mock.VerifyNoOtherCalls();
         }
 
         [Fact]
-        public void AcquireLeases_ReturnsGrantedCount()
+        public async Task AcquireLeases_ReturnsGrantedCount()
         {
             var mock = new Mock<IRuntimeStateManager>();
-            mock.Setup(m => m.AcquireSlots(5)).Returns(3);
+            mock.Setup(m => m.AcquireSlotsAsync(
+                5,
+                TimeSpan.FromSeconds(60),
+                It.IsAny<CancellationToken>())).ReturnsAsync(3);
             var controller = CreateController(mock.Object);
 
-            var result = controller.AcquireLeases(new RequestSlotsLeaseRequest { Count = 5 });
+            var result = await controller.AcquireLeases(new RequestSlotsLeaseRequest { Count = 5 });
 
             var ok = Assert.IsType<OkObjectResult>(result);
             var payload = Assert.IsType<RequestSlotsLeaseResponse>(ok.Value);
             Assert.Equal(3, payload.AcquiredSlotCount);
-            mock.Verify(m => m.AcquireSlots(5), Times.Once);
+            mock.Verify(m => m.AcquireSlotsAsync(
+                5,
+                TimeSpan.FromSeconds(60),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public void AcquireLeases_FullGrant_ReturnsRequestedCount()
+        public async Task AcquireLeases_FullGrant_ReturnsRequestedCount()
         {
             var mock = new Mock<IRuntimeStateManager>();
-            mock.Setup(m => m.AcquireSlots(4)).Returns(4);
+            mock.Setup(m => m.AcquireSlotsAsync(
+                4,
+                TimeSpan.FromSeconds(60),
+                It.IsAny<CancellationToken>())).ReturnsAsync(4);
             var controller = CreateController(mock.Object);
 
-            var result = controller.AcquireLeases(new RequestSlotsLeaseRequest { Count = 4 });
+            var result = await controller.AcquireLeases(new RequestSlotsLeaseRequest { Count = 4 });
 
             var ok = Assert.IsType<OkObjectResult>(result);
             var payload = Assert.IsType<RequestSlotsLeaseResponse>(ok.Value);
             Assert.Equal(4, payload.AcquiredSlotCount);
+        }
+
+        [Fact]
+        public async Task AcquireLeases_WhenCapacityWaitTimesOut_ReturnsTooManyRequests()
+        {
+            var mock = new Mock<IRuntimeStateManager>();
+            mock.Setup(m => m.AcquireSlotsAsync(
+                5,
+                TimeSpan.FromSeconds(60),
+                It.IsAny<CancellationToken>())).ReturnsAsync(0);
+            var controller = CreateController(mock.Object);
+
+            var result = await controller.AcquireLeases(new RequestSlotsLeaseRequest { Count = 5 });
+
+            var statusResult = Assert.IsType<StatusCodeResult>(result);
+            Assert.Equal(StatusCodes.Status429TooManyRequests, statusResult.StatusCode);
         }
 
         [Fact]

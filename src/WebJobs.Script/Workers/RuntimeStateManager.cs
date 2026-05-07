@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers;
@@ -44,6 +45,7 @@ internal sealed class RuntimeStateManager : IRuntimeStateManager
     private readonly ConcurrentDictionary<string, int> _workerCapacities = new(StringComparer.Ordinal);
     private readonly object _slotLock = new();
     private readonly ILogger<RuntimeStateManager> _logger;
+    private TaskCompletionSource<object> _slotAvailabilitySignal = CreateSlotAvailabilitySignal();
 
     private int _totalRequestSlots;
     private int _leasedSlots;
@@ -156,6 +158,8 @@ internal sealed class RuntimeStateManager : IRuntimeStateManager
             _totalRequestSlots += slotCapacity;
         }
 
+        SignalSlotAvailabilityChanged();
+
         _logger.LogInformation(
             "Worker '{workerId}' contributed slot capacity {slotCapacity}. Total slots: {totalSlots}.",
             workerId,
@@ -225,6 +229,75 @@ internal sealed class RuntimeStateManager : IRuntimeStateManager
     }
 
     /// <inheritdoc/>
+    public async Task<int> AcquireSlotsAsync(
+        int requestedSlotCount,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        if (requestedSlotCount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(requestedSlotCount), "Requested slot count must be positive.");
+        }
+
+        if (timeout < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must not be negative.");
+        }
+
+        if (timeout == TimeSpan.Zero)
+        {
+            return TryAcquireSlots(requestedSlotCount);
+        }
+
+        using var timeoutSource = new CancellationTokenSource(timeout);
+        using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            timeoutSource.Token);
+
+        while (true)
+        {
+            Task waitTask;
+            int granted;
+
+            lock (_slotLock)
+            {
+                if (IsStopping)
+                {
+                    return 0;
+                }
+
+                int available = Math.Max(0, _totalRequestSlots - _leasedSlots);
+                if (available > 0)
+                {
+                    granted = Math.Min(requestedSlotCount, available);
+                    _leasedSlots += granted;
+                    waitTask = Task.CompletedTask;
+                }
+                else
+                {
+                    granted = 0;
+                    waitTask = _slotAvailabilitySignal.Task;
+                }
+            }
+
+            if (granted > 0)
+            {
+                RaiseStateChanged();
+                return granted;
+            }
+
+            try
+            {
+                await waitTask.WaitAsync(linkedSource.Token);
+            }
+            catch (OperationCanceledException) when (timeoutSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                return 0;
+            }
+        }
+    }
+
+    /// <inheritdoc/>
     public void ReleaseSlots(int count)
     {
         if (count <= 0)
@@ -257,6 +330,7 @@ internal sealed class RuntimeStateManager : IRuntimeStateManager
         // a debounced publish to the mesh service.
         if (released > 0)
         {
+            SignalSlotAvailabilityChanged();
             RaiseStateChanged();
         }
     }
@@ -272,7 +346,48 @@ internal sealed class RuntimeStateManager : IRuntimeStateManager
         }
 
         _logger.LogInformation("Runtime marked as stopping; request slots are no longer advertised.");
+        SignalSlotAvailabilityChanged();
         RaiseStateChanged();
+    }
+
+    private int TryAcquireSlots(int requestedSlotCount)
+    {
+        if (IsStopping)
+        {
+            return 0;
+        }
+
+        int granted;
+        lock (_slotLock)
+        {
+            int available = Math.Max(0, _totalRequestSlots - _leasedSlots);
+            granted = Math.Min(requestedSlotCount, available);
+            _leasedSlots += granted;
+        }
+
+        if (granted > 0)
+        {
+            RaiseStateChanged();
+        }
+
+        return granted;
+    }
+
+    private static TaskCompletionSource<object> CreateSlotAvailabilitySignal()
+    {
+        return new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private void SignalSlotAvailabilityChanged()
+    {
+        TaskCompletionSource<object> signal;
+        lock (_slotLock)
+        {
+            signal = _slotAvailabilitySignal;
+            _slotAvailabilitySignal = CreateSlotAvailabilitySignal();
+        }
+
+        signal.TrySetResult(null);
     }
 
     private void RaiseStateChanged()
