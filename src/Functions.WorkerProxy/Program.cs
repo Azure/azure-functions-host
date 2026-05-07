@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Diagnostics;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.Functions.WorkerProxy;
 using Microsoft.Azure.Functions.WorkerProxy.Authentication;
@@ -9,6 +10,8 @@ using Microsoft.Azure.Functions.WorkerProxy.Diagnostics;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Forwarder;
+
+Console.WriteLine($"WorkerProxy process launched. pid={Environment.ProcessId}");
 
 var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
 EnsureEnvironmentVariablesConfiguration(builder.Configuration);
@@ -99,10 +102,26 @@ app.Use(async (ctx, next) =>
             return;
         }
 
-        logger.LogDebug("[HTTP Proxy] Received {Method} {Path} on port {Port}, forwarding to {Destination}",
-            ctx.Request.Method, ctx.Request.Path, httpProxyPort, destination);
+        var requestLogContext = WorkerProxyHttpRequestLogContext.Create(ctx.Request, destination);
+        var forwardStart = Stopwatch.GetTimestamp();
+        logger.LogInformation("[HTTP Proxy] Forwarding request. Method={Method}, Path={Path}, Destination={Destination}, InvocationId={InvocationId}, TraceParent={TraceParent}, RequestId={RequestId}",
+            requestLogContext.Method,
+            requestLogContext.Path,
+            requestLogContext.Destination,
+            requestLogContext.InvocationId,
+            requestLogContext.TraceParent,
+            requestLogContext.RequestId);
+
         await forwarder.SendAsync(ctx, destination, httpClient);
-        logger.LogDebug("[HTTP Proxy] Forwarded request completed with status {StatusCode}", ctx.Response.StatusCode);
+        logger.LogInformation("[HTTP Proxy] Forwarding completed. Method={Method}, Path={Path}, Destination={Destination}, StatusCode={StatusCode}, ElapsedMilliseconds={ElapsedMilliseconds}, InvocationId={InvocationId}, TraceParent={TraceParent}, RequestId={RequestId}",
+            requestLogContext.Method,
+            requestLogContext.Path,
+            requestLogContext.Destination,
+            ctx.Response.StatusCode,
+            Stopwatch.GetElapsedTime(forwardStart).TotalMilliseconds,
+            requestLogContext.InvocationId,
+            requestLogContext.TraceParent,
+            requestLogContext.RequestId);
         return;
     }
 

@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Channels;
 using Grpc.Core;
@@ -49,6 +50,8 @@ internal record RelayOptions(int RuntimeGrpcPort, int WorkerGrpcPort, int HttpPr
 internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
 {
     private const string FunctionsNetHostRpcLogPrefix = "FunctionsNetHost:";
+    private const string NoCorrelationValue = "<none>";
+    private const string UnknownFunctionValue = "<unknown>";
 
     private enum HostJsonSource
     {
@@ -57,10 +60,13 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     }
 
     private sealed record HostJsonReadResult(string Path, string Content, HostJsonSource Source);
+    private sealed record InvocationCorrelationContext(string FunctionId, string FunctionName, string TraceParent);
 
     private readonly RelayOptions _options;
     private readonly ILogger<FunctionRpcRelay> _logger;
     private readonly WorkerPodStateManager _stateManager;
+    private readonly ConcurrentDictionary<string, string> _functionNamesById = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, InvocationCorrelationContext> _pendingInvocations = new(StringComparer.Ordinal);
 
     // Channels that buffer messages flowing in each direction.
     internal readonly Channel<StreamingMessage> _toWorker = Channel.CreateUnbounded<StreamingMessage>();
@@ -276,6 +282,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                 StreamingMessage.ContentOneofCase.FunctionMetadataResponse,
                 cts.Token);
 
+            TrackFunctionMetadataResponse(metadataResponse.FunctionMetadataResponse);
             _cachedFunctionMetadataResponse = metadataResponse;
             _logger.LogInformation("WorkerProxy cached FunctionMetadataResponse. StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", Stopwatch.GetElapsedTime(metadataStart).TotalMilliseconds, Stopwatch.GetElapsedTime(specializeStart).TotalMilliseconds);
         }
@@ -494,6 +501,118 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         _logger.LogInformation("Set HttpUri capability to {Uri}.", _options.HttpProxyEndpoint);
     }
 
+    internal void TrackFunctionMetadataResponse(FunctionMetadataResponse? response)
+    {
+        if (response is null)
+        {
+            return;
+        }
+
+        foreach (var functionMetadata in response.FunctionMetadataResults)
+        {
+            TrackFunctionIdentity(functionMetadata.FunctionId, functionMetadata.Name);
+        }
+    }
+
+    internal void TrackFunctionLoadRequest(FunctionLoadRequest? request)
+    {
+        if (request is null)
+        {
+            return;
+        }
+
+        string functionName = ResolveFunctionName(request.FunctionId, request.Metadata?.Name);
+        string functionId = NormalizeForLog(request.FunctionId, UnknownFunctionValue);
+        _logger.LogInformation("[Runtime] Forwarding FunctionLoadRequest. FunctionName={FunctionName}, FunctionId={FunctionId}",
+            functionName,
+            functionId);
+    }
+
+    internal void LogInvocationRequest(RelaySide side, InvocationRequest? request)
+    {
+        if (request is null)
+        {
+            return;
+        }
+
+        string functionName = ResolveFunctionName(request.FunctionId);
+        string functionId = NormalizeForLog(request.FunctionId, UnknownFunctionValue);
+        string invocationId = NormalizeForLog(request.InvocationId);
+        string traceParent = NormalizeForLog(request.TraceContext?.TraceParent);
+
+        if (!string.IsNullOrWhiteSpace(request.InvocationId))
+        {
+            _pendingInvocations[request.InvocationId] = new InvocationCorrelationContext(functionId, functionName, traceParent);
+        }
+
+        _logger.LogInformation("[{Side}] Forwarding InvocationRequest. FunctionName={FunctionName}, FunctionId={FunctionId}, InvocationId={InvocationId}, TraceParent={TraceParent}",
+            side,
+            functionName,
+            functionId,
+            invocationId,
+            traceParent);
+    }
+
+    internal void LogInvocationResponse(RelaySide side, InvocationResponse? response)
+    {
+        if (response is null)
+        {
+            return;
+        }
+
+        string invocationId = NormalizeForLog(response.InvocationId);
+        string result = response.Result?.Status.ToString() ?? UnknownFunctionValue;
+        string functionId = UnknownFunctionValue;
+        string functionName = UnknownFunctionValue;
+        string traceParent = NoCorrelationValue;
+
+        if (!string.IsNullOrWhiteSpace(response.InvocationId)
+            && _pendingInvocations.TryRemove(response.InvocationId, out var correlation))
+        {
+            functionId = correlation.FunctionId;
+            functionName = correlation.FunctionName;
+            traceParent = correlation.TraceParent;
+        }
+
+        _logger.LogInformation("[{Side}] Forwarding InvocationResponse. FunctionName={FunctionName}, FunctionId={FunctionId}, InvocationId={InvocationId}, Result={Result}, TraceParent={TraceParent}",
+            side,
+            functionName,
+            functionId,
+            invocationId,
+            result,
+            traceParent);
+    }
+
+    private void TrackFunctionIdentity(string? functionId, string? functionName)
+    {
+        if (string.IsNullOrWhiteSpace(functionId) || string.IsNullOrWhiteSpace(functionName))
+        {
+            return;
+        }
+
+        _functionNamesById[functionId] = functionName;
+    }
+
+    private string ResolveFunctionName(string? functionId, string? fallbackFunctionName = null)
+    {
+        if (!string.IsNullOrWhiteSpace(fallbackFunctionName))
+        {
+            TrackFunctionIdentity(functionId, fallbackFunctionName);
+            return fallbackFunctionName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(functionId)
+            && _functionNamesById.TryGetValue(functionId, out var functionName))
+        {
+            return functionName;
+        }
+
+        return UnknownFunctionValue;
+    }
+
+    private static string NormalizeForLog(string? value, string placeholder = NoCorrelationValue)
+        => string.IsNullOrWhiteSpace(value) ? placeholder : value;
+
     internal async Task RelayAsync(
         IAsyncStreamReader<StreamingMessage> inbound,
         IServerStreamWriter<StreamingMessage> outbound,
@@ -522,6 +641,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             runtimeReplyChannel?.Writer.TryComplete();
             try { await readTask; } catch { }
             try { await writeTask; } catch { }
+            _pendingInvocations.Clear();
             _logger.LogInformation("[{Side}] stream disconnected", side);
         }
     }
@@ -622,15 +742,18 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
                 var message = inbound.Current;
                 _logger.LogDebug("[{Side}] → {Content}", side, message.ContentCase);
 
-                if (message.ContentCase == StreamingMessage.ContentOneofCase.InvocationRequest)
+                if (message.ContentCase == StreamingMessage.ContentOneofCase.FunctionLoadRequest
+                    && side == RelaySide.Runtime)
                 {
-                    _logger.LogDebug("[{Side}] → InvocationRequest for function '{FunctionId}', invocation '{InvocationId}'",
-                        side, message.InvocationRequest.FunctionId, message.InvocationRequest.InvocationId);
+                    TrackFunctionLoadRequest(message.FunctionLoadRequest);
+                }
+                else if (message.ContentCase == StreamingMessage.ContentOneofCase.InvocationRequest)
+                {
+                    LogInvocationRequest(side, message.InvocationRequest);
                 }
                 else if (message.ContentCase == StreamingMessage.ContentOneofCase.InvocationResponse)
                 {
-                    _logger.LogDebug("[{Side}] → InvocationResponse for invocation '{InvocationId}', result: {Result}",
-                        side, message.InvocationResponse.InvocationId, message.InvocationResponse.Result?.Status);
+                    LogInvocationResponse(side, message.InvocationResponse);
                 }
 
                 if (side == RelaySide.Worker)
