@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -208,6 +210,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
             Assert.Equal(0, granted);
             Assert.Equal(0, changes);
+        }
+
+        [Fact]
+        public async Task AcquireSlotsAsync_WhenCapacityAvailable_GrantsRequestedSlots()
+        {
+            _manager.OnWorkerCapacityAvailable("w1", 16);
+
+            int granted = await _manager.AcquireSlotsAsync(
+                5,
+                TimeSpan.FromSeconds(1),
+                CancellationToken.None);
+
+            var state = _manager.GetState();
+            Assert.Equal(5, granted);
+            Assert.Equal(11, state.TotalAvailableRequestSlots);
+        }
+
+        [Fact]
+        public async Task AcquireSlotsAsync_WhenCapacityBecomesAvailable_WaitsAndGrantsSlots()
+        {
+            var acquireTask = _manager.AcquireSlotsAsync(
+                5,
+                TimeSpan.FromSeconds(5),
+                CancellationToken.None);
+
+            Assert.False(acquireTask.IsCompleted);
+
+            _manager.OnWorkerCapacityAvailable("w1", 16);
+
+            int granted = await acquireTask.WaitAsync(TimeSpan.FromSeconds(1));
+
+            var state = _manager.GetState();
+            Assert.Equal(5, granted);
+            Assert.Equal(11, state.TotalAvailableRequestSlots);
+        }
+
+        [Fact]
+        public async Task AcquireSlotsAsync_WhenOnlyPartialCapacityAvailable_GrantsPartialSlots()
+        {
+            _manager.OnWorkerCapacityAvailable("w1", 4);
+
+            int granted = await _manager.AcquireSlotsAsync(
+                10,
+                TimeSpan.FromSeconds(1),
+                CancellationToken.None);
+
+            var state = _manager.GetState();
+            Assert.Equal(4, granted);
+            Assert.Equal(0, state.TotalAvailableRequestSlots);
+        }
+
+        [Fact]
+        public async Task AcquireSlotsAsync_WhenCapacityDoesNotBecomeAvailable_ReturnsZeroAfterTimeout()
+        {
+            int granted = await _manager.AcquireSlotsAsync(
+                5,
+                TimeSpan.FromMilliseconds(10),
+                CancellationToken.None);
+
+            Assert.Equal(0, granted);
+        }
+
+        [Fact]
+        public async Task AcquireSlotsAsync_WhenRuntimeStops_WakesWaiterAndReturnsZero()
+        {
+            var acquireTask = _manager.AcquireSlotsAsync(
+                5,
+                TimeSpan.FromSeconds(5),
+                CancellationToken.None);
+
+            Assert.False(acquireTask.IsCompleted);
+
+            _manager.SetStopping();
+
+            int granted = await acquireTask.WaitAsync(TimeSpan.FromSeconds(1));
+
+            Assert.Equal(0, granted);
         }
 
         [Fact]

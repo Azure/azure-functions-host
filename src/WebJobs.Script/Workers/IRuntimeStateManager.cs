@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers;
 
@@ -82,6 +84,24 @@ public interface IRuntimeStateManager
     /// was possible; equal to <paramref name="requestedSlotCount"/> on a full grant.
     /// </returns>
     int AcquireSlots(int requestedSlotCount);
+
+    /// <summary>
+    /// Waits until at least one request slot is available, then reserves up to
+    /// <paramref name="requestedSlotCount"/> slots atomically.
+    /// </summary>
+    /// <param name="requestedSlotCount">
+    /// Number of slots the caller would like to acquire. Must be positive.
+    /// </param>
+    /// <param name="timeout">Maximum amount of time to wait for capacity.</param>
+    /// <param name="cancellationToken">Cancellation token for the wait.</param>
+    /// <returns>
+    /// The number of slots reserved, or zero if no capacity became available
+    /// before timeout or the runtime stopped.
+    /// </returns>
+    Task<int> AcquireSlotsAsync(
+        int requestedSlotCount,
+        TimeSpan timeout,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Releases previously-acquired request slots. The leased count is clamped
