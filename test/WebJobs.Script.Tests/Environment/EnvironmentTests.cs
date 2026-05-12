@@ -264,6 +264,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
+        [InlineData("", true)]      // baseline Atlas detection
+        [InlineData(null, true)]
+        [InlineData("true", false)] // MANAGED_ENVIRONMENT set => not Atlas
+        [InlineData("1", false)]
+        public void IsLinuxConsumptionOnAtlas_ExcludesManagedAppEnvironment(string managedEnvironment, bool isLinuxConsumptionOnAtlas)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "container-name");
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment, managedEnvironment);
+
+            Assert.Equal(isLinuxConsumptionOnAtlas, testEnvironment.IsLinuxConsumptionOnAtlas());
+            Assert.Equal(isLinuxConsumptionOnAtlas, testEnvironment.IsLinuxMetricsPublishingEnabled());
+        }
+
+        [Theory]
         [InlineData(ScriptConstants.ElasticPremiumSku, true)]
         [InlineData("test", false)]
         [InlineData("", false)]
