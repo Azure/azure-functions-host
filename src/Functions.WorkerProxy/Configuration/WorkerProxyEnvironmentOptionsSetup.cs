@@ -24,6 +24,7 @@ internal sealed class WorkerProxyEnvironmentOptionsSetup : IConfigureOptions<Wor
         options.TenantId = NormalizeTenantId(_configuration["WEBSITE_STAMP_DEPLOYMENT_ID"]);
         options.LegionServiceHost = _configuration["LEGION_SERVICE_HOST"] ?? string.Empty;
         options.ComputerName = _configuration["COMPUTERNAME"] ?? string.Empty;
+        options.IsFileLoggingEnabled = IsEnabled(_configuration[WorkerProxyEnvironmentOptions.FileLoggingEnabledSettingName]);
     }
 
     internal static string NormalizeContainerName(string? containerName) => containerName?.ToUpperInvariant() ?? string.Empty;
@@ -31,4 +32,8 @@ internal sealed class WorkerProxyEnvironmentOptionsSetup : IConfigureOptions<Wor
     internal static string NormalizeStampName(string? stampName) => stampName?.ToLowerInvariant() ?? string.Empty;
 
     internal static string NormalizeTenantId(string? tenantId) => tenantId?.ToLowerInvariant() ?? string.Empty;
+
+    internal static bool IsEnabled(string? value)
+        => string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
 }

@@ -111,6 +111,7 @@ public class MsFunctionLogsLoggerTests
         Assert.Equal("tenant-01", options.TenantId);
         Assert.Equal("legion-host", options.LegionServiceHost);
         Assert.Equal("machine-01", options.ComputerName);
+        Assert.False(options.IsFileLoggingEnabled);
         Assert.True(options.IsFlexOrLegion);
     }
 
@@ -125,16 +126,47 @@ public class MsFunctionLogsLoggerTests
         Assert.True(options.IsFlexOrLegion);
     }
 
+    [Theory]
+    [InlineData("1")]
+    [InlineData("true")]
+    [InlineData("TRUE")]
+    public void Configure_FileLoggingEnabledOptIn_EnablesFileLogging(string value)
+    {
+        var options = new WorkerProxyEnvironmentOptions();
+
+        new WorkerProxyEnvironmentOptionsSetup(CreateConfiguration(fileLoggingEnabled: value))
+            .Configure(options);
+
+        Assert.True(options.IsFileLoggingEnabled);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("0")]
+    [InlineData("false")]
+    [InlineData("enabled")]
+    public void Configure_FileLoggingEnabledMissingOrInvalid_DisablesFileLogging(string? value)
+    {
+        var options = new WorkerProxyEnvironmentOptions();
+
+        new WorkerProxyEnvironmentOptionsSetup(CreateConfiguration(fileLoggingEnabled: value))
+            .Configure(options);
+
+        Assert.False(options.IsFileLoggingEnabled);
+    }
+
     private static IOptions<WorkerProxyEnvironmentOptions> CreateOptions(
         string? containerName = null,
         string? stampName = null,
         string? tenantId = null,
         string? legionServiceHost = null,
-        string? computerName = null)
+        string? computerName = null,
+        string? fileLoggingEnabled = null)
     {
         var options = new WorkerProxyEnvironmentOptions();
 
-        new WorkerProxyEnvironmentOptionsSetup(CreateConfiguration(containerName, stampName, tenantId, legionServiceHost, computerName))
+        new WorkerProxyEnvironmentOptionsSetup(CreateConfiguration(containerName, stampName, tenantId, legionServiceHost, computerName, fileLoggingEnabled))
             .Configure(options);
 
         return Options.Create(options);
@@ -145,7 +177,8 @@ public class MsFunctionLogsLoggerTests
         string? stampName = null,
         string? tenantId = null,
         string? legionServiceHost = null,
-        string? computerName = null)
+        string? computerName = null,
+        string? fileLoggingEnabled = null)
     {
         Dictionary<string, string?> values = new()
         {
@@ -153,7 +186,8 @@ public class MsFunctionLogsLoggerTests
             ["WEBSITE_HOME_STAMPNAME"] = stampName,
             ["WEBSITE_STAMP_DEPLOYMENT_ID"] = tenantId,
             ["LEGION_SERVICE_HOST"] = legionServiceHost,
-            ["COMPUTERNAME"] = computerName
+            ["COMPUTERNAME"] = computerName,
+            [WorkerProxyEnvironmentOptions.FileLoggingEnabledSettingName] = fileLoggingEnabled
         };
 
         return new ConfigurationBuilder()
