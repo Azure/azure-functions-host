@@ -5,6 +5,8 @@ namespace Microsoft.Azure.Functions.WorkerProxy.Configuration;
 
 internal sealed class WorkerProxyEnvironmentOptions
 {
+    internal const string FileLoggingEnabledSettingName = "FUNCTIONS_WORKER_PROXY_FILE_LOGGING_ENABLED";
+
     public string ContainerName { get; set; } = string.Empty;
 
     public string StampName { get; set; } = string.Empty;
@@ -14,6 +16,8 @@ internal sealed class WorkerProxyEnvironmentOptions
     public string LegionServiceHost { get; set; } = string.Empty;
 
     public string ComputerName { get; set; } = string.Empty;
+
+    public bool IsFileLoggingEnabled { get; set; }
 
     public bool IsFlexOrLegion =>
         !string.IsNullOrWhiteSpace(ContainerName) || !string.IsNullOrWhiteSpace(LegionServiceHost);

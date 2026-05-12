@@ -31,7 +31,10 @@ builder.Services.AddSingleton<IConfigureOptions<WorkerProxyEnvironmentOptions>>(
 {
     builder.Logging.ClearProviders();
     builder.Logging.Services.AddSingleton<ILoggerProvider, MsFunctionLogsLoggerProvider>();
-    builder.Logging.Services.AddSingleton<ILoggerProvider, WorkerProxyFileLoggerProvider>();
+    if (workerProxyEnvironmentOptions.IsFileLoggingEnabled)
+    {
+        builder.Logging.Services.AddSingleton<ILoggerProvider, WorkerProxyFileLoggerProvider>();
+    }
 }
 
 int runtimeGrpcPort = GetIntArg(args, builder.Configuration, "--runtime-grpc-port", 50053);
