@@ -49,7 +49,7 @@
   </ItemGroup>
   <!-- WebJobs packages -->
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Azure.WebJobs" Version="3.0.46-ci.26256.2" />
+    <PackageVersion Include="Microsoft.Azure.WebJobs" Version="3.0.46" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.2" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Rpc.Core" Version="3.0.45" />
     <PackageVersion Include="Microsoft.Azure.WebJobs.Extensions" Version="5.2.1" />
