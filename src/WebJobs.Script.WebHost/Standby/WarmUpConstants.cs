@@ -12,5 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public const string PreJitFolderName = "PreJIT";
         public const string JitTraceFileName = "coldstart.jittrace";
         public const string LinuxJitTraceFileName = "linux.coldstart.jittrace";
+        public const string LinuxComputeSeparationJitTraceFileName = "linux.computeseparation.coldstart.jittrace";
     }
 }

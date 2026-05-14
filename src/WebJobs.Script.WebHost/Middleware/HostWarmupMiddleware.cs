@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensions;
-using Microsoft.Diagnostics.JitTrace;
+using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
@@ -25,8 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _hostManager;
         private readonly ILogger _logger;
+        private readonly JitTraceWarmer _jitTraceWarmer;
         private string _assemblyLocalPath;
-        private volatile bool _jitTraceHasRun;
 
         private static readonly PathString _warmupRoutePath = new PathString($"/api/{WarmUpConstants.FunctionName}");
         private static readonly PathString _warmupRouteAlternatePath = new PathString($"/api/{WarmUpConstants.AlternateRoute}");
@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             IScriptHostManager hostManager,
             ILogger<HostWarmupMiddleware> logger,
             IWebHostWorkerManager workerManager,
+            JitTraceWarmer jitTraceWarmer,
             IOptions<FunctionsHostingConfigOptions> hostingConfigOptions)
         {
             _next = next;
@@ -47,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _logger = logger;
             _assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath);
             _workerManager = workerManager ?? throw new ArgumentNullException(nameof(workerManager));
+            _jitTraceWarmer = jitTraceWarmer ?? throw new ArgumentNullException(nameof(jitTraceWarmer));
             _hostingConfigOptions = hostingConfigOptions;
         }
 
@@ -65,16 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         /// </summary>
         public async Task WarmupInvoke(HttpContext httpContext)
         {
-            // We only want to run our JIT traces on the first warmup call.
-            if (!_jitTraceHasRun)
-            {
-                PreJitPrepare(WarmUpConstants.JitTraceFileName);
-                if (_environment.IsAnyLinuxConsumption())
-                {
-                    PreJitPrepare(WarmUpConstants.LinuxJitTraceFileName);
-                }
-                _jitTraceHasRun = true;
-            }
+            _jitTraceWarmer.RunOnce();
 
             ReadRuntimeAssemblyFiles();
 
@@ -130,26 +123,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             catch (Exception ex)
             {
                 _logger.LogError(new EventId(100, nameof(ReadFileInChunks)), ex, "Reading file '{file}' failed. AssemblyLocalPath: '{assemblyLocalPath}'", file, _assemblyLocalPath);
-            }
-        }
-
-        private void PreJitPrepare(string jitTraceFileName)
-        {
-            // This is to PreJIT all methods captured in coldstart.jittrace file to improve cold start time
-            var path = Path.Combine(
-                _assemblyLocalPath,
-                WarmUpConstants.PreJitFolderName, jitTraceFileName);
-
-            var file = new FileInfo(path);
-
-            if (file.Exists)
-            {
-                JitTraceRuntime.Prepare(file, out int successfulPrepares, out int failedPrepares);
-
-                // We will need to monitor failed vs success prepares and if the failures increase, it means code paths have diverged or there have been updates on dotnet core side.
-                // When this happens, we will need to regenerate the coldstart.jittrace file.
-                _logger.LogInformation(new EventId(100, "PreJit"),
-                    $"PreJIT Successful prepares: {successfulPrepares}, Failed prepares: {failedPrepares} FileName = {jitTraceFileName}");
             }
         }
 

@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
         [Theory(Skip = "Currently disabled in v4")]
         [InlineData(WarmUpConstants.JitTraceFileName, 1.0)]
         [InlineData(WarmUpConstants.LinuxJitTraceFileName, 1.0)]
+        [InlineData(WarmUpConstants.LinuxComputeSeparationJitTraceFileName, 1.0)]
         public void ColdStart_JitFailuresTest(string fileName, double threshold)
         {
             var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
