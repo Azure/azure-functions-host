@@ -250,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
             var factory = new OutboundGrpcClientFactory(eventManager, NullLoggerFactory.Instance);
             string workerId = $"test-worker-{Guid.NewGuid():N}";
 
-            TcpListener? listener = null;
+            TcpListener listener = null;
             try
             {
                 var listenerTask = Task.Run(async () =>
@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
 
                 IOutboundGrpcClient client = factory.Create();
                 int attempts = 0;
-                Exception? lastFailure = null;
+                Exception lastFailure = null;
                 bool connected = false;
 
                 for (int attempt = 1; attempt <= maxRetries && !connected && !overall.IsCancellationRequested; attempt++)
