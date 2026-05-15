@@ -11,6 +11,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Grpc.Net.Client;
+using Grpc.Net.Client.Balancer;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -31,6 +32,20 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
     internal static readonly TimeSpan DefaultReadyTimeout = TimeSpan.FromSeconds(1);
     internal static readonly TimeSpan DefaultKeepAlivePingDelay = TimeSpan.FromSeconds(30);
     internal static readonly TimeSpan DefaultKeepAlivePingTimeout = TimeSpan.FromSeconds(10);
+
+    // The runtime-to-worker link is a single host-local pair with no load
+    // concerns, so we replace gRPC's default ExponentialBackoffPolicy with
+    // a constant 25 ms policy. Within the 1 s DefaultReadyTimeout that
+    // yields ~40 retry attempts — maximising the chance of catching the
+    // worker proxy at the moment its gRPC listener binds, while still
+    // imposing zero meaningful load on either side (each failed attempt is
+    // just a fast-fail ECONNREFUSED on Linux).
+    //
+    // The corresponding ExponentialBackoffPolicy with 25 ms initial would
+    // stretch to 25, 40, 64, 102, 164, 262, 419, ... ms — making the
+    // worst-case "discovery latency" several hundred ms once the listener
+    // becomes available. Constant 25 ms bounds that worst case at 25 ms.
+    internal static readonly TimeSpan DefaultRetryInterval = TimeSpan.FromMilliseconds(25);
 
     private readonly IScriptEventManager _eventManager;
     private readonly ILogger _logger;
@@ -76,10 +91,9 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
         var connectStart = Stopwatch.GetTimestamp();
         _logger.LogInformation("OutboundGrpcClient connect started. WorkerId: {workerId}, Endpoint: {endpoint}.", workerId, endpoint);
 
-        _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
         try
         {
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _channel = _channelFactory(endpoint);
 
             using var readinessCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
@@ -106,14 +120,14 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
         {
             _logger.LogWarning(ex, "OutboundGrpcClient connect failed. WorkerId: {workerId}, Endpoint: {endpoint}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, endpoint, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
 
-            _call?.Dispose();
-
-            if (_channel is not null)
-            {
-                _channel.Dispose();
-            }
-
-            _cts?.Dispose();
+            // Dispose-and-null each resource so a subsequent DisposeAsync
+            // call cannot operate on a disposed CancellationTokenSource
+            // (cts.CancelAsync throws ObjectDisposedException, and the
+            // for-loop retry in WorkerConnectionService would silently
+            // escape with that exception instead of iterating).
+            Interlocked.Exchange(ref _call, null)?.Dispose();
+            Interlocked.Exchange(ref _channel, null)?.Dispose();
+            Interlocked.Exchange(ref _cts, null)?.Dispose();
             throw;
         }
     }
@@ -127,7 +141,8 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
     {
         return new GrpcChannelOptions
         {
-            HttpHandler = CreateHttpHandler()
+            HttpHandler = CreateHttpHandler(),
+            ServiceProvider = BackoffPolicyServiceProvider.Instance
         };
     }
 
@@ -247,5 +262,33 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
 
         Interlocked.Exchange(ref _call, null)?.Dispose();
         Interlocked.Exchange(ref _channel, null)?.Dispose();
+    }
+
+    /// <summary>
+    /// Minimal <see cref="IServiceProvider"/> that supplies only the
+    /// <see cref="IBackoffPolicyFactory"/> override used by
+    /// <see cref="CreateGrpcChannelOptions"/>. Returning <c>null</c> for
+    /// every other service makes gRPC fall through to its built-in defaults.
+    /// Implemented as a singleton because the factory is stateless.
+    /// </summary>
+    private sealed class BackoffPolicyServiceProvider : IServiceProvider
+    {
+        public static readonly BackoffPolicyServiceProvider Instance = new BackoffPolicyServiceProvider();
+
+        private static readonly IBackoffPolicyFactory _factory = new ConstantBackoffPolicyFactory(DefaultRetryInterval);
+
+        private BackoffPolicyServiceProvider()
+        {
+        }
+
+        public object? GetService(Type serviceType)
+        {
+            if (serviceType == typeof(IBackoffPolicyFactory))
+            {
+                return _factory;
+            }
+
+            return null;
+        }
     }
 }
