@@ -3,12 +3,15 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
+using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -168,12 +171,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 new Mock<IScriptHostManager>().Object,
                 testLogger,
                 _webHostWorkerManager,
+                CreateJitTraceWarmer(environment, _emptyConfig),
                 _functionsHostingConfigOptions);
 
             hostWarmupMiddleware.ReadRuntimeAssemblyFiles();
             // Assert
             var traces = testLoggerProvider.GetAllLogMessages();
             Assert.True(traces.Any(m => m.FormattedMessage.Contains("Number of files read:")));
+        }
+
+        [Theory]
+        [InlineData(false, false, new[] { WarmUpConstants.JitTraceFileName })]
+        [InlineData(true, false, new[] { WarmUpConstants.JitTraceFileName, WarmUpConstants.LinuxJitTraceFileName })]
+        [InlineData(true, true, new[] { WarmUpConstants.JitTraceFileName, WarmUpConstants.LinuxJitTraceFileName, WarmUpConstants.LinuxComputeSeparationJitTraceFileName })]
+        public void JitTraceWarmer_GetJitTraceFileNames_ReturnsExpectedFiles(bool linuxConsumption, bool externalWorkerEnabled, string[] expectedFileNames)
+        {
+            var environment = new TestEnvironment();
+            if (linuxConsumption)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
+            }
+
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { EnvironmentSettingNames.FunctionsWorkerExternalEnabled, externalWorkerEnabled ? "true" : "false" }
+                })
+                .Build();
+
+            var warmer = CreateJitTraceWarmer(environment, configuration);
+
+            Assert.Equal(expectedFileNames, warmer.GetJitTraceFileNames().ToArray());
+        }
+
+        private JitTraceWarmer CreateJitTraceWarmer(IEnvironment environment, IConfiguration configuration)
+        {
+            return new JitTraceWarmer(environment, configuration, _loggerFactory.CreateLogger<JitTraceWarmer>());
         }
     }
 }

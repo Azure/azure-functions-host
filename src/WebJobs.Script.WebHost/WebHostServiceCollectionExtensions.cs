@@ -212,6 +212,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // separation is active.
                 services.AddSingleton<RuntimeStatePublisher>();
                 services.AddSingleton<IHostedService>(s => s.GetRequiredService<RuntimeStatePublisher>());
+
+                // The platform does not call /api/WarmUp in the compute-separation
+                // flow, so PreJIT via HostWarmupMiddleware never fires. This
+                // hosted service runs PreJIT proactively in the background
+                // during placeholder startup.
+                services.AddSingleton<IHostedService, Standby.ComputeSeparationJitWarmupService>();
             }
 
             services.AddCommonRpcServices(skipInitializationService: configuration.IsExternalWorkerEnabled());
@@ -307,6 +313,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static void AddStandbyServices(this IServiceCollection services)
         {
             services.AddSingleton<IOptionsChangeTokenSource<StandbyOptions>, StandbyChangeTokenSource>();
+
+            // Shared PreJIT helper, used by HostWarmupMiddleware (AppService warmup path)
+            // and ComputeSeparationJitWarmupService (compute-separation startup path).
+            services.AddSingleton<Standby.JitTraceWarmer>();
 
             // Core script host service
             services.AddSingleton<IHostedService>(p =>
