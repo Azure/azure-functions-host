@@ -29,8 +29,19 @@ internal sealed class WorkerConnectionService : IHostedService, IWorkerConnectio
     private static readonly TimeSpan InitTimeout = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan DrainTimeout = TimeSpan.FromMinutes(1);
     private static readonly int GrpcConnectMaxRetries = 50;
-    private static readonly TimeSpan GrpcConnectRetryDelay = TimeSpan.FromMilliseconds(500);
-    private static readonly TimeSpan GrpcInboundDeathRetryDelay = TimeSpan.FromMilliseconds(500);
+
+    // Outer retry delay between fresh-channel attempts. Matches the inner
+    // ConstantBackoffPolicy interval so the overall retry cadence is uniform:
+    // each iteration spends up to OutboundGrpcClient.DefaultReadyTimeout (1 s)
+    // failing fast inside ConnectAsync, then waits this short delay before
+    // creating a fresh channel and trying again.
+    private static readonly TimeSpan GrpcConnectRetryDelay = TimeSpan.FromMilliseconds(25);
+
+    // Inbound-death failures (TCP connect succeeds but the gRPC server is
+    // not yet registered, so the inbound stream dies immediately) get the
+    // same short delay — a fresh channel pays the cost of restarting, so
+    // there is no benefit to backing off further.
+    private static readonly TimeSpan GrpcInboundDeathRetryDelay = TimeSpan.FromMilliseconds(25);
 
     private readonly IConnectedWorkerChannelFactory _channelFactory;
     private readonly IConnectedWorkerChannelManager _channelManager;
