@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Description;
@@ -46,11 +47,77 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
             host.WebHost.Dispose();
             host.Dispose();
 
-            // In this scenario, the logger throws an exception before we enter the try/catch for the function invocation.
-            var ex = await Assert.ThrowsAsync<HostDisposedException>(() => CustomListener.RunAsync("two"));
+            // Capture log state after dispose so we have diagnostic context if the expected
+            // HostDisposedException does not surface (the test has historically been flaky here).
+            string logsAfterDispose = SafeGetLog(host);
 
-            Assert.Equal($"The host is disposed and cannot be used. Disposed object: '{typeof(ScriptLoggerFactory).FullName}'; Found IListener in stack trace: '{typeof(CustomListener).AssemblyQualifiedName}'", ex.Message);
-            Assert.Contains("CustomListener.RunAsync", ex.StackTrace);
+            // In this scenario, the logger throws an exception before we enter the try/catch for the function invocation.
+            Exception capturedException = null;
+            FunctionResult capturedResult = null;
+            try
+            {
+                capturedResult = await CustomListener.RunAsync("two");
+            }
+            catch (Exception runEx)
+            {
+                capturedException = runEx;
+            }
+
+            if (capturedException is not HostDisposedException hostDisposedException)
+            {
+                string logsAfterRun = SafeGetLog(host);
+                Assert.True(false, BuildDisposedAssertionFailureMessage(capturedException, capturedResult, logsAfterDispose, logsAfterRun));
+                return;
+            }
+
+            Assert.Equal($"The host is disposed and cannot be used. Disposed object: '{typeof(ScriptLoggerFactory).FullName}'; Found IListener in stack trace: '{typeof(CustomListener).AssemblyQualifiedName}'", hostDisposedException.Message);
+            Assert.Contains("CustomListener.RunAsync", hostDisposedException.StackTrace);
+        }
+
+        private static string SafeGetLog(TestFunctionHost host)
+        {
+            try
+            {
+                return host.GetLog();
+            }
+            catch (Exception ex)
+            {
+                return $"<<unable to read host log: {ex.GetType().Name}: {ex.Message}>>";
+            }
+        }
+
+        private static string BuildDisposedAssertionFailureMessage(Exception capturedException, FunctionResult capturedResult, string logsAfterDispose, string logsAfterRun)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"Expected '{nameof(HostDisposedException)}' from {nameof(CustomListener)}.{nameof(CustomListener.RunAsync)}(\"two\") after host dispose, but it was not observed.");
+
+            if (capturedException is null)
+            {
+                sb.AppendLine("Captured exception: <none>");
+            }
+            else
+            {
+                sb.AppendLine($"Captured exception: {capturedException.GetType().FullName}: {capturedException.Message}");
+                sb.AppendLine("Captured exception stack:");
+                sb.AppendLine(capturedException.StackTrace ?? "<no stack trace>");
+            }
+
+            if (capturedResult is not null)
+            {
+                sb.AppendLine($"Captured FunctionResult.Succeeded: {capturedResult.Succeeded}");
+                if (capturedResult.Exception is not null)
+                {
+                    sb.AppendLine($"Captured FunctionResult.Exception: {capturedResult.Exception.GetType().FullName}: {capturedResult.Exception.Message}");
+                    sb.AppendLine(capturedResult.Exception.StackTrace ?? "<no stack trace>");
+                }
+            }
+
+            sb.AppendLine("=== Host log captured immediately after dispose ===");
+            sb.AppendLine(logsAfterDispose);
+            sb.AppendLine("=== Host log captured after second RunAsync ===");
+            sb.AppendLine(logsAfterRun);
+
+            return sb.ToString();
         }
 
         // TODO: Need to review this

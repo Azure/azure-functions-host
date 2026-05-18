@@ -171,6 +171,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
+        private static string FormatLogMessages(IEnumerable<LogMessage> messages)
+            => string.Join(Environment.NewLine, messages);
+
         public void Dispose()
         {
             _sharedMemoryManager.Dispose();
@@ -701,16 +704,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await TestHelpers.Await(
                 () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedCancellationLog)),
                 timeout: 3000,
-                pollingInterval: 50);
+                pollingInterval: 50,
+                userMessageCallback: () => $"Expected log message '{expectedCancellationLog}' was not written. Logs:{Environment.NewLine}{FormatLogMessages(_logger.GetLogMessages())}");
 
+            // The outbound log should happen twice: once for worker init request and once for the invocation cancel request.
+            // Wait for both messages instead of waiting for one and asserting on the count, which is a race.
             await TestHelpers.Await(
-                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)),
+                () => _logger.GetLogMessages().Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg)) >= 2,
                 timeout: 3000,
-                pollingInterval: 50);
+                pollingInterval: 50,
+                userMessageCallback: () => $"Expected 2 '{_expectedLogMsg}' messages. Logs:{Environment.NewLine}{FormatLogMessages(_logger.GetLogMessages())}");
 
             var traces = _logger.GetLogMessages();
-            // The outbound log should happen twice: once for worker init request and once for the invocation cancel request
-            Assert.Equal(traces.Where(m => m.FormattedMessage.Equals(_expectedLogMsg)).Count(), 2);
+            Assert.Equal(2, traces.Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
         }
 
         [Fact]
@@ -760,15 +766,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
 
+            // Wait for all 3 outbound messages (one WorkerInitRequest, two FunctionLoadRequests)
+            // rather than waiting for the first to appear and racing the assertion.
             await TestHelpers.Await(
-                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)),
+                () => _logger.GetLogMessages().Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg)) >= 3,
                 timeout: 3000,
-                pollingInterval: 50);
+                pollingInterval: 50,
+                userMessageCallback: () => $"Expected 3 '{_expectedLogMsg}' messages. Logs:{Environment.NewLine}{FormatLogMessages(_logger.GetLogMessages())}");
 
             var traces = _logger.GetLogMessages();
-            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
-            Assert.Equal(3, functionLoadLogs.Count()); // one WorkInitRequest, two FunctionLoadRequest
+            Assert.Equal(3, traces.Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg))); // one WorkInitRequest, two FunctionLoadRequest
         }
 
         [Fact]
@@ -860,16 +868,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
 
+            // Wait for all 3 outbound messages before asserting. The previous version only
+            // waited for the FunctionLoadRequestResponse metric, which races the outbound log writes.
             await TestHelpers.Await(
-                () => _metricsLogger.EventsBegan.Contains(MetricEventNames.FunctionLoadRequestResponse),
+                () => _logger.GetLogMessages().Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg)) >= 3
+                      && _metricsLogger.EventsBegan.Contains(MetricEventNames.FunctionLoadRequestResponse),
                 timeout: 3000,
-                pollingInterval: 50);
+                pollingInterval: 50,
+                userMessageCallback: () => $"Expected 3 '{_expectedLogMsg}' messages and the FunctionLoadRequestResponse metric. Logs:{Environment.NewLine}{FormatLogMessages(_logger.GetLogMessages())}");
 
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
-            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
-            Assert.Equal(3, functionLoadLogs.Count());
+            Assert.Equal(3, traces.Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Sending FunctionLoadRequestCollection with number of functions: '{0}'", functionMetadata.ToList().Count))));
         }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -15,6 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     public class WebJobsStartupEndToEndTests
     {
         private const string _projectName = "WebJobsStartupTests";
+        private const int _httpReadyTimeoutMs = 30_000;
+        private const int _httpReadyPollMs = 250;
         private readonly IDictionary<string, string> _envVars;
 
         public WebJobsStartupEndToEndTests()
@@ -36,12 +39,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             try
             {
                 await fixture.InitializeAsync();
-                var client = fixture.Host.HttpClient;
 
-                var response = await client.GetAsync($"api/Function1");
+                var response = await GetWithRetryAsync(fixture, "api/Function1");
 
                 // The function does all the validation internally.
-                Assert.True(HttpStatusCode.OK == response.StatusCode, $"{response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
+                Assert.True(HttpStatusCode.OK == response.StatusCode, await BuildHttpFailureMessageAsync(response, fixture));
             }
             finally
             {
@@ -57,12 +59,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             try
             {
                 await fixture.InitializeAsync();
-                var client = fixture.Host.HttpClient;
 
-                var response = await client.GetAsync($"api/Function1");
+                var response = await GetWithRetryAsync(fixture, "api/Function1");
 
                 // The function does all the validation internally.
-                Assert.True(HttpStatusCode.OK == response.StatusCode, $"{response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
+                Assert.True(HttpStatusCode.OK == response.StatusCode, await BuildHttpFailureMessageAsync(response, fixture));
 
                 const string expectedLogEntry =
                     "The 'FUNCTIONS_WORKER_RUNTIME' is set to 'dotnet-isolated', " +
@@ -160,6 +161,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             {
                 await fixture.DisposeAsync();
             }
+        }
+
+        // The host may still be transitioning through warmup/restart when InitializeAsync returns
+        // (TestFunctionHost.IsHostStarted returns true for both Running and Error states). Retry the
+        // request briefly so a transient ServiceUnavailable/InternalServerError doesn't fail the test
+        // on its first call. If we still don't get a 2xx, the assertion downstream produces a rich
+        // failure message including host state, last error, and full host log.
+        private static async Task<HttpResponseMessage> GetWithRetryAsync(CSharpPrecompiledEndToEndTestFixture fixture, string requestUri)
+        {
+            var client = fixture.Host.HttpClient;
+            HttpResponseMessage response = null;
+            var deadline = DateTime.UtcNow.AddMilliseconds(_httpReadyTimeoutMs);
+            while (DateTime.UtcNow < deadline)
+            {
+                response?.Dispose();
+                response = await client.GetAsync(requestUri);
+                if ((int)response.StatusCode < 500)
+                {
+                    return response;
+                }
+
+                await Task.Delay(_httpReadyPollMs);
+            }
+
+            return response;
+        }
+
+        private static async Task<string> BuildHttpFailureMessageAsync(HttpResponseMessage response, CSharpPrecompiledEndToEndTestFixture fixture)
+        {
+            string body = response.Content is null ? "(null)" : await response.Content.ReadAsStringAsync();
+            var manager = fixture.Host.WebHostServices.GetService<IScriptHostManager>();
+            string state = manager?.State.ToString() ?? "(no manager)";
+            string lastError = manager?.LastError?.ToString() ?? "(none)";
+            return $"Expected 200 OK from {response.RequestMessage?.RequestUri}, got {(int)response.StatusCode} {response.StatusCode}.{Environment.NewLine}"
+                + $"Body: {body}{Environment.NewLine}"
+                + $"IScriptHostManager.State: {state}{Environment.NewLine}"
+                + $"IScriptHostManager.LastError: {lastError}{Environment.NewLine}"
+                + $"Host log:{Environment.NewLine}{fixture.Host.GetLog()}";
         }
     }
 }
