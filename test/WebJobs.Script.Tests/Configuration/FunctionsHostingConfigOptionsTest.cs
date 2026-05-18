@@ -78,6 +78,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
                 yield return [nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true];
 
+                yield return [nameof(FunctionsHostingConfigOptions.ArmWebhookOptInEnforcement), "ArmWebhookOptInEnforcement=|", "|"];
+                yield return [nameof(FunctionsHostingConfigOptions.ArmWebhookOptInEnforcement), "ArmWebhookOptInEnforcement=foo|bar", "foo|bar"];
+
 #pragma warning restore SA1011 // Closing square brackets should be spaced correctly
 #pragma warning restore SA1010 // Opening square brackets should be spaced correctly
             }

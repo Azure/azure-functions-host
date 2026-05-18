@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -318,5 +318,8 @@
   </data>
   <data name="UnauthorizedArmExtensionResourceRequest" xml:space="preserve">
     <value>GET requests for this resource via the hostruntime extensions API are not authorized. Please use an alternate first class ARM API.</value>
+  </data>
+  <data name="ArmRequestNotAllowedForExtension" xml:space="preserve">
+    <value>Extension '{0}' does not support ARM webhook access.</value>
   </data>
 </root>

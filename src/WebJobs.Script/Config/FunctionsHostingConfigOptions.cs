@@ -207,6 +207,32 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         /// <summary>
+        /// Gets or sets the ARM webhook opt-in enforcement specification. Enforcement is enabled
+        /// when this property returns a non-empty value; the value itself is a '|'-delimited list
+        /// of extension names that are exempt from enforcement. A single <c>"|"</c> enables
+        /// enforcement with no exclusions.
+        /// </summary>
+        internal string ArmWebhookOptInEnforcement
+        {
+            get
+            {
+                return GetFeature(ScriptConstants.HostingConfigArmWebhookOptInEnforcement);
+            }
+
+            set
+            {
+                if (value is null)
+                {
+                    _features.Remove(ScriptConstants.HostingConfigArmWebhookOptInEnforcement);
+                }
+                else
+                {
+                    _features[ScriptConstants.HostingConfigArmWebhookOptInEnforcement] = value;
+                }
+            }
+        }
+
+        /// <summary>
         /// Gets feature by name.
         /// </summary>
         /// <param name="name">Feature name.</param>

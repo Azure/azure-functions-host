@@ -86,8 +86,78 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                                                               encodeForUrl: true));
         }
 
+        [Fact]
+        public void IsArmAllowed_ExtensionWithAllowArmWebhookAccess_ReturnsTrue()
+        {
+            var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
+            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
+            hostSecrets.SystemKeys = new Dictionary<string, string>
+            {
+                { "testextension_extension", "abc123" }
+            };
+
+            // GetUrl is what registers the extension with the provider and captures the
+            // [AllowArmWebhookAccess] opt-in.
+            webHookProvider.GetUrl(new ArmAllowedExtensionConfigProvider());
+
+            Assert.True(webHookProvider.IsArmAllowed("testextension"));
+        }
+
+        [Fact]
+        public void IsArmAllowed_ExtensionWithoutAllowArmWebhookAccess_ReturnsFalse()
+        {
+            var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
+            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
+            hostSecrets.SystemKeys = new Dictionary<string, string>
+            {
+                { "testextension_extension", "abc123" }
+            };
+
+            webHookProvider.GetUrl(new TestExtensionConfigProvider());
+
+            Assert.False(webHookProvider.IsArmAllowed("testextension"));
+        }
+
+        [Fact]
+        public void IsArmAllowed_UnknownExtension_ReturnsFalse()
+        {
+            var webHookProvider = CreateDefaultScriptWebHookProvider(out _, out _);
+
+            Assert.False(webHookProvider.IsArmAllowed("never-registered"));
+        }
+
+        [Fact]
+        public void IsArmAllowed_NameLookupIsCaseInsensitive()
+        {
+            var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
+            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
+            hostSecrets.SystemKeys = new Dictionary<string, string>
+            {
+                { "testextension_extension", "abc123" }
+            };
+
+            webHookProvider.GetUrl(new ArmAllowedExtensionConfigProvider());
+
+            Assert.True(webHookProvider.IsArmAllowed("TestExtension"));
+            Assert.True(webHookProvider.IsArmAllowed("TESTEXTENSION"));
+        }
+
         [Extension("My Test Extension", configurationSection: "TestExtension")]
         private class TestExtensionConfigProvider : IExtensionConfigProvider, IAsyncConverter<HttpRequestMessage, HttpResponseMessage>
+        {
+            public Task<HttpResponseMessage> ConvertAsync(HttpRequestMessage input, CancellationToken cancellationToken)
+            {
+                throw new System.NotImplementedException();
+            }
+
+            public void Initialize(ExtensionConfigContext context)
+            {
+            }
+        }
+
+        [Extension("My Test Extension", configurationSection: "TestExtension")]
+        [AllowArmWebhookAccess]
+        private class ArmAllowedExtensionConfigProvider : IExtensionConfigProvider, IAsyncConverter<HttpRequestMessage, HttpResponseMessage>
         {
             public Task<HttpResponseMessage> ConvertAsync(HttpRequestMessage input, CancellationToken cancellationToken)
             {
