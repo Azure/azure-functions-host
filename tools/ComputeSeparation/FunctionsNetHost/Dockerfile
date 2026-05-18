@@ -21,7 +21,7 @@ WORKDIR /extract
 RUN apt-get update \
     && apt-get install -y curl clang zlib1g-dev \
     && mkdir -p /tmp/azure-functions-dotnet-worker \
-    && curl -fsSL "https://github.com/Azure/azure-functions-dotnet-worker/archive/409466bfbcd9a7c3c6a9c47fbda30248e6afaf68.tar.gz" \
+    && curl -fsSL "https://github.com/Azure/azure-functions-dotnet-worker/archive/05634f3c5a949c98c6b97b2c420e659303139387.tar.gz" \
         | tar -xz --strip-components=1 -C /tmp/azure-functions-dotnet-worker \
     && for tfm in net10.0 net9.0 net8.0; do \
         version="${tfm#net}"; \
