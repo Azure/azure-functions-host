@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v10.0": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/4.1049.100-ci.26173.11": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/4.1051.100-pr.26261.4": {
         "dependencies": {
           "AspNetCore.HealthChecks.UI.Client": "9.0.0",
           "Azure.Security.KeyVault.Secrets": "4.6.0",
@@ -17,12 +17,12 @@
           "Microsoft.Azure.AppService.Middleware.Functions": "1.5.8",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption": "1.0.5",
-          "Microsoft.Azure.WebJobs.Script": "4.1049.100-ci.26173.11",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1049.100-ci.26173.11",
+          "Microsoft.Azure.WebJobs.Script": "4.1051.100-pr.26261.4",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1051.100-pr.26261.4",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.Security.Utilities.Core": "1.21.0",
-          "Microsoft.Azure.WebJobs.Script.Reference": "4.1049.0.0",
-          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1049.0.0"
+          "Microsoft.Azure.WebJobs.Script.Reference": "4.1051.0.0",
+          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1051.0.0"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.WebHost.dll": {}
@@ -95,8 +95,8 @@
       "Azure.Monitor.OpenTelemetry.Exporter/1.5.0": {
         "dependencies": {
           "Azure.Core": "1.50.0",
-          "OpenTelemetry": "1.14.0",
-          "OpenTelemetry.Extensions.Hosting": "1.14.0",
+          "OpenTelemetry": "1.15.3",
+          "OpenTelemetry.Extensions.Hosting": "1.15.3",
           "OpenTelemetry.PersistentStorage.FileSystem": "1.0.2"
         },
         "runtime": {
@@ -590,7 +590,7 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Abstractions/1.0.4-preview": {
+      "Microsoft.Azure.WebJobs.Script.Abstractions/1.1.0": {
         "dependencies": {
           "Microsoft.ApplicationInsights": "2.23.0",
           "Microsoft.ApplicationInsights.AspNetCore": "2.23.0",
@@ -601,8 +601,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Script.Abstractions.dll": {
-            "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.0.22000.0"
+            "assemblyVersion": "1.1.0.0",
+            "fileVersion": "1.1.0.26208"
           }
         }
       },
@@ -1246,83 +1246,83 @@
           }
         }
       },
-      "OpenTelemetry/1.14.0": {
+      "OpenTelemetry/1.15.3": {
         "dependencies": {
-          "OpenTelemetry.Api.ProviderBuilderExtensions": "1.14.0"
+          "OpenTelemetry.Api.ProviderBuilderExtensions": "1.15.3"
         },
         "runtime": {
           "lib/net10.0/OpenTelemetry.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.14.0.1849"
+            "fileVersion": "1.15.3.2017"
           }
         }
       },
-      "OpenTelemetry.Api/1.14.0": {
+      "OpenTelemetry.Api/1.15.3": {
         "runtime": {
           "lib/net10.0/OpenTelemetry.Api.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.14.0.1849"
+            "fileVersion": "1.15.3.2017"
           }
         }
       },
-      "OpenTelemetry.Api.ProviderBuilderExtensions/1.14.0": {
+      "OpenTelemetry.Api.ProviderBuilderExtensions/1.15.3": {
         "dependencies": {
-          "OpenTelemetry.Api": "1.14.0"
+          "OpenTelemetry.Api": "1.15.3"
         },
         "runtime": {
           "lib/net10.0/OpenTelemetry.Api.ProviderBuilderExtensions.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.14.0.1849"
+            "fileVersion": "1.15.3.2017"
           }
         }
       },
-      "OpenTelemetry.Exporter.OpenTelemetryProtocol/1.14.0": {
+      "OpenTelemetry.Exporter.OpenTelemetryProtocol/1.15.3": {
         "dependencies": {
-          "OpenTelemetry": "1.14.0"
+          "OpenTelemetry": "1.15.3"
         },
         "runtime": {
           "lib/net10.0/OpenTelemetry.Exporter.OpenTelemetryProtocol.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.14.0.1849"
+            "fileVersion": "1.15.3.2017"
           }
         }
       },
-      "OpenTelemetry.Extensions.Hosting/1.14.0": {
+      "OpenTelemetry.Extensions.Hosting/1.15.3": {
         "dependencies": {
-          "OpenTelemetry": "1.14.0"
+          "OpenTelemetry": "1.15.3"
         },
         "runtime": {
           "lib/net10.0/OpenTelemetry.Extensions.Hosting.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "1.14.0.1849"
+            "fileVersion": "1.15.3.2017"
           }
         }
       },
-      "OpenTelemetry.Instrumentation.AspNetCore/1.14.0": {
+      "OpenTelemetry.Instrumentation.AspNetCore/1.15.2": {
         "dependencies": {
-          "OpenTelemetry.Api.ProviderBuilderExtensions": "1.14.0"
+          "OpenTelemetry.Api.ProviderBuilderExtensions": "1.15.3"
         },
         "runtime": {
           "lib/net10.0/OpenTelemetry.Instrumentation.AspNetCore.dll": {
-            "assemblyVersion": "1.14.0.761",
-            "fileVersion": "1.14.0.761"
+            "assemblyVersion": "1.15.2.1013",
+            "fileVersion": "1.15.2.1013"
           }
         }
       },
-      "OpenTelemetry.Instrumentation.Http/1.14.0": {
+      "OpenTelemetry.Instrumentation.Http/1.15.1": {
         "dependencies": {
-          "OpenTelemetry.Api.ProviderBuilderExtensions": "1.14.0"
+          "OpenTelemetry.Api.ProviderBuilderExtensions": "1.15.3"
         },
         "runtime": {
           "lib/net10.0/OpenTelemetry.Instrumentation.Http.dll": {
-            "assemblyVersion": "1.14.0.774",
-            "fileVersion": "1.14.0.774"
+            "assemblyVersion": "1.15.1.1025",
+            "fileVersion": "1.15.1.1025"
           }
         }
       },
       "OpenTelemetry.Instrumentation.Process/0.5.0-beta.7": {
         "dependencies": {
-          "OpenTelemetry.Api": "1.14.0"
+          "OpenTelemetry.Api": "1.15.3"
         },
         "runtime": {
           "lib/netstandard2.0/OpenTelemetry.Instrumentation.Process.dll": {
@@ -1331,14 +1331,14 @@
           }
         }
       },
-      "OpenTelemetry.Instrumentation.Runtime/1.14.0": {
+      "OpenTelemetry.Instrumentation.Runtime/1.15.1": {
         "dependencies": {
-          "OpenTelemetry.Api": "1.14.0"
+          "OpenTelemetry.Api": "1.15.3"
         },
         "runtime": {
           "lib/net10.0/OpenTelemetry.Instrumentation.Runtime.dll": {
-            "assemblyVersion": "1.14.0.775",
-            "fileVersion": "1.14.0.775"
+            "assemblyVersion": "1.15.1.1029",
+            "fileVersion": "1.15.1.1029"
           }
         }
       },
@@ -1564,7 +1564,7 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script/4.1049.100-ci.26173.11": {
+      "Microsoft.Azure.WebJobs.Script/4.1051.100-pr.26261.4": {
         "dependencies": {
           "Azure.Data.Tables": "12.8.3",
           "Azure.Monitor.OpenTelemetry.Exporter": "1.5.0",
@@ -1577,18 +1577,18 @@
           "Microsoft.Azure.WebJobs.Extensions.Timers.Storage": "1.0.0-beta.1",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.2",
           "Microsoft.Azure.WebJobs.Logging.ApplicationInsights": "3.0.45",
-          "Microsoft.Azure.WebJobs.Script.Abstractions": "1.0.4-preview",
+          "Microsoft.Azure.WebJobs.Script.Abstractions": "1.1.0",
           "Microsoft.CodeAnalysis.CSharp.Scripting": "3.3.1",
           "Microsoft.Extensions.Azure": "1.13.1",
           "Microsoft.Extensions.DependencyModel": "10.0.0",
           "Microsoft.Extensions.Http.Polly": "10.0.0",
           "Microsoft.Extensions.Telemetry.Abstractions": "9.8.0",
           "NuGet.ProjectModel": "5.11.6",
-          "OpenTelemetry.Exporter.OpenTelemetryProtocol": "1.14.0",
-          "OpenTelemetry.Instrumentation.AspNetCore": "1.14.0",
-          "OpenTelemetry.Instrumentation.Http": "1.14.0",
+          "OpenTelemetry.Exporter.OpenTelemetryProtocol": "1.15.3",
+          "OpenTelemetry.Instrumentation.AspNetCore": "1.15.2",
+          "OpenTelemetry.Instrumentation.Http": "1.15.1",
           "OpenTelemetry.Instrumentation.Process": "0.5.0-beta.7",
-          "OpenTelemetry.Instrumentation.Runtime": "1.14.0",
+          "OpenTelemetry.Instrumentation.Runtime": "1.15.1",
           "System.IO.Abstractions": "2.1.0.227",
           "System.Reactive.Core": "5.0.0",
           "System.Reactive.Linq": "5.0.0",
@@ -1600,11 +1600,11 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/4.1049.100-ci.26173.11": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/4.1051.100-pr.26261.4": {
         "dependencies": {
           "Grpc.AspNetCore": "2.55.0",
           "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.45",
-          "Microsoft.Azure.WebJobs.Script": "4.1049.100-ci.26173.11",
+          "Microsoft.Azure.WebJobs.Script": "4.1051.100-pr.26261.4",
           "Mono.Posix.NETStandard": "1.0.0"
         },
         "runtime": {
@@ -1613,26 +1613,26 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Reference/4.1049.0.0": {
+      "Microsoft.Azure.WebJobs.Script.Reference/4.1051.0.0": {
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.dll": {
-            "assemblyVersion": "4.1049.0.0",
-            "fileVersion": "4.1049.100.26173"
+            "assemblyVersion": "4.1051.0.0",
+            "fileVersion": "4.1051.100.26261"
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1049.0.0": {
+      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1051.0.0": {
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
-            "assemblyVersion": "4.1049.0.0",
-            "fileVersion": "4.1049.100.26173"
+            "assemblyVersion": "4.1051.0.0",
+            "fileVersion": "4.1051.100.26261"
           }
         }
       }
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/4.1049.100-ci.26173.11": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/4.1051.100-pr.26261.4": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -1980,12 +1980,12 @@
       "path": "microsoft.azure.webjobs.rpc.core/3.0.45",
       "hashPath": "microsoft.azure.webjobs.rpc.core.3.0.45.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script.Abstractions/1.0.4-preview": {
+    "Microsoft.Azure.WebJobs.Script.Abstractions/1.1.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-U/aVn/i0P9MdPsca9TrLmTlKuGOJ8okTdifrBeNviwd80Xbv/+dIM/GGReQXaVVtUM5/SlbUHRAhvA9w0yuEyA==",
-      "path": "microsoft.azure.webjobs.script.abstractions/1.0.4-preview",
-      "hashPath": "microsoft.azure.webjobs.script.abstractions.1.0.4-preview.nupkg.sha512"
+      "sha512": "sha512-WbOsxHyPaUqpr5LZBe0uTfQsAV1+QvlL8K7pyVO4rLMF29PgVMovTyG/TkHUw11xJQ5TQ2Ue3My8xMcWTQdOAw==",
+      "path": "microsoft.azure.webjobs.script.abstractions/1.1.0",
+      "hashPath": "microsoft.azure.webjobs.script.abstractions.1.1.0.nupkg.sha512"
     },
     "Microsoft.Azure.WebSites.DataProtection/2.1.91-alpha": {
       "type": "package",
@@ -2239,54 +2239,54 @@
       "path": "nuget.versioning/5.11.6",
       "hashPath": "nuget.versioning.5.11.6.nupkg.sha512"
     },
-    "OpenTelemetry/1.14.0": {
+    "OpenTelemetry/1.15.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-aiPBAr1+0dPDItH++MQQr5UgMf4xiybruzNlAoYYMYN3UUk+mGRcoKuZy4Z4rhhWUZIpK2Xhe7wUUXSTM32duQ==",
-      "path": "opentelemetry/1.14.0",
-      "hashPath": "opentelemetry.1.14.0.nupkg.sha512"
+      "sha512": "sha512-N0i6WjPoHPbZyms1ugbDIFAJFuGlpeExJMU/+XSL0lQRUkg/D0utFkDoLXf8Z1km5B+xVZ2GyMXXiX8qdeNmPg==",
+      "path": "opentelemetry/1.15.3",
+      "hashPath": "opentelemetry.1.15.3.nupkg.sha512"
     },
-    "OpenTelemetry.Api/1.14.0": {
+    "OpenTelemetry.Api/1.15.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-foHci6viUw1f3gUB8qzz3Rk02xZIWMo299X0rxK0MoOWok/3dUVru+KKdY7WIoSHwRGpxGKkmAz9jIk2RFNbsQ==",
-      "path": "opentelemetry.api/1.14.0",
-      "hashPath": "opentelemetry.api.1.14.0.nupkg.sha512"
+      "sha512": "sha512-fX+fkCysfPut+qCcT3bKqyX4QN9Saf4CgX8HLOHywEVD+Xr7sULtfuypITpoDysjx8R59dn/3mWhgimMH8cm/g==",
+      "path": "opentelemetry.api/1.15.3",
+      "hashPath": "opentelemetry.api.1.15.3.nupkg.sha512"
     },
-    "OpenTelemetry.Api.ProviderBuilderExtensions/1.14.0": {
+    "OpenTelemetry.Api.ProviderBuilderExtensions/1.15.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-i/lxOM92v+zU5I0rGl5tXAGz6EJtxk2MvzZ0VN6F6L5pMqT6s6RCXnGWXg6fW+vtZJsllBlQaf/VLPTzgefJpg==",
-      "path": "opentelemetry.api.providerbuilderextensions/1.14.0",
-      "hashPath": "opentelemetry.api.providerbuilderextensions.1.14.0.nupkg.sha512"
+      "sha512": "sha512-SYn0lqYDwLMWhv/zlNGsQcl2yX++yTumanX46bmOZE/ZDOd1WjPBO2kZaZgKLEZTZk48pavIFGJ6vOvxXgWVFQ==",
+      "path": "opentelemetry.api.providerbuilderextensions/1.15.3",
+      "hashPath": "opentelemetry.api.providerbuilderextensions.1.15.3.nupkg.sha512"
     },
-    "OpenTelemetry.Exporter.OpenTelemetryProtocol/1.14.0": {
+    "OpenTelemetry.Exporter.OpenTelemetryProtocol/1.15.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-7ELExeje+T/KOywHuHwZBGQNtYlepUaYRFXWgoEaT1iKpFJVwOlE1Y2+uqHI2QQmah0Ue+XgRmDy924vWHfJ6Q==",
-      "path": "opentelemetry.exporter.opentelemetryprotocol/1.14.0",
-      "hashPath": "opentelemetry.exporter.opentelemetryprotocol.1.14.0.nupkg.sha512"
+      "sha512": "sha512-FEXJepcseTGbATiCkUfP7ipoFEYYfl/0UmmUwi0KxCPg9PaUA8ab2P1LGopK+/HExasJ1ZutFhZrN6WvUIR23g==",
+      "path": "opentelemetry.exporter.opentelemetryprotocol/1.15.3",
+      "hashPath": "opentelemetry.exporter.opentelemetryprotocol.1.15.3.nupkg.sha512"
     },
-    "OpenTelemetry.Extensions.Hosting/1.14.0": {
+    "OpenTelemetry.Extensions.Hosting/1.15.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-ZAxkCIa3Q3YWZ1sGrolXfkhPqn2PFSz2Cel74em/fATZgY5ixlw6MQp2icmqKCz4C7M1W2G0b92K3rX8mOtFRg==",
-      "path": "opentelemetry.extensions.hosting/1.14.0",
-      "hashPath": "opentelemetry.extensions.hosting.1.14.0.nupkg.sha512"
+      "sha512": "sha512-u8n/W8yIlqv0BXZmvId1iVaeWXG42tGKdTkuLYg5g57Y/r9CeUNzqtrSHNdG5IoO8iPX79w3v+WsbAHgUQbfeg==",
+      "path": "opentelemetry.extensions.hosting/1.15.3",
+      "hashPath": "opentelemetry.extensions.hosting.1.15.3.nupkg.sha512"
     },
-    "OpenTelemetry.Instrumentation.AspNetCore/1.14.0": {
+    "OpenTelemetry.Instrumentation.AspNetCore/1.15.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-NQAQpFa3a4ofPUYwxcwtNPGpuRNwwx1HM7MnLEESYjYkhfhER+PqqGywW65rWd7bJEc1/IaL+xbmHH99pYDE0A==",
-      "path": "opentelemetry.instrumentation.aspnetcore/1.14.0",
-      "hashPath": "opentelemetry.instrumentation.aspnetcore.1.14.0.nupkg.sha512"
+      "sha512": "sha512-2nPd7r0ug/gd6/CNFL6Rlu+RSQ9WYGSGHAYQ1ssbSqyzKJpqTunfx2I/1O0WB5k+L0cyXbG4XVZpoSoUc3M7wg==",
+      "path": "opentelemetry.instrumentation.aspnetcore/1.15.2",
+      "hashPath": "opentelemetry.instrumentation.aspnetcore.1.15.2.nupkg.sha512"
     },
-    "OpenTelemetry.Instrumentation.Http/1.14.0": {
+    "OpenTelemetry.Instrumentation.Http/1.15.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-uH8X1fYnywrgaUrSbemKvFiFkBwY7ZbBU7Wh4A/ORQmdpF3G/5STidY4PlK4xYuIv9KkdMXH/vkpvzQcayW70g==",
-      "path": "opentelemetry.instrumentation.http/1.14.0",
-      "hashPath": "opentelemetry.instrumentation.http.1.14.0.nupkg.sha512"
+      "sha512": "sha512-vFO4Fj/dXkoVNGo/nhoGpO2zYQmZwr4jTID7oRGo+XlQ8LqksyZjUXQ4p39RfUvTID7IzzL8Qe71tW7CcAFymA==",
+      "path": "opentelemetry.instrumentation.http/1.15.1",
+      "hashPath": "opentelemetry.instrumentation.http.1.15.1.nupkg.sha512"
     },
     "OpenTelemetry.Instrumentation.Process/0.5.0-beta.7": {
       "type": "package",
@@ -2295,12 +2295,12 @@
       "path": "opentelemetry.instrumentation.process/0.5.0-beta.7",
       "hashPath": "opentelemetry.instrumentation.process.0.5.0-beta.7.nupkg.sha512"
     },
-    "OpenTelemetry.Instrumentation.Runtime/1.14.0": {
+    "OpenTelemetry.Instrumentation.Runtime/1.15.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Z6o4JDOQaKv6bInAYZxuyxxfMKr6hFpwLnKEgQ+q+oBNA9Fm1sysjFCOzRzk7U0WD86LsRPXX+chv1vJIg7cfg==",
-      "path": "opentelemetry.instrumentation.runtime/1.14.0",
-      "hashPath": "opentelemetry.instrumentation.runtime.1.14.0.nupkg.sha512"
+      "sha512": "sha512-cpPwlUT5HXcLGPaIgsbSy0W9eFYAPGVbTP1p8/uyQ4Osvf5BJuPpEXE7crL09SmEd44r0DGNKDtsqxaAz0HxQw==",
+      "path": "opentelemetry.instrumentation.runtime/1.15.1",
+      "hashPath": "opentelemetry.instrumentation.runtime.1.15.1.nupkg.sha512"
     },
     "OpenTelemetry.PersistentStorage.Abstractions/1.0.2": {
       "type": "package",
@@ -2442,22 +2442,22 @@
       "path": "yarp.reverseproxy/2.0.1",
       "hashPath": "yarp.reverseproxy.2.0.1.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script/4.1049.100-ci.26173.11": {
+    "Microsoft.Azure.WebJobs.Script/4.1051.100-pr.26261.4": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/4.1049.100-ci.26173.11": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/4.1051.100-pr.26261.4": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Reference/4.1049.0.0": {
+    "Microsoft.Azure.WebJobs.Script.Reference/4.1051.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1049.0.0": {
+    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1051.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
