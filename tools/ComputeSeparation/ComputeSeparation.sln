@@ -36,6 +36,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleIsolatedApp", "Sample
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Functions.WorkerProxy.Supervisor", "..\..\src\Functions.WorkerProxy.Supervisor\Functions.WorkerProxy.Supervisor.csproj", "{F013E500-4F5C-4FCD-837B-5064586A0670}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "FunctionsNetHost", "FunctionsNetHost", "{827B4495-AEFE-4A40-98A9-008A23CA3F2E}"
+	ProjectSection(SolutionItems) = preProject
+		FunctionsNetHost\Dockerfile = FunctionsNetHost\Dockerfile
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -205,6 +210,9 @@ Global
 		{4ACB3CF8-D73C-4DFA-B854-DAEBB4052998} = {8879BC11-7F71-421D-AC0A-D8320E41E08E}
 		{1070B9E9-DD48-4580-957E-96F65E3EB3FF} = {8879BC11-7F71-421D-AC0A-D8320E41E08E}
 		{C6632E20-394A-4306-AE5F-78AEBC016565} = {8879BC11-7F71-421D-AC0A-D8320E41E08E}
+		{84322A46-8FFF-4D88-B979-D0FD11AF0014} = {110948B0-49A1-43AF-92E2-E365440C82F8}
+		{F013E500-4F5C-4FCD-837B-5064586A0670} = {84CB62F0-D4BA-4A5F-B0A2-3732932BFE82}
+		{827B4495-AEFE-4A40-98A9-008A23CA3F2E} = {110948B0-49A1-43AF-92E2-E365440C82F8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B3516E8F-8A8F-450B-96BB-ED1720699710}
