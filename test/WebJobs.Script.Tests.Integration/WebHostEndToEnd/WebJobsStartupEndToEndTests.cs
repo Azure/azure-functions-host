@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -40,10 +41,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             {
                 await fixture.InitializeAsync();
 
-                var response = await GetWithRetryAsync(fixture, "api/Function1");
+                var (response, lastException) = await GetWithRetryAsync(fixture, "api/Function1");
 
                 // The function does all the validation internally.
-                Assert.True(HttpStatusCode.OK == response.StatusCode, await BuildHttpFailureMessageAsync(response, fixture));
+                Assert.True(response is not null && response.StatusCode == HttpStatusCode.OK, await BuildHttpFailureMessageAsync(response, lastException, fixture));
             }
             finally
             {
@@ -60,10 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             {
                 await fixture.InitializeAsync();
 
-                var response = await GetWithRetryAsync(fixture, "api/Function1");
+                var (response, lastException) = await GetWithRetryAsync(fixture, "api/Function1");
 
                 // The function does all the validation internally.
-                Assert.True(HttpStatusCode.OK == response.StatusCode, await BuildHttpFailureMessageAsync(response, fixture));
+                Assert.True(response is not null && response.StatusCode == HttpStatusCode.OK, await BuildHttpFailureMessageAsync(response, lastException, fixture));
 
                 const string expectedLogEntry =
                     "The 'FUNCTIONS_WORKER_RUNTIME' is set to 'dotnet-isolated', " +
@@ -164,41 +165,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         }
 
         // The host may still be transitioning through warmup/restart when InitializeAsync returns
-        // (TestFunctionHost.IsHostStarted returns true for both Running and Error states). Retry the
-        // request briefly so a transient ServiceUnavailable/InternalServerError doesn't fail the test
-        // on its first call. If we still don't get a 2xx, the assertion downstream produces a rich
-        // failure message including host state, last error, and full host log.
-        private static async Task<HttpResponseMessage> GetWithRetryAsync(CSharpPrecompiledEndToEndTestFixture fixture, string requestUri)
+        // (TestFunctionHost.IsHostStarted returns true for both Running and Error states), and the
+        // HTTP listener may not be accepting connections yet. Retry the request briefly, swallowing
+        // transient 5xx responses and HttpRequestException/TaskCanceledException, so a warmup blip
+        // doesn't fail the test on its first call. The last response (if any) and last transient
+        // exception (if any) are both returned so the failure-message helper can include whichever
+        // signal is more informative.
+        private static async Task<(HttpResponseMessage Response, Exception LastException)> GetWithRetryAsync(CSharpPrecompiledEndToEndTestFixture fixture, string requestUri)
         {
             var client = fixture.Host.HttpClient;
             HttpResponseMessage response = null;
+            Exception lastException = null;
             var deadline = DateTime.UtcNow.AddMilliseconds(_httpReadyTimeoutMs);
             while (DateTime.UtcNow < deadline)
             {
                 response?.Dispose();
-                response = await client.GetAsync(requestUri);
-                if ((int)response.StatusCode < 500)
+                response = null;
+                try
                 {
-                    return response;
+                    response = await client.GetAsync(requestUri);
+                    if ((int)response.StatusCode < 500)
+                    {
+                        return (response, null);
+                    }
+                }
+                catch (HttpRequestException ex)
+                {
+                    lastException = ex;
+                }
+                catch (TaskCanceledException ex)
+                {
+                    lastException = ex;
                 }
 
                 await Task.Delay(_httpReadyPollMs);
             }
 
-            return response;
+            return (response, lastException);
         }
 
-        private static async Task<string> BuildHttpFailureMessageAsync(HttpResponseMessage response, CSharpPrecompiledEndToEndTestFixture fixture)
+        private static async Task<string> BuildHttpFailureMessageAsync(HttpResponseMessage response, Exception lastException, CSharpPrecompiledEndToEndTestFixture fixture)
         {
-            string body = response.Content is null ? "(null)" : await response.Content.ReadAsStringAsync();
             var manager = fixture.Host.WebHostServices.GetService<IScriptHostManager>();
             string state = manager?.State.ToString() ?? "(no manager)";
             string lastError = manager?.LastError?.ToString() ?? "(none)";
-            return $"Expected 200 OK from {response.RequestMessage?.RequestUri}, got {(int)response.StatusCode} {response.StatusCode}.{Environment.NewLine}"
-                + $"Body: {body}{Environment.NewLine}"
-                + $"IScriptHostManager.State: {state}{Environment.NewLine}"
-                + $"IScriptHostManager.LastError: {lastError}{Environment.NewLine}"
-                + $"Host log:{Environment.NewLine}{fixture.Host.GetLog()}";
+
+            var sb = new StringBuilder();
+            if (response is not null)
+            {
+                string body = response.Content is null ? "(null)" : await response.Content.ReadAsStringAsync();
+                sb.AppendLine($"Expected 200 OK from {response.RequestMessage?.RequestUri}, got {(int)response.StatusCode} {response.StatusCode}.");
+                sb.AppendLine($"Body: {body}");
+            }
+            else
+            {
+                sb.AppendLine("Expected 200 OK but no HttpResponseMessage was ever received during the retry window.");
+            }
+
+            if (lastException is not null)
+            {
+                sb.AppendLine($"Last transient exception: {lastException.GetType().FullName}: {lastException.Message}");
+            }
+
+            sb.AppendLine($"IScriptHostManager.State: {state}");
+            sb.AppendLine($"IScriptHostManager.LastError: {lastError}");
+            sb.Append($"Host log:{Environment.NewLine}{fixture.Host.GetLog()}");
+            return sb.ToString();
         }
     }
 }
