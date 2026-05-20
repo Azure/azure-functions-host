@@ -50,6 +50,16 @@ string? workerHttpEndpointOverride = GetStringArgOrNull(args, builder.Configurat
 string? hostJsonPath = GetStringArgOrNull(args, builder.Configuration, "--host-json-path");
 string httpProxyEndpoint = GetStringArg(args, builder.Configuration, "--http-proxy-endpoint", $"http://localhost:{httpProxyPort}");
 string? configuredPodName = GetStringArgOrNull(args, builder.Configuration, "--pod-name");
+
+// Readiness-probe knobs. These close a race between the worker advertising its
+// HttpUri capability and Kestrel actually calling BindAsync on the chosen port.
+// See WorkerEndpointReadinessProbe for the full rationale. Defaults err on the
+// side of forwarding as quickly as possible: a 1 ms retry cadence with a 5 s
+// total budget (well under the worker coordinator's 15 s
+// FunctionStartTimeoutInSeconds). The total timeout also bounds each individual
+// ConnectAsync, so a single hung attempt can't blow the budget.
+int probeRetryDelayMs = GetIntArg(args, builder.Configuration, "--worker-http-probe-retry-delay-ms", 1);
+int probeTotalTimeoutMs = GetIntArg(args, builder.Configuration, "--worker-http-probe-timeout-ms", 5000);
 string podName = !string.IsNullOrWhiteSpace(configuredPodName)
     ? configuredPodName
     : !string.IsNullOrWhiteSpace(workerProxyEnvironmentOptions.ComputerName)
@@ -59,6 +69,10 @@ string podName = !string.IsNullOrWhiteSpace(configuredPodName)
 builder.Services.AddSingleton(new RelayOptions(runtimeGrpcPort, workerGrpcPort, httpProxyPort, hostJsonPath, httpProxyEndpoint, podName));
 builder.Services.AddSingleton<WorkerPodStateManager>();
 builder.Services.AddSingleton<FunctionRpcRelay>();
+builder.Services.AddSingleton(sp => new WorkerEndpointReadinessProbe(
+    sp.GetRequiredService<ILogger<WorkerEndpointReadinessProbe>>(),
+    retryDelay: TimeSpan.FromMilliseconds(probeRetryDelayMs),
+    totalTimeout: TimeSpan.FromMilliseconds(probeTotalTimeoutMs)));
 builder.Services.AddGrpc();
 builder.Services.AddHttpForwarder();
 builder.Services.AddContainerJwtAuth();
@@ -88,6 +102,7 @@ app.Use(async (ctx, next) =>
     {
         var logger = ctx.RequestServices.GetRequiredService<ILogger<FunctionRpcRelay>>();
         var relayInstance = ctx.RequestServices.GetRequiredService<FunctionRpcRelay>();
+        var readinessProbe = ctx.RequestServices.GetRequiredService<WorkerEndpointReadinessProbe>();
 
         // Resolve destination using the documented precedence:
         //   1. --worker-http-endpoint override (CLI/env), if non-blank.
@@ -103,6 +118,18 @@ app.Use(async (ctx, next) =>
                 + "(no --worker-http-endpoint override and worker has not reported HttpUri). Returning 503.");
             ctx.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             return;
+        }
+
+        // Closes the Kestrel-bind race in the worker: the worker advertises its
+        // HttpUri capability before Kestrel actually binds the chosen port, so
+        // the runtime can dispatch an invocation in that gap and YARP returns a
+        // 502 (which the worker coordinator then waits 15 s for before timing
+        // out). The probe is a no-op once a destination is observed ready, so
+        // it only adds latency on the very first forward after the worker comes
+        // online.
+        if (!readinessProbe.IsKnownReady(destination))
+        {
+            await readinessProbe.WaitForReadyAsync(destination, ctx.RequestAborted);
         }
 
         var requestLogContext = WorkerProxyHttpRequestLogContext.Create(ctx.Request, destination);
@@ -214,8 +241,8 @@ adminAuthed.MapPost("/infra/instanceState", async (HttpContext ctx, Cancellation
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {
-    app.Logger.LogInformation("WorkerProxy listening. runtimeGrpcPort={RuntimeGrpcPort}, workerGrpcPort={WorkerGrpcPort}, httpProxyPort={HttpProxyPort}, managementPort={ManagementPort}, httpProxyEndpoint={HttpProxyEndpoint}, podName={PodName}",
-         runtimeGrpcPort, workerGrpcPort, httpProxyPort, managementPort, httpProxyEndpoint, podName);
+    app.Logger.LogInformation("WorkerProxy listening. runtimeGrpcPort={RuntimeGrpcPort}, workerGrpcPort={WorkerGrpcPort}, httpProxyPort={HttpProxyPort}, managementPort={ManagementPort}, httpProxyEndpoint={HttpProxyEndpoint}, podName={PodName}, probeRetryDelayMs={ProbeRetryDelayMs}, probeTimeoutMs={ProbeTimeoutMs}",
+         runtimeGrpcPort, workerGrpcPort, httpProxyPort, managementPort, httpProxyEndpoint, podName, probeRetryDelayMs, probeTotalTimeoutMs);
 });
 
 app.Run();
