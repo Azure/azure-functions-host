@@ -44,7 +44,7 @@
     <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="$(IdentityDependencyVersion)" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="$(IdentityDependencyVersion)" />
     <PackageVersion Include="Microsoft.Security.Utilities.Core" Version="1.21.0" />
-    <PackageVersion Include="NuGet.ProjectModel" Version="5.11.6" />
+    <PackageVersion Include="NuGet.ProjectModel" Version="5.11.7" />
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.0.1" />
   </ItemGroup>
   <!-- WebJobs packages -->

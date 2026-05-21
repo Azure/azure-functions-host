@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v10.0": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/4.1051.100-pr.26261.4": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/4.1051.100-dev": {
         "dependencies": {
           "AspNetCore.HealthChecks.UI.Client": "9.0.0",
           "Azure.Security.KeyVault.Secrets": "4.6.0",
@@ -17,8 +17,8 @@
           "Microsoft.Azure.AppService.Middleware.Functions": "1.5.8",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption": "1.0.5",
-          "Microsoft.Azure.WebJobs.Script": "4.1051.100-pr.26261.4",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1051.100-pr.26261.4",
+          "Microsoft.Azure.WebJobs.Script": "4.1051.100-dev",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1051.100-dev",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.Security.Utilities.Core": "1.21.0",
           "Microsoft.Azure.WebJobs.Script.Reference": "4.1051.0.0",
@@ -490,33 +490,33 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs/3.0.45": {
+      "Microsoft.Azure.WebJobs/3.0.46": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs.Core": "3.0.45",
+          "Microsoft.Azure.WebJobs.Core": "3.0.46",
           "Newtonsoft.Json": "13.0.3",
           "System.Memory.Data": "8.0.1"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Host.dll": {
-            "assemblyVersion": "3.0.45.0",
-            "fileVersion": "3.0.45.26113"
+            "assemblyVersion": "3.0.46.0",
+            "fileVersion": "3.0.46.26262"
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Core/3.0.45": {
+      "Microsoft.Azure.WebJobs.Core/3.0.46": {
         "dependencies": {
           "System.Memory.Data": "8.0.1"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.dll": {
-            "assemblyVersion": "3.0.45.0",
-            "fileVersion": "3.0.45.26113"
+            "assemblyVersion": "3.0.46.0",
+            "fileVersion": "3.0.46.26262"
           }
         }
       },
       "Microsoft.Azure.WebJobs.Extensions/5.2.1": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs": "3.0.45",
+          "Microsoft.Azure.WebJobs": "3.0.46",
           "NCrontab.Signed": "3.3.3"
         },
         "runtime": {
@@ -530,7 +530,7 @@
         "dependencies": {
           "Microsoft.AspNet.WebApi.Client": "5.2.9",
           "Microsoft.AspNetCore.Mvc.WebApiCompatShim": "2.3.0",
-          "Microsoft.Azure.WebJobs": "3.0.45"
+          "Microsoft.Azure.WebJobs": "3.0.46"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Extensions.Http.dll": {
@@ -555,7 +555,7 @@
       "Microsoft.Azure.WebJobs.Host.Storage/5.0.2": {
         "dependencies": {
           "Azure.Storage.Blobs": "12.22.1",
-          "Microsoft.Azure.WebJobs": "3.0.45",
+          "Microsoft.Azure.WebJobs": "3.0.46",
           "Microsoft.Extensions.Azure": "1.13.1"
         },
         "runtime": {
@@ -570,7 +570,7 @@
           "Azure.Identity": "1.17.1",
           "Microsoft.ApplicationInsights.AspNetCore": "2.23.0",
           "Microsoft.ApplicationInsights.SnapshotCollector": "1.4.6",
-          "Microsoft.Azure.WebJobs": "3.0.45"
+          "Microsoft.Azure.WebJobs": "3.0.46"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Logging.ApplicationInsights.dll": {
@@ -581,7 +581,7 @@
       },
       "Microsoft.Azure.WebJobs.Rpc.Core/3.0.45": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs": "3.0.45"
+          "Microsoft.Azure.WebJobs": "3.0.46"
         },
         "runtime": {
           "lib/net6.0/Microsoft.Azure.WebJobs.Rpc.Core.dll": {
@@ -1148,101 +1148,101 @@
           }
         }
       },
-      "NuGet.Common/5.11.6": {
+      "NuGet.Common/5.11.7": {
         "dependencies": {
-          "NuGet.Frameworks": "5.11.6"
+          "NuGet.Frameworks": "5.11.7"
         },
         "runtime": {
           "lib/netstandard2.0/NuGet.Common.dll": {
-            "assemblyVersion": "5.11.6.1",
-            "fileVersion": "5.11.6.1"
+            "assemblyVersion": "5.11.7.1",
+            "fileVersion": "5.11.7.1"
           }
         }
       },
-      "NuGet.Configuration/5.11.6": {
+      "NuGet.Configuration/5.11.7": {
         "dependencies": {
-          "NuGet.Common": "5.11.6",
+          "NuGet.Common": "5.11.7",
           "System.Security.Cryptography.ProtectedData": "6.0.0"
         },
         "runtime": {
           "lib/netstandard2.0/NuGet.Configuration.dll": {
-            "assemblyVersion": "5.11.6.1",
-            "fileVersion": "5.11.6.1"
+            "assemblyVersion": "5.11.7.1",
+            "fileVersion": "5.11.7.1"
           }
         }
       },
-      "NuGet.DependencyResolver.Core/5.11.6": {
+      "NuGet.DependencyResolver.Core/5.11.7": {
         "dependencies": {
-          "NuGet.LibraryModel": "5.11.6",
-          "NuGet.Protocol": "5.11.6"
+          "NuGet.LibraryModel": "5.11.7",
+          "NuGet.Protocol": "5.11.7"
         },
         "runtime": {
           "lib/net5.0/NuGet.DependencyResolver.Core.dll": {
-            "assemblyVersion": "5.11.6.1",
-            "fileVersion": "5.11.6.1"
+            "assemblyVersion": "5.11.7.1",
+            "fileVersion": "5.11.7.1"
           }
         }
       },
-      "NuGet.Frameworks/5.11.6": {
+      "NuGet.Frameworks/5.11.7": {
         "runtime": {
           "lib/netstandard2.0/NuGet.Frameworks.dll": {
-            "assemblyVersion": "5.11.6.1",
-            "fileVersion": "5.11.6.1"
+            "assemblyVersion": "5.11.7.1",
+            "fileVersion": "5.11.7.1"
           }
         }
       },
-      "NuGet.LibraryModel/5.11.6": {
+      "NuGet.LibraryModel/5.11.7": {
         "dependencies": {
-          "NuGet.Common": "5.11.6",
-          "NuGet.Versioning": "5.11.6"
+          "NuGet.Common": "5.11.7",
+          "NuGet.Versioning": "5.11.7"
         },
         "runtime": {
           "lib/netstandard2.0/NuGet.LibraryModel.dll": {
-            "assemblyVersion": "5.11.6.1",
-            "fileVersion": "5.11.6.1"
+            "assemblyVersion": "5.11.7.1",
+            "fileVersion": "5.11.7.1"
           }
         }
       },
-      "NuGet.Packaging/5.11.6": {
+      "NuGet.Packaging/5.11.7": {
         "dependencies": {
           "Newtonsoft.Json": "13.0.3",
-          "NuGet.Configuration": "5.11.6",
-          "NuGet.Versioning": "5.11.6"
+          "NuGet.Configuration": "5.11.7",
+          "NuGet.Versioning": "5.11.7"
         },
         "runtime": {
           "lib/net5.0/NuGet.Packaging.dll": {
-            "assemblyVersion": "5.11.6.1",
-            "fileVersion": "5.11.6.1"
+            "assemblyVersion": "5.11.7.1",
+            "fileVersion": "5.11.7.1"
           }
         }
       },
-      "NuGet.ProjectModel/5.11.6": {
+      "NuGet.ProjectModel/5.11.7": {
         "dependencies": {
-          "NuGet.DependencyResolver.Core": "5.11.6"
+          "NuGet.DependencyResolver.Core": "5.11.7"
         },
         "runtime": {
           "lib/net5.0/NuGet.ProjectModel.dll": {
-            "assemblyVersion": "5.11.6.1",
-            "fileVersion": "5.11.6.1"
+            "assemblyVersion": "5.11.7.1",
+            "fileVersion": "5.11.7.1"
           }
         }
       },
-      "NuGet.Protocol/5.11.6": {
+      "NuGet.Protocol/5.11.7": {
         "dependencies": {
-          "NuGet.Packaging": "5.11.6"
+          "NuGet.Packaging": "5.11.7"
         },
         "runtime": {
           "lib/net5.0/NuGet.Protocol.dll": {
-            "assemblyVersion": "5.11.6.1",
-            "fileVersion": "5.11.6.1"
+            "assemblyVersion": "5.11.7.1",
+            "fileVersion": "5.11.7.1"
           }
         }
       },
-      "NuGet.Versioning/5.11.6": {
+      "NuGet.Versioning/5.11.7": {
         "runtime": {
           "lib/netstandard2.0/NuGet.Versioning.dll": {
-            "assemblyVersion": "5.11.6.1",
-            "fileVersion": "5.11.6.1"
+            "assemblyVersion": "5.11.7.1",
+            "fileVersion": "5.11.7.1"
           }
         }
       },
@@ -1564,14 +1564,14 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script/4.1051.100-pr.26261.4": {
+      "Microsoft.Azure.WebJobs.Script/4.1051.100-dev": {
         "dependencies": {
           "Azure.Data.Tables": "12.8.3",
           "Azure.Monitor.OpenTelemetry.Exporter": "1.5.0",
           "Azure.Storage.Blobs": "12.22.1",
           "Microsoft.ApplicationInsights.AspNetCore": "2.23.0",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
-          "Microsoft.Azure.WebJobs": "3.0.45",
+          "Microsoft.Azure.WebJobs": "3.0.46",
           "Microsoft.Azure.WebJobs.Extensions": "5.2.1",
           "Microsoft.Azure.WebJobs.Extensions.Http": "3.3.0",
           "Microsoft.Azure.WebJobs.Extensions.Timers.Storage": "1.0.0-beta.1",
@@ -1583,7 +1583,7 @@
           "Microsoft.Extensions.DependencyModel": "10.0.0",
           "Microsoft.Extensions.Http.Polly": "10.0.0",
           "Microsoft.Extensions.Telemetry.Abstractions": "9.8.0",
-          "NuGet.ProjectModel": "5.11.6",
+          "NuGet.ProjectModel": "5.11.7",
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "1.15.3",
           "OpenTelemetry.Instrumentation.AspNetCore": "1.15.2",
           "OpenTelemetry.Instrumentation.Http": "1.15.1",
@@ -1600,11 +1600,11 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/4.1051.100-pr.26261.4": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/4.1051.100-dev": {
         "dependencies": {
           "Grpc.AspNetCore": "2.55.0",
           "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.45",
-          "Microsoft.Azure.WebJobs.Script": "4.1051.100-pr.26261.4",
+          "Microsoft.Azure.WebJobs.Script": "4.1051.100-dev",
           "Mono.Posix.NETStandard": "1.0.0"
         },
         "runtime": {
@@ -1617,7 +1617,7 @@
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.dll": {
             "assemblyVersion": "4.1051.0.0",
-            "fileVersion": "4.1051.100.26261"
+            "fileVersion": "42.42.42.4242"
           }
         }
       },
@@ -1625,14 +1625,14 @@
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
             "assemblyVersion": "4.1051.0.0",
-            "fileVersion": "4.1051.100.26261"
+            "fileVersion": "42.42.42.4242"
           }
         }
       }
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/4.1051.100-pr.26261.4": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/4.1051.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -1924,19 +1924,19 @@
       "path": "microsoft.azure.functions.platform.metrics.linuxconsumption/1.0.5",
       "hashPath": "microsoft.azure.functions.platform.metrics.linuxconsumption.1.0.5.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs/3.0.45": {
+    "Microsoft.Azure.WebJobs/3.0.46": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-SpAKlnv86/D3wwpTAHYvKk/abV47rIKw3kLYITv899Tek/exuD0WOtwdCe2fWjExeYxm8kuXDAIuTAvZCZDrZg==",
-      "path": "microsoft.azure.webjobs/3.0.45",
-      "hashPath": "microsoft.azure.webjobs.3.0.45.nupkg.sha512"
+      "sha512": "sha512-Ig/FfRKqkxGidEPiJOf8AWJA6Wmwq4CQf5BxfCzpGQI/5CeA9wxSqJCvkmvbg/ZLb9zL2xgw4lN6mnhRPgj35Q==",
+      "path": "microsoft.azure.webjobs/3.0.46",
+      "hashPath": "microsoft.azure.webjobs.3.0.46.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Core/3.0.45": {
+    "Microsoft.Azure.WebJobs.Core/3.0.46": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-rlBMok9U4aqVT6B4guCmilW2dbw6qcxltckcaCOLSZTvbJOcHcuIpXSjqUMKieph+JHLUCmRt28AXHn5ew6YIQ==",
-      "path": "microsoft.azure.webjobs.core/3.0.45",
-      "hashPath": "microsoft.azure.webjobs.core.3.0.45.nupkg.sha512"
+      "sha512": "sha512-t991ipdemmlv3MNb7beZFDQCAkPoupfoTxoX0atLzhF09wG0j19qRYzxJS8rtsiYFhMrki5XImGI+Ru9EfOo1w==",
+      "path": "microsoft.azure.webjobs.core/3.0.46",
+      "hashPath": "microsoft.azure.webjobs.core.3.0.46.nupkg.sha512"
     },
     "Microsoft.Azure.WebJobs.Extensions/5.2.1": {
       "type": "package",
@@ -2176,68 +2176,68 @@
       "path": "newtonsoft.json.bson/1.0.2",
       "hashPath": "newtonsoft.json.bson.1.0.2.nupkg.sha512"
     },
-    "NuGet.Common/5.11.6": {
+    "NuGet.Common/5.11.7": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-v1eomnFqX97GSjBZfumhI1KzdrmxK16lg1631nG8Yj1FYe29XOky8tiIZqtHwIr90UCi4DxBavQwiUXes3qJOg==",
-      "path": "nuget.common/5.11.6",
-      "hashPath": "nuget.common.5.11.6.nupkg.sha512"
+      "sha512": "sha512-Oggh2phPUvSa701HVKqQrDPCXa06qQ66vHKzktXT4k6ZmrWy7U2xOleKNOJskAeYGVEErm+39TKKjig1y92wHg==",
+      "path": "nuget.common/5.11.7",
+      "hashPath": "nuget.common.5.11.7.nupkg.sha512"
     },
-    "NuGet.Configuration/5.11.6": {
+    "NuGet.Configuration/5.11.7": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-rEHkqj6M3ehLTC6dfchJo1hfYkmb9Pp59lI1pqSNRtqKLZiRzp7Ig1RRsUopQvrLKFdXYftlPoR1IqJwhfnTXQ==",
-      "path": "nuget.configuration/5.11.6",
-      "hashPath": "nuget.configuration.5.11.6.nupkg.sha512"
+      "sha512": "sha512-JwDOb/X4za5CE//0Zk6mefzOLtJi+2VzURao8SWYlbP71JIdnk/0X4zo7hW75UsSC8z/1B9nQbS30jCxt6J01g==",
+      "path": "nuget.configuration/5.11.7",
+      "hashPath": "nuget.configuration.5.11.7.nupkg.sha512"
     },
-    "NuGet.DependencyResolver.Core/5.11.6": {
+    "NuGet.DependencyResolver.Core/5.11.7": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-lIX3gSKXkz6jhH5lDRDhtgvOrFNGttiEUHypnofumBSbxRk7uZP9Y92ULyPCbvtFlUz32y83mJnA2xfrMj0r8w==",
-      "path": "nuget.dependencyresolver.core/5.11.6",
-      "hashPath": "nuget.dependencyresolver.core.5.11.6.nupkg.sha512"
+      "sha512": "sha512-M5SUk3u7KR/ZDXVDsx42qYfmqZ/aHpqoxmSnu4HpulIcAzJ/8gRkSjhndJ96vjX1zFr+AYdozw0cjKz3yufTlQ==",
+      "path": "nuget.dependencyresolver.core/5.11.7",
+      "hashPath": "nuget.dependencyresolver.core.5.11.7.nupkg.sha512"
     },
-    "NuGet.Frameworks/5.11.6": {
+    "NuGet.Frameworks/5.11.7": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-VN587K0YvgUlzrCpyRbeAO0OCZUDDjgn03//G7ZGrKatoodMdms6KHNq8A5c+Ssp0HHQBhQA6iqxiCB7ba3how==",
-      "path": "nuget.frameworks/5.11.6",
-      "hashPath": "nuget.frameworks.5.11.6.nupkg.sha512"
+      "sha512": "sha512-mwIGf5wcIz5p6Muc0vg33x/LQs7ngaOuO8lEY7UZjIrOJur5r+qwu+Ux9MZshF/IV0JhLm698ev9dT2DIyhfng==",
+      "path": "nuget.frameworks/5.11.7",
+      "hashPath": "nuget.frameworks.5.11.7.nupkg.sha512"
     },
-    "NuGet.LibraryModel/5.11.6": {
+    "NuGet.LibraryModel/5.11.7": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-o+odWU/ghMYWyZxlJE6GJtTsKevMsMAYNvKz8h8UCj4smfDZbcL4ufsyRbQ58xL+n0Cmndj9L/4M+kS07pZZsA==",
-      "path": "nuget.librarymodel/5.11.6",
-      "hashPath": "nuget.librarymodel.5.11.6.nupkg.sha512"
+      "sha512": "sha512-1Scqld5kNITKvLTbyAvHiOamE0QaouVTrtIi36uIDTFTtVtzMn9XXpTcuwee7EK6jxBYZggxCARnhNgmTIqCgQ==",
+      "path": "nuget.librarymodel/5.11.7",
+      "hashPath": "nuget.librarymodel.5.11.7.nupkg.sha512"
     },
-    "NuGet.Packaging/5.11.6": {
+    "NuGet.Packaging/5.11.7": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-BLF0Nrn02BwDIzkOlXAKHSbtLIA5+AICOeJBV/ERb5k/jNLnx/KOP65Du8i3HbmHsUBdhpAJSKB+HkJYqDG2mQ==",
-      "path": "nuget.packaging/5.11.6",
-      "hashPath": "nuget.packaging.5.11.6.nupkg.sha512"
+      "sha512": "sha512-T4GQRKg5D0z3ZQR7s5tvRCG1ObvhPOJUheCTvbph3+YlbDBGOVr9ksjCgGgms2YOk8s3IFXA61pgcWANoqjE4g==",
+      "path": "nuget.packaging/5.11.7",
+      "hashPath": "nuget.packaging.5.11.7.nupkg.sha512"
     },
-    "NuGet.ProjectModel/5.11.6": {
+    "NuGet.ProjectModel/5.11.7": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-NFeDnQeFfor0RqPjg7KO316W416pqQMRX1ci3LP/MMzKaVy/nU3MXyPboKjTWbj/8xOhDCxXFP/un/0Fy/cL8Q==",
-      "path": "nuget.projectmodel/5.11.6",
-      "hashPath": "nuget.projectmodel.5.11.6.nupkg.sha512"
+      "sha512": "sha512-9TwFWafiiLbaj0pJUPVJq8RV81dSqQ/Jm2lnnpEzDciBTXy/EvHvoQZdcE/scSq8sGEKiGmdFBlIw34lAMU1cw==",
+      "path": "nuget.projectmodel/5.11.7",
+      "hashPath": "nuget.projectmodel.5.11.7.nupkg.sha512"
     },
-    "NuGet.Protocol/5.11.6": {
+    "NuGet.Protocol/5.11.7": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-IaqYwZeA6sTN58pi/kiiitzRkqM2OnTRXfDhbtlUWvgdk+5OF8cGey6JxvaUQ/VSIiIg0yArrQc2r4RppVEBvA==",
-      "path": "nuget.protocol/5.11.6",
-      "hashPath": "nuget.protocol.5.11.6.nupkg.sha512"
+      "sha512": "sha512-r8Ii/43q/EgoxfyuiLKXbo9dBD5crweTHvPA7zvEsosDqDNHMl/JBWjtC3Qyl9sF4rx668ITB5Rl8+KwDr+7ow==",
+      "path": "nuget.protocol/5.11.7",
+      "hashPath": "nuget.protocol.5.11.7.nupkg.sha512"
     },
-    "NuGet.Versioning/5.11.6": {
+    "NuGet.Versioning/5.11.7": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-hDFKSOG11WZqudGH7Ds2O+O5/HiIK97LXMmW/oBUwrj+p6k57nAGgLP6l1uJUSSCdXe59MPzzhweA1JaNFK7qg==",
-      "path": "nuget.versioning/5.11.6",
-      "hashPath": "nuget.versioning.5.11.6.nupkg.sha512"
+      "sha512": "sha512-zqlxNkLLDBUYKUekymidXkZadnJ3Jero+hBkLmoh8Qrw+mJkFx+XyVsJWTq2/ttirwLNXm+jakM08y+1tL62Qg==",
+      "path": "nuget.versioning/5.11.7",
+      "hashPath": "nuget.versioning.5.11.7.nupkg.sha512"
     },
     "OpenTelemetry/1.15.3": {
       "type": "package",
@@ -2442,12 +2442,12 @@
       "path": "yarp.reverseproxy/2.0.1",
       "hashPath": "yarp.reverseproxy.2.0.1.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script/4.1051.100-pr.26261.4": {
+    "Microsoft.Azure.WebJobs.Script/4.1051.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/4.1051.100-pr.26261.4": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/4.1051.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
