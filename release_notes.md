@@ -8,3 +8,4 @@
 - Ensure wwwroot directory exists on new slot and app creation w/ networking restrictions (#11757)
 - Update Node.js Worker Version to [3.14.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.14.1) (#PR)
 - Update OpenTelemetry instrumentation and exporter packages (#11766)
+- Skip `WebJobsStorageHealthCheck` when no active script host is available (#11791)

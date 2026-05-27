@@ -22,12 +22,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         private readonly TestEnvironment _environment = new();
         private readonly Mock<BlobServiceClient> _mockBlobServiceClient = new();
         private readonly HealthCheckContext _healthCheckContext = new();
+        private readonly Mock<IScriptHostManager> _scriptHostManager = new();
+
+        public WebJobsStorageHealthCheckTests()
+        {
+            _scriptHostManager.SetupGet(m => m.Services).Returns(Mock.Of<IServiceProvider>());
+        }
 
         [Fact]
         public void Constructor_WithNullProvider_ThrowsArgumentNullException()
         {
             // Act & Assert
-            TestHelpers.Act(() => new WebJobsStorageHealthCheck(null, _environment))
+            TestHelpers.Act(() => new WebJobsStorageHealthCheck(null, _environment, _scriptHostManager.Object))
                 .Should().Throw<ArgumentNullException>()
                 .WithParameterName("provider");
         }
@@ -36,16 +42,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         public void Constructor_WithNullEnvironment_ThrowsArgumentNullException()
         {
             // Act & Assert
-            TestHelpers.Act(() => new WebJobsStorageHealthCheck(_provider.Object, null))
+            TestHelpers.Act(() => new WebJobsStorageHealthCheck(_provider.Object, null, _scriptHostManager.Object))
                 .Should().Throw<ArgumentNullException>()
                 .WithParameterName("environment");
+        }
+
+        [Fact]
+        public void Constructor_WithNullScriptHostManager_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            TestHelpers.Act(() => new WebJobsStorageHealthCheck(_provider.Object, _environment, null))
+                .Should().Throw<ArgumentNullException>()
+                .WithParameterName("scriptHostManager");
         }
 
         [Fact]
         public async Task CheckHealthAsync_WithNullContext_ThrowsArgumentNullException()
         {
             // Arrange
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment, _scriptHostManager.Object);
 
             // Act & Assert
             await TestHelpers.Act(async () => await healthCheck.CheckHealthAsync(null, default))
@@ -58,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         {
             // Arrange
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment, _scriptHostManager.Object);
 
             // Act
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
@@ -66,6 +81,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             // Assert
             result.Status.Should().Be(HealthStatus.Healthy);
             result.Description.Should().Be("Placeholder mode. Check skipped.");
+            result.Exception.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task CheckHealthAsync_WithNoActiveScriptHost_ReturnsHealthyWithSkippedMessage()
+        {
+            // Arrange
+            _scriptHostManager.SetupGet(m => m.Services).Returns((IServiceProvider)null);
+            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment, _scriptHostManager.Object);
+
+            // Act
+            HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
+
+            // Assert
+            VerifyGetContainersCalled(Times.Never());
+            result.Status.Should().Be(HealthStatus.Healthy);
+            result.Description.Should().Be("No active script host. Check skipped.");
             result.Exception.Should().BeNull();
         }
 
@@ -80,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Returns(true);
 
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment, _scriptHostManager.Object);
 
             // Act
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
@@ -102,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Returns(true);
 
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment, _scriptHostManager.Object);
 
             // Act
             HealthCheckContext context = new()
@@ -132,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Throws(ex);
 
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment, _scriptHostManager.Object);
 
             // Act
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
@@ -155,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Returns(true);
 
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment, _scriptHostManager.Object);
 
             // Act
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);

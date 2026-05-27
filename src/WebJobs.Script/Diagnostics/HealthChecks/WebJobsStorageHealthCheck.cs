@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         private readonly Lazy<Task> _initialized;
         private readonly IEnvironment _environment;
         private readonly IAzureBlobStorageProvider _provider;
+        private readonly IScriptHostManager _scriptHostManager;
 
         private HealthCheckResult _last;
         private HealthCheckContext _context;
@@ -43,13 +44,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         /// </summary>
         /// <param name="provider">The blob storage provider.</param>
         /// <param name="environment">The environment.</param>
+        /// <param name="scriptHostManager">The script host manager.</param>
         public WebJobsStorageHealthCheck(
-            IAzureBlobStorageProvider provider, IEnvironment environment)
+            IAzureBlobStorageProvider provider, IEnvironment environment, IScriptHostManager scriptHostManager)
         {
             ArgumentNullException.ThrowIfNull(provider);
             ArgumentNullException.ThrowIfNull(environment);
+            ArgumentNullException.ThrowIfNull(scriptHostManager);
             _provider = provider;
             _environment = environment;
+            _scriptHostManager = scriptHostManager;
             _initialized = new(RunInBackgroundAsync);
         }
 
@@ -76,6 +80,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
                 // the ScriptHost from starting. So we want to ensure this check runs independent of ScriptHost
                 // starting. But we also want to avoid false negatives during placeholder mode.
                 return HealthCheckResult.Healthy("Placeholder mode. Check skipped.");
+            }
+
+            if (_scriptHostManager.Services is null)
+            {
+                // No active script host means storage configuration may not yet be available (or has been torn down).
+                // Skip the check rather than report a false negative.
+                return HealthCheckResult.Healthy("No active script host. Check skipped.");
             }
 
             _context = context;
