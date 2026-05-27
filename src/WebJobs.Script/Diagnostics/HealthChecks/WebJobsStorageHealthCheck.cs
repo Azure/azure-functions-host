@@ -5,8 +5,11 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
@@ -33,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         private readonly Lazy<Task> _initialized;
         private readonly IEnvironment _environment;
         private readonly IAzureBlobStorageProvider _provider;
+        private readonly IScriptHostManager _scriptHostManager;
 
         private HealthCheckResult _last;
         private HealthCheckContext _context;
@@ -43,13 +47,16 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         /// </summary>
         /// <param name="provider">The blob storage provider.</param>
         /// <param name="environment">The environment.</param>
+        /// <param name="scriptHostManager">The script host manager.</param>
         public WebJobsStorageHealthCheck(
-            IAzureBlobStorageProvider provider, IEnvironment environment)
+            IAzureBlobStorageProvider provider, IEnvironment environment, IScriptHostManager scriptHostManager)
         {
             ArgumentNullException.ThrowIfNull(provider);
             ArgumentNullException.ThrowIfNull(environment);
+            ArgumentNullException.ThrowIfNull(scriptHostManager);
             _provider = provider;
             _environment = environment;
+            _scriptHostManager = scriptHostManager;
             _initialized = new(RunInBackgroundAsync);
         }
 
@@ -85,6 +92,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
         private async Task<HealthCheckResult> CheckHealthCoreAsync(CancellationToken cancellation)
         {
+            if (ShouldSkipUntilScriptHostConfigurationIsAvailable())
+            {
+                return HealthCheckResult.Healthy("Script host configuration not available. Check skipped.");
+            }
+
             if (!TryGetClient(out BlobServiceClient client, out HealthCheckResult result))
             {
                 return result;
@@ -149,6 +161,37 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
             // TODO: need a better exception type.
             throw new InvalidOperationException("Failed to create BlobServiceClient.");
+        }
+
+        private bool ShouldSkipUntilScriptHostConfigurationIsAvailable()
+        {
+            if (_provider is not HostAzureBlobStorageProvider hostProvider)
+            {
+                return false;
+            }
+
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableMergedWebHostScriptHostConfiguration))
+            {
+                return false;
+            }
+
+            return !HasStorageClientCreationSetting(hostProvider.Configuration) &&
+                !Utility.TryGetHostService<IConfiguration>(_scriptHostManager, out _);
+        }
+
+        private static bool HasStorageClientCreationSetting(IConfiguration configuration)
+        {
+            IConfigurationSection connectionSection = configuration?.GetWebJobsConnectionSection(ConnectionStringNames.Storage);
+            if (connectionSection == null)
+            {
+                return false;
+            }
+
+            return !string.IsNullOrEmpty(connectionSection.Value) ||
+                !string.IsNullOrEmpty(connectionSection["connectionString"]) ||
+                !string.IsNullOrEmpty(connectionSection["serviceUri"]) ||
+                !string.IsNullOrEmpty(connectionSection["accountName"]) ||
+                !string.IsNullOrEmpty(connectionSection["blobServiceUri"]);
         }
 
         private bool TryGetClient(out BlobServiceClient client, out HealthCheckResult result)

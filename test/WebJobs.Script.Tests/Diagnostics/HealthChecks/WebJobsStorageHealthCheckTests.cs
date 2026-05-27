@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AwesomeAssertions;
@@ -10,6 +11,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Moq;
 using Xunit;
@@ -19,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
     public class WebJobsStorageHealthCheckTests
     {
         private readonly Mock<IAzureBlobStorageProvider> _provider = new();
+        private readonly Mock<IScriptHostManager> _scriptHostManager = new();
         private readonly TestEnvironment _environment = new();
         private readonly Mock<BlobServiceClient> _mockBlobServiceClient = new();
         private readonly HealthCheckContext _healthCheckContext = new();
@@ -27,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         public void Constructor_WithNullProvider_ThrowsArgumentNullException()
         {
             // Act & Assert
-            TestHelpers.Act(() => new WebJobsStorageHealthCheck(null, _environment))
+            TestHelpers.Act(() => new WebJobsStorageHealthCheck(null, _environment, _scriptHostManager.Object))
                 .Should().Throw<ArgumentNullException>()
                 .WithParameterName("provider");
         }
@@ -36,16 +39,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         public void Constructor_WithNullEnvironment_ThrowsArgumentNullException()
         {
             // Act & Assert
-            TestHelpers.Act(() => new WebJobsStorageHealthCheck(_provider.Object, null))
+            TestHelpers.Act(() => new WebJobsStorageHealthCheck(_provider.Object, null, _scriptHostManager.Object))
                 .Should().Throw<ArgumentNullException>()
                 .WithParameterName("environment");
+        }
+
+        [Fact]
+        public void Constructor_WithNullScriptHostManager_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            TestHelpers.Act(() => new WebJobsStorageHealthCheck(_provider.Object, _environment, null))
+                .Should().Throw<ArgumentNullException>()
+                .WithParameterName("scriptHostManager");
         }
 
         [Fact]
         public async Task CheckHealthAsync_WithNullContext_ThrowsArgumentNullException()
         {
             // Arrange
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
 
             // Act & Assert
             await TestHelpers.Act(async () => await healthCheck.CheckHealthAsync(null, default))
@@ -58,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         {
             // Arrange
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
 
             // Act
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
@@ -80,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Returns(true);
 
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
 
             // Act
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
@@ -102,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Returns(true);
 
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
 
             // Act
             HealthCheckContext context = new()
@@ -132,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Throws(ex);
 
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
 
             // Act
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
@@ -155,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Returns(true);
 
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment);
+            WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
 
             // Act
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
@@ -169,6 +181,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             result.Data.Should().Contain("ConfigurationSection", "AzureWebJobsStorage");
             result.Data.Should().Contain("StatusCode", 401);
             result.Data.Should().Contain("ErrorCode", "SomeErrorCode");
+        }
+
+        [Fact]
+        public async Task CheckHealthAsync_HostStorageProviderWithoutScriptHostConfiguration_SkipsCheck()
+        {
+            // Arrange
+            var scriptHostManager = new Mock<IScriptHostManager>();
+            var provider = CreateHostStorageProvider(scriptHostManager.Object, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "AzureWebJobsStorage:credential", "managedidentity" },
+            });
+            WebJobsStorageHealthCheck healthCheck = new(provider, _environment, scriptHostManager.Object);
+
+            // Act
+            HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
+
+            // Assert
+            result.Status.Should().Be(HealthStatus.Healthy);
+            result.Description.Should().Be("Script host configuration not available. Check skipped.");
+            result.Exception.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task CheckHealthAsync_HostStorageProviderWithCurrentConfiguration_DoesNotSkipCheck()
+        {
+            // Arrange
+            var scriptHostManager = new Mock<IScriptHostManager>();
+            var provider = CreateHostStorageProvider(scriptHostManager.Object, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "AzureWebJobsStorage:credential", "managedidentity" },
+                { "AzureWebJobsStorage:blobServiceUri", "not a uri" },
+            });
+            WebJobsStorageHealthCheck healthCheck = new(provider, _environment, scriptHostManager.Object);
+
+            // Act
+            HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
+
+            // Assert
+            result.Status.Should().Be(HealthStatus.Unhealthy);
+            result.Description.Should().Be("Unable to create client for AzureWebJobsStorage");
+            result.Data.Should().Contain("Area", "configuration");
+        }
+
+        private WebJobsStorageHealthCheck CreateHealthCheck()
+            => new(_provider.Object, _environment, _scriptHostManager.Object);
+
+        private static IAzureBlobStorageProvider CreateHostStorageProvider(IScriptHostManager scriptHostManager, Dictionary<string, string> data)
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(data)
+                .Build();
+
+            return TestHelpers.GetAzureBlobStorageProvider(configuration, scriptHostManager: scriptHostManager);
         }
 
         private void SetupGetContainers(AsyncPageable<BlobContainerItem> pageable)
