@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.Tracing;
+using System.Linq;
 using System.Net.Http;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel;
@@ -37,6 +38,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -142,6 +144,15 @@ namespace Microsoft.Azure.WebJobs.Script
             // Allow FunctionsStartup to add configuration after all other configuration is registered.
             builder.ConfigureAppConfiguration((context, configBuilder) =>
             {
+                // Replace the default environment variables source with a .NET8 back-compat version.
+                for (int i = 0; i < configBuilder.Sources.Count; i++)
+                {
+                    if (configBuilder.Sources[i] is EnvironmentVariablesConfigurationSource)
+                    {
+                        configBuilder.Sources[i] = new ScriptEnvironmentVariablesConfigurationSource(liveEnvironmentLoading: false);
+                    }
+                }
+
                 // Pre-build configuration here to load bundles and to store for later validation.
                 IConfigurationRoot config = configBuilder.Build();
                 var environment = applicationOptions.RootServiceProvider.GetService<IEnvironment>();

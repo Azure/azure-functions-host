@@ -119,7 +119,7 @@ namespace WebJobsStartupTests
                     root.Providers.ElementAt(i++) is ChainedConfigurationProvider &&
                     root.Providers.ElementAt(i++) is MemoryConfigurationProvider && // FUNCTIONS_WORKER_RUNTIME surfaced from environment.
                     root.Providers.ElementAt(i++) is JsonConfigurationProvider &&
-                    root.Providers.ElementAt(i++) is EnvironmentVariablesConfigurationProvider &&
+                    root.Providers.ElementAt(i++).GetType().Name.StartsWith("CompatEnvironmentVariablesProvider") &&
                     root.Providers.ElementAt(i++) is MemoryConfigurationProvider && // From Startup.cs.
                     root.Providers.ElementAt(i++) is JsonConfigurationProvider && // From test settings.
                     root.Providers.ElementAt(i++) is MemoryConfigurationProvider; // From fixture injecting emulator settings.
