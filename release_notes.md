@@ -9,3 +9,4 @@
 - Update Node.js Worker Version to [3.14.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.14.1) (#PR)
 - Update OpenTelemetry instrumentation and exporter packages (#11766)
 - Skip `WebJobsStorageHealthCheck` when no active script host is available (#11791)
+- Avoid false-positive connection string checks when constructing `BlobServiceClient` (#11794)

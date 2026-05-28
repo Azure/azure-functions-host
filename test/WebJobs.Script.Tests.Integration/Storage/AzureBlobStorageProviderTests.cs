@@ -78,6 +78,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             Assert.False(azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
         }
 
+        [Fact]
+        public void TryCreateBlobServiceClient_EmptyConnectionStringWithManagedIdentity_ReflectsCurrentBehavior()
+        {
+            var webHostValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "AzureWebJobsStorage", string.Empty },
+            };
+
+            var scriptHostValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "AzureWebJobsStorage:credential", "managedidentity" },
+                { "AzureWebJobsStorage:blobServiceUri", "https://teststorage.blob.core.windows.net" }
+            };
+
+            var webHostConfiguration = new ConfigurationBuilder()
+                .AddInMemoryCollection(webHostValues)
+                .Build();
+            var activeHostConfiguration = new ConfigurationBuilder()
+                .AddInMemoryCollection(scriptHostValues)
+                .Build();
+
+            var provider = TestHelpers.GetAzureBlobStorageProvider(webHostConfiguration, activeHostConfiguration);
+
+            bool result = provider.TryCreateBlobServiceClientFromConnection(StorageConnection, out var client);
+
+            Assert.True(result, "Expected BlobServiceClient creation to succeed when __blobServiceUri and __credential are configured, even when the connection-string value is empty.");
+            Assert.NotNull(client);
+            Assert.Equal("teststorage", client.AccountName);
+        }
+
         [Theory]
         [InlineData("ConnectionStrings:AzureWebJobsStorage1")]
         [InlineData("AzureWebJobsStorage1")]

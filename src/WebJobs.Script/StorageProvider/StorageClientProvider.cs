@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>true if this <see cref="IConfiguration"/> object is a connection string; false otherwise.</returns>
         protected bool IsConnectionStringPresent(IConfiguration configuration)
         {
-            return configuration is IConfigurationSection section && section.Value != null;
+            return configuration is IConfigurationSection section && !string.IsNullOrWhiteSpace(section.Value);
         }
 
         private TClientOptions CreateClientOptions(IConfiguration configuration)
