@@ -99,6 +99,60 @@ jobs:
 
   steps:
 
+  # Explicit self checkout is required when multiple repos are checked out.
+  # Using path: s ensures Build.SourcesDirectory is not changed by multi-checkout.
+  - checkout: self
+    path: s
+
+  # Checkout the functions-release repo to get the latest out-of-proc JIT trace files.
+  - checkout: functions-release
+    fetchDepth: 1
+    path: functions-release
+
+  # Copy the JIT trace files into PreJIT/ so they are included in the host publish output.
+  # The files have been removed from the host repo; this step is the sole source of truth.
+  - pwsh: |
+      $jitTracePath = "$(jitTraceRepoPath)"
+      $sourceDir = Join-Path "$(Pipeline.Workspace)" "functions-release" $jitTracePath
+      $targetDir = Join-Path "$(Build.SourcesDirectory)" "src/WebJobs.Script.WebHost/PreJIT"
+
+      if (-not (Test-Path $targetDir)) {
+        New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+      }
+
+      $files = @("coldstart.jittrace", "linux.coldstart.jittrace")
+      $failed = $false
+
+      foreach ($file in $files) {
+        $src = Join-Path $sourceDir $file
+        $dest = Join-Path $targetDir $file
+        if (Test-Path $src) {
+          Copy-Item $src -Destination $dest -Force
+          $size = (Get-Item $dest).Length
+          Write-Host "Copied $file ($size bytes) to $dest"
+        } else {
+          Write-Host "##vso[task.logissue type=error]JIT trace file not found: $src"
+          $failed = $true
+        }
+      }
+
+      if ($failed) {
+        Write-Host "##vso[task.complete result=Failed;]One or more JIT trace files could not be found."
+        exit 1
+      }
+
+      # Display release notes if present
+      $releaseNotesPath = Join-Path $sourceDir "release_notes.md"
+      if (Test-Path $releaseNotesPath) {
+        Write-Host "Release notes ($releaseNotesPath):"
+        foreach ($line in Get-Content $releaseNotesPath) {
+          Write-Host "| $line"
+        }
+      } else {
+        Write-Host "No release notes found at: $releaseNotesPath"
+      }
+    displayName: Copy JIT trace files from functions-release
+
   # # For JIT trace generation, ensure the app is configured with a storage account so the authentication flow can be executed end-to-end.
   - ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
     - task: AzureKeyVault@2

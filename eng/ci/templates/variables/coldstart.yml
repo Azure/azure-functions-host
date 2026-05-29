@@ -5,3 +5,6 @@ variables:
 # Reduced instance count for JIT trace generation to minimize YAML size
 - name: jitReleaseInstances
   value: "1,2,3"
+# Path to the out-of-proc JIT trace files in the functions-release repo
+- name: jitTraceRepoPath
+  value: "artifacts/Host/JitTrace/dev"
