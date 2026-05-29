@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config.Tests
         private static IConfigurationRoot BuildConfiguration(bool liveEnvironmentLoading = false)
         {
             var builder = new ConfigurationBuilder();
-            builder.Add(new ScriptEnvironmentVariablesConfigurationSource(liveEnvironmentLoading: false));
+            builder.Add(new ScriptEnvironmentVariablesConfigurationSource(liveEnvironmentLoading));
             return builder.Build();
         }
 
