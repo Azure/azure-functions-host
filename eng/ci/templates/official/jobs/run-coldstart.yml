@@ -45,6 +45,10 @@ jobs:
         image: 1es-windows-2022-benchmark-runner-vanilla
 
   variables:
+    # Cache restored NuGet packages between runs to reduce load on (and throttling from)
+    # the Azure Artifacts feed. Point the global packages folder at a deterministic,
+    # cross-platform path so the Cache@2 task below can save/restore it.
+    NUGET_PACKAGES: $(Pipeline.Workspace)/.nuget/packages
     functionAppOutputPath: $(Build.BinariesDirectory)/Published/${{ parameters.functionAppName }}
     hostOutputPath: $(Build.BinariesDirectory)/Published/HostRuntime
     logsDirectory: $(Build.ArtifactStagingDirectory)/Logs
@@ -98,6 +102,19 @@ jobs:
           condition: always()
 
   steps:
+
+  # Restore the NuGet global packages folder from the pipeline cache before any
+  # 'dotnet publish' (restore) runs. The key is keyed on the central package version
+  # files and project files so it invalidates when dependencies change; the restoreKeys
+  # allow a partial-hit fallback to an earlier cache.
+  - task: Cache@2
+    displayName: Cache NuGet packages
+    inputs:
+      key: 'nuget | "$(Agent.OS)" | "$(publishRid)" | **/Directory.Packages.props | **/*.csproj'
+      restoreKeys: |
+        nuget | "$(Agent.OS)" | "$(publishRid)"
+        nuget | "$(Agent.OS)"
+      path: $(NUGET_PACKAGES)
 
   # # For JIT trace generation, ensure the app is configured with a storage account so the authentication flow can be executed end-to-end.
   - ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
