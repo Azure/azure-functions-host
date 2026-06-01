@@ -32,14 +32,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private readonly IEnvironment _environment;
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
-        private readonly IHostApplicationLifetime _applicationLifetime;
+        private readonly IScriptApplicationLifetime _applicationLifetime;
         private readonly HostNameProvider _hostNameProvider;
         private readonly ILogger _logger;
 
         private readonly object _syncLock = new object();
         private bool _validationScheduled;
 
-        public HostIdValidator(IEnvironment environment, IAzureBlobStorageProvider azureBlobStorageProvider, IHostApplicationLifetime applicationLifetime,
+        public HostIdValidator(IEnvironment environment, IAzureBlobStorageProvider azureBlobStorageProvider, IScriptApplicationLifetime applicationLifetime,
             HostNameProvider hostNameProvider, ILogger<HostIdValidator> logger)
         {
             _environment = environment;

@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public WorkerFunctionDescriptorProviderTests()
         {
-            var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
+            var mockApplicationLifetime = new Mock<IScriptApplicationLifetime>();
             var mockFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
 
             string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node");
@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private class TestWorkerDescriptorProvider : WorkerFunctionDescriptorProvider
         {
             public TestWorkerDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-                            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IHostApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
+                            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IScriptApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
                 : base(host, config, bindingProviders, dispatcher, loggerFactory, applicationLifetime, workerInitializationTimeout)
             {
             }

@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         private readonly ILoggerFactory _loggerFactory;
         private readonly TestEnvironment _testEnvironment;
         private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _optionsMonitor;
-        private readonly IHostApplicationLifetime _applicationLifetime;
+        private readonly IScriptApplicationLifetime _applicationLifetime;
         private readonly ITestOutputHelper _output;
 
         public WorkerConcurrencyManagerTest(ITestOutputHelper output)
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             optionsMonitor.Setup(x => x.CurrentValue).Returns(new FunctionsHostingConfigOptions());
             _optionsMonitor = optionsMonitor.Object;
 
-            Mock<IHostApplicationLifetime> applicationLifetime = new Mock<IHostApplicationLifetime>();
+            Mock<IScriptApplicationLifetime> applicationLifetime = new Mock<IScriptApplicationLifetime>();
             applicationLifetime.Setup(x => x.StopApplication()).Verifiable();
             _applicationLifetime = applicationLifetime.Object;
 

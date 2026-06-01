@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     internal class TestWorkerFunctionInvoker : WorkerFunctionInvoker
     {
         public TestWorkerFunctionInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
-        Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IHostApplicationLifetime applicationLifetime,
+        Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IScriptApplicationLifetime applicationLifetime,
         TimeSpan initializationTimeout)
         : base(host, bindingMetadata, functionMetadata, loggerFactory, inputBindings, outputBindings, functionDispatcher, applicationLifetime, initializationTimeout)
         {

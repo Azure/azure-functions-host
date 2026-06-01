@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string HostAssemblyName = "ScriptHost";
         private const string GeneratedTypeNamespace = "Host";
         internal const string GeneratedTypeName = "Functions";
-        private readonly IHostApplicationLifetime _applicationLifetime;
+        private readonly IScriptApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IJobHostMetadataProvider metadataProvider,
             IHostIdProvider hostIdProvider,
             IHttpRoutesManager httpRoutesManager,
-            IHostApplicationLifetime applicationLifetime,
+            IScriptApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
             IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,

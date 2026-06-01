@@ -11,3 +11,4 @@
 - Skip `WebJobsStorageHealthCheck` when no active script host is available (#11791)
 - Avoid false-positive connection string checks when constructing `BlobServiceClient` (#11794)
 - Fix .NET10 breaking change with connection-string prefixed env vars. (#11793)
+- Resolve correct `IHostApplicationLifetime` instance within certain ScriptHost services (#11798)

@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly HostIdValidator _hostIdValidator;
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
-        private readonly Mock<IHostApplicationLifetime> _mockApplicationLifetime;
+        private readonly Mock<IScriptApplicationLifetime> _mockApplicationLifetime;
         private BlobContainerClient _blobContainerClient;
         private bool _storageConfigured;
 
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             mockBlobStorageProvider.Setup(p => p.TryCreateHostingBlobContainerClient(out _blobContainerClient)).Returns(() => _storageConfigured);
 
             var hostNameProvider = new HostNameProvider(_environment);
-            _mockApplicationLifetime = new Mock<IHostApplicationLifetime>(MockBehavior.Strict);
+            _mockApplicationLifetime = new Mock<IScriptApplicationLifetime>(MockBehavior.Strict);
             _hostIdValidator = new HostIdValidator(_environment, mockBlobStorageProvider.Object, _mockApplicationLifetime.Object, hostNameProvider, logger);
 
             _storageConfigured = true;
