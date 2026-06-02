@@ -371,7 +371,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 RunDependencies dependencies = CreateDependencies();
 
-                var applicationLifetime = _host.Services.GetRequiredService<IHostApplicationLifetime>();
+                var applicationLifetime = _host.Services.GetRequiredService<IScriptApplicationLifetime>();
 
                 // Create a dummy file to represent our function
                 string filePath = Path.Combine(tempDirectory.Path, Guid.NewGuid().ToString() + ".csx");
