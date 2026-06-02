@@ -11,6 +11,9 @@ parameters:
   values:
     - Windows
     - Linux
+- name: appType
+  type: string
+  default: dotnet
 - name: collectPerfViewProfileOnWindows
   type: boolean
   default: false
@@ -50,10 +53,10 @@ jobs:
     logsDirectory: $(Build.ArtifactStagingDirectory)/Logs
     stdOutLogsFilePath: $(logsDirectory)/std_out_logs.txt
     stdErrorLogsFilePath: $(logsDirectory)/std_error_logs.txt
-    ${{ if or(eq(parameters.functionAppName, 'HelloHttpNet9'), eq(parameters.functionAppName, 'HelloHttpNet9NoProxy')) }}:
+    ${{ if eq(parameters.appType, 'dotnet') }}:
       FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
       FUNCTIONS_WORKER_RUNTIME_VERSION: '9.0'
-    ${{ if eq(parameters.functionAppName, 'HelloHttpNode') }}:
+    ${{ if eq(parameters.appType, 'node') }}:
       FUNCTIONS_WORKER_RUNTIME: 'node'
       WEBSITE_RUN_FROM_PACKAGE: '1' # Node app needs this to use placeholder channel.
     AzureWebJobsScriptRoot: '$(functionAppOutputPath)'
@@ -67,10 +70,6 @@ jobs:
     traceZipFilePath: $(traceDirectory)/$(traceFileZipName)
     traceAnalysisResultMarkdownFilePath: $(traceDirectory)/results/$(traceFileNameWithoutExtension).md
     traceLogPath: $(logsDirectory)/logs.log
-    ${{ if eq(parameters.os, 'Linux') }}:
-      publishRid: linux-x64
-    ${{ if eq(parameters.os, 'Windows') }}:
-      publishRid: win-x64
     ${{ if and(eq(parameters.collectNetTrace, true), eq(parameters.instanceId, '1')) }}:
       netTraceFileNameWithoutExtension: azfunc_${{ parameters.functionAppName }}_${{ parameters.os }}_${{ parameters.instanceId }}
       netTraceFileName: $(netTraceFileNameWithoutExtension).nettrace
@@ -80,12 +79,10 @@ jobs:
     ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
       warmupApiUrl: http://localhost:5000  # For JIT trace generation case, we call the home page instead of the api/warmup endpoint to ensure the host is up and running.
       WEBSITE_SITE_NAME: PGO_${{ parameters.functionAppName }}_${{ parameters.os }}
-      benchmarkAppBuildConstants: "-p:DefineConstants=AUTH_FUNCTION" # To publish the function app with authentication enabled.
       functionInvocationUrl: http://localhost:5000/api/HelloAuth?forcespecialization=1&code=test
     ${{ else }}:
       warmupApiUrl: http://localhost:5000/api/warmup?restart=1
       functionInvocationUrl: http://localhost:5000/api/Hello?forcespecialization=1
-      benchmarkAppBuildConstants: ""
 
   ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
     templateContext:
@@ -113,54 +110,16 @@ jobs:
   - script: dotnet --info
     displayName: "Print .NET Environment Info"
 
-  - ${{ if eq(parameters.functionAppName, 'HelloHttpNode') }}:
-    - task: CopyFiles@2
-      displayName: Copy node js app content to script root dir
-      inputs:
-        SourceFolder: '$(Build.SourcesDirectory)/perf/Apps/HelloHttpNode'
-        Contents: '**/*'
-        TargetFolder: '$(functionAppOutputPath)'
-        CleanTargetFolder: true
-
+  - ${{ if eq(parameters.appType, 'node') }}:
     - task: UseNode@1
       displayName: Install Node.js
       inputs:
         version: '18.x'
 
-    - script: npm install
-      displayName: Run npm install for HelloHttpNode
-      workingDirectory: '$(functionAppOutputPath)'
-
-  - ${{ if or(eq(parameters.functionAppName, 'HelloHttpNet9'), eq(parameters.functionAppName, 'HelloHttpNet9NoProxy')) }}:
-    - task: CopyFiles@2
-      displayName: Copy benchmark apps to temp location
-      inputs:
-        SourceFolder: '$(Build.SourcesDirectory)/perf/Apps'
-        Contents: '**/*'
-        TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
-        CleanTargetFolder: true
-
-    - task: DotNetCoreCLI@2
-      displayName: Publish benchmark app
-      inputs:
-        command: publish
-        publishWebProjects: false
-        zipAfterPublish: false
-        modifyOutputPath: false
-        projects: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}/HelloHttp.csproj'
-        arguments: -c Release -o $(functionAppOutputPath) -f net9.0 -r $(publishRid) $(benchmarkAppBuildConstants)
-        workingDirectory: $(Build.ArtifactStagingDirectory)/PerformanceTestApps/${{ parameters.functionAppName }}
-
-  - task: DotNetCoreCLI@2
-    displayName: Publish host
-    inputs:
-      command: publish
-      publishWebProjects: false
-      zipAfterPublish: false
-      modifyOutputPath: false
-      projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
-      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -p:PlaceholderSimulation=true 
-      workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
+  - template: /eng/ci/templates/steps/acquire-coldstart-binaries.yml@self
+    parameters:
+      functionAppName: ${{ parameters.functionAppName }}
+      os: ${{ parameters.os }}
 
   - pwsh: |
       New-Item -ItemType Directory -Path $(logsDirectory)

@@ -1,0 +1,35 @@
+# Downloads the host + benchmark app binaries built once per OS (publish-coldstart-artifacts.yml)
+# so each run instance avoids a per-instance feed restore (which throttled the feed: HTTP 429).
+# Artifacts are tar.gz'd to preserve the Linux execute bit. Applies to every run, including JIT
+# (the app is prebuilt with auth constants in the build stage).
+# Note: Node also needs the Node runtime installed on the run agent (see run-coldstart.yml);
+# this template only places the binaries.
+
+parameters:
+- name: functionAppName
+  type: string
+- name: os
+  type: string
+
+steps:
+# Benchmark app content -> $(functionAppOutputPath).
+- task: DownloadPipelineArtifact@2
+  displayName: Download prebuilt benchmark app
+  inputs:
+    artifact: coldstart_app_${{ parameters.os }}_${{ parameters.functionAppName }}
+    path: $(Pipeline.Workspace)/coldstart_app
+- pwsh: |
+    New-Item -ItemType Directory -Force -Path "$(functionAppOutputPath)" | Out-Null
+    tar -xzf "$(Pipeline.Workspace)/coldstart_app/app.tar.gz" -C "$(functionAppOutputPath)"
+  displayName: Extract prebuilt benchmark app
+
+# Host binaries -> $(hostOutputPath).
+- task: DownloadPipelineArtifact@2
+  displayName: Download prebuilt host
+  inputs:
+    artifact: coldstart_host_${{ parameters.os }}
+    path: $(Pipeline.Workspace)/coldstart_host
+- pwsh: |
+    New-Item -ItemType Directory -Force -Path "$(hostOutputPath)" | Out-Null
+    tar -xzf "$(Pipeline.Workspace)/coldstart_host/host.tar.gz" -C "$(hostOutputPath)"
+  displayName: Extract prebuilt host

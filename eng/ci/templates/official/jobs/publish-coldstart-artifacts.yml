@@ -1,0 +1,129 @@
+# Builds the coldstart output (host + benchmark apps) ONCE per OS and publishes it as
+# pipeline artifacts, so the fan-out instances download instead of each running 'dotnet
+# publish' (which caused occasional throttling of the Azure Artifacts feed with HTTP 429).
+# Output is tar.gz'd because pipeline artifacts drop the Unix execute bit the host/worker
+# executables need on Linux (tar ships on the Windows runner image too, so the archive/extract
+# steps are identical on both OSes).
+
+parameters:
+- name: os
+  type: string
+  default: Windows
+  values:
+    - Windows
+    - Linux
+- name: apps
+  type: object
+  default: []
+- name: createJitTrace
+  type: boolean
+  default: false
+
+jobs:
+- job: PublishColdStartArtifacts_${{ parameters.os }}
+  displayName: Publish coldstart artifacts (${{ parameters.os }})
+
+  pool:
+    name: 1es-pool-azfunc-benchmarking
+    ${{ if eq(parameters.os, 'Linux') }}:
+      image: 1es-ubuntu-22.04-benchmark-runner-vanilla
+      os: linux
+    ${{ else }}:
+      image: 1es-windows-2022-benchmark-runner-vanilla
+      os: windows
+
+  variables:
+    ${{ if eq(parameters.os, 'Linux') }}:
+      publishRid: linux-x64
+    ${{ else }}:
+      publishRid: win-x64
+    hostOutputPath: $(Build.BinariesDirectory)/Published/HostRuntime
+    artifactsStagingPath: $(Build.ArtifactStagingDirectory)/coldstart
+    perfAppsStagingPath: $(Agent.TempDirectory)/perfapps
+    # JIT trace generation collects from an auth-enabled app (as the SLA site does), so the
+    # .NET apps must be built with the AUTH_FUNCTION constant in that case.
+    ${{ if eq(parameters.createJitTrace, true) }}:
+      benchmarkAppBuildConstants: -p:DefineConstants=AUTH_FUNCTION
+    ${{ else }}:
+      benchmarkAppBuildConstants: ''
+    # Restore pulls every worker's packages (python/node/java/...), a large NuGet cache; keep it
+    # off the OS disk by pointing NUGET_PACKAGES at the Agent.TempDirectory work/resource disk.
+    NUGET_PACKAGES: $(Agent.TempDirectory)/.nuget/packages
+
+  templateContext:
+    outputParentDirectory: $(artifactsStagingPath)
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish host artifact
+      path: $(artifactsStagingPath)/host
+      artifact: coldstart_host_${{ parameters.os }}
+    - ${{ each app in parameters.apps }}:
+      - ${{ if eq(app.include, true) }}:
+        - output: pipelineArtifact
+          displayName: Publish ${{ app.name }} app artifact
+          path: $(artifactsStagingPath)/app_${{ app.name }}
+          artifact: coldstart_app_${{ parameters.os }}_${{ app.name }}
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish host
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
+      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -p:PlaceholderSimulation=true
+      workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
+
+  - pwsh: |
+      New-Item -ItemType Directory -Force -Path "$(artifactsStagingPath)/host" | Out-Null
+      tar -czf "$(artifactsStagingPath)/host/host.tar.gz" -C "$(hostOutputPath)" .
+    displayName: Archive host
+
+  # Build each benchmark app from a copy of the whole perf/Apps tree OUTSIDE the repo, so
+  # none of the repo-root MSBuild props/targets (central package management, signing,
+  # StyleCop, Release.props, ...) apply while perf/Apps/global.json still pins the SDK.
+  # This mirrors the per-instance (JIT) path and keeps the prebuilt apps identical to it
+  # (publishing a .NET app in-place would otherwise fail with NU1008).
+  - task: CopyFiles@2
+    displayName: Copy benchmark apps out of repo
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)/perf/Apps'
+      Contents: '**/*'
+      TargetFolder: '$(perfAppsStagingPath)'
+      CleanTargetFolder: true
+
+  - ${{ each app in parameters.apps }}:
+    - ${{ if eq(app.include, true) }}:
+      # .NET isolated app: publish to a dedicated output dir, then archive that dir.
+      - ${{ if eq(app.type, 'dotnet') }}:
+        - task: DotNetCoreCLI@2
+          displayName: Publish ${{ app.name }}
+          inputs:
+            command: publish
+            publishWebProjects: false
+            zipAfterPublish: false
+            modifyOutputPath: false
+            projects: '$(perfAppsStagingPath)/${{ app.name }}/HelloHttp.csproj'
+            arguments: -c Release -o $(Build.BinariesDirectory)/Published/${{ app.name }} -f net9.0 -r $(publishRid) $(benchmarkAppBuildConstants)
+            workingDirectory: $(perfAppsStagingPath)/${{ app.name }}
+        - pwsh: |
+            New-Item -ItemType Directory -Force -Path "$(artifactsStagingPath)/app_${{ app.name }}" | Out-Null
+            tar -czf "$(artifactsStagingPath)/app_${{ app.name }}/app.tar.gz" -C "$(Build.BinariesDirectory)/Published/${{ app.name }}" .
+          displayName: Archive ${{ app.name }}
+      # Node app: 'npm install' in place, then archive the app folder (incl. node_modules).
+      - ${{ if eq(app.type, 'node') }}:
+        - task: UseNode@1
+          displayName: Install Node.js for ${{ app.name }}
+          inputs:
+            version: '18.x'
+        - script: npm install
+          displayName: npm install ${{ app.name }}
+          workingDirectory: $(perfAppsStagingPath)/${{ app.name }}
+        - pwsh: |
+            New-Item -ItemType Directory -Force -Path "$(artifactsStagingPath)/app_${{ app.name }}" | Out-Null
+            tar -czf "$(artifactsStagingPath)/app_${{ app.name }}/app.tar.gz" -C "$(perfAppsStagingPath)/${{ app.name }}" .
+          displayName: Archive ${{ app.name }}
