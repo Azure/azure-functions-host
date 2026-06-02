@@ -20,12 +20,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class WorkerFunctionInvokerTests
     {
         private readonly TestWorkerFunctionInvoker _testFunctionInvoker;
-        private readonly Mock<IHostApplicationLifetime> _applicationLifetime;
+        private readonly Mock<IScriptApplicationLifetime> _applicationLifetime;
         private readonly Mock<IFunctionInvocationDispatcher> _mockFunctionInvocationDispatcher;
 
         public WorkerFunctionInvokerTests()
         {
-            _applicationLifetime = new Mock<IHostApplicationLifetime>();
+            _applicationLifetime = new Mock<IScriptApplicationLifetime>();
             _mockFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
             _mockFunctionInvocationDispatcher.Setup(a => a.ErrorEventsThreshold).Returns(0);
 

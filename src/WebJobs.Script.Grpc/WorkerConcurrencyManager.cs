@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcherFactory _functionInvocationDispatcherFactory;
         private readonly IEnvironment _environment;
-        private readonly IHostApplicationLifetime _applicationLifetime;
+        private readonly IScriptApplicationLifetime _applicationLifetime;
         private readonly long _memoryLimit = AppServicesHostingUtility.GetMemoryLimitBytes();
         private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _functionsHostingConfigOptionsMonitor;
         private readonly Func<Task> _stopApplication;
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IEnvironment environment,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IOptionsMonitor<FunctionsHostingConfigOptions> functionsHostingConfigOptionsMonitor,
-            IHostApplicationLifetime applicationLifetime,
+            IScriptApplicationLifetime applicationLifetime,
             ILoggerFactory loggerFactory)
         {
             _functionInvocationDispatcherFactory = functionInvocationDispatcherFactory ?? throw new ArgumentNullException(nameof(functionInvocationDispatcherFactory));

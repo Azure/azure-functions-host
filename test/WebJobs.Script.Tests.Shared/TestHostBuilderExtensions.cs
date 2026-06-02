@@ -29,6 +29,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.Internal;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -96,7 +97,8 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IWorkerRuntimeResolver, ScriptHostWorkerRuntimeResolver>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
-            AddMockedSingleton<IScriptApplicationLifetime>(services);
+            services.AddSingleton<IHostApplicationLifetime, ApplicationLifetime>();
+            services.AddSingleton<IScriptApplicationLifetime, ScriptApplicationLifetime>();
             services.AddSingleton(_ => new WorkerConfigCacheInvalidator(null, null));
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();

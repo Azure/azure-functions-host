@@ -272,8 +272,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if ((string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase)) && !_environment.IsMultiLanguageRuntimeEnvironment())
             {
                 // Shutdown any placeholder channels for empty function apps or dotnet function apps.
-                // This is needed as specilization does not kill standby placeholder channels if worker runtime is not set.
-                // Debouce to ensure this does not effect cold start
+                // This is needed as specialization does not kill standby placeholder channels if worker runtime is not set.
+                // Debounce to ensure this does not effect cold start
                 _shutdownStandbyWorkerChannels();
                 return;
             }
