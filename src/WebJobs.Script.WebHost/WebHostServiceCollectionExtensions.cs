@@ -296,9 +296,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
         }
 
-        private static void AddLinuxContainerServices(this IServiceCollection services)
+        internal static void AddLinuxContainerServices(this IServiceCollection services, IEnvironment environment = null)
         {
-            if (SystemEnvironment.Instance.IsLinuxConsumptionOnLegion())
+            environment ??= SystemEnvironment.Instance;
+
+            if (environment.IsLinuxConsumptionOnLegion())
             {
                 services.AddLinuxConsumptionMetricsServices();
             }
@@ -373,7 +375,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<LinuxContainerActivityPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsAnyLinuxConsumption())
+                if (environment.IsLinuxConsumptionOnAtlas() || environment.IsLinuxConsumptionOnLegion())
                 {
                     var logger = s.GetService<ILogger<LinuxContainerActivityPublisher>>();
                     var meshInitServiceClient = s.GetService<IMeshServiceClient>();
@@ -387,7 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsAnyLinuxConsumption())
+                if (environment.IsLinuxConsumptionOnAtlas() || environment.IsLinuxConsumptionOnLegion())
                 {
                     return s.GetRequiredService<LinuxContainerActivityPublisher>();
                 }
@@ -398,7 +400,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<ILinuxContainerActivityPublisher>(s =>
             {
                 var environment = s.GetService<IEnvironment>();
-                if (environment.IsAnyLinuxConsumption())
+                if (environment.IsLinuxConsumptionOnAtlas() || environment.IsLinuxConsumptionOnLegion())
                 {
                     return s.GetRequiredService<LinuxContainerActivityPublisher>();
                 }
