@@ -3,14 +3,3 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-
-- Restore Workflows-bundle worker discovery on Logic App (#11759)
-- Ensure wwwroot directory exists on new slot and app creation w/ networking restrictions (#11757)
-- Update Node.js Worker Version to [3.14.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.14.1) (#PR)
-- Update OpenTelemetry instrumentation and exporter packages (#11766)
-- Skip `WebJobsStorageHealthCheck` when no active script host is available (#11791)
-- Avoid false-positive connection string checks when constructing `BlobServiceClient` (#11794)
-- Fix .NET10 breaking change with connection-string prefixed env vars. (#11793)
-- Only register the host-name-fixup middleware on hosting environments where requests are routed through the Antares front end
-- Resolve correct `IHostApplicationLifetime` instance within certain ScriptHost services (#11798)
-- Fix function-key prefix matching in the Kubernetes secrets repository merge step
