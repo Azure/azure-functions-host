@@ -50,7 +50,7 @@ public class WebHostStartupEndToEndTests
             // This should recover as the second call to BuildHost should succeed
             await TestHelpers.Await(async () =>
             {
-                var result = await fixture.Host.HttpClient.GetAsync("/api/HttpRequestDataFunction");
+                using var result = await fixture.Host.HttpClient.GetAsync("/api/HttpRequestDataFunction");
                 return result.IsSuccessStatusCode && await result.Content.ReadAsStringAsync() == "Welcome to Azure Functions!";
 
             }, timeout: 30000, userMessageCallback: fixture.Host.GetLog);

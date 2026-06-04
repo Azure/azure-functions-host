@@ -28,13 +28,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         {
             _dispose?.Dispose();
 
-            if (Host.WebHost is not null)
+            try
             {
-                await Host.WebHost.StopAsync();
-                Host.WebHost.Dispose();
+                if (Host.WebHost is not null)
+                {
+                    await Host.WebHost.StopAsync();
+                    Host.WebHost.Dispose();
+                }
             }
-
-            await base.DisposeAsync();
+            finally
+            {
+                await base.DisposeAsync();
+            }
         }
     }
 }

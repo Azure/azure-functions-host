@@ -452,18 +452,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public async Task DisposeAsync()
             {
-                if (TestHost.WebHost is not null)
+                try
                 {
-                    await TestHost.WebHost.StopAsync();
-                    TestHost.WebHost.Dispose();
+                    if (TestHost.WebHost is not null)
+                    {
+                        await TestHost.WebHost.StopAsync();
+                        TestHost.WebHost.Dispose();
+                    }
                 }
+                finally
+                {
+                    TestHost?.Dispose();
+                    HttpServer?.Dispose();
+                    HttpClient?.Dispose();
 
-                TestHost?.Dispose();
-                HttpServer?.Dispose();
-                HttpClient?.Dispose();
-
-                TestHelpers.ClearHostLogs();
-                await FileUtility.DeleteDirectoryAsync(_testHome, recursive: true);
+                    TestHelpers.ClearHostLogs();
+                    await FileUtility.DeleteDirectoryAsync(_testHome, recursive: true);
+                }
             }
         }
     }
