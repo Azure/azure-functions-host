@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -24,10 +24,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             return Task.CompletedTask;
         }
 
-        public override Task DisposeAsync()
+        public override async Task DisposeAsync()
         {
             _dispose?.Dispose();
-            return base.DisposeAsync();
+
+            if (Host.WebHost is not null)
+            {
+                await Host.WebHost.StopAsync();
+                Host.WebHost.Dispose();
+            }
+
+            await base.DisposeAsync();
         }
     }
 }

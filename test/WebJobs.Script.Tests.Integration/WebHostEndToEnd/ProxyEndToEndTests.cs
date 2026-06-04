@@ -383,7 +383,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public class TestFixture : IDisposable
+        public class TestFixture : IAsyncLifetime
         {
             private readonly string _testHome;
 
@@ -448,14 +448,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public HttpServer HttpServer { get; set; }
 
-            public void Dispose()
+            public Task InitializeAsync() => Task.CompletedTask;
+
+            public async Task DisposeAsync()
             {
+                if (TestHost.WebHost is not null)
+                {
+                    await TestHost.WebHost.StopAsync();
+                    TestHost.WebHost.Dispose();
+                }
+
                 TestHost?.Dispose();
                 HttpServer?.Dispose();
                 HttpClient?.Dispose();
 
                 TestHelpers.ClearHostLogs();
-                FileUtility.DeleteDirectoryAsync(_testHome, recursive: true);
+                await FileUtility.DeleteDirectoryAsync(_testHome, recursive: true);
             }
         }
     }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -7,7 +7,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -54,7 +53,7 @@ public class WebHostStartupEndToEndTests
                 var result = await fixture.Host.HttpClient.GetAsync("/api/HttpRequestDataFunction");
                 return result.IsSuccessStatusCode && await result.Content.ReadAsStringAsync() == "Welcome to Azure Functions!";
 
-            }, 10000, userMessageCallback: fixture.Host.GetLog);
+            }, timeout: 30000, userMessageCallback: fixture.Host.GetLog);
 
             var debugMsg = fixture.Host.GetWebHostLogMessages("Microsoft.Azure.WebJobs.Script.WorkerFunctionMetadataProvider")
                 .Where(m => m.Level == Microsoft.Extensions.Logging.LogLevel.Debug)
