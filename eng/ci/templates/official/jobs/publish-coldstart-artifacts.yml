@@ -46,9 +46,6 @@ jobs:
       benchmarkAppBuildConstants: -p:DefineConstants=AUTH_FUNCTION
     ${{ else }}:
       benchmarkAppBuildConstants: ''
-    # Restore pulls every worker's packages (python/node/java/...), a large NuGet cache; keep it
-    # off the OS disk by pointing NUGET_PACKAGES at the Agent.TempDirectory work/resource disk.
-    NUGET_PACKAGES: $(Agent.TempDirectory)/.nuget/packages
 
   templateContext:
     outputParentDirectory: $(artifactsStagingPath)
@@ -119,7 +116,7 @@ jobs:
         - task: UseNode@1
           displayName: Install Node.js for ${{ app.name }}
           inputs:
-            version: '18.x'
+            version: '24.x'
         - script: npm install
           displayName: npm install ${{ app.name }}
           workingDirectory: $(perfAppsStagingPath)/${{ app.name }}

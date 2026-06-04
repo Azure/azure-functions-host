@@ -117,7 +117,7 @@ jobs:
     - task: UseNode@1
       displayName: Install Node.js
       inputs:
-        version: '18.x'
+        version: '24.x'
 
   - template: /eng/ci/templates/steps/acquire-coldstart-binaries.yml@self
     parameters:
