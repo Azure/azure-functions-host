@@ -72,7 +72,11 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
-      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -p:PlaceholderSimulation=true
+      # Disable R2R for jittrace generation so all methods are JIT-compiled and captured in the trace.
+      ${{ if eq(parameters.createJitTrace, true) }}:
+        arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -p:PlaceholderSimulation=true -p:PublishReadyToRun=false
+      ${{ else }}:
+        arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -p:PlaceholderSimulation=true
       workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
 
   - pwsh: |
