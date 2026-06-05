@@ -1,0 +1,39 @@
+# Polls an HTTP endpoint until the host responds, failing the step if it never
+# becomes ready. Shared by the temporary (key-retrieval) host and the warmed-up
+# host readiness checks so the retry logic lives in one place.
+
+parameters:
+- name: url
+  type: string
+- name: displayName
+  type: string
+- name: maxAttempts
+  type: number
+  default: 15
+- name: retryDelaySeconds
+  type: number
+  default: 10
+
+steps:
+- pwsh: |
+    $url = "${{ parameters.url }}"
+    $maxAttempts = ${{ parameters.maxAttempts }}
+    $retryDelaySeconds = ${{ parameters.retryDelaySeconds }}
+
+    Write-Host "Waiting for host at $url..."
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            $response = Invoke-WebRequest -Uri $url -Method Get -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
+            Write-Host "Host is ready. Status: $($response.StatusCode) $($response.StatusDescription)"
+            exit 0
+        } catch {
+            if ($attempt -lt $maxAttempts) {
+                Write-Host "Attempt $attempt failed: $($_.Exception.Message). Retrying in $retryDelaySeconds seconds..."
+                Start-Sleep -Seconds $retryDelaySeconds
+            }
+        }
+    }
+
+    Write-Host "##vso[task.logissue type=error]Host at $url was not ready after $maxAttempts attempts."
+    exit 1
+  displayName: ${{ parameters.displayName }}

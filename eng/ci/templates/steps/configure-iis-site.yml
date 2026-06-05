@@ -1,0 +1,145 @@
+# Configures an IIS site with ANCM hosting for the Functions Host on Windows.
+#
+# Why IIS? Production runs behind IIS/ANCM, so hosting the perf-lab host the
+# same way gives closer parity for JIT trace generation and cold-start measurement.
+#
+# The host output directory is used as the IIS site physical path. Environment
+# variables are injected via ANCM <environmentVariables> in applicationHost.config
+# (w3wp does not inherit ADO step-level env vars). Secrets (AzureWebJobsStorage)
+# are configured in a separate step so they are never logged.
+
+parameters:
+- name: createJitTrace
+  type: boolean
+  default: false
+- name: instanceId
+  type: string
+  default: '0'
+
+steps:
+- pwsh: |
+    function Convert-ToWindowsPath([string]$path) {
+        # ADO variables may use forward slashes, which IIS/Windows cannot resolve.
+        return ($path -replace '/', '\')
+    }
+
+    $siteName = "FunctionsHost"
+    $appPoolName = "FunctionsHostPool"
+    $physicalPath = Convert-ToWindowsPath $env:HOST_OUTPUT_PATH
+    $port = 5000
+    $appcmd = "$env:SystemRoot\System32\inetsrv\appcmd.exe"
+
+    # Remove existing site/pool if present (idempotency for re-runs on persistent agents)
+    & $appcmd delete site $siteName 2>$null
+    & $appcmd delete apppool $appPoolName 2>$null
+
+    # Create app pool (No Managed Code — required for ASP.NET Core InProcess)
+    & $appcmd add apppool /name:$appPoolName /managedRuntimeVersion:"" /startMode:OnDemand
+    Write-Host "Created app pool: $appPoolName"
+
+    # Create site bound to the configured port
+    & $appcmd add site /name:$siteName /physicalPath:$physicalPath /bindings:"http/*:${port}:"
+    & $appcmd set site $siteName /applicationDefaults.applicationPool:$appPoolName
+    Write-Host "Created site: $siteName on port $port"
+
+    # Inject environment variables via ANCM configuration.
+    # All values flow through step-level env: with an IIS_ prefix to avoid errors
+    # when an ADO pipeline variable is undefined (e.g. WEBSITE_RUN_FROM_PACKAGE for non-Node apps).
+    $envVars = @{
+        "WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED" = $env:IIS_WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
+        "WEBSITE_INSTANCE_ID"                    = $env:IIS_WEBSITE_INSTANCE_ID
+        "HOME"                                   = (Convert-ToWindowsPath $env:IIS_HOME)
+        "WEBSITE_SKU"                            = $env:IIS_WEBSITE_SKU
+        "FUNCTIONS_WORKER_RUNTIME"               = $env:IIS_FUNCTIONS_WORKER_RUNTIME
+        "AZURE_FUNCTIONS_ENVIRONMENT"             = "Development"
+    }
+
+    # Forward PATH so w3wp can find runtimes installed by pipeline tasks (e.g. node.exe).
+    $envVars["PATH"] = $env:PATH
+
+    # Optional variables — only set when the pipeline defines them
+    if ($env:IIS_FUNCTIONS_WORKER_RUNTIME_VERSION) {
+        $envVars["FUNCTIONS_WORKER_RUNTIME_VERSION"] = $env:IIS_FUNCTIONS_WORKER_RUNTIME_VERSION
+    }
+    if ($env:IIS_WEBSITE_RUN_FROM_PACKAGE) {
+        $envVars["WEBSITE_RUN_FROM_PACKAGE"] = $env:IIS_WEBSITE_RUN_FROM_PACKAGE
+    }
+    if ($env:IIS_WEBSITE_SITE_NAME) {
+        $envVars["WEBSITE_SITE_NAME"] = $env:IIS_WEBSITE_SITE_NAME
+    }
+
+    # For jittrace generation, disable R2R so framework assemblies are JIT-compiled
+    # and captured by dotnet-trace (R2R methods don't fire JittingStarted events).
+    if ($env:IIS_DOTNET_READYTORUN -eq "0") {
+        $envVars["DOTNET_ReadyToRun"] = "0"
+    }
+
+    foreach ($kv in $envVars.GetEnumerator()) {
+        $displayValue = if ($kv.Key -eq "PATH") { "<suppressed>" } else { $kv.Value }
+        Write-Host "Setting env var: $($kv.Key) = $displayValue"
+        & $appcmd set config "$siteName" /section:system.webServer/aspNetCore /+"environmentVariables.[name='$($kv.Key)',value='$($kv.Value)']" /commit:apphost
+    }
+
+    # Enable ANCM stdout logging via web.config (takes precedence over applicationHost.config).
+    $logsDir = Convert-ToWindowsPath $env:IIS_LOGS_DIRECTORY
+    $webConfigPath = Join-Path $physicalPath "web.config"
+    if (Test-Path $webConfigPath) {
+        $xml = [xml](Get-Content $webConfigPath)
+        $aspNetCore = $xml.configuration.'system.webServer'.aspNetCore
+        $aspNetCore.SetAttribute("stdoutLogEnabled", "true")
+        $aspNetCore.SetAttribute("stdoutLogFile", "$logsDir\stdout")
+        $xml.Save($webConfigPath)
+        Write-Host "Updated web.config: stdoutLogEnabled=true, stdoutLogFile=$logsDir\stdout"
+    } else {
+        Write-Host "##vso[task.logissue type=warning]web.config not found at $webConfigPath"
+    }
+
+    # Grant the app pool identity full access to required directories
+    $appPoolIdentity = "IIS AppPool\$appPoolName"
+    $functionAppPath = Convert-ToWindowsPath $env:IIS_FUNCTION_APP_OUTPUT_PATH
+    $homePath = Convert-ToWindowsPath $env:IIS_HOME
+    foreach ($dir in @($physicalPath, $functionAppPath, $logsDir, $homePath)) {
+        if ($dir -and (Test-Path $dir)) {
+            Write-Host "Granting access to $dir for $appPoolIdentity"
+            icacls $dir /grant "${appPoolIdentity}:(OI)(CI)F" /T /Q
+        }
+    }
+
+    # Start the site
+    & $appcmd start site $siteName
+    Write-Host "IIS site '$siteName' started on port $port"
+  displayName: Configure and start IIS site
+  env:
+    IIS_WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED: $(WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED)
+    IIS_WEBSITE_INSTANCE_ID: $(WEBSITE_INSTANCE_ID)
+    IIS_HOME: $(HOME)
+    IIS_WEBSITE_SKU: $(WEBSITE_SKU)
+    IIS_FUNCTIONS_WORKER_RUNTIME: $(FUNCTIONS_WORKER_RUNTIME)
+    IIS_FUNCTIONS_WORKER_RUNTIME_VERSION: $(FUNCTIONS_WORKER_RUNTIME_VERSION)
+    IIS_WEBSITE_RUN_FROM_PACKAGE: $(WEBSITE_RUN_FROM_PACKAGE)
+    IIS_WEBSITE_SITE_NAME: $(WEBSITE_SITE_NAME)
+    IIS_LOGS_DIRECTORY: $(logsDirectory)
+    IIS_FUNCTION_APP_OUTPUT_PATH: $(functionAppOutputPath)
+    HOST_OUTPUT_PATH: $(hostOutputPath)
+    ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+      AzureWebJobsStorage: $(PGO-APP-AZURE-WEBJOBS-STORAGE)
+      IIS_DOTNET_READYTORUN: '0'
+
+- pwsh: |
+    # Configure AzureWebJobsStorage separately so the connection string is never logged.
+    $azureWebJobsStorage = $env:AZURE_WEBJOBS_STORAGE
+    if ($azureWebJobsStorage) {
+        $appcmd = "$env:SystemRoot\System32\inetsrv\appcmd.exe"
+        & $appcmd set config "FunctionsHost" /section:system.webServer/aspNetCore /+"environmentVariables.[name='AzureWebJobsStorage',value='$azureWebJobsStorage']" /commit:apphost
+        Write-Host "AzureWebJobsStorage configured on IIS site."
+
+        # Recycle the app pool to pick up the new env var
+        & $appcmd stop apppool "FunctionsHostPool"
+        & $appcmd start apppool "FunctionsHostPool"
+    } else {
+        Write-Host "AzureWebJobsStorage not set. Skipping."
+    }
+  displayName: Configure AzureWebJobsStorage for IIS (jittrace only)
+  ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+    env:
+      AZURE_WEBJOBS_STORAGE: $(PGO-APP-AZURE-WEBJOBS-STORAGE)

@@ -1,0 +1,71 @@
+# Stops the Functions host started for a cold-start run. On Windows the host runs
+# under IIS/ANCM (stop the site + app pool, then the w3wp worker); on Linux it is a
+# direct process. The PID is read from hostProcessId.txt written at launch.
+#
+# Shared by both the temporary key-retrieval host teardown and the final host
+# teardown so the OS-specific stop logic lives in one place.
+
+parameters:
+- name: os
+  type: string
+  values:
+    - Windows
+    - Linux
+- name: displayName
+  type: string
+# Delay before stopping (e.g. let an in-flight dotnet-trace --duration finish).
+- name: preStopDelaySeconds
+  type: number
+  default: 0
+# Delay after stopping (e.g. let the OS release the listening port before relaunch).
+- name: postStopDelaySeconds
+  type: number
+  default: 0
+- name: condition
+  type: string
+  default: succeeded()
+
+steps:
+- pwsh: |
+    $preStopDelaySeconds = ${{ parameters.preStopDelaySeconds }}
+    if ($preStopDelaySeconds -gt 0) {
+        Write-Host "Waiting $preStopDelaySeconds second(s) before stopping the host..."
+        Start-Sleep -Seconds $preStopDelaySeconds
+    }
+
+    # $IsWindows is a read-only automatic variable in PowerShell, so use a distinct name.
+    $isWindowsOS = "${{ parameters.os }}" -eq "Windows"
+    if ($isWindowsOS) {
+        # IIS/ANCM: stop the site and app pool before the worker process.
+        $appcmd = "$env:SystemRoot\System32\inetsrv\appcmd.exe"
+        & $appcmd stop site "FunctionsHost" 2>$null
+        & $appcmd stop apppool "FunctionsHostPool" 2>$null
+    }
+
+    $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
+    if (Test-Path $processIdFile) {
+        $hostProcessId = (Get-Content $processIdFile).Trim()
+        $proc = Get-Process -Id $hostProcessId -ErrorAction SilentlyContinue
+        if ($proc) {
+            if ($isWindowsOS) {
+                Write-Host "Stopping host process (w3wp) with PID: $hostProcessId"
+                Stop-Process -Id $hostProcessId -Force -ErrorAction SilentlyContinue
+            } else {
+                Write-Host "Sending SIGTERM to host process PID: $hostProcessId"
+                & kill -s TERM $hostProcessId 2>/dev/null
+            }
+        } else {
+            Write-Host "Host process (PID: $hostProcessId) is not running."
+        }
+    } else {
+        Write-Host "Process ID file not found."
+    }
+
+    $postStopDelaySeconds = ${{ parameters.postStopDelaySeconds }}
+    if ($postStopDelaySeconds -gt 0) {
+        Start-Sleep -Seconds $postStopDelaySeconds
+    }
+
+    Write-Host "Host stopped."
+  displayName: ${{ parameters.displayName }}
+  condition: ${{ parameters.condition }}
