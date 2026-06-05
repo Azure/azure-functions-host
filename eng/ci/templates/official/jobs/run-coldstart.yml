@@ -271,18 +271,11 @@ jobs:
         COLLECT_ARGUMENTS: ${{ parameters.netTraceCollectArguments }}
 
   # ── Cold Start ────────────────────────────────────────────────────────────────
-  # See eng/ci/scripts/invoke-coldstart.ps1 for the specialization logic per OS.
+  # See eng/ci/templates/steps/invoke-coldstart.yml for the specialization logic per OS.
 
-  - pwsh: |
-      & "$(Build.SourcesDirectory)/eng/ci/scripts/invoke-coldstart.ps1" `
-          -Os "${{ parameters.os }}" `
-          -FunctionInvocationUrl "$(functionInvocationUrl)" `
-          -FunctionAppOutputPath "$(functionAppOutputPath)" `
-          -SiteName "$(WEBSITE_SITE_NAME)"
-    displayName: Record cold start latency
-    name: Record
-    env:
-      ENCRYPTION_KEY: $(PGO-APP-INSTANCE-ASSIGN-PAYLOAD-ENCRYPTION-KEY)
+  - template: /eng/ci/templates/steps/invoke-coldstart.yml@self
+    parameters:
+      os: ${{ parameters.os }}
 
   # ── Post-Collection & Cleanup ───────────────────────────────────────────────
 
