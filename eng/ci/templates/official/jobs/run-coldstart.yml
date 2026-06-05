@@ -171,6 +171,10 @@ jobs:
         # WEBSITE_AUTH_ENCRYPTION_KEY is the AES key used by the host to decrypt the EncryptedContext
         # in /admin/instance/assign requests. Must match the key used to encrypt the payload in the pipeline.
         WEBSITE_AUTH_ENCRYPTION_KEY: $(PGO-APP-INSTANCE-ASSIGN-PAYLOAD-ENCRYPTION-KEY)
+        # For jittrace generation, disable R2R so framework assemblies are JIT-compiled
+        # and captured by dotnet-trace (R2R methods don't fire JittingStarted events).
+        ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+          DOTNET_ReadyToRun: '0'
 
   # ── Warmup & PID Capture ──────────────────────────────────────────────────────
 
