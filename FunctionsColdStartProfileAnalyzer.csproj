@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" DefaultTargets="Build;Publish">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>Microsoft.Azure.Functions.ColdStartProfileAnalyzer</PackageId>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>func-cold-start-analyzer</ToolCommandName>
+    <Version>0.0.0-beta.185</Version>
+    <OutputType>Exe</OutputType>
+    <Company>Microsoft</Company>
+    <Description>A tool for analyzing cold start performance profiles.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.1.20" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.21308.1" />
+  </ItemGroup>
+</Project>
