@@ -436,7 +436,7 @@ jobs:
       displayName: Generate JIT trace
       ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
         env:
-          ANALYZER_ARGS: --generate-jittrace
+          ANALYZER_ARGS: --generate-jittrace --jittrace-exclude-before-buffer 3000 --jittrace-exclude-after-buffer 3000
 
     - pwsh: |
         Get-ChildItem -Path "$(netTraceDirectory)"
