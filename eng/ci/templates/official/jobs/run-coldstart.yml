@@ -430,9 +430,17 @@ jobs:
 
     - pwsh: |
         dotnet tool update -g Microsoft.Azure.Functions.ColdStartProfileAnalyzer --prerelease
-        $analyzerArgs = ${env:ANALYZER_ARGS}
-        Write-Host "Invoking with arguments --file $(netTraceFilePath) --format markdown text $analyzerArgs"
-        func-cold-start-analyzer --file $(netTraceFilePath) --format markdown text $analyzerArgs
+        $cmd = "func-cold-start-analyzer --file $(netTraceFilePath) --format markdown text"
+        $extraArgs = ${env:ANALYZER_ARGS}
+        if ($extraArgs) {
+            # Split the env var into individual arguments to avoid passing as a single string
+            $argList = $extraArgs -split '\s+'
+            Write-Host "Invoking: $cmd $extraArgs"
+            & func-cold-start-analyzer --file $(netTraceFilePath) --format markdown text @argList
+        } else {
+            Write-Host "Invoking: $cmd"
+            func-cold-start-analyzer --file $(netTraceFilePath) --format markdown text
+        }
       displayName: Generate JIT trace
       ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
         env:
