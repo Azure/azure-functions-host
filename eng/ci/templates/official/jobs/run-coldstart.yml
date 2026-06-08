@@ -90,9 +90,9 @@ jobs:
     ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
       warmupApiUrl: http://localhost:5000  # For JIT trace generation case, we call the home page instead of the api/warmup endpoint to ensure the host is up and running.
       ${{ if eq(parameters.os, 'Windows') }}:
-        functionInvocationUrl: http://localhost:5000/api/HelloAuth?forcespecialization&code=test
+        functionInvocationUrl: http://localhost:5000/api/HelloAuth?forcespecialization
       ${{ if eq(parameters.os, 'Linux') }}:
-        functionInvocationUrl: http://localhost:5000/api/HelloAuth?code=test
+        functionInvocationUrl: http://localhost:5000/api/HelloAuth
     ${{ else }}:
       warmupApiUrl: http://localhost:5000/api/warmup?restart=1
       ${{ if eq(parameters.os, 'Windows') }}:
@@ -152,6 +152,85 @@ jobs:
       New-Item -ItemType Directory -Path $(traceDirectory) -Force
       New-Item -ItemType Directory -Path $(netTraceDirectory) -Force
     displayName: Create directories
+
+  # ── Function Key Retrieval (jittrace only) ──────────────────────────────────
+  # Start a temporary host instance to retrieve the actual function key from
+  # blob storage, then tear it down. The key is used for the cold start
+  # invocation so the auth code path matches production (function-level, not admin).
+
+  - ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+    - ${{ if eq(parameters.os, 'Windows') }}:
+      - template: /eng/ci/templates/steps/configure-iis-site.yml@self
+        parameters:
+          createJitTrace: ${{ parameters.createJitTrace }}
+          instanceId: ${{ parameters.instanceId }}
+    - ${{ else }}:
+      - script: |
+          nohup $(hostOutputPath)/Microsoft.Azure.WebJobs.Script.WebHost > $(stdOutLogsFilePath) 2> $(stdErrorLogsFilePath) &
+          echo $! > $(Build.ArtifactStagingDirectory)/hostProcessId.txt
+        displayName: Start temporary host for key retrieval
+        env:
+          AzureWebJobsStorage: $(PGO-APP-AZURE-WEBJOBS-STORAGE)
+          WEBSITE_AUTH_ENCRYPTION_KEY: $(PGO-APP-INSTANCE-ASSIGN-PAYLOAD-ENCRYPTION-KEY)
+    - pwsh: |
+        $url = "http://localhost:5000"
+        Write-Host "Waiting for temporary host at $url..."
+        $maxAttempts = 15
+        for ($attempt = 0; $attempt -lt $maxAttempts; $attempt++) {
+            try {
+                $response = Invoke-WebRequest -Uri $url -Method Get -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
+                Write-Host "Host is ready. Status: $($response.StatusCode)"
+                break
+            } catch {
+                if ($attempt -lt ($maxAttempts - 1)) {
+                    Write-Host "Attempt $($attempt+1) failed: $($_.Exception.Message). Retrying in 10 seconds..."
+                    Start-Sleep -Seconds 10
+                } else {
+                    Write-Host "##vso[task.logissue type=error]Temporary host not ready after $maxAttempts attempts."
+                    exit 1
+                }
+            }
+        }
+      displayName: Wait for temporary host
+    - pwsh: |
+        # Retrieve the default host function key from the admin API.
+        # Use /admin/host/functionkeys (not /admin/functions/{name}/keys which requires functions to be loaded).
+        $keysUrl = "http://localhost:5000/admin/host/functionkeys?code=test"
+        Write-Host "Retrieving host function keys from $keysUrl"
+        $response = Invoke-RestMethod -Uri $keysUrl -Method Get -ErrorAction Stop
+        $defaultKey = $response.keys | Where-Object { $_.name -eq "default" } | Select-Object -ExpandProperty value
+        if ($defaultKey) {
+            Write-Host "Retrieved default host function key (length: $($defaultKey.Length))"
+            Write-Host "##vso[task.setvariable variable=functionKey;issecret=true]$defaultKey"
+        } else {
+            Write-Host "##vso[task.logissue type=warning]Default host function key not found. Falling back to 'test'."
+            Write-Host "##vso[task.setvariable variable=functionKey]test"
+        }
+      displayName: Retrieve function key
+      env:
+        ADMIN_KEY: test
+    - pwsh: |
+        $os = "${{ parameters.os }}"
+        if ($os -eq "Windows") {
+            $appcmd = "$env:SystemRoot\System32\inetsrv\appcmd.exe"
+            & $appcmd stop site "FunctionsHost" 2>$null
+            & $appcmd stop apppool "FunctionsHostPool" 2>$null
+            $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
+            if (Test-Path $processIdFile) {
+                $pid = (Get-Content $processIdFile).Trim()
+                $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+                if ($proc) { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue }
+            }
+        } else {
+            $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
+            if (Test-Path $processIdFile) {
+                $pid = (Get-Content $processIdFile).Trim()
+                & kill -s TERM $pid 2>/dev/null
+                Start-Sleep -Seconds 2
+            }
+        }
+        Write-Host "Temporary host stopped."
+      displayName: Stop temporary host
 
   # ── Host Setup ────────────────────────────────────────────────────────────────
   # Windows: IIS/ANCM hosting (production parity). Linux: direct process launch.

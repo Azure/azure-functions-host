@@ -23,6 +23,13 @@ steps:
     $functionAppOutputPath = "$(functionAppOutputPath)"
     $siteName = "$(WEBSITE_SITE_NAME)"
 
+    # Append function key to URL if available (jittrace runs retrieve this from admin API).
+    $functionKey = $env:FUNCTION_KEY
+    if ($functionKey) {
+        $separator = if ($helloUrl.Contains("?")) { "&" } else { "?" }
+        $helloUrl = "${helloUrl}${separator}code=${functionKey}"
+    }
+
     if ($os -eq "Linux") {
         # Linux: mimic production specialization via encrypted /admin/instance/assign.
         $encryptionKey = $env:ENCRYPTION_KEY
@@ -107,3 +114,4 @@ steps:
   name: Record
   env:
     ENCRYPTION_KEY: $(PGO-APP-INSTANCE-ASSIGN-PAYLOAD-ENCRYPTION-KEY)
+    FUNCTION_KEY: $(functionKey)
