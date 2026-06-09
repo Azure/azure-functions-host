@@ -521,10 +521,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.True(result);
             await TestHelpers.Await(() =>
-            {
-                testChannel.Verify(c => c.Shutdown(workerException), Times.Once);
-                return true;
-            }, pollingInterval: 50);
+                testChannel.Invocations.Any(i => string.Equals(i.Method.Name, nameof(IRpcWorkerChannel.Shutdown), StringComparison.Ordinal)),
+                pollingInterval: 50);
+
+            testChannel.Verify(c => c.Shutdown(workerException), Times.Once);
         }
 
         [Fact]
@@ -541,10 +541,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.True(result);
             await TestHelpers.Await(() =>
-            {
-                testChannel.Verify(c => c.Shutdown(null), Times.Once);
-                return true;
-            }, pollingInterval: 50);
+                testChannel.Invocations.Any(i => string.Equals(i.Method.Name, nameof(IRpcWorkerChannel.Shutdown), StringComparison.Ordinal)),
+                pollingInterval: 50);
+
+            testChannel.Verify(c => c.Shutdown(null), Times.Once);
         }
 
         [Fact]
@@ -561,10 +561,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.True(result);
             await TestHelpers.Await(() =>
-            {
-                disposableMock.Verify(d => d.Dispose(), Times.Once);
-                return true;
-            }, pollingInterval: 50);
+                disposableMock.Invocations.Any(i => string.Equals(i.Method.Name, nameof(IDisposable.Dispose), StringComparison.Ordinal)),
+                pollingInterval: 50);
+
+            disposableMock.Verify(d => d.Dispose(), Times.Once);
         }
 
         [Fact]
@@ -614,11 +614,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _rpcWorkerChannelManager.ScheduleShutdownStandbyChannels();
 
             await TestHelpers.Await(() =>
-            {
-                nodeChannel.Verify(c => c.Shutdown(null), Times.Once, "Node channel should be shutdown as it's a standby channel");
-                pythonChannel.Verify(c => c.Shutdown(null), Times.Once, "Python channel should be shutdown as it's a standby channel");
-                return true;
-            }, pollingInterval: 50);
+                nodeChannel.Invocations.Any(i => string.Equals(i.Method.Name, nameof(IRpcWorkerChannel.Shutdown), StringComparison.Ordinal))
+                && pythonChannel.Invocations.Any(i => string.Equals(i.Method.Name, nameof(IRpcWorkerChannel.Shutdown), StringComparison.Ordinal)),
+                pollingInterval: 50);
+
+            nodeChannel.Verify(c => c.Shutdown(null), Times.Once, "Node channel should be shutdown as it's a standby channel");
+            pythonChannel.Verify(c => c.Shutdown(null), Times.Once, "Python channel should be shutdown as it's a standby channel");
 
             javaChannel.Verify(c => c.Shutdown(null), Times.Never, "Java channel should not be shutdown as it's the worker runtime");
         }
@@ -673,10 +674,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _rpcWorkerChannelManager.ScheduleShutdownStandbyChannels();
 
             await TestHelpers.Await(() =>
-            {
-                nodeChannel.Verify(c => c.Shutdown(null), Times.Once);
-                return true;
-            }, pollingInterval: 50);
+                nodeChannel.Invocations.Any(i => string.Equals(i.Method.Name, nameof(IRpcWorkerChannel.Shutdown), StringComparison.Ordinal)),
+                pollingInterval: 50);
+
+            nodeChannel.Verify(c => c.Shutdown(null), Times.Once);
         }
 
         [Fact]

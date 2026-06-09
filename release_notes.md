@@ -4,4 +4,4 @@
 - My change description (#PR)
 -->
 
-- Bug-Fix: Fail in-flight invocations when scripthost restarts (#11810)
+- Bug-Fix: Fail in-flight invocations when ScriptHost restarts (#11810)
