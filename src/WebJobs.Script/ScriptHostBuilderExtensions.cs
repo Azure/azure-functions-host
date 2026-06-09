@@ -149,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     if (configBuilder.Sources[i] is EnvironmentVariablesConfigurationSource)
                     {
-                        configBuilder.Sources[i] = new ScriptEnvironmentVariablesConfigurationSource(liveEnvironmentLoading: false);
+                        configBuilder.Sources[i] = new ScriptEnvironmentVariablesConfigurationSource(liveEnvironmentRead: false);
                     }
                 }
 

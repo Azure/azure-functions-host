@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 
@@ -12,19 +13,19 @@ namespace Microsoft.Azure.WebJobs.Script
     /// This source exists to replace the default <see cref="EnvironmentVariablesConfigurationSource"/> to allow
     /// us to override caching behavior.
     /// </summary>
-    /// <param name="liveEnvironmentLoading">
-    /// If true, the provider will use the live environment variables when fetching values.
+    /// <param name="liveEnvironmentRead">
+    /// If true, the provider will read the live environment variables when fetching values.
     /// If false, it will cache environment variables one time on load.
     /// </param>
     /// <remarks>
-    /// Live environment fetching is the existing behavior we use in the WebHost so that post-specialization
+    /// Live environment read is the existing behavior we use in the WebHost so that post-specialization
     /// changes to the environment are reflected in the configuration.
     /// </remarks>
-    public class ScriptEnvironmentVariablesConfigurationSource(bool liveEnvironmentLoading = true) : IConfigurationSource
+    public class ScriptEnvironmentVariablesConfigurationSource(bool liveEnvironmentRead = true) : IConfigurationSource
     {
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            return liveEnvironmentLoading
+            return liveEnvironmentRead
                 ? new WebHostEnvironmentVariablesProvider() : new CompatEnvironmentVariablesProvider();
         }
 
@@ -46,8 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             public override void Load()
             {
-                base.Load();
-
                 static string Normalize(string key)
                 {
                     return key.Replace("__", ConfigurationPath.KeyDelimiter);
@@ -64,6 +63,13 @@ namespace Microsoft.Azure.WebJobs.Script
                            key.StartsWith(ServiceBusPrefix, StringComparison.OrdinalIgnoreCase);
                 }
 
+                // First load config from base class.
+                // Then add the prefixed string, but update a separate dictionary so we can atomically
+                // update the Data property with all new config at once, and not write to a dictionary
+                // being potentially accessed by other threads.
+                base.Load();
+                Dictionary<string, string> data = new(Data, StringComparer.OrdinalIgnoreCase);
+
                 // .NET 10 changed to special case some prefixes, inserting it into the "ConnectionStrings" section.
                 // For backwards compatibility, we still want to include these in the configuration.
                 foreach (DictionaryEntry kvp in Environment.GetEnvironmentVariables())
@@ -72,10 +78,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         if (IsPrefixedString(key))
                         {
-                            Data[Normalize(key)] = value;
+                            data[Normalize(key)] = value;
                         }
                     }
                 }
+
+                // Atomic swap to publish all config at once.
+                Data = data;
             }
         }
 
@@ -87,13 +96,22 @@ namespace Microsoft.Azure.WebJobs.Script
 
             public override bool TryGet(string key, out string value)
             {
+                // First, try to get the value from the environment variables.
+                // If that fails, try to get the value from the normalized key.
+                // If that fails, try to get the value from the data (cached version).
+                // NOTE: falling back to Data introduces a stale read after delete issue.
+                // If an env variable is deleted, the cached value will still be returned.
+                // This is not a concern as of this comment, as we have no env var deletes.
+                // We will be moving away from directly using env vars in the future.
                 return
-                    (value = Environment.GetEnvironmentVariable(key)) != null ||
-                    (value = Environment.GetEnvironmentVariable(NormalizeKey(key))) != null;
+                    (value = Environment.GetEnvironmentVariable(key)) != null
+                    || (value = Environment.GetEnvironmentVariable(NormalizeKey(key))) != null
+                    || Data.TryGetValue(key, out value);
             }
 
             public override void Set(string key, string value)
             {
+                base.Set(key, value);
                 Environment.SetEnvironmentVariable(key, value);
             }
 
