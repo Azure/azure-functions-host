@@ -256,7 +256,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                 if (workerChannel != null)
                                 {
                                     _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, language);
-                                    workerChannel.Shutdown(workerException);
+
+                                    try
+                                    {
+                                        workerChannel.Shutdown(workerException);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        _logger.LogError(ex, "Error failing executions on shutdown for language worker channel with id:{workerId}", workerChannel.Id);
+                                    }
+
                                     (channelTask.Result as IDisposable)?.Dispose();
                                 }
                             }
@@ -282,7 +291,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             if (workerChannel != null)
                             {
                                 _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, language);
-                                workerChannel.Shutdown(workerException);
+
+                                try
+                                {
+                                    workerChannel.Shutdown(workerException);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError(ex, "Error failing executions on shutdown for language worker channel with id:{workerId}", workerId);
+                                }
+
                                 (channelTask.Result as IDisposable)?.Dispose();
                             }
                         }
@@ -321,9 +339,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                         else
                                         {
                                             IRpcWorkerChannel workerChannel = channelTask.Result;
-                                            if (workerChannel != null)
+                                            if (workerChannel is not null)
                                             {
-                                                (channelTask.Result as IDisposable)?.Dispose();
+                                                try
+                                                {
+                                                    workerChannel.Shutdown(null);
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    _logger.LogError(ex, "Error failing executions on shutdown for language worker channel with id:{workerId}", workerChannel.Id);
+                                                }
+
+                                                (workerChannel as IDisposable)?.Dispose();
                                             }
                                         }
                                         latencyEvent.Dispose();
@@ -362,6 +389,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             {
                                 try
                                 {
+                                    if (workerChannel is not null)
+                                    {
+                                        try
+                                        {
+                                            workerChannel.Shutdown(null);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            _logger.LogError(ex, "Error failing executions on shutdown for language worker channel with id:{workerId}", workerChannel.Id);
+                                        }
+                                    }
+
                                     disposableWorkerChannel.Dispose();
                                 }
                                 catch (Exception ex)

@@ -1,10 +1,11 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -207,6 +208,111 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // test case insensitivity
             Assert.Equal(1, _jobHostRpcWorkerChannelManager.GetChannels("Java").Count());
+        }
+
+        [Fact]
+        public async Task ShutdownChannelIfExistsAsync_CallsShutdownWithException()
+        {
+            _jobHostRpcWorkerChannelManager.ShutdownChannels();
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJava1.Object, "java");
+
+            var workerException = new InvalidOperationException("Worker failed");
+            bool result = await _jobHostRpcWorkerChannelManager.ShutdownChannelIfExistsAsync("java1", workerException);
+
+            Assert.True(result);
+            _workerChannelJava1.Verify(wc => wc.Shutdown(workerException), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShutdownChannelIfExistsAsync_CallsShutdownWithNull_WhenNoException()
+        {
+            _jobHostRpcWorkerChannelManager.ShutdownChannels();
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelPs1.Object, "powershell");
+
+            bool result = await _jobHostRpcWorkerChannelManager.ShutdownChannelIfExistsAsync("ps1", null);
+
+            Assert.True(result);
+            _workerChannelPs1.Verify(wc => wc.Shutdown(null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShutdownChannelIfExistsAsync_DisposesChannel()
+        {
+            _jobHostRpcWorkerChannelManager.ShutdownChannels();
+            _workerChannelJava1.As<IDisposable>();
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJava1.Object, "java");
+
+            bool result = await _jobHostRpcWorkerChannelManager.ShutdownChannelIfExistsAsync("java1", null);
+
+            Assert.True(result);
+            _workerChannelJava1.As<IDisposable>().Verify(d => d.Dispose(), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShutdownChannelIfExistsAsync_ReturnsFalse_WhenChannelDoesNotExist()
+        {
+            _jobHostRpcWorkerChannelManager.ShutdownChannels();
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJava1.Object, "java");
+
+            bool result = await _jobHostRpcWorkerChannelManager.ShutdownChannelIfExistsAsync("nonexistent", null);
+
+            Assert.False(result);
+            _workerChannelJava1.Verify(wc => wc.Shutdown(It.IsAny<Exception>()), Times.Never);
+        }
+
+        /// <summary>
+        /// Tests that <see cref="JobHostRpcWorkerChannelManager.ShutdownChannels()"/> calls Shutdown with null on all channels.
+        /// </summary>
+        [Fact]
+        public void ShutdownChannels_CallsShutdownWithNull_OnAllChannels()
+        {
+            _jobHostRpcWorkerChannelManager.ShutdownChannels();
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJava1.Object, "java");
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelPs1.Object, "powershell");
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJs1.Object, "node");
+
+            _jobHostRpcWorkerChannelManager.ShutdownChannels();
+
+            _workerChannelJava1.Verify(wc => wc.Shutdown(null), Times.Once);
+            _workerChannelPs1.Verify(wc => wc.Shutdown(null), Times.Once);
+            _workerChannelJs1.Verify(wc => wc.Shutdown(null), Times.Once);
+        }
+
+        [Fact]
+        public void ShutdownChannels_DisposesAllChannels()
+        {
+            _jobHostRpcWorkerChannelManager.ShutdownChannels();
+            _workerChannelJava1.As<IDisposable>();
+            _workerChannelPs1.As<IDisposable>();
+            _workerChannelJs1.As<IDisposable>();
+
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJava1.Object, "java");
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelPs1.Object, "powershell");
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJs1.Object, "node");
+
+            _jobHostRpcWorkerChannelManager.ShutdownChannels();
+
+            _workerChannelJava1.As<IDisposable>().Verify(d => d.Dispose(), Times.Once);
+            _workerChannelPs1.As<IDisposable>().Verify(d => d.Dispose(), Times.Once);
+            _workerChannelJs1.As<IDisposable>().Verify(d => d.Dispose(), Times.Once);
+        }
+
+        [Fact]
+        public void ShutdownChannels_ShutdownsMultipleChannelsOfSameLanguage()
+        {
+            _jobHostRpcWorkerChannelManager.ShutdownChannels();
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJava1.Object, "java");
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJava2.Object, "java");
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJs1.Object, "node");
+            _jobHostRpcWorkerChannelManager.AddChannel(_workerChannelJs2.Object, "node");
+
+            _jobHostRpcWorkerChannelManager.ShutdownChannels();
+
+            _workerChannelJava1.Verify(wc => wc.Shutdown(null), Times.Once);
+            _workerChannelJava2.Verify(wc => wc.Shutdown(null), Times.Once);
+            _workerChannelJs1.Verify(wc => wc.Shutdown(null), Times.Once);
+            _workerChannelJs2.Verify(wc => wc.Shutdown(null), Times.Once);
+            Assert.Equal(0, _jobHostRpcWorkerChannelManager.GetChannels().Count());
         }
     }
 }

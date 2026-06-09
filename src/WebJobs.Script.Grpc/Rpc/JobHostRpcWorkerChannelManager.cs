@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -49,7 +49,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     {
                         string id = rpcChannel.Id;
                         _logger.LogDebug("Disposing language worker channel with id:{workerId}", id);
-                        rpcChannel.Shutdown(workerException);
+
+                        try
+                        {
+                            rpcChannel.Shutdown(workerException);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error failing executions on shutdown for language worker channel with id:{workerId}", id);
+                        }
 
                         (rpcChannel as IDisposable)?.Dispose();
                         _logger.LogDebug("Disposed language worker channel with id:{workerId}", id);
@@ -72,6 +80,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         if (removedChannels.TryRemove(removedChannel.Id, out IRpcWorkerChannel _))
                         {
                             _logger.LogDebug("Disposing language worker channel with id:{workerId}", removedChannel.Id);
+
+                            try
+                            {
+                                removedChannel.Shutdown(null);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Error failing executions on shutdown for language worker channel with id:{workerId}", removedChannel.Id);
+                            }
+
                             (removedChannel as IDisposable)?.Dispose();
                         }
                     }
