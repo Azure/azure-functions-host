@@ -3,3 +3,5 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+
+- Bug-Fix: Fail in-flight invocations when scripthost restarts (#11810)
