@@ -40,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ContainerName = "CONTAINER_NAME";
         public const string WebsitePodName = "WEBSITE_POD_NAME";
         public const string LegionServiceHost = "LEGION_SERVICE_HOST";
+        public const string FunctionsSyncTriggersMode = "FUNCTIONS_SYNC_TRIGGERS_MODE";
         public const string WebSiteHomeStampName = "WEBSITE_HOME_STAMPNAME";
         public const string WebSiteStampDeploymentId = "WEBSITE_STAMP_DEPLOYMENT_ID";
         public const string WebSiteAuthEncryptionKey = "WEBSITE_AUTH_ENCRYPTION_KEY";

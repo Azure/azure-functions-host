@@ -213,6 +213,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         }
 
         [Fact]
+        public async Task NotifyTriggersChanged_PostsExpectedOperation()
+        {
+            HttpRequestMessage capturedRequest = null;
+            _handlerMock.Protected().Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
+                .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.OK });
+
+            await _meshServiceClient.NotifyTriggersChanged();
+
+            Assert.NotNull(capturedRequest);
+            Assert.Equal(MeshInitUri, capturedRequest.RequestUri.AbsoluteUri);
+            Assert.Equal(HttpMethod.Post, capturedRequest.Method);
+
+            var formData = await capturedRequest.Content.ReadAsFormDataAsync();
+            Assert.Equal(MeshServiceClient.UpdateTriggersOperation, formData["operation"]);
+            Assert.Equal(ContainerName, capturedRequest.Headers.GetValues(ScriptConstants.ContainerInstanceHeader).Single());
+        }
+
+        [Fact]
+        public async Task NotifyTriggersChanged_NonSuccessStatus_Throws()
+        {
+            _handlerMock.Protected().Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.InternalServerError });
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => _meshServiceClient.NotifyTriggersChanged());
+        }
+
+        [Fact]
         public async Task IgnoresGlobalSerializer()
         {
             Func<JsonSerializerSettings> defaultSettings = null;

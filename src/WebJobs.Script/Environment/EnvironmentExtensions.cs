@@ -372,6 +372,24 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets the configured <see cref="TriggerSyncMode"/> for this host instance.
+        /// The mode is read once at startup via the <see cref="FunctionsSyncTriggersMode"/> environment variable.
+        /// Defaults to <see cref="TriggerSyncMode.FrontEnd"/> when the variable is unset or not a recognized value.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns>The configured <see cref="TriggerSyncMode"/>.</returns>
+        public static TriggerSyncMode GetTriggerSyncMode(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(FunctionsSyncTriggersMode);
+            if (Enum.TryParse<TriggerSyncMode>(value, ignoreCase: true, out var mode))
+            {
+                return mode;
+            }
+
+            return TriggerSyncMode.FrontEnd;
+        }
+
+        /// <summary>
         /// Checks both WEBSITE_SKU and WEBSITE_SKU_NAME and returns true IFF one is
         /// set to "Dynamic".
         /// </summary>
