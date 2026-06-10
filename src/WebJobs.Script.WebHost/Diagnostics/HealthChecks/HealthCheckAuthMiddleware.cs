@@ -22,6 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
         {
             ArgumentNullException.ThrowIfNull(context);
 
+            // We only authenticate if ?expand=true is present, as that reveals more information.
+            if (!HealthCheckHelpers.IsExpandedHealthCheck(context.Request))
+            {
+                await _next(context);
+                return;
+            }
+
             AuthorizationPolicy policy = await _provider.GetPolicyAsync(PolicyNames.AdminAuthLevel)
                 .ConfigureAwait(false);
 

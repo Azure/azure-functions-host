@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
 {
@@ -19,8 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.HealthChecks
             ArgumentNullException.ThrowIfNull(report);
 
             // We will write a detailed report if ?expand=true is present.
-            if (httpContext.Request.Query.TryGetValue("expand", out StringValues value)
-                && bool.TryParse(value, out bool expand) && expand)
+            if (HealthCheckHelpers.IsExpandedHealthCheck(httpContext.Request))
             {
                 return UIResponseWriter.WriteHealthCheckUIResponse(httpContext, report);
             }

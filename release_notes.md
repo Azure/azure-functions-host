@@ -5,3 +5,4 @@
 -->
 
 - fix: address config reload concurrent read/write race (#11815)
+- fix: avoid health checks triggering secret-manager too early (#11816)
