@@ -376,12 +376,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// as a <see cref="TriggerSyncMode"/>. Returns <see cref="TriggerSyncMode.FrontEnd"/>
         /// when the variable is unset or not a recognized value.
         /// </summary>
-        /// <remarks>
-        /// This method reads the environment variable on every call. Callers (e.g.,
-        /// <c>FunctionsSyncManager</c>) typically cache the result for the lifetime of
-        /// the host so a runtime change to the variable does not take effect until the
-        /// host process restarts.
-        /// </remarks>
         /// <param name="environment">The environment to verify.</param>
         /// <returns>The configured <see cref="TriggerSyncMode"/>.</returns>
         public static TriggerSyncMode GetTriggerSyncMode(this IEnvironment environment)
