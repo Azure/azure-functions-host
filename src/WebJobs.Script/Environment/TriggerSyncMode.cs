@@ -18,8 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// In addition to the default front-end sync, the host fires a best-effort
         /// notification to the in-pod mesh server so the platform can asynchronously
-        /// fetch and persist the triggers payload. The mesh notification is
-        /// fire-and-forget; failure does not affect the front-end sync result.
+        /// fetch and persist the triggers payload. The mesh notification is awaited
+        /// (so any failure is observed and logged) but swallowed; failure does not
+        /// affect the front-end sync result.
         /// </summary>
         Platform = 1,
     }
