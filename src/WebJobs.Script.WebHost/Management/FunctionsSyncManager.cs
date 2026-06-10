@@ -152,10 +152,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     }
                     if (success)
                     {
-                        // Iteration 1: when FUNCTIONS_SYNC_TRIGGERS_MODE=Platform, fire a best-effort
-                        // notification to the in-pod mesh server so the platform can asynchronously
-                        // fetch and persist the triggers payload. No-op when mode is the default
-                        // (FrontEnd). Failures are swallowed -- the front-end sync already succeeded.
                         await NotifyPlatformIfEnabledAsync();
                     }
                     result.Success = success;
