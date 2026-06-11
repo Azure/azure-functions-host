@@ -1,13 +1,15 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.IO;
 using System.Net;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
@@ -17,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -400,6 +403,61 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             cts.Cancel();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _hostController.Resume(scriptHostManagerMock.Object, cts.Token));
             scriptHostManagerMock.Verify(p => p.RestartHostAsync("test", It.IsAny<CancellationToken>()), Times.Never());
+        }
+
+        [Fact]
+        public async Task GetTriggers_WithFuncPlatformClaim_ReturnsOk()
+        {
+            var expectedResult = new TriggersResult { Success = true, Content = "{}" };
+            _functionsSyncManager.Setup(p => p.GetTriggersAsync()).ReturnsAsync(expectedResult);
+
+            var httpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(SecurityConstants.FuncPlatformClaimType, "true")
+                ]))
+            };
+            _hostController.ControllerContext.HttpContext = httpContext;
+
+            var result = await _hostController.GetTriggers();
+
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var triggersResult = Assert.IsType<TriggersResult>(okResult.Value);
+            Assert.True(triggersResult.Success);
+        }
+
+        [Fact]
+        public async Task GetTriggers_WithoutFuncPlatformClaim_ReturnsForbid()
+        {
+            var httpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity())
+            };
+
+            _hostController.ControllerContext.HttpContext = httpContext;
+
+            var result = await _hostController.GetTriggers();
+
+            Assert.IsType<ForbidResult>(result);
+        }
+
+        [Fact]
+        public async Task GetTriggers_WithAuthClaimOnly_ReturnsForbid()
+        {
+            var httpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Admin.ToString())
+                ]))
+            };
+
+            _hostController.ControllerContext.HttpContext = httpContext;
+
+            var result = await _hostController.GetTriggers();
+
+            Assert.IsType<ForbidResult>(result);
         }
     }
 }
