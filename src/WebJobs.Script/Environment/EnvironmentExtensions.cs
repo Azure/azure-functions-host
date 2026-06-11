@@ -359,7 +359,8 @@ namespace Microsoft.Azure.WebJobs.Script
             return !environment.IsAppService() &&
                    (!string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName)) ||
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(WebsitePodName))) &&
-                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost));
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(LegionServiceHost)) &&
+                   !environment.IsManagedAppEnvironment();
         }
 
         /// <summary>
