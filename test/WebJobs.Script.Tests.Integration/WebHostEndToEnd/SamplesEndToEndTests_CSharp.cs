@@ -367,6 +367,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Theory]
+        [InlineData("/admin/health")]
+        [InlineData("/admin/health/live")]
+        [InlineData("/admin/health/ready")]
+        public async Task HealthCheck_NoToken_Succeeds(string uri)
+        {
+            // token specified as bearer token
+            HttpRequestMessage request = new(HttpMethod.Get, uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("{\"status\":\"Healthy\"}", body);
+        }
+
+        [Theory]
         [InlineData("/admin/health?expand=true", null)]
         [InlineData("/admin/health/live?expand=true", HealthCheckTags.Liveness)]
         [InlineData("/admin/health/ready?expand=true", HealthCheckTags.Readiness)]
@@ -404,9 +419,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Theory]
-        [InlineData("/admin/health")]
-        [InlineData("/admin/health/live")]
-        [InlineData("/admin/health/ready")]
+        [InlineData("/admin/health?expand=true")]
+        [InlineData("/admin/health/live?expand=true")]
+        [InlineData("/admin/health/ready?expand=true")]
         public async Task HealthCheck_NoAdminToken_Fail(string uri)
         {
             // token specified as bearer token
