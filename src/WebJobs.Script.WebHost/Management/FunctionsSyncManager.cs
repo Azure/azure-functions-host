@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IMeshServiceClient _meshServiceClient;
-        private readonly TriggerSyncMode _triggerSyncMode;
+        private readonly bool _notifyPlatformOnSync;
 
         private BlobClient _hashBlobClient;
 
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _hostingConfigOptions = functionsHostingConfigOptions;
             _scriptHostManager = scriptHostManager;
             _meshServiceClient = meshServiceClient ?? NullMeshServiceClient.Instance;
-            _triggerSyncMode = environment?.GetTriggerSyncMode() ?? TriggerSyncMode.FrontEnd;
+            _notifyPlatformOnSync = environment?.ShouldNotifyPlatformOnSync() ?? false;
         }
 
         internal bool ArmCacheEnabled
@@ -298,18 +298,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         /// <summary>
-        /// Iteration-1 additive notification. When <see cref="TriggerSyncMode.Platform"/> is enabled
-        /// via <see cref="EnvironmentSettingNames.FunctionsSyncTriggersMode"/>, fires a best-effort
-        /// notification to the in-pod mesh server so the platform can asynchronously fetch and persist
-        /// the triggers payload. No-op when mode is the default <see cref="TriggerSyncMode.FrontEnd"/>.
-        /// Exceptions are logged and swallowed so the caller's sync triggers result is never affected.
+        /// Performs a best-effort notification to the platform when triggers are synchronized.
         /// </summary>
         /// <remarks>
         /// Exposed as <see langword="internal"/> for direct unit testing.
         /// </remarks>
         internal async Task NotifyPlatformIfEnabledAsync()
         {
-            if (_triggerSyncMode != TriggerSyncMode.Platform)
+            if (!_notifyPlatformOnSync)
             {
                 return;
             }
@@ -318,12 +314,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 await _meshServiceClient.NotifyTriggersChanged();
             }
-            catch (Exception ex)
+            catch (Exception exc) when (!exc.IsFatal())
             {
-                // Best-effort. The platform will catch up on the next sync triggers operation
-                // (key rotation, customer sync, startup one-shot, next deployment). The front-end
-                // sync and blob-hash commit above already succeeded, so we never propagate this.
-                _logger.LogWarning(ex, "Failed to notify platform of triggers change. Sync to front end succeeded; platform store will be updated on the next sync.");
+                _logger.LogWarning(exc, "Failed to notify platform of triggers change.");
             }
         }
 

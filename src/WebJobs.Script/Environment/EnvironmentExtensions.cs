@@ -372,21 +372,14 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Reads and parses the <see cref="FunctionsSyncTriggersMode"/> environment variable
-        /// as a <see cref="TriggerSyncMode"/>. Returns <see cref="TriggerSyncMode.FrontEnd"/>
-        /// when the variable is unset or not a recognized value.
+        /// Gets a value indicating whether the host should notify the platform when triggers are synchronized,
+        /// based on the <see cref="FunctionsNotifyPlatformOnSync"/> environment variable.
         /// </summary>
         /// <param name="environment">The environment to verify.</param>
-        /// <returns>The configured <see cref="TriggerSyncMode"/>.</returns>
-        public static TriggerSyncMode GetTriggerSyncMode(this IEnvironment environment)
+        /// <returns><see langword="true"/> if platform notification is enabled; otherwise, <see langword="false"/>.</returns>
+        public static bool ShouldNotifyPlatformOnSync(this IEnvironment environment)
         {
-            string value = environment.GetEnvironmentVariable(FunctionsSyncTriggersMode);
-            if (Enum.TryParse<TriggerSyncMode>(value, ignoreCase: true, out var mode))
-            {
-                return mode;
-            }
-
-            return TriggerSyncMode.FrontEnd;
+            return bool.TryParse(environment.GetEnvironmentVariable(FunctionsNotifyPlatformOnSync), out bool enabled) && enabled;
         }
 
         /// <summary>

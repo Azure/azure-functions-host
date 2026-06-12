@@ -18,20 +18,19 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 {
     /// <summary>
-    /// Tests for the iteration-1 additive behavior in <see cref="FunctionsSyncManager"/>:
-    /// when <see cref="EnvironmentSettingNames.FunctionsSyncTriggersMode"/> is set to
-    /// <see cref="TriggerSyncMode.Platform"/>, a best-effort mesh notification is fired
-    /// after a successful front-end sync. Failures must not propagate.
+    /// Tests for the best-effort platform notification in <see cref="FunctionsSyncManager"/>:
+    /// when <see cref="EnvironmentSettingNames.FunctionsNotifyPlatformOnSync"/> is enabled, a
+    /// mesh notification is fired after a successful front-end sync. Failures must not propagate.
     /// </summary>
     public class FunctionsSyncManagerPlatformNotificationTests
     {
         [Fact]
-        public async Task NotifyPlatformIfEnabledAsync_ModeIsPlatform_CallsMesh()
+        public async Task NotifyPlatformIfEnabledAsync_Enabled_CallsMesh()
         {
             var mockMesh = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             mockMesh.Setup(m => m.NotifyTriggersChanged()).Returns(Task.CompletedTask);
 
-            var syncManager = CreateSyncManager(TriggerSyncMode.Platform, mockMesh.Object);
+            var syncManager = CreateSyncManager(notifyPlatformOnSync: true, mockMesh.Object);
 
             await syncManager.NotifyPlatformIfEnabledAsync();
 
@@ -39,11 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         }
 
         [Fact]
-        public async Task NotifyPlatformIfEnabledAsync_ModeIsFrontEnd_DoesNotCallMesh()
+        public async Task NotifyPlatformIfEnabledAsync_Disabled_DoesNotCallMesh()
         {
             var mockMesh = new Mock<IMeshServiceClient>(MockBehavior.Strict);
 
-            var syncManager = CreateSyncManager(TriggerSyncMode.FrontEnd, mockMesh.Object);
+            var syncManager = CreateSyncManager(notifyPlatformOnSync: false, mockMesh.Object);
 
             await syncManager.NotifyPlatformIfEnabledAsync();
 
@@ -57,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             mockMesh.Setup(m => m.NotifyTriggersChanged())
                 .ThrowsAsync(new HttpRequestException("simulated mesh failure"));
 
-            var syncManager = CreateSyncManager(TriggerSyncMode.Platform, mockMesh.Object);
+            var syncManager = CreateSyncManager(notifyPlatformOnSync: true, mockMesh.Object);
 
             // Should NOT throw; failure must be swallowed so the front-end result is preserved.
             await syncManager.NotifyPlatformIfEnabledAsync();
@@ -65,12 +64,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             mockMesh.Verify(m => m.NotifyTriggersChanged(), Times.Once);
         }
 
-        private static FunctionsSyncManager CreateSyncManager(TriggerSyncMode mode, IMeshServiceClient meshServiceClient)
+        private static FunctionsSyncManager CreateSyncManager(bool notifyPlatformOnSync, IMeshServiceClient meshServiceClient)
         {
             var environmentMock = new Mock<IEnvironment>();
             environmentMock
-                .Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsSyncTriggersMode))
-                .Returns(mode.ToString());
+                .Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync))
+                .Returns(notifyPlatformOnSync.ToString());
 
             var appHostOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
             appHostOptions.SetupGet(p => p.CurrentValue).Returns(new ScriptApplicationHostOptions { ScriptPath = "/dev/null" });
