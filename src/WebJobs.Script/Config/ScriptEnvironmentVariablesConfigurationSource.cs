@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 
@@ -46,8 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             public override void Load()
             {
-                base.Load();
-
                 static string Normalize(string key)
                 {
                     return key.Replace("__", ConfigurationPath.KeyDelimiter);
@@ -64,6 +63,13 @@ namespace Microsoft.Azure.WebJobs.Script
                            key.StartsWith(ServiceBusPrefix, StringComparison.OrdinalIgnoreCase);
                 }
 
+                // First load config from base class.
+                // Then add the prefixed string, but update a separate dictionary so we can atomically
+                // update the Data property with all new config at once, and not write to a dictionary
+                // being potentially accessed by other threads.
+                base.Load();
+                Dictionary<string, string> data = new(Data, StringComparer.OrdinalIgnoreCase);
+
                 // .NET 10 changed to special case some prefixes, inserting it into the "ConnectionStrings" section.
                 // For backwards compatibility, we still want to include these in the configuration.
                 foreach (DictionaryEntry kvp in Environment.GetEnvironmentVariables())
@@ -72,10 +78,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         if (IsPrefixedString(key))
                         {
-                            Data[Normalize(key)] = value;
+                            data[Normalize(key)] = value;
                         }
                     }
                 }
+
+                // Atomic swap to publish all config at once.
+                Data = data;
             }
         }
 
