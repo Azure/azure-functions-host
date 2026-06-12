@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -299,6 +300,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             AssertFunction(function1);
             AssertFunction(function2);
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadataAsync_HostInErrorStateWithNoActiveHost_InitializesChannelInsteadOfRestarting()
+        {
+            // Regression test for the host startup deadlock: when the JobHost is mid-startup (Error state
+            // during a retry) and no active host has been assigned yet, the provider must not call
+            // RestartHostAsync. GetFunctionMetadataAsync runs synchronously inside BuildHost while the start
+            // semaphore is held, so a restart would re-enter host startup and deadlock. It must initialize
+            // the worker channel directly instead.
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
+
+            var scriptApplicationHostOptions = new ScriptApplicationHostOptions();
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(scriptApplicationHostOptions);
+
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
+            mockScriptHostManager.Setup(m => m.State).Returns(ScriptHostState.Error);
+
+            var mockChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
+            mockChannelManager.Setup(m => m.GetChannels(It.IsAny<string>()))
+                .Returns(() => new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>());
+            mockChannelManager.Setup(m => m.InitializeChannelAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), It.IsAny<string>()))
+                .ReturnsAsync(Mock.Of<IRpcWorkerChannel>());
+
+            var environment = new TestEnvironment();
+            var mockRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            mockRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("node");
+
+            var provider = new WorkerFunctionMetadataProvider(
+                optionsMonitor,
+                NullLogger<WorkerFunctionMetadataProvider>.Instance,
+                environment,
+                mockChannelManager.Object,
+                mockScriptHostManager.Object,
+                mockRuntimeResolver.Object);
+
+            await provider.GetFunctionMetadataAsync(workerConfigs, false);
+
+            mockChannelManager.Verify(m => m.InitializeChannelAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), "node"), Times.Once);
+            mockScriptHostManager.Verify(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
