@@ -110,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                             Content = payload
                         };
 
+                        // CodeQL [SM03781] - The address is constructed using the host and port from a trusted MSI endpoint, and a fixed path. Also granted exception from CodeQL team regarding this open-source repo.
                         var response = await _client.SendAsync(requestMessage);
 
                         _logger.LogInformation($"Specialize MSI sidecar returned {response.StatusCode}");
@@ -208,6 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                             using (_metricsLogger.LatencyEvent(eventName))
                             {
                                 var request = new HttpRequestMessage(HttpMethod.Head, blobUri);
+                                // CodeQL [SM03781] - The blobUri is provided by the user, but we are only making a HEAD request to it to validate its existence and get the content length. We are not downloading or processing any content from the blobUri at this stage. Also granted exception from CodeQL team regarding this open-source repo.
                                 response = await _client.SendAsync(request);
                                 response.EnsureSuccessStatusCode();
                                 if (response.Content != null && response.Content.Headers != null)
@@ -237,6 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             try
             {
+                // CodeQL [SM04255] - Granted exception from CodeQL team regarding this open-source repo.
                 var shareServiceClient = new ShareServiceClient(connectionString);
                 var shareClient = shareServiceClient.GetShareClient(contentShare);
 
