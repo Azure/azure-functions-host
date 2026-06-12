@@ -3,4 +3,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Fixed an issue where custom handler apps with extension bundles would fail to load binding types after specialization (#11676)
+-->
+
+- fix: address config reload concurrent read/write race (#11815)
+- fix: avoid health checks triggering secret-manager too early (#11816)
