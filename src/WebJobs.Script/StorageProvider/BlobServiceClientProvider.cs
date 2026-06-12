@@ -19,8 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Initializes a new instance of the <see cref="BlobServiceClientProvider"/> class that uses the registered Azure services to create a BlobServiceClient.
         /// </summary>
-        /// <param name="componentFactory">The Azure factory responsible for creating clients. <see cref="AzureComponentFactory"/></param>
-        /// <param name="logForwarder">Log forwarder that forwards events to ILogger. <see cref="AzureEventSourceLogForwarder"/></param>
+        /// <param name="componentFactory">The Azure factory responsible for creating clients. <see cref="AzureComponentFactory"/>.</param>
+        /// <param name="logForwarder">Log forwarder that forwards events to ILogger. <see cref="AzureEventSourceLogForwarder"/>.</param>
         public BlobServiceClientProvider(AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder)
             : base(componentFactory, logForwarder) { }
 
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="configuration">Configuration to retrieve settings from.</param>
         /// <param name="tokenCredential">Credential for the client.</param>
         /// <param name="options">Options to configure the client.</param>
-        /// <returns>An instance of <see cref="BlobServiceClient"/></returns>
+        /// <returns>An instance of <see cref="BlobServiceClient"/>.</returns>
         protected override BlobServiceClient CreateClient(IConfiguration configuration, TokenCredential tokenCredential, BlobClientOptions options)
         {
             // If connection string is present, it will be honored first; bypass creating a serviceUri
