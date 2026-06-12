@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                             Content = payload
                         };
 
-                        // CodeQL [SM03781] - The address is constructed using the host and port from a trusted MSI endpoint, and a fixed path. Not an SSRF attack because this process is not multi-tenant and runs exclusively on customer-scoped compute.
+                        // CodeQL [SM03781] The address is constructed using the host and port from a trusted MSI endpoint, and a fixed path. Not an SSRF attack because this process is not multi-tenant and runs exclusively on customer-scoped compute.
                         // Any possibility of modifying those endpoints will require control of the entire environment already.
                         var response = await _client.SendAsync(requestMessage);
 
