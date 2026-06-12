@@ -18,6 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
     public class ControllerScenarioTestFixture : IAsyncLifetime, IDisposable
     {
+        public const string Collection = "ControllerScenarioTests";
+
         private ScriptSettingsManager _settingsManager;
         private HttpConfiguration _config;
 

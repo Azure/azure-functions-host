@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
@@ -12,6 +12,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
+    [Collection(GetKeysFixture.Collection)]
     [Trait("A GET request is made against the function keys collection endpoint", "")]
     public class GetFunctionKeysScenario : IClassFixture<GetFunctionKeysScenario.GetKeysFixture>
     {

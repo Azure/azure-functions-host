@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Linq;
@@ -6,12 +6,12 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
-using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
+    [Collection(Fixture.Collection)]
     [Trait("A POST request is made against the function key resource endpoint", "")]
     public class PostFunctionKeysScenario : IClassFixture<PostFunctionKeysScenario.Fixture>
     {
