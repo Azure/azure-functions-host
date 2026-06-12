@@ -7,6 +7,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers.Keys
 {
+    [Collection(Fixture.Collection)]]
     [Trait("Requests are made with IsAuthDisabled: true", "")]
     public class AuthDisabledScenario : IClassFixture<AuthDisabledScenario.Fixture>
     {

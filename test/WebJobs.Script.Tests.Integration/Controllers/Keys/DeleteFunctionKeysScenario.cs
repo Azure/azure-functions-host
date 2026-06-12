@@ -1,15 +1,15 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
-using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
+    [Collection(Fixture.Collection)]
     [Trait("A DELETE request is made against the function key resource endpoint", "")]
     public class DeleteFunctionKeysScenario : IClassFixture<DeleteFunctionKeysScenario.Fixture>
     {
