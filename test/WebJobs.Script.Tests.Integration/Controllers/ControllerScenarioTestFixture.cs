@@ -17,7 +17,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
-    public class ControllerScenarioTestFixture : IAsyncLifetime, IDisposable
+    public class ControllerScenarioTestFixture : IAsyncLifetime
     {
         private ScriptSettingsManager _settingsManager;
         private HttpConfiguration _config;
@@ -30,26 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
         public IHost Host { get; set; }
 
         protected virtual void ConfigureWebHostBuilder(IWebHostBuilder webHostBuilder) { }
-
-        public void Dispose()
-        {
-            HttpClient?.Dispose();
-
-            if (Host is not null)
-            {
-                try
-                {
-                    Host.StopAsync().GetAwaiter().GetResult();
-                }
-                catch
-                {
-                }
-
-                Host.Dispose();
-            }
-
-            _scriptRoot?.Dispose();
-        }
 
         public virtual async Task InitializeAsync()
         {
@@ -97,9 +77,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             await manager.DelayUntilHostReadyAsync();
         }
 
-        public Task DisposeAsync()
+        public async Task DisposeAsync()
         {
-            return Task.CompletedTask;
+            HttpClient?.Dispose();
+
+            if (Host is not null)
+            {
+                try
+                {
+                    await Host.StopAsync();
+                }
+                catch
+                {
+                }
+
+                Host.Dispose();
+            }
+
+            _scriptRoot?.Dispose();
         }
     }
 }
