@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly StartupContextProvider _startupContextProvider;
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
         private Lazy<ISecretManager> _secretManagerLazy;
-        private Lazy<bool> _secretsEnabledLazy;
+        private volatile bool _secretsEnabled;
 
         public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider, IEnvironment environment,
             ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider,
@@ -44,7 +44,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _secretManagerLazy = new Lazy<ISecretManager>(Create);
-            _secretsEnabledLazy = new Lazy<bool>(GetSecretsEnabled);
 
             // When these options change (due to specialization), we need to reset the secret manager.
             options.OnChange(_ => ResetSecretManager());
@@ -56,11 +55,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                if (_secretManagerLazy.IsValueCreated)
+                if (_secretManagerLazy.IsValueCreated || _secretsEnabled)
                 {
                     return true;
                 }
-                return _secretsEnabledLazy.Value;
+
+                // Only cache positive results, to ensure we're responsive to changes in configuration that enable secrets.
+                // Re-evaluating on each call until we can confirm secrets are enabled allows the host to recover automatically
+                // once the underlying configuration becomes available.
+                bool secretsEnabled = GetSecretsEnabled();
+                if (secretsEnabled)
+                {
+                    _secretsEnabled = true;
+                }
+
+                return secretsEnabled;
             }
         }
 
@@ -68,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void ResetSecretManager()
         {
-            Interlocked.Exchange(ref _secretsEnabledLazy, new Lazy<bool>(GetSecretsEnabled));
+            _secretsEnabled = false;
             Interlocked.Exchange(ref _secretManagerLazy, new Lazy<ISecretManager>(Create));
 
             _logger.LogDebug(new EventId(1, "ResetSecretManager"), "Reset SecretManager.");
