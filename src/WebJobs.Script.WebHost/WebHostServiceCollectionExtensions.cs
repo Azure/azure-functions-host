@@ -97,6 +97,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             .AddNewtonsoftJson()
             .AddXmlDataContractSerializerFormatters();
 
+            // Must stop last so the JobHost drains in-flight invocations before worker channels are
+            // torn down (via HostedServiceManager -> RpcInitializationService). The Generic Host stops
+            // IHostedServices in LIFO order, so register this before all other hosted services.
+            services.AddSingleton<IHostedService, HostedServiceManager>();
+
             // Standby services
             services.AddStandbyServices();
 
@@ -214,11 +219,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Manages a diagnostic listener that subscribes to diagnostic sources setup in the host
             // and persists events in the logging infrastructure.
             services.AddSingleton<IHostedService, DiagnosticListenerService>();
-
-            // Handles shutdown of services that need to happen after StopAsync() of all services of type IHostedService are complete.
-            // Order is important.
-            // All other IHostedService injections need to go before this.
-            services.AddSingleton<IHostedService, HostedServiceManager>();
 
             // Configuration
 
