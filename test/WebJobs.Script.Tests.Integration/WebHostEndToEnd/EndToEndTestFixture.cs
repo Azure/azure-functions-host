@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly AzuriteFixture _azurite = new();
         private readonly string _rootPath;
+        private TemporaryScriptRoot _scriptRoot;
         private string _copiedRootPath;
         private string _functionsWorkerRuntime;
         private int _workerProcessCount;
@@ -109,21 +110,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public virtual async Task InitializeAsync()
         {
             await _azurite.InitializeAsync();
-            string nowString = DateTime.UtcNow.ToString("yyMMdd-HHmmss");
-            string GetDestPath(int counter)
-            {
-                return Path.Combine(Path.GetTempPath(), "FunctionsE2E", $"{nowString}_{counter}");
-            }
 
-            // Prevent collisions.
-            int i = 0;
-            _copiedRootPath = GetDestPath(i++);
-            while (Directory.Exists(_copiedRootPath))
-            {
-                _copiedRootPath = GetDestPath(i++);
-            }
-
-            FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
+            _scriptRoot = new TemporaryScriptRoot(_rootPath, "FunctionsE2E");
+            _copiedRootPath = _scriptRoot.RootPath;
 
             var extensionsToInstall = GetExtensionsToInstall();
             if (extensionsToInstall != null && extensionsToInstall.Length > 0)
@@ -324,22 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Host.Dispose();
             }
 
-            // Clean up all but the last 5 directories for debugging failures.
-            var directoriesToDelete = Directory.EnumerateDirectories(Path.GetDirectoryName(_copiedRootPath))
-                .OrderByDescending(p => p)
-                .Skip(5);
-
-            foreach (string directory in directoriesToDelete)
-            {
-                try
-                {
-                    Directory.Delete(directory, true);
-                }
-                catch
-                {
-                    // best effort
-                }
-            }
+            _scriptRoot?.Dispose();
 
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, null);
