@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
@@ -179,8 +180,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         return false;
                     }
 
-                    BlobDownloadResult downloadResult = await blob.DownloadContentAsync();
-                    result = downloadResult.Content.ToString();
+                    try
+                    {
+                        BlobDownloadResult downloadResult = await blob.DownloadContentAsync();
+                        result = downloadResult.Content.ToString();
+                    }
+                    catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.NotFound)
+                    {
+                        sb.AppendLine($"{blob.Name} download failed with transient status {ex.Status}. ErrorCode: {ex.ErrorCode}.");
+                        return false;
+                    }
 
                     bool contentMatches = contentPredicate(result);
                     sb.AppendLine($"{blob.Name} content length: {result.Length}. Content matches predicate: {contentMatches}.");
