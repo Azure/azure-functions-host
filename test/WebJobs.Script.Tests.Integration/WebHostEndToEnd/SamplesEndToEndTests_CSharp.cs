@@ -903,7 +903,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 // wait for completion
                 var outputBlob = outputContainer.GetBlobClient(outId);
-                string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+                string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                    outputBlob,
+                    content => string.Equals("Hello C#!", Utility.RemoveUtf8ByteOrderMark(content), StringComparison.Ordinal));
                 Assert.Equal("Hello C#!", Utility.RemoveUtf8ByteOrderMark(result));
             }
         }
@@ -940,7 +942,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 // wait for function to execute and produce its result blob
                 var outputContainer = _fixture.BlobServiceClient.GetBlobContainerClient("samples-output");
                 var outputBlob = outputContainer.GetBlobClient(id);
-                string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+                string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                    outputBlob,
+                    content => string.Equals("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(content), StringComparison.Ordinal));
 
                 Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
             }
@@ -1060,7 +1064,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 // wait for function to execute and produce its result blob
                 var outputContainer = _fixture.BlobServiceClient.GetBlobContainerClient("samples-output");
                 var outputBlob = outputContainer.GetBlobClient(id);
-                string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+                string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                    outputBlob,
+                    content => string.Equals("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(content), StringComparison.Ordinal));
 
                 Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
             }

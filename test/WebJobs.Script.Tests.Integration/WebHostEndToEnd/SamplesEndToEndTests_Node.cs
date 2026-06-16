@@ -63,7 +63,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // wait for completion
             var outputBlob = outputContainer.GetBlobClient(outId);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                outputBlob,
+                content => string.Equals("Mathew Charles", content, StringComparison.Ordinal));
             Assert.Equal("Mathew Charles", result);
         }
 
@@ -221,10 +223,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var outputContainer = _fixture.BlobServiceClient.GetBlobContainerClient("samples-output");
             string path = $"housewares/{id}";
             var outputBlob = outputContainer.GetBlobClient(path);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+            string expectedName = (string)product["name"];
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                outputBlob,
+                content => content.Contains(id, StringComparison.Ordinal)
+                    && content.Contains(expectedName, StringComparison.Ordinal));
             JObject resultProduct = JObject.Parse(Utility.RemoveUtf8ByteOrderMark(result));
             Assert.Equal(id, (string)resultProduct["id"]);
-            Assert.Equal((string)product["name"], (string)resultProduct["name"]);
+            Assert.Equal(expectedName, (string)resultProduct["name"]);
         }
 
         [Fact]
