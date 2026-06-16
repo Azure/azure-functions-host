@@ -315,10 +315,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         changeDescription = "Directory";
                     }
                 }
-                catch (DirectoryNotFoundException)
+                catch (DirectoryNotFoundException ex)
                 {
                     // The root script path was deleted concurrently (TOCTOU race). Treat this as a directory change.
-                    _logger.LogWarning("Directory '{rootScriptPath}' was not found while processing file change event for '{fullPath}'. It may have been deleted concurrently.",
+                    _logger.LogWarning(ex, "Directory '{RootScriptPath}' was not found while processing file change event for '{FullPath}'. It may have been deleted concurrently.",
                         _scriptOptions.RootScriptPath, e.FullPath);
                     changeDescription = "Directory";
                 }
