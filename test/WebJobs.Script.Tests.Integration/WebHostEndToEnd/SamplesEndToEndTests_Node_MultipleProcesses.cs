@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 var channelManager = _fixture.Host.JobHostServices.GetService<IJobHostRpcWorkerChannelManager>();
                 var channels = channelManager.GetChannels("node");
                 return channels is not null && channels.Count() == expectedCount;
-            }, pollingInterval: 1000, userMessageCallback: _fixture.Host.GetLog);
+            }, timeout: 60 * 1000, pollingInterval: 1000, userMessageCallback: _fixture.Host.GetLog);
         }
 
         public IEnumerable<int> GetCurrentWorkerPids()
@@ -140,13 +140,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
                 base.ConfigureScriptHost(webJobsBuilder);
-                webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+                webJobsBuilder.Services.PostConfigure<ScriptJobHostOptions>(o =>
                 {
                     o.Functions =
                     [
                         "HttpTrigger",
                         "HttpTrigger-Timeout",
                     ];
+                    o.FunctionTimeout = TimeSpan.FromSeconds(3);
                 });
 
                 webJobsBuilder.Services.AddOptions<LanguageWorkerOptions>()
@@ -156,6 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         if (nodeConfig is not null)
                         {
                             nodeConfig.CountOptions.ProcessStartupInterval = TimeSpan.FromSeconds(3);
+                            nodeConfig.CountOptions.ProcessRestartInterval = TimeSpan.FromSeconds(3);
                         }
                     });
             }
