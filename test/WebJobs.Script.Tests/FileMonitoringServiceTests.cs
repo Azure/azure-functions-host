@@ -404,8 +404,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockEventManager.Publish(deletedFileEvent);
 
                 // The service should trigger a restart without throwing an exception
+                var expectedReason = $"Directory change of type 'Deleted' detected for '{Path.Combine(tempDir, "some_file.txt")}'";
                 await restart.Task.WaitAsync(TimeSpan.FromSeconds(5));
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(expectedReason, default), Times.Once);
                 mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Never);
             }
         }
