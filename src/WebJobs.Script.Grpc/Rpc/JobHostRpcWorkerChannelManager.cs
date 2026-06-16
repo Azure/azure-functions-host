@@ -50,16 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         string id = rpcChannel.Id;
                         _logger.LogDebug("Disposing language worker channel with id:{workerId}", id);
 
-                        try
-                        {
-                            rpcChannel.Shutdown(workerException);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error failing executions on shutdown for language worker channel with id:{workerId}", id);
-                        }
-
-                        (rpcChannel as IDisposable)?.Dispose();
+                        rpcChannel.ShutdownAndDispose(workerException, _logger);
                         _logger.LogDebug("Disposed language worker channel with id:{workerId}", id);
 
                         return Task.FromResult(true);
@@ -80,17 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         if (removedChannels.TryRemove(removedChannel.Id, out IRpcWorkerChannel _))
                         {
                             _logger.LogDebug("Disposing language worker channel with id:{workerId}", removedChannel.Id);
-
-                            try
-                            {
-                                removedChannel.Shutdown(null);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogError(ex, "Error failing executions on shutdown for language worker channel with id:{workerId}", removedChannel.Id);
-                            }
-
-                            (removedChannel as IDisposable)?.Dispose();
+                            removedChannel.ShutdownAndDispose(null, _logger);
                         }
                     }
                 }
