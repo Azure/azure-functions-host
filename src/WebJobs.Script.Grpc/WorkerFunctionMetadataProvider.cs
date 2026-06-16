@@ -175,8 +175,18 @@ namespace Microsoft.Azure.WebJobs.Script
             // The Error state can occur when the host is in a "final" state after completely starting,
             // or during a retry of a transient error. This check allows us to determine the difference. If
             // the host has not completely started, it means that it is still in the process of starting.
-            if (_currentJobHost is not null && _scriptHostManager.State == ScriptHostState.Error)
+            if (_scriptHostManager.State == ScriptHostState.Error)
             {
+                // No active host has been assigned yet, so the host is still being built or rebuilt as part
+                // of a start/restart (ActiveHost stays null until the new host is assigned). Requesting a
+                // restart here would re-enter host startup and deadlock on the start semaphore, so treat this
+                // as "starting" and let the worker channel be initialized directly while the host startup
+                // retry loop drives recovery.
+                if (_currentJobHost is null)
+                {
+                    return true;
+                }
+
                 var lifetime = _currentJobHost.Services?.GetService<IHostApplicationLifetime>();
 
                 if (lifetime is not null &&

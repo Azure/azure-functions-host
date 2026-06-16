@@ -21,5 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         Task NotifyHealthEvent(ContainerHealthEventType healthEventType, Type source, string details);
 
         Task CreateBindMount(string sourcePath, string targetPath);
+
+        Task NotifyTriggersChanged();
     }
 }

@@ -74,7 +74,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
                     if (string.Equals(c.SecurityToken.Issuer, ScriptConstants.LegionCoreUri, StringComparison.OrdinalIgnoreCase))
                     {
-                        claims.Add(new Claim(SecurityConstants.AssignUnencryptedClaimType, "true"));
+                        claims.Add(new Claim(SecurityConstants.FuncPlatformClaimType, "true"));
                     }
 
                     c.Principal.AddIdentity(new ClaimsIdentity(claims));

@@ -22,8 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
         public const string InvokeClaimType = "http://schemas.microsoft.com/2017/07/functions/claims/invoke";
 
         /// <summary>
-        /// Claim indicating whether a principal is authorized to invoke assign with an unencrypted payload.
+        /// Claim indicating if the principal has the role to perform platform-only operations
+        /// such as unencrypted assignment and triggers retrieval.
         /// </summary>
-        public const string AssignUnencryptedClaimType = "http://schemas.microsoft.com/2017/07/functions/claims/assign-unencrypted";
+        public const string FuncPlatformClaimType = "http://schemas.microsoft.com/2017/07/functions/claims/func-platform";
     }
 }

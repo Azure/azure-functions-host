@@ -38,8 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.CosmosDB
                 .CreateItemAsync(documentToTest, new PartitionKey(id));
 
             // now wait for function to be invoked
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob,
-                () => string.Join(Environment.NewLine, _fixture.Host.GetScriptHostLogMessages()));
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                resultBlob,
+                content => !string.IsNullOrEmpty(content),
+                userMessageCallback: () => string.Join(Environment.NewLine, _fixture.Host.GetScriptHostLogMessages()));
 
             Assert.False(string.IsNullOrEmpty(result));
 

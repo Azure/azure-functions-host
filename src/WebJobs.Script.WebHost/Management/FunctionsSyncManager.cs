@@ -65,10 +65,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
         private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IMeshServiceClient _meshServiceClient;
+        private readonly bool _notifyPlatformOnSync;
 
         private BlobClient _hashBlobClient;
 
-        public FunctionsSyncManager(IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, IScriptHostManager scriptHostManager)
+        public FunctionsSyncManager(IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, IScriptHostManager scriptHostManager, IMeshServiceClient meshServiceClient = null)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
@@ -82,6 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _azureBlobStorageProvider = azureBlobStorageProvider;
             _hostingConfigOptions = functionsHostingConfigOptions;
             _scriptHostManager = scriptHostManager;
+            _meshServiceClient = meshServiceClient ?? NullMeshServiceClient.Instance;
+            _notifyPlatformOnSync = environment?.ShouldNotifyPlatformOnSync() ?? false;
         }
 
         internal bool ArmCacheEnabled
@@ -145,6 +149,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     if (success && newHash != null)
                     {
                         await UpdateHashAsync(hashBlobClient, newHash);
+                    }
+                    if (success)
+                    {
+                        await NotifyPlatformIfEnabledAsync();
                     }
                     result.Success = success;
                     result.Error = error;
@@ -286,6 +294,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // best effort
                 _logger.LogError(ex, "Error updating SyncTriggers hash");
+            }
+        }
+
+        /// <summary>
+        /// Performs a best-effort notification to the platform when triggers are synchronized.
+        /// </summary>
+        /// <remarks>
+        /// Exposed as <see langword="internal"/> for direct unit testing.
+        /// </remarks>
+        internal async Task NotifyPlatformIfEnabledAsync()
+        {
+            if (!_notifyPlatformOnSync)
+            {
+                return;
+            }
+
+            try
+            {
+                await _meshServiceClient.NotifyTriggersChanged();
+            }
+            catch (Exception exc) when (!exc.IsFatal())
+            {
+                _logger.LogWarning(exc, "Failed to notify platform of triggers change.");
             }
         }
 

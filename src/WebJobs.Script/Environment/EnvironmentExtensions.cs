@@ -372,6 +372,17 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets a value indicating whether the host should notify the platform when triggers are synchronized,
+        /// based on the <see cref="FunctionsNotifyPlatformOnSync"/> environment variable.
+        /// </summary>
+        /// <param name="environment">The environment to verify.</param>
+        /// <returns><see langword="true"/> if platform notification is enabled; otherwise, <see langword="false"/>.</returns>
+        public static bool ShouldNotifyPlatformOnSync(this IEnvironment environment)
+        {
+            return bool.TryParse(environment.GetEnvironmentVariable(FunctionsNotifyPlatformOnSync), out bool enabled) && enabled;
+        }
+
+        /// <summary>
         /// Checks both WEBSITE_SKU and WEBSITE_SKU_NAME and returns true IFF one is
         /// set to "Dynamic".
         /// </summary>

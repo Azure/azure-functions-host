@@ -28,8 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             await _fixture.TestQueue.SendMessageAsync(messageContent);
 
             var resultBlob = _fixture.TestOutputContainer.GetBlobClient(id);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
-            Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
+            string expectedContent = TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                resultBlob,
+                content => string.Equals(expectedContent, TestHelpers.RemoveByteOrderMarkAndWhitespace(content), StringComparison.Ordinal));
+            Assert.Equal(expectedContent, TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
         }
 
         public class StorageTestFixture : EndToEndTestFixture

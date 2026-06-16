@@ -163,8 +163,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Fixture.TestQueue.SendMessageAsync(messageContent);
 
             var resultBlob = Fixture.TestOutputContainer.GetBlobClient(id);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(resultBlob);
-            Assert.Equal(TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent), TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
+            string expectedContent = TestHelpers.RemoveByteOrderMarkAndWhitespace(messageContent);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                resultBlob,
+                content => string.Equals(expectedContent, TestHelpers.RemoveByteOrderMarkAndWhitespace(content), StringComparison.Ordinal));
+            Assert.Equal(expectedContent, TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
 
             string userCategory = LogCategories.CreateFunctionUserCategory("QueueTriggerToBlob");
             LogMessage traceEvent = await WaitForTraceAsync(p => p?.FormattedMessage != null && p.FormattedMessage.Contains(id) && string.Equals(p.Category, userCategory, StringComparison.Ordinal));

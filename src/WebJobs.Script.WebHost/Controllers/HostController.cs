@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -414,20 +415,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _metricsLogger.LogEvent(MetricEventNames.GetTriggersInvoked);
 
-            // This endpoint is only available in validation mode
-            if (_environment.IsInValidationMode())
+            if (!User.IsFuncPlatform())
             {
-                var result = await _functionsSyncManager.GetTriggersAsync();
-
-                // GetTriggersAsync() does not swallow exceptions, so any failures will still be a 500.
-                // The only result.Success == false we need to consider is when the environment
-                // does not support sync triggers.
-                return result.Success
-                    ? Ok(result)
-                    : StatusCode(StatusCodes.Status403Forbidden, new { status = result.Error });
+                return Forbid();
             }
 
-            return StatusCode(StatusCodes.Status403Forbidden, new { status = "GetTriggers operation is not supported in for this instance." });
+            var result = await _functionsSyncManager.GetTriggersAsync();
+            return result.Success
+                ? Ok(result)
+                : StatusCode(StatusCodes.Status500InternalServerError, new { status = result.Error });
         }
 
         [HttpPost]

@@ -316,7 +316,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // verify blob was written
             string blobName = $"TestPrefix-{id}-TestSuffix-BBB";
             var outBlob = Fixture.TestOutputContainer.GetBlobClient(blobName);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outBlob);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                outBlob,
+                content => string.Equals(expectedValue, content, StringComparison.Ordinal));
             Assert.Equal(expectedValue, result);
         }
 
@@ -792,23 +794,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify all 3 output blobs were written
             var blob = Fixture.TestOutputContainer.GetBlobClient(id1);
-            await TestHelpers.WaitForBlobAsync(blob, Fixture.Host.GetLog);
-            var blobDownload = await blob.DownloadContentAsync();
-            string blobContent = blobDownload.Value.Content.ToString();
+            string blobContent = await TestHelpers.WaitForBlobAndGetStringAsync(
+                blob,
+                content => IsExpectedBlobContent(content, "Test Blob 1"),
+                userMessageCallback: Fixture.Host.GetLog);
             // TODO: why required?
             Assert.Equal("Test Blob 1", blobContent.TrimEnd('\0').Trim('"'));
 
             blob = Fixture.TestOutputContainer.GetBlobClient(id2);
-            await TestHelpers.WaitForBlobAsync(blob);
-            blobDownload = await blob.DownloadContentAsync();
-            blobContent = blobDownload.Value.Content.ToString();
+            blobContent = await TestHelpers.WaitForBlobAndGetStringAsync(
+                blob,
+                content => IsExpectedBlobContent(content, "Test Blob 2"));
             Assert.Equal("Test Blob 2", blobContent.TrimEnd('\0').Trim('"'));
 
             blob = Fixture.TestOutputContainer.GetBlobClient(id3);
-            await TestHelpers.WaitForBlobAsync(blob);
-            blobDownload = await blob.DownloadContentAsync();
-            blobContent = blobDownload.Value.Content.ToString();
+            blobContent = await TestHelpers.WaitForBlobAndGetStringAsync(
+                blob,
+                content => IsExpectedBlobContent(content, "Test Blob 3"));
             Assert.Equal("Test Blob 3", blobContent.TrimEnd('\0').Trim('"'));
+
+            static bool IsExpectedBlobContent(string content, string expected)
+            {
+                return string.Equals(expected, content.TrimEnd('\0').Trim('"'), StringComparison.Ordinal);
+            }
         }
 
         [Fact]
@@ -827,9 +835,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify the correct output blob was written
             var blob = Fixture.TestOutputContainer.GetBlobClient(id);
-            await TestHelpers.WaitForBlobAsync(blob);
-            var blobDownload = await blob.DownloadContentAsync();
-            var blobContent = blobDownload.Value.Content.ToString();
+            var blobContent = await TestHelpers.WaitForBlobAndGetStringAsync(
+                blob,
+                content => string.Equals("Test Entity 1, Test Entity 2", Utility.RemoveUtf8ByteOrderMark(content.Trim()), StringComparison.Ordinal));
             Assert.Equal("Test Entity 1, Test Entity 2", Utility.RemoveUtf8ByteOrderMark(blobContent.Trim()));
         }
 

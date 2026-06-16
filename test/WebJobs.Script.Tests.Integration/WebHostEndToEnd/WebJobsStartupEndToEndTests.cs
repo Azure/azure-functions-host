@@ -150,13 +150,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 Assert.IsType<ExternalStartupException>(manager.LastError);
                 Assert.Equal(expectedErrorMessage, manager.LastError.InnerException.Message);
 
-                // Check that we continuously retry this (it will backoff).
-                var logMessages = fixture.Host.GetWebHostLogMessages();
-                var buildingMessageCount = logMessages.Count(p => p.FormattedMessage != null && p.FormattedMessage.Contains("Building host: version spec: ~4, startup suppressed: 'False'"));
-                Assert.True(buildingMessageCount > 1, $"Expected more than one host restart. Actual: {buildingMessageCount}.{Environment.NewLine}{fixture.Host.GetLog()}");
-
-                var diagnosticEventCount = logMessages.Count(p => p.Category == LogCategories.Startup && p.State?.Any(k => k.Key == ScriptConstants.DiagnosticEventKey) == true);
-                Assert.True(diagnosticEventCount > 1, $"Expected more than one diagnostic event. Actual: {diagnosticEventCount}.{Environment.NewLine}{fixture.Host.GetLog()}");
+                // Check that we continuously retry this (it will backoff). The retry/backoff loop
+                // emits these log entries asynchronously, so poll until both counts exceed 1 rather
+                // than taking a one-shot snapshot that can race with the second retry.
+                int buildingMessageCount = 0;
+                int diagnosticEventCount = 0;
+                await TestHelpers.Await(
+                    () =>
+                    {
+                        var logMessages = fixture.Host.GetWebHostLogMessages();
+                        buildingMessageCount = logMessages.Count(p => p.FormattedMessage != null && p.FormattedMessage.Contains("Building host: version spec: ~4, startup suppressed: 'False'"));
+                        diagnosticEventCount = logMessages.Count(p => p.Category == LogCategories.Startup && p.State?.Any(k => k.Key == ScriptConstants.DiagnosticEventKey) == true);
+                        return buildingMessageCount > 1 && diagnosticEventCount > 1;
+                    },
+                    userMessageCallback: () => $"Expected more than one host restart and more than one diagnostic event. Actual building: {buildingMessageCount}, diagnostic: {diagnosticEventCount}.{Environment.NewLine}{fixture.Host.GetLog()}");
             }
             finally
             {

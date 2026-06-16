@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 using System;
 using System.IO;
@@ -8,6 +8,7 @@ using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,10 +17,11 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 {
-    public class ControllerScenarioTestFixture : IAsyncLifetime, IDisposable
+    public class ControllerScenarioTestFixture : IAsyncLifetime
     {
         private ScriptSettingsManager _settingsManager;
         private HttpConfiguration _config;
+        private TemporaryScriptRoot _scriptRoot;
 
         public ScriptApplicationHostOptions HostOptions { get; private set; }
 
@@ -29,28 +31,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
 
         protected virtual void ConfigureWebHostBuilder(IWebHostBuilder webHostBuilder) { }
 
-        public void Dispose()
-        {
-            HttpClient?.Dispose();
-
-            if (Host is not null)
-            {
-                try
-                {
-                    Host.StopAsync().GetAwaiter().GetResult();
-                }
-                catch
-                {
-                }
-
-                Host.Dispose();
-            }
-        }
-
         public virtual async Task InitializeAsync()
         {
             _config = new HttpConfiguration();
             _settingsManager = ScriptSettingsManager.Instance;
+
+            string sourcePath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "csharp");
+            _scriptRoot = new TemporaryScriptRoot(sourcePath, "FunctionsControllerScenarios");
 
             var webHostBuilder = Program.CreateHostBuilder()
                 .ConfigureWebHost(webBuilder =>
@@ -63,15 +50,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 {
                     services.AddSingleton<IDiagnosticEventRepository, DiagnosticEventNullRepository>();
                     services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
-                    services.PostConfigure<ScriptApplicationHostOptions>(o=>
+                    services.PostConfigure<ScriptApplicationHostOptions>(o =>
                     {
                         o.IsSelfHost = true;
-                        o.ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "sample", "csharp");
+                        o.ScriptPath = _scriptRoot.RootPath;
                         o.LogPath = Path.Combine(Path.GetTempPath(), @"Functions", "ControllerScenarioTests");
                         o.SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets");
                         o.HasParentScope = true;
 
                         HostOptions = o;
+                    });
+
+                    services.PostConfigure<ScriptJobHostOptions>(o =>
+                    {
+                        o.Functions = ["HttpTrigger"];
                     });
                 });
 
@@ -85,9 +77,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             await manager.DelayUntilHostReadyAsync();
         }
 
-        public Task DisposeAsync()
-        { 
-            return Task.CompletedTask;
+        public async Task DisposeAsync()
+        {
+            HttpClient?.Dispose();
+
+            if (Host is not null)
+            {
+                try
+                {
+                    await Host.StopAsync();
+                }
+                catch
+                {
+                }
+
+                Host.Dispose();
+            }
+
+            _scriptRoot?.Dispose();
         }
     }
 }

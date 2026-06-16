@@ -55,6 +55,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly Mock<ISecretManager> _secretManagerMock;
         private readonly TestScriptHostService _scriptHostManager; // To refresh underlying IConfiguration for IAzureBlobStorageProvider
         private readonly FunctionsHostingConfigOptions _hostingConfigOptions;
+        private readonly IHostIdProvider _hostIdProvider;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IFunctionMetadataManager _functionMetadataManager;
+        private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
+        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptionsWrapper;
+        private readonly IScriptHostManager _syncScriptHostManager;
         private string _function1;
         private bool _emptyContent;
         private bool _secretsEnabled;
@@ -150,6 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(() => _sku);
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync)).Returns((string)null);
             _mockEnvironment.Setup(p => p.Platform).Returns(System.Runtime.InteropServices.OSPlatform.Windows);
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
@@ -190,7 +199,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 { "concurrency", JObject.FromObject(concurrencyOptions) }
             };
 
-            _functionsSyncManager = new FunctionsSyncManager(hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider, hostingConfigOptionsWrapper, mockScriptHostManager.Object);
+            _hostIdProvider = hostIdProviderMock.Object;
+            _optionsMonitor = optionsMonitor;
+            _loggerFactory = loggerFactory;
+            _httpClientFactory = httpClientFactory;
+            _functionMetadataManager = functionMetadataManager;
+            _azureBlobStorageProvider = azureBlobStorageProvider;
+            _hostingConfigOptionsWrapper = hostingConfigOptionsWrapper;
+            _syncScriptHostManager = mockScriptHostManager.Object;
+
+            _functionsSyncManager = CreateFunctionsSyncManager();
+        }
+
+        private FunctionsSyncManager CreateFunctionsSyncManager(IMeshServiceClient meshServiceClient = null)
+        {
+            return new FunctionsSyncManager(
+                _hostIdProvider,
+                _optionsMonitor,
+                _loggerFactory.CreateLogger<FunctionsSyncManager>(),
+                _httpClientFactory,
+                _secretManagerProviderMock.Object,
+                _mockWebHostEnvironment.Object,
+                _mockEnvironment.Object,
+                _hostNameProvider,
+                _functionMetadataManager,
+                _azureBlobStorageProvider,
+                _hostingConfigOptionsWrapper,
+                _syncScriptHostManager,
+                meshServiceClient);
         }
 
         private string GetExpectedTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub, string durableVersion = "V2")
@@ -429,6 +465,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 {
                     VerifyResultWithCacheOff(durableVersion: "V1");
                 }
+            }
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task TrySyncTriggers_NotifiesPlatform_WhenEnabled(bool functionsNotifyPlatformOnSync)
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsNotifyPlatformOnSync))
+                .Returns(functionsNotifyPlatformOnSync.ToString());
+
+            var meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            meshServiceClientMock.Setup(p => p.NotifyTriggersChanged()).Returns(Task.CompletedTask);
+            var syncManager = CreateFunctionsSyncManager(meshServiceClientMock.Object);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var syncResult = await syncManager.TrySyncTriggersAsync();
+
+                Assert.True(syncResult.Success, $"SyncTriggers should return success true. Error: '{syncResult.Error}'");
+                meshServiceClientMock.Verify(
+                    p => p.NotifyTriggersChanged(),
+                    functionsNotifyPlatformOnSync ? Times.Once() : Times.Never());
             }
         }
 

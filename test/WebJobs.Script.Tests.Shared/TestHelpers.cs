@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
@@ -159,10 +160,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static async Task<string> WaitForBlobAndGetStringAsync(BlobClient blob, Func<string> userMessageCallback = null)
         {
-            await WaitForBlobAsync(blob, userMessageCallback: userMessageCallback);
+            return await WaitForBlobAndGetStringAsync(blob, static _ => true, userMessageCallback);
+        }
 
-            BlobDownloadResult downloadResult = await blob.DownloadContentAsync();
-            string result = downloadResult.Content.ToString();
+        public static async Task<string> WaitForBlobAndGetStringAsync(BlobClient blob, Func<string, bool> contentPredicate, Func<string> userMessageCallback = null)
+        {
+            ArgumentNullException.ThrowIfNull(contentPredicate);
+
+            StringBuilder sb = new();
+            string result = null;
+
+            await TestHelpers.Await(
+                async () =>
+                {
+                    bool exists = await blob.ExistsAsync();
+                    sb.AppendLine($"{blob.Name} exists: {exists}.");
+                    if (!exists)
+                    {
+                        return false;
+                    }
+
+                    try
+                    {
+                        BlobDownloadResult downloadResult = await blob.DownloadContentAsync();
+                        result = downloadResult.Content.ToString();
+                    }
+                    catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.NotFound)
+                    {
+                        sb.AppendLine($"{blob.Name} download failed with transient status {ex.Status}. ErrorCode: {ex.ErrorCode}.");
+                        return false;
+                    }
+
+                    bool contentMatches = contentPredicate(result);
+                    sb.AppendLine($"{blob.Name} content length: {result.Length}. Content matches predicate: {contentMatches}.");
+
+                    return contentMatches;
+                },
+                pollingInterval: 500,
+                userMessageCallback: () =>
+                {
+                    if (userMessageCallback != null)
+                    {
+                        sb.AppendLine().Append(userMessageCallback());
+                    }
+
+                    return sb.ToString();
+                });
 
             return result;
         }

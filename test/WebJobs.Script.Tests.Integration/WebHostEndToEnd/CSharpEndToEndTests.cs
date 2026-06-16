@@ -242,22 +242,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify all 3 output blobs were written
             var blob = Fixture.TestOutputContainer.GetBlobClient(id1);
-            await TestHelpers.WaitForBlobAsync(blob);
-            var blobDownload = await blob.DownloadContentAsync();
-            string blobContent = blobDownload.Value.Content.ToString();
+            string blobContent = await TestHelpers.WaitForBlobAndGetStringAsync(
+                blob,
+                content => IsExpectedBlobContent(content, "Test Blob 1"));
             Assert.Equal("Test Blob 1", Utility.RemoveUtf8ByteOrderMark(blobContent));
 
             blob = Fixture.TestOutputContainer.GetBlobClient(id2);
-            await TestHelpers.WaitForBlobAsync(blob);
-            blobDownload = await blob.DownloadContentAsync();
-            blobContent = blobDownload.Value.Content.ToString();
+            blobContent = await TestHelpers.WaitForBlobAndGetStringAsync(
+                blob,
+                content => IsExpectedBlobContent(content, "Test Blob 2"));
             Assert.Equal("Test Blob 2", Utility.RemoveUtf8ByteOrderMark(blobContent));
 
             blob = Fixture.TestOutputContainer.GetBlobClient(id3);
-            await TestHelpers.WaitForBlobAsync(blob);
-            blobDownload = await blob.DownloadContentAsync();
-            blobContent = blobDownload.Value.Content.ToString();
+            blobContent = await TestHelpers.WaitForBlobAndGetStringAsync(
+                blob,
+                content => IsExpectedBlobContent(content, "Test Blob 3"));
             Assert.Equal("Test Blob 3", Utility.RemoveUtf8ByteOrderMark(blobContent));
+
+            static bool IsExpectedBlobContent(string content, string expected)
+            {
+                return string.Equals(expected, Utility.RemoveUtf8ByteOrderMark(content), StringComparison.Ordinal);
+            }
         }
 
         [Fact]
@@ -450,7 +455,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // verify blob was written
             string blobName = $"TestPrefix-{id}-TestSuffix-BBB";
             var outBlob = Fixture.TestOutputContainer.GetBlobClient(blobName);
-            string result = await TestHelpers.WaitForBlobAndGetStringAsync(outBlob);
+            string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                outBlob,
+                content => string.Equals(expectedValue, Utility.RemoveUtf8ByteOrderMark(content), StringComparison.Ordinal));
             Assert.Equal(expectedValue, Utility.RemoveUtf8ByteOrderMark(result));
         }
 

@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
     {
         private const string Operation = "operation";
         private const string BindMountOperation = "bind-mount";
+        public const string UpdateTriggersOperation = "update-triggers";
         public const string SquashFsOperation = "squashfs";
         public const string ZipOperation = "zip";
         public const string AddFES = "add-fes";
@@ -126,6 +127,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             });
 
             httpResponseMessage.EnsureSuccessStatusCode();
+        }
+
+        public async Task NotifyTriggersChanged()
+        {
+            _logger.LogDebug("Performing platform triggers changed notification.");
+
+            var response = await SendAsync(new[]
+            {
+                new KeyValuePair<string, string>(Operation, UpdateTriggersOperation),
+            });
+
+            response.EnsureSuccessStatusCode();
         }
 
         private async Task PublishActivities(IEnumerable<ContainerFunctionExecutionActivity> activities)

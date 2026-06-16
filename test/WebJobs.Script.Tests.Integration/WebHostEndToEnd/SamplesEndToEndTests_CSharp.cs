@@ -367,6 +367,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Theory]
+        [InlineData("/admin/health")]
+        [InlineData("/admin/health/live")]
+        [InlineData("/admin/health/ready")]
+        public async Task HealthCheck_NoToken_Succeeds(string uri)
+        {
+            // token specified as bearer token
+            HttpRequestMessage request = new(HttpMethod.Get, uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("{\"status\":\"Healthy\"}", body);
+        }
+
+        [Theory]
         [InlineData("/admin/health?expand=true", null)]
         [InlineData("/admin/health/live?expand=true", HealthCheckTags.Liveness)]
         [InlineData("/admin/health/ready?expand=true", HealthCheckTags.Readiness)]
@@ -404,9 +419,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Theory]
-        [InlineData("/admin/health")]
-        [InlineData("/admin/health/live")]
-        [InlineData("/admin/health/ready")]
+        [InlineData("/admin/health?expand=true")]
+        [InlineData("/admin/health/live?expand=true")]
+        [InlineData("/admin/health/ready?expand=true")]
         public async Task HealthCheck_NoAdminToken_Fail(string uri)
         {
             // token specified as bearer token
@@ -888,7 +903,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 // wait for completion
                 var outputBlob = outputContainer.GetBlobClient(outId);
-                string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+                string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                    outputBlob,
+                    content => string.Equals("Hello C#!", Utility.RemoveUtf8ByteOrderMark(content), StringComparison.Ordinal));
                 Assert.Equal("Hello C#!", Utility.RemoveUtf8ByteOrderMark(result));
             }
         }
@@ -925,7 +942,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 // wait for function to execute and produce its result blob
                 var outputContainer = _fixture.BlobServiceClient.GetBlobContainerClient("samples-output");
                 var outputBlob = outputContainer.GetBlobClient(id);
-                string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+                string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                    outputBlob,
+                    content => string.Equals("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(content), StringComparison.Ordinal));
 
                 Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
             }
@@ -1045,7 +1064,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 // wait for function to execute and produce its result blob
                 var outputContainer = _fixture.BlobServiceClient.GetBlobContainerClient("samples-output");
                 var outputBlob = outputContainer.GetBlobClient(id);
-                string result = await TestHelpers.WaitForBlobAndGetStringAsync(outputBlob);
+                string result = await TestHelpers.WaitForBlobAndGetStringAsync(
+                    outputBlob,
+                    content => string.Equals("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(content), StringComparison.Ordinal));
 
                 Assert.Equal("Testing", TestHelpers.RemoveByteOrderMarkAndWhitespace(result));
             }

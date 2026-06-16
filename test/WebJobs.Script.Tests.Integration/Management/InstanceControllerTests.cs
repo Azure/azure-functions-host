@@ -262,7 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 startupContextProvider, testmetricslogger);
             DefaultHttpContext context = new() { User = new ClaimsPrincipal(new ClaimsIdentity(new Claim[]
             {
-                new Claim(SecurityConstants.AssignUnencryptedClaimType, "true")
+                new Claim(SecurityConstants.FuncPlatformClaimType, "true")
             })) };
             instanceController.ControllerContext = new() { HttpContext = context };
 

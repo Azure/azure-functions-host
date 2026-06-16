@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 }
                 else
                 {
-                    if (!User.HasClaim(SecurityConstants.AssignUnencryptedClaimType, "true"))
+                    if (!User.IsFuncPlatform())
                     {
                         _logger.LogWarning("Required claims missing for invoking unencrypted assignment");
                         return Forbid();

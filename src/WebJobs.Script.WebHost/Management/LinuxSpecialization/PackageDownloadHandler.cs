@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
                             request.Headers.Add(ScriptConstants.AzureVersionHeader, StorageBlobDownloadApiVersion);
                         }
-
+                        // CodeQL [SM03781] Not an SSRF attack because this process is not multi-tenant and runs exclusively on customer-scoped compute. Any possibility of modifying those endpoints will require control of the entire environment already.
                         response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
                         response.EnsureSuccessStatusCode();
                     }
@@ -220,6 +220,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                     cts.CancelAfter(TimeSpan.FromSeconds(5));
                     using (var httpRequest = new HttpRequestMessage(HttpMethod.Head, resourceUrl))
                     {
+                        // CodeQL [SM03781] Not an SSRF attack because this process is not multi-tenant and runs exclusively on customer-scoped compute. Any possibility of modifying those endpoints will require control of the entire environment already.
+                        // The URL is from a trusted source for blob storage and file shares and the call only checks for status code.
                         using (var httpResponse = await _httpClient.SendAsync(httpRequest, cts.Token))
                         {
                             return httpResponse.StatusCode == HttpStatusCode.OK;
