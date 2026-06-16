@@ -362,6 +362,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Fact]
+        public static async Task OnFileChanged_DirectoryDeleted_DoesNotThrow_AndTriggersRestart()
+        {
+            using (var directory = new TempDirectory())
+            {
+                // Setup: create a subdirectory inside root so the initial snapshot is non-empty
+                string tempDir = directory.Path;
+                string subDir = Path.Combine(tempDir, "SubDir");
+                Directory.CreateDirectory(subDir);
+
+                var jobHostOptions = new ScriptJobHostOptions
+                {
+                    RootLogPath = tempDir,
+                    RootScriptPath = tempDir,
+                    FileWatchingEnabled = true
+                };
+
+                var loggerFactory = new LoggerFactory();
+                var mockApplicationLifetime = new Mock<IScriptApplicationLifetime>();
+
+                TaskCompletionSource restart = new TaskCompletionSource();
+                var mockScriptHostManager = new Mock<IScriptHostManager>();
+                mockScriptHostManager.Setup(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .Callback<string, CancellationToken>((reason, ct) => restart.TrySetResult())
+                    .Returns(Task.CompletedTask);
+
+                var mockEventManager = new ScriptEventManager();
+                var environment = new TestEnvironment();
+
+                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                    loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
+                await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
+
+                // Delete the root script path to simulate the TOCTOU race condition
+                Directory.Delete(tempDir, recursive: true);
+
+                // Publish a Deleted event for a file inside the now-deleted directory
+                var deletedEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Deleted, tempDir, "some_file.txt");
+                FileEvent deletedFileEvent = new FileEvent("ScriptFiles", deletedEventArgs);
+                mockEventManager.Publish(deletedFileEvent);
+
+                // The service should trigger a restart without throwing an exception
+                await restart.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+                mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Never);
+            }
+        }
+
         public FileMonitoringService GetFileMonitoringService(string tempDir, string rootScriptPath)
         {
             File.Create(Path.Combine(tempDir, "host.json"));

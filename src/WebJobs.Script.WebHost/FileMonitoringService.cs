@@ -305,11 +305,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 changeDescription = "File";
             }
-            else if ((e.ChangeType == WatcherChangeTypes.Deleted || Directory.Exists(e.FullPath))
-                && !_rootDirectorySnapshot.SequenceEqual(Directory.EnumerateDirectories(_scriptOptions.RootScriptPath)))
+            else if (e.ChangeType == WatcherChangeTypes.Deleted || Directory.Exists(e.FullPath))
             {
                 // Check directory snapshot only if "Deleted" change or if directory changed
-                changeDescription = "Directory";
+                try
+                {
+                    if (!_rootDirectorySnapshot.SequenceEqual(Directory.EnumerateDirectories(_scriptOptions.RootScriptPath)))
+                    {
+                        changeDescription = "Directory";
+                    }
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    // The root script path was deleted concurrently (TOCTOU race). Treat this as a directory change.
+                    _logger.LogWarning("Directory '{rootScriptPath}' was not found while processing file change event for '{fullPath}'. It may have been deleted concurrently.",
+                        _scriptOptions.RootScriptPath, e.FullPath);
+                    changeDescription = "Directory";
+                }
             }
 
             if (!string.IsNullOrEmpty(changeDescription))
