@@ -7,3 +7,4 @@
 - Add additive platform notification for sync triggers under `FUNCTIONS_NOTIFY_PLATFORM_ON_SYNC=true` (#11813)
 - fix: avoid health checks triggering secret-manager too early (#11816)
 - Restrict GET admin/host/triggers to platform claim (#11697)
+- fix: `SetProcessCountToNumberOfCpuCores` silently overriding `MaxProcessCount` on high core count machines (#11842)
