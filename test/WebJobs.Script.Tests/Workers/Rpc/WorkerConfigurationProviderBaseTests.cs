@@ -391,7 +391,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 }
                 else if (setProcessCountToNumberOfCpuCores)
                 {
-                    Assert.Equal(testEnvironment.GetEffectiveCoresCount(), result.ProcessCount);
+                    Assert.Equal(Math.Min(testEnvironment.GetEffectiveCoresCount(), maxProcessCount), result.ProcessCount);
                 }
             }
 

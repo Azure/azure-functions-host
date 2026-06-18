@@ -210,9 +210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
             if (workerProcessCount.SetProcessCountToNumberOfCpuCores)
             {
-                workerProcessCount.ProcessCount = coresCount;
-                // set Max worker process count to Number of effective cores if MaxProcessCount is less than MinProcessCount
-                workerProcessCount.MaxProcessCount = workerProcessCount.ProcessCount > workerProcessCount.MaxProcessCount ? workerProcessCount.ProcessCount : workerProcessCount.MaxProcessCount;
+                workerProcessCount.ProcessCount = Math.Min(coresCount, workerProcessCount.MaxProcessCount);
             }
 
             // Env variable takes precedence over worker.config
