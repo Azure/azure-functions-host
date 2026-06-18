@@ -431,6 +431,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Contains("The TimeSpan must not be negative", resultEx3.Message);
         }
 
+        [Theory]
+        [InlineData(32, 15, 15)]
+        [InlineData(32, 8, 8)]
+        [InlineData(4, 15, 4)]
+        [InlineData(15, 15, 15)]
+        public void GetWorkerProcessCount_SetToNumberOfCores_ClampsToMaxProcessCount(int coresCount, int maxProcessCount, int expectedProcessCount)
+        {
+            JsonElement workerConfig = CreateWorkerConfig(1, maxProcessCount, "00:00:10", setProcessCountToCores: true);
+
+            var result = WorkerConfigurationProviderBase.GetWorkerProcessCount(workerConfig, functionsWorkerProcessCount: null, coresCount);
+
+            Assert.Equal(expectedProcessCount, result.ProcessCount);
+            Assert.Equal(maxProcessCount, result.MaxProcessCount);
+        }
+
         private static JsonElement CreateWorkerConfig(int processCount, int maxProcessCount, string processStartupInterval, bool setProcessCountToCores)
         {
             using var stream = new MemoryStream();
