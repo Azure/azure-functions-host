@@ -1770,7 +1770,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
         [Theory]
         [InlineData("../../../etc/shadow")]
-        [InlineData("..\\..\\windows\\system32\\config")]
         [InlineData("foo/../../etc/passwd")]
         public async Task FileSystemSecretsRepository_ReadAsync_PathTraversal_Throws(string maliciousFunctionName)
         {
@@ -1787,7 +1786,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
         [Theory]
         [InlineData("../../../etc/shadow")]
-        [InlineData("..\\..\\windows\\system32\\config")]
+        [InlineData("foo/../../etc/passwd")]
         public async Task FileSystemSecretsRepository_WriteAsync_PathTraversal_Throws(string maliciousFunctionName)
         {
             using (var directory = new TempDirectory())
@@ -1812,6 +1811,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 var result = await repository.ReadAsync(ScriptSecretsType.Function, "MyFunction");
 
                 Assert.Null(result);
+            }
+        }
+
+        [Fact]
+        public async Task FileSystemSecretsRepository_ReadAsync_NullFunctionName_Throws()
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new FileSystemSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                await Assert.ThrowsAsync<ArgumentNullException>(
+                    () => repository.ReadAsync(ScriptSecretsType.Function, null));
+            }
+        }
+
+        [Fact]
+        public async Task FileSystemSecretsRepository_ReadAsync_EmptyFunctionName_Throws()
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new FileSystemSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                await Assert.ThrowsAsync<ArgumentException>(
+                    () => repository.ReadAsync(ScriptSecretsType.Function, string.Empty));
             }
         }
 

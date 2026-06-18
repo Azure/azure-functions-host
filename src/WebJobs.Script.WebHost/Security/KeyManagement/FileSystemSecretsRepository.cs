@@ -162,9 +162,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private string GetFunctionSecretsFilePath(string functionName)
         {
+            ArgumentException.ThrowIfNullOrEmpty(functionName);
+
             string secretFileName = string.Format(CultureInfo.InvariantCulture, "{0}.json", functionName);
-            string filePath = Path.Combine(_secretsPath, secretFileName);
-            string fullPath = Path.GetFullPath(filePath);
+            string fullPath = Path.GetFullPath(Path.Combine(_secretsPath, secretFileName));
             string fullSecretsPath = Path.GetFullPath(_secretsPath + Path.DirectorySeparatorChar);
 
             if (!fullPath.StartsWith(fullSecretsPath, StringComparison.OrdinalIgnoreCase))
@@ -172,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 throw new InvalidOperationException($"Invalid function name '{functionName}'. The resolved path is outside the secrets directory.");
             }
 
-            return filePath;
+            return fullPath;
         }
     }
 }
