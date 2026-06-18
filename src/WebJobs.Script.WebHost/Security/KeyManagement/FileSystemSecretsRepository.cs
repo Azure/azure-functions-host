@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             string secretFileName = string.Format(CultureInfo.InvariantCulture, "{0}.json", functionName);
             string fullPath = Path.GetFullPath(Path.Combine(_secretsPath, secretFileName));
-            string fullSecretsPath = Path.GetFullPath(_secretsPath + Path.DirectorySeparatorChar);
+            string fullSecretsPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_secretsPath)) + Path.DirectorySeparatorChar;
 
             if (!fullPath.StartsWith(fullSecretsPath, StringComparison.OrdinalIgnoreCase))
             {
