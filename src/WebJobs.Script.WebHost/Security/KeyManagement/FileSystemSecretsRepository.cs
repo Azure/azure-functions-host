@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public sealed class FileSystemSecretsRepository : BaseSecretsRepository
     {
         private readonly string _secretsPath;
+        private readonly string _normalizedSecretsPath;
         private readonly string _hostSecretsPath;
         private readonly int _retryCount = 5;
         private readonly int _retryDelay = 100;
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ArgumentNullException.ThrowIfNull(secretsPath);
 
             _secretsPath = secretsPath;
+            _normalizedSecretsPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_secretsPath)) + Path.DirectorySeparatorChar;
             _hostSecretsPath = Path.Combine(_secretsPath, ScriptConstants.HostMetadataFileName);
         }
 
@@ -166,9 +168,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             string secretFileName = string.Format(CultureInfo.InvariantCulture, "{0}.json", functionName);
             string fullPath = Path.GetFullPath(Path.Combine(_secretsPath, secretFileName));
-            string fullSecretsPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_secretsPath)) + Path.DirectorySeparatorChar;
 
-            if (!fullPath.StartsWith(fullSecretsPath, StringComparison.OrdinalIgnoreCase))
+            if (!fullPath.StartsWith(_normalizedSecretsPath, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException($"Invalid function name '{functionName}'. The resolved path is outside the secrets directory.");
             }
