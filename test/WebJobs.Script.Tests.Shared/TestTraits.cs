@@ -70,6 +70,7 @@ namespace Microsoft.WebJobs.Script.Tests
         public const string NonE2ESpecialization = "NonE2E_Specialization";
         public const string NonE2EWebHost = "NonE2E_WebHost";
         public const string NonE2EAppInsights = "NonE2E_AppInsights";
+        public const string NonE2ETimeout = "NonE2E_Timeout";
         public const string NonE2EControllers = "NonE2E_Controllers";
         public const string NonE2EStorage = "NonE2E_Storage";
     }

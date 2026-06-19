@@ -112,6 +112,17 @@ jobs:
       arguments: '--filter "Category!=E2E&Group=NonE2E_WebHost" -c release --no-build'
       projects: $(test_projects)
     env:
+      AzureWebJobsStorage: $(Storage) 
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Timeout tests'
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: 'Timeout'
+      arguments: '--filter "Category!=E2E&Group=NonE2E_Timeout" -c release --no-build'
+      projects: $(test_projects)
+    env:
       AzureWebJobsStorage: $(Storage)
 
   - task: DotNetCoreCLI@2
@@ -154,7 +165,7 @@ jobs:
     inputs:
       command: test
       testRunTitle: 'Ungrouped'
-      arguments: '--filter "Category!=E2E&Group!=NonE2E_Specialization&Group!=NonE2E_WebHost&Group!=NonE2E_AppInsights&Group!=NonE2E_Controllers&Group!=NonE2E_Storage" -c release --no-build'
+      arguments: '--filter "Category!=E2E&Group!=NonE2E_Specialization&Group!=NonE2E_WebHost&Group!=NonE2E_AppInsights&Group!=NonE2E_Timeout&Group!=NonE2E_Controllers&Group!=NonE2E_Storage" -c release --no-build'
       projects: $(test_projects)
     env:
       AzureWebJobsStorage: $(Storage)

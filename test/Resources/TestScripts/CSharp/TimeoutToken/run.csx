@@ -5,7 +5,11 @@ public static async Task Run(string input, TraceWriter log, CancellationToken to
     switch (input)
     {
         case "useToken":
-            while (!token.IsCancellationRequested)
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            }
+            catch (OperationCanceledException)
             {
             }
             break;
@@ -14,7 +18,7 @@ public static async Task Run(string input, TraceWriter log, CancellationToken to
             while (count < 15)
             {
                 count++;
-                Thread.Sleep(1000);
+                await Task.Delay(1000);
             }
             break;
         default:
