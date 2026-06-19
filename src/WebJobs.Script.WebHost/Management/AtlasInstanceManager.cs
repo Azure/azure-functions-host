@@ -110,8 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                             Content = payload
                         };
 
-                        // CodeQL [SM03781] The address is constructed using the host and port from a trusted MSI endpoint, and a fixed path. Not an SSRF attack because this process is not multi-tenant and runs exclusively on customer-scoped compute.
-                        // Any possibility of modifying those endpoints will require control of the entire environment already.
+                        // CodeQL [SM03781] The address is constructed using the host and port from a trusted MSI endpoint, and a fixed path. Not an SSRF attack because this process is not multi-tenant and runs exclusively on customer-scoped compute. Any possibility of modifying those endpoints will require control of the entire environment already.
                         var response = await _client.SendAsync(requestMessage);
 
                         _logger.LogInformation($"Specialize MSI sidecar returned {response.StatusCode}");
@@ -210,8 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                             using (_metricsLogger.LatencyEvent(eventName))
                             {
                                 var request = new HttpRequestMessage(HttpMethod.Head, blobUri);
-                                // CodeQL [SM03781] Not an SSRF attack because this process is not multi-tenant and runs exclusively on customer-scoped compute. Any possibility of modifying those endpoints will require control of the entire environment already.
-                                // This is also only making a HEAD request to it to validate its existence and get the content length. We are not downloading or processing any content from the blobUri at this stage.
+                                // CodeQL [SM03781] Not an SSRF attack because this process is not multi-tenant and runs exclusively on customer-scoped compute. Any possibility of modifying those endpoints will require control of the entire environment already. This is also only making a HEAD request to it to validate its existence and get the content length. We are not downloading or processing any content from the blobUri at this stage.
                                 response = await _client.SendAsync(request);
                                 response.EnsureSuccessStatusCode();
                                 if (response.Content != null && response.Content.Headers != null)

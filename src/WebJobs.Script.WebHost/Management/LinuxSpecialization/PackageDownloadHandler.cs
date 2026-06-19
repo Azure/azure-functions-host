@@ -220,8 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                     cts.CancelAfter(TimeSpan.FromSeconds(5));
                     using (var httpRequest = new HttpRequestMessage(HttpMethod.Head, resourceUrl))
                     {
-                        // CodeQL [SM03781] Not an SSRF attack because this process is not multi-tenant and runs exclusively on customer-scoped compute. Any possibility of modifying those endpoints will require control of the entire environment already.
-                        // The URL is from a trusted source for blob storage and file shares and the call only checks for status code.
+                        // CodeQL [SM03781] Not an SSRF attack because this process is not multi-tenant and runs exclusively on customer-scoped compute. Any possibility of modifying those endpoints will require control of the entire environment already. The URL is from a trusted source for blob storage and file shares and the call only checks for status code.
                         using (var httpResponse = await _httpClient.SendAsync(httpRequest, cts.Token))
                         {
                             return httpResponse.StatusCode == HttpStatusCode.OK;
