@@ -34,9 +34,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             string uri = $"api/{functionName}";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             var response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string responseContent = await response.Content.ReadAsStringAsync();
-            Assert.Equal(responseContent, "Retry Count:2 Max Retry Count:2");
+
+            Assert.True(response.StatusCode == HttpStatusCode.OK, $"""
+                Expected status code: {HttpStatusCode.OK}
+                Actual status code: {response.StatusCode}
+                Response body:
+                {responseContent}
+                Host logs:
+                {_fixture.Host.GetLog()}
+                """);
+            Assert.Equal("Retry Count:2 Max Retry Count:2", responseContent);
         }
 
         public class TestFixture : EndToEndTestFixture

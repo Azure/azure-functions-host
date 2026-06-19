@@ -164,6 +164,42 @@ jobs:
       projects: $(test_projects)
 
   - task: DotNetCoreCLI@2
+    displayName: Samples end to end tests (diagnostic run 2)
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: Samples end to end tests (diagnostic run 2)
+      arguments: '--filter "Group=SamplesEndToEndTests" $(test_args)'
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
+    displayName: Samples end to end tests (diagnostic run 3)
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: Samples end to end tests (diagnostic run 3)
+      arguments: '--filter "Group=SamplesEndToEndTests" $(test_args)'
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
+    displayName: Samples end to end tests (diagnostic run 4)
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: Samples end to end tests (diagnostic run 4)
+      arguments: '--filter "Group=SamplesEndToEndTests" $(test_args)'
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
+    displayName: Samples end to end tests (diagnostic run 5)
+    condition: succeededOrFailed()
+    inputs:
+      command: test
+      testRunTitle: Samples end to end tests (diagnostic run 5)
+      arguments: '--filter "Group=SamplesEndToEndTests" $(test_args)'
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
     displayName: Drain mode end to end tests
     condition: succeededOrFailed()
     inputs:
