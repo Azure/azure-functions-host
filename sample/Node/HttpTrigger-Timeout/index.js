@@ -19,16 +19,19 @@ module.exports = function (context, req) {
         };
     }
     else {
-		var e = new Date().getTime() + (30 * 1000);
-		while (new Date().getTime() <= e) {}
-		res = {
-				status: 200,
-				body: test.greeting(req.query.name),
-				headers: {
-					'Content-Type': 'text/plain',
-					'Shared-Module': test.timestamp
-				}
-		};
+        setTimeout(function () {
+            res = {
+                status: 200,
+                body: test.greeting(req.query.name),
+                headers: {
+                    'Content-Type': 'text/plain',
+                    'Shared-Module': test.timestamp
+                }
+            };
+
+            context.done(null, res);
+        }, 30 * 1000);
+        return;
     }
 
     context.done(null, res);
