@@ -125,6 +125,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal IWebHostRpcWorkerChannelManager WebHostLanguageWorkerChannelManager => _webHostLanguageWorkerChannelManager;
 
+        private bool IsShuttingDown =>
+            _disposing
+            || _disposed
+            || (_applicationLifetime?.ApplicationStopping.IsCancellationRequested ?? false);
+
         private async Task<int> GetMaxProcessCount()
         {
             if (_environment.IsMultiLanguageRuntimeEnvironment())
@@ -471,11 +476,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async void WorkerError(WorkerErrorEvent workerError)
         {
-            if (_disposing || _disposed)
-            {
-                return;
-            }
-
             try
             {
                 if (string.Equals(_workerRuntime, workerError.Language))
@@ -490,33 +490,38 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _logger.LogDebug("WorkerErrorEvent runtime:{runtime} does not match current runtime:{currentRuntime}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
                 }
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException)
             {
-                // Specifically in the "we were torn down while trying to restart" case, we want to catch here and ignore
-                // If we don't catch the exception from an async void method, we'll end up tearing down the entire runtime instead
-                // It's possible we want to catch *all* exceptions and log or ignore here, but taking the minimal change first
-                // For example if we capture and log, we're left in a worker-less state with a working Host runtime - is that desired? Will it self recover elsewhere?
+                // Specifically in the "we were torn down while trying to restart" case, we want to catch here and ignore.
+                // If we don't catch the exception from an async void method, we'll end up tearing down the entire runtime instead.
+                // Covers both TaskCanceledException (derived) and direct OperationCanceledException from cancellation tokens.
+            }
+            catch (Exception ex) when (IsShuttingDown)
+            {
+                // Late-arriving WorkerErrorEvents can fire after IsShuttingDown becomes true mid-handler
+                // (e.g. ScriptHost.StopAsync tears the workers down). Swallow + log so the unhandled
+                // async-void exception doesn't kill the host process during normal shutdown.
+                _logger.LogDebug(ex, "Suppressed exception in WorkerError for runtime:{runtime}, workerId:{workerId} because the host is shutting down.", workerError.Language, workerError.WorkerId);
             }
         }
 
         private async void WorkerRestart(WorkerRestartEvent workerRestart)
         {
-            if (_disposing || _disposed)
-            {
-                return;
-            }
-
             try
             {
                 _logger.LogDebug("Handling WorkerRestartEvent for runtime:{runtime}, workerId:{workerId}", workerRestart.Language, workerRestart.WorkerId);
                 await DisposeAndRestartWorkerChannel(workerRestart.Language, workerRestart.WorkerId);
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException)
             {
-                // Specifically in the "we were torn down while trying to restart" case, we want to catch here and ignore
-                // If we don't catch the exception from an async void method, we'll end up tearing down the entire runtime instead
-                // It's possible we want to catch *all* exceptions and log or ignore here, but taking the minimal change first
-                // For example if we capture and log, we're left in a worker-less state with a working Host runtime - is that desired? Will it self recover elsewhere?
+                // Specifically in the "we were torn down while trying to restart" case, we want to catch here and ignore.
+                // If we don't catch the exception from an async void method, we'll end up tearing down the entire runtime instead.
+                // Covers both TaskCanceledException (derived) and direct OperationCanceledException from cancellation tokens.
+            }
+            catch (Exception ex) when (IsShuttingDown)
+            {
+                // See note in WorkerError. Late shutdown races would otherwise crash the process via async void.
+                _logger.LogDebug(ex, "Suppressed exception in WorkerRestart for runtime:{runtime}, workerId:{workerId} because the host is shutting down.", workerRestart.Language, workerRestart.WorkerId);
             }
         }
 
@@ -527,10 +532,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId, Exception workerException = null)
         {
-            if (_disposing || _disposed)
-            {
-                return;
-            }
+            // Capture IsShuttingDown up front so the dispose half and the restart-gating
+            // half see a consistent view even if shutdown begins mid-method.
+            bool isShuttingDown = IsShuttingDown;
 
             _logger.LogDebug("Attempting to dispose webhost or jobhost channel for workerId: '{channelId}', runtime: '{language}'", workerId, runtime);
 
@@ -539,6 +543,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             try
             {
+                // Always dispose the channel — even during shutdown. If we skip this, the channel (and
+                // its WorkerProcess) stays in the channel manager's dictionary and never gets disposed,
+                // which leaks WorkerProcess instances and can deadlock JobObjectRegistry disposal later
+                // because its sync wait on WorkerProcess.ProcessWaitingForTermination never completes.
                 isWebHostChannelDisposed = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId, workerException);
                 if (!isWebHostChannelDisposed)
                 {
@@ -550,12 +558,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _logger.LogDebug("Did not find WebHost or JobHost channel to dispose for workerId: '{channelId}', runtime: '{language}'", workerId, runtime);
                 }
             }
+            catch (Exception ex) when (isShuttingDown)
+            {
+                // Already shutting down — log and swallow. Calling StopApplication() would be a no-op
+                // and the noise isn't helpful.
+                _logger.LogDebug(ex, "Suppressed exception while shutting down channel for workerId '{channelId}' because the host is already shutting down.", workerId);
+            }
             catch (Exception ex)
             {
                 // If an exception was thrown while trying to shut down a channel, we're left in an undetermined state. The safest thing to do is
                 // to restart the entire host and let everything come back up from scratch.
                 _logger.LogError(ex, "Error while shutting down channel for workerId '{channelId}'. Shutting down and proactively recycling the Functions Host to recover.", workerId);
                 _applicationLifetime.StopApplication();
+            }
+
+            // Skip the restart half if we're shutting down — spinning up a fresh worker during
+            // teardown is what created the original async-void crashes that motivated the IsShuttingDown
+            // guard in the first place.
+            if (isShuttingDown)
+            {
+                _logger.LogDebug("Skipping worker channel restart for runtime '{runtime}' because the host is shutting down. workerId: '{channelId}'", runtime, workerId);
+                return;
             }
 
             if (ShouldRestartWorkerChannel(runtime, isWebHostChannelDisposed, isJobHostChannelDisposed))
@@ -586,7 +609,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task StartWorkerChannel(string runtime)
         {
-            if (_disposing || _disposed)
+            if (IsShuttingDown)
             {
                 return;
             }
@@ -602,8 +625,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     // Issue only one restart at a time.
                     await _startWorkerProcessLock.WaitAsync();
-                    // After waiting on the lock (which could take some time), make sure we're not in a disposed state trying to start things up
-                    if (_disposing || _disposed)
+                    // After waiting on the lock (which could take some time), make sure we're not in a disposed/shutting-down state trying to start things up
+                    if (IsShuttingDown)
                     {
                         return;
                     }

@@ -414,6 +414,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     value.SetException(exception);
                 }
             }
+
+            // The worker process may have already started and been registered with the process registry
+            // before StartWorkerProcessAsync ultimately faulted (e.g. the init RPC didn't complete in time
+            // or the worker exited before initializing). Dispose the channel here so the underlying
+            // WorkerProcess is properly cleaned up; otherwise the channel reference falls out of scope
+            // (only the faulted TCS remains in the dict), and the worker process leaks until the
+            // WebHost shuts down -- at which point JobObjectRegistry.Close blocks forever waiting on a
+            // TCS that no one will ever signal.
+            try
+            {
+                (initializedLanguageWorkerChannel as IDisposable)?.Dispose();
+            }
+            catch (Exception disposeEx)
+            {
+                _logger.LogDebug(disposeEx, "Error disposing worker channel after start failure for workerId:{id}", initializedLanguageWorkerChannel.Id);
+            }
         }
     }
 }

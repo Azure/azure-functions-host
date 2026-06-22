@@ -605,6 +605,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());
         }
 
+        [Fact]
+        public async Task FunctionDispatcher_DisposesButDoesNotRestart_When_ApplicationStopping()
+        {
+            int expectedProcessCount = 1;
+            using var applicationStopping = new CancellationTokenSource();
+            var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
+            mockApplicationLifetime.SetupGet(m => m.ApplicationStopping).Returns(applicationStopping.Token);
+
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(
+                expectedProcessCount,
+                runtime: RpcWorkerConstants.NodeLanguageWorkerName,
+                applicationLifetime: mockApplicationLifetime.Object);
+
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            applicationStopping.Cancel();
+            _testLoggerProvider.ClearAllLogMessages();
+
+            var testWorkerChannel = (TestRpcWorkerChannel)functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().First();
+            string workerId = testWorkerChannel.Id;
+            testWorkerChannel.RaiseWorkerError();
+            testWorkerChannel.RaiseWorkerRestart();
+
+            await Task.Delay(500);
+
+            var logs = _testLoggerProvider.GetAllLogMessages();
+
+            // The channel should be torn down so its WorkerProcess.Dispose runs (prevents
+            // JobObjectRegistry deadlock during IHost disposal), but no new worker should be spawned.
+            Assert.DoesNotContain(logs, m => m.FormattedMessage.Contains("Restarting worker channel"));
+            Assert.Contains(logs, m => m.FormattedMessage.Contains($"Skipping worker channel restart for runtime '{RpcWorkerConstants.NodeLanguageWorkerName}' because the host is shutting down. workerId: '{workerId}'"));
+            Assert.DoesNotContain(
+                functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels(),
+                c => string.Equals(c.Id, workerId, StringComparison.Ordinal));
+        }
+
         [Theory]
         [InlineData("node", "node", false, true, true)]
         [InlineData("node", "node", true, false, true)]
@@ -720,7 +757,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             string runtime = null,
             bool workerIndexing = false,
             bool placeholder = false,
-            IRpcWorkerChannelFactory channelFactory = null)
+            IRpcWorkerChannelFactory channelFactory = null,
+            IHostApplicationLifetime applicationLifetime = null)
         {
             var eventManager = new ScriptEventManager();
             var metricsLogger = new Mock<IMetricsLogger>();
@@ -781,7 +819,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return new RpcFunctionInvocationDispatcher(scriptOptions,
                 metricsLogger.Object,
                 testEnv,
-                mockApplicationLifetime.Object,
+                applicationLifetime ?? mockApplicationLifetime.Object,
                 eventManager,
                 _testLoggerFactory,
                 channelFactory,

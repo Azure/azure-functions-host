@@ -40,7 +40,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class TestFunctionHost : IDisposable
+    public class TestFunctionHost : IAsyncDisposable, IDisposable
     {
         private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly IHost _webHost;
@@ -507,22 +507,66 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return JwtTokenHelper.CreateToken(validUntil, audience, issuer, key, notBefore);
         }
 
-        public void Dispose()
+        public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+        public async ValueTask DisposeAsync()
         {
-            if (!_isDisposed)
+            if (_isDisposed)
             {
-                HttpClient.Dispose();
-                
-                _stillRunningTimer?.Change(-1, -1);
-                _stillRunningTimer?.Dispose();
-
-                if (_timerFired)
-                {
-                    Console.WriteLine($"The test host with id {_id} is now disposed.");
-                }
-
-                _isDisposed = true;
+                return;
             }
+
+            try
+            {
+                if (_webHost is not null)
+                {
+                    try
+                    {
+                        await _webHost.StopAsync();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // IHost.StopAsync is not idempotent once IHost.Dispose has run -- the
+                        // HostApplicationLifetime CTS and the hosted services' CTSes get
+                        // disposed by the ServiceProvider, so a second StopAsync throws.
+                        // Some test fixtures still explicitly stop+dispose the WebHost in
+                        // their own DisposeAsync before this runs; swallow the expected
+                        // ObjectDisposedException so the rest of teardown (HttpClient,
+                        // watchdog timer) completes normally.
+                    }
+                    catch (AggregateException ex) when (ex.InnerExceptions.Count > 0 && ex.InnerExceptions.All(e => e is ObjectDisposedException))
+                    {
+                        // Same scenario as above, but IHost packs per-service stop failures
+                        // into an AggregateException.
+                    }
+                }
+            }
+            finally
+            {
+                if (_webHost is IAsyncDisposable asyncDisposable)
+                {
+                    // Microsoft.Extensions.Hosting.Internal.Host implements IAsyncDisposable;
+                    // prefer it so the ServiceProvider disposes services (e.g. AspNetCoreGrpcServer)
+                    // via their IAsyncDisposable path rather than sync-over-async.
+                    await asyncDisposable.DisposeAsync();
+                }
+                else
+                {
+                    _webHost?.Dispose();
+                }
+            }
+
+            HttpClient.Dispose();
+
+            _stillRunningTimer?.Change(-1, -1);
+            _stillRunningTimer?.Dispose();
+
+            if (_timerFired)
+            {
+                Console.WriteLine($"The test host with id {_id} is now disposed.");
+            }
+
+            _isDisposed = true;
         }
 
         public async Task<bool> IsHostStarted()
