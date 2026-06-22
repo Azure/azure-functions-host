@@ -352,6 +352,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     {
                         if (standbyChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> channelTask))
                         {
+                            // Signal any in-flight initialization that we are shutting down.
+                            // If the ContinueWith in InitializeLanguageWorkerChannel hasn't run yet,
+                            // TrySetCanceled completes the TCS immediately so we don't block forever.
+                            // If it already ran (SetResult or SetException), TrySetCanceled is a no-op.
+                            channelTask.TrySetCanceled();
+
                             IRpcWorkerChannel workerChannel = null;
 
                             try
