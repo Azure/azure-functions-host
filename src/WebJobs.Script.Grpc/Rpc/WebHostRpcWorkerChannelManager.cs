@@ -86,6 +86,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         _logger.LogError("Failed to start language worker process for runtime: {language}. workerId:{id}", runtime, rpcWorkerChannel.Id);
                         SetExceptionOnInitializedWorkerChannel(runtime, rpcWorkerChannel, processStartTask.Exception);
                     }
+                    else if (processStartTask.Status == TaskStatus.Canceled)
+                    {
+                        _logger.LogDebug("Language worker process start was canceled for runtime: {language}. workerId:{id}", runtime, rpcWorkerChannel.Id);
+                        SetExceptionOnInitializedWorkerChannel(runtime, rpcWorkerChannel, new TaskCanceledException(processStartTask));
+                    }
                 });
             }
             catch (Exception ex)
