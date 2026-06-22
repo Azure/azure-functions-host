@@ -172,26 +172,10 @@ jobs:
         env:
           AzureWebJobsStorage: $(PGO-APP-AZURE-WEBJOBS-STORAGE)
           WEBSITE_AUTH_ENCRYPTION_KEY: $(PGO-APP-INSTANCE-ASSIGN-PAYLOAD-ENCRYPTION-KEY)
-    - pwsh: |
-        $url = "http://localhost:5000"
-        Write-Host "Waiting for temporary host at $url..."
-        $maxAttempts = 15
-        for ($attempt = 0; $attempt -lt $maxAttempts; $attempt++) {
-            try {
-                $response = Invoke-WebRequest -Uri $url -Method Get -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
-                Write-Host "Host is ready. Status: $($response.StatusCode)"
-                break
-            } catch {
-                if ($attempt -lt ($maxAttempts - 1)) {
-                    Write-Host "Attempt $($attempt+1) failed: $($_.Exception.Message). Retrying in 10 seconds..."
-                    Start-Sleep -Seconds 10
-                } else {
-                    Write-Host "##vso[task.logissue type=error]Temporary host not ready after $maxAttempts attempts."
-                    exit 1
-                }
-            }
-        }
-      displayName: Wait for temporary host
+    - template: /eng/ci/templates/steps/wait-for-host.yml@self
+      parameters:
+        url: http://localhost:5000
+        displayName: Wait for temporary host
     - pwsh: |
         # Retrieve the default host function key from the admin API.
         # Use /admin/host/functionkeys (not /admin/functions/{name}/keys which requires functions to be loaded).
@@ -209,28 +193,11 @@ jobs:
       displayName: Retrieve function key
       env:
         ADMIN_KEY: test
-    - pwsh: |
-        $os = "${{ parameters.os }}"
-        if ($os -eq "Windows") {
-            $appcmd = "$env:SystemRoot\System32\inetsrv\appcmd.exe"
-            & $appcmd stop site "FunctionsHost" 2>$null
-            & $appcmd stop apppool "FunctionsHostPool" 2>$null
-            $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
-            if (Test-Path $processIdFile) {
-                $hostPid = (Get-Content $processIdFile).Trim()
-                $proc = Get-Process -Id $hostPid -ErrorAction SilentlyContinue
-                if ($proc) { Stop-Process -Id $hostPid -Force -ErrorAction SilentlyContinue }
-            }
-        } else {
-            $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
-            if (Test-Path $processIdFile) {
-                $hostPid = (Get-Content $processIdFile).Trim()
-                & kill -s TERM $hostPid 2>/dev/null
-                Start-Sleep -Seconds 2
-            }
-        }
-        Write-Host "Temporary host stopped."
-      displayName: Stop temporary host
+    - template: /eng/ci/templates/steps/stop-host.yml@self
+      parameters:
+        os: ${{ parameters.os }}
+        displayName: Stop temporary host
+        postStopDelaySeconds: 2
 
   # ── Host Setup ────────────────────────────────────────────────────────────────
   # Windows: IIS/ANCM hosting (production parity). Linux: direct process launch.
@@ -257,34 +224,10 @@ jobs:
 
   # ── Warmup & PID Capture ──────────────────────────────────────────────────────
 
-  - pwsh: |
-      $url = "$(warmupApiUrl)"
-      Write-Host "Checking if host is ready at $url..."
-      $maxAttempts = 15
-      $hostReady = $false
-
-      for ($attempt = 0; $attempt -lt $maxAttempts; $attempt++) {
-          try {
-              $response = Invoke-WebRequest -Uri $url -Method Get -TimeoutSec 30 -UseBasicParsing -ErrorAction Stop
-              Write-Host "Host is ready. Status: $($response.StatusCode) $($response.StatusDescription)"
-              $hostReady = $true
-              break
-          } catch {
-              if ($attempt -lt ($maxAttempts - 1)) {
-                  Write-Host "Attempt $($attempt+1) failed: $($_.Exception.Message). Retrying in 10 seconds..."
-                  Start-Sleep -Seconds 10
-              } else {
-                  Write-Host "Attempt $($attempt+1) failed: $($_.Exception.Message)."
-              }
-          }
-      }
-
-      if (-not $hostReady) {
-          Write-Host "##vso[task.logissue type=error]Host was not ready after $maxAttempts attempts."
-          exit 1
-      }
-
-    displayName: Wait until host is warmed up
+  - template: /eng/ci/templates/steps/wait-for-host.yml@self
+    parameters:
+      url: $(warmupApiUrl)
+      displayName: Wait until host is warmed up
 
   - ${{ if eq(parameters.os, 'Windows') }}:
     - pwsh: |
@@ -319,10 +262,10 @@ jobs:
 
   - ${{ if and(eq(parameters.collectNetTrace, true), eq(parameters.instanceId, '1')) }}:
     - pwsh: |
-        $os = "${{ parameters.os }}"
+        $isWindowsOS = "${{ parameters.os }}" -eq "Windows"
         dotnet tool update --global dotnet-trace
 
-        if ($os -eq "Windows") {
+        if ($isWindowsOS) {
             $dotnetToolPath = [System.IO.Path]::Combine($env:USERPROFILE, ".dotnet", "tools")
             $dotnetTraceExecutable = Join-Path $dotnetToolPath "dotnet-trace.exe"
         } else {
@@ -334,7 +277,7 @@ jobs:
 
         # On Windows/IIS, replace process-name-based attachment (-n) with PID-based (-p)
         # since the host runs inside w3wp.exe, not as Microsoft.Azure.WebJobs.Script.WebHost.
-        if ($os -eq "Windows") {
+        if ($isWindowsOS) {
             $hostPid = "$(hostProcessId)"
             if ($hostPid) {
                 $collectArguments = $collectArguments -replace '-n\s+\S+', "-p $hostPid"
@@ -344,7 +287,7 @@ jobs:
         $arguments = "collect $collectArguments -o $(netTraceFilePath)"
         Write-Host "dotnet-trace command: $dotnetTraceExecutable $arguments"
 
-        if ($os -eq "Windows") {
+        if ($isWindowsOS) {
             Start-Process -FilePath $dotnetTraceExecutable -ArgumentList $arguments -NoNewWindow
         } else {
             bash -c "nohup $dotnetTraceExecutable $arguments > /dev/null 2>&1 &"
@@ -415,41 +358,13 @@ jobs:
         FUNCTION_APP_NAME: ${{ parameters.functionAppName }}
         OS: ${{ parameters.os }}
 
-  - pwsh: |
-      $os = "${{ parameters.os }}"
-      $shouldWaitForNetTrace = "${{ parameters.collectNetTrace }}" -ieq "true" -and "${{ parameters.instanceId }}" -eq "1"
-      if ($shouldWaitForNetTrace) {
-          Start-Sleep -Seconds 75 # Must exceed dotnet-trace --duration (60s) to ensure trace is complete.
-      }
-
-      if ($os -eq "Windows") {
-          # Stop IIS site and app pool
-          $appcmd = "$env:SystemRoot\System32\inetsrv\appcmd.exe"
-          & $appcmd stop site "FunctionsHost" 2>$null
-          & $appcmd stop apppool "FunctionsHostPool" 2>$null
-      }
-
-      # Stop the host process (w3wp on Windows, direct process on Linux)
-      $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
-      if (Test-Path $processIdFile) {
-          $processId = (Get-Content $processIdFile).Trim()
-          $proc = Get-Process -Id $processId -ErrorAction SilentlyContinue
-          if ($proc) {
-              if ($os -eq "Windows") {
-                  Write-Host "Stopping w3wp process with PID: $processId"
-                  Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
-              } else {
-                  Write-Host "Sending SIGTERM to functions host process PID: $processId"
-                  & kill -s TERM $processId 2>/dev/null
-              }
-          } else {
-              Write-Host "Host process (PID: $processId) is not running."
-          }
-      } else {
-          Write-Host "Process ID file not found."
-      }
-    displayName: Stop host process
-    condition: always()
+  - template: /eng/ci/templates/steps/stop-host.yml@self
+    parameters:
+      os: ${{ parameters.os }}
+      displayName: Stop host process
+      condition: always()
+      ${{ if and(eq(parameters.collectNetTrace, true), eq(parameters.instanceId, '1')) }}:
+        preStopDelaySeconds: 75
 
   - pwsh: |
       $isWindowsOS = "${{ parameters.os }}" -eq "Windows"
