@@ -50,6 +50,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // await Task.Delay(timeoutGracePeriod);
             if (!_workerManager.State.Equals(WorkerManagerState.Default))
             {
+                if (timeoutException.InstanceId == Guid.Empty)
+                {
+                    // Empty guid means this is a fan-out operation. The original timeout will already have started the worker restart.
+                    return;
+                }
+
                 _logger.LogWarning($"A function timeout has occurred. Restarting worker process executing invocationId '{timeoutException.InstanceId}'.", exceptionInfo.SourceException);
 
                 // If invocation id is not found in any of the workers => worker is already disposed. No action needed.
