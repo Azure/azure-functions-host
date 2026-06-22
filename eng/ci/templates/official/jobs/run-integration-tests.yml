@@ -12,6 +12,14 @@ jobs:
     is_release: $[contains(variables['Build.SourceBranch'], 'release/')]
     test_args: -c release --no-build
 
+  templateContext:
+    outputs:
+    - output: pipelineArtifact
+      displayName: Publish Samples hang dumps
+      path: $(Build.ArtifactStagingDirectory)/SamplesHangDumps
+      artifact: SamplesHangDumps
+      condition: failed()
+
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
@@ -213,13 +221,6 @@ jobs:
           Write-Host "Samples E2E tests completed with exit code $($testProc.ExitCode)."
           exit $testProc.ExitCode
         }
-
-  - task: PublishPipelineArtifact@1
-    displayName: Publish Samples hang dumps
-    condition: failed()
-    inputs:
-      targetPath: $(Build.ArtifactStagingDirectory)/SamplesHangDumps
-      artifactName: SamplesHangDumps
 
   - task: PublishTestResults@2
     displayName: Publish Samples test results
