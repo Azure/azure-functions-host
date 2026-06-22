@@ -217,15 +217,15 @@ jobs:
             & $appcmd stop apppool "FunctionsHostPool" 2>$null
             $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
             if (Test-Path $processIdFile) {
-                $pid = (Get-Content $processIdFile).Trim()
-                $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
-                if ($proc) { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue }
+                $hostPid = (Get-Content $processIdFile).Trim()
+                $proc = Get-Process -Id $hostPid -ErrorAction SilentlyContinue
+                if ($proc) { Stop-Process -Id $hostPid -Force -ErrorAction SilentlyContinue }
             }
         } else {
             $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
             if (Test-Path $processIdFile) {
-                $pid = (Get-Content $processIdFile).Trim()
-                & kill -s TERM $pid 2>/dev/null
+                $hostPid = (Get-Content $processIdFile).Trim()
+                & kill -s TERM $hostPid 2>/dev/null
                 Start-Sleep -Seconds 2
             }
         }
