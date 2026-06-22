@@ -8,4 +8,3 @@
 - fix: avoid health checks triggering secret-manager too early (#11816)
 - Restrict GET admin/host/triggers to platform claim (#11697)
 - fix: `SetProcessCountToNumberOfCpuCores` silently overriding `MaxProcessCount` on high core count machines (#11842)
-- Fixed a bug where `SetProcessCountToNumberOfCpuCores` would silently override `MaxProcessCount` on high core count machines, spawning more worker processes than the configured maximum. `MaxProcessCount` is now respected as a hard ceiling. (#11842)

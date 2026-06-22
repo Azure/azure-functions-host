@@ -167,11 +167,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ArgumentException.ThrowIfNullOrEmpty(functionName);
 
             string secretFileName = string.Format(CultureInfo.InvariantCulture, "{0}.json", functionName);
-            string fullPath = Path.GetFullPath(Path.Combine(_secretsPath, secretFileName));
+            string fullPath = Path.GetFullPath(Path.Combine(_normalizedSecretsPath, secretFileName));
 
             if (!fullPath.StartsWith(_normalizedSecretsPath, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"Invalid function name '{functionName}'. The resolved path is outside the secrets directory.");
+                throw new ArgumentException($"Invalid function name '{functionName}'. The resolved path is outside the secrets directory.", nameof(functionName));
             }
 
             return fullPath;

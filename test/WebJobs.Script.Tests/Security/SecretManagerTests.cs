@@ -1777,7 +1777,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             {
                 var repository = new FileSystemSecretsRepository(directory.Path, _logger, _testEnvironment);
 
-                var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                var ex = await Assert.ThrowsAsync<ArgumentException>(
                     () => repository.ReadAsync(ScriptSecretsType.Function, maliciousFunctionName));
 
                 Assert.Contains("outside the secrets directory", ex.Message);
@@ -1794,7 +1794,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 var repository = new FileSystemSecretsRepository(directory.Path, _logger, _testEnvironment);
                 var secrets = new FunctionSecrets();
 
-                var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                var ex = await Assert.ThrowsAsync<ArgumentException>(
                     () => repository.WriteAsync(ScriptSecretsType.Function, maliciousFunctionName, secrets));
 
                 Assert.Contains("outside the secrets directory", ex.Message);
