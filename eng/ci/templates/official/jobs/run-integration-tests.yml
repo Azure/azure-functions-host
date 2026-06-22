@@ -154,14 +154,82 @@ jobs:
       arguments: '--filter "Group=RawAssemblyEndToEndTests" $(test_args)'
       projects: $(test_projects)
 
-  - task: DotNetCoreCLI@2
+  - task: PowerShell@2
     displayName: Samples end to end tests
     condition: succeededOrFailed()
     inputs:
-      command: test
+      targetType: inline
+      pwsh: true
+      script: |
+        $dumpDir = Join-Path $env:BUILD_ARTIFACTSTAGINGDIRECTORY "SamplesHangDumps"
+        New-Item -ItemType Directory -Path $dumpDir -Force | Out-Null
+
+        # Install dotnet-dump globally for hang diagnostics
+        dotnet tool install --global dotnet-dump 2>$null
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","User") + ";" + $env:PATH
+
+        # Start the test run in the background
+        $testProc = Start-Process -FilePath "dotnet" `
+          -ArgumentList "test","test/WebJobs.Script.Tests.Integration/WebJobs.Script.Tests.Integration.csproj",`
+            "--filter","Group=SamplesEndToEndTests","-c","release","--no-build",`
+            "--logger","trx;LogFileName=SamplesE2E.trx",`
+            "--results-directory",$dumpDir `
+          -PassThru -NoNewWindow
+
+        $timeoutMin = 10
+        $deadline = (Get-Date).AddMinutes($timeoutMin)
+
+        while (-not $testProc.HasExited -and (Get-Date) -lt $deadline) {
+          Start-Sleep -Seconds 10
+        }
+
+        if (-not $testProc.HasExited) {
+          Write-Host "##[warning]Samples E2E tests exceeded $timeoutMin minutes — capturing hang dumps."
+
+          # Dump the testhost process (the one actually running tests)
+          $testhosts = Get-Process -Name "testhost" -ErrorAction SilentlyContinue |
+            Where-Object { $_.StartTime -gt $testProc.StartTime.AddSeconds(-5) }
+          foreach ($th in $testhosts) {
+            $dumpFile = Join-Path $dumpDir "testhost_$($th.Id)_hangdump.dmp"
+            Write-Host "Collecting dump for testhost PID $($th.Id) -> $dumpFile"
+            dotnet-dump collect -p $th.Id -o $dumpFile --type Full 2>&1 | Write-Host
+          }
+
+          # Also dump any dotnet worker processes started by the tests
+          $workers = Get-Process -Name "dotnet" -ErrorAction SilentlyContinue |
+            Where-Object { $_.StartTime -gt $testProc.StartTime.AddSeconds(-5) -and $_.Id -ne $testProc.Id }
+          foreach ($w in $workers | Select-Object -First 5) {
+            $dumpFile = Join-Path $dumpDir "dotnet_$($w.Id)_hangdump.dmp"
+            Write-Host "Collecting dump for dotnet PID $($w.Id) -> $dumpFile"
+            dotnet-dump collect -p $w.Id -o $dumpFile --type Full 2>&1 | Write-Host
+          }
+
+          # Kill the test process tree
+          Stop-Process -Id $testProc.Id -Force -ErrorAction SilentlyContinue
+          Write-Host "##vso[task.logissue type=error]Samples E2E tests timed out after $timeoutMin minutes."
+          exit 1
+        }
+        else {
+          Write-Host "Samples E2E tests completed with exit code $($testProc.ExitCode)."
+          exit $testProc.ExitCode
+        }
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish Samples hang dumps
+    condition: failed()
+    inputs:
+      targetPath: $(Build.ArtifactStagingDirectory)/SamplesHangDumps
+      artifactName: SamplesHangDumps
+
+  - task: PublishTestResults@2
+    displayName: Publish Samples test results
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: VSTest
+      testResultsFiles: '$(Build.ArtifactStagingDirectory)/SamplesHangDumps/**/*.trx'
       testRunTitle: Samples end to end tests
-      arguments: '--filter "Group=SamplesEndToEndTests" $(test_args)'
-      projects: $(test_projects)
+      failTaskOnFailedTests: true
+      failTaskOnMissingResultsFile: false
 
   - task: DotNetCoreCLI@2
     displayName: Drain mode end to end tests
