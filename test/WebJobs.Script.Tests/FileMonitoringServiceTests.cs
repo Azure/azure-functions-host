@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using WebJobs.Script.Tests;
 using Xunit;
@@ -367,10 +368,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var directory = new TempDirectory())
             {
-                // Setup: create a subdirectory inside root so the initial snapshot is non-empty
+                // The root script path is intentionally left empty. Deleting an empty watched
+                // directory does not raise child change notifications from the real file watcher,
+                // so the only event processed is the one published below. A non-empty directory
+                // would let the watcher race in its own "Deleted" events for the child entries and
+                // make the asserted restart reason non-deterministic.
                 string tempDir = directory.Path;
-                string subDir = Path.Combine(tempDir, "SubDir");
-                Directory.CreateDirectory(subDir);
 
                 var jobHostOptions = new ScriptJobHostOptions
                 {
@@ -379,7 +382,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     FileWatchingEnabled = true
                 };
 
+                var loggerProvider = new TestLoggerProvider();
                 var loggerFactory = new LoggerFactory();
+                loggerFactory.AddProvider(loggerProvider);
                 var mockApplicationLifetime = new Mock<IScriptApplicationLifetime>();
 
                 TaskCompletionSource restart = new TaskCompletionSource();
@@ -395,19 +400,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
-                // Delete the root script path to simulate the TOCTOU race condition
+                // Delete the root script path to simulate the TOCTOU race condition.
                 Directory.Delete(tempDir, recursive: true);
 
-                // Publish a Deleted event for a file inside the now-deleted directory
+                // Publish a Deleted event for a file inside the now-deleted directory. Enumerating
+                // the missing root inside OnFileChanged throws DirectoryNotFoundException, which the
+                // service must swallow while still treating the change as a directory change.
                 var deletedEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Deleted, tempDir, "some_file.txt");
                 FileEvent deletedFileEvent = new FileEvent("ScriptFiles", deletedEventArgs);
                 mockEventManager.Publish(deletedFileEvent);
 
-                // The service should trigger a restart without throwing an exception
-                var expectedReason = $"Directory change of type 'Deleted' detected for '{Path.Combine(tempDir, "some_file.txt")}'";
                 await restart.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+                // The service triggers a restart (not a shutdown) without throwing, and logs the
+                // TOCTOU warning emitted from the DirectoryNotFoundException catch block.
+                var expectedReason = $"Directory change of type 'Deleted' detected for '{Path.Combine(tempDir, "some_file.txt")}'";
                 mockScriptHostManager.Verify(m => m.RestartHostAsync(expectedReason, default), Times.Once);
                 mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Never);
+                Assert.Contains(loggerProvider.GetAllLogMessages(), m => m.FormattedMessage is not null && m.FormattedMessage.Contains("was not found while processing file change event"));
             }
         }
 
