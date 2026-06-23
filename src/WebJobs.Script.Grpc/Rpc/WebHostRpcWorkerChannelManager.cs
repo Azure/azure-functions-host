@@ -411,7 +411,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
                     value.SetResult(initializedLanguageWorkerChannel);
+                    return;
                 }
+            }
+
+            // The runtime was already removed from _workerChannels by ShutdownChannelsAsync (which
+            // raced with this initialization). The TCS was canceled, so ShutdownChannelsAsync won't
+            // dispose this channel. We must dispose it here to avoid leaking the worker process.
+            _logger.LogDebug("Channel for workerId:{id} was initialized after shutdown removed it from the dictionary. Disposing.", initializedLanguageWorkerChannel.Id);
+            try
+            {
+                (initializedLanguageWorkerChannel as IDisposable)?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Error disposing late-initialized worker channel for workerId:{id}", initializedLanguageWorkerChannel.Id);
             }
         }
 
