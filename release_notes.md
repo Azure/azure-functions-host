@@ -10,3 +10,4 @@
 - fix: avoid health checks triggering secret-manager too early (#11816)
 - Restrict GET admin/host/triggers to platform claim (#11697)
 - fix: `SetProcessCountToNumberOfCpuCores` silently overriding `MaxProcessCount` on high core count machines (#11842)
+- Update Python Worker Version to [4.45.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.45.0)
