@@ -3,17 +3,16 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     /// <summary>
-    /// A logger that defers log entries to a channel.
+    /// A logger that defers log entries to a shared <see cref="DeferredLogSource"/>.
     /// </summary>
-    public class DeferredLogger : ILogger
+    internal class DeferredLogger : ILogger
     {
-        private readonly Channel<DeferredLogEntry> _channel;
+        private readonly DeferredLogSource _source;
         private readonly string _categoryName;
         private readonly IExternalScopeProvider _scopeProvider;
         private readonly IEnvironment _environment;
@@ -21,9 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         // Cached placeholder mode flag
         private bool _isPlaceholderModeDisabled = false;
 
-        public DeferredLogger(Channel<DeferredLogEntry> channel, string categoryName, IExternalScopeProvider scopeProvider, IEnvironment environment)
+        public DeferredLogger(DeferredLogSource source, string categoryName, IExternalScopeProvider scopeProvider, IEnvironment environment)
         {
-            _channel = channel;
+            _source = source;
             _categoryName = categoryName;
             _scopeProvider = scopeProvider;
             _environment = environment;
@@ -74,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 state.ScopeStorage.Add(scope);
             }, log);
 
-            _channel.Writer.TryWrite(log);
+            _source.Write(log);
         }
     }
 }

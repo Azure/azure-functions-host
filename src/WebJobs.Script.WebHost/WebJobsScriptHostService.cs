@@ -18,7 +18,6 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -399,19 +398,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 ActiveHost = localHost;
-
-                if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWebHostLogForwarding, _environment))
-                {
-                    // Forward logs to AppInsights/OpenTelemetry.
-                    // These are not tracked by the AppInsights and OpenTelemetry logger provider as these are added in the script host.
-                    var loggerProviders = ActiveHost.Services.GetServices<ILoggerProvider>();
-                    var deferredLogProvider = ActiveHost.Services.GetService<DeferredLoggerProvider>();
-                    if (deferredLogProvider is not null)
-                    {
-                        var selectedProviders = loggerProviders.Where(provider => provider is ApplicationInsightsLoggerProvider or OpenTelemetryLoggerProvider).ToArray();
-                        _ = Task.Run(() => deferredLogProvider.ProcessBufferedLogsAsync(selectedProviders));
-                    }
-                }
                 _workerConfigCacheInvalidator.InvalidateCachePostBuildIfEnabled();
 
                 var scriptHost = (ScriptHost)ActiveHost.Services.GetService<ScriptHost>();
