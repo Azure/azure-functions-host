@@ -9,10 +9,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -361,6 +359,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         "proxyroute"
                     };
                 });
+            }
+
+            public override async Task DisposeAsync()
+            {
+                await Host.StopAndDisposeWebHostAsync();
+                await base.DisposeAsync();
             }
         }
     }

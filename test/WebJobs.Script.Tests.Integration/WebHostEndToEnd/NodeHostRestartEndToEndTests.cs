@@ -125,5 +125,11 @@ public class NodeHostRestartEndToEndTests
                     nodeConfig.CountOptions.ProcessStartupInterval = ProcessStartupInterval;
                 });
         }
+
+        public override async Task DisposeAsync()
+        {
+            await Host.StopAndDisposeWebHostAsync();
+            await base.DisposeAsync();
+        }
     }
 }
