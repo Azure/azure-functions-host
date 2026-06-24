@@ -39,12 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task TimeoutTest_UsingToken_CSharp()
         {
-            await RunTokenTest("useToken", async (logs) =>
+            await RunTokenTest("useToken", async () =>
              {
                  // The function should 'clean up' and write 'Done'
                  await TestHelpers.Await(() =>
                  {
-                     var doneLog = logs.SingleOrDefault(l => l.EndsWith("Done"));
+                     var doneLog = GetFormattedLogMessages().SingleOrDefault(l => l.EndsWith("Done"));
                      return doneLog != null;
                  });
              });
@@ -53,16 +53,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task TimeoutTest_IgnoringToken_CSharp()
         {
-            await RunTokenTest("ignoreToken", (logs) =>
+            await RunTokenTest("ignoreToken", () =>
              {
                  // We do not expect 'Done' to be written here.
+                 var logs = GetFormattedLogMessages();
                  Assert.NotEmpty(logs);
                  Assert.False(logs.Any(l => l.EndsWith("Done")));
                  return Task.CompletedTask;
              });
         }
 
-        private async Task RunTokenTest(string scenario, Func<IEnumerable<string>, Task> verify)
+        private async Task RunTokenTest(string scenario, Func<Task> verify)
         {
             string functionName = "TimeoutToken";
             TestHelpers.ClearFunctionLogs(functionName);
@@ -81,8 +82,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 var exception = GetExceptionHandler(host).TimeoutExceptionInfos.Single().SourceException;
                 Assert.IsType<FunctionTimeoutException>(exception);
 
-                await verify(_loggerProvider.GetAllLogMessages().Where(t => t.FormattedMessage != null).Select(t => t.FormattedMessage));
+                await verify();
             }
+        }
+
+        private IEnumerable<string> GetFormattedLogMessages()
+        {
+            return _loggerProvider.GetAllLogMessages()
+                .Where(t => t.FormattedMessage != null)
+                .Select(t => t.FormattedMessage);
         }
 
         private async Task RunTimeoutTest(string scriptLang, string functionName)
