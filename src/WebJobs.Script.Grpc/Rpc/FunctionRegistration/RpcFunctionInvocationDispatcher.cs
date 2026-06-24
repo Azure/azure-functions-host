@@ -9,7 +9,6 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -124,6 +123,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal ConcurrentStack<WorkerErrorEvent> LanguageWorkerErrors => _languageWorkerErrors;
 
         internal IWebHostRpcWorkerChannelManager WebHostLanguageWorkerChannelManager => _webHostLanguageWorkerChannelManager;
+
+        private bool IsShuttingDown =>
+            _disposing
+            || _disposed
+            || (_applicationLifetime?.ApplicationStopping.IsCancellationRequested ?? false);
 
         private async Task<int> GetMaxProcessCount()
         {
@@ -586,8 +590,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task StartWorkerChannel(string runtime)
         {
-            if (_disposing || _disposed)
+            if (IsShuttingDown)
             {
+                _logger.LogDebug("Skipping worker channel start for runtime '{runtime}' because the host is shutting down.", runtime ?? _workerRuntime);
                 return;
             }
 
