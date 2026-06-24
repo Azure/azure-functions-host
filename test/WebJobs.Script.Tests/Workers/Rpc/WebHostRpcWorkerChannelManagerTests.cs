@@ -773,6 +773,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Null(_rpcWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName));
         }
 
+        [Fact]
+        public async Task ShutdownChannelsAsync_UninitializedChannel_DoesNotDeadlock()
+        {
+            // This test reproduces the race condition where ShutdownChannelsAsync runs while a
+            // channel is still initializing (TCS has not been completed). In production this happens
+            // when the host shuts down before all worker processes finish their init handshake.
+            //
+            // The bug: ShutdownChannelsAsync does TryRemove on the runtime key, then awaits the
+            // TCS. Meanwhile, the ContinueWith (which would call SetInitializedWorkerChannel) can
+            // no longer find the TCS in the dict to call SetResult — so the TCS is never completed
+            // and ShutdownChannelsAsync blocks forever.
+            //
+            // Without a fix, this test will time out.
+
+            var testChannel = _rpcWorkerChannelFactory.Create(
+                _scriptRootPath, RpcWorkerConstants.NodeLanguageWorkerName, null, 0,
+                _workerOptionsMonitor.CurrentValue.WorkerConfigs);
+
+            // Add the channel to the dict (creates the TCS) but do NOT call
+            // SetInitializedWorkerChannel — simulating a channel mid-initialization.
+            _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(RpcWorkerConstants.NodeLanguageWorkerName, testChannel);
+
+            // ShutdownChannelsAsync should complete within a reasonable time, not block forever.
+            var shutdownTask = _rpcWorkerChannelManager.ShutdownChannelsAsync();
+            var completed = await Task.WhenAny(shutdownTask, Task.Delay(TimeSpan.FromSeconds(15)));
+
+            Assert.True(ReferenceEquals(completed, shutdownTask), "ShutdownChannelsAsync deadlocked waiting on an uninitialized channel's TCS.");
+        }
+
         private WebHostRpcWorkerChannelManager CreateChannelManager(string workerRuntime, IRpcWorkerChannelFactory channelFactory = null, IMetricsLogger metrics = null,
             IConfiguration config = null)
         {
