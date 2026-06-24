@@ -302,6 +302,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public virtual async Task DisposeAsync()
         {
+            await Host.StopAndDisposeWebHostAsync();
+
             if (Host is not null)
             {
                 var fileMonitoringService = Host.JobHostServices?.GetService<IFileMonitoringService>();
