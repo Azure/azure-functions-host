@@ -74,12 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     };
                 });
             }
-
-            public override async Task DisposeAsync()
-            {
-                await Host.StopAndDisposeWebHostAsync();
-                await base.DisposeAsync();
-            }
         }
     }
 }
