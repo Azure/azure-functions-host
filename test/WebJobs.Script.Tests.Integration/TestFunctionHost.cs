@@ -512,7 +512,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// <summary>
         /// Temporary method to dispose the web host. This is needed because the web host is not disposed 
         /// when the test fixture is disposed, which can cause issues with subsequent tests. We are selectively
-        /// enabing this throughought tests and will eventually make it private and call it from DisposeAsync once
+        /// enabling this on some tests and will eventually make it private and call it from DisposeAsync once
         /// all issues are resolved.
         /// </summary>        
         internal async Task StopAndDisposeWebHostAsync()
