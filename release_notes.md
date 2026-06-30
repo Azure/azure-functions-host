@@ -10,4 +10,4 @@
 - fix: avoid health checks triggering secret-manager too early (#11816)
 - Restrict GET admin/host/triggers to platform claim (#11697)
 - fix: `SetProcessCountToNumberOfCpuCores` silently overriding `MaxProcessCount` on high core count machines (#11842)
-- fix: fix: eliminate noisy restart logs during worker channel shutdown (#11846)
+- fix: eliminate noisy restart logs during worker channel shutdown (#11846)
