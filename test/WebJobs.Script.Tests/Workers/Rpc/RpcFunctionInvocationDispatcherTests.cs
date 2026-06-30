@@ -8,7 +8,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -711,6 +710,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(FunctionInvocationScope.User, FunctionInvoker.CurrentScope);
         }
 
+        [Fact]
+        public async Task WorkerRestart_DuringApplicationStopping_DisposesChannel_DoesNotRestart()
+        {
+            // This test exercises the scenario where Host.StopAsync() fires ApplicationStopping,
+            // a worker exits (e.g. due to WorkerTerminate message), and the OnProcessExited handler
+            // publishes a WorkerRestartEvent before disposal. Without the fix, the dispatcher would
+            // restart the worker — creating a new channel during shutdown that will never be disposed
+            // and leads to a JobObjectRegistry deadlock.
+
+            int expectedProcessCount = 1;
+            var stoppingSource = new CancellationTokenSource();
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(
+                expectedProcessCount,
+                runtime: RpcWorkerConstants.NodeLanguageWorkerName,
+                applicationStoppingSource: stoppingSource);
+
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            TestRpcWorkerChannel testWorkerChannel = (TestRpcWorkerChannel)functionDispatcher
+                .JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
+            Assert.NotNull(testWorkerChannel);
+
+            // Simulate Host.StopAsync() beginning — fires ApplicationStopping before any
+            // hosted services stop or the dispatcher is disposed.
+            stoppingSource.Cancel();
+
+            // Worker exits and publishes WorkerRestartEvent (same as OnProcessExited with exit code 0).
+            // The event subscription is still alive — only Dispose() detaches it.
+            testWorkerChannel.RaiseWorkerRestart();
+
+            // Wait for the log that proves StartWorkerChannel was entered and skipped.
+            await TestHelpers.Await(
+                () => _testLoggerProvider.GetAllLogMessages().Any(m =>
+                    m.FormattedMessage.Contains("Skipping worker channel start") &&
+                    m.FormattedMessage.Contains("shutting down")),
+                timeout: 5000,
+                pollingInterval: 100);
+
+            // The original channel should be disposed (removed by ShutdownChannelIfExistsAsync).
+            // No new channel should be created — restart was blocked by IsShuttingDown.
+            int channelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
+            Assert.Equal(0, channelCount);
+        }
+
         private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(
             int maxProcessCountValue = 1,
             bool addWebhostChannel = false,
@@ -720,11 +764,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             string runtime = null,
             bool workerIndexing = false,
             bool placeholder = false,
-            IRpcWorkerChannelFactory channelFactory = null)
+            IRpcWorkerChannelFactory channelFactory = null,
+            CancellationTokenSource applicationStoppingSource = null)
         {
             var eventManager = new ScriptEventManager();
             var metricsLogger = new Mock<IMetricsLogger>();
             var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
+            var stoppingSource = applicationStoppingSource ?? new CancellationTokenSource();
+            mockApplicationLifetime.Setup(m => m.ApplicationStopping).Returns(stoppingSource.Token);
             var testEnv = new TestEnvironment();
             TimeSpan intervals = startupIntervals ?? TimeSpan.FromMilliseconds(100);
 

@@ -246,11 +246,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(ScriptConstants.DynamicSku, "containerName", "", "", false)]
-        [InlineData(ScriptConstants.DynamicSku, "containerName", "podName", "", false)]
-        [InlineData(ScriptConstants.DynamicSku, "containerName", "podName", "legionServiceHost", true)]
-        [InlineData(ScriptConstants.DynamicSku, "containerName", "", "legionServiceHost", true)]
-        public void Returns_AtlasOrLegionConsumption(string sku, string containerName, string podName, string legionServiceHost, bool legion)
+        [Trait(TestTraits.Group, TestTraits.LinuxConsumptionMetricsTests)]
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "", "", "", true, false)]
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "podName", "", "", true, false)]
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "podName", "legionServiceHost", "", false, true)]
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "", "legionServiceHost", "", false, true)]
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "", "", "true", false, false)] // MANAGED_ENVIRONMENT (ACA) => excluded from Atlas
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "", "", "1", false, false)]
+        [InlineData(ScriptConstants.DynamicSku, "containerName", "", "legionServiceHost", "true", false, false)] // MANAGED_ENVIRONMENT (ACA) => excluded from Legion too
+        public void Returns_AtlasOrLegionConsumption(string sku, string containerName, string podName, string legionServiceHost, string managedEnvironment, bool atlas, bool legion)
         {
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, string.Empty);
@@ -258,9 +262,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, containerName);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.PodName, podName);
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.LegionServiceHost, legionServiceHost);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ManagedEnvironment, managedEnvironment);
 
             Assert.Equal(legion, testEnvironment.IsLinuxConsumptionOnLegion());
-            Assert.Equal(!legion, testEnvironment.IsLinuxConsumptionOnAtlas());
+            Assert.Equal(atlas, testEnvironment.IsLinuxConsumptionOnAtlas());
+            Assert.Equal(atlas, testEnvironment.IsLinuxMetricsPublishingEnabled());
         }
 
         [Theory]

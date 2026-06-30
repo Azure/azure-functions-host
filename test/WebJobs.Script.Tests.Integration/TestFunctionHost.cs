@@ -58,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private TestLoggerProvider _webHostLoggerProvider;
         private bool _timerFired = false;
         private bool _isDisposed = false;
+        private bool _webHostDisposed;
 
         public TestFunctionHost(string scriptPath,
             Action<IServiceCollection> configureWebHostServices = null,
@@ -507,12 +508,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return JwtTokenHelper.CreateToken(validUntil, audience, issuer, key, notBefore);
         }
 
+
+        /// <summary>
+        /// Temporary method to dispose the web host. This is needed because the web host is not disposed 
+        /// when the test fixture is disposed, which can cause issues with subsequent tests. We are selectively
+        /// enabling this on some tests and will eventually make it private and call it from DisposeAsync once
+        /// all issues are resolved.
+        /// </summary>        
+        internal async Task StopAndDisposeWebHostAsync()
+        {
+            if (_webHostDisposed)
+            {
+                return;
+            }
+
+            try
+            {
+                if (_webHost is not null)
+                {
+                    try
+                    {
+                        await _webHost.StopAsync();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // In case dispose has already run from elsewhere.
+                    }
+                    catch (AggregateException ex) when (ex.InnerExceptions.Count > 0 && ex.InnerExceptions.All(e => e is ObjectDisposedException))
+                    {
+                        // In case dispose has already run from elsewhere.
+                    }
+                }
+            }
+            finally
+            {
+                if (_webHost is IAsyncDisposable asyncDisposable)
+                {
+                    await asyncDisposable.DisposeAsync();
+                }
+                else
+                {
+                    _webHost?.Dispose();
+                }
+            }
+
+            _webHostDisposed = true;
+        }
+
         public void Dispose()
         {
             if (!_isDisposed)
             {
                 HttpClient.Dispose();
-                
+
                 _stillRunningTimer?.Change(-1, -1);
                 _stillRunningTimer?.Dispose();
 

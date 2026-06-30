@@ -1768,6 +1768,76 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             }
         }
 
+        [Theory]
+        [InlineData("../../../etc/shadow")]
+        [InlineData("foo/../../etc/passwd")]
+        public async Task FileSystemSecretsRepository_ReadAsync_PathTraversal_Throws(string maliciousFunctionName)
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new FileSystemSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                var ex = await Assert.ThrowsAsync<ArgumentException>(
+                    () => repository.ReadAsync(ScriptSecretsType.Function, maliciousFunctionName));
+
+                Assert.Contains("outside the secrets directory", ex.Message);
+            }
+        }
+
+        [Theory]
+        [InlineData("../../../etc/shadow")]
+        [InlineData("foo/../../etc/passwd")]
+        public async Task FileSystemSecretsRepository_WriteAsync_PathTraversal_Throws(string maliciousFunctionName)
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new FileSystemSecretsRepository(directory.Path, _logger, _testEnvironment);
+                var secrets = new FunctionSecrets();
+
+                var ex = await Assert.ThrowsAsync<ArgumentException>(
+                    () => repository.WriteAsync(ScriptSecretsType.Function, maliciousFunctionName, secrets));
+
+                Assert.Contains("outside the secrets directory", ex.Message);
+            }
+        }
+
+        [Fact]
+        public async Task FileSystemSecretsRepository_ReadAsync_ValidFunctionName_DoesNotThrow()
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new FileSystemSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                var result = await repository.ReadAsync(ScriptSecretsType.Function, "MyFunction");
+
+                Assert.Null(result);
+            }
+        }
+
+        [Fact]
+        public async Task FileSystemSecretsRepository_ReadAsync_NullFunctionName_Throws()
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new FileSystemSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                await Assert.ThrowsAsync<ArgumentNullException>(
+                    () => repository.ReadAsync(ScriptSecretsType.Function, null));
+            }
+        }
+
+        [Fact]
+        public async Task FileSystemSecretsRepository_ReadAsync_EmptyFunctionName_Throws()
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new FileSystemSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                await Assert.ThrowsAsync<ArgumentException>(
+                    () => repository.ReadAsync(ScriptSecretsType.Function, string.Empty));
+            }
+        }
+
         private Mock<IKeyValueConverterFactory> GetConverterFactoryMock(bool simulateWriteConversion = true, bool setStaleValue = true)
         {
             var mockValueReader = new Mock<IKeyValueReader>();

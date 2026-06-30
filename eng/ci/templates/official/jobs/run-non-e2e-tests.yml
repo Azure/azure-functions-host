@@ -56,7 +56,7 @@ jobs:
       pwsh: true
       ScriptPath: eng/script/checkout-secrets.ps1
 
-  - task: AzureKeyVault@1
+  - task: AzureKeyVault@2
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
       azureSubscription: Azure-Functions-Host-CI-internal
