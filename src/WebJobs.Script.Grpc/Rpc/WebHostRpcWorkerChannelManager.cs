@@ -408,16 +408,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
-                    value.SetResult(initializedLanguageWorkerChannel);
-                    return;
+                    if (value.TrySetResult(initializedLanguageWorkerChannel))
+                    {
+                        return;
+                    }
+
+                    _logger.LogDebug("Channel for workerId:{id} initialized after its initialization task was already completed. Disposing.", initializedLanguageWorkerChannel.Id);
                 }
             }
+            else
+            {
+                _logger.LogDebug("Channel for workerId:{id} initialized after shutdown removed it from the dictionary. Disposing.", initializedLanguageWorkerChannel.Id);
+            }
 
-            // The runtime was already removed from _workerChannels by ShutdownChannelsAsync.
-            // The TCS was canceled so ShutdownChannelsAsync won't dispose this channel.
-            // Dispose it here to avoid leaking the worker process.
-            _logger.LogDebug("Channel for workerId:{id} initialized after shutdown removed it from the dictionary. Disposing.", initializedLanguageWorkerChannel.Id);
-            initializedLanguageWorkerChannel.ShutdownAndDispose(null, _logger);
+            ShutdownAndDisposeChannel(initializedLanguageWorkerChannel);
         }
 
         internal void SetExceptionOnInitializedWorkerChannel(string initializedRuntime, IRpcWorkerChannel initializedLanguageWorkerChannel, Exception exception)
@@ -427,7 +431,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
-                    value.SetException(exception);
+                    value.TrySetException(exception);
                 }
             }
 
@@ -436,7 +440,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // is cleaned up; otherwise the channel reference falls out of scope and the worker
             // process leaks until the WebHost shuts down — at which point JobObjectRegistry.Close
             // blocks forever waiting on ProcessWaitingForTermination.
-            initializedLanguageWorkerChannel.ShutdownAndDispose(null, _logger);
+            ShutdownAndDisposeChannel(initializedLanguageWorkerChannel);
+        }
+
+        private void ShutdownAndDisposeChannel(IRpcWorkerChannel workerChannel)
+        {
+            try
+            {
+                workerChannel.ShutdownAndDispose(null, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Error disposing worker channel");
+            }
         }
     }
 }

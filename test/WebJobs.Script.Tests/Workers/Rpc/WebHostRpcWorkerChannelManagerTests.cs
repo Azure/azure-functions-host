@@ -800,6 +800,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var completed = await Task.WhenAny(shutdownTask, Task.Delay(TimeSpan.FromSeconds(15)));
 
             Assert.True(ReferenceEquals(completed, shutdownTask), "ShutdownChannelsAsync deadlocked waiting on an uninitialized channel's TCS.");
+            await shutdownTask;
         }
 
         private WebHostRpcWorkerChannelManager CreateChannelManager(string workerRuntime, IRpcWorkerChannelFactory channelFactory = null, IMetricsLogger metrics = null,
