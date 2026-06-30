@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (timeoutException.InstanceId == Guid.Empty)
                 {
-                    // Empty guid means this is a fan-out operation. The original timeout will already have started the worker restart.
+                    // Empty guid indicates this is from worker channel shutdown; the restart will already have been initiated by the original failure.
                     return;
                 }
 
