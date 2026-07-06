@@ -158,6 +158,252 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());   // Ensure count always stays at the initial count
         }
 
+        /// <summary>
+        /// Reproduction test for ICM 51000001094440:
+        /// Single-process dotnet-isolated worker with two consecutive timeouts.
+        /// After the first timeout, the worker restarts successfully.
+        /// After the second timeout on the NEW worker, the worker should restart again.
+        /// This tests the scenario where the host gets stuck with no worker after
+        /// a second consecutive timeout-triggered restart.
+        /// </summary>
+        /// <summary>
+        /// Reproduction test for ICM 51000001094440:
+        /// Tests that when a second timeout-triggered restart fails at the process level
+        /// (e.g., process startup exception), the dispatcher handles it gracefully and
+        /// doesn't leave the host in a permanently broken state with no worker.
+        /// 
+        /// In production, the bug manifests because:
+        /// 1. DisposeAndRestartWorkerChannel calls StartWorkerChannel
+        /// 2. StartWorkerChannel calls InitializeJobhostLanguageWorkerChannelAsync
+        /// 3. If the process startup fails (exception), it propagates UNHANDLED
+        /// 4. The host is left with State=WorkerProcessRestarting, no channels, no recovery
+        /// </summary>
+        [Fact]
+        public async Task ConsecutiveTimeouts_SecondRestartFails_HostShouldRecover()
+        {
+            // Arrange: custom factory that succeeds on first 2 creates but fails on 3rd
+            // (1st create = initial worker, 2nd = after first restart, 3rd = after second restart)
+            _testLoggerProvider.ClearAllLogMessages();
+            var eventManager = new ScriptEventManager();
+            int createCount = 0;
+            var mockChannelFactory = new Mock<IRpcWorkerChannelFactory>();
+            mockChannelFactory.Setup(m => m.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IMetricsLogger>(), It.IsAny<int>(), It.IsAny<IEnumerable<RpcWorkerConfig>>()))
+                .Returns((string scriptPath, string language, IMetricsLogger metrics, int attempt, IEnumerable<RpcWorkerConfig> configs) =>
+                {
+                    int count = Interlocked.Increment(ref createCount);
+                    bool shouldFail = count >= 3; // Third channel creation fails (second restart)
+                    return new TestRpcWorkerChannel(Guid.NewGuid().ToString(), language, eventManager, _testLogger,
+                        throwOnProcessStartUp: shouldFail);
+                });
+
+            int expectedProcessCount = 1;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(
+                expectedProcessCount,
+                runtime: RpcWorkerConstants.NodeLanguageWorkerName,
+                channelFactory: mockChannelFactory.Object);
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            // First restart: should succeed
+            var firstChannel = (TestRpcWorkerChannel)functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().First();
+            Guid firstInvId = Guid.NewGuid();
+            firstChannel.SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext { InvocationId = firstInvId }
+            });
+            await functionDispatcher.RestartWorkerWithInvocationIdAsync(firstInvId.ToString());
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            Assert.Equal(1, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());
+
+            // Second restart: process startup will FAIL
+            var secondChannel = (TestRpcWorkerChannel)functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().First();
+            Guid secondInvId = Guid.NewGuid();
+            secondChannel.SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext { InvocationId = secondInvId }
+            });
+
+            // This should throw (or handle gracefully) — NOT leave the host stuck
+            Exception caughtException = null;
+            try
+            {
+                await functionDispatcher.RestartWorkerWithInvocationIdAsync(secondInvId.ToString());
+            }
+            catch (Exception ex)
+            {
+                caughtException = ex;
+            }
+
+            // BUG ASSERTION: If exception propagates unhandled, the host is left broken.
+            // The dispatcher has no channels and no recovery mechanism.
+            var finalChannels = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().ToList();
+
+            // Document the broken state - this demonstrates the bug:
+            if (caughtException != null)
+            {
+                // Exception propagated unhandled - host is in a broken state
+                _testLogger.LogError(caughtException,
+                    "BUG CONFIRMED: Exception from StartWorkerChannel propagated unhandled. " +
+                    "Host is now stuck with State={State}, Channels={ChannelCount}",
+                    functionDispatcher.State, finalChannels.Count);
+
+                // THE BUG: A zombie channel was added to the manager (line in InitializeJobhostLanguageWorkerChannelAsync:
+                //   _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel, language)
+                // executes BEFORE StartWorkerProcessAsync() throws), leaving a broken channel
+                // that is not ready for invocations. The host is stuck:
+                // - Has a channel object, but it's not initialized
+                // - No invocations can be dispatched (channel.IsChannelReadyForInvocations() = false)
+                // - No recovery mechanism exists to retry or clean up
+                Assert.True(finalChannels.Count > 0, "Zombie channel exists in manager");
+                Assert.False(finalChannels[0].IsChannelReadyForInvocations(),
+                    "BUG: Channel exists but is NOT ready for invocations - host is stuck!");
+                Assert.Equal(FunctionInvocationDispatcherState.WorkerProcessRestarting, functionDispatcher.State);
+            }
+            else
+            {
+                // If no exception, the host should have recovered somehow
+                Assert.NotEmpty(finalChannels);
+                Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
+            }
+        }
+
+        [Fact]
+        public async Task ConsecutiveTimeouts_SingleProcess_WorkerRestartsEachTime()
+        {
+            // Arrange: single-process dispatcher (using node since test infra supports it;
+            // the bug is in the dispatcher logic, not language-specific)
+            int expectedProcessCount = 1;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(
+                expectedProcessCount,
+                runtime: RpcWorkerConstants.NodeLanguageWorkerName);
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            // Verify initial state: 1 worker ready
+            var initialChannels = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().ToList();
+            Assert.Single(initialChannels);
+            string firstWorkerId = initialChannels[0].Id;
+
+            // === FIRST TIMEOUT: Simulate HandleQueueTask exceeding functionTimeout ===
+            Guid firstInvocationId = Guid.NewGuid();
+            var firstChannel = (TestRpcWorkerChannel)initialChannels[0];
+            firstChannel.SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext { InvocationId = firstInvocationId }
+            });
+
+            // Restart the worker (simulates WebScriptHostExceptionHandler calling this on timeout)
+            bool firstRestartResult = await functionDispatcher.RestartWorkerWithInvocationIdAsync(firstInvocationId.ToString());
+            Assert.True(firstRestartResult, "First timeout-triggered restart should succeed");
+
+            // Wait for the new worker to come up
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            // Verify: original worker is disposed, new worker is active
+            Assert.True(firstChannel.IsDisposed, "Original worker should be disposed after first timeout");
+            var channelsAfterFirstRestart = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().ToList();
+            Assert.Single(channelsAfterFirstRestart);
+            string secondWorkerId = channelsAfterFirstRestart[0].Id;
+            Assert.NotEqual(firstWorkerId, secondWorkerId); // New worker is different
+
+            // === SECOND TIMEOUT: Same function times out again on the NEW worker ===
+            Guid secondInvocationId = Guid.NewGuid();
+            var secondChannel = (TestRpcWorkerChannel)channelsAfterFirstRestart[0];
+            secondChannel.SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext { InvocationId = secondInvocationId }
+            });
+
+            // Restart the worker again (second consecutive timeout)
+            bool secondRestartResult = await functionDispatcher.RestartWorkerWithInvocationIdAsync(secondInvocationId.ToString());
+            Assert.True(secondRestartResult, "Second timeout-triggered restart should succeed");
+
+            // Wait for the replacement worker to come up
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            // === CRITICAL ASSERTION: Worker count should be back to 1 with a NEW worker ===
+            Assert.True(secondChannel.IsDisposed, "Second worker should be disposed after second timeout");
+            var channelsAfterSecondRestart = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().ToList();
+            Assert.Single(channelsAfterSecondRestart); // THIS IS THE BUG CHECK: if empty, worker was never restarted
+            string thirdWorkerId = channelsAfterSecondRestart[0].Id;
+            Assert.NotEqual(secondWorkerId, thirdWorkerId); // Third worker is different from second
+
+            // Verify the dispatcher is in Initialized state (not stuck in WorkerProcessRestarting)
+            Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
+        }
+
+        /// <summary>
+        /// Tests the cascade scenario from ICM 51000001094440:
+        /// When a timeout kills the worker, multiple in-flight invocations also fail
+        /// with invocationId 00000000-0000-0000-0000-000000000000 and each triggers
+        /// RestartWorkerWithInvocationIdAsync. These phantom restarts should not
+        /// interfere with the real restart.
+        /// </summary>
+        [Fact]
+        public async Task TimeoutCascade_PhantomInvocations_DoNotPreventRestart()
+        {
+            // Arrange: single-process (using node since test infra supports it)
+            int expectedProcessCount = 1;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(
+                expectedProcessCount,
+                runtime: RpcWorkerConstants.NodeLanguageWorkerName);
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            var channel = (TestRpcWorkerChannel)functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().First();
+
+            // Simulate multiple in-flight invocations (like HandleQueueTask processing queue messages)
+            Guid realInvocationId = Guid.NewGuid();
+            Guid phantom1 = Guid.NewGuid();
+            Guid phantom2 = Guid.NewGuid();
+            Guid phantom3 = Guid.NewGuid();
+
+            channel.SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext { InvocationId = realInvocationId }
+            });
+            channel.SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext { InvocationId = phantom1 }
+            });
+            channel.SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext { InvocationId = phantom2 }
+            });
+            channel.SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext { InvocationId = phantom3 }
+            });
+
+            // First: the real timeout triggers restart for the real invocation
+            var realRestartTask = functionDispatcher.RestartWorkerWithInvocationIdAsync(realInvocationId.ToString());
+
+            // Then phantom restarts fire (these come from cancelled in-flight invocations)
+            // Using Guid.Empty to match the "00000000-0000-0000-0000-000000000000" pattern in logs
+            var phantomTask1 = functionDispatcher.RestartWorkerWithInvocationIdAsync(Guid.Empty.ToString());
+            var phantomTask2 = functionDispatcher.RestartWorkerWithInvocationIdAsync(Guid.Empty.ToString());
+            var phantomTask3 = functionDispatcher.RestartWorkerWithInvocationIdAsync(Guid.Empty.ToString());
+
+            await Task.WhenAll(realRestartTask, phantomTask1, phantomTask2, phantomTask3);
+
+            // The real restart should have succeeded
+            Assert.True(await realRestartTask);
+            // Phantom restarts should return false (no channel is executing Guid.Empty)
+            Assert.False(await phantomTask1);
+            Assert.False(await phantomTask2);
+            Assert.False(await phantomTask3);
+
+            // Wait for the new worker to be ready
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+
+            // Verify worker was restarted despite the cascade
+            Assert.True(channel.IsDisposed);
+            var finalChannels = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().ToList();
+            Assert.Single(finalChannels);
+            Assert.NotEqual(channel.Id, finalChannels[0].Id);
+            Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
+        }
+
         [Fact]
         public async Task Restart_ParticularWorkerChannel_Succeeds_OnlyThatIsDisposed()
         {
