@@ -83,6 +83,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.StorageProvider
         }
 
         [Fact]
+        public void CreateTokenCredential_StorageProxyCredential_ReturnsStorageProxyTokenCredential()
+        {
+            var config = BuildConfiguration(
+                ("credential", "StorageProxy"),
+                ("brokerApiKey", "test-key"));
+
+            var credential = _factory.CreateTokenCredential(config);
+
+            credential.Should().BeOfType<StorageProxyTokenCredential>();
+            _innerFactory.Verify(f => f.CreateTokenCredential(It.IsAny<IConfiguration>()), Times.Never);
+        }
+
+        [Fact]
+        public void CreateTokenCredential_StorageProxyCredential_CaseInsensitive()
+        {
+            var config = BuildConfiguration(
+                ("credential", "storageproxy"),
+                ("brokerApiKey", "test-key"));
+
+            var credential = _factory.CreateTokenCredential(config);
+
+            credential.Should().BeOfType<StorageProxyTokenCredential>();
+        }
+
+        [Fact]
+        public void CreateTokenCredential_StorageProxyCredential_MissingApiKey_ThrowsInvalidOperationException()
+        {
+            var config = BuildConfiguration(
+                ("credential", "StorageProxy"));
+
+            Action act = () => _factory.CreateTokenCredential(config);
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*brokerApiKey*");
+        }
+
+        [Fact]
         public void CreateTokenCredential_NonBrokerCredential_DelegatesToInner()
         {
             var expectedCredential = new Mock<TokenCredential>().Object;
