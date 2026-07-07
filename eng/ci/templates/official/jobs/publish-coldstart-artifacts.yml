@@ -72,8 +72,29 @@ jobs:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: '$(Build.SourcesDirectory)/src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj'
-      arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -p:PlaceholderSimulation=true
+      # Disable R2R for jittrace generation so all methods are JIT-compiled and captured in the trace.
+      ${{ if eq(parameters.createJitTrace, true) }}:
+        arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -p:PlaceholderSimulation=true -p:PublishReadyToRun=false
+      ${{ else }}:
+        arguments: -c Release -o $(hostOutputPath) -r $(publishRid) -p:PlaceholderSimulation=true
       workingDirectory: $(Build.SourcesDirectory)/src/WebJobs.Script.WebHost
+
+  # For jittrace generation, remove the existing jittrace files from the published output.
+  # PreJitPrepare() checks file.Exists and skips if absent, so all methods will be JIT-compiled
+  # fresh during cold start rather than being pre-compiled from the old jittrace.
+  - ${{ if eq(parameters.createJitTrace, true) }}:
+    - pwsh: |
+        $prejitDir = Join-Path "$(hostOutputPath)" "PreJIT"
+        $removed = Get-ChildItem -Path $prejitDir -Filter "*.jittrace" -ErrorAction SilentlyContinue
+        if ($removed) {
+            $removed | ForEach-Object {
+                Write-Host "Removing $($_.Name) to disable PreJIT for jittrace generation"
+                Remove-Item $_.FullName
+            }
+        } else {
+            Write-Host "No .jittrace files found in $prejitDir"
+        }
+      displayName: Remove existing jittrace files (jittrace generation only)
 
   - pwsh: |
       New-Item -ItemType Directory -Force -Path "$(artifactsStagingPath)/host" | Out-Null
