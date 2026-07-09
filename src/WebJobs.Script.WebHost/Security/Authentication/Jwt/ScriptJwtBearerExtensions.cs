@@ -77,6 +77,12 @@ namespace Microsoft.Extensions.DependencyInjection
                         claims.Add(new Claim(SecurityConstants.FuncPlatformClaimType, "true"));
                     }
 
+                    string scmSiteIssuer = string.Format(ScmSiteUriFormat, ScriptSettingsManager.Instance.GetSetting(AzureWebsiteName));
+                    if (string.Equals(c.SecurityToken.Issuer, scmSiteIssuer, StringComparison.OrdinalIgnoreCase))
+                    {
+                        claims.Add(new Claim(SecurityConstants.ScmSiteTokenClaimType, "true"));
+                    }
+
                     c.Principal.AddIdentity(new ClaimsIdentity(claims));
                     c.Success();
 
