@@ -14,7 +14,7 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
     [Trait(TestTraits.Group, TestTraits.NonE2EWebHost)]
-    public class HostConfigurationExceptionTests : IDisposable
+    public class HostConfigurationExceptionTests : IAsyncLifetime
     {
         private readonly string _hostPath;
         private TestFunctionHost _host;
@@ -67,13 +67,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             Assert.Null(status.Errors);
         }
 
-        public void Dispose()
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        public async Task DisposeAsync()
         {
             try
             {
-                try { _host.WebHost.StopAsync().GetAwaiter().GetResult(); } catch { }
-                try { _host.WebHost.Dispose(); } catch { }
-                _host.Dispose();
+                if (_host is not null)
+                {
+                    await _host.DisposeAsync();
+                }
+
                 Directory.Delete(_hostPath, true);
             }
             catch (Exception ex)

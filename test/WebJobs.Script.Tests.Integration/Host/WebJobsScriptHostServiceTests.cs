@@ -29,7 +29,7 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
     [Trait(TestTraits.Group, TestTraits.NonE2EControllers)]
-    public class WebJobsScriptHostServiceTests : IDisposable
+    public class WebJobsScriptHostServiceTests : IAsyncLifetime
     {
         private readonly string TestScriptPath = @"TestScripts\CSharp";
         private readonly string TestLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
@@ -285,10 +285,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         public async Task Restarts_CanCancel_Restarts()
         {
             // We need a custom setup.
-            _testHost.Dispose();
+            await _testHost.DisposeAsync();
             int buildCalls = 0;
 
-            using (var testHost = new TestFunctionHost(TestScriptPath, TestLogPath,
+            await using (var testHost = new TestFunctionHost(TestScriptPath, TestLogPath,
               configureWebHostServices: services =>
               {
                   services.Configure<LoggerFilterOptions>(o =>
@@ -349,13 +349,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             }
         }
 
-        public void Dispose()
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        public async Task DisposeAsync()
         {
             if (_testHost is not null)
             {
-                try { _testHost.WebHost.StopAsync().GetAwaiter().GetResult(); } catch { }
-                try { _testHost.WebHost.Dispose(); } catch { }
-                _testHost.Dispose();
+                await _testHost.DisposeAsync();
             }
         }
 
