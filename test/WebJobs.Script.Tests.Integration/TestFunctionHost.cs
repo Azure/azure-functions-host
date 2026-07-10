@@ -561,6 +561,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             if (!_isDisposed)
             {
+                _stillRunningTimer?.Change(-1, -1);
+                _stillRunningTimer?.Dispose();
+
                 try
                 {
                     await StopAndDisposeWebHostAsync();
@@ -568,9 +571,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 finally
                 {
                     HttpClient.Dispose();
-
-                    _stillRunningTimer?.Change(-1, -1);
-                    _stillRunningTimer?.Dispose();
 
                     if (_timerFired)
                     {

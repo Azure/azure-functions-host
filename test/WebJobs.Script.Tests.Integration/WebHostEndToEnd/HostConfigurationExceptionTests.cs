@@ -77,12 +77,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 {
                     await _host.DisposeAsync();
                 }
-
-                Directory.Delete(_hostPath, true);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
+            }
+            finally
+            {
+                try
+                {
+                    Directory.Delete(_hostPath, true);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
             }
         }
     }
