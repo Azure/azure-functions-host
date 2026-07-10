@@ -304,6 +304,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             if (Host is not null)
             {
+                await Host.StopAndDisposeWebHostAsync();
+
                 var fileMonitoringService = Host.JobHostServices?.GetService<IFileMonitoringService>();
                 if (fileMonitoringService is not null)
                 {
