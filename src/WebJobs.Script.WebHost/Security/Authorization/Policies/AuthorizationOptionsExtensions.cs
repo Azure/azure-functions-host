@@ -1,14 +1,19 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -26,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
                 {
                     if (c.Resource is AuthorizationFilterContext filterContext)
                     {
-                        if (!EnforceAdminIsolation(filterContext.HttpContext, allowAppServiceInternal: true))
+                        if (!IsScmSyncTriggers(filterContext, c.User)
+                            && !EnforceAdminIsolation(filterContext.HttpContext, allowAppServiceInternal: true))
                         {
                             return false;
                         }
@@ -94,6 +100,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Determines whether the request targets the host SyncTriggers endpoint and is authenticated via an
+        /// SCM (Kudu) site token. Such requests are exempt from admin isolation enforcement. The endpoint accepts
+        /// no payload (it only signals the host to re-read trigger metadata from disk), so this is low risk.
+        /// </summary>
+        /// <param name="filterContext">The <see cref="AuthorizationFilterContext"/> for the current request.</param>
+        /// <param name="user">The authenticated principal for the current request.</param>
+        /// <returns>True if the request is an SCM-authenticated SyncTriggers call; otherwise, false.</returns>
+        private static bool IsScmSyncTriggers(AuthorizationFilterContext filterContext, ClaimsPrincipal user)
+        {
+            return filterContext.ActionDescriptor is ControllerActionDescriptor { MethodInfo: { } method }
+                && method.DeclaringType == typeof(HostController)
+                && string.Equals(method.Name, nameof(HostController.SyncTriggers), StringComparison.Ordinal)
+                && user.IsScmSite();
         }
     }
 }

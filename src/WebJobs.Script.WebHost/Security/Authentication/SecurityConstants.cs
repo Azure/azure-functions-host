@@ -26,5 +26,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
         /// such as unencrypted assignment and triggers retrieval.
         /// </summary>
         public const string FuncPlatformClaimType = "http://schemas.microsoft.com/2017/07/functions/claims/func-platform";
+
+        /// <summary>
+        /// Claim indicating that the principal was authenticated via a site token issued by the
+        /// SCM (Kudu) site. This identifies the request as originating from the same-sandbox Kudu
+        /// peer.
+        /// </summary>
+        public const string ScmSiteTokenClaimType = "http://schemas.microsoft.com/2017/07/functions/claims/scm-site";
     }
 }

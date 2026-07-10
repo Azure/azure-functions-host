@@ -27,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.Metrics
 
         public static readonly string FaasMeterVersion = typeof(HostMetrics).Assembly.GetName().Version?.ToString();
 
-        private Counter<long> _appFailureCount;
-        private Counter<long> _startedInvocationCount;
-        private Histogram<double> _faasInvokeDuration;
+        private readonly Counter<long> _appFailureCount;
+        private readonly Counter<long> _startedInvocationCount;
+        private readonly Histogram<double> _faasInvokeDuration;
 
         private KeyValuePair<string, object>? _cachedFunctionGroupTag = null;
 
