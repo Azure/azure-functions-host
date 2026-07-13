@@ -9,3 +9,4 @@
 - Update Microsoft.Azure.AppService.Middleware to 1.5.11 (#11866)
 - Update PS 7.4 worker to [v4.0.5212](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5212) (#11858)
 - Update PS 7.6 worker to [v4.0.5213](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5213) (#11858)
+- Update BaseSecretsRepository to conduct full file path checks and guard against file system traversal (#11872)
