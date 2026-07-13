@@ -86,6 +86,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         _logger.LogError("Failed to start language worker process for runtime: {language}. workerId:{id}", runtime, rpcWorkerChannel.Id);
                         SetExceptionOnInitializedWorkerChannel(runtime, rpcWorkerChannel, processStartTask.Exception);
                     }
+                    else if (processStartTask.Status == TaskStatus.Canceled)
+                    {
+                        _logger.LogDebug("Language worker process start was canceled for runtime: {language}. workerId:{id}", runtime, rpcWorkerChannel.Id);
+                        SetExceptionOnInitializedWorkerChannel(runtime, rpcWorkerChannel, new TaskCanceledException(processStartTask));
+                    }
                 });
             }
             catch (Exception ex)
@@ -345,6 +350,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     {
                         if (standbyChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> channelTask))
                         {
+                            // Signal any in-flight initialization that we are shutting down.
+                            // If the ContinueWith in InitializeLanguageWorkerChannel hasn't completed yet,
+                            // TrySetCanceled resolves the TCS immediately so we don't block forever.
+                            // If it already ran (SetResult or SetException), TrySetCanceled is a no-op.
+                            channelTask.TrySetCanceled();
+
                             IRpcWorkerChannel workerChannel = null;
 
                             try
@@ -397,9 +408,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
-                    value.SetResult(initializedLanguageWorkerChannel);
+                    if (value.TrySetResult(initializedLanguageWorkerChannel))
+                    {
+                        return;
+                    }
+
+                    _logger.LogDebug("Channel for workerId:{id} initialized after its initialization task was already completed. Disposing.", initializedLanguageWorkerChannel.Id);
                 }
             }
+            else
+            {
+                _logger.LogDebug("Channel for workerId:{id} initialized after shutdown removed it from the dictionary. Disposing.", initializedLanguageWorkerChannel.Id);
+            }
+
+            ShutdownAndDisposeChannel(initializedLanguageWorkerChannel);
         }
 
         internal void SetExceptionOnInitializedWorkerChannel(string initializedRuntime, IRpcWorkerChannel initializedLanguageWorkerChannel, Exception exception)
@@ -409,8 +431,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (channel.TryGetValue(initializedLanguageWorkerChannel.Id, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
-                    value.SetException(exception);
+                    value.TrySetException(exception);
                 }
+            }
+
+            // The worker process may have started and registered with the process registry before
+            // StartWorkerProcessAsync faulted. Dispose the channel so the underlying WorkerProcess
+            // is cleaned up; otherwise the channel reference falls out of scope and the worker
+            // process leaks until the WebHost shuts down — at which point JobObjectRegistry.Close
+            // blocks forever waiting on ProcessWaitingForTermination.
+            ShutdownAndDisposeChannel(initializedLanguageWorkerChannel);
+        }
+
+        private void ShutdownAndDisposeChannel(IRpcWorkerChannel workerChannel)
+        {
+            try
+            {
+                workerChannel.ShutdownAndDispose(null, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Error disposing worker channel");
             }
         }
     }

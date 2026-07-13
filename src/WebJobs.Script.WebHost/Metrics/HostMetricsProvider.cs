@@ -11,13 +11,12 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 {
-    public class HostMetricsProvider : IHostMetricsProvider, IDisposable
+    public sealed class HostMetricsProvider : IHostMetricsProvider, IDisposable
     {
         private readonly MeterListener _meterListener;
         private readonly IServiceProvider _serviceProvider;
@@ -100,11 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 return;
             }
 
-            if (instrument == null)
-            {
-                throw new ArgumentNullException(nameof(instrument));
-            }
-
+            ArgumentNullException.ThrowIfNull(instrument);
             AddOrUpdateMetricsCache(instrument.Name, measurement);
         }
 
@@ -117,20 +112,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         public IReadOnlyDictionary<string, long> GetHostMetricsOrNull()
         {
+            var functionActivityStatusProvider = _serviceProvider.GetScriptHostServiceOrNull<IFunctionActivityStatusProvider>();
+            if (functionActivityStatusProvider is not null)
+            {
+                var functionActivityStatus = functionActivityStatusProvider.GetStatus();
+
+                if (functionActivityStatus.OutstandingInvocations > 0)
+                {
+                    AddOrUpdateMetricsCache(HostMetrics.ActiveInvocationCount, functionActivityStatus.OutstandingInvocations);
+                }
+            }
+
             if (!HasMetrics())
             {
                 return null;
             }
 
-            var functionActivityStatusProvider = _serviceProvider.GetScriptHostServiceOrNull<IFunctionActivityStatusProvider>();
-            if (functionActivityStatusProvider is not null)
-            {
-                var functionActivityStatus = functionActivityStatusProvider.GetStatus();
-                AddOrUpdateMetricsCache(HostMetrics.ActiveInvocationCount, functionActivityStatus.OutstandingInvocations);
-            }
-
             var metrics = Interlocked.Exchange(ref _metricsCache, new ConcurrentDictionary<string, long>());
-
             return metrics;
         }
 
