@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -1838,6 +1838,73 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             }
         }
 
+        [Theory]
+        [InlineData("../../../etc/shadow")]
+        [InlineData("foo/../../etc/passwd")]
+        public void GetSecretsSentinelFilePath_PathTraversal_Throws(string maliciousFunctionName)
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new TestBaseSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                var ex = Assert.Throws<ArgumentException>(
+                    () => repository.GetSentinelFilePath(ScriptSecretsType.Function, maliciousFunctionName));
+
+                Assert.Contains("outside the secrets directory", ex.Message);
+            }
+        }
+
+        [Fact]
+        public void GetSecretsSentinelFilePath_ValidFunctionName_ReturnsPathInsideDirectory()
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new TestBaseSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                string result = repository.GetSentinelFilePath(ScriptSecretsType.Function, "MyFunction");
+
+                Assert.StartsWith(Path.GetFullPath(directory.Path), result, StringComparison.OrdinalIgnoreCase);
+                Assert.EndsWith("myfunction.json", result, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        [Fact]
+        public void GetSecretsSentinelFilePath_Host_DoesNotValidateFunctionName()
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new TestBaseSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                string result = repository.GetSentinelFilePath(ScriptSecretsType.Host);
+
+                Assert.EndsWith(ScriptConstants.HostMetadataFileName, result, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        [Fact]
+        public void GetSecretsSentinelFilePath_NullFunctionName_Throws()
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new TestBaseSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                Assert.Throws<ArgumentNullException>(
+                    () => repository.GetSentinelFilePath(ScriptSecretsType.Function, null));
+            }
+        }
+
+        [Fact]
+        public void GetSecretsSentinelFilePath_EmptyFunctionName_Throws()
+        {
+            using (var directory = new TempDirectory())
+            {
+                var repository = new TestBaseSecretsRepository(directory.Path, _logger, _testEnvironment);
+
+                Assert.Throws<ArgumentException>(
+                    () => repository.GetSentinelFilePath(ScriptSecretsType.Function, string.Empty));
+            }
+        }
+
         private Mock<IKeyValueConverterFactory> GetConverterFactoryMock(bool simulateWriteConversion = true, bool setStaleValue = true)
         {
             var mockValueReader = new Mock<IKeyValueReader>();
@@ -1958,6 +2025,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         {
             string expectedMessage = string.Format(Resources.NonHISSecret, keyType, keyName, functionName);
             Assert.Equal(expectedMessage, message);
+        }
+
+        private sealed class TestBaseSecretsRepository : BaseSecretsRepository
+        {
+            public TestBaseSecretsRepository(string secretsSentinelFilePath, ILogger logger, IEnvironment environment)
+                : base(secretsSentinelFilePath, logger, environment)
+            {
+            }
+
+            public override bool IsEncryptionSupported => false;
+
+            public override string Name => nameof(TestBaseSecretsRepository);
+
+            public string GetSentinelFilePath(ScriptSecretsType secretsType, string functionName = null)
+            {
+                return GetSecretsSentinelFilePath(secretsType, functionName);
+            }
+
+            public override Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName) => throw new NotImplementedException();
+
+            public override Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets) => throw new NotImplementedException();
+
+            public override Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets) => throw new NotImplementedException();
+
+            public override Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger) => throw new NotImplementedException();
+
+            public override Task<string[]> GetSecretSnapshots(ScriptSecretsType type, string functionName) => throw new NotImplementedException();
         }
 
         private class TestSecretsRepository : ISecretsRepository

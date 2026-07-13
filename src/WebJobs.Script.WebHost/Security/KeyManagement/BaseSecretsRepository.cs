@@ -16,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly object _sentinelWatcherInitializationLock = new object();
         private readonly string _hostSecretsSentinelFilePath;
         private readonly string _secretsSentinelFilePath;
+        private readonly string _normalizedSecretsSentinelFilePath;
 
         private AutoRecoveringFileSystemWatcher _sentinelFileWatcher;
         private bool _disposing = false;
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ArgumentNullException.ThrowIfNull(logger);
 
             _secretsSentinelFilePath = secretsSentinelFilePath;
+            _normalizedSecretsSentinelFilePath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(_secretsSentinelFilePath)) + Path.DirectorySeparatorChar;
             Logger = logger;
             _hostSecretsSentinelFilePath = Path.Combine(_secretsSentinelFilePath, ScriptConstants.HostMetadataFileName);
 
@@ -48,9 +50,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected string GetSecretsSentinelFilePath(ScriptSecretsType secretsType, string functionName = null)
         {
-            return secretsType == ScriptSecretsType.Host
-                ? _hostSecretsSentinelFilePath
-                : Path.Combine(_secretsSentinelFilePath, GetSecretFileName(functionName));
+            if (secretsType == ScriptSecretsType.Host)
+            {
+                return _hostSecretsSentinelFilePath;
+            }
+
+            ArgumentException.ThrowIfNullOrEmpty(functionName);
+
+            string fullPath = Path.GetFullPath(Path.Combine(_normalizedSecretsSentinelFilePath, GetSecretFileName(functionName)));
+
+            if (!fullPath.StartsWith(_normalizedSecretsSentinelFilePath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"Invalid function name '{functionName}'. The resolved path is outside the secrets directory.", nameof(functionName));
+            }
+
+            return fullPath;
         }
 
         protected static string GetSecretFileName(string functionName)
