@@ -412,9 +412,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.Equal(0, _mockHttpHandler.RequestCount);
                 Assert.Equal(0, _contentBuilder.Length);
 
-                // The operation is a successful no-op, not an error.
-                Assert.True(result.Success);
-                Assert.Null(result.Error);
+                // The standby guard blocks the publish and reports failure, matching the existing
+                // standby/placeholder skip contract (surfaced as a 500 by the admin/host/synctriggers endpoint).
+                Assert.False(result.Success);
+                Assert.Equal("Active host is in standby configuration. Skipping SyncTriggers to avoid publishing placeholder triggers.", result.Error);
             }
         }
 
