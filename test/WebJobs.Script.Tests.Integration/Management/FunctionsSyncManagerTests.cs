@@ -330,6 +330,95 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
+        public async Task TrySyncTriggers_PlaceholderWarmupPayload_DoesNotPublish()
+        {
+            // Repro for the SyncTriggers race in azure-functions-host#10169.
+            //
+            // When a specialization times out (the placeholder env-reload exceeds its 30s
+            // timeout), the host is torn down but an inbound (foreground) SyncTriggers request
+            // that raced the deploy can still be served by the host while it is only exposing
+            // the placeholder "WarmUp" function. InStandbyMode has already latched to false by
+            // this point (placeholder mode is cleared early during specialization), so the
+            // existing standby guard does NOT catch this window. The result is that the
+            // placeholder WarmUp trigger payload gets published via SetTriggers, and because
+            // foreground syncs bypass the hash blob the app can stay stuck showing only WarmUp.
+            //
+            // Fix 1: while the active host is still the placeholder/standby host (its job host
+            // options report IsStandbyConfiguration), SyncTriggers must never publish, so the
+            // placeholder WarmUp trigger payload can't reach the FrontEnd.
+            var warmupMetadata = new FunctionMetadata
+            {
+                Name = Microsoft.Azure.WebJobs.Script.WebHost.WarmUpConstants.FunctionName,
+                ScriptFile = "run.csx"
+            };
+            warmupMetadata.Bindings.Add(new BindingMetadata
+            {
+                Name = "req",
+                Type = "httpTrigger",
+                Direction = BindingDirection.In,
+                Raw = new JObject
+                {
+                    { "authLevel", "anonymous" },
+                    { "type", "httpTrigger" },
+                    { "direction", "in" },
+                    { "name", "req" },
+                    { "methods", new JArray("get", "post") },
+                    { "route", "{x:regex(^(warmup|csharphttpwarmup)$)}" }
+                }
+            });
+
+            var metadataManagerMock = new Mock<IFunctionMetadataManager>(MockBehavior.Strict);
+            metadataManagerMock
+                .Setup(m => m.GetFunctionMetadata(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(ImmutableArray.Create(warmupMetadata));
+
+            // Keep the test on the minimal-payload path; the guard must prevent the publish
+            // regardless of whether the ARM cache (extended payload) is enabled.
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("0");
+
+            // The active host is still the placeholder/standby host during the specialization
+            // race window. Model that by exposing a job host whose options report the standby
+            // configuration - this is the reliable signal the guard checks (InStandbyMode and the
+            // webhost-level options both latch out of standby too early to catch this window).
+            var standbyJobHostOptions = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions { IsStandbyConfiguration = true });
+            var standbyScriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            standbyScriptHostManagerMock.As<IServiceProvider>()
+                .Setup(p => p.GetService(typeof(IOptions<ScriptJobHostOptions>)))
+                .Returns(standbyJobHostOptions);
+
+            var syncManager = new FunctionsSyncManager(
+                _hostIdProvider,
+                _optionsMonitor,
+                _loggerFactory.CreateLogger<FunctionsSyncManager>(),
+                _httpClientFactory,
+                _secretManagerProviderMock.Object,
+                _mockWebHostEnvironment.Object,
+                _mockEnvironment.Object,
+                _hostNameProvider,
+                metadataManagerMock.Object,
+                _azureBlobStorageProvider,
+                _hostingConfigOptionsWrapper,
+                standbyScriptHostManagerMock.Object,
+                null);
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                _mockHttpHandler.Reset();
+
+                // Foreground sync (isBackgroundSync: false) - the racing inbound request.
+                var result = await syncManager.TrySyncTriggersAsync();
+
+                // No SetTriggers request should have been made for a placeholder-only payload.
+                Assert.Equal(0, _mockHttpHandler.RequestCount);
+                Assert.Equal(0, _contentBuilder.Length);
+
+                // The operation is a successful no-op, not an error.
+                Assert.True(result.Success);
+                Assert.Null(result.Error);
+            }
+        }
+
+        [Fact]
         public async Task TrySyncTriggers_MaxSyncTriggersPayloadSize_Succeeds()
         {
             // create a dummy file that pushes us over size
