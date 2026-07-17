@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -83,6 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IDisposable _startLatencyMetric;
         private IEnumerable<FunctionMetadata> _functions;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private volatile bool _reloadRequestSent;
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
@@ -152,6 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerInvocationFailedMetric = string.Format(MetricEventNames.WorkerInvokeFailed, Id);
 
             LoadScriptJobHostOptions(_scriptHostManager as IServiceProvider);
+            _eventSubscriptions.Add(_eventManager.OfType<WorkerErrorEvent>().Subscribe(OnWorkerError));
         }
 
         protected virtual int WorkerProcessId => -1;
@@ -496,12 +499,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     _workerChannelLogger.LogWarning(reloadEnvironmentVariablesException, reloadEnvironmentVariablesException.Message);
                 }
-                _reloadTask.SetResult(false);
+                _reloadTask.TrySetResult(false);
             }
             else
             {
-                _reloadTask.SetResult(true);
+                _reloadTask.TrySetResult(true);
             }
+
+            _reloadRequestSent = false;
             latencyEvent.Dispose();
         }
 
@@ -689,6 +694,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public Task<bool> SendFunctionEnvironmentReloadRequest()
         {
+            _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _reloadRequestSent = true;
             _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
             _functionMetadataRequestSent = false;
 
@@ -1364,7 +1371,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void HandleWorkerEnvReloadError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Reloading environment variables failed");
-            _reloadTask.SetException(exc);
+            _reloadTask.TrySetException(exc);
+            _reloadRequestSent = false;
         }
 
         internal void HandleWorkerInitError(Exception exc)
@@ -1391,6 +1399,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+        }
+
+        private void OnWorkerError(WorkerErrorEvent workerError)
+        {
+            if (workerError is null ||
+                !_reloadRequestSent ||
+                !string.Equals(workerError.WorkerId, Id, StringComparison.Ordinal) ||
+                workerError.Exception is null)
+            {
+                return;
+            }
+
+            _reloadTask.TrySetException(workerError.Exception);
+            _reloadRequestSent = false;
         }
 
         internal void HandleWorkerMetadataRequestError(Exception exc)
