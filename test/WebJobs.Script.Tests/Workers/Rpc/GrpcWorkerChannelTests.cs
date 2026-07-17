@@ -1056,7 +1056,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task SendSendFunctionEnvironmentReloadRequest_WorkerErrorEvent_FailsFast()
+        public async Task SendFunctionEnvironmentReloadRequest_WorkerErrorEvent_FailsFast()
         {
             await CreateDefaultWorkerChannel();
 
