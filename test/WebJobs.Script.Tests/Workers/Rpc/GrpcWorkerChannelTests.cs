@@ -1056,6 +1056,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task SendSendFunctionEnvironmentReloadRequest_WorkerErrorEvent_FailsFast()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var reloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+            var expectedException = new WorkerProcessExitException("Language Worker Process exited.")
+            {
+                Pid = 910
+            };
+
+            _eventManager.Publish(new WorkerErrorEvent(_testWorkerConfig.Description.Language, _workerId, expectedException));
+
+            var actualException = await Assert.ThrowsAsync<WorkerProcessExitException>(() => reloadTask.WaitAsync(TimeSpan.FromSeconds(1)));
+            Assert.Equal(expectedException, actualException);
+        }
+
+        [Fact]
         public void SendFunctionEnvironmentReloadRequest_SanitizedEnvironmentVariables()
         {
             CreateDefaultWorkerChannel();
