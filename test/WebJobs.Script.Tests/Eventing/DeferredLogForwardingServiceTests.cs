@@ -203,6 +203,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         }
 
         [Fact]
+        public async Task ForwardsNestedScopes_ReappliedOuterToInner()
+        {
+            var environment = new TestEnvironment();
+            var source = new DeferredLogSource();
+
+            // Two stacked scopes must be reapplied in the captured outer -> inner order, then unwound in reverse.
+            source.Write(new DeferredLogEntry
+            {
+                LogLevel = LogLevel.Error,
+                Category = "TestCategory",
+                Message = "Error Log",
+                ScopeStorage = new List<object> { "outer", "inner" }
+            });
+
+            var recordingProvider = new ScopeRecordingLoggerProvider();
+            var service = new DeferredLogForwardingService(source, new ILoggerProvider[] { recordingProvider },
+                CreateOptions(isStandby: false), environment);
+
+            await service.StartAsync(CancellationToken.None);
+            await TestHelpers.Await(() => recordingProvider.Logger.ScopesAtLog is not null);
+
+            Assert.Equal(new[] { "outer", "inner" }, recordingProvider.Logger.ScopesAtLog);
+            Assert.Empty(recordingProvider.Logger.ActiveScopes);
+
+            await service.StopAsync(CancellationToken.None);
+            service.Dispose();
+        }
+
+        [Fact]
+        public async Task MultipleForwarders_SharingSource_ForwardEachEntryOnce()
+        {
+            var environment = new TestEnvironment();
+            var source = new DeferredLogSource();
+
+            const int count = 50;
+            for (int i = 0; i < count; i++)
+            {
+                source.Write(CreateErrorEntry("TestCategory", $"Log {i}"));
+            }
+
+            // The shared buffer sets SingleReader=false to tolerate overlapping ScriptHosts during restart.
+            var provider1 = new TestLoggerProvider();
+            var provider2 = new TestLoggerProvider();
+            var service1 = new DeferredLogForwardingService(source, new ILoggerProvider[] { provider1 }, CreateOptions(isStandby: false), environment);
+            var service2 = new DeferredLogForwardingService(source, new ILoggerProvider[] { provider2 }, CreateOptions(isStandby: false), environment);
+
+            await service1.StartAsync(CancellationToken.None);
+            await service2.StartAsync(CancellationToken.None);
+
+            // Complete the shared channel so both readers drain what's buffered and exit.
+            source.Disable();
+            await service1.ProcessingTask;
+            await service2.ProcessingTask;
+
+            var forwarded = provider1.GetAllLogMessages().Concat(provider2.GetAllLogMessages())
+                .Select(m => m.FormattedMessage).ToList();
+
+            // Two concurrent readers on one channel: each entry is delivered to exactly one reader (no loss, no duplication).
+            Assert.Equal(count, forwarded.Count);
+            Assert.Equal(count, forwarded.Distinct().Count());
+
+            service1.Dispose();
+            service2.Dispose();
+        }
+
+        [Fact]
         public async Task StopAsync_HonorsCancellationToken_WhenProcessingIsBlocked()
         {
             var environment = new TestEnvironment();
@@ -283,6 +349,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
                     _provider.LogEntered.Set();
                     _provider._release.Wait();
                 }
+            }
+        }
+
+        private sealed class ScopeRecordingLoggerProvider : ILoggerProvider
+        {
+            public ScopeRecordingLogger Logger { get; } = new ScopeRecordingLogger();
+
+            public ILogger CreateLogger(string categoryName) => Logger;
+
+            public void Dispose()
+            {
+            }
+        }
+
+        private sealed class ScopeRecordingLogger : ILogger
+        {
+            public List<object> ActiveScopes { get; } = new List<object>();
+
+            public string[] ScopesAtLog { get; private set; }
+
+            public IDisposable BeginScope<TState>(TState state)
+            {
+                ActiveScopes.Add(state);
+                return new ScopePopper(ActiveScopes);
+            }
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            {
+                // Snapshot the active scopes (outer -> inner) at the moment the entry is written.
+                ScopesAtLog = ActiveScopes.Select(scope => scope?.ToString()).ToArray();
+            }
+
+            private sealed class ScopePopper : IDisposable
+            {
+                private readonly List<object> _scopes;
+
+                public ScopePopper(List<object> scopes) => _scopes = scopes;
+
+                public void Dispose() => _scopes.RemoveAt(_scopes.Count - 1);
             }
         }
     }

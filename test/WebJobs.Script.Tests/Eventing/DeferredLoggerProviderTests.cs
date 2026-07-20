@@ -46,6 +46,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         }
 
         [Fact]
+        public void Log_CapturesNestedScopes_OuterToInner()
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            var source = new DeferredLogSource();
+            var provider = new DeferredLoggerProvider(source, testEnvironment);
+            provider.SetScopeProvider(new LoggerExternalScopeProvider());
+
+            ILogger logger = provider.CreateLogger("TestCategory");
+
+            using (logger.BeginScope("outer"))
+            using (logger.BeginScope("inner"))
+            {
+                logger.LogError("message");
+            }
+
+            // Nested scopes must be captured in outer -> inner order so they can be reapplied in order when forwarded.
+            Assert.True(source.Reader.TryRead(out DeferredLogEntry entry));
+            Assert.Collection(
+                entry.ScopeStorage,
+                scope => Assert.Equal("outer", scope),
+                scope => Assert.Equal("inner", scope));
+        }
+
+        [Fact]
         public void CreateLogger_ReturnsNullLogger_AfterDispose()
         {
             var testEnvironment = new TestEnvironment();
