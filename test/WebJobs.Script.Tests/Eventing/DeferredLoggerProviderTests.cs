@@ -25,6 +25,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
         }
 
         [Fact]
+        public void Log_CapturesActiveScopes()
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            var source = new DeferredLogSource();
+            var provider = new DeferredLoggerProvider(source, testEnvironment);
+            provider.SetScopeProvider(new LoggerExternalScopeProvider());
+
+            ILogger logger = provider.CreateLogger("TestCategory");
+
+            using (logger.BeginScope("scope-1"))
+            {
+                logger.LogError("message");
+            }
+
+            Assert.True(source.Reader.TryRead(out DeferredLogEntry entry));
+            Assert.Equal("scope-1", Assert.Single(entry.ScopeStorage));
+        }
+
+        [Fact]
         public void CreateLogger_ReturnsNullLogger_AfterDispose()
         {
             var testEnvironment = new TestEnvironment();

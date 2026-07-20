@@ -1051,10 +1051,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 tracerProvider.ForceFlush();
             }
 
-            foreach (var logProvider in host.Services.GetServices<ILoggerProvider>().Where(i => i is OpenTelemetryLoggerProvider))
+            foreach (var loggerProvider in host.Services.GetServices<LoggerProvider>())
             {
-                logger.LogDebug(@"Disposing {providerName} ...", logProvider);
-                logProvider.Dispose();
+                logger.LogDebug(@"Flushing {providerName} ...", loggerProvider);
+                loggerProvider.ForceFlush();
             }
         }
 

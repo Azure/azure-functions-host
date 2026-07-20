@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Logs;
 
@@ -20,15 +21,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     /// Reads buffered WebHost logs from the shared <see cref="DeferredLogSource"/> and forwards them to the
     /// active ScriptHost's Application Insights / OpenTelemetry providers. A new instance is created for each
     /// ScriptHost and is stopped via <see cref="StopAsync"/> when the host is orphaned (restart or
-    /// specialization). During the default overlapping restart the previous host's forwarder can briefly read
-    /// concurrently with the new one (hence <see cref="DeferredLogSource"/> permits multiple readers); the
-    /// orphaned forwarder is awaited to completion before its providers are disposed. This replaces the
-    /// imperative per-host-build forwarding that leaked accumulating readers across restarts.
+    /// specialization). When the host has no Application Insights / OpenTelemetry providers, a no-op
+    /// <see cref="NullLoggerProvider"/> is used so the shared buffer is still drained (and the entries
+    /// discarded) rather than left to accumulate with no consumer.
     /// </summary>
     internal sealed class DeferredLogForwardingService : IHostedService, IDisposable
     {
         private readonly DeferredLogSource _source;
         private readonly IReadOnlyList<ILoggerProvider> _forwardingProviders;
+        private readonly Dictionary<string, ILogger[]> _loggersByCategory = new(StringComparer.Ordinal);
         private readonly ScriptApplicationHostOptions _options;
         private readonly IEnvironment _environment;
         private readonly CancellationTokenSource _cts = new();
@@ -54,6 +55,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                // Startup is being aborted; don't begin forwarding.
+                return Task.FromCanceled(cancellationToken);
+            }
+
             // Don't forward logs in standby/placeholder mode. A placeholder host has no real (customer)
             // telemetry providers, so forwarding would target no-op providers and compete with the
             // specialized host for the same buffered logs. Only the active, specialized ScriptHost forwards.
@@ -63,22 +70,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return Task.CompletedTask;
             }
 
-            // Nothing to forward to (no Application Insights / OpenTelemetry providers on this host). Don't
-            // start a reader and don't disable the shared buffer: a later host (e.g. after specialization, or
-            // a restart that adds providers) may still consume it. The buffer is bounded, so it self-limits.
-            if (_forwardingProviders.Count == 0)
-            {
-                return Task.CompletedTask;
-            }
-
             // Offload to the thread pool so draining any already-buffered logs doesn't run inline on the
             // ScriptHost startup path.
-            _processingTask = Task.Run(() => ProcessLogsAsync(_cts.Token));
+            CancellationToken token = _cts.Token;
+            _processingTask = Task.Run(() => ProcessLogsAsync(token));
             return Task.CompletedTask;
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
+            if (_processingTask is null)
+            {
+                return;
+            }
+
             try
             {
                 _cts.Cancel();
@@ -88,10 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 // Already disposed; nothing to cancel.
             }
 
-            if (_processingTask is not null)
-            {
-                await _processingTask;
-            }
+            // Wait for the processing loop to observe cancellation and exit, but honor the host's shutdown
+            // timeout (cancellationToken) so a slow or stuck forward can't block graceful shutdown.
+            await Task.WhenAny(_processingTask, Task.Delay(Timeout.Infinite, cancellationToken));
         }
 
         private async Task ProcessLogsAsync(CancellationToken cancellationToken)
@@ -103,11 +107,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 {
                     while (!cancellationToken.IsCancellationRequested && reader.TryRead(out DeferredLogEntry log))
                     {
-                        foreach (ILoggerProvider forwardingProvider in _forwardingProviders)
+                        ILogger[] loggers = GetLoggers(log.Category);
+                        foreach (ILogger logger in loggers)
                         {
                             try
                             {
-                                ILogger logger = forwardingProvider.CreateLogger(log.Category);
                                 if (log.ScopeStorage?.Count > 0)
                                 {
                                     ProcessLogWithScope(logger, log);
@@ -158,14 +162,45 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
+        private ILogger[] GetLoggers(string category)
+        {
+            category ??= string.Empty;
+            if (!_loggersByCategory.TryGetValue(category, out ILogger[] loggers))
+            {
+                loggers = new ILogger[_forwardingProviders.Count];
+                for (int i = 0; i < _forwardingProviders.Count; i++)
+                {
+                    try
+                    {
+                        loggers[i] = _forwardingProviders[i].CreateLogger(category);
+                    }
+                    catch (Exception ex) when (!ex.IsFatal())
+                    {
+                        loggers[i] = NullLogger.Instance;
+                    }
+                }
+
+                _loggersByCategory[category] = loggers;
+            }
+
+            return loggers;
+        }
+
         // Forward only to the Application Insights and OpenTelemetry providers. They are added in the
         // ScriptHost and do not track these WebHost-level logs directly, so the deferred logs are forwarded
         // to them here; other providers (file, system, etc.) already capture WebHost logs.
         private static IReadOnlyList<ILoggerProvider> FilterForwardingProviders(IEnumerable<ILoggerProvider> loggerProviders)
         {
-            return loggerProviders
+            ILoggerProvider[] providers = loggerProviders
                 .Where(provider => provider is ApplicationInsightsLoggerProvider or OpenTelemetryLoggerProvider)
                 .ToArray();
+
+            // When the host has no Application Insights / OpenTelemetry providers (e.g. an app without
+            // telemetry configured), forward to a no-op provider so the shared buffer is still continuously
+            // drained rather than accumulating entries with no consumer.
+            return providers.Length > 0
+                ? providers
+                : new ILoggerProvider[] { NullLoggerProvider.Instance };
         }
 
         public void Dispose()
