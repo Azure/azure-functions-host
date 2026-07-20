@@ -126,10 +126,5 @@ public class NodeHostRestartEndToEndTests
                 });
         }
 
-        public override async Task DisposeAsync()
-        {
-            await Host.StopAndDisposeWebHostAsync();
-            await base.DisposeAsync();
-        }
     }
 }

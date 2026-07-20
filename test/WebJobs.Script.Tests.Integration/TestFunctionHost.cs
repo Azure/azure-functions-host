@@ -40,7 +40,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class TestFunctionHost : IDisposable
+    public class TestFunctionHost : IDisposable, IAsyncDisposable
     {
         private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly IHost _webHost;
@@ -510,12 +510,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
 
         /// <summary>
-        /// Temporary method to dispose the web host. This is needed because the web host is not disposed 
-        /// when the test fixture is disposed, which can cause issues with subsequent tests. We are selectively
-        /// enabling this on some tests and will eventually make it private and call it from DisposeAsync once
-        /// all issues are resolved.
-        /// </summary>        
-        internal async Task StopAndDisposeWebHostAsync()
+        /// Stops and disposes the internal WebHost. This is idempotent so repeated disposal calls are safe.
+        /// </summary>
+        private async Task StopAndDisposeWebHostAsync()
         {
             if (_webHostDisposed)
             {
@@ -557,19 +554,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void Dispose()
         {
+            DisposeAsync().GetAwaiter().GetResult();
+        }
+
+        public async ValueTask DisposeAsync()
+        {
             if (!_isDisposed)
             {
-                HttpClient.Dispose();
-
                 _stillRunningTimer?.Change(-1, -1);
                 _stillRunningTimer?.Dispose();
 
-                if (_timerFired)
+                try
                 {
-                    Console.WriteLine($"The test host with id {_id} is now disposed.");
+                    await StopAndDisposeWebHostAsync();
                 }
+                finally
+                {
+                    HttpClient.Dispose();
 
-                _isDisposed = true;
+                    if (_timerFired)
+                    {
+                        Console.WriteLine($"The test host with id {_id} is now disposed.");
+                    }
+
+                    _isDisposed = true;
+                }
             }
         }
 

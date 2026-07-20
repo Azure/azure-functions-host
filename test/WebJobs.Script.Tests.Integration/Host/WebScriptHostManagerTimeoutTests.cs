@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
         [Fact]
         public async Task OnTimeoutException_IgnoreToken_StopsManager()
         {
-            using (var host = await RunTimeoutExceptionTest(handleCancellation: false))
+            await using (var host = await RunTimeoutExceptionTest(handleCancellation: false))
             {
                 var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
 
@@ -34,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                 Assert.DoesNotContain(messages, t => t.FormattedMessage.StartsWith("Done"));
                 Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
                 Assert.Contains(messages, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
-                host.WebHost.Dispose();
             }
 
             // Validates a bug where WebHost services were not being disposed on a function timeout
@@ -44,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
         [Fact]
         public async Task OnTimeoutException_UsesToken_ManagerKeepsRunning()
         {
-            using (var host = await RunTimeoutExceptionTest(handleCancellation: true))
+            await using (var host = await RunTimeoutExceptionTest(handleCancellation: true))
             {
                 var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
 
@@ -65,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
             try
             {
-                using (var host = await RunTimeoutExceptionTest(handleCancellation: false, timeoutFunctionName: "TimeoutSync", path: @"TestScripts\Node"))
+                await using (var host = await RunTimeoutExceptionTest(handleCancellation: false, timeoutFunctionName: "TimeoutSync", path: @"TestScripts\Node"))
                 {
                     var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
 

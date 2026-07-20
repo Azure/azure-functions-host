@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         [Fact]
         public async Task IScriptApplicationLifetime_ResolvedFromJobHostServices_StopsOuterWebHost()
         {
-            using var testHost = new TestFunctionHost(_testScriptPath, _testLogPath);
+            await using var testHost = new TestFunctionHost(_testScriptPath, _testLogPath);
 
             var innerLifetime = testHost.JobHostServices.GetRequiredService<IScriptApplicationLifetime>();
             var outerLifetime = testHost.WebHostServices.GetRequiredService<IHostApplicationLifetime>();
