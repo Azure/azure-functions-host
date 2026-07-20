@@ -84,7 +84,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IDisposable _startLatencyMetric;
         private IEnumerable<FunctionMetadata> _functions;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        private volatile bool _reloadRequestSent;
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
@@ -505,7 +504,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _reloadTask.TrySetResult(true);
             }
 
-            _reloadRequestSent = false;
             latencyEvent.Dispose();
         }
 
@@ -694,7 +692,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public Task<bool> SendFunctionEnvironmentReloadRequest()
         {
             _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _reloadRequestSent = true;
             _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
             _functionMetadataRequestSent = false;
 
@@ -1579,13 +1576,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void TryFailPendingReload(Exception exception)
         {
-            if (!_reloadRequestSent || exception is null)
+            if (exception is null)
             {
                 return;
             }
 
             _reloadTask.TrySetException(exception);
-            _reloadRequestSent = false;
         }
 
         /// <summary>
