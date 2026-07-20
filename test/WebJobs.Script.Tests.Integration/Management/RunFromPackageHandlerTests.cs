@@ -169,8 +169,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             if (azureFilesMounted)
             {
                 _bashCmdHandlerMock
-                    .Setup(b => b.RunBashCommand(
-                        It.Is<string>(s => s.StartsWith($"{RunFromPackageHandler.UnsquashFSExecutable} -f -d '{EnvironmentSettingNames.DefaultLocalSitePackagesPath}'")),
+                    .Setup(b => b.RunCommand(
+                        RunFromPackageHandler.UnsquashFSExecutable,
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == EnvironmentSettingNames.DefaultLocalSitePackagesPath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash)).Returns((string.Empty, string.Empty, 0));
 
                 _meshServiceClientMock
@@ -180,8 +181,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             else
             {
                 _bashCmdHandlerMock
-                    .Setup(b => b.RunBashCommand(
-                        It.Is<string>(s => s.StartsWith($"{RunFromPackageHandler.UnsquashFSExecutable} -f -d '{TargetScriptPath}'")),
+                    .Setup(b => b.RunCommand(
+                        RunFromPackageHandler.UnsquashFSExecutable,
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == TargetScriptPath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash)).Returns((string.Empty, string.Empty, 0));
             }
 
@@ -199,10 +201,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             if (azureFilesMounted)
             {
                 _bashCmdHandlerMock
-                    .Verify(b => b.RunBashCommand(
-                        It.Is<string>(s =>
-                            s.StartsWith(
-                                $"{RunFromPackageHandler.UnsquashFSExecutable} -f -d '{EnvironmentSettingNames.DefaultLocalSitePackagesPath}'")),
+                    .Verify(b => b.RunCommand(
+                        RunFromPackageHandler.UnsquashFSExecutable,
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == EnvironmentSettingNames.DefaultLocalSitePackagesPath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash), Times.Once);
 
                 _meshServiceClientMock
@@ -212,9 +213,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             else
             {
                 _bashCmdHandlerMock
-                    .Verify(b => b.RunBashCommand(
-                        It.Is<string>(s =>
-                            s.StartsWith($"{RunFromPackageHandler.UnsquashFSExecutable} -f -d '{TargetScriptPath}'")),
+                    .Verify(b => b.RunCommand(
+                        RunFromPackageHandler.UnsquashFSExecutable,
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == TargetScriptPath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash), Times.Once);
             }
         }
@@ -454,10 +455,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 .Returns(Task.FromResult(true));
 
             _bashCmdHandlerMock.Setup(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+                b.RunCommand(
+                    BashCommandHandler.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand)).Returns(("zip", string.Empty, 0));
 
             var applyBlobContextResult = await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
@@ -473,10 +474,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 .Returns(Task.FromResult(true));
 
             _bashCmdHandlerMock.Verify(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+                b.RunCommand(
+                    BashCommandHandler.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand), Times.Once);
         }
 
@@ -517,10 +518,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 url, packageLength, isWarmUpRequest);
 
             _bashCmdHandlerMock.Setup(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+                b.RunCommand(
+                    BashCommandHandler.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand)).Returns(("squashfs", string.Empty, 0));
 
             _meshServiceClientMock.Setup(m => m.MountFuse(MeshServiceClient.SquashFsOperation, It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath))
@@ -534,10 +535,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 ItExpr.IsAny<CancellationToken>());
 
             _bashCmdHandlerMock.Verify(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+                b.RunCommand(
+                    BashCommandHandler.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand), Times.Once);
 
             _meshServiceClientMock.Verify(m => m.MountFuse(MeshServiceClient.SquashFsOperation, It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath), Times.Once);
@@ -582,10 +583,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 url, packageLength, isWarmUpRequest);
 
             _bashCmdHandlerMock.Setup(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+                b.RunCommand(
+                    BashCommandHandler.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand)).Returns(("unknown", string.Empty, 0));
 
 
@@ -598,10 +599,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 ItExpr.IsAny<CancellationToken>());
 
             _bashCmdHandlerMock.Verify(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+                b.RunCommand(
+                    BashCommandHandler.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand), Times.Once);
         }
 

@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
 
             // Check file magic-number using `file` command.
-            (var output, _, _) = _bashCommandHandler.RunBashCommand($"{BashCommandHandler.FileCommand} -b {filePath}", MetricEventNames.LinuxContainerSpecializationFileCommand);
+            (var output, _, _) = _bashCommandHandler.RunCommand(BashCommandHandler.FileCommand, new[] { "-b", filePath }, MetricEventNames.LinuxContainerSpecializationFileCommand);
             _logger.LogInformation(Sanitizer.Sanitize($"Executed: {BashCommandHandler.FileCommand} -b {filePath} {MetricEventNames.LinuxContainerSpecializationFileCommand}"));
             if (output.StartsWith(SquashfsPrefix, StringComparison.OrdinalIgnoreCase))
             {
@@ -182,9 +182,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private void UnsquashImage(string filePath, string scriptPath)
         {
             _logger.LogDebug($"Unsquashing remote zip to {scriptPath}");
-            var command = $"{UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}'";
-            _bashCommandHandler.RunBashCommand(command, MetricEventNames.LinuxContainerSpecializationUnsquash);
-            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {command}"));
+            _bashCommandHandler.RunCommand(UnsquashFSExecutable, new[] { "-f", "-d", scriptPath, filePath }, MetricEventNames.LinuxContainerSpecializationUnsquash);
+            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}'"));
         }
 
         public async Task<bool> MountAzureFileShare(HostAssignmentContext assignmentContext)

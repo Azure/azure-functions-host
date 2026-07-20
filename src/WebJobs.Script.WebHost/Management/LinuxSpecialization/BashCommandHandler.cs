@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -21,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public (string Output, string Error, int ExitCode) RunBashCommand(string command, string metricName)
+        public (string Output, string Error, int ExitCode) RunCommand(string fileName, IReadOnlyList<string> arguments, string metricName)
         {
             try
             {
@@ -31,15 +32,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                     {
                         StartInfo = new ProcessStartInfo
                         {
-                            FileName = "bash",
-                            Arguments = $"-c \"{command}\"",
+                            FileName = fileName,
                             RedirectStandardOutput = true,
                             RedirectStandardError = true,
                             UseShellExecute = false,
                             CreateNoWindow = true
                         }
                     };
-                    _logger.LogInformation($"Running: bash.exe (arguments omitted)");
+
+                    // Pass each argument separately via ArgumentList so they are never
+                    // interpreted by a shell. This prevents command injection (CodeQL SM04899)
+                    // when arguments are derived from untrusted input (e.g. WEBSITE_RUN_FROM_PACKAGE).
+                    foreach (var argument in arguments)
+                    {
+                        process.StartInfo.ArgumentList.Add(argument);
+                    }
+
+                    _logger.LogInformation("Running: {FileName} (arguments omitted)", fileName);
                     process.Start();
                     var output = process.StandardOutput.ReadToEnd().Trim();
                     var error = process.StandardError.ReadToEnd().Trim();
@@ -59,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error running bash");
+                _logger.LogError(e, "Error running command");
             }
 
             return (string.Empty, string.Empty, -1);

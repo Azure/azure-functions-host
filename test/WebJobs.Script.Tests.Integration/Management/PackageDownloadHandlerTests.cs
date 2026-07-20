@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -109,9 +111,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 if (expectedUsesAriaDownload)
                 {
                     _bashCmdHandlerMock.Setup(b =>
-                        b.RunBashCommand(
-                            It.Is<string>(s =>
-                                s.StartsWith(PackageDownloadHandler.Aria2CExecutable) && s.Contains(url)),
+                        b.RunCommand(
+                            PackageDownloadHandler.Aria2CExecutable,
+                            It.Is<IReadOnlyList<string>>(a => a.Any(arg => arg.Contains(url))),
                             MetricEventNames.LinuxContainerSpecializationZipDownload)).Returns(("", "", 0));
                 }
                 else
@@ -155,9 +157,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 if (expectedUsesAriaDownload)
                 {
                     _bashCmdHandlerMock.Verify(b =>
-                        b.RunBashCommand(
-                            It.Is<string>(s =>
-                                s.StartsWith(PackageDownloadHandler.Aria2CExecutable) && s.Contains(url)),
+                        b.RunCommand(
+                            PackageDownloadHandler.Aria2CExecutable,
+                            It.Is<IReadOnlyList<string>>(a => a.Any(arg => arg.Contains(url))),
                             MetricEventNames.LinuxContainerSpecializationZipDownload), Times.Once);
                 }
                 else
@@ -167,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                         ItExpr.IsAny<CancellationToken>());
 
                     _bashCmdHandlerMock.Verify(b =>
-                        b.RunBashCommand(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+                        b.RunCommand(It.IsAny<string>(), It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>()), Times.Never);
                 }
 
                 _managedIdentityTokenProvider.Verify(p => p.GetManagedIdentityToken(It.IsAny<string>()), Times.Never);
@@ -432,7 +434,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
             else
             {
-                _bashCmdHandlerMock.Setup(b => b.RunBashCommand(It.Is<string>(s => s.StartsWith(PackageDownloadHandler.Aria2CExecutable)),
+                _bashCmdHandlerMock.Setup(b => b.RunCommand(PackageDownloadHandler.Aria2CExecutable, It.IsAny<IReadOnlyList<string>>(),
                     expectedMetricName)).Returns(("", "", 0));
             }
 
@@ -453,7 +455,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
             else
             {
-                _bashCmdHandlerMock.Verify(b => b.RunBashCommand(It.Is<string>(s => s.StartsWith(PackageDownloadHandler.Aria2CExecutable)),
+                _bashCmdHandlerMock.Verify(b => b.RunCommand(PackageDownloadHandler.Aria2CExecutable, It.IsAny<IReadOnlyList<string>>(),
                     expectedMetricName), Times.Once);
             }
         }

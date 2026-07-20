@@ -124,9 +124,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         private void AriaDownload(string directory, string fileName, Uri zipUri, bool isWarmupRequest, string downloadMetricName)
         {
-            var command = $"{Aria2CExecutable} --allow-overwrite -x12 -d {directory} -o {fileName} '{zipUri}'";
-            (string stdout, string stderr, int exitCode) = _bashCommandHandler.RunBashCommand(
-                command,
+            var arguments = new[] { "--allow-overwrite", "-x12", "-d", directory, "-o", fileName, zipUri.ToString() };
+            (string stdout, string stderr, int exitCode) = _bashCommandHandler.RunCommand(
+                Aria2CExecutable,
+                arguments,
                 downloadMetricName);
             if (exitCode != 0)
             {
@@ -134,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 _logger.LogError(msg);
                 throw new InvalidOperationException(msg);
             }
+            var command = $"{Aria2CExecutable} --allow-overwrite -x12 -d {directory} -o {fileName} '{zipUri}'";
             _logger.LogInformation($"Executed: {Sanitizer.Sanitize(command)}");
 
             var fileInfo = FileUtility.FileInfoFromFileName(Path.Combine(directory, fileName));
