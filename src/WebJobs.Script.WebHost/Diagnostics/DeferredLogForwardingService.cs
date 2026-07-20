@@ -20,21 +20,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     /// <summary>
     /// Reads buffered WebHost logs from the shared <see cref="DeferredLogSource"/> and forwards them to the
     /// active ScriptHost's Application Insights / OpenTelemetry providers. A new instance is created for each
-    /// ScriptHost and is stopped via <see cref="StopAsync"/> when the host is orphaned (restart or
-    /// specialization). When the host has no Application Insights / OpenTelemetry providers, a no-op
+    /// ScriptHost and is stopped by the base <see cref="BackgroundService"/> when the host is orphaned
+    /// (restart or specialization). When the host has no Application Insights / OpenTelemetry providers, a no-op
     /// <see cref="NullLoggerProvider"/> is used so the shared buffer is still drained (and the entries
     /// discarded) rather than left to accumulate with no consumer.
     /// </summary>
-    internal sealed class DeferredLogForwardingService : IHostedService, IDisposable
+    internal sealed class DeferredLogForwardingService : BackgroundService
     {
         private readonly DeferredLogSource _source;
         private readonly IReadOnlyList<ILoggerProvider> _forwardingProviders;
         private readonly Dictionary<string, ILogger[]> _loggersByCategory = new(StringComparer.Ordinal);
         private readonly ScriptApplicationHostOptions _options;
         private readonly IEnvironment _environment;
-        private readonly CancellationTokenSource _cts = new();
-        private Task _processingTask;
-        private bool _disposed;
 
         public DeferredLogForwardingService(DeferredLogSource source, IEnumerable<ILoggerProvider> loggerProviders,
             IOptions<ScriptApplicationHostOptions> options, IEnvironment environment)
@@ -51,9 +48,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _forwardingProviders = forwardingProviders ?? throw new ArgumentNullException(nameof(forwardingProviders));
         }
 
-        internal Task ProcessingTask => _processingTask;
+        // Exposes the base-class execution task for tests. Remains null when forwarding is skipped in
+        // StartAsync (standby/feature-flag), because ExecuteAsync is never started in that case.
+        internal Task ProcessingTask => ExecuteTask;
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        public override Task StartAsync(CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -67,45 +66,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             if (_options.IsStandbyConfiguration ||
                 FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableWebHostLogForwarding, _environment))
             {
+                // Skip base.StartAsync so ExecuteAsync (and ExecuteTask) is never started.
                 return Task.CompletedTask;
             }
 
-            // Offload to the thread pool so draining any already-buffered logs doesn't run inline on the
-            // ScriptHost startup path.
-            CancellationToken token = _cts.Token;
-            _processingTask = Task.Run(() => ProcessLogsAsync(token));
-            return Task.CompletedTask;
+            // The base BackgroundService owns the lifetime CancellationTokenSource: it starts ExecuteAsync
+            // now and cancels that token from StopAsync/Dispose when this host is orphaned.
+            return base.StartAsync(cancellationToken);
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            if (_processingTask is null)
-            {
-                return;
-            }
+            // Yield so draining any already-buffered logs doesn't run inline on the ScriptHost startup path.
+            await Task.Yield();
 
-            try
-            {
-                _cts.Cancel();
-            }
-            catch (ObjectDisposedException)
-            {
-                // Already disposed; nothing to cancel.
-            }
-
-            // Wait for the processing loop to observe cancellation and exit, but honor the host's shutdown
-            // timeout (cancellationToken) so a slow or stuck forward can't block graceful shutdown.
-            await Task.WhenAny(_processingTask, Task.Delay(Timeout.Infinite, cancellationToken));
-        }
-
-        private async Task ProcessLogsAsync(CancellationToken cancellationToken)
-        {
             try
             {
                 ChannelReader<DeferredLogEntry> reader = _source.Reader;
-                while (await reader.WaitToReadAsync(cancellationToken))
+                while (await reader.WaitToReadAsync(stoppingToken))
                 {
-                    while (!cancellationToken.IsCancellationRequested && reader.TryRead(out DeferredLogEntry log))
+                    while (!stoppingToken.IsCancellationRequested && reader.TryRead(out DeferredLogEntry log))
                     {
                         ILogger[] loggers = GetLoggers(log.Category);
                         foreach (ILogger logger in loggers)
@@ -201,19 +181,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             return providers.Length > 0
                 ? providers
                 : new ILoggerProvider[] { NullLoggerProvider.Instance };
-        }
-
-        public void Dispose()
-        {
-            if (!_disposed)
-            {
-                _disposed = true;
-
-                // Cancel before disposing so a still-running processing task (e.g. if StopAsync never ran
-                // because host startup was aborted) doesn't stay parked on WaitToReadAsync.
-                _cts.Cancel();
-                _cts.Dispose();
-            }
         }
     }
 }
