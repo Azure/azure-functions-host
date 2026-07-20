@@ -447,8 +447,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
 
-            host.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Exactly(1));
-            host.Verify(m => m.Dispose(), Times.Exactly(1));
+            int stopAsyncCalls = host.Invocations.Count(i => string.Equals(i.Method.Name, nameof(IHost.StopAsync), StringComparison.Ordinal));
+            Assert.True(stopAsyncCalls == 1, BuildDisposesScriptHostFailureMessage(nameof(IHost.StopAsync), 1, stopAsyncCalls, hostLogger));
+
+            int disposeCalls = host.Invocations.Count(i => string.Equals(i.Method.Name, nameof(IDisposable.Dispose), StringComparison.Ordinal));
+            Assert.True(disposeCalls == 1, BuildDisposesScriptHostFailureMessage(nameof(IDisposable.Dispose), 1, disposeCalls, hostLogger));
 
             var allLogMessages = _webHostLoggerProvider.GetAllLogMessages();
 
@@ -456,6 +459,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 m => m.FormattedMessage != null &&
                      m.FormattedMessage.Contains("ScriptHost disposed"));
         }
+
+        private string BuildDisposesScriptHostFailureMessage(string methodName, int expectedCalls, int actualCalls, TestLoggerProvider hostLogger)
+        {
+            return $"Expected {methodName} to be called {expectedCalls} time(s), but it was called {actualCalls} time(s)." +
+                $"{Environment.NewLine}Web host logs:{Environment.NewLine}{FormatLogMessages(_webHostLoggerProvider.GetAllLogMessages())}" +
+                $"{Environment.NewLine}Script host logs:{Environment.NewLine}{FormatLogMessages(hostLogger.GetAllLogMessages())}";
+        }
+
+        private static string FormatLogMessages(IEnumerable<LogMessage> messages)
+            => string.Join(Environment.NewLine, messages);
 
         [Fact]
         public async Task HostRestart_BeforeStart_WaitsForStartToContinue()
