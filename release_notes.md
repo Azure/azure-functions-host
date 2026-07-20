@@ -10,4 +10,4 @@
 - Update Microsoft.Azure.AppService.Middleware to 1.5.11 (#11866)
 - Update PS 7.4 worker to [v4.0.5212](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5212) (#11858)
 - Update PS 7.6 worker to [v4.0.5213](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5213) (#11858)
-- - Fixed a race and reader leak in WebHost deferred startup-log forwarding across ScriptHost restarts/specialization, and fixed OpenTelemetry logs not being flushed on host shutdown. (#11847)
+- Fixed a race and reader leak in WebHost deferred startup-log forwarding across ScriptHost restarts/specialization, and fixed OpenTelemetry logs not being flushed on host shutdown. (#11847)
