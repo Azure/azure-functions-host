@@ -1059,7 +1059,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task SendFunctionEnvironmentReloadRequest_WorkerErrorEvent_FailsFast()
+        public async Task SendFunctionEnvironmentReloadRequest_ShutdownWithWorkerException_FailsFast()
         {
             await CreateDefaultWorkerChannel();
 
@@ -1069,7 +1069,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Pid = 910
             };
 
-            _eventManager.Publish(new WorkerErrorEvent(_testWorkerConfig.Description.Language, _workerId, expectedException));
+            _workerChannel.Shutdown(expectedException);
 
             var actualException = await Assert.ThrowsAsync<WorkerProcessExitException>(() => reloadTask.WaitAsync(TimeSpan.FromSeconds(1)));
             Assert.Equal(expectedException, actualException);

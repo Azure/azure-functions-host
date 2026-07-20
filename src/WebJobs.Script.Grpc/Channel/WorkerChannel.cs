@@ -154,7 +154,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerInvocationFailedMetric = string.Format(MetricEventNames.WorkerInvokeFailed, Id);
 
             LoadScriptJobHostOptions(_scriptHostManager as IServiceProvider);
-            _eventSubscriptions.Add(_eventManager.OfType<WorkerErrorEvent>().Subscribe(OnWorkerError));
         }
 
         protected virtual int WorkerProcessId => -1;
@@ -1371,8 +1370,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void HandleWorkerEnvReloadError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Reloading environment variables failed");
-            _reloadTask.TrySetException(exc);
-            _reloadRequestSent = false;
+            TryFailPendingReload(exc);
         }
 
         internal void HandleWorkerInitError(Exception exc)
@@ -1399,20 +1397,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
-        }
-
-        private void OnWorkerError(WorkerErrorEvent workerError)
-        {
-            if (workerError is null ||
-                !_reloadRequestSent ||
-                !string.Equals(workerError.WorkerId, Id, StringComparison.Ordinal) ||
-                workerError.Exception is null)
-            {
-                return;
-            }
-
-            _reloadTask.TrySetException(workerError.Exception);
-            _reloadRequestSent = false;
         }
 
         internal void HandleWorkerMetadataRequestError(Exception exc)
@@ -1574,6 +1558,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Shutdown(Exception workerException)
         {
+            TryFailPendingReload(workerException);
+
             var shutdownException = workerException;
 
             if (workerException is null || workerException is FunctionTimeoutException)
@@ -1589,6 +1575,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 invocation.Context?.SetException(shutdownException);
                 RemoveExecutingInvocation(invocationId);
             }
+        }
+
+        private void TryFailPendingReload(Exception exception)
+        {
+            if (!_reloadRequestSent || exception is null)
+            {
+                return;
+            }
+
+            _reloadTask.TrySetException(exception);
+            _reloadRequestSent = false;
         }
 
         /// <summary>
