@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                     throw new IOException();
                 });
 
-            using (var host = new TestFunctionHost(_scriptRoot, _testLogPath,
+            await using (var host = new TestFunctionHost(_scriptRoot, _testLogPath,
                 configureWebHostServices: s =>
                 {
                     s.AddSingleton<IEventGenerator>(_ => _eventGenerator);

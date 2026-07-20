@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             try
             {
                 using var envScope = new TestScopedEnvironmentVariable(envVars);
-                using var host = new TestFunctionHost(s_scriptRootPath);
+                await using var host = new TestFunctionHost(s_scriptRootPath);
 
                 // Sanity check: the bundle's IWebJobsConfigurationStartup must have run and added
                 // its languageWorkers:<name>:workerDirectory entry to the JobHost-scope

@@ -304,15 +304,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             if (Host is not null)
             {
-                await Host.StopAndDisposeWebHostAsync();
-
                 var fileMonitoringService = Host.JobHostServices?.GetService<IFileMonitoringService>();
                 if (fileMonitoringService is not null)
                 {
                     await fileMonitoringService.StopAsync(default);
                 }
 
-                Host.Dispose();
+                await Host.DisposeAsync();
             }
 
             _scriptRoot?.Dispose();

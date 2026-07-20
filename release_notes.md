@@ -11,3 +11,4 @@
 - Update PS 7.4 worker to [v4.0.5212](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5212) (#11858)
 - Update PS 7.6 worker to [v4.0.5213](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5213) (#11858)
 - Fixed a race and reader leak in WebHost deferred startup-log forwarding across ScriptHost restarts/specialization, and fixed OpenTelemetry logs not being flushed on host shutdown. (#11847)
+- Update `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` to `1.0.15` (#11881)

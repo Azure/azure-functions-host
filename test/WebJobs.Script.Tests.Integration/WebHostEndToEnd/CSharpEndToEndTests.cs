@@ -362,7 +362,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public async Task HttpTrigger_Model_Binding_V2CompatMode()
         {
             // We need a custom host to set this to v2 compat mode.
-            using (var host = new TestFunctionHost(@"TestScripts\CSharp", Path.Combine(Path.GetTempPath(), "Functions"),
+            await using (var host = new TestFunctionHost(@"TestScripts\CSharp", Path.Combine(Path.GetTempPath(), "Functions"),
                 configureWebHostServices: webHostServices =>
                 {
                     var environment = new TestEnvironment();
