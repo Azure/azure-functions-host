@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         private StandbyOptions _standbyOptions;
         private TestOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
         private TestLogger<HostMetricsProvider> _logger;
+        private FunctionActivityStatus _activityStatus;
 
         public HostMetricsProviderTests()
         {
@@ -31,10 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             serviceCollection.AddSingleton<IEnvironment>(new TestEnvironment());
             serviceCollection.AddSingleton<IHostMetrics, HostMetrics>();
 
-            // Mock the function activity status provider to return a single outstanding invocation
+            // Mock the function activity status provider; tests can mutate _activityStatus to change outstanding invocations.
+            _activityStatus = new FunctionActivityStatus() { OutstandingInvocations = 0 };
             var mockStatusProvider = new Mock<IFunctionActivityStatusProvider>();
-            var activityStatus = new FunctionActivityStatus() { OutstandingInvocations = 1 };
-            mockStatusProvider.Setup(p => p.GetStatus()).Returns(activityStatus);
+            mockStatusProvider.Setup(p => p.GetStatus()).Returns(() => _activityStatus);
             serviceCollection.AddSingleton<IFunctionActivityStatusProvider>(mockStatusProvider.Object);
 
             // Mock the script host manager to return the mock status provider
@@ -136,6 +137,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             // Assert
             var result = hostMetricsProvider.GetHostMetricsOrNull();
             Assert.Null(result);
+        }
+
+        [Fact]
+        public void GetHostMetricsOrNull_OnlyOutstandingInvocations_ReturnsActiveInvocationCount()
+        {
+            // Regression test: previously, when no metrics were recorded via the meter listener,
+            // GetHostMetricsOrNull would early-return null and miss reporting ActiveInvocationCount
+            // sourced from IFunctionActivityStatusProvider.
+            var hostMetricsProvider = CreateProvider();
+            _activityStatus.OutstandingInvocations = 3;
+
+            var result = hostMetricsProvider.GetHostMetricsOrNull();
+
+            Assert.NotNull(result);
+            Assert.True(result.TryGetValue(HostMetrics.ActiveInvocationCount, out var activeInvocationCount));
+            Assert.Equal(3, activeInvocationCount);
+            Assert.Single(result);
+        }
+
+        [Fact]
+        public void GetHostMetricsOrNull_NoOutstandingInvocations_OmitsActiveInvocationCount()
+        {
+            var metrics = _serviceProvider.GetRequiredService<IHostMetrics>();
+            var hostMetricsProvider = CreateProvider();
+            _activityStatus.OutstandingInvocations = 0;
+
+            metrics.IncrementStartedInvocationCount();
+
+            var result = hostMetricsProvider.GetHostMetricsOrNull();
+
+            Assert.NotNull(result);
+            Assert.False(result.ContainsKey(HostMetrics.ActiveInvocationCount));
         }
 
         [Fact]

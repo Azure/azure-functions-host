@@ -14,7 +14,7 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
 {
     [Trait(TestTraits.Group, TestTraits.NonE2EControllers)]
-    public class WarmupScenarios : IDisposable
+    public class WarmupScenarios : IAsyncLifetime
     {
         private static readonly TimeSpan SemaphoreWaitTimeout = TimeSpan.FromSeconds(30);
 
@@ -64,13 +64,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
                 $"Instead found {response.StatusCode}");
         }
 
-        public void Dispose()
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        public async Task DisposeAsync()
         {
             if (_testHost is not null)
             {
-                try { _testHost.WebHost.StopAsync().GetAwaiter().GetResult(); } catch { }
-                try { _testHost.WebHost.Dispose(); } catch { }
-                _testHost.Dispose();
+                await _testHost.DisposeAsync();
             }
         }
 

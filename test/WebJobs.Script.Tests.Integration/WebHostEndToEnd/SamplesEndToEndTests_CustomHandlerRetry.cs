@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
@@ -34,9 +35,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             string uri = $"api/{functionName}";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             var response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string responseContent = await response.Content.ReadAsStringAsync();
-            Assert.Equal(responseContent, "Retry Count:2 Max Retry Count:2");
+            string expectedContent = "Retry Count:2 Max Retry Count:2";
+
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                Assert.True(false, BuildFailureMessage(functionName, uri, response, responseContent, expectedContent));
+            }
+
+            if (!string.Equals(responseContent, expectedContent, StringComparison.Ordinal))
+            {
+                Assert.True(false, BuildFailureMessage(functionName, uri, response, responseContent, expectedContent));
+            }
+        }
+
+        private string BuildFailureMessage(string functionName, string uri, HttpResponseMessage response, string responseContent, string expectedContent)
+        {
+            var message = new StringBuilder();
+            message.AppendLine($"CustomHandlerRetry invocation failed for '{functionName}'.");
+            message.AppendLine($"Request URI: {uri}");
+            message.AppendLine($"Expected status: {HttpStatusCode.OK}");
+            message.AppendLine($"Actual status: {response.StatusCode}");
+            message.AppendLine($"Expected body: {expectedContent}");
+            message.AppendLine($"Actual body: {responseContent}");
+            message.AppendLine($"Root script path: {_fixture.RootScriptPath}");
+            message.AppendLine($"Host log path: {_fixture.Host.LogPath}");
+            message.AppendLine();
+            message.AppendLine("Host logs:");
+            message.AppendLine(_fixture.Host.GetLog());
+
+            return message.ToString();
         }
 
         public class TestFixture : EndToEndTestFixture

@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Rpc
         [Fact]
         public async Task FunctionDispatcher_ExceededRestartRetryCount_StopsOuterWebHost()
         {
-            using var testHost = new TestFunctionHost(_testScriptPath, _testLogPath);
+            await using var testHost = new TestFunctionHost(_testScriptPath, _testLogPath);
 
             RpcFunctionInvocationDispatcher dispatcher = null;
             await TestHelpers.Await(() =>

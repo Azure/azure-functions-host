@@ -196,15 +196,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             await AssertHandlerInvokedAsync(response, ExcludedExtensionName, "POST", expectedIsArmRequest: true);
         }
 
-        // ----- Rollout / rollback gating -----
-        // The new default-deny behavior is gated by the ArmWebhookOptInEnforcement hosting
-        // config. When the value is cleared, enforcement is disabled (rollback) and
-        // ARM-bridged requests reach opted-out extensions just like before.
-
         [Fact]
         public async Task EnforcementDisabled_OptedOut_ArmGet_AdminJwt_Allowed()
         {
-            using (WithArmWebhookOptInConfig(null))
+            using (WithArmWebhookOptInConfig(string.Empty))
             {
                 HttpRequestMessage request = CreateExtensionRequest(HttpMethod.Get, OptedOutExtensionName, includeArmHeaders: true, adminJwt: _fixture.Host.GenerateAdminJwtToken());
                 HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
@@ -227,8 +222,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 await AssertArmBlockedAsync(response, ExcludedExtensionName);
             }
         }
-
-        // ----- Helpers -----
 
         private static async Task AssertArmBlockedAsync(HttpResponseMessage response, string expectedExtensionName)
         {
@@ -257,9 +250,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         {
             FunctionsHostingConfigOptions options = _fixture.Host.WebHostServices
                 .GetRequiredService<IOptionsMonitor<FunctionsHostingConfigOptions>>().CurrentValue;
-            string original = options.ArmWebhookOptInEnforcement;
-            options.ArmWebhookOptInEnforcement = value;
-            return new ConfigScope(() => options.ArmWebhookOptInEnforcement = original);
+            bool hadOriginal = options.Features.TryGetValue(ScriptConstants.HostingConfigArmWebhookOptInEnforcement, out string original);
+
+            if (value is null)
+            {
+                options.Features.Remove(ScriptConstants.HostingConfigArmWebhookOptInEnforcement);
+            }
+            else
+            {
+                options.Features[ScriptConstants.HostingConfigArmWebhookOptInEnforcement] = value;
+            }
+
+            return new ConfigScope(() =>
+            {
+                if (hadOriginal)
+                {
+                    options.Features[ScriptConstants.HostingConfigArmWebhookOptInEnforcement] = original;
+                }
+                else
+                {
+                    options.Features.Remove(ScriptConstants.HostingConfigArmWebhookOptInEnforcement);
+                }
+            });
         }
 
         private sealed class ConfigScope : IDisposable
@@ -377,7 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 // WithArmWebhookOptInConfig helper to exercise rollback / no-exclusion modes.
                 services.Configure<FunctionsHostingConfigOptions>(o =>
                 {
-                    o.ArmWebhookOptInEnforcement = ExcludedExtensionName;
+                    o.Features[ScriptConstants.HostingConfigArmWebhookOptInEnforcement] = ExcludedExtensionName;
                 });
             }
 

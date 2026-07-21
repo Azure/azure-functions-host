@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -21,10 +21,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
-    public abstract class ApplicationInsightsTestFixture : IDisposable
+    public abstract class ApplicationInsightsTestFixture : IAsyncLifetime
     {
         public const string ApplicationInsightsKey = "some_key";
 
@@ -86,13 +87,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public HttpClient HttpClient { get; private set; }
 
-        public void Dispose()
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        public async Task DisposeAsync()
         {
             try
             {
-                TestHost.WebHost.StopAsync().GetAwaiter().GetResult();
-                TestHost.WebHost.Dispose();
-                TestHost?.Dispose();
+                if (TestHost is not null)
+                {
+                    await TestHost.DisposeAsync();
+                }
+
                 HttpClient?.Dispose();
             }
             catch (Exception)
@@ -102,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // App Insights takes 2 seconds to flush telemetry and because our container
             // is disposed on a background task, it doesn't block. So waiting here to ensure
             // everything is flushed and can't affect subsequent tests.
-            Thread.Sleep(2000);
+            await Task.Delay(2000);
         }
 
         private class TestGrpcWorkerChannelFactory : GrpcWorkerChannelFactory

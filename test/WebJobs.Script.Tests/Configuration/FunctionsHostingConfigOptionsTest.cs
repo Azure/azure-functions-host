@@ -80,6 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
                 yield return [nameof(FunctionsHostingConfigOptions.ArmWebhookOptInEnforcement), "ArmWebhookOptInEnforcement=|", "|"];
                 yield return [nameof(FunctionsHostingConfigOptions.ArmWebhookOptInEnforcement), "ArmWebhookOptInEnforcement=foo|bar", "foo|bar"];
+                yield return [nameof(FunctionsHostingConfigOptions.ArmWebhookOptInEnforcement), string.Empty, "workflow"]; // default when not configured
 
 #pragma warning restore SA1011 // Closing square brackets should be spaced correctly
 #pragma warning restore SA1010 // Opening square brackets should be spaced correctly
@@ -208,6 +209,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 return testService.Monitor.CurrentValue.GetFeature("feature1") == "value1_updated";
             });
+        }
+
+        [Fact]
+        public void ArmWebhookOptInEnforcement_NotConfigured_ReturnsDefault()
+        {
+            // When the key is absent, the getter returns the default value.
+            // This enables enforcement with the default exemption list.
+            var options = new FunctionsHostingConfigOptions();
+            options.Features[ScriptConstants.HostingConfigArmWebhookOptInEnforcement] = "custom";
+            Assert.Equal("custom", options.ArmWebhookOptInEnforcement);
+
+            options.Features.Remove(ScriptConstants.HostingConfigArmWebhookOptInEnforcement);
+            Assert.Equal(ScriptConstants.DefaultArmWebhookOptInExemptExtensions, options.ArmWebhookOptInEnforcement);
+        }
+
+        [Fact]
+        public void ArmWebhookOptInEnforcement_ConfiguredEmpty_ReturnsEmpty()
+        {
+            // When the key is present but empty, enforcement is disabled.
+            // This is different from the default (which enables enforcement).
+            var options = new FunctionsHostingConfigOptions();
+            options.Features[ScriptConstants.HostingConfigArmWebhookOptInEnforcement] = "custom";
+            Assert.Equal("custom", options.ArmWebhookOptInEnforcement);
+
+            options.Features[ScriptConstants.HostingConfigArmWebhookOptInEnforcement] = string.Empty;
+            Assert.Equal(string.Empty, options.ArmWebhookOptInEnforcement);
         }
 
         internal static IHostBuilder GetScriptHostBuilder(string fileName, string fileContent)
