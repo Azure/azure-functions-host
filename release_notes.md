@@ -7,6 +7,8 @@
 - fix: eliminate noisy restart logs during worker channel shutdown (#11846)
 - Fixed a WebHost worker channel shutdown race that could hang host teardown when a language worker was still initializing. (#11853)
 - Fixed a race where a SyncTriggers request during specialization could publish placeholder (`WarmUp`) triggers. (#11874)
+- Fixed specialization waiting the full environment reload timeout when a language worker crashed mid-reload (#11883)
+- Update Python Worker Version to [4.45.1](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.45.1) (#11860)
 - Update Microsoft.Azure.AppService.Middleware to 1.5.11 (#11866)
 - Update PS 7.4 worker to [v4.0.5212](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5212) (#11858)
 - Update PS 7.6 worker to [v4.0.5213](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5213) (#11858)
