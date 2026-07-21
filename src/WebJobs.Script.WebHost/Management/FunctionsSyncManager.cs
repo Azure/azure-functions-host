@@ -111,6 +111,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return result;
             }
 
+            // The active host may still be the placeholder/standby host (e.g. mid-specialization,
+            // after placeholder mode has been cleared but before RestartHostAsync swaps in the
+            // specialized host).
+            if (Utility.TryGetHostService(_scriptHostManager, out IOptions<ScriptJobHostOptions> jobHostOptions)
+                && jobHostOptions.Value.IsStandbyConfiguration)
+            {
+                result.Success = false;
+                result.Error = "Active host is in standby configuration. Skipping SyncTriggers to avoid publishing placeholder triggers.";
+                _logger.LogWarning(result.Error);
+                return result;
+            }
+
             try
             {
                 await _syncSemaphore.WaitAsync();

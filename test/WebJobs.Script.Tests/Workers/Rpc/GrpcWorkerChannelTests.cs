@@ -716,7 +716,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 userMessageCallback: () => $"Expected 2 '{_expectedLogMsg}' messages. Logs:{Environment.NewLine}{FormatLogMessages(_logger.GetLogMessages())}");
 
             var traces = _logger.GetLogMessages();
-            Assert.Equal(2, traces.Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+            int outboundEventLogCount = traces.Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
+            Assert.True(outboundEventLogCount == 2, $"Expected 2 '{_expectedLogMsg}' messages, but found {outboundEventLogCount}. Logs:{Environment.NewLine}{FormatLogMessages(traces)}");
         }
 
         [Fact]
@@ -776,7 +777,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var traces = _logger.GetLogMessages();
             AreExpectedMetricsGenerated();
-            Assert.Equal(3, traces.Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg))); // one WorkInitRequest, two FunctionLoadRequest
+            int outboundEventLogCount = traces.Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
+            Assert.True(outboundEventLogCount == 3, $"Expected 3 '{_expectedLogMsg}' messages, but found {outboundEventLogCount}. Logs:{Environment.NewLine}{FormatLogMessages(traces)}"); // one WorkInitRequest, two FunctionLoadRequest
         }
 
         [Fact]
@@ -880,7 +882,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
             AreExpectedMetricsGenerated();
-            Assert.Equal(3, traces.Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+            int outboundEventLogCount = traces.Count(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
+            Assert.True(outboundEventLogCount == 3, $"Expected 3 '{_expectedLogMsg}' messages, but found {outboundEventLogCount}. Logs:{Environment.NewLine}{FormatLogMessages(traces)}");
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Sending FunctionLoadRequestCollection with number of functions: '{0}'", functionMetadata.ToList().Count))));
         }
 

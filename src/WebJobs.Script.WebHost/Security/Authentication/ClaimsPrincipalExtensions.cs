@@ -11,5 +11,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication
         {
             return principal.HasClaim(SecurityConstants.FuncPlatformClaimType, "true");
         }
+
+        public static bool IsScmSite(this ClaimsPrincipal principal)
+        {
+            return principal.HasClaim(SecurityConstants.ScmSiteTokenClaimType, "true");
+        }
     }
 }

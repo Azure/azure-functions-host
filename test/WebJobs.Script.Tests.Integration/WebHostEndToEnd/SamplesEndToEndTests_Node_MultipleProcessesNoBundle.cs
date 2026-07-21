@@ -74,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     };
                 });
             }
+
         }
     }
 }

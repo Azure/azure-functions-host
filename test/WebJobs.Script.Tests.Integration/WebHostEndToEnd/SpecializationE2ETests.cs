@@ -245,6 +245,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task Specialization_SyncTriggers_DuringPlaceholderWindow_DoesNotPublishWarmup()
+        {
+            // E2E reproduction of the SyncTriggers race in azure-functions-host#10169.
+            //
+            // During specialization the placeholder-mode environment variable is cleared *before*
+            // the specialized host is built and its real functions are loaded. In that window the
+            // active host is still the standby host exposing only the placeholder "WarmUp" function,
+            // yet IsSyncTriggersEnvironment() now passes (InStandbyMode has already latched to false).
+            // A foreground SyncTriggers request that races a deploy therefore publishes the
+            // placeholder WarmUp trigger payload to the FrontEnd, which can leave the app stuck
+            // showing only WarmUp (foreground syncs bypass the hash blob so it never self-heals).
+            //
+            // Here we recreate that exact window deterministically: the InfiniteTimerStandbyManager
+            // never auto-specializes and we never send a request that would trigger specialization,
+            // so the standby (WarmUp-only) host stays active. We then flip the environment out of
+            // placeholder mode and drive a foreground SyncTriggers. The placeholder WarmUp trigger
+            // must NOT be published.
+            var capturedSetTriggersBodies = new System.Collections.Concurrent.ConcurrentBag<string>();
+
+            string encryptionKey = TestHelpers.GenerateKeyHexString();
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, encryptionKey);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "testsite.azurewebsites.net");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "testsite");
+
+            // Keep the payload on the minimal path (no per-function secret/file fetches) so the
+            // sync deterministically reaches SetTriggers with the placeholder trigger in current code.
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled, "0");
+
+            var builder = CreateStandbyHostBuilder(_loggerProvider, "FunctionExecutionContext")
+                .ConfigureServices(services =>
+                {
+                    services.AddHttpClient(Options.DefaultName)
+                        .ConfigurePrimaryHttpMessageHandler(() => new CapturingHttpMessageHandler(capturedSetTriggersBodies));
+                });
+
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, encryptionKey))
+            {
+                await using var stoppable = new StoppableHost(builder.Build());
+
+                var host = stoppable.Inner;
+
+                await host.StartAsync();
+
+                var client = host.GetTestClient();
+
+                // Build the standby host and load the placeholder WarmUp function.
+                var warmupResponse = await client.GetAsync("api/warmup");
+                warmupResponse.EnsureSuccessStatusCode();
+
+                // Exit placeholder mode WITHOUT specializing - this is the race window. The active
+                // host is still the standby host (WarmUp only), but InStandbyMode has latched false.
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+                var syncManager = host.Services.GetRequiredService<Microsoft.Azure.WebJobs.Script.WebHost.Management.IFunctionsSyncManager>();
+
+                // Foreground sync (the racing inbound request).
+                var result = await syncManager.TrySyncTriggersAsync();
+
+                // The placeholder WarmUp trigger must never be published to the FrontEnd.
+                Assert.DoesNotContain(capturedSetTriggersBodies, body =>
+                    body.IndexOf(WarmUpConstants.FunctionName, StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+        }
+
+        [Fact]
         public async Task Specialization_WebHostOptionsAreLogged()
         {
             const string optionsCategory = "Microsoft.Azure.WebJobs.Hosting.OptionsLoggingService";
@@ -1924,6 +1990,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Starting worker process with FileName:"))
                 .ToArray();
             Assert.Equal(expected, workerStartLogs.Length);
+        }
+
+        private class CapturingHttpMessageHandler : HttpMessageHandler
+        {
+            private readonly System.Collections.Concurrent.ConcurrentBag<string> _bodies;
+
+            public CapturingHttpMessageHandler(System.Collections.Concurrent.ConcurrentBag<string> bodies)
+            {
+                _bodies = bodies;
+            }
+
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                if (request.Content != null)
+                {
+                    _bodies.Add(await request.Content.ReadAsStringAsync());
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
         }
 
         private class InfiniteTimerStandbyManager : StandbyManager

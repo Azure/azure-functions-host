@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var javaFunctionProvider = new TestCodelessFunctionProvider(javaMetadataList, null);
 
                 var functions = new[] { "InProcCSFunction", "JavascriptFunction", "JavaFunction" };
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider, javaFunctionProvider }, testEnvironment))
+                await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider, javaFunctionProvider }, testEnvironment))
                 {
                     var cSharpFunctionKey = await host.GetFunctionSecretAsync("InProcCSFunction");
                     using var cSharpHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/InProcCSFunction?name=Azure&code={cSharpFunctionKey}");
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var javaFunctionProvider = new TestCodelessFunctionProvider(javaMetadataList, null);
 
                 var functions = new[] { "InProcCSFunction", "JavaFunction" };
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javaFunctionProvider }, testEnvironment))
+                await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javaFunctionProvider }, testEnvironment))
                 {
                     var cSharpFunctionKey = await host.GetFunctionSecretAsync("InProcCSFunction");
                     using var cSharpHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/InProcCSFunction?name=Azure&code={cSharpFunctionKey}");
@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var javascriptFunctionProvider = new TestCodelessFunctionProvider(javascriptMetadataList, null);
 
                 var functions = new[] { "InProcCSFunction", "JavascriptFunction" };
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider }, testEnvironment, enableDynamicWorkerResolution))
+                await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider, javascriptFunctionProvider }, testEnvironment, enableDynamicWorkerResolution))
                 {
                     var services = host.WebHostServices.GetServices<IWorkerConfigurationProvider>();
                     Assert.Equal(3, services.Count());
@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var cSharpFunctionProvider = new TestCodelessFunctionProvider(cSharpMetadataList, null);
 
                 var functions = new[] { "InProcCSFunction" };
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider }, testEnvironment, enableDynamicWorkerResolution))
+                await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { cSharpFunctionProvider }, testEnvironment, enableDynamicWorkerResolution))
                 {
                     var cSharpFunctionKey = await host.GetFunctionSecretAsync("InProcCSFunction");
                     using var cSharpHttpTriggerResponse = await host.HttpClient.GetAsync($"http://localhost/api/InProcCSFunction?name=Azure&code={cSharpFunctionKey}");

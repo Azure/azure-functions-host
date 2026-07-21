@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.AppCapabilities
         [Fact]
         public async Task ScriptHostRestart_ClearsCapabilities()
         {
-            using var testHost = new TestFunctionHost(@"TestScripts\Empty");
+            await using var testHost = new TestFunctionHost(@"TestScripts\Empty");
 
             var capabilitiesStore = testHost.JobHostServices.GetRequiredService<IAppCapabilitiesStore>();
 

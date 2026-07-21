@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
             await jobhost.StopAsync();
             await host.WebHost.StopAsync();
             host.WebHost.Dispose();
-            host.Dispose();
+            await host.DisposeAsync();
 
             // Capture log state after dispose so we have diagnostic context if the expected
             // HostDisposedException does not surface (the test has historically been flaky here).
