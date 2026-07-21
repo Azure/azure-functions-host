@@ -24,6 +24,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         public (string Output, string Error, int ExitCode) RunCommand(string fileName, IReadOnlyList<string> arguments, string metricName)
         {
+            ArgumentNullException.ThrowIfNull(fileName);
+            ArgumentNullException.ThrowIfNull(arguments);
+
+            for (var i = 0; i < arguments.Count; i++)
+            {
+                if (arguments[i] is null)
+                {
+                    throw new ArgumentException("Command arguments must not contain null values.", nameof(arguments));
+                }
+            }
+
             try
             {
                 using (_metricsLogger.LatencyEvent(metricName))

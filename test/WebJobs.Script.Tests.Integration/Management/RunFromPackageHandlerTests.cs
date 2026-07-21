@@ -166,12 +166,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
+            var expectedDownloadedFilePath = Path.Combine(Path.GetTempPath(), $"zip-file.{extension}");
+
             if (azureFilesMounted)
             {
                 _bashCmdHandlerMock
                     .Setup(b => b.RunCommand(
                         RunFromPackageHandler.UnsquashFSExecutable,
-                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == EnvironmentSettingNames.DefaultLocalSitePackagesPath),
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == EnvironmentSettingNames.DefaultLocalSitePackagesPath && a[3] == expectedDownloadedFilePath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash)).Returns((string.Empty, string.Empty, 0));
 
                 _meshServiceClientMock
@@ -183,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 _bashCmdHandlerMock
                     .Setup(b => b.RunCommand(
                         RunFromPackageHandler.UnsquashFSExecutable,
-                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == TargetScriptPath),
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == TargetScriptPath && a[3] == expectedDownloadedFilePath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash)).Returns((string.Empty, string.Empty, 0));
             }
 
@@ -203,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 _bashCmdHandlerMock
                     .Verify(b => b.RunCommand(
                         RunFromPackageHandler.UnsquashFSExecutable,
-                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == EnvironmentSettingNames.DefaultLocalSitePackagesPath),
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == EnvironmentSettingNames.DefaultLocalSitePackagesPath && a[3] == expectedDownloadedFilePath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash), Times.Once);
 
                 _meshServiceClientMock
@@ -215,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 _bashCmdHandlerMock
                     .Verify(b => b.RunCommand(
                         RunFromPackageHandler.UnsquashFSExecutable,
-                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == TargetScriptPath),
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == TargetScriptPath && a[3] == expectedDownloadedFilePath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash), Times.Once);
             }
         }

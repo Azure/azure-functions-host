@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     _bashCmdHandlerMock.Setup(b =>
                         b.RunCommand(
                             PackageDownloadHandler.Aria2CExecutable,
-                            It.Is<IReadOnlyList<string>>(a => a.Any(arg => arg.Contains(url))),
+                            It.Is<IReadOnlyList<string>>(a => a.Contains(url)),
                             MetricEventNames.LinuxContainerSpecializationZipDownload)).Returns(("", "", 0));
                 }
                 else
@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     _bashCmdHandlerMock.Verify(b =>
                         b.RunCommand(
                             PackageDownloadHandler.Aria2CExecutable,
-                            It.Is<IReadOnlyList<string>>(a => a.Any(arg => arg.Contains(url))),
+                            It.Is<IReadOnlyList<string>>(a => a.Contains(url)),
                             MetricEventNames.LinuxContainerSpecializationZipDownload), Times.Once);
                 }
                 else
