@@ -285,6 +285,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private bool IsFunction(string functionName)
         {
+            if (!Utility.IsValidFunctionName(functionName))
+            {
+                return false;
+            }
+
             string functionPath = Path.Combine(_applicationOptions.Value.ScriptPath, functionName);
             if (Utility.TryReadFunctionConfig(functionPath, out _, _fileSystem))
             {
