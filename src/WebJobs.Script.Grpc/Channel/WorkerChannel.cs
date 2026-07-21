@@ -7,7 +7,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -1482,6 +1481,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     _startLatencyMetric?.Dispose();
                     _workerInitTask?.TrySetCanceled();
+                    _reloadTask?.TrySetCanceled();
                     _timer?.Dispose();
                     _scriptHostManager.ActiveHostChanged -= HandleActiveHostChange;
 

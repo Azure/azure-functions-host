@@ -23,11 +23,14 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using OpenTelemetry;
 using Xunit;
@@ -1073,6 +1076,80 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var actualException = await Assert.ThrowsAsync<WorkerProcessExitException>(() => reloadTask.WaitAsync(TimeSpan.FromSeconds(1)));
             Assert.Equal(expectedException, actualException);
+        }
+
+        // Repro for the crash-during-specialization hang (issue #10169 / PR #11878). On specialization the
+        // host awaits SendFunctionEnvironmentReloadRequest. When the worker crashes mid-reload it publishes a
+        // WorkerErrorEvent; the dispatcher handles it and disposes the channel via
+        // WebHostRpcWorkerChannelManager.ShutdownChannelIfExistsAsync -> ShutdownAndDispose -> Shutdown(exc)
+        // (verified in production: "Disposing WebHost channel for workerId:..."). Before the fix, Shutdown did
+        // not fault the in-flight reload, so it only completed 30s later via EnvironmentReloadTimeout with a
+        // TimeoutException that masked the real crash. With the fix (Shutdown -> TryFailPendingReload) the
+        // reload fails fast with the real WorkerProcessExitException.
+        [Fact]
+        public async Task SendFunctionEnvironmentReloadRequest_WorkerCrashDuringSpecialization_FailsFast()
+        {
+            // Set high so the reload's own timeout cannot satisfy the assertion; the fix must fail it fast.
+            _testWorkerConfig.CountOptions.EnvironmentReloadTimeout = TimeSpan.FromSeconds(30);
+
+            const string runtime = RpcWorkerConstants.DotNetIsolatedLanguageWorkerName;
+            var channelManager = CreateWebHostChannelManager();
+
+            await CreateDefaultWorkerChannel();
+
+            // Register the specializing channel exactly as the WebHost manager tracks it.
+            channelManager.AddOrUpdateWorkerChannels(runtime, _workerChannel);
+            channelManager.SetInitializedWorkerChannel(runtime, _workerChannel);
+
+            var reloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+
+            var workerExit = new WorkerProcessExitException("Language Worker Process exited.")
+            {
+                Pid = 910
+            };
+
+            // The exact call RpcFunctionInvocationDispatcher.DisposeAndRestartWorkerChannel makes when it
+            // handles the crash WorkerErrorEvent (runtime:dotnet-isolated).
+            await channelManager.ShutdownChannelIfExistsAsync(runtime, _workerId, workerExit);
+
+            var actualException = await Assert.ThrowsAsync<WorkerProcessExitException>(() => reloadTask.WaitAsync(TimeSpan.FromSeconds(3)));
+            Assert.Same(workerExit, actualException);
+        }
+
+        // If a channel with an in-flight reload is disposed directly (without going through Shutdown(exception)),
+        // the pending reload should be canceled rather than left to hang until EnvironmentReloadTimeout.
+        [Fact]
+        public async Task Dispose_WithPendingReload_CancelsReload()
+        {
+            _testWorkerConfig.CountOptions.EnvironmentReloadTimeout = TimeSpan.FromSeconds(30);
+
+            await CreateDefaultWorkerChannel();
+            var reloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+
+            _workerChannel.Dispose();
+
+            await Assert.ThrowsAsync<TaskCanceledException>(() => reloadTask.WaitAsync(TimeSpan.FromSeconds(3)));
+        }
+
+        private WebHostRpcWorkerChannelManager CreateWebHostChannelManager()
+        {
+            var workerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
+            workerRuntimeResolver.Setup(m => m.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.DotNetIsolatedLanguageWorkerName);
+
+            var languageWorkerOptions = TestHelpers.CreateOptionsMonitor(new LanguageWorkerOptions { WorkerConfigs = TestHelpers.GetTestWorkerConfigs() });
+
+            return new WebHostRpcWorkerChannelManager(
+                _eventManager,
+                _testEnvironment,
+                _loggerFactory,
+                new Mock<IRpcWorkerChannelFactory>().Object,
+                _hostOptionsMonitor,
+                _metricsLogger,
+                new ConfigurationBuilder().Build(),
+                new Mock<IWorkerProfileManager>().Object,
+                languageWorkerOptions,
+                _hostingConfigOptions,
+                workerRuntimeResolver.Object);
         }
 
         [Fact]
