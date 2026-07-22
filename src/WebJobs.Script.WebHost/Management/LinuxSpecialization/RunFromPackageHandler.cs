@@ -23,18 +23,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         private readonly IEnvironment _environment;
         private readonly IMeshServiceClient _meshServiceClient;
-        private readonly IBashCommandHandler _bashCommandHandler;
+        private readonly ICommandExecutor _commandExecutor;
         private readonly IUnZipHandler _unZipHandler;
         private readonly IPackageDownloadHandler _packageDownloadHandler;
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger<RunFromPackageHandler> _logger;
 
         public RunFromPackageHandler(IEnvironment environment, IMeshServiceClient meshServiceClient,
-            IBashCommandHandler bashCommandHandler, IUnZipHandler unZipHandler, IPackageDownloadHandler packageDownloadHandler, IMetricsLogger metricsLogger, ILogger<RunFromPackageHandler> logger)
+            ICommandExecutor commandExecutor, IUnZipHandler unZipHandler, IPackageDownloadHandler packageDownloadHandler, IMetricsLogger metricsLogger, ILogger<RunFromPackageHandler> logger)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _meshServiceClient = meshServiceClient ?? throw new ArgumentNullException(nameof(meshServiceClient));
-            _bashCommandHandler = bashCommandHandler ?? throw new ArgumentNullException(nameof(bashCommandHandler));
+            _commandExecutor = commandExecutor ?? throw new ArgumentNullException(nameof(commandExecutor));
             _unZipHandler = unZipHandler ?? throw new ArgumentNullException(nameof(unZipHandler));
             _packageDownloadHandler = packageDownloadHandler ?? throw new ArgumentNullException(nameof(packageDownloadHandler));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
@@ -151,8 +151,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
 
             // Check file magic-number using `file` command.
-            (var output, _, _) = _bashCommandHandler.RunBashCommand($"{BashCommandHandler.FileCommand} -b {filePath}", MetricEventNames.LinuxContainerSpecializationFileCommand);
-            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {BashCommandHandler.FileCommand} -b {filePath} {MetricEventNames.LinuxContainerSpecializationFileCommand}"));
+            (var output, _, _) = _commandExecutor.RunCommand(CommandExecutor.FileCommand, new[] { "-b", filePath }, MetricEventNames.LinuxContainerSpecializationFileCommand);
+            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {CommandExecutor.FileCommand} -b {filePath} {MetricEventNames.LinuxContainerSpecializationFileCommand}"));
             if (output.StartsWith(SquashfsPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 return CodePackageType.Squashfs;
@@ -181,9 +181,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private void UnsquashImage(string filePath, string scriptPath)
         {
             _logger.LogDebug($"Unsquashing remote zip to {scriptPath}");
-            var command = $"{UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}'";
-            _bashCommandHandler.RunBashCommand(command, MetricEventNames.LinuxContainerSpecializationUnsquash);
-            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {command}"));
+            _commandExecutor.RunCommand(UnsquashFSExecutable, new[] { "-f", "-d", scriptPath, filePath }, MetricEventNames.LinuxContainerSpecializationUnsquash);
+            _logger.LogInformation(Sanitizer.Sanitize($"Executed: {UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}'"));
         }
 
         public async Task<bool> MountAzureFileShare(HostAssignmentContext assignmentContext)
