@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
         private readonly TestEnvironment _environment;
         private readonly Mock<IMeshServiceClient> _meshServiceClientMock;
-        private readonly Mock<IBashCommandHandler> _bashCmdHandlerMock;
+        private readonly Mock<ICommandExecutor> _commandExecutorMock;
         private readonly TestMetricsLogger _metricsLogger;
         private readonly ILogger<RunFromPackageHandler> _logger;
         private readonly Mock<IUnZipHandler> _zipHandler;
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _environment = new TestEnvironment();
 
             _meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
-            _bashCmdHandlerMock = new Mock<IBashCommandHandler>(MockBehavior.Strict);
+            _commandExecutorMock = new Mock<ICommandExecutor>(MockBehavior.Strict);
             _zipHandler = new Mock<IUnZipHandler>(MockBehavior.Strict);
             _metricsLogger = new TestMetricsLogger();
 
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _packageDownloadHandler = new Mock<IPackageDownloadHandler>(MockBehavior.Strict);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object, 
-                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageDownloadHandler.Object, _metricsLogger, _logger);
+                _commandExecutorMock.Object, _zipHandler.Object, _packageDownloadHandler.Object, _metricsLogger, _logger);
 
             _fileSystem = GetFileSystem();
         }
@@ -160,17 +160,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
-                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object, 
+                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _commandExecutorMock.Object, 
                 _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _commandExecutorMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+
+            var expectedDownloadedFilePath = Path.Combine(Path.GetTempPath(), $"zip-file.{extension}");
 
             if (azureFilesMounted)
             {
-                _bashCmdHandlerMock
-                    .Setup(b => b.RunBashCommand(
-                        It.Is<string>(s => s.StartsWith($"{RunFromPackageHandler.UnsquashFSExecutable} -f -d '{EnvironmentSettingNames.DefaultLocalSitePackagesPath}'")),
+                _commandExecutorMock
+                    .Setup(b => b.RunCommand(
+                        RunFromPackageHandler.UnsquashFSExecutable,
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == EnvironmentSettingNames.DefaultLocalSitePackagesPath && a[3] == expectedDownloadedFilePath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash)).Returns((string.Empty, string.Empty, 0));
 
                 _meshServiceClientMock
@@ -179,9 +182,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
             else
             {
-                _bashCmdHandlerMock
-                    .Setup(b => b.RunBashCommand(
-                        It.Is<string>(s => s.StartsWith($"{RunFromPackageHandler.UnsquashFSExecutable} -f -d '{TargetScriptPath}'")),
+                _commandExecutorMock
+                    .Setup(b => b.RunCommand(
+                        RunFromPackageHandler.UnsquashFSExecutable,
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == TargetScriptPath && a[3] == expectedDownloadedFilePath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash)).Returns((string.Empty, string.Empty, 0));
             }
 
@@ -198,11 +202,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             if (azureFilesMounted)
             {
-                _bashCmdHandlerMock
-                    .Verify(b => b.RunBashCommand(
-                        It.Is<string>(s =>
-                            s.StartsWith(
-                                $"{RunFromPackageHandler.UnsquashFSExecutable} -f -d '{EnvironmentSettingNames.DefaultLocalSitePackagesPath}'")),
+                _commandExecutorMock
+                    .Verify(b => b.RunCommand(
+                        RunFromPackageHandler.UnsquashFSExecutable,
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == EnvironmentSettingNames.DefaultLocalSitePackagesPath && a[3] == expectedDownloadedFilePath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash), Times.Once);
 
                 _meshServiceClientMock
@@ -211,10 +214,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
             else
             {
-                _bashCmdHandlerMock
-                    .Verify(b => b.RunBashCommand(
-                        It.Is<string>(s =>
-                            s.StartsWith($"{RunFromPackageHandler.UnsquashFSExecutable} -f -d '{TargetScriptPath}'")),
+                _commandExecutorMock
+                    .Verify(b => b.RunCommand(
+                        RunFromPackageHandler.UnsquashFSExecutable,
+                        It.Is<IReadOnlyList<string>>(a => a.Count == 4 && a[0] == "-f" && a[1] == "-d" && a[2] == TargetScriptPath && a[3] == expectedDownloadedFilePath),
                         MetricEventNames.LinuxContainerSpecializationUnsquash), Times.Once);
             }
         }
@@ -244,11 +247,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
-                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
+                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _commandExecutorMock.Object,
                 _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _commandExecutorMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
@@ -292,11 +295,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
-                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
+                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _commandExecutorMock.Object,
                 _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _commandExecutorMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
@@ -345,11 +348,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
-                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
+                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _commandExecutorMock.Object,
                 _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _commandExecutorMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
@@ -438,11 +441,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
-                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
+                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _commandExecutorMock.Object,
                 _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _commandExecutorMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
@@ -453,11 +456,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath))
                 .Returns(Task.FromResult(true));
 
-            _bashCmdHandlerMock.Setup(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+            _commandExecutorMock.Setup(b =>
+                b.RunCommand(
+                    CommandExecutor.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand)).Returns(("zip", string.Empty, 0));
 
             var applyBlobContextResult = await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
@@ -472,11 +475,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath))
                 .Returns(Task.FromResult(true));
 
-            _bashCmdHandlerMock.Verify(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+            _commandExecutorMock.Verify(b =>
+                b.RunCommand(
+                    CommandExecutor.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand), Times.Once);
         }
 
@@ -506,21 +509,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory,
-                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
+                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _commandExecutorMock.Object,
                 _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _commandExecutorMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
                 url, packageLength, isWarmUpRequest);
 
-            _bashCmdHandlerMock.Setup(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+            _commandExecutorMock.Setup(b =>
+                b.RunCommand(
+                    CommandExecutor.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand)).Returns(("squashfs", string.Empty, 0));
 
             _meshServiceClientMock.Setup(m => m.MountFuse(MeshServiceClient.SquashFsOperation, It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath))
@@ -533,11 +536,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 ItExpr.Is<HttpRequestMessage>(r => IsZipDownloadRequest(r, url)),
                 ItExpr.IsAny<CancellationToken>());
 
-            _bashCmdHandlerMock.Verify(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+            _commandExecutorMock.Verify(b =>
+                b.RunCommand(
+                    CommandExecutor.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand), Times.Once);
 
             _meshServiceClientMock.Verify(m => m.MountFuse(MeshServiceClient.SquashFsOperation, It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath), Times.Once);
@@ -571,21 +574,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 .Returns(Task.FromResult(string.Empty));
 
             var downloadHandler = new PackageDownloadHandler(_httpClientFactory,
-                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
+                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _commandExecutorMock.Object,
                 _environment, _fileSystem.Object, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, downloadHandler, _metricsLogger, _logger);
+                _commandExecutorMock.Object, _zipHandler.Object, downloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
                 url, packageLength, isWarmUpRequest);
 
-            _bashCmdHandlerMock.Setup(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+            _commandExecutorMock.Setup(b =>
+                b.RunCommand(
+                    CommandExecutor.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand)).Returns(("unknown", string.Empty, 0));
 
 
@@ -597,11 +600,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 ItExpr.Is<HttpRequestMessage>(r => IsZipDownloadRequest(r, url)),
                 ItExpr.IsAny<CancellationToken>());
 
-            _bashCmdHandlerMock.Verify(b =>
-                b.RunBashCommand(
-                    It.Is<string>(s =>
-                        s.StartsWith(BashCommandHandler.FileCommand) && url.EndsWith(Path.GetFileName(s),
-                            StringComparison.OrdinalIgnoreCase)),
+            _commandExecutorMock.Verify(b =>
+                b.RunCommand(
+                    CommandExecutor.FileCommand,
+                    It.Is<IReadOnlyList<string>>(a => a.Count == 2 && a[0] == "-b" && url.EndsWith(Path.GetFileName(a[1]),
+                        StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand), Times.Once);
         }
 
