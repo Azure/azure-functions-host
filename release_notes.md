@@ -4,6 +4,7 @@
 - My change description (#PR)
 -->
 
+- fix: eliminate noisy restart logs during worker channel shutdown (#11846)
 - Fixed a WebHost worker channel shutdown race that could hang host teardown when a language worker was still initializing. (#11853)
 - Fixed a race where a SyncTriggers request during specialization could publish placeholder (`WarmUp`) triggers. (#11874)
 - Update Microsoft.Azure.AppService.Middleware to 1.5.11 (#11866)
