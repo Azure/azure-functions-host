@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Empty(await response.Content.ReadAsStringAsync());
-            Assert.False(response.Headers.Contains("myversion"), "/admin/warmup cannot be overriden by proxies.");
+            Assert.False(response.Headers.Contains("myversion"), "/admin/warmup cannot be overridden by proxies.");
         }
 
         [Fact]
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
             Assert.Empty(await response.Content.ReadAsStringAsync());
-            Assert.False(response.Headers.Contains("myversion"), "/admin/warmup/ cannot be overriden by proxies.");
+            Assert.False(response.Headers.Contains("myversion"), "/admin/warmup/ cannot be overridden by proxies.");
         }
 
         [Fact]
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
             Assert.Empty(content);
-            Assert.False(response.Headers.Contains("myversion"), "/admin/* endpoints cannot be overriden by proxies.");
+            Assert.False(response.Headers.Contains("myversion"), "/admin/* endpoints cannot be overridden by proxies.");
         }
 
         [Fact]
