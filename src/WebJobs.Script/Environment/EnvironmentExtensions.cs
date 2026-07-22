@@ -225,6 +225,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return IsWindowsConsumption(environment) || IsAnyLinuxConsumption(environment) || IsFlexConsumptionSku(environment);
         }
 
+        internal static bool IsAdminWarmupRouteEnabled(this IEnvironment environment)
+        {
+            return !environment.IsAnyLinuxConsumption() && !environment.IsWindowsConsumption();
+        }
+
         /// <summary>
         /// Gets a value indicating whether the application is running in the Flex Consumption Sku.
         /// </summary>
