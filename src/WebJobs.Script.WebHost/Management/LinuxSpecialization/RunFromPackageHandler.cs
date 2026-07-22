@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
 
             // Check file magic-number using `file` command.
-            (var output, _, _) = _commandExecutor.RunCommand(CommandExecutor.FileCommand, new[] { "-b", filePath }, MetricEventNames.LinuxContainerSpecializationFileCommand);
+            (var output, _, _) = _commandExecutor.RunCommand(CommandExecutor.FileCommand, ["-b", filePath], MetricEventNames.LinuxContainerSpecializationFileCommand);
             _logger.LogInformation(Sanitizer.Sanitize($"Executed: {CommandExecutor.FileCommand} -b {filePath} {MetricEventNames.LinuxContainerSpecializationFileCommand}"));
             if (output.StartsWith(SquashfsPrefix, StringComparison.OrdinalIgnoreCase))
             {
@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private void UnsquashImage(string filePath, string scriptPath)
         {
             _logger.LogDebug($"Unsquashing remote zip to {scriptPath}");
-            _commandExecutor.RunCommand(UnsquashFSExecutable, new[] { "-f", "-d", scriptPath, filePath }, MetricEventNames.LinuxContainerSpecializationUnsquash);
+            _commandExecutor.RunCommand(UnsquashFSExecutable, ["-f", "-d", scriptPath, filePath], MetricEventNames.LinuxContainerSpecializationUnsquash);
             _logger.LogInformation(Sanitizer.Sanitize($"Executed: {UnsquashFSExecutable} -f -d '{scriptPath}' '{filePath}'"));
         }
 

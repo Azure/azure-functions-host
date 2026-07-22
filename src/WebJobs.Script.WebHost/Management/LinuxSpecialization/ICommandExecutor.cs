@@ -7,6 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 {
     public interface ICommandExecutor
     {
-        (string Output, string Error, int ExitCode) RunCommand(string fileName, IReadOnlyList<string> arguments, string metricName);
+        (string Output, string Error, int ExitCode) RunCommand(string fileName, IEnumerable<string> arguments, string metricName);
     }
 }

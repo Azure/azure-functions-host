@@ -22,43 +22,40 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public (string Output, string Error, int ExitCode) RunCommand(string fileName, IReadOnlyList<string> arguments, string metricName)
+        public (string Output, string Error, int ExitCode) RunCommand(string fileName, IEnumerable<string> arguments, string metricName)
         {
             ArgumentNullException.ThrowIfNull(fileName);
             ArgumentNullException.ThrowIfNull(arguments);
 
-            for (var i = 0; i < arguments.Count; i++)
+            var process = new Process
             {
-                if (arguments[i] is null)
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = fileName,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            // Pass each argument separately via ArgumentList so they are never
+            // interpreted by a shell. This prevents command injection (CodeQL SM04899)
+            // when arguments are derived from untrusted input (e.g. WEBSITE_RUN_FROM_PACKAGE).
+            foreach (var argument in arguments)
+            {
+                if (argument is null)
                 {
                     throw new ArgumentException("Command arguments must not contain null values.", nameof(arguments));
                 }
+
+                process.StartInfo.ArgumentList.Add(argument);
             }
 
             try
             {
                 using (_metricsLogger.LatencyEvent(metricName))
                 {
-                    var process = new Process
-                    {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = fileName,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                            UseShellExecute = false,
-                            CreateNoWindow = true
-                        }
-                    };
-
-                    // Pass each argument separately via ArgumentList so they are never
-                    // interpreted by a shell. This prevents command injection (CodeQL SM04899)
-                    // when arguments are derived from untrusted input (e.g. WEBSITE_RUN_FROM_PACKAGE).
-                    foreach (var argument in arguments)
-                    {
-                        process.StartInfo.ArgumentList.Add(argument);
-                    }
-
                     _logger.LogInformation("Running: {FileName} (arguments omitted)", fileName);
                     process.Start();
                     var output = process.StandardOutput.ReadToEnd().Trim();
