@@ -892,9 +892,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // disallow custom routes in our own reserved route space
-            string httpRoute = httpTrigger.Route.Trim('/').ToLowerInvariant();
-            if (httpRoute.StartsWith("admin") ||
-                httpRoute.StartsWith("runtime"))
+            ReadOnlySpan<char> httpRoute = httpTrigger.Route.AsSpan().Trim('/');
+            if (httpRoute.StartsWith(ScriptConstants.Admin.AsSpan(), StringComparison.OrdinalIgnoreCase) ||
+                httpRoute.StartsWith(ScriptConstants.Runtime.AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("The specified route conflicts with one or more built in routes.");
             }

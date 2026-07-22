@@ -217,6 +217,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return IsWindowsConsumption(environment) || IsAnyLinuxConsumption(environment);
         }
 
+        internal static bool IsAdminWarmupRouteEnabled(this IEnvironment environment)
+        {
+            return !environment.IsAnyLinuxConsumption() && !environment.IsWindowsConsumption();
+        }
+        }
+
         /// <summary>
         /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS).
         /// </summary>

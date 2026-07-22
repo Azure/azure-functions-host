@@ -23,7 +23,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
     public static class HttpRequestExtensions
     {
         private static readonly PathString _adminRoot = new PathString("/admin");
+        private static readonly PathString _adminWarmupPath = new PathString("/admin/warmup");
         private static readonly PathString _adminDownloadRequestRoot = new PathString("/admin/functions/download");
+        private static readonly PathString _runtimeRoot = new PathString("/runtime");
 
         public static bool IsAdminRequest(this HttpRequest request)
         {
@@ -33,6 +35,16 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         public static bool IsAdminDownloadRequest(this HttpRequest request)
         {
             return request.Path.StartsWithSegments(_adminDownloadRequestRoot);
+        }
+
+        internal static bool IsReservedRouteRequest(this HttpRequest request)
+        {
+            return request.IsAdminRequest() || request.Path.StartsWithSegments(_runtimeRoot);
+        }
+
+        internal static bool IsAdminWarmupRequest(this HttpRequest request)
+        {
+            return request.Path.Equals(_adminWarmupPath, StringComparison.OrdinalIgnoreCase);
         }
 
         public static TValue GetRequestPropertyOrDefault<TValue>(this HttpRequest request, string key)

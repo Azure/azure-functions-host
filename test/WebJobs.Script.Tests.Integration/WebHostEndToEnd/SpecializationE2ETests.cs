@@ -78,6 +78,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ReservedRouteEnforcement_OptOutIsAppliedAfterSpecialization()
+        {
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "ReservedRouteCatchAll")
+                .ConfigureScriptHostServices(services =>
+                {
+                    services.PostConfigure<HttpOptions>(options => options.RoutePrefix = string.Empty);
+                });
+
+            await using var stoppable = new StoppableHost(builder.Build());
+            IHost webHost = stoppable.Inner;
+            await webHost.StartAsync();
+            HttpClient client = webHost.GetTestClient();
+
+            HttpResponseMessage response = await client.GetAsync("admin/foo");
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+
+            _environment.SetEnvironmentVariable(
+                EnvironmentSettingNames.AzureWebJobsFeatureFlags,
+                $"{ScriptConstants.FeatureFlagEnableWorkerIndexing},{ScriptConstants.FeatureFlagDisableReservedRouteEnforcement}");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("admin/foo");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("customer catch-all", await response.Content.ReadAsStringAsync());
+
+            response = await client.GetAsync("admin/host/status");
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
         public async Task ApplicationInsights_InvocationsContainDifferentOperationIds()
         {
             // Verify that when a request specializes the host we don't capture the context
