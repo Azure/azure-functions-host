@@ -412,7 +412,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IPackageDownloadHandler, PackageDownloadHandler>();
             services.AddSingleton<IManagedIdentityTokenProvider, ManagedIdentityTokenProvider>();
             services.AddSingleton<IUnZipHandler, UnZipHandler>();
-            services.AddSingleton<IBashCommandHandler, BashCommandHandler>();
+            services.AddSingleton<ICommandExecutor, CommandExecutor>();
         }
 
         private static void AddAzureStorageProviders(this IServiceCollection services)

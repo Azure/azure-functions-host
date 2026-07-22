@@ -9,14 +9,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 {
-    public class BashCommandHandler : IBashCommandHandler
+    public class CommandExecutor : ICommandExecutor
     {
         public const string FileCommand = "file";
 
         private readonly IMetricsLogger _metricsLogger;
-        private readonly ILogger<BashCommandHandler> _logger;
+        private readonly ILogger<CommandExecutor> _logger;
 
-        public BashCommandHandler(IMetricsLogger metricsLogger, ILogger<BashCommandHandler> logger)
+        public CommandExecutor(IMetricsLogger metricsLogger, ILogger<CommandExecutor> logger)
         {
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

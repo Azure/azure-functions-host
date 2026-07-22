@@ -24,19 +24,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         private readonly HttpClient _httpClient;
         private readonly IManagedIdentityTokenProvider _managedIdentityTokenProvider;
-        private readonly IBashCommandHandler _bashCommandHandler;
+        private readonly ICommandExecutor _commandExecutor;
         private readonly ILogger<PackageDownloadHandler> _logger;
         private readonly IMetricsLogger _metricsLogger;
         private readonly IEnvironment _environment;
         private readonly IFileSystem _fileSystem;
 
         public PackageDownloadHandler(IHttpClientFactory httpClientFactory, IManagedIdentityTokenProvider managedIdentityTokenProvider,
-            IBashCommandHandler bashCommandHandler, IEnvironment environment, IFileSystem fileSystem, ILogger<PackageDownloadHandler> logger,
+            ICommandExecutor commandExecutor, IEnvironment environment, IFileSystem fileSystem, ILogger<PackageDownloadHandler> logger,
             IMetricsLogger metricsLogger)
         {
             _httpClient = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _managedIdentityTokenProvider = managedIdentityTokenProvider ?? throw new ArgumentNullException(nameof(managedIdentityTokenProvider));
-            _bashCommandHandler = bashCommandHandler ?? throw new ArgumentNullException(nameof(bashCommandHandler));
+            _commandExecutor = commandExecutor ?? throw new ArgumentNullException(nameof(commandExecutor));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _fileSystem = fileSystem ?? FileUtility.Instance;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private void AriaDownload(string directory, string fileName, Uri zipUri, bool isWarmupRequest, string downloadMetricName)
         {
             var arguments = new[] { "--allow-overwrite", "-x12", "-d", directory, "-o", fileName, zipUri.ToString() };
-            (string stdout, string stderr, int exitCode) = _bashCommandHandler.RunCommand(
+            (string stdout, string stderr, int exitCode) = _commandExecutor.RunCommand(
                 Aria2CExecutable,
                 arguments,
                 downloadMetricName);
