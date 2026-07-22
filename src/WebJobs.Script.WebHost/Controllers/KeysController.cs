@@ -285,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private bool IsFunction(string functionName)
         {
-            if (!Utility.IsValidFunctionName(functionName))
+            if (string.IsNullOrEmpty(functionName) || !Utility.IsValidFunctionName(functionName))
             {
                 return false;
             }
