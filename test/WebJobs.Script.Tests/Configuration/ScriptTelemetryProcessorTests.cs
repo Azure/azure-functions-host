@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -70,6 +71,86 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
 
             Assert.Single(items);
+        }
+
+        [Fact]
+        public void Process_UserCodeException_ComputesProblemIdAndPreservesContext()
+        {
+            var rpcEx = new RpcException(
+                "failure",
+                "boom",
+                "   at My.Namespace.MyFunction.Run(String input) in /src/MyFunction.cs:line 42\n   at System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)",
+                "My.Namespace.MyException",
+                isUserException: true);
+
+            var original = new ExceptionTelemetry(new Exception("outer", rpcEx))
+            {
+                SeverityLevel = SeverityLevel.Critical,
+            };
+            original.Context.InstrumentationKey = "ikey";
+            original.Context.Operation.Id = "op-id";
+            original.Context.Operation.Name = "MyFunction";
+            original.Context.Operation.ParentId = "parent-id";
+            original.Context.Cloud.RoleName = "my-function-app";
+            original.Context.Cloud.RoleInstance = "instance-0";
+            original.Properties["Category"] = "Host.Results";
+            ((ISupportSampling)original).SamplingPercentage = 25;
+
+            var items = new List<ITelemetry>();
+            var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
+
+            processor.Process(original);
+
+            var result = Assert.IsType<ExceptionTelemetry>(Assert.Single(items));
+            Assert.NotSame(original, result);
+            Assert.Equal("My.Namespace.MyException at My.Namespace.MyFunction.Run", result.ProblemId);
+            Assert.Equal(SeverityLevel.Critical, result.SeverityLevel);
+            Assert.Equal("ikey", result.Context.InstrumentationKey);
+            Assert.Equal("op-id", result.Context.Operation.Id);
+            Assert.Equal("MyFunction", result.Context.Operation.Name);
+            Assert.Equal("parent-id", result.Context.Operation.ParentId);
+            Assert.Equal("my-function-app", result.Context.Cloud.RoleName);
+            Assert.Equal("instance-0", result.Context.Cloud.RoleInstance);
+            Assert.Equal(original.Timestamp, result.Timestamp);
+            Assert.Equal("Host.Results", result.Properties["Category"]);
+            Assert.Equal(25, ((ISupportSampling)result).SamplingPercentage);
+
+            var details = Assert.Single(result.ExceptionDetailsInfoList);
+            Assert.Equal("My.Namespace.MyException", details.TypeName);
+            Assert.Equal("boom", details.Message);
+        }
+
+        [Fact]
+        public void Process_UserCodeException_NoParsableStack_ProblemIdFallsBackToTypeName()
+        {
+            var rpcEx = new RpcException(
+                "failure",
+                "boom",
+                "Traceback (most recent call last):\n  File \"main.py\", line 3, in handler",
+                "MyPythonError",
+                isUserException: true);
+
+            var items = new List<ITelemetry>();
+            var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
+
+            processor.Process(new ExceptionTelemetry(new Exception("outer", rpcEx)));
+
+            var result = Assert.IsType<ExceptionTelemetry>(Assert.Single(items));
+            Assert.Equal("MyPythonError", result.ProblemId);
+        }
+
+        [Fact]
+        public void Process_NonUserException_IsPassedThroughUnchanged()
+        {
+            var rpcEx = new RpcException("failure", "boom", "stack", "My.Type", isUserException: false);
+            var original = new ExceptionTelemetry(new Exception("outer", rpcEx));
+
+            var items = new List<ITelemetry>();
+            var processor = new ScriptTelemetryProcessor(new TestTelemetryProcessor(items));
+
+            processor.Process(original);
+
+            Assert.Same(original, Assert.Single(items));
         }
 
         [Fact]

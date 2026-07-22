@@ -11,3 +11,4 @@
 - Update PS 7.6 worker to [v4.0.5213](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5213) (#11858)
 - Update `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` to `1.0.15` (#11881)
 - Update Python Worker Version to [4.46.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.46.0) (#11885)
+- Fixed isolated-worker user-code exception telemetry collapsing into a literal "ProblemId" group in Application Insights and losing its sampling decision, operation correlation, and cloud role. (#11887)
