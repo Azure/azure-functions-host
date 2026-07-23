@@ -55,10 +55,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _packageDownloadHandler = new Mock<IPackageDownloadHandler>(MockBehavior.Strict);
 
             var metricsLogger = new MetricsLogger();
-            var bashCommandHandler = new BashCommandHandler(metricsLogger, new Logger<BashCommandHandler>(_loggerFactory));
+            var commandExecutor = new CommandExecutor(metricsLogger, new Logger<CommandExecutor>(_loggerFactory));
             var zipHandler = new UnZipHandler(metricsLogger, NullLogger<UnZipHandler>.Instance);
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                bashCommandHandler, zipHandler, _packageDownloadHandler.Object, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
+                commandExecutor, zipHandler, _packageDownloadHandler.Object, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
 
             _instanceManager = new LegionInstanceManager(_httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<LegionInstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object);
