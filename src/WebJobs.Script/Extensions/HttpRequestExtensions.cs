@@ -42,9 +42,15 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return request.IsAdminRequest() || request.Path.StartsWithSegments(_runtimeRoot);
         }
 
-        internal static bool IsAdminWarmupRequest(this HttpRequest request)
+        internal static bool IsExactAdminWarmupRequest(this HttpRequest request)
         {
             return request.Path.Equals(_adminWarmupPath, StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static bool IsAdminWarmupRouteMatch(this HttpRequest request)
+        {
+            return request.Path.StartsWithSegments(_adminWarmupPath, StringComparison.OrdinalIgnoreCase, out PathString remaining)
+                && (!remaining.HasValue || string.Equals(remaining.Value, "/", StringComparison.Ordinal));
         }
 
         public static TValue GetRequestPropertyOrDefault<TValue>(this HttpRequest request, string key)

@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Logging;
@@ -27,6 +28,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
+        private TestLoggerProvider _scriptHostLoggerProvider;
 
         private readonly ITestOutputHelper _testOutputHelper;
 
@@ -80,16 +83,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ReservedRouteEnforcement_OptOutIsAppliedAfterSpecialization()
         {
-            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "ReservedRouteCatchAll")
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "ReservedRouteCatchAll")
                 .ConfigureScriptHostServices(services =>
                 {
                     services.PostConfigure<HttpOptions>(options => options.RoutePrefix = string.Empty);
                 });
 
-            await using var stoppable = new StoppableHost(builder.Build());
-            IHost webHost = stoppable.Inner;
-            await webHost.StartAsync();
-            HttpClient client = webHost.GetTestClient();
+            using var testServer = new TestServer(builder);
+            HttpClient client = testServer.CreateClient();
 
             HttpResponseMessage response = await client.GetAsync("admin/foo");
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -110,6 +111,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
             Assert.Empty(await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
+        public async Task ReservedRouteEnforcement_MatchingFunctionLogsErrorAfterSpecialization()
+        {
+            _scriptHostLoggerProvider = new TestLoggerProvider();
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, "ReservedRouteCatchAll")
+                .ConfigureScriptHostServices(services =>
+                {
+                    services.PostConfigure<HttpOptions>(options => options.RoutePrefix = string.Empty);
+                });
+
+            using var testServer = new TestServer(builder);
+            HttpClient client = testServer.CreateClient();
+
+            HttpResponseMessage response = await client.GetAsync("admin/foo");
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+            Assert.DoesNotContain(
+                _loggerProvider.GetAllLogMessages(),
+                p => string.Equals(p.Category, typeof(ReservedRouteGuardMiddleware).FullName, StringComparison.Ordinal));
+            Assert.DoesNotContain(
+                _scriptHostLoggerProvider.GetAllLogMessages(),
+                p => string.Equals(p.Category, typeof(ReservedRouteGuardMiddleware).FullName, StringComparison.Ordinal));
+
+            _environment.SetEnvironmentVariable(
+                EnvironmentSettingNames.AzureWebJobsFeatureFlags,
+                ScriptConstants.FeatureFlagEnableWorkerIndexing);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("admin/foo");
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+
+            response = await client.GetAsync("runtime/foo");
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+            LogMessage log = Assert.Single(
+                _scriptHostLoggerProvider.GetAllLogMessages(),
+                p => string.Equals(p.Category, typeof(ReservedRouteGuardMiddleware).FullName, StringComparison.Ordinal) &&
+                     p.Level == LogLevel.Error);
+            Assert.Contains("function 'ReservedRouteCatchAll'", log.FormattedMessage, StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                _loggerProvider.GetAllLogMessages(),
+                p => string.Equals(p.Category, typeof(ReservedRouteGuardMiddleware).FullName, StringComparison.Ordinal));
         }
 
         [Fact]
@@ -1168,7 +1217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     s.AddLogging(logging =>
                     {
-                        logging.AddProvider(_loggerProvider);
+                        logging.AddProvider(_scriptHostLoggerProvider ?? _loggerProvider);
                     });
 
                     s.PostConfigure<ScriptJobHostOptions>(o =>
