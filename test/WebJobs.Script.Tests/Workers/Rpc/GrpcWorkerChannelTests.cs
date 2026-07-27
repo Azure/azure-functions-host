@@ -1094,7 +1094,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(await firstReloadTask.WaitAsync(TimeSpan.FromSeconds(1)));
         }
 
-        // Repro for the crash-during-specialization hang (issue #10169 / PR #11878). On specialization the
+        // Repro for the crash-during-specialization hang (issue #11876). On specialization the
         // host awaits SendFunctionEnvironmentReloadRequest. When the worker crashes mid-reload it publishes a
         // WorkerErrorEvent; the dispatcher handles it and disposes the channel via
         // WebHostRpcWorkerChannelManager.ShutdownChannelIfExistsAsync -> ShutdownAndDispose -> Shutdown(exc)
