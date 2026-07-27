@@ -209,6 +209,61 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
         }
 
+        [Theory]
+        [InlineData("../etc/passwd")]
+        [InlineData("..\\windows\\system32")]
+        [InlineData("func/../../secret")]
+        [InlineData("host")]
+        [InlineData("")]
+        [InlineData("123startsWithDigit")]
+        [InlineData("-startsWithDash")]
+        [InlineData("has spaces")]
+        [InlineData("has!special@chars")]
+        public async Task GetKeys_InvalidFunctionName_ReturnsNotFound(string functionName)
+        {
+            var result = (StatusCodeResult)await _testController.Get(functionName);
+
+            Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+        }
+
+        [Theory]
+        [InlineData("../etc/passwd")]
+        [InlineData("..\\windows\\system32")]
+        [InlineData("func/../../secret")]
+        [InlineData("host")]
+        [InlineData("")]
+        [InlineData("123startsWithDigit")]
+        [InlineData("-startsWithDash")]
+        [InlineData("has spaces")]
+        [InlineData("has!special@chars")]
+        public async Task PutKey_InvalidFunctionName_ReturnsNotFound(string functionName)
+        {
+            var key = new Key("key1", "secret1");
+
+            var result = (StatusCodeResult)(await _testController.Put(functionName, key.Name, key));
+            Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
+        }
+
+        [Theory]
+        [InlineData("../etc/passwd")]
+        [InlineData("..\\windows\\system32")]
+        [InlineData("func/../../secret")]
+        [InlineData("host")]
+        [InlineData("")]
+        [InlineData("123startsWithDigit")]
+        [InlineData("-startsWithDash")]
+        [InlineData("has spaces")]
+        [InlineData("has!special@chars")]
+        public async Task DeleteKey_InvalidFunctionName_ReturnsNotFound(string functionName)
+        {
+            var result = (StatusCodeResult)(await _testController.Delete(functionName, "key1"));
+            Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
+
+            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)

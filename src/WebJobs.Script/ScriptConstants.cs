@@ -144,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableResponseCompression = "EnableResponseCompression";
         public const string FeatureFlagEnableMcpCustomHandlerPreview = "EnableMcpCustomHandlerPreview";
         public const string FeatureFlagDisableOrderedInvocationMessages = "DisableOrderedInvocationMessages";
+        public const string FeatureFlagDisableReservedRouteEnforcement = "DisableReservedRouteEnforcement";
         public const string FeatureFlagEnableAzureMonitorTimeIsoFormat = "EnableAzureMonitorTimeIsoFormat";
         public const string FeatureFlagEnableTestDataSuppression = "EnableTestDataSuppression";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
@@ -160,6 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LegionCoreUri = "https://legion.core.azurewebsites.net";
 
         public const string AzureFunctionsSystemDirectoryName = ".azurefunctions";
+        public const string Admin = "admin";
         public const string HttpMethodConstraintName = "httpMethod";
         public const string Snapshot = "snapshot";
         public const string Runtime = "runtime";

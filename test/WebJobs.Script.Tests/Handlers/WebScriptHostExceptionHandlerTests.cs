@@ -35,8 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
         [Fact]
         public async Task OnTimeoutExceptionAsync_CallsRestartWorkerWithInvocationIdAsync_WithTimeoutException()
         {
-            var task = Task.CompletedTask;
-            var timeoutException = new FunctionTimeoutException("Test timeout");
+            var invocationId = Guid.NewGuid();
+            var timeoutException = new FunctionTimeoutException("Test timeout") { InstanceId = invocationId };
             var exceptionInfo = ExceptionDispatchInfo.Capture(timeoutException);
             var timeoutGracePeriod = TimeSpan.FromSeconds(5);
 
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             await _exceptionHandler.OnTimeoutExceptionAsync(exceptionInfo, timeoutGracePeriod);
 
             _mockWorkerManager.Verify(d => d.RestartWorkerWithInvocationIdAsync(
-                It.IsAny<string>(),
+                invocationId.ToString(),
                 timeoutException), Times.Once);
         }
 
@@ -60,10 +60,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
         {
             // Arrange
             var invocationId = Guid.NewGuid();
-            var taskCompletionSource = new TaskCompletionSource<bool>();
-            var timeoutException = new FunctionTimeoutException("Test timeout");
-            var exceptionInfo = ExceptionDispatchInfo.Capture(timeoutException);
             var timeoutGracePeriod = TimeSpan.FromMilliseconds(100); // Short grace period
+            var taskCompletionSource = new TaskCompletionSource<bool>();
+            var timeoutException = new FunctionTimeoutException(
+                "Test timeout",
+                invocationId,
+                "TestMethod",
+                timeoutGracePeriod,
+                taskCompletionSource.Task,
+                null);
+            var exceptionInfo = ExceptionDispatchInfo.Capture(timeoutException);
 
             _mockWorkerManager
                 .Setup(d => d.State)
@@ -80,8 +86,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
 
             // Assert
             _mockWorkerManager.Verify(d => d.RestartWorkerWithInvocationIdAsync(
-                It.IsAny<string>(),
+                invocationId.ToString(),
                 timeoutException), Times.Once);
+        }
+
+        [Fact]
+        public async Task OnTimeoutExceptionAsync_WhenInstanceIdIsEmpty_SkipsRestart()
+        {
+            // An empty instance id indicates the timeout originated from worker channel shutdown,
+            // where the restart has already been initiated by the original failure.
+            var timeoutException = new FunctionTimeoutException("Test timeout") { InstanceId = Guid.Empty };
+            var exceptionInfo = ExceptionDispatchInfo.Capture(timeoutException);
+            var timeoutGracePeriod = TimeSpan.FromSeconds(5);
+
+            _mockWorkerManager
+                .Setup(d => d.State)
+                .Returns(WorkerManagerState.Initialized);
+
+            await _exceptionHandler.OnTimeoutExceptionAsync(exceptionInfo, timeoutGracePeriod);
+
+            _mockWorkerManager.Verify(
+                d => d.RestartWorkerWithInvocationIdAsync(It.IsAny<string>(), It.IsAny<Exception>()),
+                Times.Never);
         }
     }
 }
