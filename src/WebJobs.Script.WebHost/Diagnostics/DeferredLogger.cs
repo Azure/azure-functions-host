@@ -1,19 +1,18 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     /// <summary>
-    /// A logger that defers log entries to a channel.
+    /// A logger that defers log entries to a shared <see cref="DeferredLogSource"/>.
     /// </summary>
-    public class DeferredLogger : ILogger
+    internal class DeferredLogger : ILogger
     {
-        private readonly Channel<DeferredLogEntry> _channel;
+        private readonly DeferredLogSource _source;
         private readonly string _categoryName;
         private readonly IExternalScopeProvider _scopeProvider;
         private readonly IEnvironment _environment;
@@ -21,9 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         // Cached placeholder mode flag
         private bool _isPlaceholderModeDisabled = false;
 
-        public DeferredLogger(Channel<DeferredLogEntry> channel, string categoryName, IExternalScopeProvider scopeProvider, IEnvironment environment)
+        public DeferredLogger(DeferredLogSource source, string categoryName, IExternalScopeProvider scopeProvider, IEnvironment environment)
         {
-            _channel = channel;
+            _source = source;
             _categoryName = categoryName;
             _scopeProvider = scopeProvider;
             _environment = environment;
@@ -67,14 +66,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 EventId = eventId
             };
 
-            // Persist the scope state so it can be reapplied in the original order when forwarding logs to the logging provider.
-            _scopeProvider?.ForEachScope((scope, state) =>
+            // Persist the scope state so it can be reapplied in the original order when forwarding logs to the
+            // logging provider.
+            if (_scopeProvider is not null)
             {
-                state.ScopeStorage ??= new List<object>();
-                state.ScopeStorage.Add(scope);
-            }, log);
+                var scopeStorage = new List<object>();
+                _scopeProvider.ForEachScope(static (scope, state) => state.Add(scope), scopeStorage);
+                if (scopeStorage.Count > 0)
+                {
+                    log.ScopeStorage = scopeStorage;
+                }
+            }
 
-            _channel.Writer.TryWrite(log);
+            _source.Write(log);
         }
     }
 }
