@@ -690,7 +690,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public Task<bool> SendFunctionEnvironmentReloadRequest()
         {
-            _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
             _functionMetadataRequestSent = false;
 

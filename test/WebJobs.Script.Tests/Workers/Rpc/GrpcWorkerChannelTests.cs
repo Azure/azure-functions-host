@@ -1078,6 +1078,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(expectedException, actualException);
         }
 
+        [Fact]
+        public async Task SendFunctionEnvironmentReloadRequest_CalledTwice_ReturnsSameTask()
+        {
+            await CreateDefaultWorkerChannel();
+
+            var firstReloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+            var secondReloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
+
+            Assert.Same(firstReloadTask, secondReloadTask);
+
+            _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent(workerSupportsSpecialization: true);
+            _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent(workerSupportsSpecialization: true);
+
+            Assert.True(await firstReloadTask.WaitAsync(TimeSpan.FromSeconds(1)));
+        }
+
         // Repro for the crash-during-specialization hang (issue #10169 / PR #11878). On specialization the
         // host awaits SendFunctionEnvironmentReloadRequest. When the worker crashes mid-reload it publishes a
         // WorkerErrorEvent; the dispatcher handles it and disposes the channel via
