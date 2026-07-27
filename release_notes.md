@@ -13,3 +13,4 @@
 - Fixed a race and reader leak in WebHost deferred startup-log forwarding across ScriptHost restarts/specialization, and fixed OpenTelemetry logs not being flushed on host shutdown. (#11847)
 - Update `Microsoft.Azure.Functions.DotNetIsolatedNativeHost` to `1.0.15` (#11881)
 - Update Python Worker Version to [4.46.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.46.0) (#11885)
+- Update Java Worker Version to [2.19.5](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.19.5)
