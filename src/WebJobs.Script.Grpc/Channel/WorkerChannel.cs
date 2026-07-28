@@ -496,12 +496,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     _workerChannelLogger.LogWarning(reloadEnvironmentVariablesException, reloadEnvironmentVariablesException.Message);
                 }
-                _reloadTask.SetResult(false);
+                _reloadTask.TrySetResult(false);
             }
             else
             {
-                _reloadTask.SetResult(true);
+                _reloadTask.TrySetResult(true);
             }
+
             latencyEvent.Dispose();
         }
 
@@ -1364,7 +1365,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void HandleWorkerEnvReloadError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Reloading environment variables failed");
-            _reloadTask.SetException(exc);
+            TryFailPendingReload(exc);
         }
 
         internal void HandleWorkerInitError(Exception exc)
@@ -1479,6 +1480,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     _startLatencyMetric?.Dispose();
                     _workerInitTask?.TrySetCanceled();
+                    _reloadTask?.TrySetCanceled();
                     _timer?.Dispose();
                     _scriptHostManager.ActiveHostChanged -= HandleActiveHostChange;
 
@@ -1552,6 +1554,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Shutdown(Exception workerException)
         {
+            TryFailPendingReload(workerException);
+
             var shutdownException = workerException;
 
             if (workerException is null || workerException is FunctionTimeoutException)
@@ -1567,6 +1571,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 invocation.Context?.SetException(shutdownException);
                 RemoveExecutingInvocation(invocationId);
             }
+        }
+
+        private void TryFailPendingReload(Exception exception)
+        {
+            if (exception is null)
+            {
+                return;
+            }
+
+            _reloadTask.TrySetException(exception);
         }
 
         /// <summary>
