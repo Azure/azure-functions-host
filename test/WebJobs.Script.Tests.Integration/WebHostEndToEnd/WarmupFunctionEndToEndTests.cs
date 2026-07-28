@@ -38,7 +38,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"/admin/warmup");
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.False(response.Headers.Contains("myversion"), "/admin/warmup cannot be overriden by proxies.");
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+            Assert.False(response.Headers.Contains("myversion"), "/admin/warmup cannot be overridden by proxies.");
+        }
+
+        [Fact]
+        public async Task Warmup_TrailingSlash_ReturnsNotFound()
+        {
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/admin/warmup/");
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+            Assert.False(response.Headers.Contains("myversion"), "/admin/warmup/ cannot be overridden by proxies.");
         }
 
         [Fact]
@@ -57,7 +68,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/admin/123");
 
             string content = await response.Content.ReadAsStringAsync();
-            Assert.False(response.Headers.Contains("myversion"), "/admin/* endpoints cannot be overriden by proxies.");
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(content);
+            Assert.False(response.Headers.Contains("myversion"), "/admin/* endpoints cannot be overridden by proxies.");
+        }
+
+        [Fact]
+        public async Task FunctionRoutes_RuntimeOverride_Fails()
+        {
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/runtime/123");
+
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(content);
         }
 
         [Fact]

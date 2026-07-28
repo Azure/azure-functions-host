@@ -103,6 +103,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // source here: https://github.com/aspnet/Mvc/blob/master/src/Microsoft.AspNetCore.Mvc.Core/Builder/MvcApplicationBuilderExtensions.cs
             builder.UseMvc();
 
+            builder.UseMiddleware<ReservedRouteGuardMiddleware>();
+
             // Ensure the HTTP binding routing is registered after all middleware
             builder.UseHttpBindingRouting(applicationLifetime, routes);
 

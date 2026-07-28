@@ -208,6 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, SpecializationChangeTokenSource<LanguageWorkerOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
+            services.ConfigureOptionsWithChangeTokenSource<ReservedRouteOptions, ReservedRouteOptionsSetup, SpecializationChangeTokenSource<ReservedRouteOptions>>();
             services.ConfigureOptions<ConsoleLoggingOptionsSetup>();
             services.ConfigureOptions<AzureMonitorLoggingOptionsSetup>();
             services.AddHostingConfigOptions(configuration);

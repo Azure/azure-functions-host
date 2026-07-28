@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, true), routePrefix: null);
 
             WebJobsRouteBuilder warmupRouteBuilder = null;
-            if (!_environment.IsAnyLinuxConsumption() && !_environment.IsWindowsConsumption())
+            if (_environment.IsAdminWarmupRouteEnabled())
             {
                 warmupRouteBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, isProxy: false, isWarmup: true), routePrefix: "admin");
             }
@@ -94,8 +94,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             }
 
-            _router.AddFunctionRoutes(functionRouter, proxyRouter);
-
             if (warmupRouteBuilder != null)
             {
                 // Adding the default admin/warmup route when no warmup function is present
@@ -106,6 +104,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 IRouter warmupRouter = warmupRouteBuilder.Build();
                 _router.AddFunctionRoutes(warmupRouter, null);
             }
+
+            // The host warmup route must take precedence over customer catch-all routes.
+            _router.AddFunctionRoutes(functionRouter, proxyRouter);
 
             ILogger logger = _loggerFactory.CreateLogger<WebScriptHostHttpRoutesManager>();
             logger.LogInformation(routesLogBuilder.ToString());
