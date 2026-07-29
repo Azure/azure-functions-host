@@ -130,6 +130,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         }
 
         [Fact]
+        public async Task OnPublishMetrics_PrescaledInstance_PublishesAlwaysReadyBaselineUntilFirstExecution()
+        {
+            CleanupMetricsFiles();
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsPrescaledInstance, "1");
+            using var publisher = CreatePublisher();
+
+            // Prescaled + unused: a baseline file is written even at zero activity, stamped AlwaysReady.
+            await Task.Delay(100);
+            await publisher.OnPublishMetrics(DateTime.UtcNow, ValueStopwatch.StartNew());
+            var files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Equal(1, files.Length);
+            var metrics = await ReadMetricsAsync(files[0].FullName);
+            Assert.True(metrics.IsAlwaysReady);
+            Assert.Equal(0, metrics.ExecutionCount);
+            Assert.Equal(0, metrics.ExecutionTimeMS);
+            files[0].Delete();
+
+            // First execution flips the instance to OnDemand.
+            publisher.OnFunctionStarted("foo", "111");
+            publisher.OnFunctionCompleted("foo", "111");
+            await Task.Delay(100);
+            await publisher.OnPublishMetrics(DateTime.UtcNow, ValueStopwatch.StartNew());
+            files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Equal(1, files.Length);
+            metrics = await ReadMetricsAsync(files[0].FullName);
+            Assert.False(metrics.IsAlwaysReady);
+            Assert.Equal(1, metrics.ExecutionCount);
+            files[0].Delete();
+
+            // Once served, an idle interval publishes nothing (no baseline).
+            await publisher.OnPublishMetrics(DateTime.UtcNow, ValueStopwatch.StartNew());
+            files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Equal(0, files.Length);
+        }
+
+        [Fact]
         public async Task OnPublishMetrics_PurgesOldFiles()
         {
             CleanupMetricsFiles();
