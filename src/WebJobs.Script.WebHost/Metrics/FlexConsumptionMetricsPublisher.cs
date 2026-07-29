@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -18,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly FlexConsumptionMetricsPublisherOptions _options;
         private readonly IEnvironment _environment;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<FlexConsumptionMetricsPublisher> _logger;
         private readonly IHostMetricsProvider _metricsProvider;
         private readonly object _lock = new();
@@ -31,11 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private bool _firstExecutionObserved;
         private Lifecycle _lifecycle;
 
-        public FlexConsumptionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options,
+        public FlexConsumptionMetricsPublisher(IEnvironment environment, IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options,
             ILogger<FlexConsumptionMetricsPublisher> logger, IFileSystem fileSystem, IHostMetricsProvider metricsProvider)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fileSystem = fileSystem ?? new FileSystem();
@@ -86,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     .GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAlwaysReadyInstance) == "1";
 
                 IsPrescaled = string.Equals(
-                    _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsPrescaledInstance),
+                    _configuration[EnvironmentSettingNames.FunctionsPrescaledInstance],
                     "1",
                     StringComparison.Ordinal);
 
@@ -116,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         {
             try
             {
-                bool publishAsAlwaysReady;
+                bool shouldPublishAsAlwaysReady;
                 lock (_lock)
                 {
                     if (ActiveFunctionCount > 0)
@@ -125,13 +128,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                         MeterCurrentActiveInterval(now);
                     }
 
-                    publishAsAlwaysReady = IsAlwaysReady || (IsPrescaled && !_firstExecutionObserved);
+                    shouldPublishAsAlwaysReady = IsAlwaysReady || (IsPrescaled && !_firstExecutionObserved);
                 }
 
                 bool hasActivity = FunctionExecutionCount > 0 || FunctionExecutionTimeMS > 0 || _metricsProvider.HasMetrics();
                 bool shouldForcePublish = (now - _lastPublishTime) >= TimeSpan.FromMilliseconds(_options.KeepAliveIntervalMS);
 
-                if (!hasActivity && !shouldForcePublish && !publishAsAlwaysReady)
+                if (!hasActivity && !shouldForcePublish && !shouldPublishAsAlwaysReady)
                 {
                     // No activity and not time for keep-alive publish or AlwaysReady baseline
                     return;
@@ -142,6 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 Metrics metrics = null;
                 lock (_lock)
                 {
+                    bool publishAsAlwaysReady = IsAlwaysReady || (IsPrescaled && !_firstExecutionObserved);
                     metrics = new Metrics
                     {
                         TotalTimeMS = (long)stopwatch.GetElapsedTime().TotalMilliseconds,
