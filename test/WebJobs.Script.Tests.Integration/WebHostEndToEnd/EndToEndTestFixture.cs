@@ -37,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly AzuriteFixture _azurite = new();
         private readonly string _rootPath;
+        private readonly bool _startOffline;
         private TemporaryScriptRoot _scriptRoot;
         private string _copiedRootPath;
         private string _functionsWorkerRuntime;
@@ -52,7 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             int workerProcessesCount = 1,
             string functionsWorkerRuntimeVersion = null,
             bool addTestSettings = true,
-            bool addStorageExtensions = true)
+            bool addStorageExtensions = true,
+            bool startOffline = false)
         {
             FixtureId = testId;
             _rootPath = rootPath;
@@ -61,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _functionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion;
             _addTestSettings = addTestSettings;
             _addStorageExtensions = addStorageExtensions;
+            _startOffline = startOffline;
         }
 
         public BlobContainerClient TestInputContainer { get; private set; }
@@ -113,6 +116,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _scriptRoot = new TemporaryScriptRoot(_rootPath, "FunctionsE2E");
             _copiedRootPath = _scriptRoot.RootPath;
+
+            if (_startOffline)
+            {
+                File.WriteAllText(Path.Combine(_copiedRootPath, ScriptConstants.AppOfflineFileName), string.Empty);
+            }
 
             var extensionsToInstall = GetExtensionsToInstall();
             if (extensionsToInstall != null && extensionsToInstall.Length > 0)
@@ -180,7 +188,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 configureWebHostAppConfiguration: configBuilder =>
                 {
                     ConfigureWebHost(configBuilder);
-                });
+                },
+                allowOffline: _startOffline);
 
             if (!string.IsNullOrEmpty(azuriteConnectionString))
             {

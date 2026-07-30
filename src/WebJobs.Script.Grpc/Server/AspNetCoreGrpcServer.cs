@@ -57,9 +57,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _logger.LogDebug($"Started {nameof(AspNetCoreGrpcServer)} on {address}.");
         }
 
-        public Task ShutdownAsync() => _grpcHost.StopAsync();
+        public Task ShutdownAsync() => _grpcHost?.StopAsync() ?? Task.CompletedTask;
 
-        public Task KillAsync() => _grpcHost.StopAsync();
+        public Task KillAsync() => _grpcHost?.StopAsync() ?? Task.CompletedTask;
 
         protected async ValueTask DisposeAsync(bool disposing)
         {

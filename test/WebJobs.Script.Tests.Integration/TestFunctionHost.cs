@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -45,7 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly IHost _webHost;
         private readonly string _appRoot;
+        private readonly bool _allowOffline;
         private readonly string _webHostInstanceId = Guid.NewGuid().ToString()[..8];
+        private readonly TaskCompletionSource<bool> _initialScriptHostStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly IDisposable _hostStartSubscription;
         // we need to capture every provider created by host restarts
         private readonly List<TestLoggerProvider> _scriptHostLoggerProviders = new();
         private readonly WebJobsScriptHostService _hostService;
@@ -66,9 +71,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
             Action<ILoggingBuilder> configureScriptHostLogging = null,
             Action<IServiceCollection> configureScriptHostServices = null,
-            Action<IConfigurationBuilder> configureWebHostAppConfiguration = null)
+            Action<IConfigurationBuilder> configureWebHostAppConfiguration = null,
+            bool allowOffline = false)
             : this(scriptPath, Path.Combine(Path.GetTempPath(), "Functions"), Path.Combine(Path.GetTempPath(), @"FunctionsData"), configureWebHostServices, configureScriptHostWebJobsBuilder,
-                configureScriptHostAppConfiguration, configureScriptHostLogging, configureScriptHostServices, configureWebHostAppConfiguration)
+                configureScriptHostAppConfiguration, configureScriptHostLogging, configureScriptHostServices, configureWebHostAppConfiguration, allowOffline: allowOffline)
         {
         }
 
@@ -80,9 +86,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Action<IServiceCollection> configureScriptHostServices = null,
             Action<IConfigurationBuilder> configureWebHostAppConfiguration = null,
             bool addTestSettings = true,
-            bool addStorageExtensions = true)
+            bool addStorageExtensions = true,
+            bool allowOffline = false)
         {
             _appRoot = scriptPath;
+            _allowOffline = allowOffline;
 
             // Ensure each host instance gets a unique log directory to prevent
             // FileSystemWatcher cross-contamination between hosts sharing the same path.
@@ -227,6 +235,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             _webHost = builder.Build();
+            _hostStartSubscription = _webHost.Services
+                .GetRequiredService<IScriptEventManager>()
+                .OfType<HostStartEvent>()
+                .Subscribe(_ => _initialScriptHostStarted.TrySetResult(true));
 
             // The original code used new TestServer(builder) which internally starts the server.
             // With the HostBuilder pattern, we must explicitly start the host so that the
@@ -274,6 +286,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public IList<LogMessage> StartupLogs { get; }
+
+        public Task InitialScriptHostStarted => _initialScriptHostStarted.Task;
 
         public IServiceProvider JobHostServices => _hostService.Services;
 
@@ -570,6 +584,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
                 finally
                 {
+                    _hostStartSubscription.Dispose();
                     HttpClient.Dispose();
 
                     if (_timerFired)
@@ -585,7 +600,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task<bool> IsHostStarted()
         {
             HostStatus status = await GetHostStatusAsync();
-            return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
+            return string.Equals(status.State, nameof(ScriptHostState.Running), StringComparison.Ordinal)
+                || string.Equals(status.State, nameof(ScriptHostState.Error), StringComparison.Ordinal)
+                || (_allowOffline && string.Equals(status.State, nameof(ScriptHostState.Offline), StringComparison.Ordinal));
         }
 
         private class TestStartup

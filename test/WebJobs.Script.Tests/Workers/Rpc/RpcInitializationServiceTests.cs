@@ -44,13 +44,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task RpcInitializationService_AppOffline()
+        public async Task RpcInitializationService_AppOffline_InitializesRpcServerButNotChannels()
         {
             IRpcServer testRpcServer = new TestRpcServer();
             var mockEnvironment = new Mock<IEnvironment>();
+
+            // Placeholder mode with a non-inproc runtime ensures InitializeChannelsAsync would
+            // initialize a channel if the app offline check were removed.
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime)).Returns(RpcWorkerConstants.JavaLanguageWorkerName);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
+
             var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
             mockWorkerRuntimeResolver.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns(RpcWorkerConstants.JavaLanguageWorkerName);
             string offlineFilePath = null;
+
             try
             {
                 offlineFilePath = TestHelpers.CreateOfflineFile();
@@ -62,9 +69,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     _logger,
                     _workerOptionsMonitor,
                     mockWorkerRuntimeResolver.Object);
+
                 await _rpcInitializationService.StartAsync(CancellationToken.None);
+
                 _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
-                Assert.DoesNotContain("testserver", testRpcServer.Uri.ToString());
+                Assert.Contains("testserver", testRpcServer.Uri.ToString());
+
                 await testRpcServer.ShutdownAsync();
             }
             finally
