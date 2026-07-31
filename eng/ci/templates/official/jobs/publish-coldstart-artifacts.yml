@@ -64,6 +64,8 @@ jobs:
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  - task: NuGetAuthenticate@1
+
   - task: DotNetCoreCLI@2
     displayName: Publish host
     inputs:
@@ -93,6 +95,13 @@ jobs:
       TargetFolder: '$(perfAppsStagingPath)'
       CleanTargetFolder: true
 
+  - task: CopyFiles@2
+    displayName: Copy NuGet configuration
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)'
+      Contents: NuGet.config
+      TargetFolder: '$(perfAppsStagingPath)'
+
   - ${{ each app in parameters.apps }}:
     - ${{ if eq(app.include, true) }}:
       # .NET isolated app: publish to a dedicated output dir, then archive that dir.
@@ -117,9 +126,15 @@ jobs:
           displayName: Install Node.js for ${{ app.name }}
           inputs:
             version: '24.x'
+        - task: npmAuthenticate@0
+          displayName: Authenticate npm for ${{ app.name }}
+          inputs:
+            workingFile: $(Build.SourcesDirectory)/eng/ci/.npmrc
         - script: npm install
           displayName: npm install ${{ app.name }}
           workingDirectory: $(perfAppsStagingPath)/${{ app.name }}
+          env:
+            NPM_CONFIG_USERCONFIG: $(Build.SourcesDirectory)/eng/ci/.npmrc
         - pwsh: |
             New-Item -ItemType Directory -Force -Path "$(artifactsStagingPath)/app_${{ app.name }}" | Out-Null
             tar -czf "$(artifactsStagingPath)/app_${{ app.name }}/app.tar.gz" -C "$(perfAppsStagingPath)/${{ app.name }}" .

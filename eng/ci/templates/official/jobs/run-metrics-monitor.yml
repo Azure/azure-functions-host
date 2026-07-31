@@ -43,6 +43,8 @@ jobs:
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  - task: NuGetAuthenticate@1
+
   - task: CopyFiles@2
     displayName: Copy benchmark apps to temp location
     inputs:
@@ -50,6 +52,13 @@ jobs:
       Contents: '**/*'
       TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
       CleanTargetFolder: true
+
+  - task: CopyFiles@2
+    displayName: Copy NuGet configuration
+    inputs:
+      SourceFolder: '$(Build.SourcesDirectory)'
+      Contents: NuGet.config
+      TargetFolder: '$(Build.ArtifactStagingDirectory)/PerformanceTestApps'
 
   - task: DotNetCoreCLI@2
     displayName: Publish function app

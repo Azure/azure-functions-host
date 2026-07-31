@@ -29,6 +29,8 @@ jobs:
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  - task: NuGetAuthenticate@1
+
   - task: DotNetCoreCLI@2
     displayName: Restore
     inputs:

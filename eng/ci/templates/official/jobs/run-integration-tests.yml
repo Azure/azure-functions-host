@@ -30,9 +30,17 @@ jobs:
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
 
+  - task: npmAuthenticate@0
+    inputs:
+      workingFile: $(Build.SourcesDirectory)/eng/ci/.npmrc
+
+  - task: NuGetAuthenticate@1
+
   - script: |
       npm install -g azurite
     displayName: Install Azurite
+    env:
+      NPM_CONFIG_USERCONFIG: $(Build.SourcesDirectory)/eng/ci/.npmrc
 
   - task: PowerShell@2
     displayName: Install Az.Storage Powershell module
@@ -45,6 +53,8 @@ jobs:
     inputs:
       command: ci
       workingDir: sample/CustomHandlerRetry
+    env:
+      NPM_CONFIG_USERCONFIG: $(Build.SourcesDirectory)/eng/ci/.npmrc
 
   - task: DotNetCoreCLI@2
     displayName: Restore
