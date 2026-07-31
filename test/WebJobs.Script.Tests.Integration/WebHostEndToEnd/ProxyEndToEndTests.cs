@@ -454,15 +454,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 try
                 {
-                    if (TestHost.WebHost is not null)
+                    if (TestHost is not null)
                     {
-                        await TestHost.WebHost.StopAsync();
-                        TestHost.WebHost.Dispose();
+                        await TestHost.DisposeAsync();
                     }
                 }
                 finally
                 {
-                    TestHost?.Dispose();
                     HttpServer?.Dispose();
                     HttpClient?.Dispose();
 

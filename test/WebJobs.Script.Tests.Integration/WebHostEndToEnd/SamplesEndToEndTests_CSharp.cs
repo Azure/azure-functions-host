@@ -268,6 +268,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var environment = this._fixture.Host.WebHostServices.GetService<IEnvironment>();
             string originalWebsiteInstanceId = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId);
+            string originalWebsiteSku = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku);
+            string originalAdminIsolationEnabled = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled);
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId);
@@ -305,8 +307,96 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
             finally
             {
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, null);
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, originalAdminIsolationEnabled);
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, originalWebsiteInstanceId);
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, originalWebsiteSku);
+            }
+        }
+
+        public enum SyncTriggersAuthMode
+        {
+            None,
+            ScmSiteToken,
+            NonScmSiteToken,
+            MasterKey
+        }
+
+        [Theory]
+        [Trait(TestTraits.Group, TestTraits.AdminIsolationTests)]
+        // The fix: isolation enabled, request routed through the Front End, authenticated with an SCM (Kudu)
+        // site token. The synctriggers exemption applies and the request succeeds where other admin endpoints would 403.
+        [InlineData(true, false, false, SyncTriggersAuthMode.ScmSiteToken, HttpStatusCode.OK)]
+        // The exemption is scoped to the SCM caller: a valid but non-SCM admin token is still rejected under isolation.
+        [InlineData(true, false, false, SyncTriggersAuthMode.NonScmSiteToken, HttpStatusCode.Forbidden)]
+        // A leaked master key is likewise still rejected under isolation - the exemption does not open the endpoint to it.
+        [InlineData(true, false, false, SyncTriggersAuthMode.MasterKey, HttpStatusCode.Forbidden)]
+        // The exemption does not bypass authentication - a request with no credentials is still rejected.
+        [InlineData(true, false, false, SyncTriggersAuthMode.None, HttpStatusCode.Unauthorized)]
+        // Existing isolation allowances are unaffected: platform-internal callers still succeed.
+        [InlineData(true, true, false, SyncTriggersAuthMode.MasterKey, HttpStatusCode.OK)]
+        // Existing isolation allowances are unaffected: AppService-internal (Front End bypassed) callers still succeed.
+        [InlineData(true, false, true, SyncTriggersAuthMode.MasterKey, HttpStatusCode.OK)]
+        // With isolation disabled, behavior is unchanged from today for both master key and SCM token callers.
+        [InlineData(false, false, false, SyncTriggersAuthMode.MasterKey, HttpStatusCode.OK)]
+        [InlineData(false, false, false, SyncTriggersAuthMode.ScmSiteToken, HttpStatusCode.OK)]
+        public async Task SyncTriggers_AdminIsolation_ReturnsExpectedStatus(bool enableIsolation, bool isPlatformInternal, bool bypassFE, SyncTriggersAuthMode authMode, HttpStatusCode expectedStatus)
+        {
+            var environment = _fixture.Host.WebHostServices.GetService<IEnvironment>();
+            string originalWebsiteInstanceId = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId);
+            string originalWebsiteSku = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku);
+            string originalAdminIsolationEnabled = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled);
+
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, "1");
+
+            try
+            {
+                if (enableIsolation)
+                {
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, "1");
+                    Assert.True(environment.IsAdminIsolationEnabled());
+                }
+
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, "admin/host/synctriggers");
+
+                switch (authMode)
+                {
+                    case SyncTriggersAuthMode.ScmSiteToken:
+                        // Token issued by the SCM (Kudu) site - this is what unlocks the synctriggers isolation exemption.
+                        request.Headers.Add(ScriptConstants.SiteTokenHeaderName, _fixture.Host.GenerateAdminJwtToken());
+                        break;
+                    case SyncTriggersAuthMode.NonScmSiteToken:
+                        // Valid admin token, but issued by a non-SCM issuer, so the exemption must not apply.
+                        request.Headers.Add(ScriptConstants.SiteTokenHeaderName, _fixture.Host.GenerateAdminJwtToken(issuer: ScriptConstants.AppServiceCoreUri));
+                        break;
+                    case SyncTriggersAuthMode.MasterKey:
+                        request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
+                        break;
+                    case SyncTriggersAuthMode.None:
+                        break;
+                }
+
+                if (isPlatformInternal)
+                {
+                    request.Headers.Add(ScriptConstants.AntaresPlatformInternal, "True");
+                }
+
+                if (!bypassFE)
+                {
+                    request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, Guid.NewGuid().ToString());
+                }
+
+                using (var httpClient = _fixture.Host.CreateHttpClient())
+                {
+                    HttpResponseMessage response = await httpClient.SendAsync(request);
+                    Assert.Equal(expectedStatus, response.StatusCode);
+                }
+            }
+            finally
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, originalAdminIsolationEnabled);
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, originalWebsiteInstanceId);
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, originalWebsiteSku);
             }
         }
 

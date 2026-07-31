@@ -233,6 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
+            services.ConfigureOptionsWithChangeTokenSource<ReservedRouteOptions, ReservedRouteOptionsSetup, SpecializationChangeTokenSource<ReservedRouteOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<ResponseCompressionOptions, ResponseCompressionOptionsSetup, SpecializationChangeTokenSource<ResponseCompressionOptions>>();
             services.ConfigureOptions<FlexConsumptionMetricsPublisherOptionsSetup>();
             services.ConfigureOptions<LinuxConsumptionLegionMetricsPublisherOptionsSetup>();
@@ -412,7 +413,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IPackageDownloadHandler, PackageDownloadHandler>();
             services.AddSingleton<IManagedIdentityTokenProvider, ManagedIdentityTokenProvider>();
             services.AddSingleton<IUnZipHandler, UnZipHandler>();
-            services.AddSingleton<IBashCommandHandler, BashCommandHandler>();
+            services.AddSingleton<ICommandExecutor, CommandExecutor>();
         }
 
         private static void AddAzureStorageProviders(this IServiceCollection services)

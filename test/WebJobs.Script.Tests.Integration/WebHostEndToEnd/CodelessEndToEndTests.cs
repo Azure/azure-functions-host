@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var provider = new TestCodelessFunctionProvider(metadata, null);
 
                 var functions = allowedList != null ? new[] { allowedList, "testFn" } : null;
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider }, testEnvironment))
+                await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider }, testEnvironment))
                 {
 
                     // Make sure unauthorized does not work
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var provider = new TestCodelessFunctionProvider(metadata, null);
 
                 var functions = allowedList != null ? new[] { "testFn2", allowedList } : new[] { "testFn2" };
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider }, testEnvironment))
+                await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider }, testEnvironment))
                 {
                     // Make sure unauthorized does not work
                     var unauthResponse = await host.HttpClient.GetAsync("http://localhost/api/testFn2?name=Ankit");
@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
 
                 var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment))
+                await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment))
                 {
                     var testFn1Key = await host.GetFunctionSecretAsync("testFn1");
                     var testFn2Key = await host.GetFunctionSecretAsync("testFn2");
@@ -189,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
 
                 var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment))
+                await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment))
                 {
                     var masterKey = await host.GetMasterKeyAsync();
                     var listFunctionsResponse = await host.HttpClient.GetAsync($"http://localhost/admin/functions?code={masterKey}");
@@ -229,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
 
                 var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
-                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment))
+                await using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment))
                 {
                     // Sanity check for sync triggers
                     string uri = "admin/host/synctriggers";

@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     await fileMonitoringService.StopAsync(default);
                 }
 
-                Host.Dispose();
+                await Host.DisposeAsync();
             }
 
             _scriptRoot?.Dispose();

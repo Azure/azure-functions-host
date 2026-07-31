@@ -31,6 +31,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration;
@@ -71,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
+        private TestLoggerProvider _scriptHostLoggerProvider;
         private readonly TestMetricsLogger _testMetricsLogger = new();
 
         private readonly ITestOutputHelper _testOutputHelper;
@@ -92,6 +94,91 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // allow each test to override this
             _customizeScriptHostServices = null;
+        }
+
+        [Fact]
+        public async Task ReservedRouteEnforcement_OptOutIsAppliedAfterSpecialization()
+        {
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "ReservedRouteCatchAll")
+                .ConfigureScriptHostServices(services =>
+                {
+                    services.PostConfigure<HttpOptions>(options => options.RoutePrefix = string.Empty);
+                });
+
+            await using var stoppable = new StoppableHost(builder.Build());
+            IHost webHost = stoppable.Inner;
+            await webHost.StartAsync();
+            HttpClient client = webHost.GetTestClient();
+
+            HttpResponseMessage response = await client.GetAsync("admin/foo");
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+
+            _environment.SetEnvironmentVariable(
+                EnvironmentSettingNames.AzureWebJobsFeatureFlags,
+                $"{ScriptConstants.FeatureFlagEnableWorkerIndexing},{ScriptConstants.FeatureFlagDisableReservedRouteEnforcement}");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("admin/foo");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("customer catch-all", await response.Content.ReadAsStringAsync());
+
+            response = await client.GetAsync("admin/host/status");
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+        }
+
+        [Fact]
+        public async Task ReservedRouteEnforcement_MatchingFunctionLogsErrorAfterSpecialization()
+        {
+            _scriptHostLoggerProvider = new TestLoggerProvider();
+            var builder = InitializeDotNetIsolatedPlaceholderBuilder(_dotnetIsolated60Path, _loggerProvider, "ReservedRouteCatchAll")
+                .ConfigureScriptHostServices(services =>
+                {
+                    services.PostConfigure<HttpOptions>(options => options.RoutePrefix = string.Empty);
+                });
+
+            await using var stoppable = new StoppableHost(builder.Build());
+            IHost webHost = stoppable.Inner;
+            await webHost.StartAsync();
+            HttpClient client = webHost.GetTestClient();
+
+            HttpResponseMessage response = await client.GetAsync("admin/foo");
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+            Assert.DoesNotContain(
+                _loggerProvider.GetAllLogMessages(),
+                p => string.Equals(p.Category, typeof(ReservedRouteGuardMiddleware).FullName, StringComparison.Ordinal));
+            Assert.DoesNotContain(
+                _scriptHostLoggerProvider.GetAllLogMessages(),
+                p => string.Equals(p.Category, typeof(ReservedRouteGuardMiddleware).FullName, StringComparison.Ordinal));
+
+            _environment.SetEnvironmentVariable(
+                EnvironmentSettingNames.AzureWebJobsFeatureFlags,
+                ScriptConstants.FeatureFlagEnableWorkerIndexing);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+            response = await client.GetAsync("admin/foo");
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+
+            response = await client.GetAsync("runtime/foo");
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Empty(await response.Content.ReadAsStringAsync());
+            LogMessage log = Assert.Single(
+                _scriptHostLoggerProvider.GetAllLogMessages(),
+                p => string.Equals(p.Category, typeof(ReservedRouteGuardMiddleware).FullName, StringComparison.Ordinal) &&
+                     p.Level == LogLevel.Error);
+            Assert.Contains("function 'ReservedRouteCatchAll'", log.FormattedMessage, StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                _loggerProvider.GetAllLogMessages(),
+                p => string.Equals(p.Category, typeof(ReservedRouteGuardMiddleware).FullName, StringComparison.Ordinal));
         }
 
         [Fact]
@@ -241,6 +328,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
 
                 throw;
+            }
+        }
+
+        [Fact]
+        public async Task Specialization_SyncTriggers_DuringPlaceholderWindow_DoesNotPublishWarmup()
+        {
+            // E2E reproduction of the SyncTriggers race in azure-functions-host#10169.
+            //
+            // During specialization the placeholder-mode environment variable is cleared *before*
+            // the specialized host is built and its real functions are loaded. In that window the
+            // active host is still the standby host exposing only the placeholder "WarmUp" function,
+            // yet IsSyncTriggersEnvironment() now passes (InStandbyMode has already latched to false).
+            // A foreground SyncTriggers request that races a deploy therefore publishes the
+            // placeholder WarmUp trigger payload to the FrontEnd, which can leave the app stuck
+            // showing only WarmUp (foreground syncs bypass the hash blob so it never self-heals).
+            //
+            // Here we recreate that exact window deterministically: the InfiniteTimerStandbyManager
+            // never auto-specializes and we never send a request that would trigger specialization,
+            // so the standby (WarmUp-only) host stays active. We then flip the environment out of
+            // placeholder mode and drive a foreground SyncTriggers. The placeholder WarmUp trigger
+            // must NOT be published.
+            var capturedSetTriggersBodies = new System.Collections.Concurrent.ConcurrentBag<string>();
+
+            string encryptionKey = TestHelpers.GenerateKeyHexString();
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, encryptionKey);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "testsite.azurewebsites.net");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "testsite");
+
+            // Keep the payload on the minimal path (no per-function secret/file fetches) so the
+            // sync deterministically reaches SetTriggers with the placeholder trigger in current code.
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled, "0");
+
+            var builder = CreateStandbyHostBuilder(_loggerProvider, "FunctionExecutionContext")
+                .ConfigureServices(services =>
+                {
+                    services.AddHttpClient(Options.DefaultName)
+                        .ConfigurePrimaryHttpMessageHandler(() => new CapturingHttpMessageHandler(capturedSetTriggersBodies));
+                });
+
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, encryptionKey))
+            {
+                await using var stoppable = new StoppableHost(builder.Build());
+
+                var host = stoppable.Inner;
+
+                await host.StartAsync();
+
+                var client = host.GetTestClient();
+
+                // Build the standby host and load the placeholder WarmUp function.
+                var warmupResponse = await client.GetAsync("api/warmup");
+                warmupResponse.EnsureSuccessStatusCode();
+
+                // Exit placeholder mode WITHOUT specializing - this is the race window. The active
+                // host is still the standby host (WarmUp only), but InStandbyMode has latched false.
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+                var syncManager = host.Services.GetRequiredService<Microsoft.Azure.WebJobs.Script.WebHost.Management.IFunctionsSyncManager>();
+
+                // Foreground sync (the racing inbound request).
+                var result = await syncManager.TrySyncTriggersAsync();
+
+                // The placeholder WarmUp trigger must never be published to the FrontEnd.
+                Assert.DoesNotContain(capturedSetTriggersBodies, body =>
+                    body.IndexOf(WarmUpConstants.FunctionName, StringComparison.OrdinalIgnoreCase) >= 0);
             }
         }
 
@@ -1843,7 +1996,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private IHostBuilder CreateStandbyHostBuilder(TestLoggerProvider loggerProvider, params string[] functions)
         {
-            loggerProvider = loggerProvider ?? _loggerProvider;
+            loggerProvider ??= _loggerProvider;
             var builder = Program.CreateHostBuilder()
                 .ConfigureWebHost(webHostBuilder =>
                 {
@@ -1891,7 +2044,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     s.AddLogging(logging =>
                     {
-                        logging.AddProvider(loggerProvider);
+                        logging.AddProvider(_scriptHostLoggerProvider ?? loggerProvider);
                     });
 
                     s.PostConfigure<ScriptJobHostOptions>(o =>
@@ -1924,6 +2077,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Where(p => p.FormattedMessage is not null && p.FormattedMessage.Contains("Starting worker process with FileName:"))
                 .ToArray();
             Assert.Equal(expected, workerStartLogs.Length);
+        }
+
+        private class CapturingHttpMessageHandler : HttpMessageHandler
+        {
+            private readonly System.Collections.Concurrent.ConcurrentBag<string> _bodies;
+
+            public CapturingHttpMessageHandler(System.Collections.Concurrent.ConcurrentBag<string> bodies)
+            {
+                _bodies = bodies;
+            }
+
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                if (request.Content != null)
+                {
+                    _bodies.Add(await request.Content.ReadAsStringAsync());
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
         }
 
         private class InfiniteTimerStandbyManager : StandbyManager

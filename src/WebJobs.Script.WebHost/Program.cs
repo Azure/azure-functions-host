@@ -130,6 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             loggingBuilder.AddDefaultWebJobsFilters();
                             loggingBuilder.AddWebJobsSystem<WebHostSystemLoggerProvider>();
                             loggingBuilder.AddForwardingLogger();
+                            loggingBuilder.Services.AddSingleton<DeferredLogSource>();
                             loggingBuilder.Services.AddSingleton<DeferredLoggerProvider>();
                             loggingBuilder.Services.AddSingleton<ILoggerProvider>(s => s.GetRequiredService<DeferredLoggerProvider>());
                             loggingBuilder.Services.AddSingleton<ISystemLoggerFactory, SystemLoggerFactory>();

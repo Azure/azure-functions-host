@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .ExpectFactory<ExternalConfigurationStartupValidatorService>()
                 .ExpectFactory<IFileMonitoringService>()
                 .Expect<WorkerConsoleLogService>()
+                .Expect<DeferredLogForwardingService>()
                 .OptionalExternal("Microsoft.Azure.WebJobs.Script.Workers.FunctionInvocationDispatcherShutdownManager", "Microsoft.Azure.WebJobs.Script.Grpc", null)
                 .OptionalExternal("Microsoft.Azure.WebJobs.Script.Workers.WorkerConcurrencyManager", "Microsoft.Azure.WebJobs.Script.Grpc", null)
                 .Optional<FunctionAppValidationService>() // Conditionally registered.

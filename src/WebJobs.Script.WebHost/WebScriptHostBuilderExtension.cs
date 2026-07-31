@@ -167,6 +167,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<IFileMonitoringService, FileMonitoringService>();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, IFileMonitoringService>(p => p.GetService<IFileMonitoringService>()));
 
+                    // Forwards buffered WebHost logs to this ScriptHost's telemetry providers. Scoped to the
+                    // ScriptHost so it stops reading automatically when the host is orphaned (restart/specialization).
+                    // The DependencyValidator requires this hosted service to always be registered, so forward the
+                    // WebHost's shared DeferredLogSource (falling back to a local, empty buffer for host builds that
+                    // don't register one, e.g. tests) so the service can always be constructed.
+                    services.AddSingleton(rootServiceProvider.GetService<DeferredLogSource>() ?? new DeferredLogSource());
+                    services.AddSingleton<IHostedService, DeferredLogForwardingService>();
+
                     IOptions<FunctionsHostingConfigOptions> hostingConfigOptions = rootServiceProvider.GetService<IOptions<FunctionsHostingConfigOptions>>();
                     IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptionsMonitor = rootServiceProvider.GetService<IOptionsMonitor<FunctionsHostingConfigOptions>>();
                     services.AddSingleton(hostingConfigOptions);

@@ -57,10 +57,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _packageDownloadHandler = new Mock<IPackageDownloadHandler>(MockBehavior.Strict);
 
             var metricsLogger = new MetricsLogger();
-            var bashCommandHandler = new BashCommandHandler(metricsLogger, new Logger<BashCommandHandler>(_loggerFactory));
+            var commandExecutor = new CommandExecutor(metricsLogger, new Logger<CommandExecutor>(_loggerFactory));
             var zipHandler = new UnZipHandler(metricsLogger, NullLogger<UnZipHandler>.Instance);
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                bashCommandHandler, zipHandler, _packageDownloadHandler.Object, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
+                commandExecutor, zipHandler, _packageDownloadHandler.Object, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
 
             var mockWorkerRuntimeResolver = new Mock<IWorkerRuntimeResolver>();
             mockWorkerRuntimeResolver.Setup(r => r.GetWorkerRuntime(It.IsAny<string>())).Returns("dotnet-isolated");
@@ -250,9 +250,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     p => Assert.StartsWith("Starting Assignment", p),
                     p => Assert.StartsWith("Applying 1 app setting(s)", p),
                     p => Assert.EndsWith("points to an existing blob: True", p),
+                    p => Assert.StartsWith("Environment variable 'LocalSitePackagesPath'", p),
                     p => Assert.StartsWith("Unsquashing remote zip", p),
                     p => Assert.StartsWith("Running: ", p),
-                    p => Assert.StartsWith("Error running bash", p),
+                    p => Assert.StartsWith("Error running command", p),
                     p => Assert.StartsWith("Executed: ", p),
                     p => Assert.StartsWith("Triggering specialization", p));
             }
@@ -1662,9 +1663,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     p => Assert.StartsWith("Starting Assignment", p),
                     p => Assert.StartsWith("Applying 1 app setting(s)", p),
                     p => Assert.EndsWith("points to an existing blob: True", p),
+                    p => Assert.StartsWith("Environment variable 'LocalSitePackagesPath'", p),
                     p => Assert.StartsWith("Unsquashing remote zip", p),
                     p => Assert.StartsWith("Running: ", p),
-                    p => Assert.StartsWith("Error running bash", p),
+                    p => Assert.StartsWith("Error running command", p),
                     p => Assert.StartsWith("Executed: ", p),
                     p => Assert.StartsWith("Triggering specialization", p));
             }
