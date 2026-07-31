@@ -37,6 +37,8 @@ jobs:
       artifact: $(artifactName)
 
   steps:
+  - task: NuGetAuthenticate@1
+
   - pwsh: |
         $sampleSize = $env:SAMPLE_SIZE
         $values = @()

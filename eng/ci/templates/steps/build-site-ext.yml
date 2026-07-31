@@ -8,6 +8,8 @@ parameters:
 
 steps:
 # Restore must be a separate step so we can pass in 'PublishReadyToRun=true'
+- task: NuGetAuthenticate@1
+
 - task: DotNetCoreCLI@2
   displayName: Restore site extension
   inputs:
