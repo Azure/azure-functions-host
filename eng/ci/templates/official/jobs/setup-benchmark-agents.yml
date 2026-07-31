@@ -34,8 +34,6 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
-  - task: NuGetAuthenticate@1
-
   - task: UseDotNet@2 # Needed by crank
     displayName: Install .NET 8
     inputs:

@@ -110,8 +110,6 @@ jobs:
 
   - template: /eng/ci/templates/install-dotnet.yml@self
 
-  - task: NuGetAuthenticate@1
-
   - script: dotnet --info
     displayName: "Print .NET Environment Info"
 
