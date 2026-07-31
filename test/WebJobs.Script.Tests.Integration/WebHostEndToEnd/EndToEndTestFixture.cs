@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var extensionsToInstall = GetExtensionsToInstall();
             if (extensionsToInstall != null && extensionsToInstall.Length > 0)
             {
-                TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsTempStaging/nuget/v3/index.json", "https://api.nuget.org/v3/index.json");
+                TestFunctionHost.WriteNugetPackageSources(_copiedRootPath, "https://pkgs.dev.azure.com/azfunc/public/_packaging/upstream-public/nuget/v3/index.json");
                 var options = new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions
                 {
                     RootScriptPath = _copiedRootPath
