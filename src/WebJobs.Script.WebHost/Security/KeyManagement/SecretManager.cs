@@ -293,6 +293,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task<string> GetOrCreateSystemKeyAsync(string keyName)
         {
+            if (string.IsNullOrEmpty(keyName))
+            {
+                throw new ArgumentNullException(nameof(keyName));
+            }
+
             // A cached hit is as trustworthy as it is today. Only a cached MISS is challenged,
             // because the startup context may contain a partial host secret snapshot.
             var cached = _hostSecrets;

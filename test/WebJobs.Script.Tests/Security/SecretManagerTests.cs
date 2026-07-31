@@ -1943,7 +1943,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         {
             var reader = new Mock<IKeyValueReader>();
             reader.Setup(r => r.ReadValue(It.IsAny<Key>()))
-                .Returns<Key>(k => new Key(k.Name, k.Value.StartsWith("enc:") ? k.Value.Substring(4) : k.Value) { IsStale = false });
+                .Returns<Key>(k => new Key(k.Name, k.Value.StartsWith("enc:", StringComparison.Ordinal) ? k.Value.Substring(4) : k.Value) { IsStale = false });
 
             var writer = new Mock<IKeyValueWriter>();
             writer.Setup(w => w.WriteValue(It.IsAny<Key>()))
