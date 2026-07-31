@@ -31,6 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             hostSecrets.FunctionKeys = new Dictionary<string, string>();
             var mockSecretManagerProvider = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
             mockSecretManagerProvider.Setup(p => p.Current).Returns(mockSecretManager.Object);
+
+            // The provider delegates key resolution wholesale; tests that care override this.
+            mockSecretManager.Setup(p => p.GetOrCreateSystemKeyAsync(It.IsAny<string>())).ReturnsAsync("abc123");
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
@@ -43,47 +46,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GetUrl_ReturnsExpectedResult()
         {
-            var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
-            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
-
-            // When an extension has an existing secret, it should be returned.
-            hostSecrets.SystemKeys = new Dictionary<string, string>
-            {
-                { "testextension_extension", "abc123" }
-            };
+            var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out _);
+            mockSecretManager.Setup(p => p.GetOrCreateSystemKeyAsync("testextension_extension")).ReturnsAsync("abc123");
 
             var configProvider = new TestExtensionConfigProvider();
             var url = webHookProvider.GetUrl(configProvider);
             Assert.Equal($"{TestUrlRoot}abc123", url.ToString());
-        }
 
-        [Fact]
-        public void GetUrl_GeneratesIdentifiableSystemSecret()
-        {
-            string secretValue = string.Empty;
-
-            var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
-            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
-
-            mockSecretManager.Setup(p =>
-                p.AddOrUpdateFunctionSecretAsync(
-                    "testextension_extension",
-                    It.IsAny<string>(),
-                    HostKeyScopes.SystemKeys,
-                    ScriptSecretsType.Host))
-                        .Callback<string, string, string, ScriptSecretsType>((key, secret, scope, type) => secretValue = secret)
-                        .Returns(() => Task.FromResult(new KeyOperationResult(secretValue, OperationResult.Created)));
-
-            // When an extension has no existing secret, one should be generated using
-            // the Azure Functions system key seed and standard fixed signature.
-
-            var configProvider = new TestExtensionConfigProvider();
-            var url = webHookProvider.GetUrl(configProvider);
-            Assert.Equal($"{TestUrlRoot}{secretValue}", url.ToString());
-            Assert.True(IdentifiableSecrets.ValidateBase64Key(secretValue,
-                                                              SecretGenerator.SystemKeySeed,
-                                                              SecretGenerator.AzureFunctionsSignature,
-                                                              encodeForUrl: true));
+            // The default setup answers any name, so only this pins the derived key name.
+            mockSecretManager.Verify(p => p.GetOrCreateSystemKeyAsync("testextension_extension"), Times.Once);
         }
 
         [Fact]

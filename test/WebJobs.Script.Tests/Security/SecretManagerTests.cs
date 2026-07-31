@@ -1838,6 +1838,123 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             }
         }
 
+        [Fact]
+        public async Task GetOrCreateSystemKeyAsync_PartialStartupCacheHidesPersistedKey_ReturnsDecryptedStoredKeyWithoutOverwriting()
+        {
+            const string KeyName = "eventgrid_extension";
+            const string StoredPlaintext = "already-shared-with-event-grid";
+
+            // The store already holds, at rest and encrypted, the key Event Grid presents.
+            var repository = new Mock<ISecretsRepository>();
+            repository.Setup(r => r.ReadAsync(ScriptSecretsType.Host, It.IsAny<string>())).ReturnsAsync(new HostSecrets
+            {
+                MasterKey = new Key("master", "enc:master") { IsEncrypted = true },
+                FunctionKeys = new List<Key>(),
+                SystemKeys = new List<Key> { new Key(KeyName, "enc:" + StoredPlaintext) { IsEncrypted = true } }
+            });
+
+            using (var secretManager = CreateSecretManagerWithStartupSystemKeys(repository.Object, new Dictionary<string, string>()))
+            {
+                string result = await secretManager.GetOrCreateSystemKeyAsync(KeyName);
+
+                // The incident was a spurious write against a key Event Grid already held.
+                repository.Verify(r => r.WriteAsync(It.IsAny<ScriptSecretsType>(), It.IsAny<string>(), It.IsAny<ScriptSecrets>()), Times.Never);
+                repository.Verify(r => r.WriteSnapshotAsync(It.IsAny<ScriptSecretsType>(), It.IsAny<string>(), It.IsAny<ScriptSecrets>()), Times.Never);
+
+                // Decrypted, and the key the store already holds - not a freshly minted one.
+                Assert.Equal(StoredPlaintext, result);
+
+                // The invalidated cache healed, so the next caller reads nothing further.
+                var hostSecrets = await secretManager.GetHostSecretsAsync();
+                Assert.Equal(StoredPlaintext, hostSecrets.SystemKeys[KeyName]);
+                repository.Verify(r => r.ReadAsync(ScriptSecretsType.Host, It.IsAny<string>()), Times.Once);
+            }
+        }
+
+        [Fact]
+        public async Task GetOrCreateSystemKeyAsync_KeyInCache_ReturnsItWithoutTouchingRepository()
+        {
+            const string KeyName = "eventgrid_extension";
+
+            var repository = new Mock<ISecretsRepository>();
+            var startupSystemKeys = new Dictionary<string, string> { { KeyName, "cached-value" } };
+
+            using (var secretManager = CreateSecretManagerWithStartupSystemKeys(repository.Object, startupSystemKeys))
+            {
+                Assert.Equal("cached-value", await secretManager.GetOrCreateSystemKeyAsync(KeyName));
+
+                // A hit must stay a hit; challenging it would put the repository on every webhook URL build.
+                repository.Verify(r => r.ReadAsync(It.IsAny<ScriptSecretsType>(), It.IsAny<string>()), Times.Never);
+                repository.Verify(r => r.WriteAsync(It.IsAny<ScriptSecretsType>(), It.IsAny<string>(), It.IsAny<ScriptSecrets>()), Times.Never);
+            }
+        }
+
+        // Flex Consumption specialization seeds the cache from a startup context whose SystemKeys may be partial.
+        private SecretManager CreateSecretManagerWithStartupSystemKeys(ISecretsRepository repository, Dictionary<string, string> systemKeys)
+        {
+            var startupContext = new Mock<StartupContextProvider>(_testEnvironment, new LoggerFactory().CreateLogger<StartupContextProvider>());
+            startupContext.Setup(p => p.GetHostSecretsOrNull()).Returns(new HostSecretsInfo
+            {
+                MasterKey = "master",
+                FunctionKeys = new Dictionary<string, string>(),
+                SystemKeys = systemKeys
+            });
+
+            return new SecretManager(repository, GetRoundTrippingConverterFactoryMock().Object, _logger, new TestMetricsLogger(), _hostNameProvider, startupContext.Object);
+        }
+
+        [Fact]
+        public async Task GetOrCreateSystemKeyAsync_KeyAbsent_PersistsIdentifiableKeyMatchingReturnedValue()
+        {
+            const string KeyName = "testextension_extension";
+
+            // Host secrets already exist and only the extension key is missing, so exactly one write should follow.
+            var repository = new Mock<ISecretsRepository>();
+            repository.Setup(r => r.ReadAsync(ScriptSecretsType.Host, It.IsAny<string>())).ReturnsAsync(() => new HostSecrets
+            {
+                MasterKey = new Key("master", "enc:master") { IsEncrypted = true },
+                FunctionKeys = new List<Key>(),
+                SystemKeys = new List<Key>()
+            });
+
+            ScriptSecrets written = null;
+            repository.Setup(r => r.WriteAsync(ScriptSecretsType.Host, It.IsAny<string>(), It.IsAny<ScriptSecrets>()))
+                .Callback<ScriptSecretsType, string, ScriptSecrets>((_, _, secrets) => written = secrets)
+                .Returns(Task.CompletedTask);
+
+            using (var secretManager = CreateSecretManagerWithStartupSystemKeys(repository.Object, new Dictionary<string, string>()))
+            {
+                string result = await secretManager.GetOrCreateSystemKeyAsync(KeyName);
+
+                // Generation moved here from the provider, so the system key seed moved with it.
+                SecretGeneratorTests.ValidateSecret(result, SecretGenerator.SystemKeySeed);
+
+                repository.Verify(r => r.WriteAsync(ScriptSecretsType.Host, It.IsAny<string>(), It.IsAny<ScriptSecrets>()), Times.Once);
+
+                // The returned value is worthless unless the store holds that same key, encrypted.
+                var persisted = ((HostSecrets)written).SystemKeys.Single(k => k.Name == KeyName);
+                Assert.True(persisted.IsEncrypted);
+                Assert.Equal("enc:" + result, persisted.Value);
+            }
+        }
+
+        // The shared GetConverterFactoryMock reader is identity, so it cannot tell ciphertext from plaintext.
+        private static Mock<IKeyValueConverterFactory> GetRoundTrippingConverterFactoryMock()
+        {
+            var reader = new Mock<IKeyValueReader>();
+            reader.Setup(r => r.ReadValue(It.IsAny<Key>()))
+                .Returns<Key>(k => new Key(k.Name, k.Value.StartsWith("enc:") ? k.Value.Substring(4) : k.Value) { IsStale = false });
+
+            var writer = new Mock<IKeyValueWriter>();
+            writer.Setup(w => w.WriteValue(It.IsAny<Key>()))
+                .Returns<Key>(k => new Key(k.Name, "enc:" + k.Value) { IsEncrypted = true });
+
+            var factory = new Mock<IKeyValueConverterFactory>();
+            factory.Setup(f => f.GetValueReader(It.IsAny<Key>())).Returns(reader.Object);
+            factory.Setup(f => f.GetValueWriter(It.IsAny<Key>())).Returns(writer.Object);
+            return factory;
+        }
+
         private Mock<IKeyValueConverterFactory> GetConverterFactoryMock(bool simulateWriteConversion = true, bool setStaleValue = true)
         {
             var mockValueReader = new Mock<IKeyValueReader>();

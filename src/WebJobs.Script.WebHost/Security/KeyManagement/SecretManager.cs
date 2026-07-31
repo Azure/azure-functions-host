@@ -291,6 +291,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public async Task<string> GetOrCreateSystemKeyAsync(string keyName)
+        {
+            // A cached hit is as trustworthy as it is today. Only a cached MISS is challenged,
+            // because the startup context may contain a partial host secret snapshot.
+            var cached = _hostSecrets;
+            if (cached != null && cached.SystemKeys.TryGetValue(keyName, out string value))
+            {
+                return value;
+            }
+
+            if (cached != null)
+            {
+                // Discard only the snapshot we missed on - another caller may already have
+                // replaced it with a complete load.
+                Interlocked.CompareExchange(ref _hostSecrets, null, cached);
+            }
+
+            // Single authoritative load: locking, repository read, decryption, validation, repopulation.
+            var hostSecrets = await GetHostSecretsAsync();
+            if (hostSecrets.SystemKeys.TryGetValue(keyName, out value))
+            {
+                return value;
+            }
+
+            var result = await AddOrUpdateFunctionSecretAsync(
+                keyName,
+                SecretGenerator.GenerateSystemKeyValue(),
+                HostKeyScopes.SystemKeys,
+                ScriptSecretsType.Host);
+
+            if (result.Result is not (OperationResult.Created or OperationResult.Updated))
+            {
+                // Nothing was persisted, so returning the value would mint a webhook URL that
+                // authorizes nothing and fails silently at request time.
+                throw new InvalidOperationException($"Unable to persist system key '{keyName}'. Result: {result.Result}.");
+            }
+
+            return result.Secret;
+        }
+
         public async Task<KeyOperationResult> SetMasterKeyAsync(string value = null)
         {
             using (_metricsLogger.LatencyEvent(GetMetricEventName(MetricEventNames.SecretManagerSetMasterKey)))
