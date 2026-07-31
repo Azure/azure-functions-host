@@ -404,6 +404,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 writer.WriteStartElement("configuration");
                 writer.WriteStartElement("packageSources");
+                writer.WriteStartElement("clear");
+                writer.WriteEndElement();
                 for (int i = 0; i < sources.Length; i++)
                 {
                     writer.WriteStartElement("add");
