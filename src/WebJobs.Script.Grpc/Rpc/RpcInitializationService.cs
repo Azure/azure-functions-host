@@ -45,17 +45,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            if (Utility.CheckAppOffline(_applicationHostOptions.CurrentValue.ScriptPath))
-            {
-                _logger.LogDebug("App is offline. RpcInitializationService will not be started");
-                return;
-            }
-
-            // TODO: https://github.com/Azure/azure-functions-host/issues/4891
             try
             {
                 _logger.LogDebug("Starting Rpc Initialization Service.");
                 await InitializeRpcServerAsync();
+
+                if (Utility.CheckAppOffline(_applicationHostOptions.CurrentValue.ScriptPath))
+                {
+                    _logger.LogDebug("App is offline. RPC channels will not be initialized.");
+                    return;
+                }
+
                 await InitializeChannelsAsync();
                 _logger.LogDebug("Rpc Initialization Service started.");
             }
