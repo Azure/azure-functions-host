@@ -1,6 +1,8 @@
 function AcquireLease($blob) {
   try {
-    return $blob.ICloudBlob.AcquireLease($null, $null, $null, $null, $null)
+    $leaseClient = New-Object Azure.Storage.Blobs.Specialized.BlobLeaseClient($blob.BlobBaseClient, $null)
+    $response = $leaseClient.Acquire([System.TimeSpan]::FromSeconds(-1))
+    return $response.Value.LeaseId
   } catch {
     Write-Host "  Error: $_"
     return $null
@@ -26,21 +28,22 @@ While($true) {
   Write-Host "Looking for unleased ci-lock blobs (list is shuffled):"
   Foreach ($blob in $blobs) {
     $name = $blob.Name
-    $leaseStatus = $blob.ICloudBlob.Properties.LeaseStatus
+    $leaseStatus = $blob.BlobProperties.LeaseStatus
     
     Write-Host "  ${name}: $leaseStatus"
     
     if ($leaseStatus -eq "Locked") {
       try {
-        $blob.ICloudBlob.FetchAttributes()
-        $lastModified = $blob.ICloudBlob.Properties.LastModified
-        if ($lastModified -ne $null -and $lastModified.UtcDateTime -lt (Get-Date).AddHours(-6).ToUniversalTime()) {
+        $props = $blob.BlobBaseClient.GetProperties().Value
+        $lastModified = $props.LastModified
+        if ($lastModified.UtcDateTime -lt (Get-Date).AddHours(-6).ToUniversalTime()) {
           $age = [math]::Round(((Get-Date).ToUniversalTime() - $lastModified.UtcDateTime).TotalHours, 1)
-          $build = $blob.ICloudBlob.Metadata["Build"]
-          $url = $blob.ICloudBlob.Metadata["BuildUrl"]
+          $build = $props.Metadata["Build"]
+          $url = $props.Metadata["BuildUrl"]
           Write-Host "##vso[task.logissue type=warning]Stale lease detected on '${name}' (locked for ${age}h). Build: ${build} | URL: ${url}"
           Write-Host "  Breaking stale lease on ${name}."
-          $blob.ICloudBlob.BreakLease([TimeSpan]::Zero, $null, $null, $null)
+          $leaseClient = New-Object Azure.Storage.Blobs.Specialized.BlobLeaseClient($blob.BlobBaseClient, $null)
+          $leaseClient.Break([System.TimeSpan]::Zero) | Out-Null
           Write-Host "  Lease broken. Will attempt to acquire on next pass."
         }
       } catch {
@@ -56,12 +59,15 @@ While($true) {
       Write-Host "##vso[task.setvariable variable=LeaseBlob]$name"
       Write-Host "##vso[task.setvariable variable=LeaseToken]$token"
       try {
-        $blob.ICloudBlob.FetchAttributes()
-        $blob.ICloudBlob.Metadata["Build"] = $buildName
-        $blob.ICloudBlob.Metadata["BuildUrl"] = $buildUrl
-        $accessCondition = New-Object -TypeName Microsoft.Azure.Storage.AccessCondition
-        $accessCondition.LeaseId = $token
-        $blob.ICloudBlob.SetMetadata($accessCondition)
+        $conditions = New-Object Azure.Storage.Blobs.Models.BlobRequestConditions
+        $conditions.LeaseId = $token
+        $metadata = New-Object 'System.Collections.Generic.Dictionary[string,string]'
+        foreach ($kvp in $blob.BlobBaseClient.GetProperties().Value.Metadata.GetEnumerator()) {
+          $metadata[$kvp.Key] = $kvp.Value
+        }
+        $metadata["Build"] = $buildName
+        $metadata["BuildUrl"] = $buildUrl
+        $blob.BlobClient.SetMetadata($metadata, $conditions) | Out-Null
       } catch {
         # best effort
         Write-Host "Warning: unable to update blob metadata. Continuing. $_"
