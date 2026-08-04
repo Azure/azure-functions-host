@@ -33,12 +33,6 @@ jobs:
     env:
       NPM_CONFIG_USERCONFIG: $(Build.SourcesDirectory)/eng/ci/.npmrc
 
-  - task: PowerShell@2
-    displayName: Install Az.Storage Powershell module
-    inputs:
-      targetType: inline
-      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
-
   - task: DotNetCoreCLI@2
     displayName: Restore
     inputs:
