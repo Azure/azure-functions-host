@@ -235,7 +235,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                     { "AzureWebEncryptionKey", testKey },
                     { EnvironmentSettingNames.WebSiteAuthEncryptionKey, testKey },
                     { "AzureWebJobsStorage", null },
-                    { EnvironmentSettingNames.AzureWebsiteName, "testsite" }
+                    { EnvironmentSettingNames.AzureWebsiteName, "testsite" },
+                    { EnvironmentSettingNames.AzureWebsiteHostName, "site.azurewebsites.test" }
                 };
                 _scopedEnvironment = new TestScopedEnvironmentVariable(settings);
             }
