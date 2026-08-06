@@ -104,7 +104,7 @@ internal static class EnvironmentContractTestHostRunner
             ?? throw new InvalidOperationException($"Unable to deserialize environment-variable contract scenario '{scenario}'.");
     }
 
-    private static string FindRepositoryRoot(string sourceFilePath)
+    internal static string FindRepositoryRoot(string sourceFilePath)
     {
         return TryFindRepositoryRoot(Path.GetDirectoryName(sourceFilePath))
             ?? TryFindRepositoryRoot(AppContext.BaseDirectory)

@@ -286,6 +286,23 @@ public class EnvironmentBehaviorParityTests
             row => row.Evidence == MarkerEvidence.ContradictoryOrOverlapping);
     }
 
+    [Fact]
+    public void CompiledHelperInventory_MappedSourcePathFallsBackToRepositorySource()
+    {
+        string mappedSourcePath = OperatingSystem.IsWindows()
+            ? @"D:\_\test\WebJobs.Script.Tests\Environment\EnvironmentBehaviorParityTests.cs"
+            : "/_/test/WebJobs.Script.Tests/Environment/EnvironmentBehaviorParityTests.cs";
+        string repositoryRoot =
+            EnvironmentContractTestHostRunner.FindRepositoryRoot(mappedSourcePath);
+        string inventoryPath = GetCompiledHelperInventoryPath(mappedSourcePath);
+
+        Assert.Equal(
+            $"test/WebJobs.Script.Tests/{InventoryRelativePath}",
+            Path.GetRelativePath(repositoryRoot, inventoryPath).Replace('\\', '/'));
+        Assert.True(File.Exists(inventoryPath));
+        Assert.Equal(77, ReadCompiledHelperInventory(mappedSourcePath).Length);
+    }
+
     private static string[] ReadEnvironmentMarkerPredicateInventory(string[] inventory)
     {
         string[] booleanHelpers = inventory
@@ -397,10 +414,7 @@ public class EnvironmentBehaviorParityTests
     private static string[] ReadCompiledHelperInventory(
         [CallerFilePath] string sourceFilePath = "")
     {
-        string path = Path.GetFullPath(Path.Combine(
-            Path.GetDirectoryName(sourceFilePath),
-            "..",
-            InventoryRelativePath));
+        string path = GetCompiledHelperInventoryPath(sourceFilePath);
         using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
         return document.RootElement
             .GetProperty("environmentExtensionHelpers")
@@ -408,6 +422,18 @@ public class EnvironmentBehaviorParityTests
             .Select(value => value.GetString())
             .OrderBy(value => value, StringComparer.Ordinal)
             .ToArray();
+    }
+
+    private static string GetCompiledHelperInventoryPath(string sourceFilePath)
+    {
+        string repositoryRoot =
+            EnvironmentContractTestHostRunner.FindRepositoryRoot(sourceFilePath);
+
+        return Path.Combine(
+            repositoryRoot,
+            "test",
+            "WebJobs.Script.Tests",
+            InventoryRelativePath);
     }
 
     private sealed class PredicateDictionaryComparer :
