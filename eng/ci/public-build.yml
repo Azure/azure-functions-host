@@ -75,6 +75,7 @@ extends:
     - stage: Test
       jobs:
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
+      - template: /eng/ci/templates/jobs/run-environment-provider-contract-tests.yml@self
 
     - ${{ if eq(parameters.privateSiteExt, true) }}:
       - stage: Build

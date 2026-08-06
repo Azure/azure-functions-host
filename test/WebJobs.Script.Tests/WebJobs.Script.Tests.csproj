@@ -33,6 +33,8 @@
     <ProjectReference Include="../../src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" />
     <ProjectReference Include="../../src/WebJobs.Script/WebJobs.Script.csproj" />
     <ProjectReference Include="../../src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj" />
+    <ProjectReference Include="../WebJobs.Script.Tests.EnvironmentVariables.TestHost/WebJobs.Script.Tests.EnvironmentVariables.TestHost.csproj"
+                      ReferenceOutputAssembly="false" />
     <ProjectReference Include="../WebJobs.Script.Tests.Shared/WebJobs.Script.Tests.Shared.csproj" />
   </ItemGroup>
 

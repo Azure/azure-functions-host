@@ -1,0 +1,46 @@
+jobs:
+- job: RunEnvironmentProviderContractTestsLinux
+  displayName: Run Environment Provider Contract Tests (Linux)
+
+  pool:
+    name: 1es-pool-azfunc-public
+    image: 1es-ubuntu-24.04-min
+    os: linux
+
+  variables:
+  - name: test_projects
+    value: |
+      test/WebJobs.Script.Tests/WebJobs.Script.Tests.csproj
+      test/WebJobs.Script.Tests.EnvironmentVariables.TestHost/WebJobs.Script.Tests.EnvironmentVariables.TestHost.csproj
+
+  steps:
+  - task: UseDotNet@2
+    displayName: Install .NET SDK from global.json
+    inputs:
+      packageType: sdk
+      useGlobalJson: true
+
+  - task: NuGetAuthenticate@1
+
+  - task: DotNetCoreCLI@2
+    displayName: Restore Environment Provider Contracts
+    inputs:
+      command: custom
+      custom: restore
+      arguments: -v m
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
+    displayName: Build Environment Provider Contracts
+    inputs:
+      command: build
+      arguments: -v m -c release --no-restore
+      projects: $(test_projects)
+
+  - task: DotNetCoreCLI@2
+    displayName: Environment Provider Contract Tests
+    inputs:
+      command: test
+      testRunTitle: Environment Provider Contract Tests (Linux)
+      arguments: -v m -c release --no-build --filter FullyQualifiedName~Microsoft.Azure.WebJobs.Script.Config.Tests.ScriptEnvironmentVariablesConfigurationSourceTests
+      projects: test/WebJobs.Script.Tests/WebJobs.Script.Tests.csproj
