@@ -23,15 +23,15 @@ jobs:
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
 
+  - task: npmAuthenticate@0
+    inputs:
+      workingFile: $(Build.SourcesDirectory)/eng/ci/.npmrc
+
   - script: |
       npm install -g azurite
     displayName: Install Azurite
-
-  - task: PowerShell@2
-    displayName: Install Az.Storage Powershell module
-    inputs:
-      targetType: inline
-      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
+    env:
+      NPM_CONFIG_USERCONFIG: $(Build.SourcesDirectory)/eng/ci/.npmrc
 
   - task: DotNetCoreCLI@2
     displayName: Build Integration.csproj
