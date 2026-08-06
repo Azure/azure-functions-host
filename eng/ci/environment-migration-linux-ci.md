@@ -63,6 +63,14 @@ configuration reload and child-process inheritance are part of
 Linux job also executes those subprocess-isolated contracts. No internal pool
 or manual-only integration definition is required for PR-02 coverage.
 
+Public build [296310 (`4.1054.100-ci.26406.3`)](https://dev.azure.com/azfunc/public/_build/results?buildId=296310&view=results)
+completed successfully for source branch
+`refs/heads/fabiocav/ienvironment-phase-1b` and source commit
+`9b6f563b5681f7cbaa6838a5f806f499b499f2c3`. Its timeline confirms that both
+`Run Unit Tests` and `Run Environment Provider Contract Tests (Linux)`
+completed successfully; both the Windows unit-test job and the Linux
+provider-contract job executed and were not skipped.
+
 ## DG-6 process-mutator shape
 
 PR-02 approves the following shape for the later production seam; it does not
