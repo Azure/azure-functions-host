@@ -353,7 +353,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string encryptionKey = TestHelpers.GenerateKeyHexString();
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, encryptionKey);
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "testsite.azurewebsites.net");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "testsite.azurewebsites.test");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "testsite");
 
             // Keep the payload on the minimal path (no per-function secret/file fetches) so the
