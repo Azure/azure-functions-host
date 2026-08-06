@@ -33,6 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public OSPlatform Platform { get; set; } = SystemEnvironment.GetCurrentPlatform();
 
+        internal Action<string> OnGetEnvironmentVariable { get; set; }
+
+        internal Action<string, string> OnSetEnvironmentVariable { get; set; }
+
         public string this[string key]
         {
             get => GetEnvironmentVariable(key);
@@ -44,8 +48,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _variables.Clear();
         }
 
-        public string GetEnvironmentVariable(string name)
+        internal bool ContainsEnvironmentVariable(string name)
         {
+            return _variables.ContainsKey(name);
+        }
+
+        public virtual string GetEnvironmentVariable(string name)
+        {
+            OnGetEnvironmentVariable?.Invoke(name);
             _variables.TryGetValue(name, out string result);
 
             return result;
@@ -53,6 +63,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public virtual void SetEnvironmentVariable(string name, string value)
         {
+            OnSetEnvironmentVariable?.Invoke(name, value);
+
             if (value == null && _variables.ContainsKey(name))
             {
                 _variables.Remove(name);

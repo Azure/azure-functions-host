@@ -242,6 +242,26 @@ public class ScriptEnvironmentVariablesConfigurationSourceTests
     }
 
     [Fact]
+    public async Task SpecializationMutation_PreservesPreReloadReadsAndChildProcessInheritance()
+    {
+        SpecializationMutationContractResult result =
+            await RunScenarioAsync<SpecializationMutationContractResult>(
+                EnvironmentVariablesConfigurationTestContracts.SpecializationMutationScenario);
+
+        AssertLookup(result.LiteralBeforeReload, found: true, "assigned-value");
+        AssertLookup(result.LiveBeforeReload, found: true, "assigned-value");
+        AssertLookup(result.CachedBeforeReload, found: false, value: null);
+        AssertLookup(result.LiveEnumerationBeforeReload, found: false, value: null);
+        AssertLookup(result.CachedEnumerationBeforeReload, found: false, value: null);
+        AssertLookup(result.ChildStartedBeforeMutation, found: false, value: null);
+        AssertLookup(result.ChildStartedAfterMutation, found: true, "assigned-value");
+        AssertLookup(result.LiveAfterReload, found: true, "assigned-value");
+        AssertLookup(result.CachedWithoutReload, found: false, value: null);
+        AssertLookup(result.LiveEnumerationAfterReload, found: true, "assigned-value");
+        AssertLookup(result.CachedEnumerationWithoutReload, found: false, value: null);
+    }
+
+    [Fact]
     public async Task Set_LiveProviderMutatesProcessWhileCachedProviderMutatesOnlyData()
     {
         ProviderSetContractResult result = await RunScenarioAsync<ProviderSetContractResult>(

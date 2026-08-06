@@ -52,3 +52,42 @@ completed successfully for source commit
 `Run Unit Tests` and `Run Environment Provider Contract Tests (Linux)`
 completed successfully on `1es-pool-azfunc-public`; the Linux job executed and
 was not skipped.
+
+## Phase 1 PR-02 specialization coverage
+
+The assignment, EasyAuth, specialization-order, root/child options, and
+root/child DI contracts live in `WebJobs.Script.Tests`, so the existing
+`Run Unit Tests` public/fork PR job executes them. Process mutation before
+configuration reload and child-process inheritance are part of
+`ScriptEnvironmentVariablesConfigurationSourceTests`, so the focused public
+Linux job also executes those subprocess-isolated contracts. No internal pool
+or manual-only integration definition is required for PR-02 coverage.
+
+## DG-6 process-mutator shape
+
+PR-02 approves the following shape for the later production seam; it does not
+introduce that production service or migrate current writers:
+
+```csharp
+internal interface IProcessEnvironmentMutator
+{
+    void Set(string name, string value);
+}
+```
+
+The seam is synchronous and write-only. A null value deletes the process
+variable, an empty value remains present, and a completed call is immediately
+visible to live process readers and processes started afterward. Assignment
+continues to issue one call per payload, CORS, EasyAuth, site-update, and
+platform-specific write in the current order; there is no transactional
+`SetMany` operation. Live reads needed for EasyAuth precedence remain a
+separate input, and configuration indexer writes are not a substitute.
+
+The test-only `IProcessEnvironmentMutatorContract` and recording adapter encode
+this shape against current assignment writers. They intentionally do not add a
+production implementation before the PR-19 writer migration.
+
+The contracts also retain the legacy `TestEnvironment` distinction: assigning
+null deletes an existing key but leaves a null-valued entry when the key was
+previously absent. Real-process null deletion remains covered separately by the
+subprocess provider contracts.

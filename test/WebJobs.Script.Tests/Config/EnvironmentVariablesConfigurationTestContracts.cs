@@ -14,6 +14,8 @@ internal static class EnvironmentVariablesConfigurationTestContracts
     public const string ConnectionStringsScenario = "connection-strings";
     public const string MutationScenario = "mutation";
     public const string ProviderSetScenario = "provider-set";
+    public const string SpecializationMutationScenario = "specialization-mutation";
+    public const string ChildProcessReadScenario = "child-process-read";
 }
 
 internal sealed record LookupResult(bool Found, string Value);
@@ -118,3 +120,16 @@ internal sealed record ProviderSetContractResult(
     Dictionary<string, LookupResult> Cached,
     Dictionary<string, LookupResult> RootLive,
     Dictionary<string, LookupResult> RootCached);
+
+internal sealed record SpecializationMutationContractResult(
+    LookupResult LiteralBeforeReload,
+    LookupResult LiveBeforeReload,
+    LookupResult CachedBeforeReload,
+    LookupResult LiveEnumerationBeforeReload,
+    LookupResult CachedEnumerationBeforeReload,
+    LookupResult ChildStartedBeforeMutation,
+    LookupResult ChildStartedAfterMutation,
+    LookupResult LiveAfterReload,
+    LookupResult CachedWithoutReload,
+    LookupResult LiveEnumerationAfterReload,
+    LookupResult CachedEnumerationWithoutReload);

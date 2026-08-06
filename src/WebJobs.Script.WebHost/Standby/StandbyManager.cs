@@ -107,23 +107,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _logger.LogInformation(Resources.HostSpecializationTrace);
 
-            // After specialization, we need to ensure that custom timezone
-            // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
-            // DateTime caches timezone information, so we need to clear the cache.
-            TimeZoneInfo.ClearCachedData();
-
-            // Trigger a configuration reload to pick up all current settings
-            _configuration?.Reload();
-
-            _hostNameProvider.Reset();
-
-            // Reset the shared load context to ensure we're reloading
-            // user dependencies
-            FunctionAssemblyLoadContext.ResetSharedContext();
-
-            // Signals change of JobHost options from placeholder mode
-            // (ex: ScriptPath is updated)
-            NotifyChange();
+            ClearTimeZoneCache();
+            ReloadConfiguration();
+            ResetHostNameProvider();
+            ResetSharedAssemblyContext();
+            SignalSpecializationChange();
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize))
             {
@@ -197,7 +185,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private void ApplyMcpCustomHandlerSettings()
+        internal virtual void ClearTimeZoneCache()
+        {
+            // After specialization, we need to ensure that custom timezone
+            // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
+            // DateTime caches timezone information, so we need to clear the cache.
+            TimeZoneInfo.ClearCachedData();
+        }
+
+        internal virtual void ReloadConfiguration()
+        {
+            // Trigger a configuration reload to pick up all current settings.
+            _configuration?.Reload();
+        }
+
+        internal virtual void ResetHostNameProvider()
+        {
+            _hostNameProvider.Reset();
+        }
+
+        internal virtual void ResetSharedAssemblyContext()
+        {
+            // Reset the shared load context to ensure we're reloading user dependencies.
+            FunctionAssemblyLoadContext.ResetSharedContext();
+        }
+
+        internal virtual void SignalSpecializationChange()
+        {
+            // Signals change of JobHost options from placeholder mode
+            // (ex: ScriptPath is updated).
+            NotifyChange();
+        }
+
+        internal virtual void ApplyMcpCustomHandlerSettings()
         {
             // For Flex Consumption SKU: if MCP custom handler preview is enabled, set worker runtime env to "custom".
             if (_environment.IsFlexConsumptionSku() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMcpCustomHandlerPreview, _environment))

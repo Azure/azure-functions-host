@@ -13,16 +13,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
     public class AppServiceOptionsTests
     {
         [Fact]
-        public void AppServiceOptions_ReloadedOnSpecialization()
+        public void AppServiceOptions_MonitorReloadsWhilePlainOptionsAndRootSingletonRemainCached()
         {
             var env = new TestEnvironment();
             var token = new TestChangeTokenSource<StandbyOptions>();
+            var rootSingleton = new RootSingleton();
 
             // Wire up some options.
-            var host = new HostBuilder()
+            using var host = new HostBuilder()
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<IEnvironment>(env);
+                    s.AddSingleton(rootSingleton);
                     s.ConfigureOptions<AppServiceOptionsSetup>();
                     s.AddSingleton<IOptionsChangeTokenSource<AppServiceOptions>, SpecializationChangeTokenSource<AppServiceOptions>>();
                     s.AddSingleton<IOptionsChangeTokenSource<StandbyOptions>>(token);
@@ -30,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .Build();
 
             var options = host.Services.GetService<IOptionsMonitor<AppServiceOptions>>();
+            var plainOptions = host.Services.GetService<IOptions<AppServiceOptions>>();
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "blah");
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName, "blah");
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName, "blahh+1234");
@@ -38,6 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             Assert.Equal(options.CurrentValue.AppName, oldUniqueSlotName);
             Assert.Equal(options.CurrentValue.SubscriptionId, oldSubscriptionId);
+            Assert.Equal(plainOptions.Value.AppName, oldUniqueSlotName);
+            Assert.Equal(plainOptions.Value.SubscriptionId, oldSubscriptionId);
 
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "properblah");
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName, "properblah");
@@ -46,12 +51,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             // should still have the old values.
             Assert.Equal(options.CurrentValue.AppName, oldUniqueSlotName);
             Assert.Equal(options.CurrentValue.SubscriptionId, oldSubscriptionId);
+            Assert.Equal(plainOptions.Value.AppName, oldUniqueSlotName);
+            Assert.Equal(plainOptions.Value.SubscriptionId, oldSubscriptionId);
 
             // Simulate specialization, which should refresh.
             token.SignalChange();
 
             Assert.Equal(options.CurrentValue.AppName, "properblah-properblah");
             Assert.Equal(options.CurrentValue.SubscriptionId, "properblahh");
+            Assert.Equal(plainOptions.Value.AppName, oldUniqueSlotName);
+            Assert.Equal(plainOptions.Value.SubscriptionId, oldSubscriptionId);
+            Assert.Same(rootSingleton, host.Services.GetRequiredService<RootSingleton>());
+            Assert.Same(options, host.Services.GetRequiredService<IOptionsMonitor<AppServiceOptions>>());
+        }
+
+        private sealed class RootSingleton
+        {
         }
     }
 }

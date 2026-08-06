@@ -4,7 +4,9 @@
 using System;
 using System.Linq;
 using AwesomeAssertions;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -116,6 +118,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             object result = serviceProvider.CreateInstance(descriptor);
 
             result.Should().BeOfType<TestClass>();
+        }
+
+        [Fact]
+        public void CreateChildContainer_RecreatesChildOwnedOptionsAndSharesRootSingleton()
+        {
+            ServiceCollection rootServices = new();
+            rootServices.AddOptions();
+            RootSingleton rootSingleton = new();
+            rootServices.AddSingleton(rootSingleton);
+            using ServiceProvider rootProvider = rootServices.BuildServiceProvider();
+            int generation = 0;
+
+            ServiceProvider BuildChild()
+            {
+                IServiceCollection childServices = rootProvider.CreateChildContainer(rootServices);
+                childServices
+                    .AddOptions<ChildOwnedOptions>()
+                    .Configure(options => options.Generation = ++generation);
+
+                return childServices.BuildServiceProvider();
+            }
+
+            using ServiceProvider firstChild = BuildChild();
+            ChildOwnedOptions firstOptions =
+                firstChild.GetRequiredService<IOptions<ChildOwnedOptions>>().Value;
+            using ServiceProvider secondChild = BuildChild();
+            ChildOwnedOptions secondOptions =
+                secondChild.GetRequiredService<IOptions<ChildOwnedOptions>>().Value;
+
+            firstOptions.Generation.Should().Be(1);
+            secondOptions.Generation.Should().Be(2);
+            secondOptions.Should().NotBeSameAs(firstOptions);
+            firstChild.GetRequiredService<RootSingleton>().Should().BeSameAs(rootSingleton);
+            secondChild.GetRequiredService<RootSingleton>().Should().BeSameAs(rootSingleton);
+        }
+
+        private sealed class ChildOwnedOptions
+        {
+            public int Generation { get; set; }
+        }
+
+        private sealed class RootSingleton
+        {
         }
     }
 }

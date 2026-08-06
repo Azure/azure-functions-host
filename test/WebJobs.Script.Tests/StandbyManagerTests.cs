@@ -21,14 +21,13 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class StandbyManagerTests
+    public class StandbyManagerTests : EnvironmentContractTestBase
     {
         private Mock<IScriptHostManager> _mockHostManager;
         private Mock<IConfigurationRoot> _mockConfiguration;
         private Mock<IOptionsMonitor<ScriptApplicationHostOptions>> _mockOptionsMonitor;
         private Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private Mock<IWebHostWorkerManager> _mockLanguageWorkerChannelManager;
-        private TestEnvironment _testEnvironment;
         private string _testSettingName = "TestSetting";
         private string _testSettingValue = "TestSettingValue";
         private ILoggerProvider _testLoggerProvider;
@@ -43,7 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockOptionsMonitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
             _mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             _mockLanguageWorkerChannelManager = new Mock<IWebHostWorkerManager>();
-            _testEnvironment = new TestEnvironment();
             _mockApplicationLifetime = new Mock<IHostApplicationLifetime>(MockBehavior.Strict);
 
             _testLoggerProvider = new TestLoggerProvider();
@@ -227,6 +225,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var initActivity = testListener.Activities.FirstOrDefault(a => string.Equals(a.OperationName, "init", StringComparison.Ordinal));
             Assert.NotNull(initActivity);
             Assert.Equal(parentActivity.Id, initActivity.ParentId);
+        }
+    }
+
+    public abstract class EnvironmentContractTestBase
+    {
+#pragma warning disable SA1401
+        protected readonly TestEnvironment _testEnvironment;
+#pragma warning restore SA1401
+
+        protected EnvironmentContractTestBase()
+        {
+            _testEnvironment = new TestEnvironment();
         }
     }
 

@@ -3,8 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.Config.Tests;
@@ -28,6 +30,17 @@ internal static class Program
 
     public static int Main(string[] args)
     {
+        if (args.Length == 2
+            && string.Equals(
+                args[0],
+                EnvironmentVariablesConfigurationTestContracts.ChildProcessReadScenario,
+                StringComparison.Ordinal))
+        {
+            _ = Console.ReadLine();
+            WriteResult(ReadLiteral(args[1]));
+            return 0;
+        }
+
         if (args.Length != 1)
         {
             throw new ArgumentException("Exactly one contract scenario is required.", nameof(args));
@@ -41,13 +54,19 @@ internal static class Program
             EnvironmentVariablesConfigurationTestContracts.ConnectionStringsScenario => RunConnectionStringContract(),
             EnvironmentVariablesConfigurationTestContracts.MutationScenario => RunMutationContract(),
             EnvironmentVariablesConfigurationTestContracts.ProviderSetScenario => RunProviderSetContract(),
+            EnvironmentVariablesConfigurationTestContracts.SpecializationMutationScenario => RunSpecializationMutationContract(),
             _ => throw new ArgumentOutOfRangeException(nameof(args), args[0], "Unknown contract scenario."),
         };
 
+        WriteResult(result);
+        return 0;
+    }
+
+    private static void WriteResult(object result)
+    {
         Console.WriteLine(
             EnvironmentVariablesConfigurationTestContracts.ResultPrefix
             + JsonSerializer.Serialize(result, result.GetType()));
-        return 0;
     }
 
     private static CasingContractResult RunCasingContract()
@@ -417,6 +436,121 @@ internal static class Program
                 ["root"] = ReadConfiguration(rootCachedConfiguration, rootCachedKey),
                 ["enumeration"] = FindEntry(rootCachedConfiguration, rootCachedKey),
             });
+    }
+
+    private static SpecializationMutationContractResult RunSpecializationMutationContract()
+    {
+        string key = $"AFHOSTSPECIALIZATION{Guid.NewGuid():N}".ToUpperInvariant();
+        const string assignedValue = "assigned-value";
+        IConfigurationRoot live = BuildConfiguration(liveEnvironmentLoading: true);
+        IConfigurationRoot cached = BuildConfiguration(liveEnvironmentLoading: false);
+        using Process childStartedBeforeMutation = StartChildProcessRead(key);
+
+        try
+        {
+            Environment.SetEnvironmentVariable(key, assignedValue);
+            LookupResult literalBeforeReload = ReadLiteral(key);
+            LookupResult liveBeforeReload = ReadConfiguration(live, key);
+            LookupResult cachedBeforeReload = ReadConfiguration(cached, key);
+            LookupResult liveEnumerationBeforeReload = FindEntry(live, key);
+            LookupResult cachedEnumerationBeforeReload = FindEntry(cached, key);
+            LookupResult beforeMutationChildResult = CompleteChildProcessRead(
+                childStartedBeforeMutation,
+                key);
+            using Process childStartedAfterMutation = StartChildProcessRead(key);
+            LookupResult afterMutationChildResult = CompleteChildProcessRead(
+                childStartedAfterMutation,
+                key);
+
+            live.Reload();
+
+            return new SpecializationMutationContractResult(
+                literalBeforeReload,
+                liveBeforeReload,
+                cachedBeforeReload,
+                liveEnumerationBeforeReload,
+                cachedEnumerationBeforeReload,
+                beforeMutationChildResult,
+                afterMutationChildResult,
+                ReadConfiguration(live, key),
+                ReadConfiguration(cached, key),
+                FindEntry(live, key),
+                FindEntry(cached, key));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(key, null);
+            if (!childStartedBeforeMutation.HasExited)
+            {
+                childStartedBeforeMutation.Kill(entireProcessTree: true);
+            }
+        }
+    }
+
+    private static Process StartChildProcessRead(string key)
+    {
+        string dotnetHost = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
+        if (string.IsNullOrEmpty(dotnetHost))
+        {
+            dotnetHost = "dotnet";
+        }
+
+        ProcessStartInfo startInfo = new()
+        {
+            FileName = dotnetHost,
+            RedirectStandardError = true,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        startInfo.ArgumentList.Add(typeof(Program).Assembly.Location);
+        startInfo.ArgumentList.Add(EnvironmentVariablesConfigurationTestContracts.ChildProcessReadScenario);
+        startInfo.ArgumentList.Add(key);
+
+        return Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Unable to start the child-process inheritance contract.");
+    }
+
+    private static LookupResult CompleteChildProcessRead(Process process, string key)
+    {
+        Task<string> standardOutput = process.StandardOutput.ReadToEndAsync();
+        Task<string> standardError = process.StandardError.ReadToEndAsync();
+        process.StandardInput.WriteLine();
+        process.StandardInput.Close();
+
+        if (!process.WaitForExit((int)TimeSpan.FromSeconds(30).TotalMilliseconds))
+        {
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit();
+            throw new TimeoutException($"Child-process inheritance read for '{key}' exceeded 30 seconds.");
+        }
+
+        string output = standardOutput.GetAwaiter().GetResult();
+        string error = standardError.GetAwaiter().GetResult();
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"Child-process inheritance read for '{key}' exited with code {process.ExitCode}."
+                + $"{Environment.NewLine}{error}{Environment.NewLine}{output}");
+        }
+
+        string resultLine = output
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .SingleOrDefault(line => line.StartsWith(
+                EnvironmentVariablesConfigurationTestContracts.ResultPrefix,
+                StringComparison.Ordinal));
+        if (string.IsNullOrEmpty(resultLine))
+        {
+            throw new InvalidOperationException(
+                $"Child-process inheritance read for '{key}' did not emit a result."
+                + $"{Environment.NewLine}{error}{Environment.NewLine}{output}");
+        }
+
+        return JsonSerializer.Deserialize<LookupResult>(
+            resultLine[EnvironmentVariablesConfigurationTestContracts.ResultPrefix.Length..])
+            ?? throw new InvalidOperationException(
+                $"Unable to deserialize child-process inheritance read for '{key}'.");
     }
 
     private static IConfigurationRoot BuildConfiguration(
