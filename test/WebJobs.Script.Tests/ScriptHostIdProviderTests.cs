@@ -1,13 +1,16 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Script.Config.Tests;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -185,6 +188,102 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString().ToLowerInvariant();
             Assert.Equal($"{sanitizedMachineName}-{suffix}", result.HostId);
             Assert.True(result.IsLocal);
+        }
+
+        [Fact]
+        public void GetDefaultHostId_CompleteMarkersRemainPhaseStableAndAppInputsRemainLateBound()
+        {
+            foreach (EnvironmentProfileContract profile in
+                EnvironmentBehaviorParityFixtures.CompleteProfiles)
+            {
+                foreach (HostPhase phase in Enum.GetValues<HostPhase>())
+                {
+                    Dictionary<string, string> variables = new(
+                        profile.Markers,
+                        StringComparer.Ordinal)
+                    {
+                        [EnvironmentSettingNames.AzureWebsitePlaceholderMode] =
+                            EnvironmentBehaviorParityFixtures.IsPlaceholderPhase(phase)
+                                ? "1"
+                                : "0"
+                    };
+                    TestEnvironment environment = new(variables)
+                    {
+                        Platform = string.Equals(
+                            profile.DefaultPlatform,
+                            OSPlatform.Windows.ToString(),
+                            StringComparison.Ordinal)
+                                ? OSPlatform.Windows
+                                : OSPlatform.Linux
+                    };
+                    ScriptApplicationHostOptions options = new()
+                    {
+                        ScriptPath = @"c:\testing\FUNCTIONS-TEST\test$#"
+                    };
+
+                    bool appInputsAvailable =
+                        phase != HostPhase.PlaceholderBeforeAssignment;
+                    if (appInputsAvailable)
+                    {
+                        environment.SetEnvironmentVariable(
+                            EnvironmentSettingNames.AzureWebsiteName,
+                            "Parity-App--");
+                        environment.SetEnvironmentVariable(
+                            EnvironmentSettingNames.AzureWebsiteSlotName,
+                            "Staging");
+                        environment.SetEnvironmentVariable(
+                            EnvironmentSettingNames.AzureWebsiteHostName,
+                            "Parity-App.AzureWebsites.Net.azurewebsites.net");
+                    }
+
+                    ScriptHostIdProvider.HostIdResult result =
+                        ScriptHostIdProvider.GetDefaultHostId(environment, options);
+                    string expected = GetExpectedHostId(
+                        profile.Profile,
+                        appInputsAvailable);
+
+                    Assert.True(
+                        string.Equals(expected, result.HostId, StringComparison.Ordinal),
+                        $"{profile.Profile}/{phase}: expected '{expected}', actual '{result.HostId}'.");
+                    Assert.Equal(
+                        profile.Profile is HostingEnvironmentProfile.LocalSelfHost
+                            or HostingEnvironmentProfile.CoreTools,
+                        result.IsLocal);
+                    Assert.False(result.IsTruncated);
+                }
+            }
+        }
+
+        private static string GetExpectedHostId(
+            HostingEnvironmentProfile profile,
+            bool appInputsAvailable)
+        {
+            if (profile is HostingEnvironmentProfile.LocalSelfHost
+                or HostingEnvironmentProfile.CoreTools)
+            {
+                string sanitizedMachineName = Environment.MachineName
+                    .Where(char.IsLetterOrDigit)
+                    .Aggregate(new StringBuilder(), (builder, character) =>
+                        builder.Append(character))
+                    .ToString()
+                    .ToLowerInvariant();
+                return $"{sanitizedMachineName}-473716271";
+            }
+
+            if (!appInputsAvailable)
+            {
+                return null;
+            }
+
+            return profile switch
+            {
+                HostingEnvironmentProfile.FlexConsumptionLegion =>
+                    "d199e5b2aa20104cceb28e1824db721a",
+                HostingEnvironmentProfile.LinuxConsumptionAtlas
+                    or HostingEnvironmentProfile.LinuxConsumptionLegion =>
+                        "parity-app.azurewebsites.net",
+                _ => "parity-app---staging"
+            };
         }
     }
 }

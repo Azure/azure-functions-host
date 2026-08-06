@@ -13,8 +13,12 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/WebJobs.Script/WebJobs.Script.csproj" />
+    <ProjectReference Include="../../src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" />
+    <ProjectReference Include="../WebJobs.Script.Tests.Shared/WebJobs.Script.Tests.Shared.csproj" />
     <Compile Include="../WebJobs.Script.Tests/Config/EnvironmentVariablesConfigurationTestContracts.cs"
              Link="EnvironmentVariablesConfigurationTestContracts.cs" />
+    <Compile Include="../WebJobs.Script.Tests/Environment/EnvironmentProfileContract.cs"
+             Link="EnvironmentProfileContract.cs" />
   </ItemGroup>
 
 </Project>

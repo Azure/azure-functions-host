@@ -2,12 +2,25 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Tests;
+using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Config.Tests;
 
@@ -30,6 +43,55 @@ internal static class Program
 
     public static int Main(string[] args)
     {
+        if (args.Length >= 1
+            && string.Equals(
+                args[0],
+                EnvironmentBehaviorParityTestContracts.StaticCacheScenario,
+                StringComparison.Ordinal))
+        {
+            string[] values = args.Length == 2
+                ? args[1].Split(',')
+                : ["false", "false"];
+            WriteResult(RunStaticCacheContract(
+                bool.Parse(values[0]),
+                bool.Parse(values[1])));
+            return 0;
+        }
+
+        if (args.Length == 1
+            && string.Equals(
+                args[0],
+                EnvironmentBehaviorParityTestContracts.HelperMatrixScenario,
+                StringComparison.Ordinal))
+        {
+            WriteResult(RunEnvironmentHelperMatrix());
+            return 0;
+        }
+
+        if (args.Length == 1
+            && string.Equals(
+                args[0],
+                EnvironmentBehaviorParityTestContracts.JwtLatchScenario,
+                StringComparison.Ordinal))
+        {
+            WriteResult(RunJwtLatchContract());
+            return 0;
+        }
+
+        if (args.Length == 2
+            && string.Equals(
+                args[0],
+                EnvironmentBehaviorParityTestContracts.WebScriptHostConfigurationScenario,
+                StringComparison.Ordinal))
+        {
+            string[] values = args[1].Split(',');
+            WriteResult(RunWebScriptHostConfigurationContract(
+                bool.Parse(values[0]),
+                bool.Parse(values[1]),
+                bool.Parse(values[2])));
+            return 0;
+        }
+
         if (args.Length == 2
             && string.Equals(
                 args[0],
@@ -62,11 +124,473 @@ internal static class Program
         return 0;
     }
 
+    private static EnvironmentHelperMatrixResult RunEnvironmentHelperMatrix()
+    {
+        Type extensionsType = typeof(SystemEnvironment).Assembly.GetType(
+            "Microsoft.Azure.WebJobs.Script.EnvironmentExtensions",
+            throwOnError: true);
+        MethodInfo[] methods = extensionsType
+            .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)
+            .OrderBy(FormatMethodSignature, StringComparer.Ordinal)
+            .ToArray();
+        MethodInfo clearCache = methods.Single(method => string.Equals(
+            method.Name,
+            "ClearCache",
+            StringComparison.Ordinal));
+        MethodInfo[] markerPredicateMethods = methods
+            .Where(IsEnvironmentMarkerPredicate)
+            .OrderBy(method => method.Name, StringComparer.Ordinal)
+            .ToArray();
+
+        EnvironmentProfileResult[] profiles = EnvironmentBehaviorParityFixtures.CompleteProfiles
+            .Select(profile => new EnvironmentProfileResult(
+                profile.Profile,
+                profile.DefaultPlatform,
+                Is64BitProcess: true,
+                RunHelperSet(
+                    profile,
+                    profile.DefaultPlatform,
+                    is64BitProcess: true,
+                    variableOverrides: null,
+                    methods,
+                    clearCache)))
+            .ToArray();
+        EnvironmentStableFactVariantResult[] stableFactVariants =
+            EnvironmentBehaviorParityFixtures.StableFactVariants
+                .Select(variant =>
+                {
+                    EnvironmentProfileContract profile =
+                        EnvironmentBehaviorParityFixtures.CompleteProfiles.Single(
+                            candidate => candidate.Profile == variant.Profile);
+                    return new EnvironmentStableFactVariantResult(
+                        variant.Name,
+                        variant.Profile,
+                        variant.Platform,
+                        variant.Is64BitProcess,
+                        RunHelperSet(
+                            profile,
+                            variant.Platform,
+                            variant.Is64BitProcess,
+                            variant.VariableOverrides,
+                            methods,
+                            clearCache));
+                })
+            .ToArray();
+
+        EnvironmentMarkerObservationResult[] observations =
+            EnvironmentBehaviorParityFixtures.MarkerObservations
+                .Select(observation =>
+                {
+                    clearCache.Invoke(null, null);
+                    TestEnvironment environment = new(observation.Markers)
+                    {
+                        Platform = ParsePlatform(observation.Platform)
+                    };
+                    Dictionary<string, string> predicates = markerPredicateMethods.ToDictionary(
+                        method => method.Name,
+                        method => InvokeHelper(method, environment).Value,
+                        StringComparer.Ordinal);
+                    return new EnvironmentMarkerObservationResult(
+                        observation.Name,
+                        observation.Profile,
+                        observation.Evidence,
+                        observation.Phase,
+                        predicates);
+                })
+                .ToArray();
+
+        clearCache.Invoke(null, null);
+        return new EnvironmentHelperMatrixResult(profiles, stableFactVariants, observations);
+    }
+
+    private static EnvironmentHelperResult[] RunHelperSet(
+        EnvironmentProfileContract profile,
+        string platform,
+        bool is64BitProcess,
+        IReadOnlyDictionary<string, string> variableOverrides,
+        MethodInfo[] methods,
+        MethodInfo clearCache)
+    {
+        clearCache.Invoke(null, null);
+        TestEnvironment environment = new(
+            EnvironmentBehaviorParityFixtures.CreateVariables(profile),
+            is64BitProcess)
+        {
+            Platform = ParsePlatform(platform)
+        };
+        if (variableOverrides is not null)
+        {
+            foreach ((string name, string value) in variableOverrides)
+            {
+                environment.SetEnvironmentVariable(name, value);
+            }
+        }
+
+        EnvironmentHelperResult[] helpers = methods
+            .Select(method => InvokeHelper(method, environment))
+            .ToArray();
+        clearCache.Invoke(null, null);
+
+        return helpers;
+    }
+
+    private static bool IsEnvironmentMarkerPredicate(MethodInfo method)
+    {
+        ParameterInfo[] parameters = method.GetParameters();
+        return method.ReturnType == typeof(bool)
+            && parameters.Length == 1
+            && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
+            && string.Equals(
+                parameters[0].Name,
+                "environment",
+                StringComparison.Ordinal);
+    }
+
+    private static EnvironmentHelperResult InvokeHelper(
+        MethodInfo method, TestEnvironment environment)
+    {
+        object[] arguments = method.GetParameters()
+            .Select(parameter => parameter.Name switch
+            {
+                "environment" => (object)environment,
+                "name" => "PARITY_MISSING",
+                "defaultValue" => "parity-default",
+                "workerRuntime" => null,
+                "group" => null,
+                _ => throw new InvalidOperationException(
+                    $"No parity argument is defined for parameter '{parameter.Name}' on '{method.Name}'.")
+            })
+            .ToArray();
+
+        try
+        {
+            object result = method.Invoke(null, arguments);
+            string value = FormatHelperValue(method, result, environment);
+            if (method.GetParameters().Any(parameter => parameter.IsOut))
+            {
+                value = $"{value};out={FormatValue(arguments[^1])}";
+            }
+
+            return new EnvironmentHelperResult(FormatMethodSignature(method), value);
+        }
+        catch (TargetInvocationException exception) when (exception.InnerException is not null)
+        {
+            Exception inner = exception.InnerException;
+            return new EnvironmentHelperResult(
+                FormatMethodSignature(method),
+                $"exception:{inner.GetType().FullName}:{inner.Message}");
+        }
+    }
+
+    private static string FormatHelperValue(
+        MethodInfo method,
+        object value,
+        object environment)
+    {
+        if (string.Equals(method.Name, "GetEffectiveCoresCount", StringComparison.Ordinal)
+            && value is int cores
+            && (!InvokeEnvironmentBoolean(environment, "IsWindowsConsumption")
+                || InvokeEnvironmentBoolean(environment, "IsVMSS"))
+            && cores == Environment.ProcessorCount)
+        {
+            return "$PROCESSOR_COUNT";
+        }
+
+        return FormatValue(value);
+    }
+
+    private static string FormatValue(object value)
+    {
+        return value switch
+        {
+            null => "null",
+            bool boolean => boolean ? "true" : "false",
+            string text => JsonSerializer.Serialize(text),
+            Enum enumValue => enumValue.ToString(),
+            IEnumerable<string> strings => JsonSerializer.Serialize(
+                strings.OrderBy(item => item, StringComparer.Ordinal)),
+            IEnumerable enumerable => JsonSerializer.Serialize(
+                enumerable.Cast<object>().Select(FormatValue).ToArray()),
+            _ => Convert.ToString(value, CultureInfo.InvariantCulture)
+        };
+    }
+
+    private static StaticCacheContractResult RunStaticCacheContract(
+        bool initialMultiLanguage,
+        bool initialApplicationInsights)
+    {
+        TestEnvironment environment = new();
+        environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsitePlaceholderMode,
+            "1");
+        environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AppInsightsAgent,
+            initialApplicationInsights.ToString());
+        environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AppKind,
+            initialMultiLanguage ? "workflowApp" : string.Empty);
+
+        bool placeholderApplicationInsights = InvokeEnvironmentBoolean(
+            environment,
+            "IsApplicationInsightsAgentEnabled");
+
+        environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsitePlaceholderMode,
+            "0");
+        bool specializedApplicationInsights = InvokeEnvironmentBoolean(
+            environment,
+            "IsApplicationInsightsAgentEnabled");
+        environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AppInsightsAgent,
+            (!initialApplicationInsights).ToString());
+        bool mutatedApplicationInsights = InvokeEnvironmentBoolean(
+            environment,
+            "IsApplicationInsightsAgentEnabled");
+
+        bool initialMultiLanguageResult = InvokeEnvironmentBoolean(
+            environment,
+            "IsMultiLanguageRuntimeEnvironment");
+        environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AppKind,
+            initialMultiLanguage ? string.Empty : "workflowApp");
+        bool mutatedMultiLanguageResult = InvokeEnvironmentBoolean(
+            environment,
+            "IsMultiLanguageRuntimeEnvironment");
+
+        return new StaticCacheContractResult(
+            placeholderApplicationInsights,
+            specializedApplicationInsights,
+            mutatedApplicationInsights,
+            initialMultiLanguageResult,
+            mutatedMultiLanguageResult);
+    }
+
+    private static JwtLatchContractResult RunJwtLatchContract()
+    {
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsitePlaceholderMode,
+            "1");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsiteSku,
+            ScriptConstants.FlexConsumptionSku);
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.WebsitePodName,
+            "placeholder-pod");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsiteName,
+            "placeholder-site");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.ContainerEncryptionKey,
+            Convert.ToBase64String(Enumerable.Range(1, 32).Select(i => (byte)i).ToArray()));
+
+        ServiceCollection services = new();
+        services.AddAuthentication().AddScriptJwtBearer();
+        using ServiceProvider serviceProvider = services.BuildServiceProvider();
+        JwtBearerOptions options = serviceProvider
+            .GetRequiredService<IOptionsMonitor<JwtBearerOptions>>()
+            .Get(JwtBearerDefaults.AuthenticationScheme);
+        string[] placeholderAudiences = options.TokenValidationParameters.ValidAudiences.ToArray();
+
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsitePlaceholderMode,
+            "0");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsiteName,
+            "specialized-site");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsiteRuntimeSiteName,
+            "specialized-runtime");
+        InvokeMessageReceived(options, serviceProvider);
+        string[] specializedAudiences = options.TokenValidationParameters.ValidAudiences.ToArray();
+
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsiteName,
+            "second-site");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsiteRuntimeSiteName,
+            "second-runtime");
+        InvokeMessageReceived(options, serviceProvider);
+        string[] audiencesAfterSecondMutation =
+            options.TokenValidationParameters.ValidAudiences.ToArray();
+
+        return new JwtLatchContractResult(
+            placeholderAudiences,
+            specializedAudiences,
+            audiencesAfterSecondMutation);
+    }
+
+    private static WebScriptHostConfigurationContractResult RunWebScriptHostConfigurationContract(
+        bool isAppService,
+        bool isLinuxContainer,
+        bool isLinuxAppService)
+    {
+        const string keyDelimiter = ":";
+        string selfHostKey = ConfigurationSectionNames.WebHost
+            + keyDelimiter + nameof(ScriptApplicationHostOptions.IsSelfHost);
+        string scriptPathKey = ConfigurationSectionNames.WebHost
+            + keyDelimiter + nameof(ScriptApplicationHostOptions.ScriptPath);
+        string logPathKey = ConfigurationSectionNames.WebHost
+            + keyDelimiter + nameof(ScriptApplicationHostOptions.LogPath);
+
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsiteHomePath,
+            "first-home");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebJobsScriptRoot,
+            "first-root");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.FunctionsLogPath,
+            "first-logs");
+        WebScriptHostConfigurationSource source = new()
+        {
+            IsAppServiceEnvironment = isAppService,
+            IsLinuxContainerEnvironment = isLinuxContainer,
+            IsLinuxAppServiceEnvironment = isLinuxAppService
+        };
+        IConfigurationProvider provider = source.Build(new ConfigurationBuilder());
+        provider.Load();
+        string firstSelfHost = GetProviderValue(provider, selfHostKey);
+        string firstScriptPath = GetProviderValue(provider, scriptPathKey);
+        string firstLogPath = GetProviderValue(provider, logPathKey);
+
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsiteHomePath,
+            "second-home");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebJobsScriptRoot,
+            "second-root");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.FunctionsLogPath,
+            "second-logs");
+        Environment.SetEnvironmentVariable(
+            EnvironmentSettingNames.AzureWebsiteInstanceId,
+            isAppService ? null : "new-app-service-marker");
+        provider.Load();
+
+        return new WebScriptHostConfigurationContractResult(
+            firstSelfHost,
+            firstScriptPath,
+            firstLogPath,
+            GetProviderValue(provider, selfHostKey),
+            GetProviderValue(provider, scriptPathKey),
+            GetProviderValue(provider, logPathKey));
+    }
+
+    private static string GetProviderValue(IConfigurationProvider provider, string key)
+    {
+        return provider.TryGet(key, out string value)
+            ? value
+            : null;
+    }
+
+    private static void InvokeMessageReceived(
+        JwtBearerOptions options, IServiceProvider serviceProvider)
+    {
+        DefaultHttpContext httpContext = new()
+        {
+            RequestServices = serviceProvider
+        };
+        AuthenticationScheme scheme = new(
+            JwtBearerDefaults.AuthenticationScheme,
+            displayName: null,
+            typeof(JwtBearerHandler));
+        MessageReceivedContext context = new(httpContext, scheme, options);
+        options.Events.MessageReceived(context).GetAwaiter().GetResult();
+    }
+
+    private static bool InvokeEnvironmentBoolean(object environment, string methodName)
+    {
+        Type extensionsType = typeof(SystemEnvironment).Assembly.GetType(
+            "Microsoft.Azure.WebJobs.Script.EnvironmentExtensions",
+            throwOnError: true);
+        MethodInfo method = extensionsType.GetMethod(
+            methodName,
+            BindingFlags.Public | BindingFlags.Static)
+            ?? throw new MissingMethodException(extensionsType.FullName, methodName);
+        return (bool)method.Invoke(null, [environment]);
+    }
+
+    private static OSPlatform ParsePlatform(string platform)
+    {
+        if (string.Equals(platform, OSPlatform.Windows.ToString(), StringComparison.Ordinal))
+        {
+            return OSPlatform.Windows;
+        }
+
+        if (string.Equals(platform, OSPlatform.Linux.ToString(), StringComparison.Ordinal))
+        {
+            return OSPlatform.Linux;
+        }
+
+        throw new InvalidOperationException($"Unsupported platform '{platform}'.");
+    }
+
+    private static string FormatMethodSignature(MethodInfo method)
+    {
+        string parameters = string.Join(
+            ", ",
+            method.GetParameters().Select((parameter, index) =>
+            {
+                string modifier = parameter.IsOut
+                    ? "out "
+                    : parameter.ParameterType.IsByRef
+                        ? "ref "
+                        : method.IsDefined(typeof(ExtensionAttribute), inherit: false)
+                            && index == 0
+                                ? "this "
+                                : string.Empty;
+                string defaultValue = parameter.HasDefaultValue
+                    ? $" = {FormatDefaultValue(parameter.DefaultValue)}"
+                    : string.Empty;
+                return $"{modifier}{FormatTypeName(parameter.ParameterType)} {parameter.Name}{defaultValue}";
+            }));
+
+        return $"method {FormatTypeName(method.ReturnType)} {FormatTypeName(method.DeclaringType)}.{method.Name}({parameters})";
+    }
+
+    private static string FormatDefaultValue(object value)
+    {
+        return value switch
+        {
+            null => "null",
+            string text => $"\"{text}\"",
+            char character => $"'{character}'",
+            bool boolean => boolean ? "true" : "false",
+            Missing => "missing",
+            _ => Convert.ToString(value, CultureInfo.InvariantCulture)
+        };
+    }
+
+    private static string FormatTypeName(Type type)
+    {
+        if (type.IsByRef)
+        {
+            return FormatTypeName(type.GetElementType());
+        }
+
+        if (type.IsArray)
+        {
+            return $"{FormatTypeName(type.GetElementType())}[{new string(',', type.GetArrayRank() - 1)}]";
+        }
+
+        if (!type.IsGenericType)
+        {
+            return (type.FullName ?? type.Name).Replace('+', '.');
+        }
+
+        string genericName = type.GetGenericTypeDefinition().FullName;
+        genericName = genericName[..genericName.IndexOf('`')].Replace('+', '.');
+        return $"{genericName}<{string.Join(", ", type.GetGenericArguments().Select(FormatTypeName))}>";
+    }
+
     private static void WriteResult(object result)
     {
         Console.WriteLine(
             EnvironmentVariablesConfigurationTestContracts.ResultPrefix
-            + JsonSerializer.Serialize(result, result.GetType()));
+            + JsonSerializer.Serialize(
+                result,
+                result.GetType(),
+                EnvironmentBehaviorParityTestContracts.SerializerOptions));
     }
 
     private static CasingContractResult RunCasingContract()

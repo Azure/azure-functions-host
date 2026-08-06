@@ -2,6 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Config.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
@@ -125,6 +128,81 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(options.IsFileSystemReadOnly, true);
         }
 
+        [Fact]
+        public void ZipDeployment_CompleteMarkersRemainPhaseStableAndPackageInputsRemainLateBound()
+        {
+            foreach (EnvironmentProfileContract profile in
+                EnvironmentBehaviorParityFixtures.CompleteProfiles)
+            {
+                foreach (HostPhase phase in Enum.GetValues<HostPhase>())
+                {
+                    Dictionary<string, string> variables = new(
+                        profile.Markers,
+                        StringComparer.Ordinal)
+                    {
+                        [EnvironmentSettingNames.AzureWebsitePlaceholderMode] =
+                            EnvironmentBehaviorParityFixtures.IsPlaceholderPhase(phase)
+                                ? "1"
+                                : "0"
+                    };
+                    TestEnvironment environment = new(variables)
+                    {
+                        Platform = string.Equals(
+                            profile.DefaultPlatform,
+                            OSPlatform.Windows.ToString(),
+                            StringComparison.Ordinal)
+                                ? OSPlatform.Windows
+                                : OSPlatform.Linux
+                    };
+                    TestScriptApplicationHostOptionsSetup setup =
+                        CreateSetup(environment, blobExists: true);
+                    environment.SetEnvironmentVariable(
+                        EnvironmentSettingNames.AzureWebsiteRunFromPackage,
+                        "1");
+                    ScriptApplicationHostOptions options = new();
+
+                    setup.Configure(
+                        ScriptApplicationHostOptionsSetup.SkipPlaceholder,
+                        options);
+
+                    Assert.True(options.IsFileSystemReadOnly);
+                    Assert.False(options.IsScmRunFromPackage);
+
+                    environment.SetEnvironmentVariable(
+                        EnvironmentSettingNames.AzureWebsiteRunFromPackage,
+                        null);
+                    environment.SetEnvironmentVariable(
+                        EnvironmentSettingNames.ScmRunFromPackage,
+                        "https://functionstest.blob.core.windows.net/microsoft/functionapp.zip");
+                    options = new ScriptApplicationHostOptions();
+                    setup.Configure(options);
+
+                    bool linuxConsumption = profile.Profile is
+                        HostingEnvironmentProfile.LinuxConsumptionAtlas
+                        or HostingEnvironmentProfile.LinuxConsumptionLegion;
+                    bool alwaysReadOnly = profile.Profile is
+                        HostingEnvironmentProfile.FlexConsumptionLegion
+                        or HostingEnvironmentProfile.ContainerApps;
+                    Assert.Equal(
+                        linuxConsumption || alwaysReadOnly,
+                        options.IsFileSystemReadOnly);
+                    Assert.Equal(
+                        linuxConsumption,
+                        options.IsScmRunFromPackage);
+
+                    environment.SetEnvironmentVariable(
+                        EnvironmentSettingNames.ScmRunFromPackage,
+                        null);
+                    options = new ScriptApplicationHostOptions
+                    {
+                        IsFileSystemReadOnly = true
+                    };
+                    setup.Configure(options);
+                    Assert.True(options.IsFileSystemReadOnly);
+                }
+            }
+        }
+
         private void ConfiguredOptions(ScriptApplicationHostOptions options, bool inStandbyMode, IEnvironment environment = null, bool blobExists = false)
         {
             var builder = new ConfigurationBuilder();
@@ -139,6 +217,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
 
             setup.Configure(options);
+        }
+
+        private static TestScriptApplicationHostOptionsSetup CreateSetup(
+            TestEnvironment environment,
+            bool blobExists)
+        {
+            IConfiguration configuration = new ConfigurationBuilder().Build();
+            TestOptionsMonitor<StandbyOptions> standbyOptions = new(
+                new StandbyOptions());
+            Mock<IServiceProvider> serviceProvider = new();
+            return new TestScriptApplicationHostOptionsSetup(
+                configuration,
+                standbyOptions,
+                serviceProvider.Object,
+                environment)
+            {
+                BlobExistsReturnValue = blobExists
+            };
         }
 
         private class TestScriptApplicationHostOptionsSetup : ScriptApplicationHostOptionsSetup
