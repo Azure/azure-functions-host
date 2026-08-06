@@ -44,5 +44,11 @@ Repository configuration now provides:
 The public pipeline uses the existing 1ES unofficial template and repository
 authentication steps. The focused job introduces no internal pool, protected
 resource, or secret-only condition, preserving compatibility with public and
-fork pull-request validation. The first public pipeline execution remains the
-validation of the complete 1ES job and fork-PR path.
+fork pull-request validation.
+
+Public build [296279 (`4.1054.100-ci.26406.2`)](https://dev.azure.com/azfunc/public/_build/results?buildId=296279)
+completed successfully for source commit
+`f2028a7483050e7311d8582bc438ef47605ded69`. Its timeline confirms that both
+`Run Unit Tests` and `Run Environment Provider Contract Tests (Linux)`
+completed successfully on `1es-pool-azfunc-public`; the Linux job executed and
+was not skipped.
