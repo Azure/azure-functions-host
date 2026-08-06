@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -54,11 +55,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new ArgumentNullException(nameof(ownerId));
             }
 
+            string lockPeriodSeconds = lockPeriod.TotalSeconds.ToString(CultureInfo.InvariantCulture);
             var lockHandle = new KubernetesLockHandle();
             var request = new HttpRequestMessage()
             {
                 Method = HttpMethod.Post,
-                RequestUri = GetRequestUri($"/acquire?name={lockId}&owner={ownerId}&duration={lockPeriod.TotalSeconds}&renewDeadline={LeaseRenewDeadline}"),
+                RequestUri = GetRequestUri($"/acquire?name={lockId}&owner={ownerId}&duration={lockPeriodSeconds}&renewDeadline={LeaseRenewDeadline}"),
             };
 
             var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -66,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 lockHandle.LockId = lockId;
                 lockHandle.Owner = ownerId;
-                lockHandle.LockPeriod = lockPeriod.TotalSeconds.ToString();
+                lockHandle.LockPeriod = lockPeriodSeconds;
             }
             return lockHandle;
         }
