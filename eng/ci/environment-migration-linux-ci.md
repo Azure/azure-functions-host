@@ -71,6 +71,23 @@ completed successfully for source branch
 completed successfully; both the Windows unit-test job and the Linux
 provider-contract job executed and were not skipped.
 
+## Phase 1 PR-03 environment parity coverage
+
+Public build [296347 (`4.1054.100-ci.26406.4`)](https://dev.azure.com/azfunc/public/_build/results?buildId=296347&view=results)
+caught deterministic `CallerFilePath` source mapping in the new parity tests:
+the Windows unit job could not discover the repository from the mapped
+`/_/test/...` path, while the Linux provider-contract job succeeded. Commit
+`a49f80ad6f1bd8cd668c863d4c3f4b5672d2b842` added a mapped-path regression
+and reused the repository-root fallback for source inventory discovery.
+
+Public build [296348 (`4.1054.100-ci.26406.5`)](https://dev.azure.com/azfunc/public/_build/results?buildId=296348&view=results)
+completed successfully for source branch
+`refs/heads/fabiocav/fabiocav-ienvironment-phase-1c` and source commit
+`a49f80ad6f1bd8cd668c863d4c3f4b5672d2b842`. Its timeline confirms that both
+`Run Unit Tests` and `Run Environment Provider Contract Tests (Linux)`
+completed successfully; both the Windows unit-test job and the Linux
+provider-contract job executed and were not skipped.
+
 ## DG-6 process-mutator shape
 
 PR-02 approves the following shape for the later production seam; it does not
