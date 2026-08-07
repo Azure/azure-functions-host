@@ -1,0 +1,4 @@
+# The compiled public API baselines and JSON ledgers are byte-compared and format-checked by
+# PublicApiBaselineTests, so they must stay UTF-8 with LF line endings on every platform.
+*.txt text eol=lf
+*.json text eol=lf

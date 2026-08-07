@@ -248,6 +248,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
             var syncTriggerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
             syncTriggerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new TriggersOperationResult { Success = true });
+            string workerRuntime = testEnvironment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            MutableTestConfiguration workerConfiguration = new(
+                workerRuntime is null
+                    ? null
+                    : new Dictionary<string, string>
+                    {
+                        [EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime
+                    });
 
             FileUtility.CopyDirectory(sourceFunctionApp, appContent);
             var host = new TestFunctionHost(sourceFunctionApp, testLogPath,
@@ -278,17 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 },
                 configureWebHostAppConfiguration: config =>
                 {
-                    // Surface environment variables from TestEnvironment into IConfiguration,
-                    // matching production where ScriptEnvironmentVariablesConfigurationSource
-                    // reads real process env vars.
-                    string workerRuntime = testEnvironment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-                    if (workerRuntime is not null)
-                    {
-                        config.AddInMemoryCollection(new Dictionary<string, string>
-                        {
-                            [EnvironmentSettingNames.FunctionWorkerRuntime] = workerRuntime
-                        });
-                    }
+                    workerConfiguration.AddTo(config);
                 });
 
             return host;

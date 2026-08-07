@@ -1,9 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
@@ -13,15 +11,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void ConsoleLoggingOptionsSetup_ConfiguresExpectedDefaults()
         {
-            IConfiguration config = new ConfigurationBuilder()
-               .AddInMemoryCollection(new Dictionary<string, string>
-               {
-                   //{ $"{SamplingSettings}:MaxTelemetryItemsPerSecond", "25" },
-                   //{ $"{SamplingSettings}:IsEnabled", "false" }
-               })
-               .Build();
+            MutableTestConfiguration configuration = new();
 
-            ConsoleLoggingOptionsSetup setup = new ConsoleLoggingOptionsSetup(config);
+            ConsoleLoggingOptionsSetup setup = new(configuration.Configuration);
             ConsoleLoggingOptions options = new ConsoleLoggingOptions();
 
             setup.Configure(options);
@@ -37,18 +29,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData(null, false)]
         public void ConsoleLoggingOptionsSetup_CanDisableLogging(string value, bool expectLoggingDisabled)
         {
-            var settings = new Dictionary<string, string>();
-
-            if (value != null)
+            MutableTestConfiguration configuration = new();
+            if (value is not null)
             {
-                settings[EnvironmentSettingNames.ConsoleLoggingDisabled] = value;
+                configuration.Set(EnvironmentSettingNames.ConsoleLoggingDisabled, value);
+                configuration.Reload();
             }
 
-            IConfiguration config = new ConfigurationBuilder()
-               .AddInMemoryCollection(settings)
-               .Build();
-
-            ConsoleLoggingOptionsSetup setup = new ConsoleLoggingOptionsSetup(config);
+            ConsoleLoggingOptionsSetup setup = new(configuration.Configuration);
             ConsoleLoggingOptions options = new ConsoleLoggingOptions();
             setup.Configure(options);
 
@@ -58,14 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void ConsoleLoggingOptionsSetup_CanDisableBuffer()
         {
-            var settings = new Dictionary<string, string>();
-            settings[EnvironmentSettingNames.ConsoleLoggingBufferSize] = "0";
+            MutableTestConfiguration configuration = new();
+            configuration.Set(EnvironmentSettingNames.ConsoleLoggingBufferSize, "0");
+            configuration.Reload();
 
-            IConfiguration config = new ConfigurationBuilder()
-               .AddInMemoryCollection(settings)
-               .Build();
-
-            ConsoleLoggingOptionsSetup setup = new ConsoleLoggingOptionsSetup(config);
+            ConsoleLoggingOptionsSetup setup = new(configuration.Configuration);
             ConsoleLoggingOptions options = new ConsoleLoggingOptions();
             setup.Configure(options);
 
@@ -75,14 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void ConsoleLoggingOptionsSetup_CanSetBufferSize()
         {
-            var settings = new Dictionary<string, string>();
-            settings[EnvironmentSettingNames.ConsoleLoggingBufferSize] = "100";
+            MutableTestConfiguration configuration = new();
+            configuration.Set(EnvironmentSettingNames.ConsoleLoggingBufferSize, "100");
+            configuration.Reload();
 
-            IConfiguration config = new ConfigurationBuilder()
-               .AddInMemoryCollection(settings)
-               .Build();
-
-            ConsoleLoggingOptionsSetup setup = new ConsoleLoggingOptionsSetup(config);
+            ConsoleLoggingOptionsSetup setup = new(configuration.Configuration);
             ConsoleLoggingOptions options = new ConsoleLoggingOptions();
             setup.Configure(options);
 
@@ -92,13 +74,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void ConsoleLoggingOptionsSetup_DoesNotOverwriteCustomBufferSizeIfNotSet()
         {
-            var settings = new Dictionary<string, string>();
+            MutableTestConfiguration configuration = new();
 
-            IConfiguration config = new ConfigurationBuilder()
-               .AddInMemoryCollection(settings)
-               .Build();
-
-            ConsoleLoggingOptionsSetup setup = new ConsoleLoggingOptionsSetup(config);
+            ConsoleLoggingOptionsSetup setup = new(configuration.Configuration);
             ConsoleLoggingOptions options = new ConsoleLoggingOptions { BufferSize = 100 };
             setup.Configure(options);
 

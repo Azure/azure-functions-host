@@ -234,15 +234,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, null);
         }
 
-        private class TestEnvironmentEx : TestEnvironment
+        private sealed class TestEnvironmentEx : TestEnvironment
         {
-            public override void SetEnvironmentVariable(string name, string value)
+            public TestEnvironmentEx()
             {
-                if (name == "throw")
+                OnSetEnvironmentVariable = new RecordingProcessMutator
                 {
-                    throw new InvalidOperationException("Kaboom!");
-                }
-                base.SetEnvironmentVariable(name, value);
+                    FailureName = "throw",
+                    FailureMessage = "Kaboom!"
+                }.Set;
             }
         }
     }

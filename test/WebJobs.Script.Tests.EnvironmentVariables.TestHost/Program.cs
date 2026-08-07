@@ -165,12 +165,12 @@ internal static class Program
                     return new EnvironmentStableFactVariantResult(
                         variant.Name,
                         variant.Profile,
-                        variant.Platform,
-                        variant.Is64BitProcess,
+                        variant.ProcessFacts.Platform.ToString(),
+                        variant.ProcessFacts.Is64BitProcess,
                         RunHelperSet(
                             profile,
-                            variant.Platform,
-                            variant.Is64BitProcess,
+                            variant.ProcessFacts.Platform.ToString(),
+                            variant.ProcessFacts.Is64BitProcess,
                             variant.VariableOverrides,
                             methods,
                             clearCache));

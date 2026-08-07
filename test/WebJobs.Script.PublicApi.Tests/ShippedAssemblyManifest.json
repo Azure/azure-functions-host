@@ -1,0 +1,126 @@
+{
+  "formatVersion": 1,
+  "packJobTemplate": "eng/ci/templates/official/jobs/build-artifacts-windows.yml",
+  "packages": [
+    {
+      "packageId": "Microsoft.Azure.WebJobs.Script",
+      "packageProject": "src/WebJobs.Script/WebJobs.Script.csproj",
+      "packageProjectAssemblyName": "Microsoft.Azure.WebJobs.Script",
+      "packageProjectTargetFrameworks": [ "net10.0" ],
+      "packageProjectIncludesBuildOutput": true,
+      "assemblies": [
+        {
+          "packageAssetPath": "lib/net10.0/Microsoft.Azure.WebJobs.Script.dll",
+          "baselineAssemblyName": "Microsoft.Azure.WebJobs.Script",
+          "baselineAssemblyProject": "src/WebJobs.Script/WebJobs.Script.csproj",
+          "baselineAssemblyTargetFramework": "net10.0",
+          "baselineAssemblyFrameworkName": ".NETCoreApp,Version=v10.0",
+          "releaseOutput": "out/bin/WebJobs.Script/release/Microsoft.Azure.WebJobs.Script.dll",
+          "baselineFile": "Baselines/Microsoft.Azure.WebJobs.Script.txt"
+        }
+      ]
+    },
+    {
+      "packageId": "Microsoft.Azure.WebJobs.Script.WebHost",
+      "packageProject": "src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj",
+      "packageProjectAssemblyName": "Microsoft.Azure.WebJobs.Script.WebHost",
+      "packageProjectTargetFrameworks": [ "net10.0" ],
+      "packageProjectIncludesBuildOutput": true,
+      "assemblies": [
+        {
+          "packageAssetPath": "lib/net10.0/Microsoft.Azure.WebJobs.Script.WebHost.dll",
+          "baselineAssemblyName": "Microsoft.Azure.WebJobs.Script.WebHost",
+          "baselineAssemblyProject": "src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj",
+          "baselineAssemblyTargetFramework": "net10.0",
+          "baselineAssemblyFrameworkName": ".NETCoreApp,Version=v10.0",
+          "releaseOutput": "out/bin/WebJobs.Script.WebHost/release/Microsoft.Azure.WebJobs.Script.WebHost.dll",
+          "baselineFile": "Baselines/Microsoft.Azure.WebJobs.Script.WebHost.txt"
+        }
+      ]
+    },
+    {
+      "packageId": "Microsoft.Azure.WebJobs.Script.Grpc",
+      "packageProject": "src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj",
+      "packageProjectAssemblyName": "Microsoft.Azure.WebJobs.Script.Grpc",
+      "packageProjectTargetFrameworks": [ "net10.0" ],
+      "packageProjectIncludesBuildOutput": true,
+      "assemblies": [
+        {
+          "packageAssetPath": "lib/net10.0/Microsoft.Azure.WebJobs.Script.Grpc.dll",
+          "baselineAssemblyName": "Microsoft.Azure.WebJobs.Script.Grpc",
+          "baselineAssemblyProject": "src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj",
+          "baselineAssemblyTargetFramework": "net10.0",
+          "baselineAssemblyFrameworkName": ".NETCoreApp,Version=v10.0",
+          "releaseOutput": "out/bin/WebJobs.Script.Grpc/release/Microsoft.Azure.WebJobs.Script.Grpc.dll",
+          "baselineFile": "Baselines/Microsoft.Azure.WebJobs.Script.Grpc.txt"
+        }
+      ]
+    },
+    {
+      "packageId": "Microsoft.Azure.WebJobs.Script.Abstractions",
+      "packageProject": "src/WebJobs.Script.Abstractions/WebJobs.Script.Abstractions.csproj",
+      "packageProjectAssemblyName": "Microsoft.Azure.WebJobs.Script.Abstractions",
+      "packageProjectTargetFrameworks": [ "netstandard2.0" ],
+      "packageProjectIncludesBuildOutput": true,
+      "assemblies": [
+        {
+          "packageAssetPath": "lib/netstandard2.0/Microsoft.Azure.WebJobs.Script.Abstractions.dll",
+          "baselineAssemblyName": "Microsoft.Azure.WebJobs.Script.Abstractions",
+          "baselineAssemblyProject": "src/WebJobs.Script.Abstractions/WebJobs.Script.Abstractions.csproj",
+          "baselineAssemblyTargetFramework": "netstandard2.0",
+          "baselineAssemblyFrameworkName": ".NETStandard,Version=v2.0",
+          "releaseOutput": "out/bin/WebJobs.Script.Abstractions/release/Microsoft.Azure.WebJobs.Script.Abstractions.dll",
+          "baselineFile": "Baselines/Microsoft.Azure.WebJobs.Script.Abstractions.txt"
+        }
+      ]
+    },
+    {
+      "packageId": "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator",
+      "packageProject": "tools/ExtensionsMetadataGenerator/src/ExtensionsMetadataGenerator/ExtensionsMetadataGenerator.csproj",
+      "packageProjectAssemblyName": "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator",
+      "packageProjectTargetFrameworks": [ "netstandard2.0", "net46" ],
+      "packageProjectIncludesBuildOutput": false,
+      "packageProjectOutputCollectionTarget": "_CollectRuntimeDependencies",
+      "packageProjectOutputCollectionPackagePath": "tools/%(_InnerOutputFiles.PackagePath)",
+      "assemblies": [
+        {
+          "packageAssetPath": "tools/net46/Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll",
+          "baselineAssemblyName": "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator",
+          "baselineAssemblyProject": "tools/ExtensionsMetadataGenerator/src/ExtensionsMetadataGenerator/ExtensionsMetadataGenerator.csproj",
+          "baselineAssemblyTargetFramework": "net46",
+          "baselineAssemblyFrameworkName": ".NETFramework,Version=v4.6",
+          "releaseOutput": "out/bin/ExtensionsMetadataGenerator/release_net46/Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll",
+          "baselineFile": "Baselines/Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.net46.txt"
+        },
+        {
+          "packageAssetPath": "tools/netstandard2.0/Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll",
+          "baselineAssemblyName": "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator",
+          "baselineAssemblyProject": "tools/ExtensionsMetadataGenerator/src/ExtensionsMetadataGenerator/ExtensionsMetadataGenerator.csproj",
+          "baselineAssemblyTargetFramework": "netstandard2.0",
+          "baselineAssemblyFrameworkName": ".NETStandard,Version=v2.0",
+          "releaseOutput": "out/bin/ExtensionsMetadataGenerator/release_netstandard2.0/Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll",
+          "baselineFile": "Baselines/Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.netstandard2.0.txt"
+        },
+        {
+          "packageAssetPath": "tools/netstandard2.0/generator/Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.Console.dll",
+          "baselineAssemblyName": "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.Console",
+          "baselineAssemblyProject": "tools/ExtensionsMetadataGenerator/src/ExtensionsMetadataGenerator.Console/ExtensionsMetadataGenerator.Console.csproj",
+          "baselineAssemblyTargetFramework": "net6.0",
+          "baselineAssemblyFrameworkName": ".NETCoreApp,Version=v6.0",
+          "releaseOutput": "out/bin/ExtensionsMetadataGenerator.Console/release/Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.Console.dll",
+          "baselineFile": "Baselines/Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.Console.txt"
+        }
+      ]
+    }
+  ],
+  "nonShippedProjects": [
+    {
+      "project": "src/WebJobs.Script.SiteExtension/WebJobs.Script.SiteExtension.csproj",
+      "reason": "Microsoft.Build.NoTargets packaging project. It produces the site extension zip from the WebHost publish output and compiles no first-party assembly of its own."
+    },
+    {
+      "project": "tools/ExtensionsMetadataGenerator/src/ExtensionsMetadataGenerator.Console/ExtensionsMetadataGenerator.Console.csproj",
+      "reason": "Not packed directly. Its output assembly is the first-party API shipped inside the Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator package and is baselined through that package entry."
+    }
+  ]
+}

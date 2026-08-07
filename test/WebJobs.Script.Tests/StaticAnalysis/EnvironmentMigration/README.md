@@ -11,6 +11,11 @@ numbers:
   debt for `IEnvironment`, `SystemEnvironment.Instance`,
   `ScriptSettingsManager.Instance`, and hosting-environment predicates.
 
+The focused compiled signatures in this inventory identify migration-related
+surfaces; they are not a complete compatibility declaration. The package-complete
+compiled inventory and the Core Tools preservation contract live in
+`test/WebJobs.Script.PublicApi.Tests`.
+
 Each source usage is keyed by repository-relative path, a trivia-free normalized
 token sequence, and multiplicity. The scanner considers every preprocessor
 branch, normalizes line endings, and preserves code inside raw-string

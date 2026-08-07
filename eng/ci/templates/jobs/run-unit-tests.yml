@@ -9,6 +9,7 @@ jobs:
       **/WebJobs.Script.Tests.csproj
       **/WebJobs.Script.Tests.EnvironmentVariables.TestHost.csproj
       **/WebJobs.Script.Abstractions.Tests.csproj
+      **/WebJobs.Script.PublicApi.Tests.csproj
 
   templateContext:
     outputParentDirectory: $(Build.ArtifactStagingDirectory)

@@ -1,0 +1,111 @@
+{
+  "formatVersion": 1,
+  "description": "Hard compatibility contract for Azure Functions Core Tools. These six compiled records are the only externally required part of the IEnvironment migration surface. Removing or changing any of them requires a coordinated Core Tools change; the baseline update workflow refuses to bless drift here on its own.",
+  "audit": {
+    "scope": "Read-only audit of the exact remote tips and pinned host packages of both supported Azure Functions Core Tools development lines.",
+    "repository": "Azure/azure-functions-core-tools",
+    "branches": [
+      {
+        "branch": "main",
+        "commit": "dce5153de58a6f38a33630c20f89e9733a5b6165",
+        "hostPackage": "Microsoft.Azure.WebJobs.Script.WebHost",
+        "hostPackageVersion": "4.1051.300",
+        "consumesMigrationApi": true,
+        "notes": "Exactly three compile-time call sites, all passing SystemEnvironment.Instance. No direct IEnvironment member calls, no EnvironmentExtensions or ScriptSettingsManager use, and no reflection-based loading of these types."
+      },
+      {
+        "branch": "vnext",
+        "commit": "b50e3d162adbdcc746891bcfbe16f217c832dcf1",
+        "hostPackage": "Microsoft.Azure.WebJobs.Script.WebHost",
+        "hostPackageVersion": "4.1048.200",
+        "consumesMigrationApi": false,
+        "notes": "Zero references. Its extension bundle flow is independent of the host implementation, so it requires no migration bridge."
+      }
+    ],
+    "callSites": [
+      {
+        "branch": "main",
+        "file": "src/Cli/func/Actions/HostActions/StartHostAction.cs",
+        "line": 386,
+        "call": "FeatureFlags.IsEnabled(string, IEnvironment)",
+        "argument": "SystemEnvironment.Instance",
+        "preserveRecordIds": [ "IEnvironment", "SystemEnvironment", "SystemEnvironment.Instance", "FeatureFlags.IsEnabled" ]
+      },
+      {
+        "branch": "main",
+        "file": "src/Cli/func/ExtensionBundle/ExtensionBundleHelper.cs",
+        "line": 42,
+        "call": "ExtensionBundleConfigurationHelper(IConfiguration, IEnvironment)",
+        "argument": "SystemEnvironment.Instance",
+        "preserveRecordIds": [ "IEnvironment", "SystemEnvironment", "SystemEnvironment.Instance", "ExtensionBundleConfigurationHelper.ctor" ]
+      },
+      {
+        "branch": "main",
+        "file": "src/Cli/func/ExtensionBundle/ExtensionBundleHelper.cs",
+        "line": 62,
+        "call": "ExtensionBundleManager(ExtensionBundleOptions, IEnvironment, ILoggerFactory, FunctionsHostingConfigOptions, IHttpClientFactory)",
+        "argument": "SystemEnvironment.Instance",
+        "preserveRecordIds": [ "IEnvironment", "SystemEnvironment", "SystemEnvironment.Instance", "ExtensionBundleManager.ctor" ]
+      }
+    ],
+    "notPreserved": {
+      "members": [
+        "Microsoft.Azure.WebJobs.Script.IEnvironment.GetEnvironmentVariable(System.String)",
+        "Microsoft.Azure.WebJobs.Script.IEnvironment.SetEnvironmentVariable(System.String,System.String)",
+        "Microsoft.Azure.WebJobs.Script.IEnvironment.Is64BitProcess",
+        "Microsoft.Azure.WebJobs.Script.IEnvironment.Platform"
+      ],
+      "reason": "The four IEnvironment members are not directly consumed by Core Tools and are not independently protected for external compatibility. They remain while the host still needs them and may evolve or be removed with their owning internal migration, provided the six records below still pass."
+    }
+  },
+  "preserve": [
+    {
+      "id": "IEnvironment",
+      "assembly": "Microsoft.Azure.WebJobs.Script",
+      "kind": "type",
+      "identity": "Microsoft.Azure.WebJobs.Script.IEnvironment",
+      "signature": "public interface Microsoft.Azure.WebJobs.Script.IEnvironment",
+      "effectiveAccessibility": "public"
+    },
+    {
+      "id": "SystemEnvironment",
+      "assembly": "Microsoft.Azure.WebJobs.Script",
+      "kind": "type",
+      "identity": "Microsoft.Azure.WebJobs.Script.SystemEnvironment",
+      "signature": "public class Microsoft.Azure.WebJobs.Script.SystemEnvironment : Microsoft.Azure.WebJobs.Script.IEnvironment",
+      "effectiveAccessibility": "public"
+    },
+    {
+      "id": "SystemEnvironment.Instance",
+      "assembly": "Microsoft.Azure.WebJobs.Script",
+      "kind": "property",
+      "identity": "Microsoft.Azure.WebJobs.Script.SystemEnvironment.Instance",
+      "signature": "public static Microsoft.Azure.WebJobs.Script.SystemEnvironment Instance { get; }",
+      "effectiveAccessibility": "public"
+    },
+    {
+      "id": "FeatureFlags.IsEnabled",
+      "assembly": "Microsoft.Azure.WebJobs.Script",
+      "kind": "method",
+      "identity": "Microsoft.Azure.WebJobs.Script.Config.FeatureFlags.IsEnabled(System.String,Microsoft.Azure.WebJobs.Script.IEnvironment)",
+      "signature": "public static System.Boolean IsEnabled(System.String name, Microsoft.Azure.WebJobs.Script.IEnvironment environment)",
+      "effectiveAccessibility": "public"
+    },
+    {
+      "id": "ExtensionBundleConfigurationHelper.ctor",
+      "assembly": "Microsoft.Azure.WebJobs.Script",
+      "kind": "constructor",
+      "identity": "Microsoft.Azure.WebJobs.Script.Configuration.ExtensionBundleConfigurationHelper..ctor(Microsoft.Extensions.Configuration.IConfiguration,Microsoft.Azure.WebJobs.Script.IEnvironment)",
+      "signature": "public ExtensionBundleConfigurationHelper(Microsoft.Extensions.Configuration.IConfiguration configuration, Microsoft.Azure.WebJobs.Script.IEnvironment environment)",
+      "effectiveAccessibility": "public"
+    },
+    {
+      "id": "ExtensionBundleManager.ctor",
+      "assembly": "Microsoft.Azure.WebJobs.Script",
+      "kind": "constructor",
+      "identity": "Microsoft.Azure.WebJobs.Script.ExtensionBundle.ExtensionBundleManager..ctor(Microsoft.Azure.WebJobs.Script.Configuration.ExtensionBundleOptions,Microsoft.Azure.WebJobs.Script.IEnvironment,Microsoft.Extensions.Logging.ILoggerFactory,Microsoft.Azure.WebJobs.Script.Config.FunctionsHostingConfigOptions,System.Net.Http.IHttpClientFactory)",
+      "signature": "public ExtensionBundleManager(Microsoft.Azure.WebJobs.Script.Configuration.ExtensionBundleOptions options, Microsoft.Azure.WebJobs.Script.IEnvironment environment, Microsoft.Extensions.Logging.ILoggerFactory loggerFactory, Microsoft.Azure.WebJobs.Script.Config.FunctionsHostingConfigOptions configOption, System.Net.Http.IHttpClientFactory httpClientFactory)",
+      "effectiveAccessibility": "public"
+    }
+  ]
+}

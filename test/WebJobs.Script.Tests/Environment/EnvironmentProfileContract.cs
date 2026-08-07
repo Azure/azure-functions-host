@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Azure.WebJobs.Script.Tests;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script.Config.Tests;
@@ -60,8 +61,7 @@ internal sealed record EnvironmentProfileResult(
 internal sealed record EnvironmentStableFactVariantContract(
     string Name,
     HostingEnvironmentProfile Profile,
-    string Platform,
-    bool Is64BitProcess,
+    TestProcessFacts ProcessFacts,
     Dictionary<string, string> VariableOverrides);
 
 internal sealed record EnvironmentStableFactVariantResult(
@@ -293,8 +293,11 @@ internal static class EnvironmentBehaviorParityFixtures
         return new EnvironmentStableFactVariantContract(
             name,
             profile,
-            platform.ToString(),
-            is64BitProcess,
+            new TestProcessFacts(
+                platform,
+                RuntimeInformation.OSArchitecture,
+                is64BitProcess,
+                Environment.ProcessorCount),
             values);
     }
 

@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <AssemblyName>Microsoft.Azure.WebJobs.Script.PublicApi.Tests</AssemblyName>
+    <RootNamespace>Microsoft.Azure.WebJobs.Script.PublicApi.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="../../stylecop.json" Link="stylecop.json" />
+  </ItemGroup>
+
+  <!--
+    The inspected assemblies are compiled against the ASP.NET Core shared framework. Referencing the
+    framework here lets the isolated load contexts resolve those reference assemblies while the gate
+    reads metadata. This is a shared framework reference only; it adds no package dependency.
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!--
+    Shipped assemblies are inspected from their exact Release build outputs under out/bin, so they only
+    need to be built. ReferenceOutputAssembly is disabled to keep this project's own compile surface
+    independent of the API it inventories and to avoid duplicate resolution of the inspected assemblies.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/WebJobs.Script/WebJobs.Script.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="../../src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="../../src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="../../src/WebJobs.Script.Abstractions/WebJobs.Script.Abstractions.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <ProjectReference Include="../../tools/ExtensionsMetadataGenerator/src/ExtensionsMetadataGenerator/ExtensionsMetadataGenerator.csproj"
+                      ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" />
+    <ProjectReference Include="../../tools/ExtensionsMetadataGenerator/src/ExtensionsMetadataGenerator.Console/ExtensionsMetadataGenerator.Console.csproj"
+                      ReferenceOutputAssembly="false" Private="false" SkipGetTargetFrameworkProperties="true" />
+  </ItemGroup>
+
+</Project>

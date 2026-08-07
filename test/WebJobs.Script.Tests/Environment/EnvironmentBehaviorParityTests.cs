@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Xunit;
@@ -119,8 +120,10 @@ public class EnvironmentBehaviorParityTests
                 baseline,
                 variantContract.Name);
             Assert.Equal(variantContract.Profile, variant.Profile);
-            Assert.Equal(variantContract.Platform, variant.Platform);
-            Assert.Equal(variantContract.Is64BitProcess, variant.Is64BitProcess);
+            Assert.Equal(variantContract.ProcessFacts.Platform.ToString(), variant.Platform);
+            Assert.Equal(variantContract.ProcessFacts.Is64BitProcess, variant.Is64BitProcess);
+            Assert.Equal(RuntimeInformation.OSArchitecture, variantContract.ProcessFacts.OSArchitecture);
+            Assert.Equal(Environment.ProcessorCount, variantContract.ProcessFacts.ProcessorCount);
         }
 
         EnvironmentProfileResult localWindows64 = Assert.Single(
