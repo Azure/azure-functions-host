@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests;
 /// <summary>
 /// Represents immutable process facts controlled by a test.
 /// </summary>
-public sealed record TestProcessFacts
+public sealed record TestProcessFacts : IProcessFacts
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="TestProcessFacts"/> class.
@@ -43,4 +43,25 @@ public sealed record TestProcessFacts
     /// Gets the processor count exposed to the test.
     /// </summary>
     public int ProcessorCount { get; }
+
+    /// <summary>
+    /// Creates process facts for the current runtime.
+    /// </summary>
+    public static TestProcessFacts Current => new(
+        SystemEnvironment.GetCurrentPlatform(),
+        RuntimeInformation.OSArchitecture,
+        Environment.Is64BitProcess,
+        Environment.ProcessorCount);
+
+    /// <inheritdoc />
+    public Architecture GetOSArchitecture()
+    {
+        return OSArchitecture;
+    }
+
+    /// <inheritdoc />
+    public OSPlatform GetOSPlatform()
+    {
+        return Platform;
+    }
 }

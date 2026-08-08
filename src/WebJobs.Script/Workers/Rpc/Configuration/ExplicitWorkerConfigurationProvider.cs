@@ -22,9 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         ILoggerFactory loggerFactory,
                         IMetricsLogger metricsLogger,
                         IWorkerProfileManager workerProfileManager,
-                        ISystemRuntimeInformation systemRuntimeInformation,
+                        IProcessFacts processFacts,
                         IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
-                        : base(metricsLogger, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
+                        : base(metricsLogger, workerProfileManager, processFacts, workerConfigurationResolverOptions)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryWorkerConfig);

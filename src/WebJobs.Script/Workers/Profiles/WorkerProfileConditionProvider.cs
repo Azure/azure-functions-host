@@ -11,11 +11,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
     {
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
+        private readonly IProcessFacts _processFacts;
 
-        public WorkerProfileConditionProvider(ILogger logger, IEnvironment environment)
+        public WorkerProfileConditionProvider(
+            ILogger logger, IEnvironment environment, IProcessFacts processFacts)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _processFacts = processFacts ?? throw new ArgumentNullException(nameof(processFacts));
         }
 
         /// <inheritdoc />
@@ -23,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
         {
             condition = descriptor.Type switch
             {
-                WorkerConstants.WorkerDescriptionProfileHostPropertyCondition => new HostPropertyCondition(_logger, SystemRuntimeInformation.Instance, descriptor),
+                WorkerConstants.WorkerDescriptionProfileHostPropertyCondition => new HostPropertyCondition(_logger, _processFacts, descriptor),
                 WorkerConstants.WorkerDescriptionProfileEnvironmentCondition => new EnvironmentCondition(_logger, _environment, descriptor),
                 _ => null
             };

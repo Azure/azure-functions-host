@@ -164,7 +164,14 @@ namespace Microsoft.Azure.WebJobs.Script
                 var extensionRequirementOptions = applicationOptions.RootServiceProvider.GetService<IOptions<ExtensionRequirementOptions>>();
 
                 var httpClientFactory = applicationOptions.RootServiceProvider.GetService<IHttpClientFactory>();
-                var bundleManager = new ExtensionBundleManager(extensionBundleOptions, SystemEnvironment.Instance, loggerFactory, configOption, httpClientFactory);
+                IProcessFacts processFacts =
+                    applicationOptions.RootServiceProvider.GetService<IProcessFacts>()
+                    ?? ProcessFacts.Capture();
+                var bundleManager = new ExtensionBundleManager(
+                    new ExtensionBundleManager(
+                        extensionBundleOptions, SystemEnvironment.Instance, loggerFactory,
+                        configOption, httpClientFactory),
+                    processFacts);
                 var metadataServiceManager = applicationOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
                 var workerConfigCacheInvalidator = applicationOptions.RootServiceProvider.GetService<WorkerConfigCacheInvalidator>();
 

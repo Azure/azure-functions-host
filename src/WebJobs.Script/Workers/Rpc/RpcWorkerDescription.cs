@@ -115,16 +115,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             ResolveDotNetDefaultExecutablePath(logger);
         }
 
-        internal void ValidateDefaultWorkerPathFormatters(ISystemRuntimeInformation systemRuntimeInformation)
+        internal void ValidateDefaultWorkerPathFormatters(IProcessFacts processFacts)
         {
             if (DefaultWorkerPath.Contains(RpcWorkerConstants.OSPlaceholder))
             {
-                ValidateOSPlatform(systemRuntimeInformation.GetOSPlatform());
+                ValidateOSPlatform(processFacts.Platform);
             }
 
             if (DefaultWorkerPath.Contains(RpcWorkerConstants.ArchitecturePlaceholder))
             {
-                ValidateArchitecture(systemRuntimeInformation.GetOSArchitecture());
+                ValidateArchitecture(processFacts.OSArchitecture);
             }
 
             if (DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder) && !string.IsNullOrEmpty(DefaultRuntimeVersion))
@@ -183,15 +183,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal void FormatWorkerPathIfNeeded(ISystemRuntimeInformation systemRuntimeInformation, string workerRuntime, string version, ILogger logger)
+        internal void FormatWorkerPathIfNeeded(IProcessFacts processFacts, string workerRuntime, string version, ILogger logger)
         {
             if (string.IsNullOrEmpty(DefaultWorkerPath))
             {
                 return;
             }
 
-            OSPlatform os = systemRuntimeInformation.GetOSPlatform();
-            Architecture architecture = systemRuntimeInformation.GetOSArchitecture();
+            OSPlatform os = processFacts.Platform;
+            Architecture architecture = processFacts.OSArchitecture;
             logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName}: {version}");
 
             // Only over-write DefaultRuntimeVersion if workerRuntime matches language for the worker config
@@ -200,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 DefaultRuntimeVersion = GetSanitizedRuntimeVersion(version);
             }
 
-            ValidateDefaultWorkerPathFormatters(systemRuntimeInformation);
+            ValidateDefaultWorkerPathFormatters(processFacts);
 
             DefaultWorkerPath = DefaultWorkerPath.Replace(RpcWorkerConstants.OSPlaceholder, os.ToString())
                              .Replace(RpcWorkerConstants.ArchitecturePlaceholder, architecture.ToString())

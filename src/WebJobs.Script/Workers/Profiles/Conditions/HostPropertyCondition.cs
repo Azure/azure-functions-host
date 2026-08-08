@@ -17,12 +17,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
     public class HostPropertyCondition : IWorkerProfileCondition
     {
         private readonly ILogger _logger;
-        private readonly ISystemRuntimeInformation _systemRuntimeInformation;
+        private readonly IProcessFacts _processFacts;
         private readonly string _name;
         private readonly string _expression;
         private Regex _regex;
 
         public HostPropertyCondition(ILogger logger, ISystemRuntimeInformation systemRuntimeInformation, WorkerProfileConditionDescriptor descriptor)
+            : this(logger, ProcessFacts.FromSystemRuntimeInformation(systemRuntimeInformation), descriptor)
+        {
+        }
+
+        internal HostPropertyCondition(
+            ILogger logger, IProcessFacts processFacts, WorkerProfileConditionDescriptor descriptor)
         {
             if (descriptor is null)
             {
@@ -30,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
             }
 
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _systemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
+            _processFacts = processFacts ?? throw new ArgumentNullException(nameof(processFacts));
 
             if (descriptor.Properties.TryGetValue(WorkerConstants.WorkerDescriptionProfileConditionName, out var conditionNameElement))
             {
@@ -64,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
             string value = hostPropertyName switch
             {
                 HostProperty.Sku => ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteSku),
-                HostProperty.Platform => _systemRuntimeInformation.GetOSPlatform().ToString(),
+                HostProperty.Platform => _processFacts.Platform.ToString(),
                 HostProperty.HostVersion => ScriptHost.Version,
                 _ => null
             };

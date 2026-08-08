@@ -1165,7 +1165,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 new Mock<IWorkerProfileManager>().Object,
                 languageWorkerOptions,
                 _hostingConfigOptions,
-                workerRuntimeResolver.Object);
+                workerRuntimeResolver.Object,
+                TestProcessFacts.Current);
         }
 
         [Fact]

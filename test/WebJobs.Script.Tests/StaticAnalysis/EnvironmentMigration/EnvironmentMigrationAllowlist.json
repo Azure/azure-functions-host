@@ -126,7 +126,6 @@
     "IEnvironment|src/WebJobs.Script.WebHost/Middleware/SpecializationSimulatorMiddleware.cs|IEnvironment _environment|count=1",
     "IEnvironment|src/WebJobs.Script.WebHost/Middleware/SpecializationSimulatorMiddleware.cs|IEnvironment environment|count=1",
     "IEnvironment|src/WebJobs.Script.WebHost/Models/HostAssignmentContext.cs|IEnvironment environment|count=1",
-    "IEnvironment|src/WebJobs.Script.WebHost/Program.cs|IEnvironment environment|count=1",
     "IEnvironment|src/WebJobs.Script.WebHost/Routing/ScriptRouteHandler.cs|IEnvironment _environment|count=1",
     "IEnvironment|src/WebJobs.Script.WebHost/Routing/ScriptRouteHandler.cs|IEnvironment environment|count=1",
     "IEnvironment|src/WebJobs.Script.WebHost/Security/Authentication/Keys/AuthenticationLevelHandler.cs|IEnvironment environment|count=1",

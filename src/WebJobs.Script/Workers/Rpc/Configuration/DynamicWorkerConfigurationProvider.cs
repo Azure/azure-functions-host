@@ -26,9 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                         IMetricsLogger metricsLogger,
                         IFileSystem fileSystem,
                         IWorkerProfileManager workerProfileManager,
-                        ISystemRuntimeInformation systemRuntimeInformation,
+                        IProcessFacts processFacts,
                         IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
-                        : base(metricsLogger, workerProfileManager, systemRuntimeInformation, workerConfigurationResolverOptions)
+                        : base(metricsLogger, workerProfileManager, processFacts, workerConfigurationResolverOptions)
         {
             _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -146,7 +146,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                 return null;
             }
 
-            return BuildWorkerConfig(WorkerResolverOptions, resolvedWorkerVersionPath, resolvedWorkerConfig, resolvedWorkerDescription, MetricsLogger, Logger, SystemRuntimeInformation);
+            return BuildWorkerConfig(
+                WorkerResolverOptions, resolvedWorkerVersionPath, resolvedWorkerConfig,
+                resolvedWorkerDescription, MetricsLogger, Logger, ProcessFacts);
         }
 
         /// <summary>

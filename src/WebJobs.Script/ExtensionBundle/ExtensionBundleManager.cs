@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         private readonly string _cdnUri;
         private readonly string _platformReleaseChannel;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IProcessFacts _processFacts;
         private string _extensionBundleVersion;
 
         public ExtensionBundleManager(ExtensionBundleOptions options, IEnvironment environment, ILoggerFactory loggerFactory, FunctionsHostingConfigOptions configOption, IHttpClientFactory httpClientFactory)
@@ -42,6 +43,22 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             _cdnUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ExtensionBundleSourceUri) ?? ScriptConstants.ExtensionBundleDefaultSourceUri;
             _platformReleaseChannel = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformReleaseChannel) ?? ScriptConstants.LatestPlatformChannelNameUpper;
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        }
+
+        internal ExtensionBundleManager(
+            ExtensionBundleManager source, IProcessFacts processFacts)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            _environment = source._environment;
+            _options = source._options;
+            _configOption = source._configOption;
+            _logger = source._logger;
+            _cdnUri = source._cdnUri;
+            _platformReleaseChannel = source._platformReleaseChannel;
+            _httpClientFactory = source._httpClientFactory;
+            _extensionBundleVersion = source._extensionBundleVersion;
+            _processFacts = processFacts ?? throw new ArgumentNullException(nameof(processFacts));
         }
 
         public async Task<ExtensionBundleDetails> GetExtensionBundleDetails()
@@ -424,7 +441,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
             if (_environment.IsWindowsAzureManagedHosting())
             {
-                if (Environment.Is64BitProcess)
+                if ((_processFacts ?? ProcessFacts.Capture()).Is64BitProcess)
                 {
                     //bin_v3/win-x64
                     binPath = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleV3BinDirectoryName, ScriptConstants.Windows64BitRID);

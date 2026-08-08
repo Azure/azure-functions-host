@@ -91,14 +91,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                                                 IMetricsLogger metricsLogger,
                                                 IFileSystem fileSystem,
                                                 IWorkerProfileManager workerProfileManager,
-                                                ISystemRuntimeInformation systemRuntimeInformation,
+                                                IProcessFacts processFacts,
                                                 IOptionsMonitor<WorkerConfigurationResolverOptions> optionsMonitor)
         {
             return new List<IWorkerConfigurationProvider>
                 {
-                    new DefaultWorkerConfigurationProvider(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
-                    new DynamicWorkerConfigurationProvider(dynamicLogger, metricsLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
-                    new ExplicitWorkerConfigurationProvider(loggerFactory, metricsLogger, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor),
+                    new DefaultWorkerConfigurationProvider(loggerFactory, metricsLogger, FileUtility.Instance, workerProfileManager, processFacts, optionsMonitor),
+                    new DynamicWorkerConfigurationProvider(dynamicLogger, metricsLogger, FileUtility.Instance, workerProfileManager, processFacts, optionsMonitor),
+                    new ExplicitWorkerConfigurationProvider(loggerFactory, metricsLogger, workerProfileManager, processFacts, optionsMonitor),
                 };
         }
     }

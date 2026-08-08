@@ -21,7 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private Dictionary<string, string> _activeProfiles;
         private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
 
-        public WorkerProfileManager(ILogger<WorkerProfileManager> logger, IEnvironment environment)
+        public WorkerProfileManager(
+            ILogger<WorkerProfileManager> logger, IEnvironment environment, IProcessFacts processFacts)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
             _conditionProviders = new List<IWorkerProfileConditionProvider>
             {
-                new WorkerProfileConditionProvider(_logger, _environment)
+                new WorkerProfileConditionProvider(_logger, _environment, processFacts)
             };
         }
 

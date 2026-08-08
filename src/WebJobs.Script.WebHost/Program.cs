@@ -24,9 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         public static void Main(string[] args)
         {
-            InitializeProcess();
+            IProcessFacts processFacts = ProcessFacts.Capture();
+            InitializeProcess(processFacts);
 
-            var host = BuildHost(args);
+            var host = BuildHost(args, processFacts);
 
             host.RunAsync()
                 .Wait();
@@ -34,7 +35,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IHost BuildHost(string[] args)
         {
-            return CreateHostBuilder(args)
+            return BuildHost(args, ProcessFacts.Capture());
+        }
+
+        internal static IHost BuildHost(string[] args, IProcessFacts processFacts)
+        {
+            return CreateHostBuilder(args, processFacts)
                 .Build();
         }
 
@@ -47,6 +53,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </remarks>
         public static IHostBuilder CreateHostBuilder(string[] args = null)
         {
+            return CreateHostBuilder(args, ProcessFacts.Capture());
+        }
+
+        internal static IHostBuilder CreateHostBuilder(string[] args, IProcessFacts processFacts)
+        {
+            ArgumentNullException.ThrowIfNull(processFacts);
+
 #if PLACEHOLDER_SIMULATION
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "0");
@@ -79,6 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         .UseSetting(WebHostDefaults.EnvironmentKey, Environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey))
                         .ConfigureServices(services =>
                         {
+                            services.AddSingleton(processFacts);
                             services.Configure<IISServerOptions>(o =>
                             {
                                 o.MaxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
@@ -148,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// Perform any process level initialization that needs to happen BEFORE
         /// the WebHost is initialized.
         /// </summary>
-        private static void InitializeProcess()
+        private static void InitializeProcess(IProcessFacts processFacts)
         {
             if (SystemEnvironment.Instance.IsLinuxConsumptionOnAtlas())
             {
@@ -173,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionConstants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
             }
 
-            ConfigureMinimumThreads(SystemEnvironment.Instance);
+            ConfigureMinimumThreads(SystemEnvironment.Instance, processFacts);
         }
 
         private static void CurrentDomainOnUnhandledExceptionInLinuxConsumption(object sender, UnhandledExceptionEventArgs e)
@@ -189,7 +203,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             LinuxAppServiceEventGenerator.LogUnhandledException((Exception)e.ExceptionObject);
         }
 
-        private static void ConfigureMinimumThreads(IEnvironment environment)
+        private static void ConfigureMinimumThreads(
+            SystemEnvironment environment, IProcessFacts processFacts)
         {
             // For information on MinThreads, see:
             // https://docs.microsoft.com/en-us/dotnet/api/system.threading.threadpool.setminthreads?view=netcore-2.2
@@ -198,13 +213,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             //
             // This behavior can be overridden by using the "ComPlus_ThreadPool_ForceMinWorkerThreads" environment variable (honored by the .NET threadpool).
 
-            var effectiveCores = environment.GetEffectiveCoresCount();
+            int effectiveCores = SelectEffectiveCores(
+                environment.GetEffectiveCoresCount(), processFacts);
+            int minThreadCount = CalculateMinimumThreadCount(effectiveCores);
+            ThreadPool.SetMinThreads(minThreadCount, minThreadCount);
+        }
+
+        internal static int SelectEffectiveCores(
+            int environmentEffectiveCores, IProcessFacts processFacts)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(environmentEffectiveCores);
+            ArgumentNullException.ThrowIfNull(processFacts);
+
+            return environmentEffectiveCores == 1
+                ? 1
+                : processFacts.ProcessorCount;
+        }
+
+        internal static int CalculateMinimumThreadCount(int effectiveCores)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(effectiveCores);
 
             // This value was derived by looking at the thread count for several function apps running load on a multicore machine and dividing by the number of cores.
             const int minThreadsPerLogicalProcessor = 6;
 
-            int minThreadCount = effectiveCores * minThreadsPerLogicalProcessor;
-            ThreadPool.SetMinThreads(minThreadCount, minThreadCount);
+            return effectiveCores * minThreadsPerLogicalProcessor;
         }
     }
 }

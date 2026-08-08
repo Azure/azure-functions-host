@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using AwesomeAssertions;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
@@ -152,6 +153,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             secondOptions.Should().NotBeSameAs(firstOptions);
             firstChild.GetRequiredService<RootSingleton>().Should().BeSameAs(rootSingleton);
             secondChild.GetRequiredService<RootSingleton>().Should().BeSameAs(rootSingleton);
+        }
+
+        [Fact]
+        public void CreateChildContainer_SharesProcessFactsReferenceAcrossChildren()
+        {
+            ServiceCollection rootServices = new();
+            TestProcessFacts processFacts =
+                new(OSPlatform.Linux, Architecture.X64, true, 7);
+            rootServices.AddSingleton<IProcessFacts>(processFacts);
+            using ServiceProvider rootProvider = rootServices.BuildServiceProvider();
+
+            using ServiceProvider firstChild = rootProvider
+                .CreateChildContainer(rootServices)
+                .BuildServiceProvider();
+            using ServiceProvider secondChild = rootProvider
+                .CreateChildContainer(rootServices)
+                .BuildServiceProvider();
+
+            rootProvider.GetRequiredService<IProcessFacts>().Should().BeSameAs(processFacts);
+            firstChild.GetRequiredService<IProcessFacts>().Should().BeSameAs(processFacts);
+            secondChild.GetRequiredService<IProcessFacts>().Should().BeSameAs(processFacts);
         }
 
         private sealed class ChildOwnedOptions

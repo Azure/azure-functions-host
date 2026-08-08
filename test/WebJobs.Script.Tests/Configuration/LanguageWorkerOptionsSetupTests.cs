@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, workerRuntime, testEnvironment, testScriptHostManager.Object, null);
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
-            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, TestProcessFacts.Current, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver, workerRuntimeResolver.Object);
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, workerRuntime, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
-            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, TestProcessFacts.Current, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver, workerRuntimeResolver.Object);
@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, workerRuntime, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
-            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, TestProcessFacts.Current, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver, workerRuntimeResolver.Object);
@@ -215,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var optionsMonitor = GetTestWorkerConfigurationResolverOptions(configuration, workerRuntime, testEnvironment, testScriptHostManager.Object, new OptionsWrapper<FunctionsHostingConfigOptions>(hostingOptions));
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
-            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, SystemRuntimeInformation.Instance, optionsMonitor);
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, testProfileManager.Object, TestProcessFacts.Current, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var setup = new LanguageWorkerOptionsSetup(testEnvironment, testMetricLogger, resolver, workerRuntimeResolver.Object);
@@ -261,7 +261,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var config = GetConfigurationWithProbingPaths(probingPaths);
 
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
-            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
+            var workerProfileManager = new WorkerProfileManager(
+                workerProfileLogger, mockEnvironment.Object, TestProcessFacts.Current);
             var testScriptHostManager = new Mock<IScriptHostManager>();
 
             var hostingOptions = new FunctionsHostingConfigOptions();
@@ -270,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
             // Act
-            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, workerProfileManager, TestProcessFacts.Current, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var result = resolver.GetWorkerConfigs();
@@ -317,7 +318,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var config = GetConfigurationWithProbingPaths(probingPaths);
 
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
-            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnv.Object);
+            var workerProfileManager = new WorkerProfileManager(
+                workerProfileLogger, mockEnv.Object, TestProcessFacts.Current);
             var mockConfig = new Mock<IConfiguration>();
 
             var loggerProvider = new TestLoggerProvider();
@@ -333,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
             // Act
-            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, workerProfileManager, TestProcessFacts.Current, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var result = resolver.GetWorkerConfigs();
@@ -358,7 +360,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Windows");
 
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
-            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnvironment.Object);
+            var workerProfileManager = new WorkerProfileManager(
+                workerProfileLogger, mockEnvironment.Object, TestProcessFacts.Current);
 
             var probingPaths = new List<string>() { _probingPath, string.Empty, "path-not-exists" };
             var config = GetConfigurationWithProbingPaths(probingPaths);
@@ -376,7 +379,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var testMetricLogger = new TestMetricsLogger();
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
-            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, workerProfileManager, TestProcessFacts.Current, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var result = resolver.GetWorkerConfigs();
@@ -421,7 +424,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                                     .Build();
 
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
-            var workerProfileManager = new WorkerProfileManager(workerProfileLogger, mockEnv.Object);
+            var workerProfileManager = new WorkerProfileManager(
+                workerProfileLogger, mockEnv.Object, TestProcessFacts.Current);
 
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
@@ -436,7 +440,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var dynamicProviderLogger = new TestLogger<DynamicWorkerConfigurationProvider>();
 
             // Act
-            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, workerProfileManager, SystemRuntimeInformation.Instance, optionsMonitor);
+            var providers = GetProviders(loggerFactory, dynamicProviderLogger, testMetricLogger, FileUtility.Instance, workerProfileManager, TestProcessFacts.Current, optionsMonitor);
             var resolver = new WorkerConfigurationResolver(providers);
 
             var result = resolver.GetWorkerConfigs();

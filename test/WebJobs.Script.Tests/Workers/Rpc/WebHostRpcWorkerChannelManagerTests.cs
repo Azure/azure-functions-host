@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -38,7 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly Mock<IWorkerProcess> _rpcWorkerProcess;
         private readonly TestLogger _testLogger;
         private readonly IConfiguration _emptyConfig;
-        private readonly TestSystemRuntimeInformation _testSysRuntimeInfo = new TestSystemRuntimeInformation();
+        private readonly TestProcessFacts _testProcessFacts =
+            new(OSPlatform.Windows, Architecture.X64, true, 1);
 
         private WebHostRpcWorkerChannelManager _rpcWorkerChannelManager;
         private IWorkerProfileManager _workerProfileManager;
@@ -64,7 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
 
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
-            _workerProfileManager = new WorkerProfileManager(workerProfileLogger, _testEnvironment);
+            _workerProfileManager = new WorkerProfileManager(
+                workerProfileLogger, _testEnvironment, _testProcessFacts);
 
             var applicationHostOptions = new ScriptApplicationHostOptions
             {
@@ -803,8 +806,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await shutdownTask;
         }
 
+        [Fact]
+        public void UsePlaceholderChannel_DotNetIsolated32Bit_ReturnsFalse()
+        {
+            _testEnvironment.SetEnvironmentVariable(
+                EnvironmentSettingNames.AzureWebsiteUsePlaceholderDotNetIsolated, "1");
+            TestProcessFacts processFacts =
+                new(OSPlatform.Windows, Architecture.X86, false, 1);
+            WebHostRpcWorkerChannelManager manager = CreateChannelManager(
+                RpcWorkerConstants.DotNetIsolatedLanguageWorkerName,
+                processFacts: processFacts);
+            var channel = new Mock<IRpcWorkerChannel>();
+            channel.SetupGet(item => item.WorkerConfig).Returns(new RpcWorkerConfig
+            {
+                Description = new RpcWorkerDescription
+                {
+                    Language = RpcWorkerConstants.DotNetIsolatedLanguageWorkerName
+                }
+            });
+
+            bool result = manager.UsePlaceholderChannel(channel.Object);
+
+            Assert.False(result);
+        }
+
         private WebHostRpcWorkerChannelManager CreateChannelManager(string workerRuntime, IRpcWorkerChannelFactory channelFactory = null, IMetricsLogger metrics = null,
-            IConfiguration config = null)
+            IConfiguration config = null, IProcessFacts processFacts = null)
         {
             metrics ??= new TestMetricsLogger();
             channelFactory ??= _rpcWorkerChannelFactory;
@@ -813,7 +840,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockWorkerRuntimeResolver.Setup(m => m.GetWorkerRuntime(It.IsAny<string>())).Returns(workerRuntime);
 
             return new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, channelFactory,
-                _optionsMonitor, metrics, config, _workerProfileManager, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()), new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), mockWorkerRuntimeResolver.Object);
+                _optionsMonitor, metrics, config, _workerProfileManager, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()), new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()), mockWorkerRuntimeResolver.Object, processFacts ?? _testProcessFacts);
         }
 
         private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)

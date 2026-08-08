@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IWorkerProfileManager _profileManager;
         private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
+        private readonly IProcessFacts _processFacts;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
         private IConfiguration _config;
@@ -43,7 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                               IWorkerProfileManager workerProfileManager,
                                               IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
                                               IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-                                              IWorkerRuntimeResolver workerRuntimeResolver)
+                                              IWorkerRuntimeResolver workerRuntimeResolver,
+                                              IProcessFacts processFacts)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -57,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
             _workerRuntimeResolver = workerRuntimeResolver ?? throw new ArgumentNullException(nameof(workerRuntimeResolver));
+            _processFacts = processFacts ?? throw new ArgumentNullException(nameof(processFacts));
         }
 
         public Task<IRpcWorkerChannel> InitializeChannelAsync(IEnumerable<RpcWorkerConfig> workerConfigs, string runtime)
@@ -164,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private bool UsePlaceholderChannel(IRpcWorkerChannel channel)
+        internal bool UsePlaceholderChannel(IRpcWorkerChannel channel)
         {
             string workerRuntime = channel?.WorkerConfig?.Description?.Language;
 
@@ -191,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
 
                 // We support specialization of dotnet-isolated only on 64bit host process.
-                if (!_environment.Is64BitProcess)
+                if (!_processFacts.Is64BitProcess)
                 {
                     _logger.LogInformation(new EventId(421, ScriptConstants.PlaceholderMissDueToBitnessEventName),
                         "This app is configured as 32-bit and therefore does not leverage all performance optimizations. See https://aka.ms/azure-functions/dotnet/placeholders for more information.");

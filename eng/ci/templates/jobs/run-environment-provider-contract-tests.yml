@@ -42,5 +42,5 @@ jobs:
     inputs:
       command: test
       testRunTitle: Environment Provider Contract Tests (Linux)
-      arguments: -v m -c release --no-build --filter FullyQualifiedName~Microsoft.Azure.WebJobs.Script.Config.Tests.ScriptEnvironmentVariablesConfigurationSourceTests
+      arguments: -v m -c release --no-build --filter "FullyQualifiedName~Microsoft.Azure.WebJobs.Script.Config.Tests.ScriptEnvironmentVariablesConfigurationSourceTests|FullyQualifiedName=Microsoft.Azure.WebJobs.Script.Tests.ProcessFactsTests.Capture_MatchesCurrentRuntime"
       projects: test/WebJobs.Script.Tests/WebJobs.Script.Tests.csproj

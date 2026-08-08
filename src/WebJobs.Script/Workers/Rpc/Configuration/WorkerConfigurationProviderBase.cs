@@ -23,12 +23,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         public WorkerConfigurationProviderBase(IMetricsLogger metricsLogger,
                                                     IWorkerProfileManager workerProfileManager,
-                                                    ISystemRuntimeInformation systemRuntimeInformation,
+                                                    IProcessFacts processFacts,
                                                     IOptionsMonitor<WorkerConfigurationResolverOptions> workerConfigurationResolverOptions)
         {
             MetricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             ProfileManager = workerProfileManager ?? throw new ArgumentNullException(nameof(workerProfileManager));
-            SystemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
+            ProcessFacts = processFacts ?? throw new ArgumentNullException(nameof(processFacts));
             _resolverOptionsMonitor = workerConfigurationResolverOptions ?? throw new ArgumentNullException(nameof(workerConfigurationResolverOptions));
             ArgumentNullException.ThrowIfNull(_resolverOptionsMonitor.CurrentValue);
         }
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
         protected IWorkerProfileManager ProfileManager { get; }
 
-        protected ISystemRuntimeInformation SystemRuntimeInformation { get; }
+        protected IProcessFacts ProcessFacts { get; }
 
         public abstract ILogger Logger { get; }
 
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                     return;
                 }
 
-                var workerConfig = BuildWorkerConfig(resolverOptions, workerDirPath, workerConfigJson, workerDescription, MetricsLogger, Logger, SystemRuntimeInformation);
+                var workerConfig = BuildWorkerConfig(resolverOptions, workerDirPath, workerConfigJson, workerDescription, MetricsLogger, Logger, ProcessFacts);
                 if (workerConfig is not null)
                 {
                     workerRuntimeToConfigMap[workerName] = workerConfig;
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
                                             RpcWorkerDescription workerDescription,
                                             IMetricsLogger metricsLogger,
                                             ILogger logger,
-                                            ISystemRuntimeInformation systemRuntimeInformation)
+                                            IProcessFacts processFacts)
         {
             try
             {
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
 
                 if (ShouldAddWorkerConfig(workerDescription.Language, resolverOptions.IsPlaceholderModeEnabled, resolverOptions.IsMultiLanguageWorkerEnvironment, logger, workerRuntime))
                 {
-                    workerDescription.FormatWorkerPathIfNeeded(systemRuntimeInformation, workerRuntime, resolverOptions.FunctionsWorkerRuntimeVersion, logger);
+                    workerDescription.FormatWorkerPathIfNeeded(processFacts, workerRuntime, resolverOptions.FunctionsWorkerRuntimeVersion, logger);
                     workerDescription.FormatWorkingDirectoryIfNeeded();
                     workerDescription.FormatArgumentsIfNeeded(logger);
                     workerDescription.ThrowIfFileNotExists(workerDescription.DefaultWorkerPath, nameof(workerDescription.DefaultWorkerPath));

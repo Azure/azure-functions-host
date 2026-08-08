@@ -234,6 +234,37 @@ class Example
     }
 
     [Fact]
+    public void IEnvironmentProcessFactAccessIsConfinedToLegacyHelpers()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string sourceRoot = Path.Combine(repositoryRoot, "src");
+        string[] legacyPaths =
+        [
+            Path.Combine("WebJobs.Script", "Environment", "EnvironmentExtensions.cs"),
+            Path.Combine("WebJobs.Script", "Environment", "SystemEnvironment.cs")
+        ];
+        string[] forbiddenAccesses =
+        [
+            "environment.Platform",
+            "_environment.Platform",
+            "environment.Is64BitProcess",
+            "_environment.Is64BitProcess"
+        ];
+
+        string[] violations = Directory
+            .EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !legacyPaths.Any(
+                legacyPath => path.EndsWith(legacyPath, StringComparison.OrdinalIgnoreCase)))
+            .SelectMany(path => forbiddenAccesses
+                .Where(access => File.ReadAllText(path).Contains(access, StringComparison.Ordinal))
+                .Select(access => $"{Path.GetRelativePath(repositoryRoot, path)}: {access}"))
+            .OrderBy(violation => violation, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(violations);
+    }
+
+    [Fact]
     public void ScannerIgnoresCommentsAndStringLiterals()
     {
         const string source = @"

@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -13,8 +14,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 {
     public class WorkerDescriptionProfileTests
     {
+        private static readonly TestProcessFacts _testProcessFacts =
+            new(OSPlatform.Linux, Architecture.X64, true, 1);
+
         private static TestEnvironment _testEnvironment = new TestEnvironment();
-        private static TestSystemRuntimeInformation _testSystemRuntimeInfo = new TestSystemRuntimeInformation();
         private static TestLogger _testLogger = new TestLogger("test");
 
         private static string[] argumentList = new string[] { "-TestArg=1" };
@@ -32,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 
             var validConditionsList = new List<IWorkerProfileCondition>();
             validConditionsList.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(_testLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "true"));
-            validConditionsList.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testSystemRuntimeInfo, "hostversion", "4.*"));
+            validConditionsList.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testProcessFacts, "hostversion", "4.*"));
 
             yield return new object[] { null, validConditionsList,  description };
             yield return new object[] { string.Empty, validConditionsList, description };
@@ -66,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             validConditionsList.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(_testLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "true"));
             yield return new object[] { "profileName", validConditionsList, description };
 
-            validConditionsList.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testSystemRuntimeInfo, "hostversion", "4.*"));
+            validConditionsList.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testProcessFacts, "hostversion", "4.*"));
             yield return new object[] { "profileName", validConditionsList, description };
         }
 
@@ -95,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             validConditionsList.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(_testLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "true"));
             yield return new object[] { "profileName", validConditionsList, description };
 
-            validConditionsList.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testSystemRuntimeInfo, "hostversion", "3.*"));
+            validConditionsList.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testProcessFacts, "hostversion", "3.*"));
             yield return new object[] { "profileName", validConditionsList, description };
         }
 
@@ -113,11 +116,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
             Assert.True(workerDescriptionProfile.EvaluateConditions());
 
-            conditions.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testSystemRuntimeInfo, "hostversion", "4.*"));
+            conditions.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testProcessFacts, "hostversion", "4.*"));
             workerDescriptionProfile = new WorkerDescriptionProfile("profileName", conditions, description);
             Assert.True(workerDescriptionProfile.EvaluateConditions());
 
-            conditions.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testSystemRuntimeInfo, "platform", "windows"));
+            conditions.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testProcessFacts, "platform", "windows"));
             workerDescriptionProfile = new WorkerDescriptionProfile("profileName", conditions, description);
 
             Assert.False(workerDescriptionProfile.EvaluateConditions());

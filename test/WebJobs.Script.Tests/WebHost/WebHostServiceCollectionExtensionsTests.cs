@@ -1,10 +1,13 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -86,6 +89,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     implementationType is not null && functionsAssemblies.Contains(implementationType.Assembly),
                     $"'{implementationType}' is registered before {nameof(HostedServiceManager)} and would stop after it under the Generic Host's LIFO shutdown order.");
             }
+        }
+
+        [Theory]
+        [InlineData(true, typeof(MemoryMappedFileAccessorWindows))]
+        [InlineData(false, typeof(MemoryMappedFileAccessorUnix))]
+        public void AddWebJobsScriptHost_ProcessFactsSelectSharedMemoryAccessor(
+            bool isWindows, Type expectedAccessorType)
+        {
+            var services = new ServiceCollection();
+            TestProcessFacts processFacts = new(
+                isWindows ? OSPlatform.Windows : OSPlatform.Linux,
+                Architecture.X64,
+                true,
+                1);
+            services.AddSingleton<IProcessFacts>(processFacts);
+
+            services.AddWebJobsScriptHost(new ConfigurationBuilder().Build());
+
+            ServiceDescriptor accessor = services.Last(
+                descriptor => descriptor.ServiceType == typeof(IMemoryMappedFileAccessor));
+            ServiceDescriptor runtimeInformation = services.Last(
+                descriptor => descriptor.ServiceType == typeof(ISystemRuntimeInformation));
+            Assert.Equal(expectedAccessorType, accessor.ImplementationType);
+            Assert.Same(processFacts, runtimeInformation.ImplementationInstance);
         }
 
         private static ServiceProvider BuildServiceProvider(IEnvironment environment)

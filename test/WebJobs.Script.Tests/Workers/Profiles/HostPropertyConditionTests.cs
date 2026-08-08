@@ -3,6 +3,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -12,7 +13,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 {
     public class HostPropertyConditionTests
     {
-        private TestSystemRuntimeInformation _testSystemRuntimeInfo = new TestSystemRuntimeInformation();
+        private readonly TestProcessFacts _testProcessFacts =
+            new(OSPlatform.Linux, Architecture.X64, true, 1);
 
         [Theory]
         [InlineData(null, null)]
@@ -34,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionName] = JsonSerializer.SerializeToElement(name);
             descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionExpression] = JsonSerializer.SerializeToElement(expression);
 
-            Assert.Throws<ValidationException>(() => new HostPropertyCondition(testLogger, _testSystemRuntimeInfo, descriptor));
+            Assert.Throws<ValidationException>(() => new HostPropertyCondition(testLogger, _testProcessFacts, descriptor));
         }
 
         [Theory]
@@ -50,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionName] = JsonSerializer.SerializeToElement(name);
             descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionExpression] = JsonSerializer.SerializeToElement(testExpression);
 
-            var hostPropertyCondition = new HostPropertyCondition(testLogger, _testSystemRuntimeInfo, descriptor);
+            var hostPropertyCondition = new HostPropertyCondition(testLogger, _testProcessFacts, descriptor);
 
             Assert.True(hostPropertyCondition.Evaluate());
         }
@@ -68,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionName] = JsonSerializer.SerializeToElement(name);
             descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionExpression] = JsonSerializer.SerializeToElement(testExpression);
 
-            var hostPropertyCondition = new HostPropertyCondition(testLogger, _testSystemRuntimeInfo, descriptor);
+            var hostPropertyCondition = new HostPropertyCondition(testLogger, _testProcessFacts, descriptor);
 
             Assert.False(hostPropertyCondition.Evaluate(), "Expression evaluates to false");
         }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script;
@@ -62,6 +63,12 @@ public static class RpcServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        IProcessFacts processFacts = services
+            .LastOrDefault(descriptor => descriptor.ServiceType == typeof(IProcessFacts))
+            ?.ImplementationInstance as IProcessFacts
+            ?? ProcessFacts.Capture();
+        services.TryAddSingleton(processFacts);
+
         // Add Language Worker Service
         services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
 
@@ -74,15 +81,15 @@ public static class RpcServiceCollectionExtensions
 
         services.AddManagedHostedService<RpcInitializationService>();
 
-        AddProcessRegistry(services);
+        AddProcessRegistry(services, processFacts);
 
         return services;
     }
 
-    private static void AddProcessRegistry(IServiceCollection services)
+    internal static void AddProcessRegistry(IServiceCollection services, IProcessFacts processFacts)
     {
         // W3WP already manages job objects
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        if (processFacts.Platform == OSPlatform.Windows
             && !ScriptSettingsManager.Instance.IsAppServiceEnvironment)
         {
             services.AddSingleton<IProcessRegistry, JobObjectRegistry>();

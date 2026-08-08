@@ -84,7 +84,9 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddSingleton<IDiagnosticEventRepositoryFactory, TestDiagnosticEventRepositoryFactory>();
             services.AddSingleton<ISecretManagerProvider, TestSecretManagerProvider>();
             services.AddSingleton<IFileSystem>(FileUtility.Instance);
-            services.AddSingleton<ISystemRuntimeInformation>(SystemRuntimeInformation.Instance);
+            TestProcessFacts processFacts = TestProcessFacts.Current;
+            services.AddSingleton<IProcessFacts>(processFacts);
+            services.AddSingleton<ISystemRuntimeInformation>(processFacts);
             services.AddSingleton<IWorkerConfigurationResolver, WorkerConfigurationResolver>();
             services.AddSingleton<IWorkerConfigurationProvider, DefaultWorkerConfigurationProvider>();
             services.AddSingleton<IWorkerConfigurationProvider, DynamicWorkerConfigurationProvider>();

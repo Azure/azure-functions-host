@@ -167,9 +167,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Theory]
-        [InlineData(true, true, false)]
-        [InlineData(false, true, true)]
-        public async Task GetExtensionBundleBinPath_ReturnsCorrectLocation(bool readyToRunPathExists, bool defaultPathExists, bool expectDefaultBinPath)
+        [InlineData(true, true, true, false)]
+        [InlineData(false, true, true, false)]
+        [InlineData(true, false, true, false)]
+        [InlineData(false, false, true, false)]
+        [InlineData(true, true, false, true)]
+        public async Task GetExtensionBundleBinPath_ReturnsCorrectLocation(
+            bool isWindows, bool is64BitProcess, bool readyToRunPathExists, bool expectDefaultBinPath)
         {
             var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
             string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
@@ -180,18 +184,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             var fileBase = fileSystemTuple.Item3;
 
             var environment = GetTestAppServiceEnvironment();
+            environment.Platform = isWindows ? OSPlatform.Windows : OSPlatform.Linux;
+            environment.SetEnvironmentVariable(
+                FunctionsLogsMountPath, isWindows ? null : "/home/LogFiles");
+            TestProcessFacts processFacts = new(
+                environment.Platform, Architecture.X64, is64BitProcess, 1);
 
-            string os = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "linux";
-            string bitness = Environment.Is64BitProcess ? "x64" : "x86";
+            string os = isWindows ? "win" : "linux";
+            string bitness = !isWindows || is64BitProcess ? "x64" : "x86";
 
             string rrBinPath = Path.Combine(defaultPath, "bin_v3", $"{os}-{bitness}");
             directoryBase.Setup(d => d.Exists(rrBinPath)).Returns(readyToRunPathExists);
 
             string defaultBinPath = Path.Combine(defaultPath, "bin");
-            directoryBase.Setup(d => d.Exists(defaultBinPath)).Returns(defaultPathExists);
+            directoryBase.Setup(d => d.Exists(defaultBinPath)).Returns(true);
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
-            var manager = GetExtensionBundleManager(options, environment);
+            var manager = GetExtensionBundleManager(options, environment, processFacts: processFacts);
             string binPath = await manager.GetExtensionBundleBinPathAsync();
             Assert.NotNull(binPath);
 
@@ -638,20 +647,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             Assert.Contains(capturingLogger.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("Unexpected error downloading extension bundle Zip content", StringComparison.Ordinal));
         }
 
-        private ExtensionBundleManager GetExtensionBundleManager(ExtensionBundleOptions bundleOptions, TestEnvironment environment = null, Mock<ILoggerFactory> mockLoggerFactory = null)
+        private ExtensionBundleManager GetExtensionBundleManager(
+            ExtensionBundleOptions bundleOptions, TestEnvironment environment = null,
+            Mock<ILoggerFactory> mockLoggerFactory = null, IProcessFacts processFacts = null)
         {
             environment = environment ?? new TestEnvironment();
 
             var httpClientFactory = new Mock<IHttpClientFactory>();
             httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(new HttpClient());
+            processFacts ??= TestProcessFacts.Current;
 
             if (mockLoggerFactory is null)
             {
-                return new ExtensionBundleManager(bundleOptions, environment, MockNullLoggerFactory.CreateLoggerFactory(), new FunctionsHostingConfigOptions(), httpClientFactory.Object);
+                return new ExtensionBundleManager(
+                    new ExtensionBundleManager(
+                        bundleOptions, environment, MockNullLoggerFactory.CreateLoggerFactory(),
+                        new FunctionsHostingConfigOptions(), httpClientFactory.Object),
+                    processFacts);
             }
             else
             {
-                return new ExtensionBundleManager(bundleOptions, environment, mockLoggerFactory.Object, new FunctionsHostingConfigOptions(), httpClientFactory.Object);
+                return new ExtensionBundleManager(
+                    new ExtensionBundleManager(
+                        bundleOptions, environment, mockLoggerFactory.Object,
+                        new FunctionsHostingConfigOptions(), httpClientFactory.Object),
+                    processFacts);
             }
         }
 

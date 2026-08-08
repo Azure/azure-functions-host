@@ -36,14 +36,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             return new EnvironmentCondition(logger, testEnvironment, descriptor);
         }
 
-        public static HostPropertyCondition GetTestHostPropertyCondition(ILogger logger, TestSystemRuntimeInformation testSystemRuntimeInfo, string name, string expression)
+        public static HostPropertyCondition GetTestHostPropertyCondition(
+            ILogger logger, TestProcessFacts processFacts, string name, string expression)
         {
             var descriptor = new WorkerProfileConditionDescriptor();
             descriptor.Type = WorkerConstants.WorkerDescriptionProfileHostPropertyCondition;
             descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionName] = JsonSerializer.SerializeToElement(name);
             descriptor.Properties[WorkerConstants.WorkerDescriptionProfileConditionExpression] = JsonSerializer.SerializeToElement(expression);
 
-            return new HostPropertyCondition(logger, testSystemRuntimeInfo, descriptor);
+            return new HostPropertyCondition(logger, processFacts, descriptor);
         }
     }
 }

@@ -3,6 +3,7 @@
 
 using System;
 using System.IO.Abstractions;
+using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
@@ -80,6 +81,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static void AddWebJobsScriptHost(this IServiceCollection services, IConfiguration configuration)
         {
+            IProcessFacts processFacts = services
+                .LastOrDefault(descriptor => descriptor.ServiceType == typeof(IProcessFacts))
+                ?.ImplementationInstance as IProcessFacts
+                ?? ProcessFacts.Capture();
+
+            services.TryAddSingleton(processFacts);
             services.AddHttpContextAccessor();
             services.AddResponseCompression(options =>
             {
@@ -184,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.TryAddSingleton<ISecretManagerProvider, DefaultSecretManagerProvider>();
 
             // Shared memory data transfer and function data cache
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (processFacts.Platform == OSPlatform.Windows)
             {
                 services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorWindows>();
             }
@@ -246,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptionsWithChangeTokenSource<WorkerConfigurationResolverOptions, WorkerConfigurationResolverOptionsSetup, RefreshWorkerOptionsChangeTokenSource<WorkerConfigurationResolverOptions>>();
             services.ConfigureOptionsWithChangeTokenSource<LanguageWorkerOptions, LanguageWorkerOptionsSetup, RefreshWorkerOptionsChangeTokenSource<LanguageWorkerOptions>>();
             services.AddSingleton<WorkerConfigCacheInvalidator>();
-            services.AddSingleton(SystemRuntimeInformation.Instance);
+            services.AddSingleton<ISystemRuntimeInformation>(processFacts);
             services.AddSingleton<IWorkerConfigurationResolver, WorkerConfigurationResolver>();
             services.AddSingleton<IWorkerConfigurationProvider, DefaultWorkerConfigurationProvider>();
             services.AddSingleton<IWorkerConfigurationProvider, DynamicWorkerConfigurationProvider>();

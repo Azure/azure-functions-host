@@ -57,7 +57,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             _rpcWorkerProcess = new Mock<IWorkerProcess>();
 
             var workerProfileLogger = new TestLogger<WorkerProfileManager>();
-            _workerProfileManager = new WorkerProfileManager(workerProfileLogger, _testEnvironment);
+            TestProcessFacts processFacts = TestProcessFacts.Current;
+            _workerProfileManager = new WorkerProfileManager(
+                workerProfileLogger, _testEnvironment, processFacts);
 
             var applicationHostOptions = new ScriptApplicationHostOptions
             {
@@ -88,7 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 _workerProfileManager,
                 new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()),
                 new OptionsWrapper<FunctionsHostingConfigOptions>(new FunctionsHostingConfigOptions()),
-                mockWorkerRuntimeResolver.Object);
+                mockWorkerRuntimeResolver.Object,
+                processFacts);
             _webHostWorkerManager = new RpcWebHostWorkerManager(_rpcWorkerChannelManager);
         }
 
