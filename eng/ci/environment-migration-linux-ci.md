@@ -88,6 +88,16 @@ completed successfully for source branch
 completed successfully; both the Windows unit-test job and the Linux
 provider-contract job executed and were not skipped.
 
+## Phase 1 PR-04 compiled API coverage
+
+Public build [296793 (`4.1054.100-ci.26408.1`)](https://dev.azure.com/azfunc/public/_build/results?buildId=296793&view=results)
+completed successfully for source branch
+`refs/heads/fabiocav/ienvironment-phase-1d` and source commit
+`33ace7f73ed2b2ff7c8353f24d565d63538bbacc`. Its timeline confirms that
+`Run Unit Tests` executed and succeeded on Windows, including the new
+`WebJobs.Script.PublicApi.Tests` compiled API gate. `Run Environment Provider
+Contract Tests (Linux)` also executed and succeeded; neither job was skipped.
+
 ## DG-6 process-mutator shape
 
 PR-02 approves the following shape for the later production seam; it does not
