@@ -9,15 +9,15 @@
   "categories": [
     {
       "name": "core-tools-required",
-      "description": "Hard compatibility contract. Preserved until Core Tools 'main' migrates or is retired."
+      "description": "Temporary compatibility gate for the only Core Tools-required records in the current environment-migration surface. Removal requires the record's feature-owned replacement gates."
     },
     {
       "name": "host-internal-exported-surface",
-      "description": "Exported but not consumed by a known client. Reviewed removal is permitted after host-internal zero."
+      "description": "Exported migration surface outside the current Core Tools-required set. Absence from the Core Tools audit is not proof of no external consumer; maintainer-approved removal requires host-internal zero and explicit compiled-baseline review."
     },
     {
       "name": "exported-legacy-static-bridge",
-      "description": "ScriptSettingsManager singleton bridge. Reviewed removal is permitted at its owning internal zero-reference gate."
+      "description": "ScriptSettingsManager singleton bridge outside the current Core Tools-required set. Absence from the Core Tools audit is not proof of no external consumer; maintainer-approved removal requires its owning internal zero-reference gate and explicit compiled-baseline review."
     },
     {
       "name": "effectively-internal",
@@ -34,8 +34,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -43,9 +43,9 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "core-tools-required",
-      "evidence": "Azure Functions Core Tools 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call sites are recorded in CoreToolsCompatibilityContract.json.",
-      "compatibilityTreatment": "Preserve the exact effective accessibility, type relationships, and signature. A compiled baseline change that removes or alters this record cannot be blessed by the baseline update workflow without a coordinated Core Tools change.",
-      "earliestRemovalGate": "PR-23, after Core Tools 'main' migrates to a replacement entry point or is retired, through a coordinated host and Core Tools change. Core Tools 'vnext' requires no bridge.",
+      "evidence": "Azure Functions Core Tools 'main' at a1d25927a4621cc16f4110adebc323152a74776a compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call sites are recorded in CoreToolsCompatibilityContract.json.",
+      "compatibilityTreatment": "Temporary Core Tools gate, not a permanent public contract. Preserve the exact effective accessibility, type relationships, and signature until its mechanical feature-owned removal requirement passes.",
+      "earliestRemovalGate": "After all three audited Core Tools call sites use their feature-owned replacements, a released Core Tools version contains those migrations, host-internal use reaches zero, and the compiled-baseline change is explicitly reviewed.",
       "coreToolsRecordId": "SystemEnvironment"
     },
     {
@@ -53,7 +53,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -62,7 +62,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -71,8 +71,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -80,8 +80,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -89,9 +89,9 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "core-tools-required",
-      "evidence": "Azure Functions Core Tools 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call sites are recorded in CoreToolsCompatibilityContract.json.",
-      "compatibilityTreatment": "Preserve the exact effective accessibility, type relationships, and signature. A compiled baseline change that removes or alters this record cannot be blessed by the baseline update workflow without a coordinated Core Tools change.",
-      "earliestRemovalGate": "PR-23, after Core Tools 'main' migrates to a replacement entry point or is retired, through a coordinated host and Core Tools change. Core Tools 'vnext' requires no bridge.",
+      "evidence": "Azure Functions Core Tools 'main' at a1d25927a4621cc16f4110adebc323152a74776a compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call site is recorded in CoreToolsCompatibilityContract.json.",
+      "compatibilityTreatment": "Temporary Core Tools gate, not a permanent public contract. Preserve until a public configuration-only bundle options parser ships and a released Core Tools version migrates to it.",
+      "earliestRemovalGate": "After the configuration-only parser ships, Core Tools migrates and releases, host-internal use reaches zero, and the compiled-baseline change is explicitly reviewed.",
       "coreToolsRecordId": "ExtensionBundleConfigurationHelper.ctor"
     },
     {
@@ -99,7 +99,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -108,7 +108,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -117,9 +117,9 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "core-tools-required",
-      "evidence": "Azure Functions Core Tools 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call sites are recorded in CoreToolsCompatibilityContract.json.",
-      "compatibilityTreatment": "Preserve the exact effective accessibility, type relationships, and signature. A compiled baseline change that removes or alters this record cannot be blessed by the baseline update workflow without a coordinated Core Tools change.",
-      "earliestRemovalGate": "PR-23, after Core Tools 'main' migrates to a replacement entry point or is retired, through a coordinated host and Core Tools change. Core Tools 'vnext' requires no bridge.",
+      "evidence": "Azure Functions Core Tools 'main' at a1d25927a4621cc16f4110adebc323152a74776a compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call site is recorded in CoreToolsCompatibilityContract.json.",
+      "compatibilityTreatment": "Temporary Core Tools gate, not a permanent public contract. Preserve until a public bundle resolver or factory with narrow local/Core Tools runtime options ships and a released Core Tools version and its bundle tests migrate.",
+      "earliestRemovalGate": "After the resolver or factory ships, Core Tools and its bundle tests migrate and release, host-internal use reaches zero, and the compiled-baseline change is explicitly reviewed.",
       "coreToolsRecordId": "ExtensionBundleManager.ctor"
     },
     {
@@ -127,7 +127,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -136,7 +136,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -145,7 +145,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -154,7 +154,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -163,7 +163,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -172,7 +172,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -181,7 +181,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -190,7 +190,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -199,7 +199,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -208,7 +208,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -217,7 +217,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -226,7 +226,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -235,7 +235,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -244,7 +244,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -253,7 +253,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -262,7 +262,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -271,7 +271,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -280,7 +280,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -289,7 +289,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -298,7 +298,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -307,7 +307,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -316,7 +316,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -325,7 +325,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -334,7 +334,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -343,7 +343,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -352,7 +352,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -361,7 +361,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -370,7 +370,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -379,7 +379,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -388,7 +388,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -397,7 +397,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -406,7 +406,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -415,7 +415,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -424,7 +424,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -433,7 +433,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -442,7 +442,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -451,7 +451,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -460,7 +460,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -469,7 +469,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -478,7 +478,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -487,7 +487,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -496,7 +496,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -505,7 +505,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -514,7 +514,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -523,7 +523,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -532,7 +532,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -541,7 +541,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -550,7 +550,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -559,7 +559,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -568,7 +568,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -577,7 +577,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -586,7 +586,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -595,7 +595,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -604,7 +604,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -613,7 +613,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -622,7 +622,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -631,7 +631,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -640,7 +640,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -649,7 +649,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -658,7 +658,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -667,7 +667,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -676,9 +676,9 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "core-tools-required",
-      "evidence": "Azure Functions Core Tools 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call sites are recorded in CoreToolsCompatibilityContract.json.",
-      "compatibilityTreatment": "Preserve the exact effective accessibility, type relationships, and signature. A compiled baseline change that removes or alters this record cannot be blessed by the baseline update workflow without a coordinated Core Tools change.",
-      "earliestRemovalGate": "PR-23, after Core Tools 'main' migrates to a replacement entry point or is retired, through a coordinated host and Core Tools change. Core Tools 'vnext' requires no bridge.",
+      "evidence": "Azure Functions Core Tools 'main' at a1d25927a4621cc16f4110adebc323152a74776a compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call sites are recorded in CoreToolsCompatibilityContract.json.",
+      "compatibilityTreatment": "Temporary Core Tools gate, not a permanent public contract. Preserve the exact effective accessibility, type relationships, and signature until its mechanical feature-owned removal requirement passes.",
+      "earliestRemovalGate": "After all three audited Core Tools call sites use their feature-owned replacements, a released Core Tools version contains those migrations, host-internal use reaches zero, and the compiled-baseline change is explicitly reviewed.",
       "coreToolsRecordId": "IEnvironment"
     },
     {
@@ -686,7 +686,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -695,8 +695,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -704,9 +704,9 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "core-tools-required",
-      "evidence": "Azure Functions Core Tools 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call sites are recorded in CoreToolsCompatibilityContract.json.",
-      "compatibilityTreatment": "Preserve the exact effective accessibility, type relationships, and signature. A compiled baseline change that removes or alters this record cannot be blessed by the baseline update workflow without a coordinated Core Tools change.",
-      "earliestRemovalGate": "PR-23, after Core Tools 'main' migrates to a replacement entry point or is retired, through a coordinated host and Core Tools change. Core Tools 'vnext' requires no bridge.",
+      "evidence": "Azure Functions Core Tools 'main' at a1d25927a4621cc16f4110adebc323152a74776a compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call site is recorded in CoreToolsCompatibilityContract.json.",
+      "compatibilityTreatment": "Temporary Core Tools gate, not a permanent public contract. Preserve until Core Tools migrates to the existing one-argument configuration-based FeatureFlags.IsEnabled path and that migration ships.",
+      "earliestRemovalGate": "After Core Tools migrates to the existing configuration-based path and releases, host-internal use reaches zero, and the compiled-baseline change is explicitly reviewed.",
       "coreToolsRecordId": "FeatureFlags.IsEnabled"
     },
     {
@@ -714,7 +714,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -723,7 +723,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -732,7 +732,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -741,7 +741,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -750,8 +750,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -759,7 +759,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -768,7 +768,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -777,7 +777,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -786,8 +786,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -795,7 +795,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -804,7 +804,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -813,7 +813,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -822,7 +822,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -831,8 +831,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -840,9 +840,9 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "core-tools-required",
-      "evidence": "Azure Functions Core Tools 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call sites are recorded in CoreToolsCompatibilityContract.json.",
-      "compatibilityTreatment": "Preserve the exact effective accessibility, type relationships, and signature. A compiled baseline change that removes or alters this record cannot be blessed by the baseline update workflow without a coordinated Core Tools change.",
-      "earliestRemovalGate": "PR-23, after Core Tools 'main' migrates to a replacement entry point or is retired, through a coordinated host and Core Tools change. Core Tools 'vnext' requires no bridge.",
+      "evidence": "Azure Functions Core Tools 'main' at a1d25927a4621cc16f4110adebc323152a74776a compiles against this record while pinned to Microsoft.Azure.WebJobs.Script.WebHost 4.1051.300. The exact call sites are recorded in CoreToolsCompatibilityContract.json.",
+      "compatibilityTreatment": "Temporary Core Tools gate, not a permanent public contract. Preserve the exact effective accessibility, type relationships, and signature until its mechanical feature-owned removal requirement passes.",
+      "earliestRemovalGate": "After all three audited Core Tools call sites use their feature-owned replacements, a released Core Tools version contains those migrations, host-internal use reaches zero, and the compiled-baseline change is explicitly reviewed.",
       "coreToolsRecordId": "SystemEnvironment.Instance"
     },
     {
@@ -850,8 +850,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -859,8 +859,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -868,8 +868,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -877,7 +877,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -886,7 +886,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -895,7 +895,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -904,7 +904,7 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "host-internal-exported-surface",
-      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the read-only Core Tools audit found no call site on 'main' at dce5153de58a6f38a33630c20f89e9733a5b6165 or 'vnext' at b50e3d162adbdcc746891bcfbe16f217c832dcf1.",
+      "evidence": "Exported from a shipped package and reaches Microsoft.Azure.WebJobs.Script.IEnvironment, but the independent current Core Tools 'main' audit at a1d25927a4621cc16f4110adebc323152a74776a and separately audited historical 'vnext' evidence at b50e3d162adbdcc746891bcfbe16f217c832dcf1 found no call site.",
       "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal or change is permitted; it is not a permanent external compatibility contract.",
       "earliestRemovalGate": "The owning migration PR, after host-internal use reaches zero, the compiled baseline change is explicitly reviewed, and the Core Tools contract test still passes."
     },
@@ -913,8 +913,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -922,8 +922,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -931,8 +931,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -940,8 +940,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {
@@ -949,8 +949,8 @@
       "surface": "compiled-exported-api",
       "effectiveVisibility": "public",
       "category": "exported-legacy-static-bridge",
-      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The Core Tools audit found no use of ScriptSettingsManager on either supported branch.",
-      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Reviewed removal is permitted; no external client depends on it.",
+      "evidence": "Part of the exported Microsoft.Azure.WebJobs.Script.Config.ScriptSettingsManager legacy static bridge. The independent current Core Tools 'main' audit and separately audited historical 'vnext' evidence found no use of ScriptSettingsManager; this does not establish whether other external consumers exist.",
+      "compatibilityTreatment": "Tracked by the compiled public API baseline in both directions. Maintainer-approved removal is permitted after internal zero and explicit compiled-baseline review; absence from the Core Tools audit is not proof that no other external consumer exists.",
       "earliestRemovalGate": "The PR that removes the last host-internal ScriptSettingsManager.Instance use, after an explicit compiled baseline review."
     },
     {

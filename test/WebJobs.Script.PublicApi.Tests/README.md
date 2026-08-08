@@ -95,14 +95,31 @@ because they are externally callable. `sealed` on a member means the compiled me
 
 ## Core Tools compatibility contract
 
-`CoreToolsCompatibilityContract.json` records the read-only audit of both supported Azure Functions
-Core Tools branches, their pinned host package versions, the three `main` call sites, and the six
-compiled records those call sites require. `CoreToolsCompatibilityTests` requires those records to
-remain present in the compiled snapshot, in the checked-in baselines, and publicly accessible.
+`CoreToolsCompatibilityContract.json` records the independent audit of current Azure Functions Core
+Tools `main`, separately identifies the older historical `vnext` evidence, and records the pinned host
+package versions, three `main` call sites, and six compiled records those call sites require. They are
+the only Core Tools-required records in the current environment-migration surface, not proof that no
+other external consumers exist and not permanent public contracts.
 
-Everything else in the compiled baseline is reviewable and may be blessed. The six preserve records
-may not: `eng/script/update-public-api-baselines.ps1` refuses to copy candidates that drop or change
-a preserve record unless the contract file and its evidence have been edited in the same change.
+`CoreToolsCompatibilityTests` requires those records to remain in the compiled snapshot and checked-in
+baselines with public accessibility. It also hard-codes the feature-owned removal requirements:
+
+- move Core Tools feature-flag usage to the existing one-argument configuration path;
+- ship a public configuration-only bundle options parser before migrating the helper call;
+- ship a public bundle resolver/factory with narrow local/Core Tools runtime options before migrating
+  the manager call and its bundle tests;
+- remove `IEnvironment`, `SystemEnvironment`, and `SystemEnvironment.Instance` only after all three
+  call sites migrate, a Core Tools release contains those migrations, host-internal use reaches zero,
+  and the compiled-baseline change is reviewed.
+
+The contract also records human review policy for existing feature-owned integration paths
+(`ScriptApplicationHostOptions`, the supported Add/UseWebJobsScriptHost builder path, and worker
+Options/configuration hooks) or additive successors; it rejects replacing them with a generic
+environment/capability API. Those paths remain visible in the package-complete baseline, but are
+intentionally not additional hard-preserve records beyond the audited six. Everything else in the
+compiled baseline remains reviewable under the maintainer-approved internal-zero policy. The updater
+cannot bless one of the six records merely by changing narrative text because the normal test rerun
+enforces exact record-to-requirement mappings and gates.
 
 ## Compatibility classification
 

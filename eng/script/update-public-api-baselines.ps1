@@ -124,8 +124,9 @@ foreach ($assembly in $assemblies) {
   }
 }
 
-# The audited Core Tools records may not be blessed away by this workflow. If a preserve record is
-# no longer produced, the contract and its evidence must be changed deliberately in the same tree.
+# The temporary Core Tools gates may not be blessed away by this workflow. If a preserve record is
+# no longer produced, the contract must map it to the exact feature-owned removal gates enforced by
+# CoreToolsCompatibilityTests; the normal test rerun below rejects vague narrative-only changes.
 $contractChanged = $false
 & git -C $repositoryRoot diff --quiet -- "test/WebJobs.Script.PublicApi.Tests/CoreToolsCompatibilityContract.json"
 if ($LASTEXITCODE -ne 0) {
@@ -156,7 +157,8 @@ foreach ($record in $contract.preserve) {
 
 if ($brokenPreserveRecords.Count -gt 0 -and -not $contractChanged) {
   throw ("The candidate baselines drop or change these Core Tools required records: " +
-    "[$($brokenPreserveRecords -join ', ')]. Azure Functions Core Tools 'main' compiles against them. " +
+    "[$($brokenPreserveRecords -join ', ')]. Azure Functions Core Tools 'main' compiles against them, " +
+    "and each removal requires its feature-owned replacement and release gates. " +
     "Restore them, or update 'test/WebJobs.Script.PublicApi.Tests/CoreToolsCompatibilityContract.json' " +
     "and its evidence as part of a coordinated Core Tools change. The baselines were not changed.")
 }

@@ -29,12 +29,30 @@ public class CoreToolsCompatibilityTests
         "SystemEnvironment.Instance"
     };
 
+    private static readonly IReadOnlyDictionary<string, string[]> ExpectedRequirementRecords =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["bundle-configuration-parser"] = ["ExtensionBundleConfigurationHelper.ctor"],
+            ["bundle-resolver-factory"] = ["ExtensionBundleManager.ctor"],
+            ["environment-abstraction-retirement"] = ["IEnvironment", "SystemEnvironment", "SystemEnvironment.Instance"],
+            ["feature-flags-configuration-path"] = ["FeatureFlags.IsEnabled"]
+        };
+
+    private static readonly IReadOnlyDictionary<string, string[]> ExpectedRequirementGates =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["bundle-configuration-parser"] = ["compiled-baseline-review", "core-tools-migrated", "core-tools-release-shipped", "host-internal-zero", "replacement-shipped"],
+            ["bundle-resolver-factory"] = ["compiled-baseline-review", "core-tools-bundle-tests-migrated", "core-tools-migrated", "core-tools-release-shipped", "host-internal-zero", "replacement-shipped"],
+            ["environment-abstraction-retirement"] = ["all-audited-call-sites-migrated", "compiled-baseline-review", "core-tools-release-shipped", "host-internal-zero"],
+            ["feature-flags-configuration-path"] = ["compiled-baseline-review", "core-tools-migrated", "core-tools-release-shipped", "host-internal-zero"]
+        };
+
     [Fact]
     public void ContractPreservesExactlyTheSixAuditedRecords()
     {
         CoreToolsCompatibilityContract contract = CoreToolsCompatibilityContract.Load();
 
-        Assert.Equal(1, contract.FormatVersion);
+        Assert.Equal(2, contract.FormatVersion);
         Assert.Equal(6, contract.Preserve.Length);
         Assert.Equal(
             ExpectedRecordIds,
@@ -48,7 +66,71 @@ public class CoreToolsCompatibilityTests
             Assert.False(string.IsNullOrWhiteSpace(record.Signature));
             Assert.Equal("public", record.EffectiveAccessibility);
             Assert.StartsWith(record.EffectiveAccessibility, record.Signature, StringComparison.Ordinal);
+            Assert.False(string.IsNullOrWhiteSpace(record.RemovalRequirementId));
         });
+    }
+
+    [Fact]
+    public void PreservedRecordsHaveMechanicalFeatureOwnedRemovalRequirements()
+    {
+        CoreToolsCompatibilityContract contract = CoreToolsCompatibilityContract.Load();
+
+        Assert.Equal(
+            ExpectedRequirementRecords.Keys.OrderBy(id => id, StringComparer.Ordinal),
+            contract.RemovalRequirements.Select(requirement => requirement.Id).OrderBy(id => id, StringComparer.Ordinal));
+
+        foreach (CoreToolsCompatibilityContract.RemovalRequirement requirement in contract.RemovalRequirements)
+        {
+            Assert.Equal(
+                ExpectedRequirementRecords[requirement.Id],
+                requirement.RecordIds.OrderBy(id => id, StringComparer.Ordinal).ToArray());
+            Assert.Equal(
+                ExpectedRequirementGates[requirement.Id],
+                requirement.Gates.OrderBy(gate => gate, StringComparer.Ordinal).ToArray());
+            Assert.False(string.IsNullOrWhiteSpace(requirement.Replacement));
+        }
+
+        CoreToolsCompatibilityContract.RemovalRequirement environmentRetirement = contract.RemovalRequirements
+            .Single(requirement => string.Equals(requirement.Id, "environment-abstraction-retirement", StringComparison.Ordinal));
+        Assert.Equal(
+            new[] { "bundle-configuration-parser", "bundle-resolver-factory", "feature-flags-configuration-path" },
+            environmentRetirement.DependsOnRequirementIds.OrderBy(id => id, StringComparer.Ordinal).ToArray());
+        Assert.All(
+            contract.RemovalRequirements.Where(requirement => !string.Equals(requirement.Id, environmentRetirement.Id, StringComparison.Ordinal)),
+            requirement => Assert.Empty(requirement.DependsOnRequirementIds));
+
+        IReadOnlyDictionary<string, CoreToolsCompatibilityContract.RemovalRequirement> requirementsById =
+            contract.RemovalRequirements.ToDictionary(requirement => requirement.Id, StringComparer.Ordinal);
+        Assert.All(contract.Preserve, record =>
+        {
+            Assert.True(requirementsById.TryGetValue(record.RemovalRequirementId, out CoreToolsCompatibilityContract.RemovalRequirement requirement));
+            Assert.Contains(record.Id, requirement.RecordIds);
+        });
+
+        Assert.Equal(
+            ExpectedRecordIds,
+            contract.RemovalRequirements
+                .SelectMany(requirement => requirement.RecordIds)
+                .OrderBy(id => id, StringComparer.Ordinal)
+                .ToArray());
+    }
+
+    [Fact]
+    public void FeatureOwnedIntegrationPathsRecordHumanReviewPolicy()
+    {
+        CoreToolsCompatibilityContract contract = CoreToolsCompatibilityContract.Load();
+
+        Assert.Equal(
+            new[] { "script-application-host-options", "webjobs-script-host-builder", "worker-options-configuration" },
+            contract.ProtectedIntegrationPaths.Select(path => path.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray());
+        Assert.All(contract.ProtectedIntegrationPaths, path =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(path.Path));
+            Assert.StartsWith("Human review policy outside the six-record hard gate:", path.Treatment, StringComparison.Ordinal);
+        });
+        Assert.Contains(
+            contract.ProtectedIntegrationPaths,
+            path => path.Treatment.Contains("do not replace them with a generic environment or capability API", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -140,7 +222,7 @@ public class CoreToolsCompatibilityTests
     }
 
     [Fact]
-    public void AuditRecordsBothSupportedBranchesAndEveryCallSite()
+    public void AuditRecordsCurrentMainHistoricalVnextAndEveryCallSite()
     {
         CoreToolsCompatibilityContract contract = CoreToolsCompatibilityContract.Load();
 
@@ -163,6 +245,10 @@ public class CoreToolsCompatibilityTests
 
         Assert.True(main.ConsumesMigrationApi);
         Assert.False(next.ConsumesMigrationApi);
+        Assert.Equal("a1d25927a4621cc16f4110adebc323152a74776a", main.Commit);
+        Assert.Equal("current-independent-audit", main.EvidenceStatus);
+        Assert.Equal("b50e3d162adbdcc746891bcfbe16f217c832dcf1", next.Commit);
+        Assert.Equal("historical-separate-audit", next.EvidenceStatus);
 
         Assert.Equal(3, contract.Audit.CallSites.Length);
         Assert.All(contract.Audit.CallSites, callSite =>

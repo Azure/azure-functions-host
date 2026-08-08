@@ -48,6 +48,16 @@ internal sealed class CoreToolsCompatibilityContract
     public PreservedRecord[] Preserve { get; set; } = Array.Empty<PreservedRecord>();
 
     /// <summary>
+    /// Gets or sets the feature-owned requirements that must be satisfied before preserved records are removed.
+    /// </summary>
+    public RemovalRequirement[] RemovalRequirements { get; set; } = Array.Empty<RemovalRequirement>();
+
+    /// <summary>
+    /// Gets or sets the human-reviewed policy for supported Core Tools integration paths.
+    /// </summary>
+    public ProtectedIntegrationPath[] ProtectedIntegrationPaths { get; set; } = Array.Empty<ProtectedIntegrationPath>();
+
+    /// <summary>
     /// Loads the contract from the repository.
     /// </summary>
     /// <returns>The contract.</returns>
@@ -124,6 +134,11 @@ internal sealed class CoreToolsCompatibilityContract
         /// Gets or sets the audit notes.
         /// </summary>
         public string Notes { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the evidence is current or historical.
+        /// </summary>
+        public string EvidenceStatus { get; set; }
     }
 
     /// <summary>
@@ -214,6 +229,11 @@ internal sealed class CoreToolsCompatibilityContract
         public string EffectiveAccessibility { get; set; }
 
         /// <summary>
+        /// Gets or sets the feature-owned removal requirement for this record.
+        /// </summary>
+        public string RemovalRequirementId { get; set; }
+
+        /// <summary>
         /// Gets the rendered baseline line the record must match.
         /// </summary>
         /// <returns>The baseline line.</returns>
@@ -221,5 +241,57 @@ internal sealed class CoreToolsCompatibilityContract
         {
             return $"{Kind} | {Identity} | {Signature}";
         }
+    }
+
+    /// <summary>
+    /// A mechanical replacement and removal gate for one or more preserved records.
+    /// </summary>
+    internal sealed class RemovalRequirement
+    {
+        /// <summary>
+        /// Gets or sets the stable requirement identifier.
+        /// </summary>
+        public string Id { get; set; }
+
+        /// <summary>
+        /// Gets or sets the records governed by this requirement.
+        /// </summary>
+        public string[] RecordIds { get; set; } = Array.Empty<string>();
+
+        /// <summary>
+        /// Gets or sets the feature-owned replacement or retirement action.
+        /// </summary>
+        public string Replacement { get; set; }
+
+        /// <summary>
+        /// Gets or sets the mandatory gates that must all pass before removal.
+        /// </summary>
+        public string[] Gates { get; set; } = Array.Empty<string>();
+
+        /// <summary>
+        /// Gets or sets prerequisite removal requirements.
+        /// </summary>
+        public string[] DependsOnRequirementIds { get; set; } = Array.Empty<string>();
+    }
+
+    /// <summary>
+    /// Human-reviewed policy for a supported feature-owned integration path outside the six-record hard gate.
+    /// </summary>
+    internal sealed class ProtectedIntegrationPath
+    {
+        /// <summary>
+        /// Gets or sets the stable path identifier.
+        /// </summary>
+        public string Id { get; set; }
+
+        /// <summary>
+        /// Gets or sets the integration path description.
+        /// </summary>
+        public string Path { get; set; }
+
+        /// <summary>
+        /// Gets or sets the compatibility treatment.
+        /// </summary>
+        public string Treatment { get; set; }
     }
 }

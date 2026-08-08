@@ -1,17 +1,18 @@
 {
-  "formatVersion": 1,
-  "description": "Hard compatibility contract for Azure Functions Core Tools. These six compiled records are the only externally required part of the IEnvironment migration surface. Removing or changing any of them requires a coordinated Core Tools change; the baseline update workflow refuses to bless drift here on its own.",
+  "formatVersion": 2,
+  "description": "Temporary compatibility contract for Azure Functions Core Tools. These six compiled records are the only Core Tools-required records in the current environment-migration surface. Their absence from other audited Core Tools call sites is not evidence that no other external consumer exists. The maintainer-approved policy permits removal of other migration APIs after host-internal zero and explicit compiled-baseline review.",
   "audit": {
-    "scope": "Read-only audit of the exact remote tips and pinned host packages of both supported Azure Functions Core Tools development lines.",
+    "scope": "Independent read-only audit of current Core Tools main plus separately audited historical vnext evidence.",
     "repository": "Azure/azure-functions-core-tools",
     "branches": [
       {
         "branch": "main",
-        "commit": "dce5153de58a6f38a33630c20f89e9733a5b6165",
+        "commit": "a1d25927a4621cc16f4110adebc323152a74776a",
         "hostPackage": "Microsoft.Azure.WebJobs.Script.WebHost",
         "hostPackageVersion": "4.1051.300",
         "consumesMigrationApi": true,
-        "notes": "Exactly three compile-time call sites, all passing SystemEnvironment.Instance. No direct IEnvironment member calls, no EnvironmentExtensions or ScriptSettingsManager use, and no reflection-based loading of these types."
+        "notes": "Independent current audit found exactly three compile-time call sites, all passing SystemEnvironment.Instance. No direct IEnvironment member calls, no EnvironmentExtensions or ScriptSettingsManager use, and no reflection-based loading of these types.",
+        "evidenceStatus": "current-independent-audit"
       },
       {
         "branch": "vnext",
@@ -19,7 +20,8 @@
         "hostPackage": "Microsoft.Azure.WebJobs.Script.WebHost",
         "hostPackageVersion": "4.1048.200",
         "consumesMigrationApi": false,
-        "notes": "Zero references. Its extension bundle flow is independent of the host implementation, so it requires no migration bridge."
+        "notes": "Separately audited historical evidence at this exact tip found zero references. This entry does not claim that the independent current-main audit revalidated vnext or that vnext remains a supported current branch.",
+        "evidenceStatus": "historical-separate-audit"
       }
     ],
     "callSites": [
@@ -55,7 +57,7 @@
         "Microsoft.Azure.WebJobs.Script.IEnvironment.Is64BitProcess",
         "Microsoft.Azure.WebJobs.Script.IEnvironment.Platform"
       ],
-      "reason": "The four IEnvironment members are not directly consumed by Core Tools and are not independently protected for external compatibility. They remain while the host still needs them and may evolve or be removed with their owning internal migration, provided the six records below still pass."
+      "reason": "The four IEnvironment members are not directly consumed by the audited Core Tools call sites and are not independently protected by this Core Tools contract. This does not prove absence of other external consumers. The maintainer-approved policy permits reviewed removal after host-internal zero, provided the six temporary Core Tools gates and their feature-owned removal requirements remain satisfied."
     }
   },
   "preserve": [
@@ -65,7 +67,8 @@
       "kind": "type",
       "identity": "Microsoft.Azure.WebJobs.Script.IEnvironment",
       "signature": "public interface Microsoft.Azure.WebJobs.Script.IEnvironment",
-      "effectiveAccessibility": "public"
+      "effectiveAccessibility": "public",
+      "removalRequirementId": "environment-abstraction-retirement"
     },
     {
       "id": "SystemEnvironment",
@@ -73,7 +76,8 @@
       "kind": "type",
       "identity": "Microsoft.Azure.WebJobs.Script.SystemEnvironment",
       "signature": "public class Microsoft.Azure.WebJobs.Script.SystemEnvironment : Microsoft.Azure.WebJobs.Script.IEnvironment",
-      "effectiveAccessibility": "public"
+      "effectiveAccessibility": "public",
+      "removalRequirementId": "environment-abstraction-retirement"
     },
     {
       "id": "SystemEnvironment.Instance",
@@ -81,7 +85,8 @@
       "kind": "property",
       "identity": "Microsoft.Azure.WebJobs.Script.SystemEnvironment.Instance",
       "signature": "public static Microsoft.Azure.WebJobs.Script.SystemEnvironment Instance { get; }",
-      "effectiveAccessibility": "public"
+      "effectiveAccessibility": "public",
+      "removalRequirementId": "environment-abstraction-retirement"
     },
     {
       "id": "FeatureFlags.IsEnabled",
@@ -89,7 +94,8 @@
       "kind": "method",
       "identity": "Microsoft.Azure.WebJobs.Script.Config.FeatureFlags.IsEnabled(System.String,Microsoft.Azure.WebJobs.Script.IEnvironment)",
       "signature": "public static System.Boolean IsEnabled(System.String name, Microsoft.Azure.WebJobs.Script.IEnvironment environment)",
-      "effectiveAccessibility": "public"
+      "effectiveAccessibility": "public",
+      "removalRequirementId": "feature-flags-configuration-path"
     },
     {
       "id": "ExtensionBundleConfigurationHelper.ctor",
@@ -97,7 +103,8 @@
       "kind": "constructor",
       "identity": "Microsoft.Azure.WebJobs.Script.Configuration.ExtensionBundleConfigurationHelper..ctor(Microsoft.Extensions.Configuration.IConfiguration,Microsoft.Azure.WebJobs.Script.IEnvironment)",
       "signature": "public ExtensionBundleConfigurationHelper(Microsoft.Extensions.Configuration.IConfiguration configuration, Microsoft.Azure.WebJobs.Script.IEnvironment environment)",
-      "effectiveAccessibility": "public"
+      "effectiveAccessibility": "public",
+      "removalRequirementId": "bundle-configuration-parser"
     },
     {
       "id": "ExtensionBundleManager.ctor",
@@ -105,7 +112,55 @@
       "kind": "constructor",
       "identity": "Microsoft.Azure.WebJobs.Script.ExtensionBundle.ExtensionBundleManager..ctor(Microsoft.Azure.WebJobs.Script.Configuration.ExtensionBundleOptions,Microsoft.Azure.WebJobs.Script.IEnvironment,Microsoft.Extensions.Logging.ILoggerFactory,Microsoft.Azure.WebJobs.Script.Config.FunctionsHostingConfigOptions,System.Net.Http.IHttpClientFactory)",
       "signature": "public ExtensionBundleManager(Microsoft.Azure.WebJobs.Script.Configuration.ExtensionBundleOptions options, Microsoft.Azure.WebJobs.Script.IEnvironment environment, Microsoft.Extensions.Logging.ILoggerFactory loggerFactory, Microsoft.Azure.WebJobs.Script.Config.FunctionsHostingConfigOptions configOption, System.Net.Http.IHttpClientFactory httpClientFactory)",
-      "effectiveAccessibility": "public"
+      "effectiveAccessibility": "public",
+      "removalRequirementId": "bundle-resolver-factory"
+    }
+  ],
+  "removalRequirements": [
+    {
+      "id": "feature-flags-configuration-path",
+      "recordIds": [ "FeatureFlags.IsEnabled" ],
+      "replacement": "Migrate Core Tools to the existing one-argument configuration-based FeatureFlags.IsEnabled path.",
+      "gates": [ "core-tools-migrated", "core-tools-release-shipped", "host-internal-zero", "compiled-baseline-review" ],
+      "dependsOnRequirementIds": []
+    },
+    {
+      "id": "bundle-configuration-parser",
+      "recordIds": [ "ExtensionBundleConfigurationHelper.ctor" ],
+      "replacement": "Add and ship a public configuration-only extension-bundle options parser, then migrate Core Tools.",
+      "gates": [ "replacement-shipped", "core-tools-migrated", "core-tools-release-shipped", "host-internal-zero", "compiled-baseline-review" ],
+      "dependsOnRequirementIds": []
+    },
+    {
+      "id": "bundle-resolver-factory",
+      "recordIds": [ "ExtensionBundleManager.ctor" ],
+      "replacement": "Add and ship a public extension-bundle resolver or factory with narrow runtime options for local/Core Tools source URI, release channel, download and cache ownership, and non-App-Service flavor; migrate and release Core Tools bundle tests.",
+      "gates": [ "replacement-shipped", "core-tools-migrated", "core-tools-bundle-tests-migrated", "core-tools-release-shipped", "host-internal-zero", "compiled-baseline-review" ],
+      "dependsOnRequirementIds": []
+    },
+    {
+      "id": "environment-abstraction-retirement",
+      "recordIds": [ "IEnvironment", "SystemEnvironment", "SystemEnvironment.Instance" ],
+      "replacement": "Remove the environment abstraction only after all three audited Core Tools call sites use their feature-owned replacements.",
+      "gates": [ "all-audited-call-sites-migrated", "core-tools-release-shipped", "host-internal-zero", "compiled-baseline-review" ],
+      "dependsOnRequirementIds": [ "feature-flags-configuration-path", "bundle-configuration-parser", "bundle-resolver-factory" ]
+    }
+  ],
+  "protectedIntegrationPaths": [
+    {
+      "id": "script-application-host-options",
+      "path": "ScriptApplicationHostOptions",
+      "treatment": "Human review policy outside the six-record hard gate: preserve this supported feature-owned Core Tools integration path or ship an additive successor before changing it."
+    },
+    {
+      "id": "webjobs-script-host-builder",
+      "path": "Supported AddWebJobsScriptHost and UseWebJobsScriptHost builder path",
+      "treatment": "Human review policy outside the six-record hard gate: preserve this supported feature-owned Core Tools integration path or ship an additive successor before changing it."
+    },
+    {
+      "id": "worker-options-configuration",
+      "path": "Worker Options and configuration hooks",
+      "treatment": "Human review policy outside the six-record hard gate: preserve feature-owned Options and configuration hooks or ship additive successors; do not replace them with a generic environment or capability API."
     }
   ]
 }
