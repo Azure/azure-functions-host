@@ -117,7 +117,7 @@ namespace Microsoft.WebJobs.Script.Tests
                     webJobsBuilder =>
                     {
                         configureWebJobs?.Invoke(webJobsBuilder);
-                        webJobsBuilder.Services.AddHostManagedRpcWebHostServices();
+                        webJobsBuilder.Services.AddCommonRpcServices();
                     })
                 .ConfigureAppConfiguration(c =>
                 {

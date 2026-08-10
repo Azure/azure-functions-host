@@ -22,16 +22,16 @@ using Microsoft.Extensions.Options;
 namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// Extension methods for registering the host-managed RPC server topology.
+/// Extension methods for registering RPC services.
 /// </summary>
-public static class HostManagedRpcServiceCollectionExtensions
+public static class RpcServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds the process-backed RPC services used by ScriptHost.
+    /// Adds RPC services used by ScriptHost.
     /// </summary>
     /// <param name="services">The service collection to update.</param>
     /// <returns>The updated service collection.</returns>
-    public static IServiceCollection AddHostManagedRpcScriptHostServices(this IServiceCollection services)
+    public static IServiceCollection AddRpcScriptHostServices(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
 
@@ -60,11 +60,11 @@ public static class HostManagedRpcServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds the process-backed RPC services used by WebHost.
+    /// Adds common RPC services used by WebHost.
     /// </summary>
     /// <param name="services">The service collection to update.</param>
     /// <returns>The updated service collection.</returns>
-    public static IServiceCollection AddHostManagedRpcWebHostServices(this IServiceCollection services)
+    public static IServiceCollection AddCommonRpcServices(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
 

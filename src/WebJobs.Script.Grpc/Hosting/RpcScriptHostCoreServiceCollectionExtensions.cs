@@ -14,9 +14,9 @@ using Microsoft.Extensions.Hosting;
 namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
-/// Extension methods for registering process-neutral RPC ScriptHost services.
+/// Extension methods for registering shared RPC ScriptHost services.
 /// </summary>
-public static class RpcServiceCollectionExtensions
+public static class RpcScriptHostCoreServiceCollectionExtensions
 {
     /// <summary>
     /// Adds the RPC services shared by all ScriptHost channel topologies.

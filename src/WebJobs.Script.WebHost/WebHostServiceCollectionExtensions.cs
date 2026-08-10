@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Register common services with the WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);
-            services.AddHostManagedRpcWebHostServices();
+            services.AddCommonRpcServices();
 
             services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
