@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>Azure.Functions.Rpc.Server</PackageId>
+    <AssemblyName>Azure.Functions.Rpc.Server</AssemblyName>
+    <RootNamespace>Azure.Functions.Rpc.Server</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Mono.Posix.NETStandard" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Rpc.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
+    <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
+  </ItemGroup>
+
+</Project>

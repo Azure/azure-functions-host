@@ -8,8 +8,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
+    /// <summary>
+    /// Extension methods for registering the inbound FunctionRpc server.
+    /// </summary>
     public static class GrpcServiceCollectionsExtensions
     {
+        /// <summary>
+        /// Adds the inbound FunctionRpc server and worker channel services.
+        /// </summary>
+        /// <param name="services">The service collection to update.</param>
+        /// <returns>The updated service collection.</returns>
         public static IServiceCollection AddScriptGrpc(this IServiceCollection services)
         {
             services.AddSingleton<IRpcWorkerChannelFactory, GrpcWorkerChannelFactory>();

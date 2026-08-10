@@ -41,7 +41,7 @@ using ParameterBindingType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.Parame
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    internal abstract partial class WorkerChannel : IRpcWorkerChannel, IDisposable
+    internal abstract partial class WorkerChannel : IFunctionRpcChannel, IDisposable
     {
         private readonly IScriptEventManager _eventManager;
         private readonly RpcWorkerConfig _workerConfig;
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _outbound = outbound.Writer;
             _inbound = inbound.Reader;
-            // note: we don't start the read loop until StartWorkerProcessAsync is called
+            // The derived topology starts the read loop explicitly with BeginInboundProcessing.
 
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
 
@@ -155,8 +155,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         protected virtual int WorkerProcessId => -1;
-
-        public virtual IWorkerProcess WorkerProcess => null;
 
         private bool IsHttpProxyingWorker => _httpProxyEndpoint is not null;
 
@@ -187,8 +185,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         protected virtual void DisposeWorkerResources() { }
-
-        public abstract Task StartWorkerProcessAsync(CancellationToken cancellationToken);
 
         protected void BeginInboundProcessing(TimeSpan startStreamTimeout)
         {
