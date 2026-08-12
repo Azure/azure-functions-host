@@ -206,16 +206,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             foreach (Task<Response<KeyVaultSecret>> task in tasks)
             {
                 KeyVaultSecret item = task.Result;
-                if (item.Name.StartsWith(MasterKey, StringComparison.OrdinalIgnoreCase))
+                string secretName = item.Name;
+
+                if (secretName.StartsWith(MasterKey, StringComparison.OrdinalIgnoreCase))
                 {
+                    string token = secretName.Substring(MasterKey.Length);
+                    if (!IsCanonicalToken(token))
+                    {
+                        Logger?.KeyVaultSecretRepoSkipNonCanonical(secretName);
+                        continue;
+                    }
+
                     hostSecrets.MasterKey = KeyVaultSecretToKey(item, MasterKey);
                 }
-                else if (item.Name.StartsWith(FunctionKeyPrefix, StringComparison.OrdinalIgnoreCase))
+                else if (secretName.StartsWith(FunctionKeyPrefix, StringComparison.OrdinalIgnoreCase))
                 {
+                    string token = secretName.Substring(FunctionKeyPrefix.Length);
+                    if (!IsCanonicalToken(token))
+                    {
+                        Logger?.KeyVaultSecretRepoSkipNonCanonical(secretName);
+                        continue;
+                    }
+
                     hostSecrets.FunctionKeys.Add(KeyVaultSecretToKey(item, FunctionKeyPrefix));
                 }
-                else if (item.Name.StartsWith(SystemKeyPrefix, StringComparison.OrdinalIgnoreCase))
+                else if (secretName.StartsWith(SystemKeyPrefix, StringComparison.OrdinalIgnoreCase))
                 {
+                    string token = secretName.Substring(SystemKeyPrefix.Length);
+                    if (!IsCanonicalToken(token))
+                    {
+                        Logger?.KeyVaultSecretRepoSkipNonCanonical(secretName);
+                        continue;
+                    }
+
                     hostSecrets.SystemKeys.Add(KeyVaultSecretToKey(item, SystemKeyPrefix));
                 }
             }
@@ -248,6 +271,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             foreach (Task<Response<KeyVaultSecret>> task in tasks)
             {
                 KeyVaultSecret item = task.Result;
+                string token = item.Name.Substring(prefix.Length);
+                if (!IsCanonicalToken(token))
+                {
+                    Logger?.KeyVaultSecretRepoSkipNonCanonical(item.Name);
+                    continue;
+                }
+
                 functionSecrets.Keys.Add(KeyVaultSecretToKey(item, prefix));
             }
 
@@ -365,6 +395,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             }
             return result;
+        }
+
+        /// <summary>
+        /// Returns <see langword="true"/> when the encoded <paramref name="token"/>
+        /// round-trips through <see cref="Denormalize"/>/<see cref="Normalize"/>,
+        /// meaning it contains only canonical escape sequences.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// // Canonical: Normalize(Denormalize("eventgrid-095extension")) == "eventgrid-095extension"
+        /// IsCanonicalToken("eventgrid-095extension"); // true
+        ///
+        /// // Non-canonical: -069 decodes to 'E' (a letter), which Normalize leaves unescaped
+        /// IsCanonicalToken("-069ventgrid-095extension"); // false
+        /// </code>
+        /// </example>
+        public static bool IsCanonicalToken(string token)
+        {
+            return string.Equals(Normalize(Denormalize(token)), token, StringComparison.Ordinal);
         }
 
         private static Key KeyVaultSecretToKey(KeyVaultSecret item, string prefix)

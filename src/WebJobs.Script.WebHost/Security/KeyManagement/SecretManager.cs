@@ -146,8 +146,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                         // before caching  any secrets, validate them
                         string masterKeyValue = hostSecrets.MasterKey?.Value;
-                        var functionKeys = hostSecrets.FunctionKeys.ToDictionary(p => p.Name, p => p.Value);
-                        var systemKeys = hostSecrets.SystemKeys.ToDictionary(p => p.Name, p => p.Value);
+                        var functionKeys = hostSecrets.FunctionKeys.ToDictionarySafe(p => p.Name, p => p.Value, StringComparer.OrdinalIgnoreCase, _logger);
+                        var systemKeys = hostSecrets.SystemKeys.ToDictionarySafe(p => p.Name, p => p.Value, StringComparer.OrdinalIgnoreCase, _logger);
                         ValidateHostSecrets(masterKeyValue, functionKeys, systemKeys);
 
                         _hostSecrets = new HostSecretsInfo
@@ -239,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
 
                         // before caching any secrets, validate them
-                        var result = secrets.Keys.ToDictionary(s => s.Name, s => s.Value);
+                        var result = secrets.Keys.ToDictionarySafe(s => s.Name, s => s.Value, StringComparer.OrdinalIgnoreCase, _logger);
                         ValidateSecrets(result, SecretGenerator.FunctionKeySeed, functionName);
 
                         functionSecrets = _functionSecrets.AddOrUpdate(functionName, result, (n, r) => result);
@@ -257,7 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // prioritizing function specific keys
                 var hostSecrets = await GetHostSecretsAsync();
                 functionSecrets = functionSecrets.Union(hostSecrets.FunctionKeys.Where(s => !functionSecrets.ContainsKey(s.Key)))
-                    .ToDictionary(kv => kv.Key, kv => kv.Value);
+                    .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
             }
 
             return functionSecrets;
