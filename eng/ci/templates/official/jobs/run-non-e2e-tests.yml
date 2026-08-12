@@ -13,6 +13,8 @@ jobs:
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  - template: /eng/ci/templates/steps/configure-user-nuget-cfs.yml@self
+
   - task: UseNode@1
     inputs:
       version: 22.x
