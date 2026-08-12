@@ -411,7 +411,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// IsCanonicalToken("-069ventgrid-095extension"); // false
         /// </code>
         /// </example>
-        public static bool IsCanonicalToken(string token)
+        internal static bool IsCanonicalToken(string token)
         {
             return string.Equals(Normalize(Denormalize(token)), token, StringComparison.Ordinal);
         }
