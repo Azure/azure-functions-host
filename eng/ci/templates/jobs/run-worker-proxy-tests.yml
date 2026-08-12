@@ -1,0 +1,79 @@
+parameters:
+- name: linuxPoolName
+  displayName: Pool used for the WorkerProxy job
+  type: string
+  default: 1es-pool-azfunc-public
+- name: linuxPoolImage
+  displayName: Image used for the WorkerProxy job
+  type: string
+  default: 1es-ubuntu-24.04-min
+
+jobs:
+- job: BuildTestPublishWorkerProxy
+  displayName: Build, Test, and Smoke WorkerProxy
+
+  pool:
+    name: ${{ parameters.linuxPoolName }}
+    image: ${{ parameters.linuxPoolImage }}
+    os: linux
+
+  variables:
+    imageContext: $(Agent.TempDirectory)/workerproxy-image
+    publishDirectory: $(Agent.TempDirectory)/workerproxy-image/.workerproxy-publish
+    solution: Microsoft.Azure.Functions.WorkerProxy.sln
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: DotNetCoreCLI@2
+    displayName: WorkerProxy Tests (Linux)
+    inputs:
+      command: test
+      arguments: -v m -c release
+      projects: $(solution)
+
+  - script: sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev
+    displayName: Install Native AOT prerequisites
+
+  - task: DotNetCoreCLI@2
+    displayName: Native AOT publish (linux-x64)
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      arguments: -c release -r linux-x64 --self-contained true -o $(publishDirectory)
+      projects: src/Functions.WorkerProxy/Functions.WorkerProxy.csproj
+
+  - task: Docker@2
+    displayName: Build WorkerProxy container
+    inputs:
+      command: build
+      repository: functions-worker-proxy-ci
+      Dockerfile: $(Build.SourcesDirectory)/src/Functions.WorkerProxy/Dockerfile
+      buildContext: $(imageContext)
+      tags: latest
+
+  - script: |
+      set -euo pipefail
+      containerId="$(docker run --detach \
+        --publish 127.0.0.1::80 \
+        functions-worker-proxy-ci:latest)"
+      cleanup() {
+        exitCode=$?
+        trap - EXIT
+        if [ "$exitCode" -ne 0 ]; then
+          docker logs "$containerId" || true
+        fi
+
+        docker rm --force "$containerId" >/dev/null 2>&1 || true
+        exit "$exitCode"
+      }
+      trap cleanup EXIT
+
+      managementPort="$(docker port "$containerId" 80/tcp | head -n 1 | sed 's/.*://')"
+      test -n "$managementPort"
+      curl --fail --silent --show-error \
+        --retry 60 --retry-delay 1 --retry-connrefused \
+        "http://127.0.0.1:$managementPort/admin/instance/ready"
+    displayName: Smoke WorkerProxy container
