@@ -367,6 +367,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static async Task OnFileChanged_DirectoryDeleted_DoesNotThrow_AndTriggersRestart()
         {
             using (var directory = new TempDirectory())
+            using (var logDirectory = new TempDirectory())
             {
                 // The root script path is intentionally left empty. Deleting an empty watched
                 // directory does not raise child change notifications from the real file watcher,
@@ -377,7 +378,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var jobHostOptions = new ScriptJobHostOptions
                 {
-                    RootLogPath = tempDir,
+                    RootLogPath = logDirectory.Path,
                     RootScriptPath = tempDir,
                     FileWatchingEnabled = true
                 };
@@ -396,7 +397,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockEventManager = new ScriptEventManager();
                 var environment = new TestEnvironment();
 
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
