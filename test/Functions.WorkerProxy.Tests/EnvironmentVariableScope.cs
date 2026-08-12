@@ -4,7 +4,7 @@
 using System;
 using Xunit;
 
-namespace Microsoft.Azure.Functions.WorkerProxy.Tests;
+namespace Azure.Functions.WorkerProxy.Tests;
 
 internal sealed class EnvironmentVariableScope : IDisposable
 {

@@ -19,8 +19,10 @@ jobs:
 
   variables:
     imageContext: $(Agent.TempDirectory)/workerproxy-image
+    localImage: functions-worker-proxy-ci:latest
     publishDirectory: $(Agent.TempDirectory)/workerproxy-image/.workerproxy-publish
-    solution: Microsoft.Azure.Functions.WorkerProxy.sln
+    # This solution will expand as the remaining compute-separation projects are introduced.
+    solution: Azure.Functions.Host.sln
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -45,35 +47,9 @@ jobs:
       arguments: -c release -r linux-x64 --self-contained true -o $(publishDirectory)
       projects: src/Functions.WorkerProxy/Functions.WorkerProxy.csproj
 
-  - task: Docker@2
-    displayName: Build WorkerProxy container
+  - task: 1ES.BuildContainerImage@1
+    displayName: Build and smoke WorkerProxy container
     inputs:
-      command: build
-      repository: functions-worker-proxy-ci
-      Dockerfile: $(Build.SourcesDirectory)/src/Functions.WorkerProxy/Dockerfile
-      buildContext: $(imageContext)
-      tags: latest
-
-  - script: |
-      set -euo pipefail
-      containerId="$(docker run --detach \
-        --publish 127.0.0.1::80 \
-        functions-worker-proxy-ci:latest)"
-      cleanup() {
-        exitCode=$?
-        trap - EXIT
-        if [ "$exitCode" -ne 0 ]; then
-          docker logs "$containerId" || true
-        fi
-
-        docker rm --force "$containerId" >/dev/null 2>&1 || true
-        exit "$exitCode"
-      }
-      trap cleanup EXIT
-
-      managementPort="$(docker port "$containerId" 80/tcp | head -n 1 | sed 's/.*://')"
-      test -n "$managementPort"
-      curl --fail --silent --show-error \
-        --retry 60 --retry-delay 1 --retry-connrefused \
-        "http://127.0.0.1:$managementPort/admin/instance/ready"
-    displayName: Smoke WorkerProxy container
+      dockerfile: $(Build.SourcesDirectory)/src/Functions.WorkerProxy/Dockerfile
+      context: $(imageContext)
+      localImage: $(localImage)

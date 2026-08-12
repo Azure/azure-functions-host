@@ -8,14 +8,14 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.Azure.Functions.WorkerProxy;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Microsoft.Azure.Functions.WorkerProxy.Tests;
+namespace Azure.Functions.WorkerProxy.Tests;
 
 [Collection(nameof(EnvironmentVariableCollection))]
 public class WorkerProxyApplicationTests

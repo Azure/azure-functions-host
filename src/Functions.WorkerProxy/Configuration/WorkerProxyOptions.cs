@@ -3,7 +3,7 @@
 
 using Microsoft.Extensions.Configuration;
 
-namespace Microsoft.Azure.Functions.WorkerProxy.Configuration;
+namespace Azure.Functions.WorkerProxy.Configuration;
 
 internal sealed class WorkerProxyOptions
 {

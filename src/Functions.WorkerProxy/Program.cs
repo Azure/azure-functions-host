@@ -3,8 +3,8 @@
 
 using System;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Azure.Functions.WorkerProxy;
 using Microsoft.Extensions.Options;
 
 try

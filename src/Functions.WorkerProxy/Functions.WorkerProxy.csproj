@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <AssemblyName>Microsoft.Azure.Functions.WorkerProxy</AssemblyName>
-    <RootNamespace>Microsoft.Azure.Functions.WorkerProxy</RootNamespace>
+    <AssemblyName>Azure.Functions.WorkerProxy</AssemblyName>
+    <RootNamespace>Azure.Functions.WorkerProxy</RootNamespace>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <InvariantGlobalization>true</InvariantGlobalization>
@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Microsoft.Azure.Functions.WorkerProxy.Tests" />
+    <InternalsVisibleTo Include="Azure.Functions.WorkerProxy.Tests" />
   </ItemGroup>
 
 </Project>

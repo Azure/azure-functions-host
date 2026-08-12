@@ -3,16 +3,16 @@
 
 using System;
 using System.Collections.Generic;
+using Azure.Functions.WorkerProxy.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.Azure.Functions.WorkerProxy.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy;
 
 internal static class WorkerProxyApplication
 {

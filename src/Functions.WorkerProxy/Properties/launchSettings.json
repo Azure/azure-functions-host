@@ -1,7 +1,7 @@
 {
   "$schema": "http://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "Functions.WorkerProxy": {
+    "Azure.Functions.WorkerProxy": {
       "commandName": "Project",
       "commandLineArgs": "--management-port 8080",
       "launchBrowser": false,

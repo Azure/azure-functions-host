@@ -2,14 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Azure.Functions.WorkerProxy;
+using Azure.Functions.WorkerProxy.Configuration;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Azure.Functions.WorkerProxy;
-using Microsoft.Azure.Functions.WorkerProxy.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Xunit;
 
-namespace Microsoft.Azure.Functions.WorkerProxy.Tests.Configuration;
+namespace Azure.Functions.WorkerProxy.Tests.Configuration;
 
 [Collection(nameof(EnvironmentVariableCollection))]
 public class WorkerProxyOptionsTests

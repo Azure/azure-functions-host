@@ -3,8 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
-    <AssemblyName>Microsoft.Azure.Functions.WorkerProxy.Tests</AssemblyName>
-    <RootNamespace>Microsoft.Azure.Functions.WorkerProxy.Tests</RootNamespace>
+    <AssemblyName>Azure.Functions.WorkerProxy.Tests</AssemblyName>
+    <RootNamespace>Azure.Functions.WorkerProxy.Tests</RootNamespace>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
