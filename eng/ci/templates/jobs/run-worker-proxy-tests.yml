@@ -56,9 +56,11 @@ jobs:
 
   - script: |
       set -euo pipefail
+      echo "Starting WorkerProxy image: $(localImage)"
       containerId="$(docker run --detach \
         --publish 127.0.0.1::80 \
         $(localImage))"
+      echo "Started WorkerProxy container: $containerId"
       cleanup() {
         exitCode=$?
         trap - EXIT
@@ -73,7 +75,13 @@ jobs:
 
       managementPort="$(docker port "$containerId" 80/tcp | head -n 1 | sed 's/.*://')"
       test -n "$managementPort"
-      curl --fail --silent --show-error \
+      echo "WorkerProxy management port: $managementPort"
+      echo "Probing http://127.0.0.1:$managementPort/admin/instance/ready"
+      httpStatus="$(curl --fail --silent --show-error \
+        --output /dev/null --write-out '%{http_code}' \
         --retry 60 --retry-delay 1 --retry-connrefused \
-        "http://127.0.0.1:$managementPort/admin/instance/ready"
+        "http://127.0.0.1:$managementPort/admin/instance/ready")"
+      echo "WorkerProxy readiness probe succeeded with HTTP $httpStatus."
+      echo "WorkerProxy container logs:"
+      docker logs "$containerId"
     displayName: Smoke WorkerProxy container
