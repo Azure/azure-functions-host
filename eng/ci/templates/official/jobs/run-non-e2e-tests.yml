@@ -13,17 +13,7 @@ jobs:
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
-  # CFS: the Functions host copies a C# script app's function.proj to %TEMP%\<guid>\ and runs
-  # `dotnet restore` there (see src/WebJobs.Script/Description/DotNet/PackageManager.cs), so NuGet
-  # config discovery walks up a temp path outside the repo and falls back to nuget.org. Seed the
-  # repo NuGet.config at the user level so those out-of-tree restores resolve through the compliant
-  # upstream-public feed. In-repo restores are unaffected: the repo-root config's <clear /> wins.
-  - pwsh: |
-      $dir = Join-Path $env:APPDATA 'NuGet'
-      New-Item -ItemType Directory -Force -Path $dir | Out-Null
-      Copy-Item '$(Build.SourcesDirectory)/NuGet.config' (Join-Path $dir 'NuGet.Config') -Force
-      Write-Host "Seeded user-level NuGet.Config at $dir for CFS-compliant out-of-tree restores."
-    displayName: Configure user-level NuGet feed (CFS)
+  - template: /eng/ci/templates/steps/configure-user-nuget-cfs.yml@self
 
   - task: UseNode@1
     inputs:
