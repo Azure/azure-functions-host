@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string tempDir = directory.Path;
                 Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
 
-                var fileMonitoringService = GetFileMonitoringService(tempDir, rootScriptPath);
+                using var fileMonitoringService = GetFileMonitoringService(tempDir, rootScriptPath);
                 Assert.False(fileMonitoringService.GetDirectorySnapshot().IsDefault);
                 Assert.True(fileMonitoringService.GetDirectorySnapshot().IsEmpty);
             }
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 string tempDir = directory.Path;
                 Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
-                var fileMonitoringService = GetFileMonitoringService(tempDir, tempDir);
+                using var fileMonitoringService = GetFileMonitoringService(tempDir, tempDir);
                 Assert.Equal(fileMonitoringService.GetDirectorySnapshot().Length, 1);
                 Assert.Equal(fileMonitoringService.GetDirectorySnapshot()[0], Path.Combine(tempDir, "Host"));
             }
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
 
                 // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
 
                 // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
 
                 // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
 
                 // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
@@ -325,7 +325,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
 
                 // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
