@@ -22,7 +22,7 @@ jobs:
     localImage: functions-worker-proxy-ci:latest
     publishDirectory: $(Agent.TempDirectory)/workerproxy-image/.workerproxy-publish
     # This solution will expand as the remaining compute-separation projects are introduced.
-    solution: Azure.Functions.Host.sln
+    solution: Azure.Functions.Host.slnx
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
