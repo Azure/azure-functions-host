@@ -20,6 +20,14 @@ internal static class WorkerProxyApplication
     private const string KestrelConfigurationSection = "WorkerProxy:Kestrel";
     private const string ReadyPath = "/admin/instance/ready";
 
+    private static readonly Dictionary<string, string?> HostingConfigurationOverrides =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            [AllowedHostsConfigurationKey] = "*",
+            [WebHostDefaults.ServerUrlsKey] = string.Empty,
+            [WebHostDefaults.PreferHostingUrlsKey] = bool.FalseString
+        };
+
     private static readonly Dictionary<string, string> CommandLineMappings =
         new(StringComparer.Ordinal)
         {
@@ -31,18 +39,25 @@ internal static class WorkerProxyApplication
     {
         ArgumentNullException.ThrowIfNull(args);
 
+        return Build(configuration =>
+        {
+            configuration.AddEnvironmentVariables();
+            AddCommandLineConfiguration(configuration, args);
+        });
+    }
+
+    internal static WebApplication Build(Action<ConfigurationManager> configureExternalConfiguration)
+    {
+        ArgumentNullException.ThrowIfNull(configureExternalConfiguration);
+
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
 
         builder.Configuration.Sources.Clear();
-        builder.Configuration.AddEnvironmentVariables();
-        builder.Configuration.AddCommandLine(args, CommandLineMappings);
-        builder.Configuration.AddInMemoryCollection();
+        configureExternalConfiguration(builder.Configuration);
 
         // WorkerProxy owns its listener explicitly. Generic hosting configuration must not add
         // endpoints, move the management listener, or reject the platform readiness probe.
-        builder.Configuration[AllowedHostsConfigurationKey] = "*";
-        builder.WebHost.UseSetting(WebHostDefaults.ServerUrlsKey, string.Empty);
-        builder.WebHost.UseSetting(WebHostDefaults.PreferHostingUrlsKey, bool.FalseString);
+        builder.Configuration.AddInMemoryCollection(HostingConfigurationOverrides);
 
         builder.Services
             .AddOptions<WorkerProxyOptions>()
@@ -70,5 +85,14 @@ internal static class WorkerProxyApplication
         app.MapGet(ReadyPath, static () => TypedResults.Ok()).AllowAnonymous();
 
         return app;
+    }
+
+    internal static void AddCommandLineConfiguration(
+        ConfigurationManager configuration, string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(args);
+
+        configuration.AddCommandLine(args, CommandLineMappings);
     }
 }

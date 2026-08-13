@@ -2,36 +2,32 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Azure.Functions.WorkerProxy;
 using Azure.Functions.WorkerProxy.Configuration;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests.Configuration;
 
-[Collection(nameof(EnvironmentVariableCollection))]
 public class WorkerProxyOptionsTests
 {
     [Fact]
     public void Options_UseDefault_WhenNoValueIsConfigured()
     {
-        using EnvironmentVariableScope managementPort =
-            new(WorkerProxyOptions.ManagementPortConfigurationKey, value: null);
-
         WorkerProxyOptions options = GetOptions();
 
         Assert.Equal(WorkerProxyOptions.DefaultManagementPort, options.ManagementPort);
     }
 
     [Fact]
-    public void Options_UseEnvironmentValue()
+    public void Options_UseConfiguredValue()
     {
-        using EnvironmentVariableScope managementPort =
-            new(WorkerProxyOptions.ManagementPortConfigurationKey, "8080");
-
-        WorkerProxyOptions options = GetOptions();
+        WorkerProxyOptions options = GetOptions(
+            configuredManagementPort: "8080");
 
         Assert.Equal(8080, options.ManagementPort);
     }
@@ -41,21 +37,17 @@ public class WorkerProxyOptionsTests
     [InlineData("--management-port=9090")]
     public void Options_UseCommandLineValue(params string[] arguments)
     {
-        using EnvironmentVariableScope managementPort =
-            new(WorkerProxyOptions.ManagementPortConfigurationKey, value: null);
-
-        WorkerProxyOptions options = GetOptions(arguments);
+        WorkerProxyOptions options = GetOptions(arguments: arguments);
 
         Assert.Equal(9090, options.ManagementPort);
     }
 
     [Fact]
-    public void Options_CommandLineOverridesEnvironment()
+    public void Options_CommandLineOverridesConfiguredValue()
     {
-        using EnvironmentVariableScope managementPort =
-            new(WorkerProxyOptions.ManagementPortConfigurationKey, "8080");
-
-        WorkerProxyOptions options = GetOptions("--management-port", "9090");
+        WorkerProxyOptions options = GetOptions(
+            configuredManagementPort: "8080",
+            arguments: ["--management-port", "9090"]);
 
         Assert.Equal(9090, options.ManagementPort);
     }
@@ -63,11 +55,8 @@ public class WorkerProxyOptionsTests
     [Fact]
     public void Options_LastCommandLineValueWins()
     {
-        using EnvironmentVariableScope managementPort =
-            new(WorkerProxyOptions.ManagementPortConfigurationKey, value: null);
-
-        WorkerProxyOptions options =
-            GetOptions("--management-port", "8080", "--management-port=9090");
+        WorkerProxyOptions options = GetOptions(
+            arguments: ["--management-port", "8080", "--management-port=9090"]);
 
         Assert.Equal(9090, options.ManagementPort);
     }
@@ -75,10 +64,7 @@ public class WorkerProxyOptionsTests
     [Fact]
     public void Options_IgnoreUnknownArguments()
     {
-        using EnvironmentVariableScope managementPort =
-            new(WorkerProxyOptions.ManagementPortConfigurationKey, value: null);
-
-        WorkerProxyOptions options = GetOptions("--unknown", "value");
+        WorkerProxyOptions options = GetOptions(arguments: ["--unknown", "value"]);
 
         Assert.Equal(WorkerProxyOptions.DefaultManagementPort, options.ManagementPort);
     }
@@ -88,11 +74,8 @@ public class WorkerProxyOptionsTests
     [InlineData(" ")]
     public void Options_Throw_WhenValueIsNotAnInteger(string value)
     {
-        using EnvironmentVariableScope managementPort =
-            new(WorkerProxyOptions.ManagementPortConfigurationKey, value: null);
-
         Assert.Throws<InvalidOperationException>(
-            () => WorkerProxyApplication.Build(["--management-port", value]));
+            () => BuildApplication(arguments: ["--management-port", value]));
     }
 
     [Theory]
@@ -101,11 +84,8 @@ public class WorkerProxyOptionsTests
     [InlineData("65536")]
     public void Options_Throw_WhenPortIsOutOfRange(string value)
     {
-        using EnvironmentVariableScope managementPort =
-            new(WorkerProxyOptions.ManagementPortConfigurationKey, value: null);
-
         OptionsValidationException exception = Assert.Throws<OptionsValidationException>(
-            () => WorkerProxyApplication.Build(["--management-port", value]));
+            () => BuildApplication(arguments: ["--management-port", value]));
 
         Assert.Contains("between 1 and 65535", exception.Message, StringComparison.Ordinal);
     }
@@ -116,17 +96,34 @@ public class WorkerProxyOptionsTests
     [InlineData("--management-port=")]
     public void Options_UseDefault_WhenCommandLineValueIsEmpty(params string[] arguments)
     {
-        using EnvironmentVariableScope managementPort =
-            new(WorkerProxyOptions.ManagementPortConfigurationKey, value: null);
-
-        WorkerProxyOptions options = GetOptions(arguments);
+        WorkerProxyOptions options = GetOptions(arguments: arguments);
 
         Assert.Equal(WorkerProxyOptions.DefaultManagementPort, options.ManagementPort);
     }
 
-    private static WorkerProxyOptions GetOptions(params string[] arguments)
+    private static WebApplication BuildApplication(
+        string? configuredManagementPort = null, string[]? arguments = null)
     {
-        using WebApplication app = WorkerProxyApplication.Build(arguments);
+        return WorkerProxyApplication.Build(configuration =>
+        {
+            if (configuredManagementPort is not null)
+            {
+                configuration.AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        [WorkerProxyOptions.ManagementPortConfigurationKey] =
+                            configuredManagementPort
+                    });
+            }
+
+            WorkerProxyApplication.AddCommandLineConfiguration(configuration, arguments ?? []);
+        });
+    }
+
+    private static WorkerProxyOptions GetOptions(
+        string? configuredManagementPort = null, string[]? arguments = null)
+    {
+        using WebApplication app = BuildApplication(configuredManagementPort, arguments);
 
         return app.Services.GetRequiredService<IOptions<WorkerProxyOptions>>().Value;
     }
