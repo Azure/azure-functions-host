@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Xunit;
@@ -263,6 +264,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var service = services.FirstOrDefault(d => d.ServiceType == typeof(IFunctionsSyncManager));
                 services.Remove(service);
                 services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
+
+                services.AddHttpClient(Options.DefaultName)
+                    .ConfigurePrimaryHttpMessageHandler(() => new TestHandler());
             }
 
             public override void ConfigureWebHost(IServiceCollection services)
