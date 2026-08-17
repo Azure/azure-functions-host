@@ -104,17 +104,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             try
             {
                 // Right now we only check if we can access blobs. The functions host doesn't use queues or tables directly (although extensions may).
-                // We use this API to check connectivity to Blob storage. We don't check permissions/role assignments in depth for a couple reasons:
+                // We don't check permissions/role assignments in depth for a couple reasons:
                 // 1. It is expensive
                 // 2. Permissions/role assignments needed by the host can change over time.
                 // So we settle for just connectivity here. Insufficient permissions will show up as errors elsewhere.
                 // See https://docs.microsoft.com/en-us/azure/storage/common/storage-auth-aad-app?tabs=dotnet#configure-permissions-for-access-to-blob-and-queue-data
-                await client
-                    .GetBlobContainersAsync(cancellationToken: cancellation)
-                    .AsPages(pageSizeHint: 1)
-                    .GetAsyncEnumerator(cancellation)
-                    .MoveNextAsync()
-                    .ConfigureAwait(false);
+                await client.GetPropertiesAsync(cancellationToken: cancellation).ConfigureAwait(false);
 
                 return HealthCheckResult.Healthy();
             }
