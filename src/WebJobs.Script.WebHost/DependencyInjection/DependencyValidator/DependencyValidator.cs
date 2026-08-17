@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .Expect<WorkerConsoleLogService>()
                 .Expect<DeferredLogForwardingService>()
                 .OptionalExternal("Microsoft.Azure.WebJobs.Script.Workers.FunctionInvocationDispatcherShutdownManager", "Microsoft.Azure.WebJobs.Script.Grpc", null)
-                .OptionalExternal("Microsoft.Azure.WebJobs.Script.Workers.WorkerConcurrencyManager", "Microsoft.Azure.WebJobs.Script.Grpc", null)
+                .OptionalExternal("Microsoft.Azure.WebJobs.Script.Workers.WorkerConcurrencyManager", "Azure.Functions.Rpc.Server", null)
                 .Optional<FunctionAppValidationService>() // Conditionally registered.
                 .Optional<FuncAppFileProvisioningService>() // Used by powershell.
                 .Optional<JobHostService>() // Missing when host is offline.

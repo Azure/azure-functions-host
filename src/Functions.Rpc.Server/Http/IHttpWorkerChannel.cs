@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    internal interface IHttpWorkerChannel : IWorkerChannel
+    internal interface IHttpWorkerChannel : IWorkerProcessChannel
     {
         Task InvokeAsync(ScriptInvocationContext context);
     }

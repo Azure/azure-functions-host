@@ -40,6 +40,7 @@ jobs:
       custom: pack
       arguments: -c release -o $(nuget_drop_path)
       projects: |
+        **/Functions.Rpc.Server.csproj
         **/WebJobs.Script.csproj
         **/WebJobs.Script.WebHost.csproj
         **/WebJobs.Script.Grpc.csproj

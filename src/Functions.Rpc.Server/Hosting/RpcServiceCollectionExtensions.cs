@@ -9,7 +9,6 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Rpc;
-using Microsoft.Azure.WebJobs.Script.Rpc.Configuration;
 using Microsoft.Azure.WebJobs.Script.Rpc.Hosting;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -22,8 +21,16 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
+/// <summary>
+/// Extension methods for registering RPC services.
+/// </summary>
 public static class RpcServiceCollectionExtensions
 {
+    /// <summary>
+    /// Adds RPC services used by ScriptHost.
+    /// </summary>
+    /// <param name="services">The service collection to update.</param>
+    /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddRpcScriptHostServices(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -34,7 +41,7 @@ public static class RpcServiceCollectionExtensions
         services.AddSingleton<IHttpWorkerService, DefaultHttpWorkerService>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IFunctionProvider, HttpWorkerFunctionProvider>());
 
-        //Worker Function Invocation dispatcher
+        // Worker Function Invocation dispatcher
         services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
 
         // Rpc Worker
@@ -45,19 +52,18 @@ public static class RpcServiceCollectionExtensions
 
         // Configuration
         services.AddSingleton<IPostConfigureOptions<ScriptHostRecycleOptions>, HttpScriptHostRecycleOptionsSetup>();
-        services.ConfigureOptions<HttpWorkerOptionsSetup>();
-        services.ConfigureOptions<RpcFunctionMetadataOptionsSetup>();
-        services.ConfigureOptions<RpcScriptHostRecycleOptionsSetup>();
+        services.AddRpcScriptHostCoreServices();
 
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
-
-        services.AddSingleton<IWorkerFunctionDescriptorProviderFactory, RpcWorkerFunctionDescriptorProviderFactory>();
-        services.AddSingleton<IScriptHostLifecycleService, RpcScriptHostLifecycleService>();
         services.AddSingleton<IScriptHostWorkerManager, RpcScriptHostWorkerManager>();
 
         return services;
     }
 
+    /// <summary>
+    /// Adds common RPC services used by WebHost.
+    /// </summary>
+    /// <param name="services">The service collection to update.</param>
+    /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddCommonRpcServices(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

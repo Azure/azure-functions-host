@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Functions.Rpc.Server/Functions.Rpc.Server.csproj" />
     <ProjectReference Include="../../src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" />
   </ItemGroup>
 

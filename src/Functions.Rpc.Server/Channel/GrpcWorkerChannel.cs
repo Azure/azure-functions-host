@@ -21,7 +21,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    internal class GrpcWorkerChannel : WorkerChannel
+    internal class GrpcWorkerChannel : WorkerChannel, IRpcWorkerChannel
     {
         private IWorkerProcess _rpcWorkerProcess;
 
@@ -65,11 +65,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Subscribe(msg => EventManager.Publish(new HostRestartEvent($"Worker monitored file changed: '{msg.FileChangeArguments.Name}'."))));
         }
 
-        public override IWorkerProcess WorkerProcess => _rpcWorkerProcess;
+        public IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
         protected override int WorkerProcessId => _rpcWorkerProcess.Id;
 
-        public override async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
+        public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
             BeginInboundProcessing(WorkerConfig.CountOptions.ProcessStartupTimeout);
 

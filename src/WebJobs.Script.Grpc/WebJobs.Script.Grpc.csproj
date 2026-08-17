@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" />
-    <PackageReference Include="Mono.Posix.NETStandard" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Rpc.Core" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Core.Api" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

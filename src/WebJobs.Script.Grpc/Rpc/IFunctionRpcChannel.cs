@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    internal interface IRpcWorkerChannel : IWorkerChannel
+    internal interface IFunctionRpcChannel : IWorkerChannel
     {
         RpcWorkerConfig WorkerConfig { get; }
 

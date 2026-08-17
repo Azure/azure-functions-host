@@ -6,9 +6,10 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v10.0": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/4.1051.100-dev": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/4.1054.100-dev": {
         "dependencies": {
           "AspNetCore.HealthChecks.UI.Client": "9.0.0",
+          "Azure.Functions.Rpc.Server": "4.1054.100-dev",
           "Azure.Security.KeyVault.Secrets": "4.6.0",
           "Azure.Storage.Files.Shares": "12.24.0",
           "Microsoft.AspNet.WebApi.Client": "5.2.9",
@@ -17,12 +18,13 @@
           "Microsoft.Azure.AppService.Middleware.Functions": "1.5.11",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption": "1.0.5",
-          "Microsoft.Azure.WebJobs.Script": "4.1051.100-dev",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1051.100-dev",
+          "Microsoft.Azure.WebJobs.Script": "4.1054.100-dev",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1054.100-dev",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.Security.Utilities.Core": "1.21.0",
-          "Microsoft.Azure.WebJobs.Script.Reference": "4.1051.0.0",
-          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1051.0.0"
+          "Azure.Functions.Rpc.Server.Reference": "4.1054.0.0",
+          "Microsoft.Azure.WebJobs.Script.Reference": "4.1054.0.0",
+          "Microsoft.Azure.WebJobs.Script.Grpc.Reference": "4.1054.0.0"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.WebHost.dll": {}
@@ -1564,7 +1566,21 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script/4.1051.100-dev": {
+      "Azure.Functions.Rpc.Server/4.1054.100-dev": {
+        "dependencies": {
+          "Grpc.AspNetCore": "2.55.0",
+          "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.45",
+          "Microsoft.Azure.WebJobs.Script": "4.1054.100-dev",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1054.100-dev",
+          "Mono.Posix.NETStandard": "1.0.0"
+        },
+        "runtime": {
+          "Azure.Functions.Rpc.Server.dll": {
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      },
+      "Microsoft.Azure.WebJobs.Script/4.1054.100-dev": {
         "dependencies": {
           "Azure.Data.Tables": "12.8.3",
           "Azure.Monitor.OpenTelemetry.Exporter": "1.5.0",
@@ -1600,12 +1616,11 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/4.1051.100-dev": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/4.1054.100-dev": {
         "dependencies": {
-          "Grpc.AspNetCore": "2.55.0",
-          "Microsoft.Azure.WebJobs.Rpc.Core": "3.0.45",
-          "Microsoft.Azure.WebJobs.Script": "4.1051.100-dev",
-          "Mono.Posix.NETStandard": "1.0.0"
+          "Google.Protobuf": "3.23.1",
+          "Grpc.Core.Api": "2.55.0",
+          "Microsoft.Azure.WebJobs.Script": "4.1054.100-dev"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
@@ -1613,18 +1628,26 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Reference/4.1051.0.0": {
+      "Azure.Functions.Rpc.Server.Reference/4.1054.0.0": {
         "runtime": {
-          "Microsoft.Azure.WebJobs.Script.dll": {
-            "assemblyVersion": "4.1051.0.0",
+          "Azure.Functions.Rpc.Server.dll": {
+            "assemblyVersion": "4.1054.0.0",
             "fileVersion": "42.42.42.4242"
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1051.0.0": {
+      "Microsoft.Azure.WebJobs.Script.Reference/4.1054.0.0": {
+        "runtime": {
+          "Microsoft.Azure.WebJobs.Script.dll": {
+            "assemblyVersion": "4.1054.0.0",
+            "fileVersion": "42.42.42.4242"
+          }
+        }
+      },
+      "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1054.0.0": {
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.Grpc.dll": {
-            "assemblyVersion": "4.1051.0.0",
+            "assemblyVersion": "4.1054.0.0",
             "fileVersion": "42.42.42.4242"
           }
         }
@@ -1632,7 +1655,7 @@
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/4.1051.100-dev": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/4.1054.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -2442,22 +2465,32 @@
       "path": "yarp.reverseproxy/2.0.1",
       "hashPath": "yarp.reverseproxy.2.0.1.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script/4.1051.100-dev": {
+    "Azure.Functions.Rpc.Server/4.1054.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/4.1051.100-dev": {
+    "Microsoft.Azure.WebJobs.Script/4.1054.100-dev": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Reference/4.1051.0.0": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/4.1054.100-dev": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Azure.Functions.Rpc.Server.Reference/4.1054.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1051.0.0": {
+    "Microsoft.Azure.WebJobs.Script.Reference/4.1054.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Azure.WebJobs.Script.Grpc.Reference/4.1054.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
