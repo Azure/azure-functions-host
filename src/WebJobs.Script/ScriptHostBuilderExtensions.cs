@@ -23,6 +23,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -326,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // Script host services - these services are scoped to a host instance, and when a new host
             // is created, these services are recreated
-            builder.ConfigureServices(services =>
+            builder.ConfigureServices((context, services) =>
             {
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
@@ -395,6 +396,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IHostOptionsProvider, HostOptionsProvider>();
                 services.AddSingleton<IInstanceServicesProviderFactory, ScriptInstanceServicesProviderFactory>();
                 services.AddSingleton<IWorkerRuntimeResolver, ScriptHostWorkerRuntimeResolver>();
+
+                services.AddJobHostScopedHealthChecks(context.Configuration);
             });
 
             RegisterFileProvisioningService(builder);

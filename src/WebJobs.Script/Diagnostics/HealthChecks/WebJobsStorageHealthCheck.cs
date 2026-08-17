@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
     /// the first result. After that it will keep returning the most recent result of the background
     /// refresh.
     /// </remarks>
-    internal class WebJobsStorageHealthCheck : IHealthCheck, IAsyncDisposable
+    internal class WebJobsStorageHealthCheck : IHealthCheck, IDisposable, IAsyncDisposable
     {
         private const string ConfigSection = "AzureWebJobsStorage";
 
@@ -31,9 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         private static readonly TimeSpan DefaultPeriod = TimeSpan.FromSeconds(30);
         private readonly CancellationTokenSource _cts = new();
         private readonly Lazy<Task> _initialized;
-        private readonly IEnvironment _environment;
         private readonly IAzureBlobStorageProvider _provider;
-        private readonly IScriptHostManager _scriptHostManager;
+        private int _disposed;
 
         private HealthCheckResult _last;
         private HealthCheckContext _context;
@@ -43,51 +42,35 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         /// Initializes a new instance of the <see cref="WebJobsStorageHealthCheck"/> class.
         /// </summary>
         /// <param name="provider">The blob storage provider.</param>
-        /// <param name="environment">The environment.</param>
-        /// <param name="scriptHostManager">The script host manager.</param>
-        public WebJobsStorageHealthCheck(
-            IAzureBlobStorageProvider provider, IEnvironment environment, IScriptHostManager scriptHostManager)
+        public WebJobsStorageHealthCheck(IAzureBlobStorageProvider provider)
         {
             ArgumentNullException.ThrowIfNull(provider);
-            ArgumentNullException.ThrowIfNull(environment);
-            ArgumentNullException.ThrowIfNull(scriptHostManager);
             _provider = provider;
-            _environment = environment;
-            _scriptHostManager = scriptHostManager;
             _initialized = new(RunInBackgroundAsync);
+        }
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                _cts.CancelNoThrow();
+                _cts.Dispose();
+            }
         }
 
         public async ValueTask DisposeAsync()
         {
-            await _cts.CancelNoThrowAsync().ConfigureAwait(false);
-            _cts.Dispose();
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                await _cts.CancelNoThrowAsync().ConfigureAwait(false);
+                _cts.Dispose();
+            }
         }
 
         public async Task<HealthCheckResult> CheckHealthAsync(
             HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(context);
-
-            // TODO: we don't have access to StandbyOptions in this assembly.
-            // Switch to using that when/if it ever moves here. It isn't worth moving to the other assembly
-            // just to get access to that type, since technically IEnvironment is sufficient here.
-            // TODO: a better approach would be to dynamically register only when specialization completes.
-            // However, that is not supported with the current health check infrastructure -- it captures
-            // the set of health checks at startup, and does not allow dynamic changes. We can revisit that later.
-            if (_environment.IsPlaceholderModeEnabled())
-            {
-                // This health check runs in the WebHost context, as misconfigured AzureWebJobsStorage may prevent
-                // the ScriptHost from starting. So we want to ensure this check runs independent of ScriptHost
-                // starting. But we also want to avoid false negatives during placeholder mode.
-                return HealthCheckResult.Healthy("Placeholder mode. Check skipped.");
-            }
-
-            if (_scriptHostManager.Services is null)
-            {
-                // No active script host means storage configuration may not yet be available (or has been torn down).
-                // Skip the check rather than report a false negative.
-                return HealthCheckResult.Healthy("No active script host. Check skipped.");
-            }
 
             _context = context;
             await _initialized.Value.WaitAsync(cancellationToken).ConfigureAwait(false);

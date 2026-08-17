@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using AwesomeAssertions;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -71,14 +73,85 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             builder.Verify(b => b.Add(IsRegistration<ScriptHostHealthCheck>(
                 HealthCheckNames.ScriptHostLifeCycle, HealthCheckTags.Readiness)),
                 Times.Once);
-            builder.Verify(b => b.Add(IsRegistration<WebJobsStorageHealthCheck>(
-                HealthCheckNames.WebJobsStorage, HealthCheckTags.Configuration)),
-                Times.Once);
             builder.Verify(b => b.Services, Times.AtLeastOnce);
             builder.VerifyNoOtherCalls();
 
             VerifyDynamicHealthCheckService(services);
             VerifyPublishers(services, null, HealthCheckTags.Liveness, HealthCheckTags.Readiness);
+        }
+
+        [Fact]
+        public void AddJobHostScopedHealthChecks_WithConnectionString_RegistersHealthCheck()
+        {
+            ServiceCollection services = new();
+            IConfiguration configuration = CreateConfiguration(
+                new Dictionary<string, string> { ["AzureWebJobsStorage"] = "UseDevelopmentStorage=true" });
+
+            IServiceCollection returned =
+                services.AddJobHostScopedHealthChecks(configuration);
+
+            returned.Should().BeSameAs(services);
+            services.Should().ContainSingle(x => x.ServiceType == typeof(WebJobsStorageHealthCheck));
+        }
+
+        [Fact]
+        public void AddJobHostScopedHealthChecks_WithIdentitySection_RegistersHealthCheck()
+        {
+            ServiceCollection services = new();
+            IConfiguration configuration = CreateConfiguration(
+                new Dictionary<string, string> { ["AzureWebJobsStorage:accountName"] = "storage" });
+
+            services.AddJobHostScopedHealthChecks(configuration);
+
+            services.Should().ContainSingle(x => x.ServiceType == typeof(WebJobsStorageHealthCheck));
+        }
+
+        [Fact]
+        public void AddJobHostScopedHealthChecks_WithEmptyConfiguration_DoesNotRegisterHealthCheck()
+        {
+            ServiceCollection services = new();
+            IConfiguration configuration = CreateConfiguration(
+                new Dictionary<string, string>
+                {
+                    ["AzureWebJobsStorage"] = string.Empty,
+                    ["AzureWebJobsStorage:accountName"] = string.Empty,
+                });
+
+            services.AddJobHostScopedHealthChecks(configuration);
+
+            services.Should().NotContain(x => x.ServiceType == typeof(WebJobsStorageHealthCheck));
+        }
+
+        [Fact]
+        public void AddJobHostScopedHealthChecks_InPlaceholderMode_DoesNotRegisterHealthCheck()
+        {
+            ServiceCollection services = new();
+            IConfiguration configuration = CreateConfiguration(
+                new Dictionary<string, string>
+                {
+                    ["AzureWebJobsStorage"] = "UseDevelopmentStorage=true",
+                    [EnvironmentSettingNames.AzureWebsitePlaceholderMode] = "1",
+                });
+
+            services.AddJobHostScopedHealthChecks(configuration);
+
+            services.Should().NotContain(x => x.ServiceType == typeof(WebJobsStorageHealthCheck));
+        }
+
+        [Fact]
+        public void AddJobHostScopedHealthChecks_ResolvedHealthCheck_SupportsSynchronousProviderDisposal()
+        {
+            ServiceCollection services = new();
+            services.AddSingleton(Mock.Of<IAzureBlobStorageProvider>());
+            IConfiguration configuration = CreateConfiguration(
+                new Dictionary<string, string> { ["AzureWebJobsStorage"] = "UseDevelopmentStorage=true" });
+            services.AddJobHostScopedHealthChecks(configuration);
+            ServiceProvider provider = services.BuildServiceProvider();
+            _ = provider.GetRequiredService<WebJobsStorageHealthCheck>();
+
+            Action act = provider.Dispose;
+
+            act.Should().NotThrow();
         }
 
         [Fact]
@@ -306,6 +379,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             {
                 return r.Name == name && tags.All(t => r.Tags.Contains(t)) && IsType(r);
             });
+        }
+
+        private static IConfiguration CreateConfiguration(Dictionary<string, string> settings)
+        {
+            return new ConfigurationBuilder()
+                .AddInMemoryCollection(settings)
+                .Build();
         }
 
         private static void VerifyPublishers(IServiceCollection services, params string[] tags)

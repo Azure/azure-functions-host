@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -17,8 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
     internal static class HealthCheckExtensions
     {
         /// <summary>
-        /// Registers all health check services required for the functions host. Should be called
-        /// on the WebHost.
+        /// Registers the WebHost-level health check services required for the functions host.
         /// </summary>
         /// <param name="builder">The builder to register health checks with.</param>
         /// <returns>The original builder, for call chaining.</returns>
@@ -28,10 +29,36 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             builder
                 .AddWebHostHealthCheck()
                 .AddScriptHostHealthCheck()
-                .AddWebJobsStorageHealthCheck()
                 .AddTelemetryPublisher(HealthCheckTags.Liveness, HealthCheckTags.Readiness)
                 .UseDynamicHealthCheckService();
             return builder;
+        }
+
+        /// <summary>
+        /// Registers health checks scoped to the JobHost.
+        /// </summary>
+        /// <param name="services">The ScriptHost services.</param>
+        /// <param name="configuration">The ScriptHost configuration.</param>
+        /// <returns>The original service collection, for call chaining.</returns>
+        public static IServiceCollection AddJobHostScopedHealthChecks(
+            this IServiceCollection services, IConfiguration configuration)
+        {
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(configuration);
+
+            IConfigurationSection storageSection =
+                configuration.GetWebJobsConnectionSection(ConnectionStringNames.Storage);
+
+            bool storageConfigured = storageSection
+                .AsEnumerable()
+                .Any(setting => !string.IsNullOrWhiteSpace(setting.Value));
+
+            if (!configuration.IsPlaceholderModeEnabled() && storageConfigured)
+            {
+                services.AddHealthChecks().AddWebJobsStorageHealthCheck();
+            }
+
+            return services;
         }
 
         /// <summary>
