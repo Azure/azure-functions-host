@@ -11,6 +11,6 @@
 eng/build/Workers.Python.props @vrdmr @gavin-aguiar @hallvictoria
 
 # Deps.json validation file
-test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc
+test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc @jviau @kshyju
 
 src/WebJobs.Script.WebHost/PreJIT/* @vrdmr @pragnagopa @eliaslopezgt @azure/azure-functions-core
