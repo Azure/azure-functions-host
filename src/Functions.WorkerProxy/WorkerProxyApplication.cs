@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Azure.Functions.WorkerProxy.Artifacts;
 using Azure.Functions.WorkerProxy.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -19,6 +20,7 @@ internal static class WorkerProxyApplication
     private const string AllowedHostsConfigurationKey = "AllowedHosts";
     private const string KestrelConfigurationSection = "WorkerProxy:Kestrel";
     private const string ReadyPath = "/admin/instance/ready";
+    private const string ArtifactsPath = "/admin/artifacts/extensions";
 
     private static readonly Dictionary<string, string?> HostingConfigurationOverrides =
         new(StringComparer.OrdinalIgnoreCase)
@@ -81,8 +83,11 @@ internal static class WorkerProxyApplication
                 });
             });
 
+        builder.Services.AddSingleton<ExtensionArtifactService>();
+
         WebApplication app = builder.Build();
         app.MapGet(ReadyPath, static () => TypedResults.Ok()).AllowAnonymous();
+        app.MapGet(ArtifactsPath, ExtensionArtifactService.HandleRequest).AllowAnonymous();
 
         return app;
     }
