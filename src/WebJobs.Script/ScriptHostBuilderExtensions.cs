@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // Script host services - these services are scoped to a host instance, and when a new host
             // is created, these services are recreated
-            builder.ConfigureServices((context, services) =>
+            builder.ConfigureServices(services =>
             {
                 // Core WebJobs/Script Host services
                 services.AddSingleton<ScriptHost>();
@@ -397,7 +397,12 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IInstanceServicesProviderFactory, ScriptInstanceServicesProviderFactory>();
                 services.AddSingleton<IWorkerRuntimeResolver, ScriptHostWorkerRuntimeResolver>();
 
-                services.AddJobHostScopedHealthChecks(context.Configuration);
+                IEnvironment environment =
+                    applicationHostOptions.RootServiceProvider.GetRequiredService<IEnvironment>();
+                if (!environment.IsPlaceholderModeEnabled())
+                {
+                    services.AddHealthChecks().AddJobHostScopedHealthChecks();
+                }
             });
 
             RegisterFileProvisioningService(builder);

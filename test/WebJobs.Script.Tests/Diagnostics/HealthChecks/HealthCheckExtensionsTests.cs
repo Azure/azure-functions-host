@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -84,26 +85,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         public void AddJobHostScopedHealthChecks_WithConnectionString_RegistersHealthCheck()
         {
             ServiceCollection services = new();
-            IConfiguration configuration = CreateConfiguration(
-                new Dictionary<string, string> { ["AzureWebJobsStorage"] = "UseDevelopmentStorage=true" });
+            IConfiguration configuration = CreateConfiguration(("AzureWebJobsStorage", "UseDevelopmentStorage=true"));
+            services.AddSingleton(configuration);
+            IHealthChecksBuilder builder = services.AddHealthChecks();
 
-            IServiceCollection returned =
-                services.AddJobHostScopedHealthChecks(configuration);
+            IHealthChecksBuilder returned =
+                builder.AddJobHostScopedHealthChecks();
 
-            returned.Should().BeSameAs(services);
+            returned.Should().BeSameAs(builder);
             services.Should().ContainSingle(x => x.ServiceType == typeof(WebJobsStorageHealthCheck));
+            GetHealthCheckRegistrations(services).Should().ContainSingle(
+                registration => string.Equals(
+                    registration.Name, HealthCheckNames.WebJobsStorage, StringComparison.Ordinal));
         }
 
         [Fact]
         public void AddJobHostScopedHealthChecks_WithIdentitySection_RegistersHealthCheck()
         {
             ServiceCollection services = new();
-            IConfiguration configuration = CreateConfiguration(
-                new Dictionary<string, string> { ["AzureWebJobsStorage:accountName"] = "storage" });
+            IConfiguration configuration = CreateConfiguration(("AzureWebJobsStorage:accountName", "storage"));
+            services.AddSingleton(configuration);
 
-            services.AddJobHostScopedHealthChecks(configuration);
+            services.AddHealthChecks().AddJobHostScopedHealthChecks();
 
             services.Should().ContainSingle(x => x.ServiceType == typeof(WebJobsStorageHealthCheck));
+            GetHealthCheckRegistrations(services).Should().ContainSingle(
+                registration => string.Equals(
+                    registration.Name, HealthCheckNames.WebJobsStorage, StringComparison.Ordinal));
         }
 
         [Fact]
@@ -111,31 +119,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         {
             ServiceCollection services = new();
             IConfiguration configuration = CreateConfiguration(
-                new Dictionary<string, string>
-                {
-                    ["AzureWebJobsStorage"] = string.Empty,
-                    ["AzureWebJobsStorage:accountName"] = string.Empty,
-                });
+                ("AzureWebJobsStorage", string.Empty),
+                ("AzureWebJobsStorage:accountName", string.Empty));
+            services.AddSingleton(configuration);
 
-            services.AddJobHostScopedHealthChecks(configuration);
+            services.AddHealthChecks().AddJobHostScopedHealthChecks();
 
-            services.Should().NotContain(x => x.ServiceType == typeof(WebJobsStorageHealthCheck));
-        }
-
-        [Fact]
-        public void AddJobHostScopedHealthChecks_InPlaceholderMode_DoesNotRegisterHealthCheck()
-        {
-            ServiceCollection services = new();
-            IConfiguration configuration = CreateConfiguration(
-                new Dictionary<string, string>
-                {
-                    ["AzureWebJobsStorage"] = "UseDevelopmentStorage=true",
-                    [EnvironmentSettingNames.AzureWebsitePlaceholderMode] = "1",
-                });
-
-            services.AddJobHostScopedHealthChecks(configuration);
-
-            services.Should().NotContain(x => x.ServiceType == typeof(WebJobsStorageHealthCheck));
+            GetHealthCheckRegistrations(services).Should().NotContain(
+                registration => string.Equals(
+                    registration.Name, HealthCheckNames.WebJobsStorage, StringComparison.Ordinal));
         }
 
         [Fact]
@@ -143,9 +135,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         {
             ServiceCollection services = new();
             services.AddSingleton(Mock.Of<IAzureBlobStorageProvider>());
-            IConfiguration configuration = CreateConfiguration(
-                new Dictionary<string, string> { ["AzureWebJobsStorage"] = "UseDevelopmentStorage=true" });
-            services.AddJobHostScopedHealthChecks(configuration);
+            IConfiguration configuration = CreateConfiguration(("AzureWebJobsStorage", "UseDevelopmentStorage=true"));
+            services.AddSingleton(configuration);
+            services.AddHealthChecks().AddJobHostScopedHealthChecks();
             ServiceProvider provider = services.BuildServiceProvider();
             _ = provider.GetRequiredService<WebJobsStorageHealthCheck>();
 
@@ -197,29 +189,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         [Fact]
         public void AddWebJobsStorageHealthCheck_RegistersWebJobsStorageHealthCheck()
         {
-            // arrange
             ServiceCollection services = new();
-            Mock<IHealthChecksBuilder> builder = new(MockBehavior.Strict);
-            builder.Setup(b => b.Services).Returns(services);
-            builder.Setup(b => b.Add(It.IsAny<HealthCheckRegistration>())).Returns(builder.Object);
+            IConfiguration configuration = CreateConfiguration(("AzureWebJobsStorage", "UseDevelopmentStorage=true"));
+            services.AddSingleton(configuration);
+            IHealthChecksBuilder builder = services.AddHealthChecks();
 
-            // act
-            IHealthChecksBuilder returned = builder.Object.AddWebJobsStorageHealthCheck();
+            IHealthChecksBuilder returned = builder.AddWebJobsStorageHealthCheck();
 
-            // assert
-            returned.Should().BeSameAs(builder.Object);
-            builder.Verify(b => b.Add(IsRegistration<WebJobsStorageHealthCheck>(
-                HealthCheckNames.WebJobsStorage, HealthCheckTags.Configuration, HealthCheckTags.Connectivity, HealthCheckTags.WebJobsStorage)),
-                Times.Once);
-            builder.Verify(b => b.Services, Times.AtLeastOnce);
-            builder.VerifyNoOtherCalls();
-            services.Should().ContainSingle()
+            returned.Should().BeSameAs(builder);
+            services.Where(x => x.ServiceType == typeof(WebJobsStorageHealthCheck)).Should().ContainSingle()
                 .Which.Should().Satisfy<ServiceDescriptor>(sd =>
                 {
                     sd.Lifetime.Should().Be(ServiceLifetime.Singleton);
                     sd.ServiceType.Should().Be<WebJobsStorageHealthCheck>();
                     sd.ImplementationType.Should().Be<WebJobsStorageHealthCheck>();
                 });
+            GetHealthCheckRegistrations(services).Should().ContainSingle(
+                registration => string.Equals(
+                    registration.Name, HealthCheckNames.WebJobsStorage, StringComparison.Ordinal));
         }
 
         [Fact]
@@ -381,11 +368,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             });
         }
 
+        private static IConfiguration CreateConfiguration(params (string Key, string Value)[] settings)
+        {
+            return CreateConfiguration(settings.ToDictionary(s => s.Key, s => s.Value));
+        }
+
         private static IConfiguration CreateConfiguration(Dictionary<string, string> settings)
         {
             return new ConfigurationBuilder()
                 .AddInMemoryCollection(settings)
                 .Build();
+        }
+
+        private static ICollection<HealthCheckRegistration> GetHealthCheckRegistrations(
+            IServiceCollection services)
+        {
+            using ServiceProvider provider = services.BuildServiceProvider();
+            return provider.GetRequiredService<IOptions<HealthCheckServiceOptions>>().Value.Registrations;
         }
 
         private static void VerifyPublishers(IServiceCollection services, params string[] tags)

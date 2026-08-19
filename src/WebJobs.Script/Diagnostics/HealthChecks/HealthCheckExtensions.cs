@@ -37,28 +37,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         /// <summary>
         /// Registers health checks scoped to the JobHost.
         /// </summary>
-        /// <param name="services">The ScriptHost services.</param>
-        /// <param name="configuration">The ScriptHost configuration.</param>
-        /// <returns>The original service collection, for call chaining.</returns>
-        public static IServiceCollection AddJobHostScopedHealthChecks(
-            this IServiceCollection services, IConfiguration configuration)
+        /// <param name="builder">The builder to register health checks with.</param>
+        /// <returns>The original builder, for call chaining.</returns>
+        public static IHealthChecksBuilder AddJobHostScopedHealthChecks(this IHealthChecksBuilder builder)
         {
-            ArgumentNullException.ThrowIfNull(services);
-            ArgumentNullException.ThrowIfNull(configuration);
-
-            IConfigurationSection storageSection =
-                configuration.GetWebJobsConnectionSection(ConnectionStringNames.Storage);
-
-            bool storageConfigured = storageSection
-                .AsEnumerable()
-                .Any(setting => !string.IsNullOrWhiteSpace(setting.Value));
-
-            if (!configuration.IsPlaceholderModeEnabled() && storageConfigured)
-            {
-                services.AddHealthChecks().AddWebJobsStorageHealthCheck();
-            }
-
-            return services;
+            ArgumentNullException.ThrowIfNull(builder);
+            return builder.AddWebJobsStorageHealthCheck();
         }
 
         /// <summary>
@@ -166,11 +150,38 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
             // Ensure singleton as this health check refreshes in the background.
             builder.Services.TryAddSingleton<WebJobsStorageHealthCheck>();
-            builder.AddCheck<WebJobsStorageHealthCheck>(
+            builder.Services.AddOptions<HealthCheckServiceOptions>()
+                .Configure<IConfiguration>((options, configuration) =>
+                {
+                    IConfigurationSection storageSection =
+                        configuration.GetWebJobsConnectionSection(ConnectionStringNames.Storage);
+
+                    bool storageConfigured = storageSection
+                        .AsEnumerable()
+                        .Any(setting => !string.IsNullOrWhiteSpace(setting.Value));
+
+                    if (storageConfigured)
+                    {
+                        options.Registrations.Add(CreateWebJobsStorageHealthCheckRegistration());
+                    }
+                });
+
+            return builder;
+        }
+
+        private static HealthCheckRegistration CreateWebJobsStorageHealthCheckRegistration()
+        {
+            static WebJobsStorageHealthCheck CreateHealthCheck(IServiceProvider services)
+            {
+                return services.GetRequiredService<WebJobsStorageHealthCheck>();
+            }
+
+            return new(
                 HealthCheckNames.WebJobsStorage,
+                CreateHealthCheck,
+                failureStatus: null,
                 tags: [HealthCheckTags.Configuration, HealthCheckTags.Connectivity, HealthCheckTags.WebJobsStorage],
                 timeout: TimeSpan.FromSeconds(10));
-            return builder;
         }
 
         /// <summary>
