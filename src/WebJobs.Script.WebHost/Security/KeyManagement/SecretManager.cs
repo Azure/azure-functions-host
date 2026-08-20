@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Lazy<bool> _strictHISWarnFeatureEnabled = new Lazy<bool>(() => FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagStrictHISModeWarn));
         private readonly HashSet<string> _invalidNonHISKeys = new HashSet<string>();
         private ConcurrentDictionary<string, IDictionary<string, string>> _functionSecrets;
-        private ConcurrentDictionary<string, (string, AuthorizationLevel)> _authorizationCache = new ConcurrentDictionary<string, (string, AuthorizationLevel)>(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<AuthorizationCacheKey, (string, AuthorizationLevel)> _authorizationCache = new ConcurrentDictionary<AuthorizationCacheKey, (string, AuthorizationLevel)>();
         private HostSecretsInfo _hostSecrets;
         private SemaphoreSlim _hostSecretsLock = new SemaphoreSlim(1, 1);
         private ConcurrentDictionary<string, SemaphoreSlim> _functionSecretsLocks = new ConcurrentDictionary<string, SemaphoreSlim>(StringComparer.OrdinalIgnoreCase);
@@ -513,7 +513,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (keyValue != null)
             {
-                string cacheKey = $"{keyValue}{functionName}";
+                var cacheKey = new AuthorizationCacheKey(keyValue, functionName);
                 if (_authorizationCache.TryGetValue(cacheKey, out (string, AuthorizationLevel) value))
                 {
                     // we've already authorized this key value so return the cached result
@@ -932,6 +932,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // We're only serializing access to secrets per-function, not across all functions,
             // so we need to ensure we're using a single shared lock per-function.
             return _functionSecretsLocks.GetOrAdd(functionName, static k => new SemaphoreSlim(1, 1));
+        }
+
+        private readonly record struct AuthorizationCacheKey(string KeyValue, string FunctionName)
+        {
+            public bool Equals(AuthorizationCacheKey other)
+            {
+                return string.Equals(KeyValue, other.KeyValue, StringComparison.Ordinal)
+                    && string.Equals(FunctionName, other.FunctionName, StringComparison.OrdinalIgnoreCase);
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(
+                    KeyValue is null ? 0 : StringComparer.Ordinal.GetHashCode(KeyValue),
+                    FunctionName is null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(FunctionName));
+            }
         }
     }
 }
