@@ -538,24 +538,93 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             }
         }
 
-        private FunctionAppSecrets WriteStartContextCache(string path)
+        [Fact]
+        public async Task GetAuthorizationLevelOrNullAsync_DoesNotReuseCachedAuthorizationForCollidingInputs()
         {
-            var secrets = new FunctionAppSecrets();
-            secrets.Host = new FunctionAppSecrets.HostSecrets
+            using var directory = new TempDirectory();
+
+            string startupContextPath = Path.Combine(directory.Path, Guid.NewGuid().ToString());
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteStartupContextCache, startupContextPath);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.EncryptionKey);
+
+            WriteStartContextCache(
+                startupContextPath,
+                new FunctionAppSecrets.FunctionSecrets
+                {
+                    Name = "functiondata",
+                    Secrets = new Dictionary<string, string>
+                    {
+                            { "test-source-key", "sourcekeyvalue" }
+                    }
+                },
+                new FunctionAppSecrets.FunctionSecrets
+                {
+                    Name = "data",
+                    Secrets = new Dictionary<string, string>
+                    {
+                            { "test-target-key", "targetkeyvalue" }
+                    }
+                });
+
+            using var secretManager = CreateSecretManager(directory.Path);
+
+            var (keyName, level) = await secretManager.GetAuthorizationLevelOrNullAsync("sourcekeyvalue", "functiondata");
+
+            Assert.Equal(AuthorizationLevel.Function, level);
+            Assert.Equal("test-source-key", keyName);
+
+            var result = await secretManager.GetAuthorizationLevelOrNullAsync("sourcekeyvaluefunction", "data");
+
+            Assert.Equal(AuthorizationLevel.Anonymous, result.Level);
+            Assert.Null(result.KeyName);
+        }
+
+        [Fact]
+        public async Task GetAuthorizationLevelOrNullAsync_DoesNotReuseCachedAuthorizationForKeyValueWithDifferentCasing()
+        {
+            using var directory = new TempDirectory();
+
+            string startupContextPath = Path.Combine(directory.Path, Guid.NewGuid().ToString());
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteStartupContextCache, startupContextPath);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestHelpers.EncryptionKey);
+
+            WriteStartContextCache(startupContextPath);
+
+            using var secretManager = CreateSecretManager(directory.Path);
+            var (keyName, level) = await secretManager.GetAuthorizationLevelOrNullAsync("function1value1", "function1");
+
+            Assert.Equal(AuthorizationLevel.Function, level);
+            Assert.Equal("test-function1-1", keyName);
+
+            var result = await secretManager.GetAuthorizationLevelOrNullAsync("FUNCTION1VALUE1", "function1");
+
+            Assert.Equal(AuthorizationLevel.Anonymous, result.Level);
+            Assert.Null(result.KeyName);
+        }
+
+        private FunctionAppSecrets WriteStartContextCache(string path, params FunctionAppSecrets.FunctionSecrets[] additionalFunctionSecrets)
+        {
+            var secrets = new FunctionAppSecrets
             {
-                Master = "test-master-key"
+                Host = new FunctionAppSecrets.HostSecrets
+                {
+                    Master = "test-master-key"
+                }
             };
+
             secrets.Host.Function = new Dictionary<string, string>
             {
                 { "test-host-function-1", "hostfunction1value" },
                 { "test-host-function-2", "hostfunction2value" }
             };
+
             secrets.Host.System = new Dictionary<string, string>
             {
                 { "test-system-1", "system1value" },
                 { "test-system-2", "system2value" }
             };
-            secrets.Function = new FunctionAppSecrets.FunctionSecrets[]
+
+            var functionSecrets = new List<FunctionAppSecrets.FunctionSecrets>
             {
                 new FunctionAppSecrets.FunctionSecrets
                 {
@@ -576,6 +645,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     }
                 }
             };
+
+            functionSecrets.AddRange(additionalFunctionSecrets);
+            secrets.Function = [.. functionSecrets];
 
             var context = new JObject
             {
