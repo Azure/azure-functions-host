@@ -13,6 +13,8 @@ jobs:
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
+  - template: /eng/ci/templates/steps/configure-user-nuget-cfs.yml@self
+
   - task: UseNode@1
     inputs:
       version: 22.x
@@ -23,15 +25,15 @@ jobs:
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
 
+  - task: npmAuthenticate@0
+    inputs:
+      workingFile: $(Build.SourcesDirectory)/eng/ci/.npmrc
+
   - script: |
       npm install -g azurite
     displayName: Install Azurite
-
-  - task: PowerShell@2
-    displayName: Install Az.Storage Powershell module
-    inputs:
-      targetType: inline
-      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
+    env:
+      NPM_CONFIG_USERCONFIG: $(Build.SourcesDirectory)/eng/ci/.npmrc
 
   - task: DotNetCoreCLI@2
     displayName: Build Integration.csproj
@@ -91,7 +93,7 @@ jobs:
       AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
 
   - task: AzurePowerShell@5
-    condition: always()
+    condition: and(always(), ne(variables['LeaseBlob'], ''))
     displayName: Checkin secrets
     inputs:
       azureSubscription: Azure-Functions-Host-CI-internal

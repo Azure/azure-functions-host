@@ -15,9 +15,10 @@ if ($leaseToken -eq "") {
 
 Write-Host "Breaking lease for $leaseBlob."
 
+Import-Module Az.Storage
+
 $storageContext = New-AzStorageContext -StorageAccountName "azurefunctionshostci0" -UseConnectedAccount
 $blob = Get-AzStorageBlob -Context $storageContext -Container "ci-locks" -Blob $leaseBlob
 
-$accessCondition = New-Object -TypeName Microsoft.Azure.Storage.AccessCondition
-$accessCondition.LeaseId = $leaseToken
-$blob.ICloudBlob.ReleaseLease($accessCondition)
+$leaseClient = New-Object Azure.Storage.Blobs.Specialized.BlobLeaseClient($blob.BlobBaseClient, $leaseToken)
+$leaseClient.Release() | Out-Null

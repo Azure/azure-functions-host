@@ -32,6 +32,8 @@ jobs:
       packageType: sdk
       version: 8.x
 
+  - task: NuGetAuthenticate@1
+
   - task: DotNetCoreCLI@2
     displayName: Restore
     inputs:

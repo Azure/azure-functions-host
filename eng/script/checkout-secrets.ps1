@@ -1,6 +1,8 @@
 function AcquireLease($blob) {
   try {
-    return $blob.ICloudBlob.AcquireLease($null, $null, $null, $null, $null)
+    $leaseClient = New-Object Azure.Storage.Blobs.Specialized.BlobLeaseClient($blob.BlobBaseClient, $null)
+    $response = $leaseClient.Acquire([System.TimeSpan]::FromSeconds(-1))
+    return $response.Value.LeaseId
   } catch {
     Write-Host "  Error: $_"
     return $null
@@ -25,7 +27,7 @@ While($true) {
   Write-Host "Looking for unleased ci-lock blobs (list is shuffled):"
   Foreach ($blob in $blobs) {
     $name = $blob.Name
-    $leaseStatus = $blob.ICloudBlob.Properties.LeaseStatus
+    $leaseStatus = $blob.BlobProperties.LeaseStatus
     
     Write-Host "  ${name}: $leaseStatus"
     
@@ -40,11 +42,14 @@ While($true) {
       Write-Host "##vso[task.setvariable variable=LeaseBlob]$name"
       Write-Host "##vso[task.setvariable variable=LeaseToken]$token"
       try {
-        $blob.ICloudBlob.FetchAttributes()
-        $blob.ICloudBlob.Metadata["Build"] = $buildName
-        $accessCondition = New-Object -TypeName Microsoft.Azure.Storage.AccessCondition
-        $accessCondition.LeaseId = $token
-        $blob.ICloudBlob.SetMetadata($accessCondition)
+        $conditions = New-Object Azure.Storage.Blobs.Models.BlobRequestConditions
+        $conditions.LeaseId = $token
+        $metadata = New-Object 'System.Collections.Generic.Dictionary[string,string]'
+        foreach ($kvp in $blob.BlobBaseClient.GetProperties().Value.Metadata.GetEnumerator()) {
+          $metadata[$kvp.Key] = $kvp.Value
+        }
+        $metadata["Build"] = $buildName
+        $blob.BlobClient.SetMetadata($metadata, $conditions) | Out-Null
       } catch {
         # best effort
         Write-Host "Warning: unable to update blob metadata. Continuing. $_"
