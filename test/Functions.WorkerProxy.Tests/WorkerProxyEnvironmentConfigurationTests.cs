@@ -8,7 +8,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy.Configuration;
+using Azure.Functions.WorkerProxy;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -21,7 +21,7 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public class WorkerProxyEnvironmentConfigurationTests
 {
     [Fact]
-    public async Task ProductionConfiguration_UsesEnvironmentAndOverridesAmbientHostingUrls()
+    public async Task ProductionConfiguration_UsesStandardAspNetCoreEndpointPrecedence()
     {
         int managementPort = GetAvailablePort();
         int ambientPort;
@@ -33,18 +33,19 @@ public class WorkerProxyEnvironmentConfigurationTests
 
         using EnvironmentVariableScope managementPortVariable =
             new(
-                WorkerProxyOptions.ManagementPortConfigurationKey,
+                "ASPNETCORE_HTTP_PORTS",
                 managementPort.ToString(CultureInfo.InvariantCulture));
         using EnvironmentVariableScope urls =
             new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
-        using EnvironmentVariableScope preferHostingUrls =
-            new("ASPNETCORE_PREFERHOSTINGURLS", bool.TrueString);
+        using EnvironmentVariableScope dotnetSetting =
+            new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");
         await using WebApplication app = WorkerProxyApplication.Build([]);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
         await app.StartAsync(timeout.Token);
 
         Uri address = GetServerAddress(app);
-        Assert.Equal(managementPort, address.Port);
+        Assert.Equal(ambientPort, address.Port);
+        Assert.Equal("preserved", app.Configuration["DOTNET_WORKER_PROXY_TEST_SETTING"]);
         using HttpClient client = new() { BaseAddress = address };
         using HttpResponseMessage response =
             await client.GetAsync("/admin/instance/ready", timeout.Token);

@@ -2,21 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.Net;
 using System.Net.Http;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy;
-using Azure.Functions.WorkerProxy.Configuration;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Azure.Functions.WorkerProxy.Tests;
@@ -24,33 +13,11 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public class WorkerProxyApplicationTests
 {
     [Fact]
-    public async Task StartupProbe_UsesOnlyConfiguredManagementListener()
+    public async Task StartupProbe_IsOnlyMappedHttpBehavior()
     {
-        int managementPort = GetAvailablePort();
-        int ambientPort;
-        do
-        {
-            ambientPort = GetAvailablePort();
-        }
-        while (ambientPort == managementPort);
-
-        Dictionary<string, string?> configurationValues = new()
-        {
-            [WorkerProxyOptions.ManagementPortConfigurationKey] =
-                managementPort.ToString(CultureInfo.InvariantCulture),
-            [WebHostDefaults.ServerUrlsKey] = $"http://127.0.0.1:{ambientPort}",
-            [WebHostDefaults.PreferHostingUrlsKey] = bool.TrueString,
-            ["AllowedHosts"] = "blocked.invalid",
-            ["Kestrel:Endpoints:Extra:Url"] = $"http://127.0.0.1:{ambientPort}"
-        };
-        await using WebApplication app = WorkerProxyApplication.Build(
-            configuration => configuration.AddInMemoryCollection(configurationValues));
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
-        await app.StartAsync(timeout.Token);
-
-        Uri address = GetServerAddress(app);
-        Assert.Equal(managementPort, address.Port);
-        using HttpClient client = new() { BaseAddress = address };
 
         using HttpResponseMessage readyResponse =
             await client.GetAsync("/admin/instance/ready", timeout.Token);
@@ -64,25 +31,5 @@ public class WorkerProxyApplicationTests
         using HttpResponseMessage unrelatedRouteResponse =
             await client.GetAsync("/admin/worker/ready", timeout.Token);
         Assert.Equal(HttpStatusCode.NotFound, unrelatedRouteResponse.StatusCode);
-    }
-
-    private static int GetAvailablePort()
-    {
-        using TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-
-        return ((IPEndPoint)listener.LocalEndpoint).Port;
-    }
-
-    private static Uri GetServerAddress(WebApplication app)
-    {
-        IServer server = app.Services.GetRequiredService<IServer>();
-        IServerAddressesFeature addresses =
-            server.Features.Get<IServerAddressesFeature>()
-            ?? throw new InvalidOperationException("Kestrel did not publish a server address.");
-
-        Uri address = new(Assert.Single(addresses.Addresses));
-
-        return new UriBuilder(address) { Host = IPAddress.Loopback.ToString() }.Uri;
     }
 }

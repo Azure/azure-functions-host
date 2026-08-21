@@ -18,9 +18,7 @@ jobs:
     os: linux
 
   variables:
-    imageContext: $(Agent.TempDirectory)/workerproxy-image
     localImage: functions-worker-proxy-ci:latest
-    publishDirectory: $(Agent.TempDirectory)/workerproxy-image/.workerproxy-publish
     # This solution will expand as the remaining compute-separation projects are introduced.
     solution: Azure.Functions.Host.slnx
 
@@ -44,14 +42,14 @@ jobs:
       publishWebProjects: false
       zipAfterPublish: false
       modifyOutputPath: false
-      arguments: -c release -r linux-x64 --self-contained true -o $(publishDirectory)
+      arguments: -c release -r linux-x64 --self-contained true
       projects: src/Functions.WorkerProxy/Functions.WorkerProxy.csproj
 
   - task: 1ES.BuildContainerImage@1
     displayName: Build WorkerProxy container
     inputs:
       dockerfile: $(Build.SourcesDirectory)/src/Functions.WorkerProxy/Dockerfile
-      context: $(imageContext)
+      context: $(Build.SourcesDirectory)/out/pub/Functions.WorkerProxy/release_linux-x64
       localImage: $(localImage)
 
   - script: |

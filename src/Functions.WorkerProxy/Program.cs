@@ -1,38 +1,11 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using Azure.Functions.WorkerProxy;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Options;
 
-try
-{
-    WebApplication app = WorkerProxyApplication.Build(args);
-    await app.RunAsync();
+WebApplication app = WorkerProxyApplication.Build(args);
+await app.RunAsync();
 
-    return 0;
-}
-catch (OptionsValidationException exception)
-{
-    await Console.Error.WriteLineAsync(string.Join(Environment.NewLine, exception.Failures));
-
-    return 1;
-}
-catch (FormatException exception)
-{
-    await Console.Error.WriteLineAsync(exception.Message);
-
-    return 1;
-}
-catch (InvalidOperationException exception) when (IsConfigurationBindingFailure(exception))
-{
-    await Console.Error.WriteLineAsync(exception.Message);
-
-    return 1;
-}
-
-static bool IsConfigurationBindingFailure(InvalidOperationException exception)
-{
-    return exception.InnerException is FormatException or OverflowException;
-}
+// Expose the generated top-level entry point to the friend test assembly for WebApplicationFactory.
+internal partial class Program;

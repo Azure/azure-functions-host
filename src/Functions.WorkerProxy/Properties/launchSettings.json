@@ -3,10 +3,10 @@
   "profiles": {
     "Azure.Functions.WorkerProxy": {
       "commandName": "Project",
-      "commandLineArgs": "--management-port 8080",
       "launchBrowser": false,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_HTTP_PORTS": "8080"
       }
     }
   }
