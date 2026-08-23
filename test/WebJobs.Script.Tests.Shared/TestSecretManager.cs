@@ -69,6 +69,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return Task.FromResult(new KeyOperationResult(resultSecret, OperationResult.Created));
         }
 
+        public virtual Task<string> GetOrCreateSystemKeyAsync(string keyName)
+        {
+            if (!_hostSystemKeys.TryGetValue(keyName, out string value))
+            {
+                value = $"{keyName}_generated";
+                _hostSystemKeys[keyName] = value;
+            }
+
+            return Task.FromResult(value);
+        }
+
         public virtual Task<KeyOperationResult> SetMasterKeyAsync(string value)
         {
             throw new NotImplementedException();

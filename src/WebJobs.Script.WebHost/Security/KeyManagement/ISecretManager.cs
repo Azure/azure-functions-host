@@ -70,6 +70,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         Task PurgeOldSecretsAsync(string rootScriptPath, ILogger logger);
 
         /// <summary>
+        /// Returns the value of the specified system key, creating and persisting one only after an
+        /// authoritative read shows none exists. Unlike <see cref="AddOrUpdateFunctionSecretAsync"/>
+        /// it will not replace a key it can observe; the create path remains a last-writer-wins
+        /// upsert, so a key persisted concurrently by another host instance can still be replaced.
+        /// </summary>
+        /// <param name="keyName">The name of the system key.</param>
+        /// <returns>The decrypted value of the persisted key.</returns>
+        Task<string> GetOrCreateSystemKeyAsync(string keyName);
+
+        /// <summary>
         /// If secrets have been loaded and cached, clear all cached secrets so they'll
         /// be reloaded next time they're requested.
         /// </summary>

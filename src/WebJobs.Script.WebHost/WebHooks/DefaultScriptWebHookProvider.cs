@@ -83,20 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return new Uri($"{scheme}://{hostName}/runtime/webhooks/{extensionName}?code={keyValue}");
         }
 
-        private async Task<string> GetOrCreateExtensionKey(string extensionName)
+        private Task<string> GetOrCreateExtensionKey(string extensionName)
         {
-            ISecretManager secretManager = _secretManagerProvider.Current;
-            var hostSecrets = await secretManager.GetHostSecretsAsync();
-            string keyName = GetKeyName(extensionName);
-            string keyValue;
-            if (!hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))
-            {
-                // if the requested secret doesn't exist, create it on demand
-                keyValue = SecretGenerator.GenerateSystemKeyValue();
-                await secretManager.AddOrUpdateFunctionSecretAsync(keyName, keyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
-            }
-
-            return keyValue;
+            return _secretManagerProvider.Current.GetOrCreateSystemKeyAsync(GetKeyName(extensionName));
         }
 
         internal static string GetKeyName(string extensionName)
