@@ -1,16 +1,16 @@
 parameters:
 - name: linuxPoolName
-  displayName: Pool used for the WorkerProxy job
+  displayName: Pool used for Linux tests
   type: string
   default: 1es-pool-azfunc-public
 - name: linuxPoolImage
-  displayName: Image used for the WorkerProxy job
+  displayName: Image used for Linux tests
   type: string
   default: 1es-ubuntu-24.04-min
 
 jobs:
-- job: BuildTestPublishWorkerProxy
-  displayName: Build, Test, and Smoke WorkerProxy
+- job: RunLinuxTests
+  displayName: Build and Test Azure Functions Host (Linux)
 
   pool:
     name: ${{ parameters.linuxPoolName }}
@@ -26,7 +26,7 @@ jobs:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
   - task: DotNetCoreCLI@2
-    displayName: WorkerProxy Tests (Linux)
+    displayName: Azure Functions Host Tests (Linux)
     inputs:
       command: test
       arguments: -v m -c release

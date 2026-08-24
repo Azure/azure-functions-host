@@ -70,10 +70,10 @@ extends:
       - template: /eng/ci/templates/official/jobs/run-non-e2e-tests.yml@self
       - template: /eng/ci/templates/official/jobs/run-integration-tests.yml@self
 
-    - stage: WorkerProxy
+    - stage: LinuxTests
       dependsOn: []
       jobs:
-      - template: /eng/ci/templates/jobs/run-worker-proxy-tests.yml@self
+      - template: /eng/ci/templates/jobs/run-linux-tests.yml@self
         parameters:
           linuxPoolName: 1es-pool-azfunc
           linuxPoolImage: 1es-ubuntu-24.04-min

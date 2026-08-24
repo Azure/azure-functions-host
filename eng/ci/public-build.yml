@@ -76,10 +76,10 @@ extends:
       jobs:
       - template: /eng/ci/templates/jobs/run-unit-tests.yml@self
 
-    - stage: WorkerProxy
+    - stage: LinuxTests
       dependsOn: []
       jobs:
-      - template: /eng/ci/templates/jobs/run-worker-proxy-tests.yml@self
+      - template: /eng/ci/templates/jobs/run-linux-tests.yml@self
 
     - ${{ if eq(parameters.privateSiteExt, true) }}:
       - stage: Build
