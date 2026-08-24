@@ -12,11 +12,9 @@ namespace Azure.Functions.Rpc.Client.Tests;
 
 public sealed class TestFunctionRpcService : FunctionRpc.FunctionRpcBase
 {
-    private readonly TaskCompletionSource _connected =
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _connected = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    private readonly TaskCompletionSource _disconnected =
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _disconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private readonly Channel<StreamingMessage> _requests = Channel.CreateUnbounded<StreamingMessage>();
     private readonly Channel<StreamingMessage> _responses = Channel.CreateUnbounded<StreamingMessage>();
@@ -30,8 +28,7 @@ public sealed class TestFunctionRpcService : FunctionRpc.FunctionRpcBase
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
         IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
     {
-        using CancellationTokenSource streamSource =
-            CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+        using CancellationTokenSource streamSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
         _connected.TrySetResult();
 
         Task readTask = ReadRequestsAsync(requestStream, streamSource.Token);
@@ -71,8 +68,7 @@ public sealed class TestFunctionRpcService : FunctionRpc.FunctionRpcBase
         }
     }
 
-    private async Task ReadRequestsAsync(IAsyncStreamReader<StreamingMessage> requestStream,
-        CancellationToken cancellationToken)
+    private async Task ReadRequestsAsync(IAsyncStreamReader<StreamingMessage> requestStream, CancellationToken cancellationToken)
     {
         while (await requestStream.MoveNext(cancellationToken))
         {
@@ -80,8 +76,7 @@ public sealed class TestFunctionRpcService : FunctionRpc.FunctionRpcBase
         }
     }
 
-    private async Task WriteResponsesAsync(IServerStreamWriter<StreamingMessage> responseStream,
-        CancellationToken cancellationToken)
+    private async Task WriteResponsesAsync(IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
     {
         await foreach (StreamingMessage message in _responses.Reader.ReadAllAsync(cancellationToken))
         {

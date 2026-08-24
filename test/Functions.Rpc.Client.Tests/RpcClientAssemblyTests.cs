@@ -15,8 +15,7 @@ public class RpcClientAssemblyTests
     [Fact]
     public void GeneratedClientAndServerAreOwnedByGrpc()
     {
-        Assert.Equal("Microsoft.Azure.WebJobs.Script.Grpc",
-            typeof(FunctionRpc.FunctionRpcClient).Assembly.GetName().Name);
+        Assert.Equal("Microsoft.Azure.WebJobs.Script.Grpc", typeof(FunctionRpc.FunctionRpcClient).Assembly.GetName().Name);
         Assert.Same(typeof(FunctionRpc.FunctionRpcClient).Assembly, typeof(FunctionRpc.FunctionRpcBase).Assembly);
     }
 
@@ -44,17 +43,11 @@ public class RpcClientAssemblyTests
     [Fact]
     public void ProductProjectReferencesPreserveSiblingBoundaries()
     {
-        Assert.Equal(
-            ["..\\WebJobs.Script.Grpc\\WebJobs.Script.Grpc.csproj"],
-            GetProjectReferences("Functions.Rpc.Client.csproj"));
-        Assert.Equal(
-            ["..\\WebJobs.Script\\WebJobs.Script.csproj"],
-            GetProjectReferences("WebJobs.Script.Grpc.csproj"));
-        Assert.DoesNotContain(
-            GetProjectReferences("Functions.Rpc.Server.csproj"),
+        Assert.Equal(["..\\WebJobs.Script.Grpc\\WebJobs.Script.Grpc.csproj"], GetProjectReferences("Functions.Rpc.Client.csproj"));
+        Assert.Equal(["..\\WebJobs.Script\\WebJobs.Script.csproj"], GetProjectReferences("WebJobs.Script.Grpc.csproj"));
+        Assert.DoesNotContain(GetProjectReferences("Functions.Rpc.Server.csproj"),
             reference => reference.Contains("Functions.Rpc.Client", StringComparison.Ordinal));
-        Assert.DoesNotContain(
-            GetProjectReferences("WebJobs.Script.WebHost.csproj"),
+        Assert.DoesNotContain(GetProjectReferences("WebJobs.Script.WebHost.csproj"),
             reference => reference.Contains("Functions.Rpc.Client", StringComparison.Ordinal));
     }
 

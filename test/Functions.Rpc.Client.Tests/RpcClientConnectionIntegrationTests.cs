@@ -45,9 +45,8 @@ public class RpcClientConnectionIntegrationTests
     public async Task PeerCloseCompletesConnectionCleanly()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        await using RpcClientConnection connection =
-            await RpcClientConnection.ConnectAsync(
-                new RpcClientConnectionOptions(server.Endpoint, "worker-1"), Logger);
+        RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
+        await using RpcClientConnection connection = await RpcClientConnection.ConnectAsync(options, Logger);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         server.Service.CompleteResponses();
@@ -60,9 +59,8 @@ public class RpcClientConnectionIntegrationTests
     public async Task ReadAllAsyncEnumeratesMessagesUntilPeerClose()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        await using RpcClientConnection connection =
-            await RpcClientConnection.ConnectAsync(
-                new RpcClientConnectionOptions(server.Endpoint, "worker-1"), Logger);
+        RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
+        await using RpcClientConnection connection = await RpcClientConnection.ConnectAsync(options, Logger);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         await server.Service.SendResponseAsync(new StreamingMessage { RequestId = "one" });
@@ -80,9 +78,8 @@ public class RpcClientConnectionIntegrationTests
     public async Task PeerFailureRemainsObservable()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        RpcClientConnection connection =
-            await RpcClientConnection.ConnectAsync(
-                new RpcClientConnectionOptions(server.Endpoint, "worker-1"), Logger);
+        RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
+        RpcClientConnection connection = await RpcClientConnection.ConnectAsync(options, Logger);
         await server.Service.Connected.WaitAsync(TestTimeout);
         server.Service.CompleteResponses(new InvalidOperationException("server failure"));
 
@@ -94,12 +91,10 @@ public class RpcClientConnectionIntegrationTests
     public async Task ConnectionFailureDoesNotReturnPartialConnection()
     {
         int unusedPort = GetUnusedPort();
-        RpcClientConnectionOptions options =
-            new(new Uri($"http://{IPAddress.Loopback}:{unusedPort}"), "worker-1");
+        RpcClientConnectionOptions options = new(new Uri($"http://{IPAddress.Loopback}:{unusedPort}"), "worker-1");
         using CancellationTokenSource timeoutSource = new(TimeSpan.FromSeconds(1));
 
-        await Assert.ThrowsAnyAsync<Exception>(() =>
-            RpcClientConnection.ConnectAsync(options, Logger, timeoutSource.Token));
+        await Assert.ThrowsAnyAsync<Exception>(() => RpcClientConnection.ConnectAsync(options, Logger, timeoutSource.Token));
     }
 
     [Fact]
@@ -110,17 +105,15 @@ public class RpcClientConnectionIntegrationTests
         using CancellationTokenSource cancellationSource = new();
         cancellationSource.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            RpcClientConnection.ConnectAsync(options, Logger, cancellationSource.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => RpcClientConnection.ConnectAsync(options, Logger, cancellationSource.Token));
     }
 
     [Fact]
     public async Task ReachableServerRejectionSurfacesThroughCompletion()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync(mapService: false);
-        RpcClientConnection connection =
-            await RpcClientConnection.ConnectAsync(
-                new RpcClientConnectionOptions(server.Endpoint, "worker-1"), Logger);
+        RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
+        RpcClientConnection connection = await RpcClientConnection.ConnectAsync(options, Logger);
 
         await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => connection.Completion.WaitAsync(TestTimeout));
         await connection.DisposeAsync();
@@ -150,8 +143,7 @@ public class RpcClientConnectionIntegrationTests
     private static async Task<StreamingMessage> ReadNextAsync(RpcClientConnection connection)
     {
         using CancellationTokenSource timeoutSource = new(TestTimeout);
-        await using IAsyncEnumerator<StreamingMessage> responses =
-            connection.ReadAllAsync().GetAsyncEnumerator(timeoutSource.Token);
+        await using IAsyncEnumerator<StreamingMessage> responses = connection.ReadAllAsync().GetAsyncEnumerator(timeoutSource.Token);
         Assert.True(await responses.MoveNextAsync());
         return responses.Current;
     }

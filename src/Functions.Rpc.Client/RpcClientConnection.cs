@@ -47,8 +47,7 @@ internal sealed class RpcClientConnection : IAsyncDisposable
     private readonly Channel<StreamingMessage> _outbound;
     private readonly Task _readerTask;
     private readonly CancellationTokenSource _shutdownSource;
-    private readonly TaskCompletionSource<TerminalState> _terminalSource =
-        new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<TerminalState> _terminalSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private readonly Task _writerTask;
     private TerminalState _terminalState;
@@ -234,8 +233,7 @@ internal sealed class RpcClientConnection : IAsyncDisposable
     /// enumeration with that failure. Disposal aborts enumeration and releases buffered responses. Ending enumeration
     /// early does not close the connection; the owner must still call <see cref="DisposeAsync"/>.
     /// </remarks>
-    internal async IAsyncEnumerable<StreamingMessage> ReadAllAsync(
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    internal async IAsyncEnumerable<StreamingMessage> ReadAllAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         while (true)
         {
@@ -385,8 +383,7 @@ internal sealed class RpcClientConnection : IAsyncDisposable
         }
 
         CancellationToken shutdownToken = _shutdownSource.Token;
-        cleanupException = CaptureCleanupFailure(
-            cleanupException, _shutdownSource.Dispose, _logger, "dispose the connection lifetime");
+        cleanupException = CaptureCleanupFailure(cleanupException, _shutdownSource.Dispose, _logger, "dispose the connection lifetime");
         terminalState.CleanupException = cleanupException;
 
         if (terminalState.Exception is not null)
@@ -425,8 +422,7 @@ internal sealed class RpcClientConnection : IAsyncDisposable
     /// <param name="logger">The logger used to report the cleanup failure.</param>
     /// <param name="operation">A description of the cleanup operation.</param>
     /// <returns>The accumulated cleanup failure, or <see langword="null"/> when cleanup remains successful.</returns>
-    private static Exception CaptureCleanupFailure(
-        Exception currentException, Action cleanup, ILogger logger, string operation)
+    private static Exception CaptureCleanupFailure(Exception currentException, Action cleanup, ILogger logger, string operation)
     {
         if (cleanup is null)
         {

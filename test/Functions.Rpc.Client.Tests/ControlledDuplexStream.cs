@@ -30,13 +30,8 @@ internal sealed class ControlledDuplexStream<T>
         _blockWrites = blockWrites;
         RequestStream = new ControlledClientStreamWriter(this);
         ResponseStream = new ControlledAsyncStreamReader(this);
-        Call = new AsyncDuplexStreamingCall<T, T>(
-            RequestStream,
-            ResponseStream,
-            Task.FromResult(new Metadata()),
-            static () => Status.DefaultSuccess,
-            static () => new Metadata(),
-            () => Interlocked.Increment(ref _disposeCount));
+        Call = new AsyncDuplexStreamingCall<T, T>(RequestStream, ResponseStream, Task.FromResult(new Metadata()),
+            static () => Status.DefaultSuccess, static () => new Metadata(), () => Interlocked.Increment(ref _disposeCount));
     }
 
     internal AsyncDuplexStreamingCall<T, T> Call { get; }

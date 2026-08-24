@@ -24,8 +24,7 @@ internal sealed class RpcClientConnectionOptions
             !string.IsNullOrEmpty(endpoint.Query) ||
             !string.IsNullOrEmpty(endpoint.Fragment))
         {
-            throw new ArgumentException(
-                "The endpoint must not include user information, a path, a query, or a fragment.", nameof(endpoint));
+            throw new ArgumentException("The endpoint must not include user information, a path, a query, or a fragment.", nameof(endpoint));
         }
 
         if (string.IsNullOrWhiteSpace(workerId))
