@@ -1,0 +1,85 @@
+parameters:
+- name: linuxPoolName
+  displayName: Pool used for the WorkerProxy job
+  type: string
+  default: 1es-pool-azfunc-public
+- name: linuxPoolImage
+  displayName: Image used for the WorkerProxy job
+  type: string
+  default: 1es-ubuntu-24.04-min
+
+jobs:
+- job: BuildTestPublishWorkerProxy
+  displayName: Build, Test, and Smoke WorkerProxy
+
+  pool:
+    name: ${{ parameters.linuxPoolName }}
+    image: ${{ parameters.linuxPoolImage }}
+    os: linux
+
+  variables:
+    localImage: functions-worker-proxy-ci:latest
+    # This solution will expand as the remaining compute-separation projects are introduced.
+    solution: Azure.Functions.Host.slnx
+
+  steps:
+  - template: /eng/ci/templates/install-dotnet.yml@self
+
+  - task: DotNetCoreCLI@2
+    displayName: WorkerProxy Tests (Linux)
+    inputs:
+      command: test
+      arguments: -v m -c release
+      projects: $(solution)
+
+  - script: sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev
+    displayName: Install Native AOT prerequisites
+
+  - task: DotNetCoreCLI@2
+    displayName: Native AOT publish (linux-x64)
+    inputs:
+      command: publish
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      arguments: -c release -r linux-x64 --self-contained true
+      projects: src/Functions.WorkerProxy/Functions.WorkerProxy.csproj
+
+  - task: 1ES.BuildContainerImage@1
+    displayName: Build WorkerProxy container
+    inputs:
+      dockerfile: $(Build.SourcesDirectory)/src/Functions.WorkerProxy/Dockerfile
+      context: $(Build.SourcesDirectory)/out/pub/Functions.WorkerProxy/release_linux-x64
+      localImage: $(localImage)
+
+  - script: |
+      set -euo pipefail
+      echo "Starting WorkerProxy image: $(localImage)"
+      containerId="$(docker run --detach \
+        --publish 127.0.0.1::80 \
+        $(localImage))"
+      echo "Started WorkerProxy container: $containerId"
+      cleanup() {
+        exitCode=$?
+        trap - EXIT
+        if [ "$exitCode" -ne 0 ]; then
+          docker logs "$containerId" || true
+        fi
+
+        docker rm --force "$containerId" >/dev/null 2>&1 || true
+        exit "$exitCode"
+      }
+      trap cleanup EXIT
+
+      managementPort="$(docker port "$containerId" 80/tcp | head -n 1 | sed 's/.*://')"
+      test -n "$managementPort"
+      echo "WorkerProxy management port: $managementPort"
+      echo "Probing http://127.0.0.1:$managementPort/admin/instance/ready"
+      httpStatus="$(curl --fail --silent --show-error \
+        --output /dev/null --write-out '%{http_code}' \
+        --retry 60 --retry-delay 1 --retry-connrefused \
+        "http://127.0.0.1:$managementPort/admin/instance/ready")"
+      echo "WorkerProxy readiness probe succeeded with HTTP $httpStatus."
+      echo "WorkerProxy container logs:"
+      docker logs "$containerId"
+    displayName: Smoke WorkerProxy container

@@ -6,6 +6,7 @@
   <ItemGroup>
     <PackageVersion Include="AwesomeAssertions" Version="9.1.0" />
     <PackageVersion Include="AwesomeAssertions.Analyzers" Version="9.0.4" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.Testing" Version="8.1.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.4.1" />
