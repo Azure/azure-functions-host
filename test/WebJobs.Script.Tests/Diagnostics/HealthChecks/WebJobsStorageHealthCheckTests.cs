@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
 
             // Assert
-            VerifyGetContainersCalled(Times.Never());
+            VerifyGetPropertiesCalled(Times.Never());
             result.Status.Should().Be(HealthStatus.Healthy);
             result.Description.Should().Be("No active script host. Check skipped.");
             result.Exception.Should().BeNull();
@@ -105,9 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         public async Task CheckHealthAsync_ChecksBlobConnectivity()
         {
             // Arrange
-            Page<BlobContainerItem> page = Page<BlobContainerItem>.FromValues([], null, Mock.Of<Response>());
-            AsyncPageable<BlobContainerItem> pageable = AsyncPageable<BlobContainerItem>.FromPages([page]);
-            SetupGetContainers(pageable);
+            SetupGetProperties();
             BlobServiceClient client = _mockBlobServiceClient.Object;
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Returns(true);
@@ -118,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
 
             // Assert
-            VerifyGetContainersCalled(Times.Once());
+            VerifyGetPropertiesCalled(Times.Once());
             result.Status.Should().Be(HealthStatus.Healthy);
             result.Exception.Should().BeNull();
         }
@@ -127,9 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
         public async Task CheckHealthAsync_Twice_ReturnsCachedResult()
         {
             // Arrange
-            Page<BlobContainerItem> page = Page<BlobContainerItem>.FromValues([], null, Mock.Of<Response>());
-            AsyncPageable<BlobContainerItem> pageable = AsyncPageable<BlobContainerItem>.FromPages([page]);
-            SetupGetContainers(pageable);
+            SetupGetProperties();
             BlobServiceClient client = _mockBlobServiceClient.Object;
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Returns(true);
@@ -148,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             HealthCheckResult result2 = await healthCheck.CheckHealthAsync(context, default);
 
             // Assert
-            VerifyGetContainersCalled(Times.Once());
+            VerifyGetPropertiesCalled(Times.Once());
             result1.Status.Should().Be(HealthStatus.Healthy);
             result1.Exception.Should().BeNull();
             result2.Status.Should().Be(HealthStatus.Healthy);
@@ -182,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             // Arrange
             RequestFailedException rfe = new(
                 401, "Some exception message", "SomeErrorCode", null);
-            SetupGetContainers(rfe);
+            SetupGetProperties(rfe);
             BlobServiceClient client = _mockBlobServiceClient.Object;
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Returns(true);
@@ -193,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
 
             // Assert
-            VerifyGetContainersCalled(Times.Once());
+            VerifyGetPropertiesCalled(Times.Once());
             result.Status.Should().Be(HealthStatus.Unhealthy);
             result.Exception.Should().Be(rfe);
             result.Description.Should().Be("Unable to access AzureWebJobsStorage");
@@ -203,24 +199,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             result.Data.Should().Contain("ErrorCode", "SomeErrorCode");
         }
 
-        private void SetupGetContainers(AsyncPageable<BlobContainerItem> pageable)
+        private void SetupGetProperties()
         {
-            _mockBlobServiceClient.Setup(c => c.GetBlobContainersAsync(
-                BlobContainerTraits.None, BlobContainerStates.None, null, It.IsAny<CancellationToken>()))
-                .Returns(pageable);
+            _mockBlobServiceClient.Setup(c => c.GetPropertiesAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Response<BlobServiceProperties>)null);
         }
 
-        private void SetupGetContainers(RequestFailedException ex)
+        private void SetupGetProperties(RequestFailedException ex)
         {
-            _mockBlobServiceClient.Setup(c => c.GetBlobContainersAsync(
-                BlobContainerTraits.None, BlobContainerStates.None, null, It.IsAny<CancellationToken>()))
-                .Throws(ex);
+            _mockBlobServiceClient.Setup(c => c.GetPropertiesAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(ex);
         }
 
-        private void VerifyGetContainersCalled(Times times)
+        private void VerifyGetPropertiesCalled(Times times)
         {
-            _mockBlobServiceClient.Verify(c => c.GetBlobContainersAsync(
-                BlobContainerTraits.None, BlobContainerStates.None, null, It.IsAny<CancellationToken>()), times);
+            _mockBlobServiceClient.Verify(c => c.GetPropertiesAsync(It.IsAny<CancellationToken>()), times);
         }
     }
 }
