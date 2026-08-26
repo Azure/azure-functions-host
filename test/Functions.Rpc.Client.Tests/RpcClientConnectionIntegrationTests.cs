@@ -25,7 +25,7 @@ public class RpcClientConnectionIntegrationTests
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
-        await using RpcClientConnection connection = await RpcClientConnection.ConnectAsync(options, Logger);
+        await using RpcClientConnection connection = await CreateConnectionFactory().ConnectAsync(options);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         StreamingMessage outbound = new() { RequestId = "outbound" };
@@ -46,7 +46,7 @@ public class RpcClientConnectionIntegrationTests
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
-        await using RpcClientConnection connection = await RpcClientConnection.ConnectAsync(options, Logger);
+        await using RpcClientConnection connection = await CreateConnectionFactory().ConnectAsync(options);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         server.Service.CompleteResponses();
@@ -60,7 +60,7 @@ public class RpcClientConnectionIntegrationTests
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
-        await using RpcClientConnection connection = await RpcClientConnection.ConnectAsync(options, Logger);
+        await using RpcClientConnection connection = await CreateConnectionFactory().ConnectAsync(options);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         await server.Service.SendResponseAsync(new StreamingMessage { RequestId = "one" });
@@ -79,7 +79,7 @@ public class RpcClientConnectionIntegrationTests
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
-        RpcClientConnection connection = await RpcClientConnection.ConnectAsync(options, Logger);
+        RpcClientConnection connection = await CreateConnectionFactory().ConnectAsync(options);
         await server.Service.Connected.WaitAsync(TestTimeout);
         server.Service.CompleteResponses(new InvalidOperationException("server failure"));
 
@@ -94,7 +94,7 @@ public class RpcClientConnectionIntegrationTests
         RpcClientConnectionOptions options = new(new Uri($"http://{IPAddress.Loopback}:{unusedPort}"), "worker-1");
         using CancellationTokenSource timeoutSource = new(TimeSpan.FromSeconds(1));
 
-        await Assert.ThrowsAnyAsync<Exception>(() => RpcClientConnection.ConnectAsync(options, Logger, timeoutSource.Token));
+        await Assert.ThrowsAnyAsync<Exception>(() => CreateConnectionFactory().ConnectAsync(options, timeoutSource.Token));
     }
 
     [Fact]
@@ -105,7 +105,8 @@ public class RpcClientConnectionIntegrationTests
         using CancellationTokenSource cancellationSource = new();
         cancellationSource.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => RpcClientConnection.ConnectAsync(options, Logger, cancellationSource.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            CreateConnectionFactory().ConnectAsync(options, cancellationSource.Token));
     }
 
     [Fact]
@@ -113,7 +114,7 @@ public class RpcClientConnectionIntegrationTests
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync(mapService: false);
         RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
-        RpcClientConnection connection = await RpcClientConnection.ConnectAsync(options, Logger);
+        RpcClientConnection connection = await CreateConnectionFactory().ConnectAsync(options);
 
         await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => connection.Completion.WaitAsync(TestTimeout));
         await connection.DisposeAsync();
@@ -126,6 +127,12 @@ public class RpcClientConnectionIntegrationTests
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
         return port;
+    }
+
+    private static IRpcClientConnectionFactory CreateConnectionFactory()
+    {
+        FunctionRpcDuplexCallFactory callFactory = new(NullLoggerFactory.Instance);
+        return new RpcClientConnectionFactory(callFactory, Logger);
     }
 
     private static async Task<IReadOnlyList<StreamingMessage>> ReadAllAsync(RpcClientConnection connection)
