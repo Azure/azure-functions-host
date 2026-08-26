@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private ConcurrentDictionary<AuthorizationCacheKey, (string, AuthorizationLevel)> _authorizationCache = new ConcurrentDictionary<AuthorizationCacheKey, (string, AuthorizationLevel)>();
         private HostSecretsInfo _hostSecrets;
         private SemaphoreSlim _hostSecretsLock = new SemaphoreSlim(1, 1);
+        private SemaphoreSlim _systemKeyCreationLock = new SemaphoreSlim(1, 1);
         private ConcurrentDictionary<string, SemaphoreSlim> _functionSecretsLocks = new ConcurrentDictionary<string, SemaphoreSlim>(StringComparer.OrdinalIgnoreCase);
         private IMetricsLogger _metricsLogger;
         private string _repositoryClassName;
@@ -76,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 (_repository as IDisposable)?.Dispose();
                 _hostSecretsLock.Dispose();
+                _systemKeyCreationLock.Dispose();
             }
         }
 
@@ -165,6 +167,68 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return _hostSecrets;
+        }
+
+        public async virtual Task<string> GetOrCreateSystemKeyAsync(string keyName)
+        {
+            var hostSecrets = await GetHostSecretsAsync();
+            if (hostSecrets.SystemKeys.TryGetValue(keyName, out string keyValue))
+            {
+                return keyValue;
+            }
+
+            // The key wasn't present in our host secrets. Creation is serialized so that concurrent callers
+            // don't each generate a different value for the same key - the last write would win, invalidating
+            // extension webhook URLs already published using an earlier value.
+            await _systemKeyCreationLock.WaitAsync();
+            try
+            {
+                // Double-check under the lock. If another caller created the key, persisting it invalidated
+                // the cache, so this reads back the newly written value.
+                hostSecrets = await GetHostSecretsAsync();
+                if (hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))
+                {
+                    return keyValue;
+                }
+
+                // Because the cache can be seeded from a one-time startup context snapshot (see
+                // StartupContextProvider) that predates this key, a miss is not a reliable signal that the key
+                // is absent from storage. Before generating a new key -- which would overwrite any existing key
+                // in storage and invalidate previously issued extension webhook URLs -- invalidate the cache and
+                // reload the authoritative secrets from storage.
+                hostSecrets = await ReloadHostSecretsAsync();
+                if (hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))
+                {
+                    _logger.LogDebug("System key '{KeyName}' was found in storage after reloading a stale host secrets cache.", keyName);
+                    return keyValue;
+                }
+
+                // The key genuinely doesn't exist, so create it on demand.
+                keyValue = SecretGenerator.GenerateSystemKeyValue();
+                var result = await AddOrUpdateFunctionSecretAsync(keyName, keyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
+
+                return result.Secret;
+            }
+            finally
+            {
+                _systemKeyCreationLock.Release();
+            }
+        }
+
+        private async Task<HostSecretsInfo> ReloadHostSecretsAsync()
+        {
+            await _hostSecretsLock.WaitAsync();
+            try
+            {
+                _hostSecrets = null;
+                _authorizationCache.Clear();
+            }
+            finally
+            {
+                _hostSecretsLock.Release();
+            }
+
+            return await GetHostSecretsAsync();
         }
 
         public async virtual Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName, bool merged = false)
@@ -541,6 +605,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _hostSecrets = null;
                         _functionSecrets.Clear();
                         _invalidNonHISKeys.Clear();
+                        _authorizationCache.Clear();
                         _lastCacheResetTime = DateTime.UtcNow;
 
                         return await GetAuthorizationLevelAndValidateAsync(keyValue, functionName);

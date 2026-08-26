@@ -10,7 +10,6 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
-using Microsoft.Security.Utilities;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -44,13 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void GetUrl_ReturnsExpectedResult()
         {
             var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
-            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
 
             // When an extension has an existing secret, it should be returned.
-            hostSecrets.SystemKeys = new Dictionary<string, string>
-            {
-                { "testextension_extension", "abc123" }
-            };
+            mockSecretManager.Setup(p => p.GetOrCreateSystemKeyAsync("testextension_extension")).ReturnsAsync("abc123");
 
             var configProvider = new TestExtensionConfigProvider();
             var url = webHookProvider.GetUrl(configProvider);
@@ -58,43 +53,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void GetUrl_GeneratesIdentifiableSystemSecret()
+        public void GetUrl_DoesNotEscapeGeneratedSystemKey()
         {
-            string secretValue = string.Empty;
+            // Real system keys use the URL-safe base64 alphabet but deliberately retain their '='
+            // padding, which SecretGenerator documents as safe because the key only ever appears as a
+            // query string value. Verify the key is placed into the URL verbatim - a trivial key value
+            // would not catch escaping regressions here.
+            string secretValue = SecretGenerator.GenerateSystemKeyValue();
+            Assert.Contains('=', secretValue);
 
             var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
-            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
+            mockSecretManager.Setup(p => p.GetOrCreateSystemKeyAsync("testextension_extension")).ReturnsAsync(secretValue);
 
-            mockSecretManager.Setup(p =>
-                p.AddOrUpdateFunctionSecretAsync(
-                    "testextension_extension",
-                    It.IsAny<string>(),
-                    HostKeyScopes.SystemKeys,
-                    ScriptSecretsType.Host))
-                        .Callback<string, string, string, ScriptSecretsType>((key, secret, scope, type) => secretValue = secret)
-                        .Returns(() => Task.FromResult(new KeyOperationResult(secretValue, OperationResult.Created)));
+            var url = webHookProvider.GetUrl(new TestExtensionConfigProvider());
 
-            // When an extension has no existing secret, one should be generated using
-            // the Azure Functions system key seed and standard fixed signature.
-
-            var configProvider = new TestExtensionConfigProvider();
-            var url = webHookProvider.GetUrl(configProvider);
             Assert.Equal($"{TestUrlRoot}{secretValue}", url.ToString());
-            Assert.True(IdentifiableSecrets.ValidateBase64Key(secretValue,
-                                                              SecretGenerator.SystemKeySeed,
-                                                              SecretGenerator.AzureFunctionsSignature,
-                                                              encodeForUrl: true));
         }
 
         [Fact]
         public void IsArmAllowed_ExtensionWithAllowArmWebhookAccess_ReturnsTrue()
         {
             var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
-            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
-            hostSecrets.SystemKeys = new Dictionary<string, string>
-            {
-                { "testextension_extension", "abc123" }
-            };
+            mockSecretManager.Setup(p => p.GetOrCreateSystemKeyAsync("testextension_extension")).ReturnsAsync("abc123");
 
             // GetUrl is what registers the extension with the provider and captures the
             // [AllowArmWebhookAccess] opt-in.
@@ -107,11 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void IsArmAllowed_ExtensionWithoutAllowArmWebhookAccess_ReturnsFalse()
         {
             var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
-            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
-            hostSecrets.SystemKeys = new Dictionary<string, string>
-            {
-                { "testextension_extension", "abc123" }
-            };
+            mockSecretManager.Setup(p => p.GetOrCreateSystemKeyAsync("testextension_extension")).ReturnsAsync("abc123");
 
             webHookProvider.GetUrl(new TestExtensionConfigProvider());
 
@@ -130,11 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void IsArmAllowed_NameLookupIsCaseInsensitive()
         {
             var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
-            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
-            hostSecrets.SystemKeys = new Dictionary<string, string>
-            {
-                { "testextension_extension", "abc123" }
-            };
+            mockSecretManager.Setup(p => p.GetOrCreateSystemKeyAsync("testextension_extension")).ReturnsAsync("abc123");
 
             webHookProvider.GetUrl(new ArmAllowedExtensionConfigProvider());
 

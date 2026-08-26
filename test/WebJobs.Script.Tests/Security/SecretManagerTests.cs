@@ -7,11 +7,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure;
+using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -140,6 +143,105 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal($"Loaded keys for 2 functions from startup context", logs[2].FormattedMessage);
                 Assert.Equal($"Loaded host keys from startup context", logs[3].FormattedMessage);
             }
+        }
+
+        [Fact]
+        public async Task GetOrCreateSystemKey_StaleStartupContextCache_DoesNotOverwriteExistingStorageKey()
+        {
+            using var directory = new TempDirectory();
+
+            const string extensionKeyName = "eventgrid_extension";
+
+            // Seed storage with an existing extension system key, simulating a key that was previously
+            // generated and published (e.g. baked into an already-registered EventGrid subscription URL).
+            string existingKeyValue = SecretGenerator.GenerateSystemKeyValue();
+            using (var seedManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, setStaleValue: false))
+            {
+                await seedManager.AddOrUpdateFunctionSecretAsync(extensionKeyName, existingKeyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
+            }
+
+            // Seed a STALE startup context snapshot that predates the extension key. This is what
+            // SecretManager.InitializeCache() loads into the authoritative in-memory host secrets cache.
+            _startupContextProvider.Context = new StartupContextProvider.StartupContext
+            {
+                Secrets = new FunctionAppSecrets
+                {
+                    Host = new FunctionAppSecrets.HostSecrets
+                    {
+                        Master = "test-master-key",
+                        Function = new Dictionary<string, string>(),
+                        System = new Dictionary<string, string>
+                        {
+                            { "some-other-system-key", "othervalue" }
+                        }
+                    },
+                    Function = Array.Empty<FunctionAppSecrets.FunctionSecrets>()
+                }
+            };
+
+            using var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, setStaleValue: false);
+
+            // The cache is authoritative and stale: it does not contain the extension key even though storage does.
+            var cachedSecrets = await secretManager.GetHostSecretsAsync();
+            Assert.False(cachedSecrets.SystemKeys.ContainsKey(extensionKeyName));
+
+            // Drive the real extension registration path (IScriptWebHookProvider.GetUrl), exactly as an
+            // extension does when it registers its webhook handler during host startup.
+            var webHookProvider = new DefaultScriptWebHookProvider(new TestSecretManagerProvider(secretManager), _hostNameProvider);
+            var url = webHookProvider.GetUrl(new TestEventGridExtensionConfigProvider());
+
+            // The returned webhook URL must use the EXISTING storage key, not a regenerated one.
+            Assert.Equal($"https://test.azurewebsites.net/runtime/webhooks/eventgrid?code={existingKeyValue}", url.ToString());
+
+            // And the key in storage must be untouched (not clobbered by a regenerated value).
+            _startupContextProvider.Context = null;
+            using var verifyManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, setStaleValue: false);
+            var storageSecrets = await verifyManager.GetHostSecretsAsync();
+            Assert.Equal(existingKeyValue, storageSecrets.SystemKeys[extensionKeyName]);
+        }
+
+        [Fact]
+        public async Task GetOrCreateSystemKey_KeyMissing_GeneratesIdentifiableKeyAndPersistsToStorage()
+        {
+            using var directory = new TempDirectory();
+
+            const string extensionKeyName = "eventgrid_extension";
+
+            using var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, setStaleValue: false);
+
+            // The key does not exist yet, in cache or in storage.
+            var initialSecrets = await secretManager.GetHostSecretsAsync();
+            Assert.False(initialSecrets.SystemKeys.ContainsKey(extensionKeyName));
+
+            string createdKeyValue = await secretManager.GetOrCreateSystemKeyAsync(extensionKeyName);
+
+            // The generated value must be a valid identifiable system key.
+            SecretGeneratorTests.ValidateSecret(createdKeyValue, SecretGenerator.SystemKeySeed);
+
+            // The key must have been written to storage, not just cached in memory.
+            using var verifyManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, setStaleValue: false);
+            var storageSecrets = await verifyManager.GetHostSecretsAsync();
+            Assert.Equal(createdKeyValue, storageSecrets.SystemKeys[extensionKeyName]);
+        }
+
+        [Fact]
+        public async Task GetOrCreateSystemKey_ConcurrentCalls_ReturnSameKey()
+        {
+            using var directory = new TempDirectory();
+
+            const string extensionKeyName = "eventgrid_extension";
+
+            using var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, setStaleValue: false);
+
+            var tasks = Enumerable.Range(0, 10).Select(_ => Task.Run(() => secretManager.GetOrCreateSystemKeyAsync(extensionKeyName))).ToArray();
+            string[] results = await Task.WhenAll(tasks);
+
+            // All callers must observe the same key, and it must be the value that was persisted.
+            Assert.Single(results.Distinct(StringComparer.Ordinal));
+
+            using var verifyManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, setStaleValue: false);
+            var storageSecrets = await verifyManager.GetHostSecretsAsync();
+            Assert.Equal(results[0], storageSecrets.SystemKeys[extensionKeyName]);
         }
 
         [Theory]
@@ -2030,6 +2132,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         {
             string expectedMessage = string.Format(Resources.NonHISSecret, keyType, keyName, functionName);
             Assert.Equal(expectedMessage, message);
+        }
+
+        [Extension("EventGrid", "EventGrid")]
+        private class TestEventGridExtensionConfigProvider : IExtensionConfigProvider, IAsyncConverter<HttpRequestMessage, HttpResponseMessage>
+        {
+            public Task<HttpResponseMessage> ConvertAsync(HttpRequestMessage input, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Initialize(ExtensionConfigContext context)
+            {
+            }
         }
 
         private class TestSecretsRepository : ISecretsRepository

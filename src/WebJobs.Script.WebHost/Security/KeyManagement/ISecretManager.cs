@@ -55,6 +55,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         Task<KeyOperationResult> AddOrUpdateFunctionSecretAsync(string secretName, string secret, string keyScope, ScriptSecretsType secretsType);
 
         /// <summary>
+        /// Gets the value of the named host system key, creating and persisting a new key if one does not already exist.
+        /// </summary>
+        /// <remarks>
+        /// Unlike a direct <see cref="GetHostSecretsAsync"/> lookup, this method guards against a stale host secrets
+        /// cache. The cache can be seeded from a one-time startup context snapshot that predates a key, so a simple
+        /// cache miss is not a reliable signal that the key is absent. Before generating a new key, this method
+        /// re-reads authoritative secrets from storage, ensuring an existing key is never overwritten (which would
+        /// invalidate previously issued extension webhook URLs).
+        /// </remarks>
+        /// <param name="keyName">The name of the system key to get or create.</param>
+        /// <returns>The value of the existing or newly created system key.</returns>
+        Task<string> GetOrCreateSystemKeyAsync(string keyName);
+
+        /// <summary>
         /// Updates the host master key.
         /// </summary>
         /// <param name="value">Optional value. If <see cref="null"/>, the value will be auto-generated.</param>
