@@ -58,11 +58,11 @@ public class RpcClientConnectionOptionsTests
     [Fact]
     public void HttpHandlerUsesTransportLivenessDefaults()
     {
-        using SocketsHttpHandler handler = FunctionRpcDuplexCallFactory.CreateHttpHandler();
+        using SocketsHttpHandler handler = FunctionRpcDuplexChannelFactory.CreateHttpHandler();
 
-        Assert.Equal(FunctionRpcDuplexCallFactory.DefaultConnectTimeout, handler.ConnectTimeout);
-        Assert.Equal(FunctionRpcDuplexCallFactory.DefaultKeepAlivePingDelay, handler.KeepAlivePingDelay);
-        Assert.Equal(FunctionRpcDuplexCallFactory.DefaultKeepAlivePingTimeout, handler.KeepAlivePingTimeout);
+        Assert.Equal(FunctionRpcDuplexChannelFactory.DefaultConnectTimeout, handler.ConnectTimeout);
+        Assert.Equal(FunctionRpcDuplexChannelFactory.DefaultKeepAlivePingDelay, handler.KeepAlivePingDelay);
+        Assert.Equal(FunctionRpcDuplexChannelFactory.DefaultKeepAlivePingTimeout, handler.KeepAlivePingTimeout);
         Assert.Equal(HttpKeepAlivePingPolicy.Always, handler.KeepAlivePingPolicy);
     }
 }

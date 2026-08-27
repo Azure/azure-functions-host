@@ -3,22 +3,22 @@
 
 using System;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
 /// <summary>
-/// Supplies a predetermined duplex call without creating network or gRPC resources.
+/// Supplies a predetermined duplex channel without creating network or gRPC resources.
 /// </summary>
-internal sealed class TestDuplexCallFactory<TRequest, TResponse> : IDuplexCallFactory<TRequest, TResponse>
-    where TRequest : class
-    where TResponse : class
+internal sealed class TestDuplexChannelFactory<T> : IDuplexChannelFactory<T>
+    where T : class
 {
-    private readonly IDuplexCall<TRequest, TResponse> _call;
+    private readonly Channel<T> _channel;
 
-    internal TestDuplexCallFactory(IDuplexCall<TRequest, TResponse> call)
+    internal TestDuplexChannelFactory(Channel<T> channel)
     {
-        _call = call;
+        _channel = channel;
     }
 
     internal Uri Endpoint { get; private set; }
@@ -26,11 +26,11 @@ internal sealed class TestDuplexCallFactory<TRequest, TResponse> : IDuplexCallFa
     internal int InvocationCount { get; private set; }
 
     /// <inheritdoc />
-    public Task<IDuplexCall<TRequest, TResponse>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
+    public Task<Channel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Endpoint = endpoint;
         InvocationCount++;
-        return Task.FromResult(_call);
+        return Task.FromResult(_channel);
     }
 }

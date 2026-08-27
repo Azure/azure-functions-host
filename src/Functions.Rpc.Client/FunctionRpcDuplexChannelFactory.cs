@@ -4,6 +4,7 @@
 using System;
 using System.Net.Http;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Net.Client;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -12,9 +13,9 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Creates outbound FunctionRpc duplex calls.
+/// Creates outbound FunctionRpc duplex channels.
 /// </summary>
-internal sealed class FunctionRpcDuplexCallFactory : IDuplexCallFactory<StreamingMessage, StreamingMessage>
+internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<StreamingMessage>
 {
     /// <summary>
     /// Gets the maximum time allowed for an individual socket connection attempt.
@@ -33,23 +34,22 @@ internal sealed class FunctionRpcDuplexCallFactory : IDuplexCallFactory<Streamin
 
     private const int MaxMessageLengthBytes = int.MaxValue;
 
-    private readonly ILogger _duplexCallLogger;
+    private readonly ILogger _duplexChannelLogger;
     private readonly ILogger _logger;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="FunctionRpcDuplexCallFactory"/> class.
+    /// Initializes a new instance of the <see cref="FunctionRpcDuplexChannelFactory"/> class.
     /// </summary>
     /// <param name="loggerFactory">The factory used to create transport and adapter loggers.</param>
-    public FunctionRpcDuplexCallFactory(ILoggerFactory loggerFactory)
+    public FunctionRpcDuplexChannelFactory(ILoggerFactory loggerFactory)
     {
         ArgumentNullException.ThrowIfNull(loggerFactory);
-        _logger = loggerFactory.CreateLogger<FunctionRpcDuplexCallFactory>();
-        _duplexCallLogger = loggerFactory.CreateLogger<GrpcDuplexCall<StreamingMessage, StreamingMessage>>();
+        _logger = loggerFactory.CreateLogger<FunctionRpcDuplexChannelFactory>();
+        _duplexChannelLogger = loggerFactory.CreateLogger<GrpcDuplexChannel<StreamingMessage>>();
     }
 
     /// <inheritdoc />
-    public async Task<IDuplexCall<StreamingMessage, StreamingMessage>> ConnectAsync(Uri endpoint,
-        CancellationToken cancellationToken = default)
+    public async Task<Channel<StreamingMessage>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
 
@@ -77,17 +77,17 @@ internal sealed class FunctionRpcDuplexCallFactory : IDuplexCallFactory<Streamin
             var grpcCall = client.EventStream(cancellationToken: callLifetimeSource.Token);
             call = grpcCall;
 
-            GrpcDuplexCall<StreamingMessage, StreamingMessage> duplexCall = new(grpcCall, callLifetimeSource, channel, _duplexCallLogger);
+            GrpcDuplexChannel<StreamingMessage> duplexChannel = new(grpcCall, callLifetimeSource, channel, _duplexChannelLogger);
             call = null;
             callLifetimeSource = null;
             channel = null;
 
-            return duplexCall;
+            return duplexChannel;
         }
         catch
         {
-            TryCleanup(() => call?.Dispose(), "dispose the SDK duplex call");
             TryCleanup(() => callLifetimeSource?.Cancel(), "cancel the call lifetime");
+            TryCleanup(() => call?.Dispose(), "dispose the SDK duplex call");
             TryCleanup(() => callLifetimeSource?.Dispose(), "dispose the call lifetime");
             TryCleanup(() => channel?.Dispose(), "dispose the gRPC channel");
             TryCleanup(() => handler?.Dispose(), "dispose the HTTP handler");

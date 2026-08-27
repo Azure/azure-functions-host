@@ -14,27 +14,29 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public class RpcClientConnectionFactoryTests
 {
     [Fact]
-    public async Task ConnectUsesInjectedDuplexCallFactory()
+    public async Task ConnectUsesInjectedDuplexChannelFactory()
     {
-        TestDuplexCall<StreamingMessage, StreamingMessage> call = new();
-        TestDuplexCallFactory<StreamingMessage, StreamingMessage> callFactory = new(call);
-        IRpcClientConnectionFactory factory = new RpcClientConnectionFactory(callFactory, NullLogger<RpcClientConnection>.Instance);
+        TestDuplexChannel<StreamingMessage> channel = new();
+        TestDuplexChannelFactory<StreamingMessage> channelFactory = new(channel);
+        IRpcClientConnectionFactory factory = new RpcClientConnectionFactory(channelFactory, NullLogger<RpcClientConnection>.Instance);
         RpcClientConnectionOptions options = new(new Uri("https://localhost:5001"), "worker-1");
 
         await using RpcClientConnection connection = await factory.ConnectAsync(options);
         await connection.EnqueueAsync(new StreamingMessage { RequestId = "outbound" });
-        await call.SendResponseAsync(new StreamingMessage { RequestId = "inbound" });
-        call.CompleteResponses();
+        StreamingMessage outbound = await channel.Writes.ReadAsync();
+        await channel.SendResponseAsync(new StreamingMessage { RequestId = "inbound" });
+        channel.CompleteResponses();
         List<string> responses = [];
         await foreach (StreamingMessage response in connection.ReadAllAsync())
         {
             responses.Add(response.RequestId);
         }
 
-        Assert.Equal(options.Endpoint, callFactory.Endpoint);
-        Assert.Equal(1, callFactory.InvocationCount);
+        Assert.Equal(options.Endpoint, channelFactory.Endpoint);
+        Assert.Equal(1, channelFactory.InvocationCount);
         Assert.Equal("worker-1", connection.WorkerId);
-        Assert.Equal(["outbound"], call.WrittenMessages.Select(message => message.RequestId));
+        Assert.Equal("outbound", outbound.RequestId);
+        Assert.Equal(["outbound"], channel.WrittenMessages.Select(message => message.RequestId));
         Assert.Equal(["inbound"], responses);
     }
 }

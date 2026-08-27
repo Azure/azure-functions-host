@@ -131,8 +131,8 @@ public class RpcClientConnectionIntegrationTests
 
     private static IRpcClientConnectionFactory CreateConnectionFactory()
     {
-        FunctionRpcDuplexCallFactory callFactory = new(NullLoggerFactory.Instance);
-        return new RpcClientConnectionFactory(callFactory, Logger);
+        FunctionRpcDuplexChannelFactory channelFactory = new(NullLoggerFactory.Instance);
+        return new RpcClientConnectionFactory(channelFactory, Logger);
     }
 
     private static async Task<IReadOnlyList<StreamingMessage>> ReadAllAsync(RpcClientConnection connection)

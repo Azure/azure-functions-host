@@ -29,11 +29,11 @@ public class RpcClientConnectionTests
             .ToArray();
 
         await Task.WhenAll(messages.Select(message => connection.EnqueueAsync(message).AsTask()));
-        await WaitUntilAsync(() => context.Call.WrittenMessages.Count == messages.Length);
+        await WaitUntilAsync(() => context.Channel.WrittenMessages.Count == messages.Length);
 
-        Assert.Equal(1, context.Call.MaxConcurrentWrites);
+        Assert.Equal(1, context.Channel.MaxConcurrentWrites);
         Assert.Equal(messages.Select(message => message.RequestId).OrderBy(value => value),
-            context.Call.WrittenMessages.Select(message => message.RequestId).OrderBy(value => value));
+            context.Channel.WrittenMessages.Select(message => message.RequestId).OrderBy(value => value));
     }
 
     [Fact]
@@ -41,9 +41,9 @@ public class RpcClientConnectionTests
     {
         ConnectionTestContext context = CreateConnection();
         await using RpcClientConnection connection = context.Connection;
-        await context.Call.SendResponseAsync(new StreamingMessage { RequestId = "first" });
-        await context.Call.SendResponseAsync(new StreamingMessage { RequestId = "second" });
-        context.Call.CompleteResponses();
+        await context.Channel.SendResponseAsync(new StreamingMessage { RequestId = "first" });
+        await context.Channel.SendResponseAsync(new StreamingMessage { RequestId = "second" });
+        context.Channel.CompleteResponses();
 
         await connection.Completion.WaitAsync(TestTimeout);
 
@@ -60,12 +60,12 @@ public class RpcClientConnectionTests
     {
         ConnectionTestContext context = CreateConnection();
         InvalidOperationException expected = new("read failure");
-        context.Call.CompleteResponses(expected);
+        context.Channel.CompleteResponses(expected);
 
         InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() => context.Connection.Completion);
 
         Assert.Same(expected, actual);
-        Assert.Equal(1, context.Call.DisposeCount);
+        Assert.Equal(1, context.Channel.DisposeCount);
     }
 
     [Fact]
@@ -73,11 +73,11 @@ public class RpcClientConnectionTests
     {
         ConnectionTestContext context = CreateConnection();
 
-        context.Call.CompleteResponses();
+        context.Channel.CompleteResponses();
         await context.Connection.Completion;
         await context.Connection.DisposeAsync();
 
-        Assert.Equal(1, context.Call.DisposeCount);
+        Assert.Equal(1, context.Channel.DisposeCount);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class RpcClientConnectionTests
 
         ConnectionTestContext healthyContext = CreateConnection();
         await healthyContext.Connection.DisposeAsync();
-        Assert.Equal(1, healthyContext.Call.DisposeCount);
+        Assert.Equal(1, healthyContext.Channel.DisposeCount);
     }
 
     [Fact]
@@ -132,13 +132,31 @@ public class RpcClientConnectionTests
         ConnectionTestContext context = CreateConnection(blockWrites: true);
         InvalidOperationException expected = new("write failure");
         await context.Connection.EnqueueAsync(new StreamingMessage { RequestId = "request" });
-        await context.Call.WriteAttempts.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        await context.Channel.WriteAttempts.ReadAsync().AsTask().WaitAsync(TestTimeout);
 
-        context.Call.FailWrites(expected);
+        context.Channel.FailWrites(expected);
 
         InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() => context.Connection.Completion);
         Assert.Same(expected, actual);
-        Assert.Equal(1, context.Call.DisposeCount);
+        Assert.Equal(1, context.Channel.DisposeCount);
+    }
+
+    [Fact]
+    public async Task CleanRequestBoundaryCloseDuringWriteDoesNotFaultConnection()
+    {
+        ConnectionTestContext context = CreateConnection(blockWrites: true);
+        await context.Connection.EnqueueAsync(new StreamingMessage { RequestId = "request" });
+        await context.Channel.WriteAttempts.ReadAsync().AsTask().WaitAsync(TestTimeout);
+
+        context.Channel.CompleteRequests();
+        await WaitUntilAsync(() => context.Channel.ActiveWriteCount == 0);
+
+        Assert.False(context.Connection.Completion.IsCompleted);
+
+        context.Channel.CompleteResponses();
+
+        await context.Connection.Completion;
+        Assert.Equal(1, context.Channel.DisposeCount);
     }
 
     [Fact]
@@ -146,7 +164,7 @@ public class RpcClientConnectionTests
     {
         ConnectionTestContext context = CreateConnection();
         TaskCanceledException transportCancellation = new("transport canceled");
-        context.Call.CompleteResponses(transportCancellation);
+        context.Channel.CompleteResponses(transportCancellation);
 
         InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() => context.Connection.Completion);
 
@@ -166,16 +184,32 @@ public class RpcClientConnectionTests
     }
 
     [Fact]
-    public async Task DisposalDiscardsBufferedResponses()
+    public async Task DisposalDoesNotExposeBufferedResponses()
     {
         ConnectionTestContext context = CreateConnection();
-        await context.Call.SendResponseAsync(new StreamingMessage { RequestId = "buffered" });
-        await WaitUntilAsync(() => context.Call.ReadAttemptCount == 2);
+        await context.Channel.SendResponseAsync(new StreamingMessage { RequestId = "buffered" });
+        await WaitUntilAsync(() => context.Channel.ReadAttemptCount == 2);
 
         await context.Connection.DisposeAsync();
 
         await using IAsyncEnumerator<StreamingMessage> responses = context.Connection.ReadAllAsync().GetAsyncEnumerator();
         await Assert.ThrowsAsync<ObjectDisposedException>(() => responses.MoveNextAsync().AsTask());
+    }
+
+    [Fact]
+    public async Task ConcurrentResponseEnumerationIsRejected()
+    {
+        ConnectionTestContext context = CreateConnection();
+        await using IAsyncEnumerator<StreamingMessage> first = context.Connection.ReadAllAsync().GetAsyncEnumerator();
+        Task<bool> pendingRead = first.MoveNextAsync().AsTask();
+        await using IAsyncEnumerator<StreamingMessage> second = context.Connection.ReadAllAsync().GetAsyncEnumerator();
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            second.MoveNextAsync().AsTask());
+
+        Assert.Equal("Only one response enumeration may be active at a time.", exception.Message);
+        await context.Connection.DisposeAsync();
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => pendingRead);
     }
 
     [Fact]
@@ -186,7 +220,7 @@ public class RpcClientConnectionTests
         Task<bool> pendingRead = responses.MoveNextAsync().AsTask();
         InvalidOperationException expected = new("read failure");
 
-        context.Call.CompleteResponses(expected);
+        context.Channel.CompleteResponses(expected);
 
         InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() => pendingRead);
         Assert.Same(expected, actual);
@@ -215,7 +249,7 @@ public class RpcClientConnectionTests
         await Task.WhenAll(Enumerable.Range(0, 10)
             .Select(_ => context.Connection.DisposeAsync().AsTask()));
 
-        Assert.Equal(1, context.Call.DisposeCount);
+        Assert.Equal(1, context.Channel.DisposeCount);
         Assert.True(context.Connection.Completion.IsCanceled);
     }
 
@@ -224,7 +258,7 @@ public class RpcClientConnectionTests
     {
         ConnectionTestContext context = CreateConnection();
         InvalidOperationException expected = new("read failure");
-        context.Call.CompleteResponses(expected);
+        context.Channel.CompleteResponses(expected);
         await Assert.ThrowsAsync<InvalidOperationException>(() => context.Connection.Completion);
 
         InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -240,7 +274,7 @@ public class RpcClientConnectionTests
         InvalidOperationException cleanupFailure = new("cleanup failure");
         FakeLogger<RpcClientConnection> logger = new();
         ConnectionTestContext context = CreateConnection(callDisposeException: cleanupFailure, logger: logger);
-        context.Call.CompleteResponses(transportFailure);
+        context.Channel.CompleteResponses(transportFailure);
 
         InvalidOperationException completionFailure = await Assert.ThrowsAsync<InvalidOperationException>(() => context.Connection.Completion);
         InvalidOperationException disposeFailure = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -250,14 +284,14 @@ public class RpcClientConnectionTests
         Assert.Same(cleanupFailure, disposeFailure);
         Assert.Equal(LogLevel.Warning, logger.Collector.LatestRecord.Level);
         Assert.Same(cleanupFailure, logger.Collector.LatestRecord.Exception);
-        Assert.Contains("disposing the duplex call", logger.Collector.LatestRecord.Message, StringComparison.Ordinal);
+        Assert.Contains("disposing the duplex channel", logger.Collector.LatestRecord.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task EnqueueAfterCleanPeerCloseReportsCompletedConnection()
     {
         ConnectionTestContext context = CreateConnection();
-        context.Call.CompleteResponses();
+        context.Channel.CompleteResponses();
         await context.Connection.Completion;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -283,9 +317,9 @@ public class RpcClientConnectionTests
             shutdownSource.Token.Register(() => throw cancellationException);
         }
 
-        TestDuplexCall<StreamingMessage, StreamingMessage> call = new(blockWrites, callDisposeException);
-        RpcClientConnection connection = new("worker-1", call, logger ?? NullLogger<RpcClientConnection>.Instance, shutdownSource);
-        return new ConnectionTestContext(connection, call);
+        TestDuplexChannel<StreamingMessage> channel = new(blockWrites, callDisposeException);
+        RpcClientConnection connection = new("worker-1", channel, logger ?? NullLogger<RpcClientConnection>.Instance, shutdownSource);
+        return new ConnectionTestContext(connection, channel);
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition, [CallerArgumentExpression(nameof(condition))] string conditionExpression = null)
@@ -304,5 +338,5 @@ public class RpcClientConnectionTests
         }
     }
 
-    private sealed record ConnectionTestContext(RpcClientConnection Connection, TestDuplexCall<StreamingMessage, StreamingMessage> Call);
+    private sealed record ConnectionTestContext(RpcClientConnection Connection, TestDuplexChannel<StreamingMessage> Channel);
 }

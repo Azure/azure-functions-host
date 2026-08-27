@@ -20,7 +20,7 @@ namespace Azure.Functions.Rpc.Client;
 internal sealed partial class RpcClientConnection : IAsyncDisposable
 {
     private readonly Task _completion;
-    private readonly IDuplexCall<StreamingMessage, StreamingMessage> _duplexCall;
+    private readonly Channel<StreamingMessage> _duplexChannel;
     private readonly Channel<StreamingMessage> _inbound;
     private readonly ILogger<RpcClientConnection> _logger;
     private readonly Channel<StreamingMessage> _outbound;
@@ -29,30 +29,31 @@ internal sealed partial class RpcClientConnection : IAsyncDisposable
     private readonly TaskCompletionSource<TerminalState> _terminalSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private readonly Task _writerTask;
+    private int _activeResponseReader;
     private TerminalState _terminalState;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RpcClientConnection"/> class.
     /// </summary>
     /// <param name="workerId">The worker identifier retained for later correlation.</param>
-    /// <param name="duplexCall">The duplex FunctionRpc call owned by this connection.</param>
+    /// <param name="duplexChannel">The duplex FunctionRpc channel owned by this connection.</param>
     /// <param name="logger">The logger used to report secondary cleanup failures.</param>
-    internal RpcClientConnection(string workerId, IDuplexCall<StreamingMessage, StreamingMessage> duplexCall,
+    internal RpcClientConnection(string workerId, Channel<StreamingMessage> duplexChannel,
         ILogger<RpcClientConnection> logger)
-        : this(workerId, duplexCall, logger, new CancellationTokenSource())
+        : this(workerId, duplexChannel, logger, new CancellationTokenSource())
     {
     }
 
-    internal RpcClientConnection(string workerId, IDuplexCall<StreamingMessage, StreamingMessage> duplexCall,
+    internal RpcClientConnection(string workerId, Channel<StreamingMessage> duplexChannel,
         ILogger<RpcClientConnection> logger, CancellationTokenSource shutdownSource)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
-        ArgumentNullException.ThrowIfNull(duplexCall);
+        ArgumentNullException.ThrowIfNull(duplexChannel);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(shutdownSource);
 
         WorkerId = workerId;
-        _duplexCall = duplexCall;
+        _duplexChannel = duplexChannel;
         _logger = logger;
         _shutdownSource = shutdownSource;
         _outbound = Channel.CreateUnbounded<StreamingMessage>(new UnboundedChannelOptions
@@ -123,35 +124,48 @@ internal sealed partial class RpcClientConnection : IAsyncDisposable
     /// <param name="cancellationToken">A token that cancels this enumeration.</param>
     /// <returns>An asynchronous sequence of uninterpreted FunctionRpc responses.</returns>
     /// <remarks>
-    /// Clean peer closure ends enumeration after buffered responses are drained. Transport failure terminates
-    /// enumeration with that failure. Disposal aborts enumeration and releases buffered responses. Ending enumeration
-    /// early does not close the connection; the owner must still call <see cref="DisposeAsync"/>.
+    /// Only one response enumeration may be active at a time. Clean peer closure ends enumeration after buffered responses
+    /// are drained. Transport failure terminates enumeration with that failure. Explicit disposal while active aborts
+    /// enumeration. Ending enumeration early does not close the connection; the owner must still call
+    /// <see cref="DisposeAsync"/>.
     /// </remarks>
     internal async IAsyncEnumerable<StreamingMessage> ReadAllAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        while (true)
+        if (Interlocked.CompareExchange(ref _activeResponseReader, 1, 0) != 0)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            ObjectDisposedException.ThrowIf(GetTerminalState()?.Kind == TerminalKind.Disposed, this);
+            throw new InvalidOperationException("Only one response enumeration may be active at a time.");
+        }
 
-            StreamingMessage message;
-            try
-            {
-                message = await _inbound.Reader.ReadAsync(cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception) when (GetTerminalState() is not null)
+        try
+        {
+            while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 ObjectDisposedException.ThrowIf(GetTerminalState()?.Kind == TerminalKind.Disposed, this);
-                await _completion;
-                yield break;
-            }
 
-            yield return message;
+                StreamingMessage message;
+                try
+                {
+                    message = await _inbound.Reader.ReadAsync(cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception) when (GetTerminalState() is not null)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    ObjectDisposedException.ThrowIf(GetTerminalState()?.Kind == TerminalKind.Disposed, this);
+                    await _completion;
+                    yield break;
+                }
+
+                yield return message;
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _activeResponseReader, 0);
         }
     }
 
@@ -196,7 +210,7 @@ internal sealed partial class RpcClientConnection : IAsyncDisposable
     {
         try
         {
-            await foreach (StreamingMessage message in _duplexCall.ReadAllAsync(_shutdownSource.Token))
+            await foreach (StreamingMessage message in _duplexChannel.Reader.ReadAllAsync(_shutdownSource.Token))
             {
                 await _inbound.Writer.WriteAsync(message, _shutdownSource.Token);
             }
@@ -205,6 +219,10 @@ internal sealed partial class RpcClientConnection : IAsyncDisposable
         }
         catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
         {
+        }
+        catch (ChannelClosedException exception) when (exception.InnerException is null)
+        {
+            TryTerminate(TerminalState.CreateCompleted());
         }
         catch (Exception exception)
         {
@@ -222,11 +240,15 @@ internal sealed partial class RpcClientConnection : IAsyncDisposable
         {
             await foreach (StreamingMessage message in _outbound.Reader.ReadAllAsync(_shutdownSource.Token))
             {
-                await _duplexCall.WriteAsync(message);
+                await _duplexChannel.Writer.WriteAsync(message, _shutdownSource.Token);
             }
         }
         catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
         {
+        }
+        catch (ChannelClosedException exception) when (exception.InnerException is null)
+        {
+            // A clean response-stream close also closes the duplex channel's request boundary.
         }
         catch (Exception exception)
         {
@@ -243,14 +265,21 @@ internal sealed partial class RpcClientConnection : IAsyncDisposable
         TerminalState terminalState = await _terminalSource.Task;
         Exception cleanupException = terminalState.CleanupException;
 
-        // Disposing the call unblocks both pumps.
+        // Disposing the channel unblocks both pumps.
         try
         {
-            await _duplexCall.DisposeAsync();
+            if (_duplexChannel is IAsyncDisposable disposable)
+            {
+                await disposable.DisposeAsync();
+            }
+            else
+            {
+                _duplexChannel.Writer.TryComplete();
+            }
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "RPC client cleanup failed while disposing the duplex call.");
+            _logger.LogWarning(exception, "RPC client cleanup failed while disposing the duplex channel.");
             cleanupException = CombineCleanupExceptions(cleanupException, exception);
         }
 
@@ -263,8 +292,6 @@ internal sealed partial class RpcClientConnection : IAsyncDisposable
             _logger.LogWarning(exception, "RPC client cleanup failed while stopping the message pumps.");
             cleanupException = CombineCleanupExceptions(cleanupException, exception);
         }
-
-        ReleaseAbortedMessages(terminalState.Kind);
 
         CancellationToken shutdownToken = _shutdownSource.Token;
         cleanupException = CaptureCleanupFailure(cleanupException, _shutdownSource.Dispose, _logger, "dispose the connection lifetime");
@@ -334,24 +361,6 @@ internal sealed partial class RpcClientConnection : IAsyncDisposable
     /// <returns>The combined cleanup failure.</returns>
     private static Exception CombineCleanupExceptions(Exception currentException, Exception nextException)
         => currentException is null ? nextException : new AggregateException(currentException, nextException);
-
-    /// <summary>
-    /// Releases queued messages that can no longer be observed after terminal shutdown.
-    /// </summary>
-    /// <param name="terminalKind">The reason the connection terminated.</param>
-    private void ReleaseAbortedMessages(TerminalKind terminalKind)
-    {
-        while (_outbound.Reader.TryRead(out _))
-        {
-        }
-
-        if (terminalKind == TerminalKind.Disposed)
-        {
-            while (_inbound.Reader.TryRead(out _))
-            {
-            }
-        }
-    }
 
     /// <summary>
     /// Atomically selects the first terminal outcome, cancels the pumps, and closes both queue boundaries.

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -10,11 +11,11 @@ using Grpc.Core;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
-public partial class GrpcDuplexCallTests
+public partial class GrpcDuplexChannelTests
 {
     /// <summary>
     /// Builds a real <see cref="AsyncDuplexStreamingCall{TRequest, TResponse}"/> over mock request and response streams so
-    /// <see cref="GrpcDuplexCall{TRequest, TResponse}"/> can be tested without a network connection.
+    /// <see cref="GrpcDuplexChannel{T}"/> can be tested without a network connection.
     /// Tests can supply peer responses, block writes, and observe successful writes and disposal deterministically.
     /// </summary>
     /// <typeparam name="T">The value type used by both sides of the test call.</typeparam>
@@ -23,9 +24,11 @@ public partial class GrpcDuplexCallTests
         private readonly CancellationToken _connectionCancellationToken;
         private readonly bool _blockWrites;
         private readonly Channel<T> _responses = Channel.CreateUnbounded<T>();
+        private readonly TaskCompletionSource _requestCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly Channel<T> _writeAttempts = Channel.CreateUnbounded<T>();
         private readonly SemaphoreSlim _writeGate = new(0);
         private int _disposeCount;
+        private Exception _writeException;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MockDuplexStream{T}"/> class.
@@ -53,6 +56,11 @@ public partial class GrpcDuplexCallTests
         internal int DisposeCount => Interlocked.CompareExchange(ref _disposeCount, 0, 0);
 
         /// <summary>
+        /// Gets a task that completes when the adapter half-closes the SDK request stream.
+        /// </summary>
+        internal Task RequestCompleted => _requestCompleted.Task;
+
+        /// <summary>
         /// Gets the requests successfully written to the mock stream.
         /// </summary>
         internal ConcurrentQueue<T> WrittenMessages { get; } = new();
@@ -72,7 +80,18 @@ public partial class GrpcDuplexCallTests
         /// <summary>
         /// Completes the response stream.
         /// </summary>
-        internal void CompleteResponses() => _responses.Writer.TryComplete();
+        internal void CompleteResponses(Exception exception = null) => _responses.Writer.TryComplete(exception);
+
+        /// <summary>
+        /// Fails a blocked request-stream write.
+        /// </summary>
+        /// <param name="exception">The failure to report.</param>
+        internal void FailWrites(Exception exception)
+        {
+            ArgumentNullException.ThrowIfNull(exception);
+            Interlocked.Exchange(ref _writeException, exception);
+            _writeGate.Release();
+        }
 
         /// <summary>
         /// Implements the SDK response stream over the mock peer-response channel.
@@ -104,6 +123,11 @@ public partial class GrpcDuplexCallTests
                     Current = await _owner._responses.Reader.ReadAsync(linkedSource.Token);
                     return true;
                 }
+                catch (ChannelClosedException exception) when (exception.InnerException is not null)
+                {
+                    ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
+                    throw;
+                }
                 catch (ChannelClosedException)
                 {
                     return false;
@@ -131,7 +155,11 @@ public partial class GrpcDuplexCallTests
             public WriteOptions WriteOptions { get; set; }
 
             /// <inheritdoc />
-            public Task CompleteAsync() => Task.CompletedTask;
+            public Task CompleteAsync()
+            {
+                _owner._requestCompleted.TrySetResult();
+                return Task.CompletedTask;
+            }
 
             /// <inheritdoc />
             public async Task WriteAsync(T message)
@@ -140,6 +168,12 @@ public partial class GrpcDuplexCallTests
                 if (_owner._blockWrites)
                 {
                     await _owner._writeGate.WaitAsync(_owner._connectionCancellationToken);
+                }
+
+                Exception writeException = Interlocked.CompareExchange(ref _owner._writeException, null, null);
+                if (writeException is not null)
+                {
+                    ExceptionDispatchInfo.Capture(writeException).Throw();
                 }
 
                 _owner.WrittenMessages.Enqueue(message);

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Channels;
 
 namespace Azure.Functions.Rpc.Client;
 
@@ -65,9 +66,12 @@ internal sealed partial class RpcClientConnection
         internal static TerminalState Faulted(Exception exception)
         {
             ArgumentNullException.ThrowIfNull(exception);
-            Exception terminalException = exception is OperationCanceledException
-                ? new InvalidOperationException("The RPC client transport was canceled unexpectedly.", exception)
+            Exception transportException = exception is ChannelClosedException { InnerException: not null } channelClosedException
+                ? channelClosedException.InnerException
                 : exception;
+            Exception terminalException = transportException is OperationCanceledException
+                ? new InvalidOperationException("The RPC client transport was canceled unexpectedly.", transportException)
+                : transportException;
             return new TerminalState(TerminalKind.Faulted, terminalException);
         }
     }

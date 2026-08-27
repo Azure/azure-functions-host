@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
@@ -10,22 +11,22 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Creates raw FunctionRpc client connections over an injected duplex-call factory.
+/// Creates raw FunctionRpc client connections over an injected duplex-channel factory.
 /// </summary>
 internal sealed class RpcClientConnectionFactory : IRpcClientConnectionFactory
 {
-    private readonly IDuplexCallFactory<StreamingMessage, StreamingMessage> _callFactory;
+    private readonly IDuplexChannelFactory<StreamingMessage> _channelFactory;
     private readonly ILogger<RpcClientConnection> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RpcClientConnectionFactory"/> class.
     /// </summary>
-    /// <param name="callFactory">The duplex-call factory.</param>
+    /// <param name="channelFactory">The duplex-channel factory.</param>
     /// <param name="logger">The connection logger.</param>
-    public RpcClientConnectionFactory(IDuplexCallFactory<StreamingMessage, StreamingMessage> callFactory,
+    public RpcClientConnectionFactory(IDuplexChannelFactory<StreamingMessage> channelFactory,
         ILogger<RpcClientConnection> logger)
     {
-        _callFactory = callFactory ?? throw new ArgumentNullException(nameof(callFactory));
+        _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -35,7 +36,7 @@ internal sealed class RpcClientConnectionFactory : IRpcClientConnectionFactory
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        IDuplexCall<StreamingMessage, StreamingMessage> call = await _callFactory.ConnectAsync(options.Endpoint, cancellationToken);
-        return new RpcClientConnection(options.WorkerId, call, _logger);
+        Channel<StreamingMessage> channel = await _channelFactory.ConnectAsync(options.Endpoint, cancellationToken);
+        return new RpcClientConnection(options.WorkerId, channel, _logger);
     }
 }
