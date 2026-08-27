@@ -416,7 +416,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockEventManager.Publish(new FileEvent(EventSources.ScriptFiles,
                     new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, ScriptConstants.AppOfflineFileName)));
                 await firstShutdown.Task.WaitAsync(TimeSpan.FromSeconds(5));
-                Assert.Contains(loggerProvider.GetAllLogMessages(),
+                Assert.Single(loggerProvider.GetAllLogMessages(),
                     m => string.Equals(m.FormattedMessage, "Host configuration has changed. Signaling shutdown", StringComparison.Ordinal));
                 Assert.DoesNotContain(loggerProvider.GetAllLogMessages(),
                     m => string.Equals(m.FormattedMessage, "Host configuration has changed. Signaling restart", StringComparison.Ordinal));
@@ -428,6 +428,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Same(secondShutdown.Task, completedTask);
                 mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Exactly(2));
                 mockScriptHostManager.Verify(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+                Assert.DoesNotContain(loggerProvider.GetAllLogMessages(),
+                    m => string.Equals(m.FormattedMessage, "Host configuration has changed. Signaling restart", StringComparison.Ordinal));
             }
         }
 

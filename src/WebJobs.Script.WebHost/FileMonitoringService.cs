@@ -336,9 +336,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "{0} change of type '{1}' detected for '{2}'", changeDescription, e.ChangeType.ToString(), e.FullPath);
-                TraceFileChangeRestart(fileChangeMsg, shutdown);
-                ScheduleRestartAsync(fileChangeMsg, shutdown)
-                    .ContinueWith(t => _logger.LogError(t.Exception, $"Error restarting host (full shutdown: {shutdown})"),
+                bool shutdownRequested = shutdown || Interlocked.Read(ref _shutdownScheduled) == 1;
+                TraceFileChangeRestart(fileChangeMsg, shutdownRequested);
+                ScheduleRestartAsync(fileChangeMsg, shutdownRequested)
+                    .ContinueWith(t => _logger.LogError(t.Exception, $"Error restarting host (full shutdown: {shutdownRequested})"),
                         TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
         }
