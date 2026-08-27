@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             typeof(ILoggerFactory),        // WebHost has a keyed implementation which will fail propagation. ScriptHost registers its own anyways.
             typeof(ILogger<>),             // Same reason as ILoggerFactory.
             typeof(HealthCheckService),    // Child container should instantiate its own.
+            typeof(IHealthCheckPublisher), // WebHost publishers should not duplicate telemetry for ScriptHost health checks.
             typeof(IConfigureOptions<HealthCheckServiceOptions>), // Child container should instantiate its own.
             typeof(IPostConfigureOptions<HealthCheckServiceOptions>), // Child container should instantiate its own.
         ];

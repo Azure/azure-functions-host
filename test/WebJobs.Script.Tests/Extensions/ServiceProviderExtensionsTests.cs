@@ -4,7 +4,9 @@
 using System;
 using System.Linq;
 using AwesomeAssertions;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Moq;
 using Xunit;
 
@@ -116,6 +118,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             object result = serviceProvider.CreateInstance(descriptor);
 
             result.Should().BeOfType<TestClass>();
+        }
+
+        [Fact]
+        public void CreateChildContainer_DoesNotCloneHealthCheckPublishers()
+        {
+            ServiceCollection rootServices = new();
+            rootServices.AddSingleton(Mock.Of<IHealthCheckPublisher>());
+            using ServiceProvider rootProvider = rootServices.BuildServiceProvider();
+
+            IServiceCollection childServices = rootProvider.CreateChildContainer(rootServices);
+
+            childServices.Should().NotContain(descriptor =>
+                descriptor.ServiceType == typeof(IHealthCheckPublisher));
         }
     }
 }

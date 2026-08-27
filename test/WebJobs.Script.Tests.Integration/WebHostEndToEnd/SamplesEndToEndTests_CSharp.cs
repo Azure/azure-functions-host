@@ -493,6 +493,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             if (string.IsNullOrEmpty(tag))
             {
                 Assert.NotEmpty(entries.EnumerateObject());
+                Assert.True(entries.TryGetProperty(HealthCheckNames.WebJobsStorage, out _));
             }
             else
             {

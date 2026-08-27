@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.WebJobs.Script.Tests;
 using static Microsoft.Azure.WebJobs.Script.HostIdValidator;
@@ -115,6 +116,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
             Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Host is in standby mode")));
+
+            IScriptHostManager scriptHostManager = host.Services.GetRequiredService<IScriptHostManager>();
+            Assert.Null(scriptHostManager.Services.GetService<HealthCheckService>());
 
             // Ensure no warning logs are present.
             var warningLogEntries = _loggerProvider.GetAllLogMessages().Where(a => a.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
