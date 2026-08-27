@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
@@ -91,6 +92,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             try
             {
                 await host.StartAsync();
+
+                IScriptHostManager scriptHostManager = host.Services.GetRequiredService<IScriptHostManager>();
+                Assert.Null(scriptHostManager.Services.GetService<HealthCheckService>());
+
                 var client = host.GetTestClient();
 
                 // Force the specialization middleware to run       

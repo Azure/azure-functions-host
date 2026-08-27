@@ -397,9 +397,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IInstanceServicesProviderFactory, ScriptInstanceServicesProviderFactory>();
                 services.AddSingleton<IWorkerRuntimeResolver, ScriptHostWorkerRuntimeResolver>();
 
-                IEnvironment environment =
-                    applicationHostOptions.RootServiceProvider.GetRequiredService<IEnvironment>();
-                if (!environment.IsPlaceholderModeEnabled())
+                if (!applicationHostOptions.IsStandbyConfiguration)
                 {
                     services.AddHealthChecks().AddJobHostScopedHealthChecks();
                 }
