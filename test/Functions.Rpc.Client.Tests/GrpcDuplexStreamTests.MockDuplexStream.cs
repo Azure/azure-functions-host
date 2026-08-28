@@ -11,11 +11,11 @@ using Grpc.Core;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
-public partial class GrpcDuplexChannelTests
+public partial class GrpcDuplexStreamTests
 {
     /// <summary>
     /// Builds a real <see cref="AsyncDuplexStreamingCall{TRequest, TResponse}"/> over mock request and response streams so
-    /// <see cref="GrpcDuplexChannel{T}"/> can be tested without a network connection.
+    /// <see cref="GrpcDuplexStream{T}"/> can be tested without a network connection.
     /// Tests can supply peer responses, block writes, and observe successful writes and disposal deterministically.
     /// </summary>
     /// <typeparam name="T">The value type used by both sides of the test call.</typeparam>

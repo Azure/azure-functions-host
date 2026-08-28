@@ -9,21 +9,21 @@ using System.Threading.Tasks;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Creates connected duplex channels.
+/// Creates connected duplex streams.
 /// </summary>
 /// <remarks>
-/// A returned channel that owns transport resources must also implement <see cref="System.IAsyncDisposable"/>.
-/// The connection owner completes plain in-memory channels and asynchronously disposes resource-owning channels.
+/// A returned stream that owns transport resources must also implement <see cref="System.IAsyncDisposable"/>.
+/// The caller owns the returned stream.
 /// </remarks>
 /// <typeparam name="T">The message type used in both directions.</typeparam>
-internal interface IDuplexChannelFactory<T>
+internal interface IDuplexStreamFactory<T>
     where T : class
 {
     /// <summary>
-    /// Connects to an endpoint and creates a duplex channel.
+    /// Connects to an endpoint and creates a duplex stream.
     /// </summary>
     /// <param name="endpoint">The service endpoint.</param>
     /// <param name="cancellationToken">A token that bounds connection establishment.</param>
-    /// <returns>The connected duplex channel.</returns>
+    /// <returns>The connected duplex stream.</returns>
     Task<Channel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default);
 }

@@ -7,34 +7,33 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
-public class RpcClientConnectionIntegrationTests
+public class FunctionRpcDuplexStreamIntegrationTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
-    private static readonly ILogger<RpcClientConnection> Logger = NullLogger<RpcClientConnection>.Instance;
 
     [Fact]
-    public async Task ConnectionExchangesArbitraryMessagesInBothDirections()
+    public async Task StreamExchangesArbitraryMessagesInBothDirections()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
-        await using RpcClientConnection connection = await CreateConnectionFactory().ConnectAsync(options);
+        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         StreamingMessage outbound = new() { RequestId = "outbound" };
-        await connection.EnqueueAsync(outbound);
+        await stream.Writer.WriteAsync(outbound);
         StreamingMessage receivedRequest = await server.Service.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
 
         StreamingMessage inbound = new() { RequestId = "inbound" };
         await server.Service.SendResponseAsync(inbound);
-        StreamingMessage receivedResponse = await ReadNextAsync(connection);
+        StreamingMessage receivedResponse = await ReadNextAsync(stream);
 
         Assert.Equal("outbound", receivedRequest.RequestId);
         Assert.Equal(StreamingMessage.ContentOneofCase.None, receivedRequest.ContentCase);
@@ -42,25 +41,25 @@ public class RpcClientConnectionIntegrationTests
     }
 
     [Fact]
-    public async Task PeerCloseCompletesConnectionCleanly()
+    public async Task PeerCloseCompletesStreamCleanly()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
-        await using RpcClientConnection connection = await CreateConnectionFactory().ConnectAsync(options);
+        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         server.Service.CompleteResponses();
 
-        await connection.Completion.WaitAsync(TestTimeout);
-        Assert.Empty(await ReadAllAsync(connection));
+        Assert.Empty(await ReadAllAsync(stream));
+        await stream.Reader.Completion.WaitAsync(TestTimeout);
     }
 
     [Fact]
-    public async Task ReadAllAsyncEnumeratesMessagesUntilPeerClose()
+    public async Task ReaderEnumeratesMessagesUntilPeerClose()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
-        await using RpcClientConnection connection = await CreateConnectionFactory().ConnectAsync(options);
+        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         await server.Service.SendResponseAsync(new StreamingMessage { RequestId = "one" });
@@ -68,57 +67,71 @@ public class RpcClientConnectionIntegrationTests
         await server.Service.SendResponseAsync(new StreamingMessage { RequestId = "three" });
         server.Service.CompleteResponses();
 
-        IReadOnlyList<StreamingMessage> messages = await ReadAllAsync(connection);
+        IReadOnlyList<StreamingMessage> messages = await ReadAllAsync(stream);
 
         Assert.Equal(["one", "two", "three"], messages.Select(message => message.RequestId));
-        await connection.Completion.WaitAsync(TestTimeout);
+        await stream.Reader.Completion.WaitAsync(TestTimeout);
     }
 
     [Fact]
     public async Task PeerFailureRemainsObservable()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
-        RpcClientConnection connection = await CreateConnectionFactory().ConnectAsync(options);
+        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
         await server.Service.Connected.WaitAsync(TestTimeout);
         server.Service.CompleteResponses(new InvalidOperationException("server failure"));
 
-        await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => connection.Completion.WaitAsync(TestTimeout));
-        await connection.DisposeAsync();
+        await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => stream.Reader.Completion.WaitAsync(TestTimeout));
     }
 
     [Fact]
-    public async Task ConnectionFailureDoesNotReturnPartialConnection()
+    public async Task ConnectionFailureDoesNotReturnPartialStream()
     {
         int unusedPort = GetUnusedPort();
-        RpcClientConnectionOptions options = new(new Uri($"http://{IPAddress.Loopback}:{unusedPort}"), "worker-1");
+        Uri endpoint = new($"http://{IPAddress.Loopback}:{unusedPort}");
         using CancellationTokenSource timeoutSource = new(TimeSpan.FromSeconds(1));
 
-        await Assert.ThrowsAnyAsync<Exception>(() => CreateConnectionFactory().ConnectAsync(options, timeoutSource.Token));
+        await Assert.ThrowsAnyAsync<Exception>(() =>
+            CreateFactory().ConnectAsync(endpoint, timeoutSource.Token));
     }
 
     [Fact]
-    public async Task CanceledConnectionDoesNotReturnPartialConnection()
+    public async Task CanceledConnectionDoesNotReturnPartialStream()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
         using CancellationTokenSource cancellationSource = new();
         cancellationSource.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            CreateConnectionFactory().ConnectAsync(options, cancellationSource.Token));
+            CreateFactory().ConnectAsync(server.Endpoint, cancellationSource.Token));
     }
 
     [Fact]
-    public async Task ReachableServerRejectionSurfacesThroughCompletion()
+    public async Task DisposeCompletesReaderCleanly()
+    {
+        await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
+        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
+        await server.Service.Connected.WaitAsync(TestTimeout);
+
+        await streamLifetime.DisposeAsync();
+
+        await stream.Reader.Completion.WaitAsync(TestTimeout);
+    }
+
+    [Fact]
+    public async Task ReachableServerRejectionFaultsStream()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync(mapService: false);
-        RpcClientConnectionOptions options = new(server.Endpoint, "worker-1");
-        RpcClientConnection connection = await CreateConnectionFactory().ConnectAsync(options);
+        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
 
-        await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => connection.Completion.WaitAsync(TestTimeout));
-        await connection.DisposeAsync();
+        await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => stream.Reader.Completion.WaitAsync(TestTimeout));
     }
+
+    private static FunctionRpcDuplexStreamFactory CreateFactory()
+        => new(NullLogger<FunctionRpcDuplexStreamFactory>.Instance);
 
     private static int GetUnusedPort()
     {
@@ -126,20 +139,15 @@ public class RpcClientConnectionIntegrationTests
         listener.Start();
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
+
         return port;
     }
 
-    private static IRpcClientConnectionFactory CreateConnectionFactory()
-    {
-        FunctionRpcDuplexChannelFactory channelFactory = new(NullLoggerFactory.Instance);
-        return new RpcClientConnectionFactory(channelFactory, Logger);
-    }
-
-    private static async Task<IReadOnlyList<StreamingMessage>> ReadAllAsync(RpcClientConnection connection)
+    private static async Task<IReadOnlyList<StreamingMessage>> ReadAllAsync(Channel<StreamingMessage> stream)
     {
         List<StreamingMessage> messages = [];
         using CancellationTokenSource timeoutSource = new(TestTimeout);
-        await foreach (StreamingMessage message in connection.ReadAllAsync(timeoutSource.Token))
+        await foreach (StreamingMessage message in stream.Reader.ReadAllAsync(timeoutSource.Token))
         {
             messages.Add(message);
         }
@@ -147,11 +155,9 @@ public class RpcClientConnectionIntegrationTests
         return messages;
     }
 
-    private static async Task<StreamingMessage> ReadNextAsync(RpcClientConnection connection)
+    private static async Task<StreamingMessage> ReadNextAsync(Channel<StreamingMessage> stream)
     {
         using CancellationTokenSource timeoutSource = new(TestTimeout);
-        await using IAsyncEnumerator<StreamingMessage> responses = connection.ReadAllAsync().GetAsyncEnumerator(timeoutSource.Token);
-        Assert.True(await responses.MoveNextAsync());
-        return responses.Current;
+        return await stream.Reader.ReadAsync(timeoutSource.Token);
     }
 }

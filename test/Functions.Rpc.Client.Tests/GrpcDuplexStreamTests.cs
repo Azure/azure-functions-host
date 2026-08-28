@@ -6,13 +6,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Testing;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
-public partial class GrpcDuplexChannelTests
+public partial class GrpcDuplexStreamTests
 {
     [Fact]
     public async Task WriteAndReadAdaptSdkStreams()
@@ -20,19 +18,19 @@ public partial class GrpcDuplexChannelTests
         CancellationTokenSource callLifetimeSource = new();
         MockDuplexStream<string> streams = new(callLifetimeSource.Token);
         TrackingDisposable resource = new();
-        GrpcDuplexChannel<string> channel =
-            new(streams.Call, callLifetimeSource, resource, new FakeLogger<GrpcDuplexChannel<string>>());
+        GrpcDuplexStream<string> stream =
+            streams.Call.AsDuplexStream(callLifetimeSource, resource);
 
-        await channel.Writer.WriteAsync("request");
+        await stream.Writer.WriteAsync("request");
         await streams.SendResponseAsync("response");
         streams.CompleteResponses();
         List<string> responses = [];
-        await foreach (string response in channel.Reader.ReadAllAsync())
+        await foreach (string response in stream.Reader.ReadAllAsync())
         {
             responses.Add(response);
         }
         await streams.RequestCompleted.WaitAsync(TimeSpan.FromSeconds(10));
-        await channel.DisposeAsync();
+        await stream.DisposeAsync();
 
         Assert.Equal(["request"], streams.WrittenMessages);
         Assert.Equal(["response"], responses);
@@ -44,10 +42,10 @@ public partial class GrpcDuplexChannelTests
         CancellationTokenSource callLifetimeSource = new();
         MockDuplexStream<string> streams = new(callLifetimeSource.Token);
         TrackingDisposable resource = new();
-        GrpcDuplexChannel<string> channel = new(streams.Call, callLifetimeSource, resource,
-            new FakeLogger<GrpcDuplexChannel<string>>());
+        GrpcDuplexStream<string> stream =
+            streams.Call.AsDuplexStream(callLifetimeSource, resource);
 
-        await Task.WhenAll(channel.DisposeAsync().AsTask(), channel.DisposeAsync().AsTask());
+        await Task.WhenAll(stream.DisposeAsync().AsTask(), stream.DisposeAsync().AsTask());
 
         Assert.Equal(1, streams.DisposeCount);
         Assert.Equal(1, resource.DisposeCount);
@@ -60,32 +58,30 @@ public partial class GrpcDuplexChannelTests
         CancellationTokenSource callLifetimeSource = new();
         MockDuplexStream<string> streams = new(callLifetimeSource.Token, blockWrites: true);
         TrackingDisposable resource = new();
-        GrpcDuplexChannel<string> channel = new(streams.Call, callLifetimeSource, resource,
-            new FakeLogger<GrpcDuplexChannel<string>>());
-        await channel.Writer.WriteAsync("request");
+        GrpcDuplexStream<string> stream =
+            streams.Call.AsDuplexStream(callLifetimeSource, resource);
+        await stream.Writer.WriteAsync("request");
         await streams.WriteAttempts.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
 
-        await channel.DisposeAsync();
+        await stream.DisposeAsync();
 
         Assert.Equal(1, streams.DisposeCount);
         Assert.Equal(1, resource.DisposeCount);
     }
 
     [Fact]
-    public async Task DisposeLogsAndReportsCleanupFailure()
+    public async Task DisposeReportsCleanupFailure()
     {
         InvalidOperationException expected = new("resource cleanup failed");
         CancellationTokenSource callLifetimeSource = new();
         MockDuplexStream<string> streams = new(callLifetimeSource.Token);
         TrackingDisposable resource = new(expected);
-        FakeLogger<GrpcDuplexChannel<string>> logger = new();
-        GrpcDuplexChannel<string> channel = new(streams.Call, callLifetimeSource, resource, logger);
+        GrpcDuplexStream<string> stream =
+            streams.Call.AsDuplexStream(callLifetimeSource, resource);
 
-        InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() => channel.DisposeAsync().AsTask());
+        InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() => stream.DisposeAsync().AsTask());
 
         Assert.Same(expected, actual);
-        Assert.Same(expected, logger.Collector.LatestRecord.Exception);
-        Assert.Equal(LogLevel.Warning, logger.Collector.LatestRecord.Level);
     }
 
     [Fact]
@@ -95,15 +91,15 @@ public partial class GrpcDuplexChannelTests
         CancellationTokenSource callLifetimeSource = new();
         MockDuplexStream<string> streams = new(callLifetimeSource.Token);
         TrackingDisposable resource = new();
-        GrpcDuplexChannel<string> channel = new(streams.Call, callLifetimeSource, resource,
-            new FakeLogger<GrpcDuplexChannel<string>>());
+        GrpcDuplexStream<string> stream =
+            streams.Call.AsDuplexStream(callLifetimeSource, resource);
 
         streams.CompleteResponses(expected);
 
-        InvalidOperationException readFailure = await Assert.ThrowsAsync<InvalidOperationException>(() => channel.Reader.Completion);
+        InvalidOperationException readFailure = await Assert.ThrowsAsync<InvalidOperationException>(() => stream.Reader.Completion);
         ChannelClosedException writeFailure = await Assert.ThrowsAsync<ChannelClosedException>(() =>
-            channel.Writer.WriteAsync("late request").AsTask());
-        await channel.DisposeAsync();
+            stream.Writer.WriteAsync("late request").AsTask());
+        await stream.DisposeAsync();
 
         Assert.Same(expected, readFailure);
         Assert.Same(expected, writeFailure.InnerException);
@@ -116,32 +112,32 @@ public partial class GrpcDuplexChannelTests
         CancellationTokenSource callLifetimeSource = new();
         MockDuplexStream<string> streams = new(callLifetimeSource.Token, blockWrites: true);
         TrackingDisposable resource = new();
-        GrpcDuplexChannel<string> channel = new(streams.Call, callLifetimeSource, resource,
-            new FakeLogger<GrpcDuplexChannel<string>>());
-        await channel.Writer.WriteAsync("request");
+        GrpcDuplexStream<string> stream =
+            streams.Call.AsDuplexStream(callLifetimeSource, resource);
+        await stream.Writer.WriteAsync("request");
         await streams.WriteAttempts.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
 
         streams.FailWrites(expected);
 
-        InvalidOperationException readFailure = await Assert.ThrowsAsync<InvalidOperationException>(() => channel.Reader.Completion);
+        InvalidOperationException readFailure = await Assert.ThrowsAsync<InvalidOperationException>(() => stream.Reader.Completion);
         ChannelClosedException writeFailure = await Assert.ThrowsAsync<ChannelClosedException>(() =>
-            channel.Writer.WriteAsync("late request").AsTask());
-        await channel.DisposeAsync();
+            stream.Writer.WriteAsync("late request").AsTask());
+        await stream.DisposeAsync();
 
         Assert.Same(expected, readFailure);
         Assert.Same(expected, writeFailure.InnerException);
     }
 
     [Fact]
-    public async Task ReadCancellationDoesNotDisposeChannel()
+    public async Task ReadCancellationDoesNotDisposeStream()
     {
         CancellationTokenSource callLifetimeSource = new();
         MockDuplexStream<string> streams = new(callLifetimeSource.Token);
         TrackingDisposable resource = new();
-        await using GrpcDuplexChannel<string> channel =
-            new(streams.Call, callLifetimeSource, resource, new FakeLogger<GrpcDuplexChannel<string>>());
+        await using GrpcDuplexStream<string> stream =
+            streams.Call.AsDuplexStream(callLifetimeSource, resource);
         using CancellationTokenSource readSource = new();
-        Task<string> pendingRead = channel.Reader.ReadAsync(readSource.Token).AsTask();
+        Task<string> pendingRead = stream.Reader.ReadAsync(readSource.Token).AsTask();
 
         readSource.Cancel();
 

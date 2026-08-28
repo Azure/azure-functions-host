@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Core;
-using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.Rpc.Client;
 
@@ -15,14 +14,18 @@ namespace Azure.Functions.Rpc.Client;
 /// Adapts an SDK <see cref="AsyncDuplexStreamingCall{TRequest, TResponse}"/> to a bidirectional
 /// <see cref="Channel{T}"/>.
 /// </summary>
+/// <remarks>
+/// Writes complete when a request is admitted to the outgoing queue, not when it reaches the peer.
+/// Completing <see cref="Channel{T}.Writer"/> gracefully completes the gRPC request stream after queued requests drain.
+/// The stream supports one response reader and multiple concurrent request writers.
+/// </remarks>
 /// <typeparam name="T">The message type used in both directions.</typeparam>
-internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
+internal sealed class GrpcDuplexStream<T> : Channel<T>, IAsyncDisposable
     where T : class
 {
     private readonly AsyncDuplexStreamingCall<T, T> _call;
     private readonly CancellationTokenSource _callLifetimeSource;
     private readonly Channel<T> _incoming;
-    private readonly ILogger _logger;
     private readonly IDisposable _ownedResource;
     private readonly Channel<T> _outgoing;
     private readonly Task _readPump;
@@ -32,24 +35,22 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
     private Task _disposeTask;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="GrpcDuplexChannel{T}"/> class.
+    /// Initializes a new instance of the <see cref="GrpcDuplexStream{T}"/> class.
     /// </summary>
     /// <param name="call">The SDK duplex call.</param>
-    /// <param name="callLifetimeSource">The cancellation source used to create <paramref name="call"/>.</param>
-    /// <param name="ownedResource">The underlying connection resource.</param>
-    /// <param name="logger">The logger used for secondary cleanup failures.</param>
-    internal GrpcDuplexChannel(AsyncDuplexStreamingCall<T, T> call, CancellationTokenSource callLifetimeSource,
-        IDisposable ownedResource, ILogger logger)
+    /// <param name="callLifetimeSource">An optional cancellation source used to create <paramref name="call"/>.</param>
+    /// <param name="ownedResource">An optional underlying connection resource.</param>
+    internal GrpcDuplexStream(AsyncDuplexStreamingCall<T, T> call, CancellationTokenSource callLifetimeSource = null,
+        IDisposable ownedResource = null)
     {
         _call = call ?? throw new ArgumentNullException(nameof(call));
-        _callLifetimeSource = callLifetimeSource ?? throw new ArgumentNullException(nameof(callLifetimeSource));
-        _ownedResource = ownedResource ?? throw new ArgumentNullException(nameof(ownedResource));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _callLifetimeSource = callLifetimeSource;
+        _ownedResource = ownedResource;
 
         _incoming = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
         {
             AllowSynchronousContinuations = false,
-            SingleReader = false,
+            SingleReader = true,
             SingleWriter = true,
         });
         _outgoing = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
@@ -90,19 +91,22 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "gRPC duplex channel cleanup failed while stopping the message pumps.");
             cleanupException = exception;
         }
 
-        try
+        if (_callLifetimeSource is not null)
         {
-            await _callLifetimeSource.CancelAsync();
+            try
+            {
+                await _callLifetimeSource.CancelAsync();
+            }
+            catch (Exception exception)
+            {
+                cleanupException = CombineCleanupExceptions(cleanupException, exception);
+            }
         }
-        catch (Exception exception)
-        {
-            _logger.LogWarning(exception, "gRPC duplex channel cleanup failed while cancelling the call lifetime.");
-            cleanupException = CombineCleanupExceptions(cleanupException, exception);
-        }
+
+        cleanupException = CaptureCleanupFailure(cleanupException, _call.Dispose);
 
         try
         {
@@ -110,14 +114,20 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "gRPC duplex channel cleanup failed while stopping the message pumps.");
             cleanupException = CombineCleanupExceptions(cleanupException, exception);
         }
 
-        cleanupException = CaptureCleanupFailure(cleanupException, _call.Dispose, "dispose the SDK duplex call");
-        cleanupException = CaptureCleanupFailure(cleanupException, _ownedResource.Dispose, "dispose the connection resource");
-        cleanupException = CaptureCleanupFailure(cleanupException, _callLifetimeSource.Dispose, "dispose the call lifetime");
-        cleanupException = CaptureCleanupFailure(cleanupException, _shutdownSource.Dispose, "dispose the message-pump lifetime");
+        if (_ownedResource is not null)
+        {
+            cleanupException = CaptureCleanupFailure(cleanupException, _ownedResource.Dispose);
+        }
+
+        if (_callLifetimeSource is not null)
+        {
+            cleanupException = CaptureCleanupFailure(cleanupException, _callLifetimeSource.Dispose);
+        }
+
+        cleanupException = CaptureCleanupFailure(cleanupException, _shutdownSource.Dispose);
 
         if (cleanupException is not null)
         {
@@ -136,7 +146,7 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
                 await _incoming.Writer.WriteAsync(_call.ResponseStream.Current, _shutdownSource.Token);
             }
         }
-        catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
+        catch (Exception) when (_shutdownSource.IsCancellationRequested)
         {
         }
         catch (Exception exception)
@@ -150,7 +160,7 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
 
             if (error is not null)
             {
-                TryCancelPumps();
+                _shutdownSource.Cancel();
             }
         }
     }
@@ -168,7 +178,7 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
 
             await _call.RequestStream.CompleteAsync();
         }
-        catch (OperationCanceledException) when (_shutdownSource.IsCancellationRequested)
+        catch (Exception) when (_shutdownSource.IsCancellationRequested)
         {
         }
         catch (Exception exception)
@@ -181,36 +191,28 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
             {
                 _outgoing.Writer.TryComplete(error);
                 _incoming.Writer.TryComplete(error);
-                TryCancelPumps();
+                _shutdownSource.Cancel();
             }
         }
     }
 
-    private Exception CaptureCleanupFailure(Exception currentException, Action cleanup, string operation)
+    private static Exception CaptureCleanupFailure(Exception currentException, Action cleanup)
     {
+        if (cleanup is null)
+        {
+            return currentException;
+        }
+
         try
         {
             cleanup();
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "gRPC duplex channel cleanup failed while attempting to {CleanupOperation}.", operation);
             return CombineCleanupExceptions(currentException, exception);
         }
 
         return currentException;
-    }
-
-    private void TryCancelPumps()
-    {
-        try
-        {
-            _shutdownSource.Cancel();
-        }
-        catch (Exception exception)
-        {
-            _logger.LogWarning(exception, "gRPC duplex channel cleanup failed while cancelling the message pumps.");
-        }
     }
 
     private static Exception CombineCleanupExceptions(Exception currentException, Exception nextException)

@@ -13,9 +13,9 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Creates outbound FunctionRpc duplex channels.
+/// Creates outbound FunctionRpc duplex streams.
 /// </summary>
-internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<StreamingMessage>
+internal sealed class FunctionRpcDuplexStreamFactory : IDuplexStreamFactory<StreamingMessage>
 {
     /// <summary>
     /// Gets the maximum time allowed for an individual socket connection attempt.
@@ -34,24 +34,21 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
 
     private const int MaxMessageLengthBytes = int.MaxValue;
 
-    private readonly ILogger _duplexChannelLogger;
-    private readonly ILogger _logger;
+    private readonly ILogger<FunctionRpcDuplexStreamFactory> _logger;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="FunctionRpcDuplexChannelFactory"/> class.
+    /// Initializes a new instance of the <see cref="FunctionRpcDuplexStreamFactory"/> class.
     /// </summary>
-    /// <param name="loggerFactory">The factory used to create transport and adapter loggers.</param>
-    public FunctionRpcDuplexChannelFactory(ILoggerFactory loggerFactory)
+    /// <param name="logger">The logger used for partial connection cleanup failures.</param>
+    public FunctionRpcDuplexStreamFactory(ILogger<FunctionRpcDuplexStreamFactory> logger)
     {
-        ArgumentNullException.ThrowIfNull(loggerFactory);
-        _logger = loggerFactory.CreateLogger<FunctionRpcDuplexChannelFactory>();
-        _duplexChannelLogger = loggerFactory.CreateLogger<GrpcDuplexChannel<StreamingMessage>>();
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <inheritdoc />
     public async Task<Channel<StreamingMessage>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(endpoint);
+        ValidateEndpoint(endpoint);
 
         SocketsHttpHandler handler = CreateHttpHandler();
         GrpcChannel channel = null;
@@ -77,12 +74,12 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
             var grpcCall = client.EventStream(cancellationToken: callLifetimeSource.Token);
             call = grpcCall;
 
-            GrpcDuplexChannel<StreamingMessage> duplexChannel = new(grpcCall, callLifetimeSource, channel, _duplexChannelLogger);
+            GrpcDuplexStream<StreamingMessage> duplexStream = grpcCall.AsDuplexStream(callLifetimeSource, channel);
             call = null;
             callLifetimeSource = null;
             channel = null;
 
-            return duplexChannel;
+            return duplexStream;
         }
         catch
         {
@@ -108,6 +105,31 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
             KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
             KeepAlivePingTimeout = DefaultKeepAlivePingTimeout,
         };
+    }
+
+    /// <summary>
+    /// Validates that an endpoint can identify a gRPC service authority without call-specific URI components.
+    /// </summary>
+    /// <param name="endpoint">The endpoint to validate.</param>
+    internal static void ValidateEndpoint(Uri endpoint)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+
+        if (!endpoint.IsAbsoluteUri ||
+            (!string.Equals(endpoint.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(endpoint.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) ||
+            string.IsNullOrWhiteSpace(endpoint.Host))
+        {
+            throw new ArgumentException("The endpoint must be an absolute HTTP or HTTPS URI with a host.", nameof(endpoint));
+        }
+
+        if (!string.IsNullOrEmpty(endpoint.UserInfo) ||
+            !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal) ||
+            !string.IsNullOrEmpty(endpoint.Query) ||
+            !string.IsNullOrEmpty(endpoint.Fragment))
+        {
+            throw new ArgumentException("The endpoint must not include user information, a path, a query, or a fragment.", nameof(endpoint));
+        }
     }
 
     private void TryCleanup(Action cleanup, string operation)
