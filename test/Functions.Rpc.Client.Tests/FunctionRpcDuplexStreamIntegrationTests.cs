@@ -23,7 +23,9 @@ public class FunctionRpcDuplexStreamIntegrationTests
     public async Task StreamExchangesArbitraryMessagesInBothDirections()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexStreamFactory streamFactory = CreateStreamFactory(clientFactory);
+        Channel<StreamingMessage> stream = await streamFactory.ConnectAsync(server.Endpoint);
         await using IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
@@ -44,7 +46,9 @@ public class FunctionRpcDuplexStreamIntegrationTests
     public async Task PeerCloseCompletesStreamCleanly()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexStreamFactory streamFactory = CreateStreamFactory(clientFactory);
+        Channel<StreamingMessage> stream = await streamFactory.ConnectAsync(server.Endpoint);
         await using IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
@@ -58,7 +62,9 @@ public class FunctionRpcDuplexStreamIntegrationTests
     public async Task ReaderEnumeratesMessagesUntilPeerClose()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexStreamFactory streamFactory = CreateStreamFactory(clientFactory);
+        Channel<StreamingMessage> stream = await streamFactory.ConnectAsync(server.Endpoint);
         await using IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
@@ -77,7 +83,9 @@ public class FunctionRpcDuplexStreamIntegrationTests
     public async Task PeerFailureRemainsObservable()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexStreamFactory streamFactory = CreateStreamFactory(clientFactory);
+        Channel<StreamingMessage> stream = await streamFactory.ConnectAsync(server.Endpoint);
         await using IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
         await server.Service.Connected.WaitAsync(TestTimeout);
         server.Service.CompleteResponses(new InvalidOperationException("server failure"));
@@ -90,28 +98,32 @@ public class FunctionRpcDuplexStreamIntegrationTests
     {
         int unusedPort = GetUnusedPort();
         Uri endpoint = new($"http://{IPAddress.Loopback}:{unusedPort}");
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexStreamFactory streamFactory = CreateStreamFactory(clientFactory);
         using CancellationTokenSource timeoutSource = new(TimeSpan.FromSeconds(1));
 
-        await Assert.ThrowsAnyAsync<Exception>(() =>
-            CreateFactory().ConnectAsync(endpoint, timeoutSource.Token));
+        await Assert.ThrowsAnyAsync<Exception>(() => streamFactory.ConnectAsync(endpoint, timeoutSource.Token));
     }
 
     [Fact]
     public async Task CanceledConnectionDoesNotReturnPartialStream()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexStreamFactory streamFactory = CreateStreamFactory(clientFactory);
         using CancellationTokenSource cancellationSource = new();
         cancellationSource.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            CreateFactory().ConnectAsync(server.Endpoint, cancellationSource.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => streamFactory.ConnectAsync(server.Endpoint, cancellationSource.Token));
     }
 
     [Fact]
     public async Task DisposeCompletesReaderCleanly()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
-        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexStreamFactory streamFactory = CreateStreamFactory(clientFactory);
+        Channel<StreamingMessage> stream = await streamFactory.ConnectAsync(server.Endpoint);
         IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
@@ -124,14 +136,19 @@ public class FunctionRpcDuplexStreamIntegrationTests
     public async Task ReachableServerRejectionFaultsStream()
     {
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync(mapService: false);
-        Channel<StreamingMessage> stream = await CreateFactory().ConnectAsync(server.Endpoint);
+        await using RpcClientFactory clientFactory = CreateClientFactory();
+        FunctionRpcDuplexStreamFactory streamFactory = CreateStreamFactory(clientFactory);
+        Channel<StreamingMessage> stream = await streamFactory.ConnectAsync(server.Endpoint);
         await using IAsyncDisposable streamLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(stream);
 
         await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => stream.Reader.Completion.WaitAsync(TestTimeout));
     }
 
-    private static FunctionRpcDuplexStreamFactory CreateFactory()
-        => new(NullLogger<FunctionRpcDuplexStreamFactory>.Instance);
+    private static RpcClientFactory CreateClientFactory()
+        => new(NullLogger<RpcClientFactory>.Instance);
+
+    private static FunctionRpcDuplexStreamFactory CreateStreamFactory(IRpcClientFactory clientFactory)
+        => new(clientFactory, NullLogger<FunctionRpcDuplexStreamFactory>.Instance);
 
     private static int GetUnusedPort()
     {

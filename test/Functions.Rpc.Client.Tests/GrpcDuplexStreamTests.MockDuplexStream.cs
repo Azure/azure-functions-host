@@ -21,8 +21,9 @@ public partial class GrpcDuplexStreamTests
     /// <typeparam name="T">The value type used by both sides of the test call.</typeparam>
     private sealed class MockDuplexStream<T>
     {
-        private readonly CancellationToken _connectionCancellationToken;
         private readonly bool _blockWrites;
+        private readonly CancellationTokenSource _callCancellationSource = new();
+        private readonly Exception _disposeException;
         private readonly Channel<T> _responses = Channel.CreateUnbounded<T>();
         private readonly TaskCompletionSource _requestCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly Channel<T> _writeAttempts = Channel.CreateUnbounded<T>();
@@ -33,16 +34,16 @@ public partial class GrpcDuplexStreamTests
         /// <summary>
         /// Initializes a new instance of the <see cref="MockDuplexStream{T}"/> class.
         /// </summary>
-        /// <param name="connectionCancellationToken">The token representing the lifetime of the mocked call.</param>
         /// <param name="blockWrites">Whether request writes should wait until the mocked call is cancelled.</param>
-        internal MockDuplexStream(CancellationToken connectionCancellationToken, bool blockWrites = false)
+        /// <param name="disposeException">An optional failure reported when the SDK call is disposed.</param>
+        internal MockDuplexStream(bool blockWrites = false, Exception disposeException = null)
         {
-            _connectionCancellationToken = connectionCancellationToken;
             _blockWrites = blockWrites;
+            _disposeException = disposeException;
             MockClientStreamWriter requestStream = new(this);
             MockAsyncStreamReader responseStream = new(this);
             Call = new AsyncDuplexStreamingCall<T, T>(requestStream, responseStream, Task.FromResult(new Metadata()),
-                static () => Status.DefaultSuccess, static () => new Metadata(), () => Interlocked.Increment(ref _disposeCount));
+                static () => Status.DefaultSuccess, static () => new Metadata(), DisposeCall);
         }
 
         /// <summary>
@@ -93,6 +94,17 @@ public partial class GrpcDuplexStreamTests
             _writeGate.Release();
         }
 
+        private void DisposeCall()
+        {
+            Interlocked.Increment(ref _disposeCount);
+            _callCancellationSource.Cancel();
+            _callCancellationSource.Dispose();
+            if (_disposeException is not null)
+            {
+                throw _disposeException;
+            }
+        }
+
         /// <summary>
         /// Implements the SDK response stream over the mock peer-response channel.
         /// </summary>
@@ -116,7 +128,7 @@ public partial class GrpcDuplexStreamTests
             public async Task<bool> MoveNext(CancellationToken cancellationToken)
             {
                 using CancellationTokenSource linkedSource =
-                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _owner._connectionCancellationToken);
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _owner._callCancellationSource.Token);
 
                 try
                 {
@@ -164,10 +176,10 @@ public partial class GrpcDuplexStreamTests
             /// <inheritdoc />
             public async Task WriteAsync(T message)
             {
-                await _owner._writeAttempts.Writer.WriteAsync(message, _owner._connectionCancellationToken);
+                await _owner._writeAttempts.Writer.WriteAsync(message, _owner._callCancellationSource.Token);
                 if (_owner._blockWrites)
                 {
-                    await _owner._writeGate.WaitAsync(_owner._connectionCancellationToken);
+                    await _owner._writeGate.WaitAsync(_owner._callCancellationSource.Token);
                 }
 
                 Exception writeException = Interlocked.CompareExchange(ref _owner._writeException, null, null);

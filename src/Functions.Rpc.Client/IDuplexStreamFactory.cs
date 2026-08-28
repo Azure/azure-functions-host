@@ -22,6 +22,10 @@ internal interface IDuplexStreamFactory<T>
     /// <summary>
     /// Connects to an endpoint and creates a duplex stream.
     /// </summary>
+    /// <remarks>
+    /// Implementations backed by a cached transport can surface a later reconnection failure through the returned
+    /// stream rather than from this method.
+    /// </remarks>
     /// <param name="endpoint">The service endpoint.</param>
     /// <param name="cancellationToken">A token that bounds connection establishment.</param>
     /// <returns>The connected duplex stream.</returns>

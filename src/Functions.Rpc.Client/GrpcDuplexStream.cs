@@ -24,9 +24,7 @@ internal sealed class GrpcDuplexStream<T> : Channel<T>, IAsyncDisposable
     where T : class
 {
     private readonly AsyncDuplexStreamingCall<T, T> _call;
-    private readonly CancellationTokenSource _callLifetimeSource;
     private readonly Channel<T> _incoming;
-    private readonly IDisposable _ownedResource;
     private readonly Channel<T> _outgoing;
     private readonly Task _readPump;
     private readonly CancellationTokenSource _shutdownSource = new();
@@ -38,14 +36,9 @@ internal sealed class GrpcDuplexStream<T> : Channel<T>, IAsyncDisposable
     /// Initializes a new instance of the <see cref="GrpcDuplexStream{T}"/> class.
     /// </summary>
     /// <param name="call">The SDK duplex call.</param>
-    /// <param name="callLifetimeSource">An optional cancellation source used to create <paramref name="call"/>.</param>
-    /// <param name="ownedResource">An optional underlying connection resource.</param>
-    internal GrpcDuplexStream(AsyncDuplexStreamingCall<T, T> call, CancellationTokenSource callLifetimeSource = null,
-        IDisposable ownedResource = null)
+    internal GrpcDuplexStream(AsyncDuplexStreamingCall<T, T> call)
     {
         _call = call ?? throw new ArgumentNullException(nameof(call));
-        _callLifetimeSource = callLifetimeSource;
-        _ownedResource = ownedResource;
 
         _incoming = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
         {
@@ -67,7 +60,7 @@ internal sealed class GrpcDuplexStream<T> : Channel<T>, IAsyncDisposable
     }
 
     /// <summary>
-    /// Aborts the duplex call, stops both message pumps, and releases the call and its owned connection resource.
+    /// Aborts the duplex call, stops both message pumps, and releases the call lifetime.
     /// Concurrent callers share the same cleanup operation.
     /// </summary>
     /// <returns>A task representing asynchronous cleanup.</returns>
@@ -94,18 +87,6 @@ internal sealed class GrpcDuplexStream<T> : Channel<T>, IAsyncDisposable
             cleanupException = exception;
         }
 
-        if (_callLifetimeSource is not null)
-        {
-            try
-            {
-                await _callLifetimeSource.CancelAsync();
-            }
-            catch (Exception exception)
-            {
-                cleanupException = CombineCleanupExceptions(cleanupException, exception);
-            }
-        }
-
         cleanupException = CaptureCleanupFailure(cleanupException, _call.Dispose);
 
         try
@@ -115,16 +96,6 @@ internal sealed class GrpcDuplexStream<T> : Channel<T>, IAsyncDisposable
         catch (Exception exception)
         {
             cleanupException = CombineCleanupExceptions(cleanupException, exception);
-        }
-
-        if (_ownedResource is not null)
-        {
-            cleanupException = CaptureCleanupFailure(cleanupException, _ownedResource.Dispose);
-        }
-
-        if (_callLifetimeSource is not null)
-        {
-            cleanupException = CaptureCleanupFailure(cleanupException, _callLifetimeSource.Dispose);
         }
 
         cleanupException = CaptureCleanupFailure(cleanupException, _shutdownSource.Dispose);
