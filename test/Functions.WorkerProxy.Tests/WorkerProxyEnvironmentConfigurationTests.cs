@@ -31,14 +31,11 @@ public class WorkerProxyEnvironmentConfigurationTests
         }
         while (ambientPort == managementPort);
 
-        using EnvironmentVariableScope managementPortVariable =
-            new(
-                "ASPNETCORE_HTTP_PORTS",
-                managementPort.ToString(CultureInfo.InvariantCulture));
-        using EnvironmentVariableScope urls =
-            new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
-        using EnvironmentVariableScope dotnetSetting =
-            new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");
+        using EnvironmentVariableScope managementPortVariable = new("ASPNETCORE_HTTP_PORTS", managementPort.ToString(CultureInfo.InvariantCulture));
+        using EnvironmentVariableScope urls = new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
+        using EnvironmentVariableScope dotnetSetting = new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");
+        using EnvironmentVariableScope runtimeGrpcPort = new("RUNTIME_GRPC_PORT", "0");
+        using EnvironmentVariableScope workerGrpcPort = new("WORKER_GRPC_PORT", "0");
         await using WebApplication app = WorkerProxyApplication.Build([]);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
         await app.StartAsync(timeout.Token);
@@ -47,8 +44,7 @@ public class WorkerProxyEnvironmentConfigurationTests
         Assert.Equal(ambientPort, address.Port);
         Assert.Equal("preserved", app.Configuration["DOTNET_WORKER_PROXY_TEST_SETTING"]);
         using HttpClient client = new() { BaseAddress = address };
-        using HttpResponseMessage response =
-            await client.GetAsync("/admin/instance/ready", timeout.Token);
+        using HttpResponseMessage response = await client.GetAsync("/admin/instance/ready", timeout.Token);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
@@ -63,8 +59,7 @@ public class WorkerProxyEnvironmentConfigurationTests
     private static Uri GetServerAddress(WebApplication app)
     {
         IServer server = app.Services.GetRequiredService<IServer>();
-        IServerAddressesFeature addresses =
-            server.Features.Get<IServerAddressesFeature>()
+        IServerAddressesFeature addresses = server.Features.Get<IServerAddressesFeature>()
             ?? throw new InvalidOperationException("Kestrel did not publish a server address.");
         Uri address = new(Assert.Single(addresses.Addresses));
 

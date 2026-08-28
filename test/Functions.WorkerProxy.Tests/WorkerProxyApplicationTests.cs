@@ -13,23 +13,20 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public class WorkerProxyApplicationTests
 {
     [Fact]
-    public async Task StartupProbe_IsOnlyMappedHttpBehavior()
+    public async Task ManagementListener_MapsOnlyStartupProbe()
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
 
-        using HttpResponseMessage readyResponse =
-            await client.GetAsync("/admin/instance/ready", timeout.Token);
+        using HttpResponseMessage readyResponse = await client.GetAsync("/admin/instance/ready", timeout.Token);
         Assert.Equal(HttpStatusCode.OK, readyResponse.StatusCode);
         Assert.Empty(await readyResponse.Content.ReadAsByteArrayAsync(timeout.Token));
 
-        using HttpResponseMessage unsupportedMethodResponse =
-            await client.PostAsync("/admin/instance/ready", content: null, timeout.Token);
+        using HttpResponseMessage unsupportedMethodResponse = await client.PostAsync("/admin/instance/ready", content: null, timeout.Token);
         Assert.Equal(HttpStatusCode.MethodNotAllowed, unsupportedMethodResponse.StatusCode);
 
-        using HttpResponseMessage unrelatedRouteResponse =
-            await client.GetAsync("/admin/worker/ready", timeout.Token);
+        using HttpResponseMessage unrelatedRouteResponse = await client.GetAsync("/admin/worker/ready", timeout.Token);
         Assert.Equal(HttpStatusCode.NotFound, unrelatedRouteResponse.StatusCode);
     }
 }

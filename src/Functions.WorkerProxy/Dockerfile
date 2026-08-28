@@ -9,5 +9,5 @@ WORKDIR /app
 COPY Azure.Functions.WorkerProxy ./
 
 ENV ASPNETCORE_HTTP_PORTS=80
-EXPOSE 80
+EXPOSE 80 50053 50054
 ENTRYPOINT ["./Azure.Functions.WorkerProxy"]
