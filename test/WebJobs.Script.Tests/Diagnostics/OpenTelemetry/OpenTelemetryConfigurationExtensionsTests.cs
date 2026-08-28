@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
             host.Services.GetRequiredService<TracerProvider>();
 
             using var source = new ActivitySource(OpenTelemetryConstants.ActivitySourceNames.ServiceBusSessionProcessor);
-            using Activity activity = source.StartActivity("ServiceBusSessionProcessor.ProcessSessionMessage");
+            using Activity? activity = source.StartActivity("ServiceBusSessionProcessor.ProcessSessionMessage");
 
             Assert.NotNull(activity);
         }
