@@ -9,16 +9,16 @@ using System.Threading.Tasks;
 namespace Azure.Functions.Rpc.Client.Tests;
 
 /// <summary>
-/// Supplies duplex streams without creating network or gRPC resources.
+/// Supplies duplex channels without creating network or gRPC resources.
 /// </summary>
-internal sealed class TestDuplexStreamFactory<T> : IDuplexStreamFactory<T>
+internal sealed class TestDuplexChannelFactory<T> : IDuplexChannelFactory<T>
     where T : class
 {
-    private readonly Func<Channel<T>> _streamFactory;
+    private readonly Func<Channel<T>> _channelFactory;
 
-    internal TestDuplexStreamFactory(Func<Channel<T>> streamFactory)
+    internal TestDuplexChannelFactory(Func<Channel<T>> channelFactory)
     {
-        _streamFactory = streamFactory ?? throw new ArgumentNullException(nameof(streamFactory));
+        _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
     }
 
     internal Uri Endpoint { get; private set; }
@@ -31,6 +31,6 @@ internal sealed class TestDuplexStreamFactory<T> : IDuplexStreamFactory<T>
         cancellationToken.ThrowIfCancellationRequested();
         Endpoint = endpoint;
         InvocationCount++;
-        return Task.FromResult(_streamFactory());
+        return Task.FromResult(_channelFactory());
     }
 }

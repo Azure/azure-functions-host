@@ -22,7 +22,7 @@ public class RpcClientAssemblyTests
     [Fact]
     public void ClientReferencesGrpcAndDoesNotReferenceServer()
     {
-        string[] references = typeof(GrpcDuplexStream<StreamingMessage>).Assembly.GetReferencedAssemblies()
+        string[] references = typeof(GrpcDuplexChannel<StreamingMessage>).Assembly.GetReferencedAssemblies()
             .Select(assembly => assembly.Name)
             .ToArray();
 

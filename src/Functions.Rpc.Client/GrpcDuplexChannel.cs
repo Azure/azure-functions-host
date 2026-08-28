@@ -17,10 +17,10 @@ namespace Azure.Functions.Rpc.Client;
 /// <remarks>
 /// Writes complete when a request is admitted to the outgoing queue, not when it reaches the peer.
 /// Completing <see cref="Channel{T}.Writer"/> gracefully completes the gRPC request stream after queued requests drain.
-/// The stream supports one response reader and multiple concurrent request writers.
+/// The channel supports one response reader and multiple concurrent request writers.
 /// </remarks>
 /// <typeparam name="T">The message type used in both directions.</typeparam>
-internal sealed class GrpcDuplexStream<T> : Channel<T>, IAsyncDisposable
+internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
     where T : class
 {
     private readonly AsyncDuplexStreamingCall<T, T> _call;
@@ -33,10 +33,10 @@ internal sealed class GrpcDuplexStream<T> : Channel<T>, IAsyncDisposable
     private Task _disposeTask;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="GrpcDuplexStream{T}"/> class.
+    /// Initializes a new instance of the <see cref="GrpcDuplexChannel{T}"/> class.
     /// </summary>
     /// <param name="call">The SDK duplex call.</param>
-    internal GrpcDuplexStream(AsyncDuplexStreamingCall<T, T> call)
+    internal GrpcDuplexChannel(AsyncDuplexStreamingCall<T, T> call)
     {
         _call = call ?? throw new ArgumentNullException(nameof(call));
 

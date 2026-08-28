@@ -9,13 +9,13 @@ using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
-public class DuplexStreamFactoryTests
+public class DuplexChannelFactoryTests
 {
     [Fact]
-    public async Task TestFactoryCreatesReplaceableDuplexStream()
+    public async Task TestFactoryCreatesReplaceableDuplexChannel()
     {
-        TestDuplexStream<StreamingMessage> expected = new();
-        TestDuplexStreamFactory<StreamingMessage> factory = new(() => expected);
+        TestDuplexChannel<StreamingMessage> expected = new();
+        TestDuplexChannelFactory<StreamingMessage> factory = new(() => expected);
         Uri endpoint = new("https://localhost:5001");
 
         Channel<StreamingMessage> actual = await factory.ConnectAsync(endpoint);
@@ -34,7 +34,7 @@ public class DuplexStreamFactoryTests
     [Fact]
     public async Task TestFactoryInvokesProviderForEachConnection()
     {
-        TestDuplexStreamFactory<StreamingMessage> factory = new(() => new TestDuplexStream<StreamingMessage>());
+        TestDuplexChannelFactory<StreamingMessage> factory = new(() => new TestDuplexChannel<StreamingMessage>());
         Uri endpoint = new("https://localhost:5001");
 
         Channel<StreamingMessage> first = await factory.ConnectAsync(endpoint);

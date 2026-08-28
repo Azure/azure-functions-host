@@ -11,19 +11,19 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Creates outbound FunctionRpc duplex streams.
+/// Creates outbound FunctionRpc duplex channels.
 /// </summary>
-internal sealed class FunctionRpcDuplexStreamFactory : IDuplexStreamFactory<StreamingMessage>
+internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<StreamingMessage>
 {
     private readonly IRpcClientFactory _clientFactory;
-    private readonly ILogger<FunctionRpcDuplexStreamFactory> _logger;
+    private readonly ILogger<FunctionRpcDuplexChannelFactory> _logger;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="FunctionRpcDuplexStreamFactory"/> class.
+    /// Initializes a new instance of the <see cref="FunctionRpcDuplexChannelFactory"/> class.
     /// </summary>
     /// <param name="clientFactory">The factory that owns reusable endpoint channels.</param>
     /// <param name="logger">The logger used for partial connection cleanup failures.</param>
-    public FunctionRpcDuplexStreamFactory(IRpcClientFactory clientFactory, ILogger<FunctionRpcDuplexStreamFactory> logger)
+    public FunctionRpcDuplexChannelFactory(IRpcClientFactory clientFactory, ILogger<FunctionRpcDuplexChannelFactory> logger)
     {
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -38,7 +38,7 @@ internal sealed class FunctionRpcDuplexStreamFactory : IDuplexStreamFactory<Stre
         var call = client.EventStream();
         try
         {
-            return call.AsDuplexStream();
+            return call.AsChannel();
         }
         catch
         {

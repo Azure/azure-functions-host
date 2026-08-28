@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 namespace Azure.Functions.Rpc.Client.Tests;
 
 /// <summary>
-/// Provides a replaceable duplex stream without creating network or gRPC resources.
+/// Provides a replaceable duplex channel without creating network or gRPC resources.
 /// </summary>
-internal sealed class TestDuplexStream<T> : Channel<T>, IAsyncDisposable
+internal sealed class TestDuplexChannel<T> : Channel<T>, IAsyncDisposable
     where T : class
 {
     private readonly Channel<T> _requests;
@@ -19,7 +19,7 @@ internal sealed class TestDuplexStream<T> : Channel<T>, IAsyncDisposable
     private int _disposeCount;
     private int _disposed;
 
-    internal TestDuplexStream()
+    internal TestDuplexChannel()
     {
         _requests = Channel.CreateUnbounded<T>();
         _responses = Channel.CreateUnbounded<T>();
@@ -28,12 +28,12 @@ internal sealed class TestDuplexStream<T> : Channel<T>, IAsyncDisposable
     }
 
     /// <summary>
-    /// Gets the number of times this stream performed its disposal transition.
+    /// Gets the number of times this channel performed its disposal transition.
     /// </summary>
     internal int DisposeCount => Interlocked.CompareExchange(ref _disposeCount, 0, 0);
 
     /// <summary>
-    /// Gets requests written by the stream consumer.
+    /// Gets requests written by the channel consumer.
     /// </summary>
     internal ChannelReader<T> Requests => _requests.Reader;
 
@@ -48,7 +48,7 @@ internal sealed class TestDuplexStream<T> : Channel<T>, IAsyncDisposable
     }
 
     /// <summary>
-    /// Supplies one response for the stream consumer to read.
+    /// Supplies one response for the channel consumer to read.
     /// </summary>
     /// <param name="response">The response to supply.</param>
     /// <param name="cancellationToken">A token that cancels this write.</param>
@@ -57,7 +57,7 @@ internal sealed class TestDuplexStream<T> : Channel<T>, IAsyncDisposable
         => _responses.Writer.WriteAsync(response, cancellationToken);
 
     /// <summary>
-    /// Completes both stream boundaries.
+    /// Completes both channel boundaries.
     /// </summary>
     /// <returns>A completed task.</returns>
     public ValueTask DisposeAsync()

@@ -10,24 +10,24 @@ using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
-public partial class GrpcDuplexStreamTests
+public partial class GrpcDuplexChannelTests
 {
     [Fact]
     public async Task WriteAndReadAdaptSdkStreams()
     {
         MockDuplexStream<string> streams = new();
-        GrpcDuplexStream<string> stream = streams.Call.AsDuplexStream();
+        GrpcDuplexChannel<string> channel = streams.Call.AsChannel();
 
-        await stream.Writer.WriteAsync("request");
+        await channel.Writer.WriteAsync("request");
         await streams.SendResponseAsync("response");
         streams.CompleteResponses();
         List<string> responses = [];
-        await foreach (string response in stream.Reader.ReadAllAsync())
+        await foreach (string response in channel.Reader.ReadAllAsync())
         {
             responses.Add(response);
         }
         await streams.RequestCompleted.WaitAsync(TimeSpan.FromSeconds(10));
-        await stream.DisposeAsync();
+        await channel.DisposeAsync();
 
         Assert.Equal(["request"], streams.WrittenMessages);
         Assert.Equal(["response"], responses);
@@ -37,9 +37,9 @@ public partial class GrpcDuplexStreamTests
     public async Task DisposeIsIdempotent()
     {
         MockDuplexStream<string> streams = new();
-        GrpcDuplexStream<string> stream = streams.Call.AsDuplexStream();
+        GrpcDuplexChannel<string> channel = streams.Call.AsChannel();
 
-        await Task.WhenAll(stream.DisposeAsync().AsTask(), stream.DisposeAsync().AsTask());
+        await Task.WhenAll(channel.DisposeAsync().AsTask(), channel.DisposeAsync().AsTask());
 
         Assert.Equal(1, streams.DisposeCount);
     }
@@ -48,11 +48,11 @@ public partial class GrpcDuplexStreamTests
     public async Task DisposeAbortsBlockedWrite()
     {
         MockDuplexStream<string> streams = new(blockWrites: true);
-        GrpcDuplexStream<string> stream = streams.Call.AsDuplexStream();
-        await stream.Writer.WriteAsync("request");
+        GrpcDuplexChannel<string> channel = streams.Call.AsChannel();
+        await channel.Writer.WriteAsync("request");
         await streams.WriteAttempts.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
 
-        await stream.DisposeAsync();
+        await channel.DisposeAsync();
 
         Assert.Equal(1, streams.DisposeCount);
     }
@@ -62,9 +62,9 @@ public partial class GrpcDuplexStreamTests
     {
         InvalidOperationException expected = new("call cleanup failed");
         MockDuplexStream<string> streams = new(disposeException: expected);
-        GrpcDuplexStream<string> stream = streams.Call.AsDuplexStream();
+        GrpcDuplexChannel<string> channel = streams.Call.AsChannel();
 
-        InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() => stream.DisposeAsync().AsTask());
+        InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() => channel.DisposeAsync().AsTask());
 
         Assert.Same(expected, actual);
     }
@@ -74,14 +74,14 @@ public partial class GrpcDuplexStreamTests
     {
         InvalidOperationException expected = new("response failure");
         MockDuplexStream<string> streams = new();
-        GrpcDuplexStream<string> stream = streams.Call.AsDuplexStream();
+        GrpcDuplexChannel<string> channel = streams.Call.AsChannel();
 
         streams.CompleteResponses(expected);
 
-        InvalidOperationException readFailure = await Assert.ThrowsAsync<InvalidOperationException>(() => stream.Reader.Completion);
+        InvalidOperationException readFailure = await Assert.ThrowsAsync<InvalidOperationException>(() => channel.Reader.Completion);
         ChannelClosedException writeFailure = await Assert.ThrowsAsync<ChannelClosedException>(() =>
-            stream.Writer.WriteAsync("late request").AsTask());
-        await stream.DisposeAsync();
+            channel.Writer.WriteAsync("late request").AsTask());
+        await channel.DisposeAsync();
 
         Assert.Same(expected, readFailure);
         Assert.Same(expected, writeFailure.InnerException);
@@ -92,16 +92,16 @@ public partial class GrpcDuplexStreamTests
     {
         InvalidOperationException expected = new("request failure");
         MockDuplexStream<string> streams = new(blockWrites: true);
-        GrpcDuplexStream<string> stream = streams.Call.AsDuplexStream();
-        await stream.Writer.WriteAsync("request");
+        GrpcDuplexChannel<string> channel = streams.Call.AsChannel();
+        await channel.Writer.WriteAsync("request");
         await streams.WriteAttempts.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
 
         streams.FailWrites(expected);
 
-        InvalidOperationException readFailure = await Assert.ThrowsAsync<InvalidOperationException>(() => stream.Reader.Completion);
+        InvalidOperationException readFailure = await Assert.ThrowsAsync<InvalidOperationException>(() => channel.Reader.Completion);
         ChannelClosedException writeFailure = await Assert.ThrowsAsync<ChannelClosedException>(() =>
-            stream.Writer.WriteAsync("late request").AsTask());
-        await stream.DisposeAsync();
+            channel.Writer.WriteAsync("late request").AsTask());
+        await channel.DisposeAsync();
 
         Assert.Same(expected, readFailure);
         Assert.Same(expected, writeFailure.InnerException);
@@ -111,9 +111,9 @@ public partial class GrpcDuplexStreamTests
     public async Task ReadCancellationDoesNotDisposeStream()
     {
         MockDuplexStream<string> streams = new();
-        await using GrpcDuplexStream<string> stream = streams.Call.AsDuplexStream();
+        await using GrpcDuplexChannel<string> channel = streams.Call.AsChannel();
         using CancellationTokenSource readSource = new();
-        Task<string> pendingRead = stream.Reader.ReadAsync(readSource.Token).AsTask();
+        Task<string> pendingRead = channel.Reader.ReadAsync(readSource.Token).AsTask();
 
         readSource.Cancel();
 
