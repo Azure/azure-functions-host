@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 ThrowIfExitError();
 
                 exit = Process.ExitCode;
-                if (exit is WorkerConstants.IntentionalRestartExitCode or WorkerConstants.SuccessExitCode)
+                if (IsNormalExitCode(exit))
                 {
                     Process.WaitForExit();
                     Process.Close();
@@ -258,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         private void ThrowIfExitError()
         {
-            if (Process.ExitCode is WorkerConstants.SuccessExitCode or WorkerConstants.IntentionalRestartExitCode)
+            if (IsNormalExitCode(Process.ExitCode))
             {
                 return;
             }
@@ -274,6 +274,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             };
 
             throw processExitEx;
+        }
+
+        private static bool IsNormalExitCode(int exitCode)
+        {
+            return exitCode is WorkerConstants.SuccessExitCode or WorkerConstants.IntentionalRestartExitCode
+                || (OperatingSystem.IsLinux() && exitCode is WorkerConstants.LinuxSigTermExitCode);
         }
 
         private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
