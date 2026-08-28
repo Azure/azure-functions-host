@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal GrpcWorkerChannel(
             string workerId,
+            DuplexChannel<StreamingMessage> ownedChannel,
             IScriptEventManager eventManager,
             IScriptHostManager hostManager,
             RpcWorkerConfig workerConfig,
@@ -43,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IHttpProxyService httpProxyService)
             : base(
                 workerId,
+                ownedChannel,
                 eventManager,
                 hostManager,
                 workerConfig,

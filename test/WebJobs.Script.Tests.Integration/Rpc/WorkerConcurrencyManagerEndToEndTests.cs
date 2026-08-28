@@ -5,7 +5,8 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,12 +51,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         internal class TestScriptEventManager : IScriptEventManager, IDisposable
         {
-            private readonly IScriptEventManager _scriptEventManager;
+            private readonly IScriptEventManager _scriptEventManager = new ScriptEventManager();
             private readonly TimeSpan _delay;
 
             public TestScriptEventManager(TimeSpan delay)
             {
-                _scriptEventManager = new ScriptEventManager();
                 _delay = delay;
             }
 
@@ -67,20 +67,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
                 catch (ObjectDisposedException)
                 {
-                    // Do no throw ObjectDisposedException
                 }
             }
 
             public IDisposable Subscribe(IObserver<ScriptEvent> observer) => _scriptEventManager.Subscribe(observer);
 
             public void Dispose() => ((IDisposable)_scriptEventManager).Dispose();
+
             public bool TryAddWorkerState<T>(string workerId, T state)
             {
-                // Swap for a channel that imposes a delay into the pipe
-                if (typeof(T) == typeof(Channel<InboundGrpcEvent>) && _delay > TimeSpan.Zero)
+                if (state is ServerDuplexChannel && _delay > TimeSpan.Zero)
                 {
-                    state = (T)(object)(new DelayedOutboundChannel<InboundGrpcEvent>(_delay));
+                    state = (T)(object)new ServerDuplexChannel(
+                        new DelayedChannel<StreamingMessage>(_delay, ServerDuplexChannel.WorkerToHostOptions),
+                        Channel.CreateUnbounded<StreamingMessage>(ServerDuplexChannel.HostToWorkerOptions));
                 }
+
                 return _scriptEventManager.TryAddWorkerState(workerId, state);
             }
 
@@ -90,12 +92,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public bool TryRemoveWorkerState<T>(string workerId, out T state)
                 => _scriptEventManager.TryRemoveWorkerState(workerId, out state);
 
-
-            public class DelayedOutboundChannel<T> : Channel<T>
+            public class DelayedChannel<T> : Channel<T>
             {
-                public DelayedOutboundChannel(TimeSpan delay)
+                public DelayedChannel(TimeSpan delay, UnboundedChannelOptions options)
                 {
-                    var toWrap = Channel.CreateUnbounded<T>(GrpcEventExtensions.OutboundOptions);
+                    var toWrap = Channel.CreateUnbounded<T>(options);
                     Reader = toWrap.Reader;
                     Writer = new DelayedChannelWriter<T>(toWrap.Writer, delay);
                 }
@@ -109,6 +110,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 public DelayedChannelWriter(ChannelWriter<T> toWrap, TimeSpan delay) => (_inner, _delay) = (toWrap, delay);
 
                 public override bool TryWrite(T item) => false; // Always fail, so we bounce to WriteAsync
+
+                public override bool TryComplete(Exception error = null) => _inner.TryComplete(error);
+
                 public override ValueTask<bool> WaitToWriteAsync(CancellationToken cancellationToken = default) => _inner.WaitToWriteAsync(cancellationToken);
 
                 public override async ValueTask WriteAsync(T item, CancellationToken cancellationToken = default)

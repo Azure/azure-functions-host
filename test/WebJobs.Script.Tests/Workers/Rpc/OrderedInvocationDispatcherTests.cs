@@ -4,7 +4,6 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Xunit;
 
@@ -106,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Null(_dispatcher.MessageChannel);
         }
 
-        private static InboundGrpcEvent CreateRpcLog()
+        private static StreamingMessage CreateRpcLog()
         {
             var msg = new StreamingMessage
             {
@@ -116,25 +115,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 }
             };
 
-            return new InboundGrpcEvent("worker_id", msg);
+            return msg;
         }
 
-        private static InboundGrpcEvent CreateInvocationResponse()
+        private static StreamingMessage CreateInvocationResponse()
         {
             var msg = new StreamingMessage
             {
                 InvocationResponse = new InvocationResponse()
             };
 
-            return new InboundGrpcEvent("worker_id", msg);
+            return msg;
         }
 
-        private void ProcessWithChannel(InboundGrpcEvent msg)
+        private void ProcessWithChannel(StreamingMessage msg)
         {
             _channelCount++;
         }
 
-        private void ProcessWithThreadPool(InboundGrpcEvent msg)
+        private void ProcessWithThreadPool(StreamingMessage msg)
         {
             _threadCount++;
         }
