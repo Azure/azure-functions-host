@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - name: Extract backport target branch
-      uses: actions/github-script@v3
+      uses: actions/github-script@ffc2c79a5b2490bd33e0a41c1de74b877714d736 # v3.2.0
       id: target-branch-extractor
       with:
         result-encoding: string
@@ -24,7 +24,7 @@ jobs:
 
           return target_branch[1];
     - name: Post backport started comment to pull request
-      uses: actions/github-script@v3
+      uses: actions/github-script@ffc2c79a5b2490bd33e0a41c1de74b877714d736 # v3.2.0
       with:
         script: |
           const backport_start_body = `Started backporting to ${{ steps.target-branch-extractor.outputs.result }}: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID}`;
@@ -35,7 +35,7 @@ jobs:
             body: backport_start_body
           });
     - name: Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@0717577d45739eb3c851188b29f50ed6c0b2194e # v2.8.0
       with:
         fetch-depth: 0
     - name: Run backport
