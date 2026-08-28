@@ -292,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.Dispose();
             Assert.True(_channel.Reader.Completion.IsCompletedSuccessfully);
-            Assert.True(_channel.ServerEndpoints.HostToWorkerReader.Completion.IsCompletedSuccessfully);
+            Assert.True(_channel.ServiceEndpoints.HostToWorkerReader.Completion.IsCompletedSuccessfully);
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
         }

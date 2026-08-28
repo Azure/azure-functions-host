@@ -20,13 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             ServerDuplexChannel channel = eventManager.AddServerDuplexChannel(workerId);
             Assert.True(eventManager.TryGetServerDuplexChannel(workerId, out ServerDuplexChannel registeredChannel));
 
-            ServerDuplexChannelEndpoints serverEndpoints = registeredChannel.ServerEndpoints;
+            FunctionRpcServiceEndpoints serviceEndpoints = registeredChannel.ServiceEndpoints;
             var outbound = new StreamingMessage { RequestId = "outbound" };
             Assert.True(channel.Writer.TryWrite(outbound));
-            Assert.True(serverEndpoints.HostToWorkerReader.TryRead(out StreamingMessage receivedOutbound));
+            Assert.True(serviceEndpoints.HostToWorkerReader.TryRead(out StreamingMessage receivedOutbound));
 
             var inbound = new StreamingMessage { RequestId = "inbound" };
-            Assert.True(serverEndpoints.WorkerToHostWriter.TryWrite(inbound));
+            Assert.True(serviceEndpoints.WorkerToHostWriter.TryWrite(inbound));
             Assert.True(channel.Reader.TryRead(out StreamingMessage receivedInbound));
 
             Assert.Same(channel, registeredChannel);
@@ -42,12 +42,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             const string workerId = "worker-id";
             using var eventManager = new ScriptEventManager();
             ServerDuplexChannel channel = eventManager.AddServerDuplexChannel(workerId);
-            ServerDuplexChannelEndpoints serverEndpoints = channel.ServerEndpoints;
+            FunctionRpcServiceEndpoints serviceEndpoints = channel.ServiceEndpoints;
 
             await channel.DisposeAsync();
 
             Assert.True(channel.Reader.Completion.IsCompletedSuccessfully);
-            Assert.True(serverEndpoints.HostToWorkerReader.Completion.IsCompletedSuccessfully);
+            Assert.True(serviceEndpoints.HostToWorkerReader.Completion.IsCompletedSuccessfully);
         }
 
         [Fact]

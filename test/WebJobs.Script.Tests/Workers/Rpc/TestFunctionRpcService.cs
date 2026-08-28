@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerId = workerId;
             if (eventManager.TryGetServerDuplexChannel(workerId, out ServerDuplexChannel channel))
             {
-                ServerDuplexChannelEndpoints endpoints = channel.ServerEndpoints;
+                FunctionRpcServiceEndpoints endpoints = channel.ServiceEndpoints;
                 _ = ListenAsync(endpoints.HostToWorkerReader, expectedLogMsg);
                 _inboundWriter = endpoints.WorkerToHostWriter;
 

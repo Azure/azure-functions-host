@@ -47,7 +47,10 @@ internal sealed class ServerDuplexChannel : DuplexChannel<StreamingMessage>
         Writer = _hostToWorker.Writer;
     }
 
-    internal ServerDuplexChannelEndpoints ServerEndpoints =>
+    /// <summary>
+    /// Gets the borrowed endpoints used by <c>FunctionRpcService</c> to bridge this channel to gRPC.
+    /// </summary>
+    internal FunctionRpcServiceEndpoints ServiceEndpoints =>
         new(_hostToWorker.Reader, _workerToHost.Writer);
 
     protected override Task DisposeAsyncCore()

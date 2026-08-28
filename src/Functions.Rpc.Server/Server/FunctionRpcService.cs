@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         if (!string.IsNullOrEmpty(workerId) &&
                             _eventManager.TryGetServerDuplexChannel(workerId, out ServerDuplexChannel channel))
                         {
-                            ServerDuplexChannelEndpoints endpoints = channel.ServerEndpoints;
+                            FunctionRpcServiceEndpoints endpoints = channel.ServiceEndpoints;
 
                             // send work
                             _ = PushFromOutboundToGrpc(workerId, responseStream, endpoints.HostToWorkerReader, cts.Token);
