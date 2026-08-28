@@ -211,6 +211,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task HandleWorkerProcessExit_LinuxSigTermExitCode_HandlesBasedOnOperatingSystem()
+        {
+            using Process process = GetProcess(WorkerConstants.LinuxSigTermExitCode);
+            _hostProcessMonitorMock.Setup(m => m.RegisterChildProcess(process));
+            _hostProcessMonitorMock.Setup(m => m.UnregisterChildProcess(process));
+            _workerProcessFactory.Setup(m => m.CreateWorkerProcess(It.IsNotNull<WorkerContext>())).Returns(process);
+            using var rpcWorkerProcess = GetRpcWorkerConfigProcess(
+                TestHelpers.GetTestWorkerConfigsWithExecutableWorkingDirectory().ElementAt(0));
+
+            await rpcWorkerProcess.StartProcessAsync();
+
+            if (OperatingSystem.IsLinux())
+            {
+                int exitCode = await rpcWorkerProcess.WaitForExitAsync();
+
+                Assert.Equal(WorkerConstants.LinuxSigTermExitCode, exitCode);
+                _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerRestartEvent>()), Times.Once());
+                _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerErrorEvent>()), Times.Never());
+            }
+            else
+            {
+                WorkerProcessExitException exception = await Assert.ThrowsAsync<WorkerProcessExitException>(
+                    () => rpcWorkerProcess.WaitForExitAsync());
+
+                Assert.Equal(WorkerConstants.LinuxSigTermExitCode, exception.ExitCode);
+                _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerRestartEvent>()), Times.Never());
+                _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerErrorEvent>()), Times.Once());
+            }
+        }
+
+        [Fact]
         public void WorkerProcess_Dispose()
         {
             var rpcWorkerProcess = GetRpcWorkerConfigProcess(TestHelpers.GetTestWorkerConfigs().ElementAt(0));
