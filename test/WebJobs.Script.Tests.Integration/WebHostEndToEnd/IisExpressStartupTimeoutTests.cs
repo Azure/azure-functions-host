@@ -348,12 +348,32 @@ internal sealed class IisExpressTestServer : IAsyncDisposable
             aspNetCoreSection.SetAttributeValue("overrideModeDefault", "Allow");
         }
 
+        bool isAspNetCoreModuleInstalled = root.Element("system.webServer")
+            ?.Element("globalModules")
+            ?.Elements("add")
+            .Any(element => string.Equals((string)element.Attribute("name"), "AspNetCoreModuleV2", StringComparison.Ordinal)) == true;
+        bool isAspNetCoreModuleEnabled = root
+            .Elements("location")
+            .Where(element => string.Equals((string)element.Attribute("path"), string.Empty, StringComparison.Ordinal))
+            .Elements("system.webServer")
+            .Elements("modules")
+            .Elements("add")
+            .Any(element => string.Equals((string)element.Attribute("name"), "AspNetCoreModuleV2", StringComparison.Ordinal));
+        if (isAspNetCoreModuleInstalled != isAspNetCoreModuleEnabled)
+        {
+            throw new InvalidOperationException("The IIS Express configuration contains an incomplete ASP.NET Core Module V2 registration.");
+        }
+
         config.Save(applicationHostConfigPath);
 
         await RunAppCmdAsync(installation.AppCmdPath, applicationHostConfigPath,
             "unlock", "config", "/section:system.webServer/handlers");
-        await RunAppCmdAsync(installation.AppCmdPath, applicationHostConfigPath,
-            "install", "module", "/name:AspNetCoreModuleV2", $"/image:{installation.AncmPath}");
+        if (!isAspNetCoreModuleInstalled)
+        {
+            await RunAppCmdAsync(installation.AppCmdPath, applicationHostConfigPath,
+                "install", "module", "/name:AspNetCoreModuleV2", $"/image:{installation.AncmPath}");
+        }
+
         await RunAppCmdAsync(installation.AppCmdPath, applicationHostConfigPath,
             "add", "apppool", $"/name:{ApplicationPoolName}", "/managedRuntimeVersion:", "/managedPipelineMode:Integrated");
         await RunAppCmdAsync(installation.AppCmdPath, applicationHostConfigPath,
