@@ -60,20 +60,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             string workerId = Guid.NewGuid().ToString();
             ServerDuplexChannel channel = _eventManager.AddServerDuplexChannel(workerId);
-            try
-            {
-                ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
-                IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
-                return CreateInternal(workerId, channel, _eventManager, _hostManager,
-                    languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger, attemptCount, _environment, _applicationHostOptions,
-                    _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions, _appCapabilitiesStore, _httpProxyService);
-            }
-            catch
-            {
-                // The standard server channel always completes disposal synchronously.
-                channel.DisposeAsync().GetAwaiter().GetResult();
-                throw;
-            }
+            ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
+            IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
+
+            return CreateInternal(workerId, channel, _eventManager, _hostManager,
+                languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger, attemptCount, _environment, _applicationHostOptions,
+                _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions, _appCapabilitiesStore, _httpProxyService);
         }
 
         internal virtual IRpcWorkerChannel CreateInternal(string workerId, DuplexChannel<StreamingMessage> ownedChannel,
