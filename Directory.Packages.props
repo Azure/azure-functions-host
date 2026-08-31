@@ -23,6 +23,7 @@
     <PackageVersion Include="Google.Protobuf" Version="3.23.1" />
     <PackageVersion Include="Grpc.AspNetCore" Version="2.55.0" />
     <PackageVersion Include="Grpc.Core.Api" Version="2.55.0" />
+    <PackageVersion Include="Grpc.Net.Client" Version="2.55.0" />
     <PackageVersion Include="Grpc.Tools" Version="2.55.1" />
     <PackageVersion Include="Microsoft.AspNet.WebApi.Client" Version="5.2.9" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.3.0" />
@@ -37,6 +38,7 @@
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Configuration" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.3" />

@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <AssemblyName>Azure.Functions.Rpc.Client.Tests</AssemblyName>
+    <RootNamespace>Azure.Functions.Rpc.Client.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="..\..\stylecop.json" Link="stylecop.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Grpc.AspNetCore" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Functions.Rpc.Client\Functions.Rpc.Client.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\src\Functions.Rpc.Client\Functions.Rpc.Client.csproj"
+          Link="ProjectFiles\Functions.Rpc.Client.csproj"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\Functions.Rpc.Server\Functions.Rpc.Server.csproj"
+          Link="ProjectFiles\Functions.Rpc.Server.csproj"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj"
+          Link="ProjectFiles\WebJobs.Script.Grpc.csproj"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
+          Link="ProjectFiles\WebJobs.Script.WebHost.csproj"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\WebJobs.Script.sln"
+          Link="ProjectFiles\WebJobs.Script.sln"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\Azure.Functions.Host.slnx"
+          Link="ProjectFiles\Azure.Functions.Host.slnx"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
