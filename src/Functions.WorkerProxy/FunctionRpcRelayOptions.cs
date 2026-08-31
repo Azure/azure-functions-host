@@ -75,10 +75,22 @@ internal sealed class FunctionRpcRelayOptions
         return new FunctionRpcRelayOptions(runtimeGrpcPort, workerGrpcPort);
     }
 
+    /// <summary>
+    /// Reads one integer option, returning its default when the option is absent and rejecting values outside the supported range.
+    /// </summary>
+    /// <remarks>
+    /// The original key supports command-line configuration (for example, <c>--runtime-grpc-port</c>).
+    /// The underscore form supports the equivalent environment variable, such as <c>RUNTIME_GRPC_PORT</c>.
+    /// </remarks>
     private static int ReadInt32(IConfiguration configuration, string key, int defaultValue, int minimumValue, int maximumValue)
     {
-        string environmentKey = key.Replace('-', '_').ToUpperInvariant();
-        string? configuredValue = configuration[key] ?? configuration[environmentKey];
+        string? configuredValue = configuration[key];
+        if (configuredValue is null)
+        {
+            // Configuration keys are case-insensitive, so only the separator needs to change for environment variables.
+            configuredValue = configuration[key.Replace('-', '_')];
+        }
+
         if (configuredValue is null)
         {
             return defaultValue;

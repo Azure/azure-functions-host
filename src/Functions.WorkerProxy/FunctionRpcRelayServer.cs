@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -30,6 +31,7 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private readonly FunctionRpcRelay _relay;
     private readonly FunctionRpcRelayOptions _options;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<FunctionRpcRelayServer> _logger;
     private WebApplication? _runtimeApplication;
     private WebApplication? _workerApplication;
@@ -40,11 +42,14 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
     /// </summary>
     /// <param name="relay">The singleton relay shared by both endpoint applications.</param>
     /// <param name="options">The listener configuration.</param>
+    /// <param name="loggerFactory">The parent logging pipeline shared by both endpoint applications.</param>
     /// <param name="logger">The listener lifecycle logger.</param>
-    public FunctionRpcRelayServer(FunctionRpcRelay relay, FunctionRpcRelayOptions options, ILogger<FunctionRpcRelayServer> logger)
+    public FunctionRpcRelayServer(FunctionRpcRelay relay, FunctionRpcRelayOptions options, ILoggerFactory loggerFactory,
+        ILogger<FunctionRpcRelayServer> logger)
     {
         _relay = relay;
         _options = options;
+        _loggerFactory = loggerFactory;
         _logger = logger;
     }
 
@@ -112,6 +117,7 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
     /// </remarks>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        _logger.LogDebug("FunctionRpc relay listener stop requested.");
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
@@ -242,23 +248,37 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
 
     private WebApplication BuildEndpointApplication(int port, FunctionRpcRelaySide side)
     {
-        WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
-        builder.Logging.ClearProviders();
+        WebApplicationBuilder builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions());
+        builder.WebHost.UseKestrelCore();
         builder.WebHost.ConfigureKestrel(options =>
         {
             options.Limits.MaxRequestBodySize = null;
-            options.ListenAnyIP(port, listenOptions => listenOptions.Protocols = HttpProtocols.Http2);
+            Action<ListenOptions> configureListener = static listenOptions => listenOptions.Protocols = HttpProtocols.Http2;
+            switch (side)
+            {
+                case FunctionRpcRelaySide.Runtime:
+                    options.ListenAnyIP(port, configureListener);
+                    break;
+                case FunctionRpcRelaySide.Worker:
+                    options.Listen(IPAddress.Loopback, port, configureListener);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown relay side.");
+            }
         });
+        builder.Services.AddRoutingCore();
         builder.Services.AddGrpc(options =>
         {
             options.MaxReceiveMessageSize = MaxMessageLengthBytes;
             options.MaxSendMessageSize = MaxMessageLengthBytes;
         });
+        builder.Services.AddSingleton(_loggerFactory);
         builder.Services.AddSingleton(_relay);
         builder.Services.AddSingleton(new FunctionRpcRelayEndpoint(side));
         builder.Services.AddSingleton<FunctionRpcRelayService>();
 
         WebApplication application = builder.Build();
+        application.UseRouting();
         application.MapGrpcService<FunctionRpcRelayService>();
 
         return application;

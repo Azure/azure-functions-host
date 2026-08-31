@@ -18,7 +18,7 @@ internal sealed partial class FunctionRpcRelay
     /// </summary>
     private sealed class FunctionRpcRelaySession
     {
-        private readonly object _stateLock = new();
+        private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime;
         private readonly Channel<StreamingMessage> _toWorker;
         // Linked call sources unregister when disposed, so cancellation can safely finish after this session is cleared.
@@ -147,7 +147,7 @@ internal sealed partial class FunctionRpcRelay
                 TryTerminate(terminalState);
             }
 
-            linkedSource.Cancel();
+            await linkedSource.CancelAsync();
             await ObserveStreamOperationAfterTerminationAsync(side, "read", readTask);
             await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask);
 

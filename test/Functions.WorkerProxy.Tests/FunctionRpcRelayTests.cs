@@ -175,7 +175,8 @@ public partial class FunctionRpcRelayTests
         using BlockingLogger<FunctionRpcRelay> logger = new();
         FunctionRpcRelay relay = new(logger);
         FunctionRpcRelayOptions options = CreateRelayOptions();
-        await using FunctionRpcRelayServer server = new(relay, options, NullLogger<FunctionRpcRelayServer>.Instance);
+        await using FunctionRpcRelayServer server =
+            new(relay, options, NullLoggerFactory.Instance, NullLogger<FunctionRpcRelayServer>.Instance);
         using CancellationTokenSource timeout = new(TestTimeout);
         await server.StartAsync(timeout.Token);
         await using RelayClient runtime = CreateClient(server.RuntimeAddress, timeout.Token);
@@ -257,7 +258,8 @@ public partial class FunctionRpcRelayTests
     {
         FunctionRpcRelay relay = CreateInProcessRelay();
         FunctionRpcRelayOptions options = CreateRelayOptions();
-        await using FunctionRpcRelayServer server = new(relay, options, NullLogger<FunctionRpcRelayServer>.Instance);
+        await using FunctionRpcRelayServer server =
+            new(relay, options, NullLoggerFactory.Instance, NullLogger<FunctionRpcRelayServer>.Instance);
         using CancellationTokenSource timeout = new(TestTimeout);
 
         await server.StopAsync(timeout.Token);
@@ -269,11 +271,13 @@ public partial class FunctionRpcRelayTests
     {
         FunctionRpcRelay relay = CreateInProcessRelay();
         FunctionRpcRelayOptions options = CreateRelayOptions();
-        await using FunctionRpcRelayServer server = new(relay, options, NullLogger<FunctionRpcRelayServer>.Instance);
+        await using FunctionRpcRelayServer server =
+            new(relay, options, NullLoggerFactory.Instance, NullLogger<FunctionRpcRelayServer>.Instance);
         using CancellationTokenSource timeout = new(TestTimeout);
 
         await Task.WhenAll(server.StartAsync(timeout.Token), server.StartAsync(timeout.Token));
         Assert.NotEqual(server.RuntimeAddress, server.WorkerAddress);
+        Assert.Equal(IPAddress.Loopback, IPAddress.Parse(server.WorkerAddress.Host));
 
         await Task.WhenAll(server.StopAsync(timeout.Token), server.StopAsync(timeout.Token));
         await Task.WhenAll(server.DisposeAsync().AsTask(), server.DisposeAsync().AsTask());
@@ -285,7 +289,8 @@ public partial class FunctionRpcRelayTests
         FunctionRpcRelayOptions options = CreateRelayOptions();
         using BlockingLogger<FunctionRpcRelay> logger = new();
         FunctionRpcRelay relay = new(logger);
-        await using FunctionRpcRelayServer server = new(relay, options, NullLogger<FunctionRpcRelayServer>.Instance);
+        await using FunctionRpcRelayServer server =
+            new(relay, options, NullLoggerFactory.Instance, NullLogger<FunctionRpcRelayServer>.Instance);
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource stopCancellation = new();
         BlockingServerStreamWriter blockingWriter = new();

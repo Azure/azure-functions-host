@@ -20,7 +20,7 @@ namespace Azure.Functions.WorkerProxy;
 /// </remarks>
 internal sealed partial class FunctionRpcRelay : IAsyncDisposable
 {
-    private readonly object _syncLock = new();
+    private readonly Lock _syncLock = new();
     private readonly ILogger<FunctionRpcRelay> _logger;
     private FunctionRpcRelaySession? _currentSession;
     private FunctionRpcRelayTerminalState? _lastTerminalState;
