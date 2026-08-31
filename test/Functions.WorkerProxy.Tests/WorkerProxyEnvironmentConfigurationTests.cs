@@ -8,10 +8,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -21,7 +18,7 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public class WorkerProxyEnvironmentConfigurationTests
 {
     [Fact]
-    public async Task ProductionConfiguration_UsesStandardAspNetCoreEndpointPrecedence()
+    public async Task ProductionConfiguration_UsesWorkerProxyEndpointOptions()
     {
         int managementPort = GetAvailablePort();
         int ambientPort;
@@ -31,17 +28,20 @@ public class WorkerProxyEnvironmentConfigurationTests
         }
         while (ambientPort == managementPort);
 
-        using EnvironmentVariableScope managementPortVariable = new("ASPNETCORE_HTTP_PORTS", managementPort.ToString(CultureInfo.InvariantCulture));
+        using EnvironmentVariableScope managementPortVariable =
+            new("WORKERPROXY__MANAGEMENTPORT", managementPort.ToString(CultureInfo.InvariantCulture));
+        using EnvironmentVariableScope runtimeGrpcPort = new("WORKERPROXY__RUNTIMEGRPCPORT", "0");
+        using EnvironmentVariableScope workerGrpcPort = new("WORKERPROXY__WORKERGRPCPORT", "0");
         using EnvironmentVariableScope urls = new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
         using EnvironmentVariableScope dotnetSetting = new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");
-        using EnvironmentVariableScope runtimeGrpcPort = new("RUNTIME_GRPC_PORT", "0");
-        using EnvironmentVariableScope workerGrpcPort = new("WORKER_GRPC_PORT", "0");
         await using WebApplication app = WorkerProxyApplication.Build([]);
         using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
         await app.StartAsync(timeout.Token);
 
-        Uri address = GetServerAddress(app);
-        Assert.Equal(ambientPort, address.Port);
+        WorkerProxyEndpointConfiguration endpoints = app.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
+        Uri address = new UriBuilder(endpoints.GetManagementAddress()) { Host = IPAddress.Loopback.ToString() }.Uri;
+        Assert.Equal(managementPort, address.Port);
+        Assert.NotEqual(ambientPort, address.Port);
         Assert.Equal("preserved", app.Configuration["DOTNET_WORKER_PROXY_TEST_SETTING"]);
         using HttpClient client = new() { BaseAddress = address };
         using HttpResponseMessage response = await client.GetAsync("/admin/instance/ready", timeout.Token);
@@ -54,15 +54,5 @@ public class WorkerProxyEnvironmentConfigurationTests
         listener.Start();
 
         return ((IPEndPoint)listener.LocalEndpoint).Port;
-    }
-
-    private static Uri GetServerAddress(WebApplication app)
-    {
-        IServer server = app.Services.GetRequiredService<IServer>();
-        IServerAddressesFeature addresses = server.Features.Get<IServerAddressesFeature>()
-            ?? throw new InvalidOperationException("Kestrel did not publish a server address.");
-        Uri address = new(Assert.Single(addresses.Addresses));
-
-        return new UriBuilder(address) { Host = IPAddress.Loopback.ToString() }.Uri;
     }
 }

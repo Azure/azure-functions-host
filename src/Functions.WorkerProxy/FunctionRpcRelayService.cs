@@ -4,41 +4,48 @@
 using System.Threading.Tasks;
 using Grpc.AspNetCore.Server;
 using Grpc.Core;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using GrpcRpcException = Grpc.Core.RpcException;
 
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
-/// Adapts one side-specific FunctionRpc endpoint to the shared relay.
+/// Adapts FunctionRpc endpoint requests to the shared relay.
 /// </summary>
 /// <remarks>
-/// The endpoint application supplies the side identity through dependency injection, so callers
-/// cannot select or change stream ownership through headers or FunctionRpc messages.
+/// The local listener port determines stream ownership, so callers cannot select or change
+/// ownership through headers or FunctionRpc messages.
 /// </remarks>
 internal sealed class FunctionRpcRelayService : FunctionRpc.FunctionRpcBase
 {
     private readonly FunctionRpcRelay _relay;
-    private readonly FunctionRpcRelayEndpoint _endpoint;
+    private readonly WorkerProxyEndpointConfiguration _endpoints;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FunctionRpcRelayService"/> class.
     /// </summary>
     /// <param name="relay">The shared FunctionRpc relay.</param>
-    /// <param name="endpoint">The immutable side owned by this endpoint application.</param>
-    public FunctionRpcRelayService(FunctionRpcRelay relay, FunctionRpcRelayEndpoint endpoint)
+    /// <param name="endpoints">The configured WorkerProxy listener endpoints.</param>
+    public FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints)
     {
         _relay = relay;
-        _endpoint = endpoint;
+        _endpoints = endpoints;
     }
 
     /// <inheritdoc />
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
         IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
     {
+        HttpContext httpContext = context.GetHttpContext();
+        if (!_endpoints.TryGetRelaySide(httpContext.Connection.LocalPort, out FunctionRpcRelaySide side))
+        {
+            throw new GrpcRpcException(new Status(StatusCode.Unimplemented, "FunctionRpc is unavailable on this listener."));
+        }
+
         try
         {
-            await _relay.AttachAsync(_endpoint.Side, requestStream, responseStream, context.CancellationToken);
+            await _relay.AttachAsync(side, requestStream, responseStream, context.CancellationToken);
         }
         catch (FunctionRpcRelayAttachmentException exception)
         {
@@ -56,7 +63,7 @@ internal sealed class FunctionRpcRelayService : FunctionRpc.FunctionRpcBase
         {
             if (exception.TerminalState.Reason == FunctionRpcRelayTerminationReason.Shutdown)
             {
-                context.GetHttpContext().Abort();
+                httpContext.Abort();
             }
 
             StatusCode statusCode = exception.TerminalState.Reason switch

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.WorkerProxy;
@@ -18,7 +19,7 @@ namespace Azure.Functions.WorkerProxy;
 /// cancellation, stream failure, or application shutdown terminates the whole session. A replacement
 /// session is created only after both attachments from the previous session have released.
 /// </remarks>
-internal sealed partial class FunctionRpcRelay : IAsyncDisposable
+internal sealed partial class FunctionRpcRelay : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
     private readonly ILogger<FunctionRpcRelay> _logger;
@@ -55,6 +56,36 @@ internal sealed partial class FunctionRpcRelay : IAsyncDisposable
                 return _lastTerminalState;
             }
         }
+    }
+
+    /// <inheritdoc />
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task StartingAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task StartedAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task StoppingAsync(CancellationToken cancellationToken)
+    {
+        return StopAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task StoppedAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
     }
 
     /// <summary>

@@ -173,21 +173,19 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_ReconnectDuringSessionTeardownReturnsUnavailable()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new();
-        FunctionRpcRelay relay = new(logger);
-        FunctionRpcRelayOptions options = CreateRelayOptions();
-        await using FunctionRpcRelayServer server =
-            new(relay, options, NullLoggerFactory.Instance, NullLogger<FunctionRpcRelayServer>.Instance);
+        await using WorkerProxyWebApplicationFactory factory = new(
+            configureServices: services => services.AddSingleton<Microsoft.Extensions.Logging.ILogger<FunctionRpcRelay>>(logger));
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
         using CancellationTokenSource timeout = new(TestTimeout);
-        await server.StartAsync(timeout.Token);
-        await using RelayClient runtime = CreateClient(server.RuntimeAddress, timeout.Token);
-        await using RelayClient worker = CreateClient(server.WorkerAddress, timeout.Token);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "teardown", timeout.Token);
 
         await runtime.CompleteRequestAsync(timeout.Token);
         try
         {
             await logger.LogEntered.WaitAsync(timeout.Token);
-            await using RelayClient reconnect = CreateClient(server.RuntimeAddress, timeout.Token);
+            await using RelayClient reconnect = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
 
             GrpcRpcException exception = await reconnect.WriteAndReadRejectionAsync(CreateMessage("reconnect"), timeout.Token);
 
@@ -254,54 +252,20 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task RelayServer_StopBeforeStartDoesNotStartAndRejectsLaterStart()
+    public async Task Relay_CanceledStopIsCompletedByDispose()
     {
-        FunctionRpcRelay relay = CreateInProcessRelay();
-        FunctionRpcRelayOptions options = CreateRelayOptions();
-        await using FunctionRpcRelayServer server =
-            new(relay, options, NullLoggerFactory.Instance, NullLogger<FunctionRpcRelayServer>.Instance);
-        using CancellationTokenSource timeout = new(TestTimeout);
-
-        await server.StopAsync(timeout.Token);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => server.StartAsync(timeout.Token));
-    }
-
-    [Fact]
-    public async Task RelayServer_ConcurrentLifecycleCallsAreSerialized()
-    {
-        FunctionRpcRelay relay = CreateInProcessRelay();
-        FunctionRpcRelayOptions options = CreateRelayOptions();
-        await using FunctionRpcRelayServer server =
-            new(relay, options, NullLoggerFactory.Instance, NullLogger<FunctionRpcRelayServer>.Instance);
-        using CancellationTokenSource timeout = new(TestTimeout);
-
-        await Task.WhenAll(server.StartAsync(timeout.Token), server.StartAsync(timeout.Token));
-        Assert.NotEqual(server.RuntimeAddress, server.WorkerAddress);
-        Assert.Equal(IPAddress.Loopback, IPAddress.Parse(server.WorkerAddress.Host));
-
-        await Task.WhenAll(server.StopAsync(timeout.Token), server.StopAsync(timeout.Token));
-        await Task.WhenAll(server.DisposeAsync().AsTask(), server.DisposeAsync().AsTask());
-    }
-
-    [Fact]
-    public async Task RelayServer_CanceledStopIsCompletedByDispose()
-    {
-        FunctionRpcRelayOptions options = CreateRelayOptions();
         using BlockingLogger<FunctionRpcRelay> logger = new();
         FunctionRpcRelay relay = new(logger);
-        await using FunctionRpcRelayServer server =
-            new(relay, options, NullLoggerFactory.Instance, NullLogger<FunctionRpcRelayServer>.Instance);
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource stopCancellation = new();
         BlockingServerStreamWriter blockingWriter = new();
-        await server.StartAsync(timeout.Token);
 
         Task runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             new SingleMessageThenBlockStreamReader(CreateMessage("block-stop")), new TestServerStreamWriter(), timeout.Token);
         Task workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker, new BlockingStreamReader(), blockingWriter, timeout.Token);
         await blockingWriter.WriteEntered.WaitAsync(timeout.Token);
 
-        Task stopTask = Task.Run(() => server.StopAsync(stopCancellation.Token), timeout.Token);
+        Task stopTask = Task.Run(() => relay.StopAsync(stopCancellation.Token), timeout.Token);
         try
         {
             await logger.LogEntered.WaitAsync(timeout.Token);
@@ -317,10 +281,8 @@ public partial class FunctionRpcRelayTests
 
         await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => runtimeTask.WaitAsync(timeout.Token));
         await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => workerTask.WaitAsync(timeout.Token));
-        await server.DisposeAsync();
-
-        Assert.Throws<InvalidOperationException>(() => _ = server.RuntimeAddress);
-        Assert.Throws<InvalidOperationException>(() => _ = server.WorkerAddress);
+        await relay.DisposeAsync();
+        Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
     }
 
     [Fact]
@@ -328,7 +290,6 @@ public partial class FunctionRpcRelayTests
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        FunctionRpcRelayServer server = factory.Services.GetRequiredService<FunctionRpcRelayServer>();
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
@@ -336,7 +297,7 @@ public partial class FunctionRpcRelayTests
 
         Task runtimeTermination = runtime.WaitForTerminationAsync(timeout.Token);
         Task workerTermination = worker.WaitForTerminationAsync(timeout.Token);
-        await server.StopAsync(timeout.Token);
+        await factory.DisposeAsync();
         await Task.WhenAll(runtimeTermination, workerTermination);
 
         Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
@@ -348,13 +309,12 @@ public partial class FunctionRpcRelayTests
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
-        FunctionRpcRelayServer server = factory.Services.GetRequiredService<FunctionRpcRelayServer>();
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "dispose", timeout.Token);
 
-        Task[] disposalTasks = Enumerable.Range(0, 16).Select(_ => server.DisposeAsync().AsTask()).ToArray();
+        Task[] disposalTasks = Enumerable.Range(0, 16).Select(_ => relay.DisposeAsync().AsTask()).ToArray();
         await Task.WhenAll(disposalTasks).WaitAsync(timeout.Token);
         await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
 
@@ -398,18 +358,6 @@ public partial class FunctionRpcRelayTests
     private static FunctionRpcRelay CreateInProcessRelay()
     {
         return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance);
-    }
-
-    private static FunctionRpcRelayOptions CreateRelayOptions()
-    {
-        Dictionary<string, string?> configuration = new()
-        {
-            [FunctionRpcRelayOptions.RuntimeGrpcPortKey] = "0",
-            [FunctionRpcRelayOptions.WorkerGrpcPortKey] = "0"
-        };
-        IConfiguration configurationRoot = new ConfigurationBuilder().AddInMemoryCollection(configuration).Build();
-
-        return FunctionRpcRelayOptions.FromConfiguration(configurationRoot);
     }
 
     private static RelayClient CreateClient(WorkerProxyWebApplicationFactory factory, FunctionRpcRelaySide side, CancellationToken cancellationToken)

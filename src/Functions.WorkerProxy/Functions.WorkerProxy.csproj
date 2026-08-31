@@ -9,6 +9,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <PublishAot>true</PublishAot>
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
     <IsAotCompatible>true</IsAotCompatible>

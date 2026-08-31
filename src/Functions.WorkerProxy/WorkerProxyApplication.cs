@@ -3,14 +3,16 @@
 
 using System;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
-/// Builds the WorkerProxy management application and its hosted FunctionRpc relay listeners.
+/// Builds the WorkerProxy management and FunctionRpc application.
 /// </summary>
 internal static class WorkerProxyApplication
 {
@@ -25,16 +27,32 @@ internal static class WorkerProxyApplication
     {
         ArgumentNullException.ThrowIfNull(args);
 
-        // Endpoint selection intentionally follows standard ASP.NET Core configuration and
-        // precedence. For example, URLS overrides HTTP_PORTS when both are present.
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = args });
-        builder.Services.AddSingleton(static services => FunctionRpcRelayOptions.FromConfiguration(services.GetRequiredService<IConfiguration>()));
+        // WorkerProxy owns all listener bindings and does not use the generic ASP.NET Core URL configuration.
+        builder.WebHost.UseSetting(WebHostDefaults.ServerUrlsKey, string.Empty);
+        builder.WebHost.UseSetting(WebHostDefaults.HttpPortsKey, string.Empty);
+        builder.WebHost.UseSetting(WebHostDefaults.HttpsPortsKey, string.Empty);
+        builder.WebHost.UseSetting(WebHostDefaults.PreferHostingUrlsKey, bool.FalseString);
+        builder.Services.AddOptions<WorkerProxyOptions>().BindConfiguration(WorkerProxyOptions.SectionName).ValidateOnStart();
+        builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
+        builder.Services.AddSingleton<WorkerProxyEndpointConfiguration>();
+        builder.Services.AddSingleton<IConfigureOptions<KestrelServerOptions>>(
+            static services => services.GetRequiredService<WorkerProxyEndpointConfiguration>());
+        builder.Services.AddGrpc(options =>
+        {
+            options.MaxReceiveMessageSize = int.MaxValue;
+            options.MaxSendMessageSize = int.MaxValue;
+        });
         builder.Services.AddSingleton<FunctionRpcRelay>();
-        builder.Services.AddSingleton<FunctionRpcRelayServer>();
-        builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelayServer>());
+        builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
 
         WebApplication app = builder.Build();
-        app.MapGet(ReadyPath, static () => TypedResults.Ok()).AllowAnonymous();
+        app.MapGrpcService<FunctionRpcRelayService>();
+        app.MapGet(ReadyPath, static (HttpContext context) =>
+        {
+            WorkerProxyEndpointConfiguration endpoints = context.RequestServices.GetRequiredService<WorkerProxyEndpointConfiguration>();
+            return endpoints.IsManagementPort(context.Connection.LocalPort) ? Results.Ok() : Results.NotFound();
+        }).AllowAnonymous();
 
         return app;
     }
