@@ -8,6 +8,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -306,7 +308,10 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
             throw new InvalidOperationException($"The {side} FunctionRpc listener has not been created.");
         }
 
-        string address = application.Urls.SingleOrDefault()
+        IServer server = application.Services.GetRequiredService<IServer>();
+        IServerAddressesFeature addresses = server.Features.Get<IServerAddressesFeature>()
+            ?? throw new InvalidOperationException($"The {side} FunctionRpc listener did not publish its addresses.");
+        string address = addresses.Addresses.SingleOrDefault()
             ?? throw new InvalidOperationException($"The {side} FunctionRpc listener has not started.");
 
         return new Uri(address);
