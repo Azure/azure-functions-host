@@ -2,14 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,6 +34,8 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
     private readonly ILogger<FunctionRpcRelayServer> _logger;
     private WebApplication? _runtimeApplication;
     private WebApplication? _workerApplication;
+    private ListenOptions? _runtimeListenOptions;
+    private ListenOptions? _workerListenOptions;
     private LifecycleState _state;
 
     /// <summary>
@@ -68,13 +67,13 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
     /// Gets the bound address for the runtime-facing listener.
     /// </summary>
     /// <exception cref="InvalidOperationException">The listener has not started.</exception>
-    internal Uri RuntimeAddress => GetAddress(_runtimeApplication, FunctionRpcRelaySide.Runtime);
+    internal Uri RuntimeAddress => GetAddress(_runtimeApplication, _runtimeListenOptions, FunctionRpcRelaySide.Runtime);
 
     /// <summary>
     /// Gets the bound address for the worker-facing listener.
     /// </summary>
     /// <exception cref="InvalidOperationException">The listener has not started.</exception>
-    internal Uri WorkerAddress => GetAddress(_workerApplication, FunctionRpcRelaySide.Worker);
+    internal Uri WorkerAddress => GetAddress(_workerApplication, _workerListenOptions, FunctionRpcRelaySide.Worker);
 
     /// <inheritdoc />
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -189,6 +188,8 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
                 {
                     _runtimeApplication = null;
                     _workerApplication = null;
+                    _runtimeListenOptions = null;
+                    _workerListenOptions = null;
                     _state = LifecycleState.Disposed;
                 }
             }
@@ -231,6 +232,8 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
                 {
                     _runtimeApplication = null;
                     _workerApplication = null;
+                    _runtimeListenOptions = null;
+                    _workerListenOptions = null;
                 }
             }
 
@@ -255,14 +258,29 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
         builder.WebHost.ConfigureKestrel(options =>
         {
             options.Limits.MaxRequestBodySize = null;
-            Action<ListenOptions> configureListener = static listenOptions => listenOptions.Protocols = HttpProtocols.Http2;
+            void ConfigureListener(ListenOptions listenOptions)
+            {
+                listenOptions.Protocols = HttpProtocols.Http2;
+                switch (side)
+                {
+                    case FunctionRpcRelaySide.Runtime:
+                        _runtimeListenOptions = listenOptions;
+                        break;
+                    case FunctionRpcRelaySide.Worker:
+                        _workerListenOptions = listenOptions;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown relay side.");
+                }
+            }
+
             switch (side)
             {
                 case FunctionRpcRelaySide.Runtime:
-                    options.ListenAnyIP(port, configureListener);
+                    options.ListenAnyIP(port, ConfigureListener);
                     break;
                 case FunctionRpcRelaySide.Worker:
-                    options.Listen(IPAddress.Loopback, port, configureListener);
+                    options.Listen(IPAddress.Loopback, port, ConfigureListener);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown relay side.");
@@ -301,19 +319,19 @@ internal sealed class FunctionRpcRelayServer : IHostedService, IAsyncDisposable
         await Task.WhenAll(runtimeDisposeTask.AsTask(), workerDisposeTask.AsTask());
     }
 
-    private static Uri GetAddress(WebApplication? application, FunctionRpcRelaySide side)
+    private static Uri GetAddress(WebApplication? application, ListenOptions? listenOptions, FunctionRpcRelaySide side)
     {
-        if (application is null)
+        if (application is null || listenOptions is null)
         {
             throw new InvalidOperationException($"The {side} FunctionRpc listener has not been created.");
         }
 
-        IServer server = application.Services.GetRequiredService<IServer>();
-        IServerAddressesFeature addresses = server.Features.Get<IServerAddressesFeature>()
-            ?? throw new InvalidOperationException($"The {side} FunctionRpc listener did not publish its addresses.");
-        string address = addresses.Addresses.SingleOrDefault()
-            ?? throw new InvalidOperationException($"The {side} FunctionRpc listener has not started.");
+        IPEndPoint? endpoint = listenOptions.IPEndPoint;
+        if (endpoint is null || endpoint.Port == 0)
+        {
+            throw new InvalidOperationException($"The {side} FunctionRpc listener has not started.");
+        }
 
-        return new Uri(address);
+        return new UriBuilder(Uri.UriSchemeHttp, endpoint.Address.ToString(), endpoint.Port).Uri;
     }
 }
