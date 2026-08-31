@@ -19,22 +19,22 @@ namespace Azure.Functions.Rpc.Client;
 /// </summary>
 internal sealed class RpcClientFactory : IRpcClientFactory
 {
+    private const int MaxMessageLengthBytes = int.MaxValue;
+
     /// <summary>
     /// Gets the maximum time allowed for an individual socket connection attempt.
     /// </summary>
-    internal static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// Gets the idle interval before an HTTP/2 keepalive ping is sent.
     /// </summary>
-    internal static readonly TimeSpan DefaultKeepAlivePingDelay = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DefaultKeepAlivePingDelay = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Gets the time allowed for a keepalive ping acknowledgement.
     /// </summary>
-    internal static readonly TimeSpan DefaultKeepAlivePingTimeout = TimeSpan.FromSeconds(10);
-
-    private const int MaxMessageLengthBytes = int.MaxValue;
+    private static readonly TimeSpan DefaultKeepAlivePingTimeout = TimeSpan.FromSeconds(10);
 
     private readonly Dictionary<Uri, GrpcChannel> _channels = [];
     private readonly Func<GrpcChannel, CancellationToken, Task> _connectAsync;
@@ -43,9 +43,9 @@ internal sealed class RpcClientFactory : IRpcClientFactory
     private readonly ILogger<RpcClientFactory> _logger;
     private readonly TaskCompletionSource _operationsCompleted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly CancellationTokenSource _shutdownSource = new();
-    private readonly object _syncLock = new();
+    private readonly Lock _syncLock = new();
     private int _activeOperations;
-    private int _disposeState;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RpcClientFactory"/> class.
@@ -172,7 +172,7 @@ internal sealed class RpcClientFactory : IRpcClientFactory
             lock (_syncLock)
             {
                 _activeOperations--;
-                if (Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0 && _activeOperations == 0)
+                if (_disposed && _activeOperations == 0)
                 {
                     _operationsCompleted.TrySetResult();
                 }
@@ -188,8 +188,9 @@ internal sealed class RpcClientFactory : IRpcClientFactory
 
         lock (_syncLock)
         {
-            if (Interlocked.CompareExchange(ref _disposeState, 1, 0) == 0)
+            if (!_disposed)
             {
+                _disposed = true;
                 channels = _channels.Values.ToArray();
                 _channels.Clear();
                 if (_activeOperations == 0)
@@ -339,7 +340,7 @@ internal sealed class RpcClientFactory : IRpcClientFactory
 
     private void ThrowIfDisposed()
     {
-        ObjectDisposedException.ThrowIf(Interlocked.CompareExchange(ref _disposeState, 0, 0) != 0, this);
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 
     private void TryCleanup(Action cleanup, Uri endpoint, string operation)

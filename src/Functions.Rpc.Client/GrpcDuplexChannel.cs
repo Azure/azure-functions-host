@@ -28,7 +28,7 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
     private readonly Channel<T> _outgoing;
     private readonly Task _readPump;
     private readonly CancellationTokenSource _shutdownSource = new();
-    private readonly object _syncLock = new();
+    private readonly Lock _syncLock = new();
     private readonly Task _writePump;
     private Task _disposeTask;
 
@@ -131,7 +131,7 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
 
             if (error is not null)
             {
-                _shutdownSource.Cancel();
+                await _shutdownSource.CancelAsync();
             }
         }
     }
@@ -162,7 +162,7 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
             {
                 _outgoing.Writer.TryComplete(error);
                 _incoming.Writer.TryComplete(error);
-                _shutdownSource.Cancel();
+                await _shutdownSource.CancelAsync();
             }
         }
     }

@@ -35,6 +35,7 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
         FunctionRpc.FunctionRpcClient client = await _clientFactory.CreateAsync(endpoint, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
+        // This token only bounds channel creation. Disposing the returned channel cancels the long-lived RPC call.
         var call = client.EventStream();
         try
         {
