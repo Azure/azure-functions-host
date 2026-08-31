@@ -8,7 +8,6 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.AspNetCore.Connections;
-using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -19,12 +18,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     // TODO: move to WebJobs.Script.Grpc package and provide event stream abstraction
     internal class FunctionRpcService : FunctionRpc.FunctionRpcBase
     {
-        private readonly IScriptEventManager _eventManager;
+        private readonly ServerDuplexChannelRegistry _channelRegistry;
         private readonly ILogger _logger;
 
-        public FunctionRpcService(IScriptEventManager eventManager, ILogger<FunctionRpcService> logger)
+        public FunctionRpcService(ServerDuplexChannelRegistry channelRegistry, ILogger<FunctionRpcService> logger)
         {
-            _eventManager = eventManager;
+            _channelRegistry = channelRegistry;
             _logger = logger;
         }
 
@@ -50,10 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         var workerId = currentMessage.StartStream?.WorkerId;
                         if (!string.IsNullOrEmpty(workerId) &&
-                            _eventManager.TryGetServerDuplexChannel(workerId, out ServerDuplexChannel channel))
+                            _channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcServiceEndpoints endpoints))
                         {
-                            FunctionRpcServiceEndpoints endpoints = channel.ServiceEndpoints;
-
                             // send work
                             _ = PushFromOutboundToGrpc(workerId, responseStream, endpoints.HostToWorkerReader, cts.Token);
 

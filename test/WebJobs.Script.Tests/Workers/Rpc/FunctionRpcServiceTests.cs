@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Core;
-using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -21,9 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task EventStream_TransfersStreamingMessagesDirectly()
         {
             const string workerId = "worker-id";
-            using var eventManager = new ScriptEventManager();
-            await using ServerDuplexChannel channel = eventManager.AddServerDuplexChannel(workerId);
-            var service = new FunctionRpcService(eventManager, NullLogger<FunctionRpcService>.Instance);
+            var channelRegistry = new ServerDuplexChannelRegistry();
+            await using DuplexChannel<StreamingMessage> channel = channelRegistry.CreateRegisteredChannel(workerId);
+            var service = new FunctionRpcService(channelRegistry, NullLogger<FunctionRpcService>.Instance);
             var requestStream = new TestAsyncStreamReader<StreamingMessage>();
             var responseStream = new TestServerStreamWriter<StreamingMessage>();
             var context = new Mock<ServerCallContext>();

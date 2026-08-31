@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     {
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcWorkerProcessFactory _rpcWorkerProcessFactory = null;
+        private readonly ServerDuplexChannelRegistry _channelRegistry;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IScriptHostManager _hostManager = null;
         private readonly IEnvironment _environment = null;
@@ -32,12 +33,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IAppCapabilitiesStore _appCapabilitiesStore;
         private readonly IHttpProxyService _httpProxyService;
 
-        public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IScriptHostManager hostManager, IEnvironment environment, ILoggerFactory loggerFactory,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+        public GrpcWorkerChannelFactory(ServerDuplexChannelRegistry channelRegistry, IScriptEventManager eventManager, IScriptHostManager hostManager,
+            IEnvironment environment, ILoggerFactory loggerFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             IAppCapabilitiesStore appCapabilitiesStore, IHttpProxyService httpProxyService)
         {
+            _channelRegistry = channelRegistry;
             _eventManager = eventManager;
             _hostManager = hostManager;
             _loggerFactory = loggerFactory;
@@ -59,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 throw new InvalidOperationException($"WorkerConfig for runtime: {runtime} not found");
             }
             string workerId = Guid.NewGuid().ToString();
-            ServerDuplexChannel channel = _eventManager.AddServerDuplexChannel(workerId);
+            DuplexChannel<StreamingMessage> channel = _channelRegistry.CreateRegisteredChannel(workerId);
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
             IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
 

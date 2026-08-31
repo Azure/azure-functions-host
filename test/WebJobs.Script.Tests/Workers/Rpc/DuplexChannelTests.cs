@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             public void AllowDispose() => _allowDispose.TrySetResult();
 
-            protected override async Task DisposeAsyncCore()
+            protected override async ValueTask DisposeAsyncCore()
             {
                 Interlocked.Increment(ref _disposeCount);
                 await _allowDispose.Task;

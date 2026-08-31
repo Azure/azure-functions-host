@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
@@ -13,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc;
 /// <typeparam name="T">The transported message type.</typeparam>
 public abstract class DuplexChannel<T> : Channel<T>, IAsyncDisposable
 {
-    private readonly object _disposeLock = new object();
+    private readonly Lock _disposeLock = new();
     private Task _disposeTask;
 
     /// <summary>
@@ -22,9 +23,14 @@ public abstract class DuplexChannel<T> : Channel<T>, IAsyncDisposable
     /// <returns>A task representing the asynchronous disposal operation.</returns>
     public ValueTask DisposeAsync()
     {
+        if (_disposeTask is { } task)
+        {
+            return new ValueTask(task);
+        }
+
         lock (_disposeLock)
         {
-            _disposeTask ??= DisposeAsyncCore();
+            _disposeTask ??= DisposeAsyncCore().AsTask();
             return new ValueTask(_disposeTask);
         }
     }
@@ -33,5 +39,5 @@ public abstract class DuplexChannel<T> : Channel<T>, IAsyncDisposable
     /// Asynchronously releases resources owned by the derived channel.
     /// </summary>
     /// <returns>A task representing the asynchronous disposal operation.</returns>
-    protected abstract Task DisposeAsyncCore();
+    protected abstract ValueTask DisposeAsyncCore();
 }

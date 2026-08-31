@@ -53,11 +53,11 @@ internal sealed class ServerDuplexChannel : DuplexChannel<StreamingMessage>
     internal FunctionRpcServiceEndpoints ServiceEndpoints =>
         new(_hostToWorker.Reader, _workerToHost.Writer);
 
-    protected override Task DisposeAsyncCore()
+    protected override ValueTask DisposeAsyncCore()
     {
         _hostToWorker.Writer.TryComplete();
         _workerToHost.Writer.TryComplete();
 
-        return Task.CompletedTask;
+        return default;
     }
 }

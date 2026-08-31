@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
@@ -20,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <returns>The updated service collection.</returns>
         public static IServiceCollection AddScriptGrpc(this IServiceCollection services)
         {
+            services.TryAddSingleton<ServerDuplexChannelRegistry>();
             services.AddSingleton<IRpcWorkerChannelFactory, GrpcWorkerChannelFactory>();
             services.AddSingleton<FunctionRpc.FunctionRpcBase, FunctionRpcService>();
 

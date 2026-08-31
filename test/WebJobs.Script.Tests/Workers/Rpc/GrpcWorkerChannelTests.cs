@@ -49,7 +49,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly string _workerId = "testWorkerId";
         private readonly string _scriptRootPath = "c:\\testdir";
         private readonly IScriptEventManager _eventManager = new ScriptEventManager();
-        private readonly ServerDuplexChannel _channel;
+        private readonly ServerDuplexChannelRegistry _channelRegistry = new();
+        private readonly DuplexChannel<StreamingMessage> _channel;
+        private readonly FunctionRpcServiceEndpoints _serviceEndpoints;
         private readonly Mock<IScriptHostManager> _mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
         private readonly TestMetricsLogger _metricsLogger = new TestMetricsLogger();
         private readonly Mock<IWorkerConsoleLogSource> _mockConsoleLogger = new Mock<IWorkerConsoleLogSource>();
@@ -74,10 +76,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public GrpcWorkerChannelTests(ITestOutputHelper testOutput)
         {
-            _channel = _eventManager.AddServerDuplexChannel(_workerId);
+            _channel = _channelRegistry.CreateRegisteredChannel(_workerId);
+            Assert.True(_channelRegistry.TryGetServiceEndpoints(_workerId, out _serviceEndpoints));
             _testOutput = testOutput;
             _logger = new TestLogger("FunctionDispatcherTests", testOutput: testOutput);
-            _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
+            _testFunctionRpcService = new TestFunctionRpcService(_channelRegistry, _workerId, _logger, _expectedLogMsg);
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _testWorkerConfig.CountOptions.ProcessStartupTimeout = TimeSpan.FromSeconds(5);
             _testWorkerConfig.CountOptions.InitializationTimeout = TimeSpan.FromSeconds(5);
@@ -292,7 +295,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.Dispose();
             Assert.True(_channel.Reader.Completion.IsCompletedSuccessfully);
-            Assert.True(_channel.ServiceEndpoints.HostToWorkerReader.Completion.IsCompletedSuccessfully);
+            Assert.True(_serviceEndpoints.HostToWorkerReader.Completion.IsCompletedSuccessfully);
+            Assert.False(_channelRegistry.TryGetServiceEndpoints(_workerId, out _));
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
         }
@@ -2444,7 +2448,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             public void AllowDispose() => _allowDispose.TrySetResult();
 
-            protected override async Task DisposeAsyncCore()
+            protected override async ValueTask DisposeAsyncCore()
             {
                 Interlocked.Increment(ref _disposeCount);
                 await _allowDispose.Task;

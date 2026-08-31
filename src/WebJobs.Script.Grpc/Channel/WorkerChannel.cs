@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly WaitCallback _processInbound;
         private readonly IInvocationMessageDispatcherFactory _messageDispatcherFactory;
-        private readonly object _disposeLock = new object();
+        private readonly Lock _disposeLock = new();
         private readonly object _syncLock = new object();
         private readonly object _metadataLock = new object();
         private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new();

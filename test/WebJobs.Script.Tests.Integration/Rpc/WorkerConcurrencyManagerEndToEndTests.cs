@@ -52,12 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         internal class TestScriptEventManager : IScriptEventManager, IDisposable
         {
             private readonly IScriptEventManager _scriptEventManager = new ScriptEventManager();
-            private readonly TimeSpan _delay;
-
-            public TestScriptEventManager(TimeSpan delay)
-            {
-                _delay = delay;
-            }
 
             public void Publish(ScriptEvent scriptEvent)
             {
@@ -73,24 +67,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public IDisposable Subscribe(IObserver<ScriptEvent> observer) => _scriptEventManager.Subscribe(observer);
 
             public void Dispose() => ((IDisposable)_scriptEventManager).Dispose();
+        }
 
-            public bool TryAddWorkerState<T>(string workerId, T state)
+        internal class TestServerDuplexChannelRegistry : ServerDuplexChannelRegistry
+        {
+            private readonly TimeSpan _delay;
+
+            public TestServerDuplexChannelRegistry(TimeSpan delay)
             {
-                if (state is ServerDuplexChannel && _delay > TimeSpan.Zero)
-                {
-                    state = (T)(object)new ServerDuplexChannel(
-                        new DelayedChannel<StreamingMessage>(_delay, ServerDuplexChannel.WorkerToHostOptions),
-                        Channel.CreateUnbounded<StreamingMessage>(ServerDuplexChannel.HostToWorkerOptions));
-                }
-
-                return _scriptEventManager.TryAddWorkerState(workerId, state);
+                _delay = delay;
             }
 
-            public bool TryGetWorkerState<T>(string workerId, out T state)
-                => _scriptEventManager.TryGetWorkerState(workerId, out state);
-
-            public bool TryRemoveWorkerState<T>(string workerId, out T state)
-                => _scriptEventManager.TryRemoveWorkerState(workerId, out state);
+            protected override ServerDuplexChannel CreateChannel()
+            {
+                return new ServerDuplexChannel(
+                    new DelayedChannel<StreamingMessage>(_delay, ServerDuplexChannel.WorkerToHostOptions),
+                    Channel.CreateUnbounded<StreamingMessage>(ServerDuplexChannel.HostToWorkerOptions));
+            }
 
             public class DelayedChannel<T> : Channel<T>
             {

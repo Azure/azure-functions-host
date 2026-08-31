@@ -113,12 +113,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         private class TestGrpcWorkerChannelFactory : GrpcWorkerChannelFactory
         {
-            public TestGrpcWorkerChannelFactory(IScriptEventManager eventManager, IScriptHostManager hostManager, IEnvironment environment, ILoggerFactory loggerFactory,
+            public TestGrpcWorkerChannelFactory(ServerDuplexChannelRegistry channelRegistry, IScriptEventManager eventManager,
+                IScriptHostManager hostManager, IEnvironment environment, ILoggerFactory loggerFactory,
                 IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager,
                 ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
                 IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IAppCapabilitiesStore appCapabilitiesStore,
                 IHttpProxyService httpProxyService)
-                : base(eventManager, hostManager, environment, loggerFactory, applicationHostOptions, rpcWorkerProcessManager,
+                : base(channelRegistry, eventManager, hostManager, environment, loggerFactory, applicationHostOptions, rpcWorkerProcessManager,
                     sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions, appCapabilitiesStore, httpProxyService)
             {
             }

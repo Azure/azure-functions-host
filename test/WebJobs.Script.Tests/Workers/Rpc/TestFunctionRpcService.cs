@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
@@ -22,13 +21,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private ChannelWriter<StreamingMessage> _inboundWriter;
         private ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action<StreamingMessage>> _handlers = new();
 
-        public TestFunctionRpcService(IScriptEventManager eventManager, string workerId, TestLogger logger, string expectedLogMsg = "")
+        public TestFunctionRpcService(ServerDuplexChannelRegistry channelRegistry, string workerId, TestLogger logger, string expectedLogMsg = "")
         {
             _logger = logger;
             _workerId = workerId;
-            if (eventManager.TryGetServerDuplexChannel(workerId, out ServerDuplexChannel channel))
+            if (channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcServiceEndpoints endpoints))
             {
-                FunctionRpcServiceEndpoints endpoints = channel.ServiceEndpoints;
                 _ = ListenAsync(endpoints.HostToWorkerReader, expectedLogMsg);
                 _inboundWriter = endpoints.WorkerToHostWriter;
 
