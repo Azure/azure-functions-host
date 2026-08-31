@@ -148,7 +148,9 @@ internal sealed partial class FunctionRpcRelay
             }
 
             await linkedSource.CancelAsync();
-            await ObserveStreamOperationAfterTerminationAsync(side, "read", readTask);
+            // Reads can remain blocked until the transport releases them, so observe that task
+            // out of band. The write must finish before gRPC writes trailers to the same response.
+            _ = ObserveStreamOperationAfterTerminationAsync(side, "read", readTask);
             await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask);
 
             FunctionRpcRelayTerminalState finalState = await _completion.Task;

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
+using Grpc.AspNetCore.Server;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using GrpcRpcException = Grpc.Core.RpcException;
@@ -53,6 +54,11 @@ internal sealed class FunctionRpcRelayService : FunctionRpc.FunctionRpcBase
         }
         catch (FunctionRpcRelayTerminatedException exception)
         {
+            if (exception.TerminalState.Reason == FunctionRpcRelayTerminationReason.Shutdown)
+            {
+                context.GetHttpContext().Abort();
+            }
+
             StatusCode statusCode = exception.TerminalState.Reason switch
             {
                 FunctionRpcRelayTerminationReason.PeerClosed => StatusCode.Unavailable,
