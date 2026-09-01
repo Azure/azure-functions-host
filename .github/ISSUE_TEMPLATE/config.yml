@@ -1,0 +1,10 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Azure Functions platform issue (deployments, scaling, ARM, provisioning)
+    url: https://learn.microsoft.com/azure/azure-portal/supportability/how-to-create-azure-support-request
+    about: >-
+      This repository is for the Azure Functions Host / Runtime only. For platform-level
+      concerns (deployments, remote build/OneDeploy, scaling, availability, ARM/control
+      plane, provisioning, portal, billing, quotas, networking, or storage), please open
+      a formal Azure support case so the appropriate team can investigate with access to
+      your resources and telemetry.
