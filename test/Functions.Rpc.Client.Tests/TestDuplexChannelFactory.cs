@@ -3,8 +3,8 @@
 
 using System;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
@@ -14,9 +14,9 @@ namespace Azure.Functions.Rpc.Client.Tests;
 internal sealed class TestDuplexChannelFactory<T> : IDuplexChannelFactory<T>
     where T : class
 {
-    private readonly Func<Channel<T>> _channelFactory;
+    private readonly Func<DuplexChannel<T>> _channelFactory;
 
-    internal TestDuplexChannelFactory(Func<Channel<T>> channelFactory)
+    internal TestDuplexChannelFactory(Func<DuplexChannel<T>> channelFactory)
     {
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
     }
@@ -26,7 +26,7 @@ internal sealed class TestDuplexChannelFactory<T> : IDuplexChannelFactory<T>
     internal int InvocationCount { get; private set; }
 
     /// <inheritdoc />
-    public Task<Channel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
+    public Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Endpoint = endpoint;

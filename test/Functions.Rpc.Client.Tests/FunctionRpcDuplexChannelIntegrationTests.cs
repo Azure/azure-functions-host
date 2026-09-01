@@ -7,8 +7,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -25,8 +25,7 @@ public class FunctionRpcDuplexChannelIntegrationTests
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
-        Channel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
-        await using IAsyncDisposable channelLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(channel);
+        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         StreamingMessage outbound = new() { RequestId = "outbound" };
@@ -48,8 +47,7 @@ public class FunctionRpcDuplexChannelIntegrationTests
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
-        Channel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
-        await using IAsyncDisposable channelLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(channel);
+        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         server.Service.CompleteResponses();
@@ -64,8 +62,7 @@ public class FunctionRpcDuplexChannelIntegrationTests
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
-        Channel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
-        await using IAsyncDisposable channelLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(channel);
+        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         await server.Service.SendResponseAsync(new StreamingMessage { RequestId = "one" });
@@ -85,8 +82,7 @@ public class FunctionRpcDuplexChannelIntegrationTests
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
-        Channel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
-        await using IAsyncDisposable channelLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(channel);
+        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
         await server.Service.Connected.WaitAsync(TestTimeout);
         server.Service.CompleteResponses(new InvalidOperationException("server failure"));
 
@@ -123,11 +119,10 @@ public class FunctionRpcDuplexChannelIntegrationTests
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
-        Channel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
-        IAsyncDisposable channelLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(channel);
+        DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
-        await channelLifetime.DisposeAsync();
+        await channel.DisposeAsync();
 
         await channel.Reader.Completion.WaitAsync(TestTimeout);
     }
@@ -138,8 +133,7 @@ public class FunctionRpcDuplexChannelIntegrationTests
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync(mapService: false);
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
-        Channel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
-        await using IAsyncDisposable channelLifetime = Assert.IsAssignableFrom<IAsyncDisposable>(channel);
+        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
 
         await Assert.ThrowsAsync<Grpc.Core.RpcException>(() => channel.Reader.Completion.WaitAsync(TestTimeout));
     }
@@ -160,7 +154,7 @@ public class FunctionRpcDuplexChannelIntegrationTests
         return port;
     }
 
-    private static async Task<IReadOnlyList<StreamingMessage>> ReadAllAsync(Channel<StreamingMessage> channel)
+    private static async Task<IReadOnlyList<StreamingMessage>> ReadAllAsync(DuplexChannel<StreamingMessage> channel)
     {
         List<StreamingMessage> messages = [];
         using CancellationTokenSource timeoutSource = new(TestTimeout);
@@ -172,7 +166,7 @@ public class FunctionRpcDuplexChannelIntegrationTests
         return messages;
     }
 
-    private static async Task<StreamingMessage> ReadNextAsync(Channel<StreamingMessage> channel)
+    private static async Task<StreamingMessage> ReadNextAsync(DuplexChannel<StreamingMessage> channel)
     {
         using CancellationTokenSource timeoutSource = new(TestTimeout);
         return await channel.Reader.ReadAsync(timeoutSource.Token);

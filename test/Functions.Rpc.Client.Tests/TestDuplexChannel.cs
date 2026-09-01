@@ -5,26 +5,33 @@ using System;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
 /// <summary>
 /// Provides a replaceable duplex channel without creating network or gRPC resources.
 /// </summary>
-internal sealed class TestDuplexChannel<T> : Channel<T>, IAsyncDisposable
+internal sealed class TestDuplexChannel<T> : DuplexChannel<T>
     where T : class
 {
+    private readonly TaskCompletionSource _allowDispose = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _disposeStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Channel<T> _requests;
     private readonly Channel<T> _responses;
     private int _disposeCount;
-    private int _disposed;
 
-    internal TestDuplexChannel()
+    internal TestDuplexChannel(bool blockDisposal = false)
     {
         _requests = Channel.CreateUnbounded<T>();
         _responses = Channel.CreateUnbounded<T>();
         Reader = _responses.Reader;
         Writer = _requests.Writer;
+
+        if (!blockDisposal)
+        {
+            _allowDispose.TrySetResult();
+        }
     }
 
     /// <summary>
@@ -33,14 +40,24 @@ internal sealed class TestDuplexChannel<T> : Channel<T>, IAsyncDisposable
     internal int DisposeCount => Interlocked.CompareExchange(ref _disposeCount, 0, 0);
 
     /// <summary>
+    /// Gets a task that completes when asynchronous disposal starts.
+    /// </summary>
+    internal Task DisposeStarted => _disposeStarted.Task;
+
+    /// <summary>
     /// Gets requests written by the channel consumer.
     /// </summary>
     internal ChannelReader<T> Requests => _requests.Reader;
 
     /// <summary>
-    /// Completes the response boundary, optionally with a transport failure.
+    /// Allows a blocked asynchronous disposal operation to complete.
     /// </summary>
-    /// <param name="exception">The transport failure, or <see langword="null"/> for clean completion.</param>
+    internal void AllowDispose() => _allowDispose.TrySetResult();
+
+    /// <summary>
+    /// Completes the response boundary, optionally with a channel failure.
+    /// </summary>
+    /// <param name="exception">The channel failure, or <see langword="null"/> for clean completion.</param>
     internal void CompleteResponses(Exception exception = null)
     {
         _requests.Writer.TryComplete(exception);
@@ -56,19 +73,12 @@ internal sealed class TestDuplexChannel<T> : Channel<T>, IAsyncDisposable
     internal ValueTask SendResponseAsync(T response, CancellationToken cancellationToken = default)
         => _responses.Writer.WriteAsync(response, cancellationToken);
 
-    /// <summary>
-    /// Completes both channel boundaries.
-    /// </summary>
-    /// <returns>A completed task.</returns>
-    public ValueTask DisposeAsync()
+    protected override async ValueTask DisposeAsyncCore()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) == 0)
-        {
-            Interlocked.Increment(ref _disposeCount);
-            _requests.Writer.TryComplete();
-            _responses.Writer.TryComplete();
-        }
-
-        return ValueTask.CompletedTask;
+        Interlocked.Increment(ref _disposeCount);
+        _requests.Writer.TryComplete();
+        _responses.Writer.TryComplete();
+        _disposeStarted.TrySetResult();
+        await _allowDispose.Task;
     }
 }

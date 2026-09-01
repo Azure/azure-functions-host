@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
-        protected override int WorkerProcessId => _rpcWorkerProcess.Id;
+        internal override int WorkerProcessId => _rpcWorkerProcess.Id;
 
         public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             await _rpcWorkerProcess.StartProcessAsync(cancellationToken);
             State |= RpcWorkerChannelState.Initializing;
             Task<int> exited = _rpcWorkerProcess.WaitForExitAsync(cancellationToken);
-            Task winner = await Task.WhenAny(WorkerInitTask.Task, exited).WaitAsync(cancellationToken);
+            Task winner = await Task.WhenAny(WorkerInitialization, exited).WaitAsync(cancellationToken);
             await winner;
 
             if (winner == exited)
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             base.Dispose(disposing);
         }
 
-        protected override void DisposeWorkerResources()
+        internal override void DisposeWorkerResources()
         {
             (_rpcWorkerProcess as IDisposable)?.Dispose();
         }

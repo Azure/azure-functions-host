@@ -7,12 +7,13 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Core;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
 /// Adapts an SDK <see cref="AsyncDuplexStreamingCall{TRequest, TResponse}"/> to a bidirectional
-/// <see cref="Channel{T}"/>.
+/// <see cref="DuplexChannel{T}"/>.
 /// </summary>
 /// <remarks>
 /// Writes complete when a request is admitted to the outgoing queue, not when it reaches the peer.
@@ -20,7 +21,7 @@ namespace Azure.Functions.Rpc.Client;
 /// The channel supports one response reader and multiple concurrent request writers.
 /// </remarks>
 /// <typeparam name="T">The message type used in both directions.</typeparam>
-internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
+internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
     where T : class
 {
     private readonly AsyncDuplexStreamingCall<T, T> _call;
@@ -28,9 +29,7 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
     private readonly Channel<T> _outgoing;
     private readonly Task _readPump;
     private readonly CancellationTokenSource _shutdownSource = new();
-    private readonly Lock _syncLock = new();
     private readonly Task _writePump;
-    private Task _disposeTask;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GrpcDuplexChannel{T}"/> class.
@@ -59,21 +58,7 @@ internal sealed class GrpcDuplexChannel<T> : Channel<T>, IAsyncDisposable
         _writePump = PumpRequestsAsync();
     }
 
-    /// <summary>
-    /// Aborts the duplex call, stops both message pumps, and releases the call lifetime.
-    /// Concurrent callers share the same cleanup operation.
-    /// </summary>
-    /// <returns>A task representing asynchronous cleanup.</returns>
-    public ValueTask DisposeAsync()
-    {
-        lock (_syncLock)
-        {
-            _disposeTask ??= DisposeCoreAsync();
-            return new ValueTask(_disposeTask);
-        }
-    }
-
-    private async Task DisposeCoreAsync()
+    protected override async ValueTask DisposeAsyncCore()
     {
         Exception cleanupException = null;
         _outgoing.Writer.TryComplete();

@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
+    <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
   </ItemGroup>
 
 </Project>
