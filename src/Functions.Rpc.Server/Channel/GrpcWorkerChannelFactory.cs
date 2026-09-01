@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     {
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcWorkerProcessFactory _rpcWorkerProcessFactory = null;
+        private readonly ServerDuplexChannelRegistry _channelRegistry;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IScriptHostManager _hostManager = null;
         private readonly IEnvironment _environment = null;
@@ -32,11 +33,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IAppCapabilitiesStore _appCapabilitiesStore;
         private readonly IHttpProxyService _httpProxyService;
 
-        public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IScriptHostManager hostManager, IEnvironment environment, ILoggerFactory loggerFactory,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager,
-            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, IAppCapabilitiesStore appCapabilitiesStore,
-            IHttpProxyService httpProxyService)
+        public GrpcWorkerChannelFactory(ServerDuplexChannelRegistry channelRegistry, IScriptEventManager eventManager, IScriptHostManager hostManager,
+            IEnvironment environment, ILoggerFactory loggerFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+            IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager,
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+            IAppCapabilitiesStore appCapabilitiesStore, IHttpProxyService httpProxyService)
         {
+            _channelRegistry = channelRegistry;
             _eventManager = eventManager;
             _hostManager = hostManager;
             _loggerFactory = loggerFactory;
@@ -58,21 +61,26 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 throw new InvalidOperationException($"WorkerConfig for runtime: {runtime} not found");
             }
             string workerId = Guid.NewGuid().ToString();
-            _eventManager.AddGrpcChannels(workerId); // prepare the inbound/outbound dedicated channels
+            DuplexChannel<StreamingMessage> channelLease = _channelRegistry.CreateLease(workerId);
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
             IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
 
-            return CreateInternal(workerId, _eventManager, _hostManager, languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger, attemptCount,
-                _environment, _applicationHostOptions, _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions, _appCapabilitiesStore, _httpProxyService);
+            return CreateInternal(workerId, channelLease, _eventManager, _hostManager,
+                languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger, attemptCount, _environment, _applicationHostOptions,
+                _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions, _appCapabilitiesStore, _httpProxyService);
         }
 
-        internal virtual IRpcWorkerChannel CreateInternal(string workerId, IScriptEventManager eventManager, IScriptHostManager hostManager, RpcWorkerConfig languageWorkerConfig, IWorkerProcess rpcWorkerProcess,
-            ILogger workerLogger, IMetricsLogger metricsLogger, int attemptCount, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-            ISharedMemoryManager sharedMemoryManager, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+        internal virtual IRpcWorkerChannel CreateInternal(string workerId, DuplexChannel<StreamingMessage> ownedChannel,
+            IScriptEventManager eventManager, IScriptHostManager hostManager,
+            RpcWorkerConfig languageWorkerConfig, IWorkerProcess rpcWorkerProcess, ILogger workerLogger, IMetricsLogger metricsLogger,
+            int attemptCount, IEnvironment environment,
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ISharedMemoryManager sharedMemoryManager,
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
             IAppCapabilitiesStore appCapabilitiesStore, IHttpProxyService httpProxyService)
         {
             return new GrpcWorkerChannel(
                          workerId,
+                         ownedChannel,
                          eventManager,
                          hostManager,
                          languageWorkerConfig,

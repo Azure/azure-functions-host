@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc;
 
@@ -30,7 +30,7 @@ internal interface IInvocationMessageDispatcher
     /// to be thread-safe.
     /// </summary>
     /// <param name="msg">The RpcLog message. Implementors can assume that this message is an RpcLog.</param>
-    void DispatchRpcLog(InboundGrpcEvent msg);
+    void DispatchRpcLog(StreamingMessage msg);
 
     /// <summary>
     /// Inspects an incoming InvocationResponse message and dispatches to a Thread or background Task as quickly as possible.
@@ -39,5 +39,5 @@ internal interface IInvocationMessageDispatcher
     /// does not need to be thread-safe.
     /// </summary>
     /// <param name="msg">The InvocationResponse message. Implementors can assume that this message is an InvocationResponse.</param>
-    void DispatchInvocationResponse(InboundGrpcEvent msg);
+    void DispatchInvocationResponse(StreamingMessage msg);
 }

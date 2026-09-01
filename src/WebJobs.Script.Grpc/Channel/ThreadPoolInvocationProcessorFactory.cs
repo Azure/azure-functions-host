@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading;
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc;
 
@@ -22,7 +22,7 @@ internal class ThreadPoolInvocationProcessorFactory : IInvocationMessageDispatch
     // always return a single instance
     public IInvocationMessageDispatcher Create(string invocationId) => this;
 
-    public void DispatchRpcLog(InboundGrpcEvent msg) => ThreadPool.QueueUserWorkItem(_callback, msg);
+    public void DispatchRpcLog(StreamingMessage msg) => ThreadPool.QueueUserWorkItem(_callback, msg);
 
-    public void DispatchInvocationResponse(InboundGrpcEvent msg) => ThreadPool.QueueUserWorkItem(_callback, msg);
+    public void DispatchInvocationResponse(StreamingMessage msg) => ThreadPool.QueueUserWorkItem(_callback, msg);
 }
