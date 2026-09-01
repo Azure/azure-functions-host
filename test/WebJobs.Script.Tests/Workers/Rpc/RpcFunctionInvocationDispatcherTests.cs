@@ -59,6 +59,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void FunctionDispatcher_ErrorEventsThreshold_DefaultsToThree_WhenWorkerConfigIsIncomplete()
+        {
+            IList<RpcWorkerConfig> workerConfigs =
+            [
+                new(),
+                new()
+                {
+                    Description = new RpcWorkerDescription()
+                },
+                new()
+                {
+                    Description = TestHelpers.GetTestWorkerDescription(RpcWorkerConstants.NodeLanguageWorkerName, ".js"),
+                    CountOptions = null
+                }
+            ];
+
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(
+                runtime: RpcWorkerConstants.NodeLanguageWorkerName, workerConfigs: workerConfigs);
+
+            Assert.Equal(3, functionDispatcher.ErrorEventsThreshold);
+        }
+
+        [Fact]
         public async Task FunctionDispatcher_ErrorEventsThreshold_RemainsThree_WhenNoWorkerConfigMatches()
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(runtime: RpcWorkerConstants.PythonLanguageWorkerName);

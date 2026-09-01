@@ -160,8 +160,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (!string.IsNullOrEmpty(workerRuntime))
             {
                 var workerConfig = _workerConfigs
-                    .FirstOrDefault(c => c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase));
-                if (workerConfig is not null)
+                    .FirstOrDefault(c => string.Equals(c.Description?.Language, workerRuntime, StringComparison.InvariantCultureIgnoreCase));
+                if (workerConfig?.CountOptions is not null)
                 {
                     SetErrorEventsThreshold(workerConfig.CountOptions.ProcessCount);
                 }
