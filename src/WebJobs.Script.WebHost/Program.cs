@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             ArgumentNullException.ThrowIfNull(host);
 
-            // This is exactly what Generic Host's RunAsync does, but we need to ensure StopAsync is called if StopApplication occurs during StartAsync.
+            // This mirrors Generic Host's RunAsync, but ensures StopAsync is called if StopApplication occurs during StartAsync.
             // See https://github.com/Azure/azure-functions-host/issues/11954 for details.
             try
             {
@@ -51,10 +51,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     await host.StartAsync();
                 }
-                catch (OperationCanceledException) when (applicationLifetime.ApplicationStopping.IsCancellationRequested)
+                catch (Exception startupException) when (applicationLifetime.ApplicationStopping.IsCancellationRequested)
                 {
                     // Generic Host's RunAsync skips StopAsync when StopApplication cancels startup.
-                    await host.StopAsync(CancellationToken.None);
+                    try
+                    {
+                        await host.StopAsync(CancellationToken.None);
+                    }
+                    catch (Exception shutdownException)
+                    {
+                        throw new AggregateException("Host startup failed and shutdown also failed.", startupException, shutdownException);
+                    }
+
                     throw;
                 }
 

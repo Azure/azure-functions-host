@@ -65,6 +65,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         }
 
         [Fact]
+        public async Task RunHostAsync_StopApplicationDuringOuterHostStartupWithNonCancellationException_StopsHostedServices()
+        {
+            var startedService = new TrackingHostedService();
+            using IHost host = new HostBuilder()
+                .ConfigureServices(services =>
+                {
+                    services.AddSingleton<IScriptApplicationLifetime, ScriptApplicationLifetime>();
+                    services.AddSingleton<IHostedService>(startedService);
+                    services.AddSingleton<StopApplicationAndThrowHostedService>();
+                    services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<StopApplicationAndThrowHostedService>());
+                })
+                .Build();
+            var startupService = host.Services.GetRequiredService<StopApplicationAndThrowHostedService>();
+
+            InvalidOperationException exception =
+                await Assert.ThrowsAsync<InvalidOperationException>(() => Program.RunHostAsync(host));
+
+            Assert.Same(startupService.StartupException, exception);
+            Assert.True(startedService.Started);
+            Assert.True(startedService.Stopped);
+            Assert.True(startupService.Stopped);
+        }
+
+        [Fact]
+        public async Task RunHostAsync_StopApplicationDuringOuterHostStartupWhenStopFails_PreservesBothExceptions()
+        {
+            var stopFailureService = new ThrowingStopHostedService();
+            using IHost host = new HostBuilder()
+                .ConfigureServices(services =>
+                {
+                    services.AddSingleton<IScriptApplicationLifetime, ScriptApplicationLifetime>();
+                    services.AddSingleton<IHostedService>(stopFailureService);
+                    services.AddSingleton<WorkerStartupTimeoutHostedService>();
+                    services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<WorkerStartupTimeoutHostedService>());
+                })
+                .Build();
+
+            AggregateException exception =
+                await Assert.ThrowsAsync<AggregateException>(() => Program.RunHostAsync(host));
+
+            Assert.StartsWith("Host startup failed and shutdown also failed.", exception.Message);
+            Assert.Collection(
+                exception.InnerExceptions,
+                startupException => Assert.IsAssignableFrom<OperationCanceledException>(startupException),
+                shutdownException => Assert.Same(stopFailureService.StopException, shutdownException));
+        }
+
+        [Fact]
         public async Task RunHostAsync_StopApplicationAfterOuterHostStartup_StopsHostedServices()
         {
             var service = new TrackingHostedService();
@@ -104,6 +152,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Stopped = true;
                 return Task.CompletedTask;
+            }
+        }
+
+        private sealed class StopApplicationAndThrowHostedService : IHostedService
+        {
+            private readonly IScriptApplicationLifetime _applicationLifetime;
+
+            public StopApplicationAndThrowHostedService(IScriptApplicationLifetime applicationLifetime)
+            {
+                _applicationLifetime = applicationLifetime;
+            }
+
+            public InvalidOperationException StartupException { get; } = new("Startup failed.");
+
+            public bool Stopped { get; private set; }
+
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                _applicationLifetime.StopApplication();
+                throw StartupException;
+            }
+
+            public Task StopAsync(CancellationToken cancellationToken)
+            {
+                Stopped = true;
+                return Task.CompletedTask;
+            }
+        }
+
+        private sealed class ThrowingStopHostedService : IHostedService
+        {
+            public InvalidOperationException StopException { get; } = new("Shutdown failed.");
+
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task StopAsync(CancellationToken cancellationToken)
+            {
+                throw StopException;
             }
         }
 

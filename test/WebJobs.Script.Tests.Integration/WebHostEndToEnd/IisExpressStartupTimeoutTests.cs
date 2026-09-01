@@ -322,7 +322,7 @@ internal sealed class IisExpressTestServer : IAsyncDisposable
     private static void ConfigureHost(string hostRoot, string hostExecutablePath)
     {
         Directory.CreateDirectory(Path.Combine(hostRoot, "logs"));
-        // Keep the IIS request-drain wait short for this test harness. Production uses the 30-second Generic Host default.
+        // Keep the Generic Host's overall shutdown timeout short for this test harness. Production uses the 30-second default.
         string webConfig = $"""
             <?xml version="1.0" encoding="utf-8"?>
             <configuration>
