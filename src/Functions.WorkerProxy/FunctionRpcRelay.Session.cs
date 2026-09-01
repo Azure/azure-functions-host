@@ -258,13 +258,11 @@ internal sealed partial class FunctionRpcRelay
 
             if (terminalState.Reason == FunctionRpcRelayTerminationReason.Faulted)
             {
-                _logger.LogWarning(terminalState.Exception, "FunctionRpc relay session {SessionId} faulted on the {Side} side.",
-                    terminalState.SessionId, terminalState.Side);
+                Log.SessionFaulted(_logger, terminalState.Exception, terminalState.SessionId, terminalState.Side);
             }
             else
             {
-                _logger.LogDebug(terminalState.Exception, "FunctionRpc relay session {SessionId} terminated with {Reason} on the {Side} side.",
-                    terminalState.SessionId, terminalState.Reason, terminalState.Side);
+                Log.SessionTerminated(_logger, terminalState.Exception, terminalState.SessionId, terminalState.Reason, terminalState.Side);
             }
 
             try
@@ -296,9 +294,7 @@ internal sealed partial class FunctionRpcRelay
             }
             catch (Exception exception) when (_completion.Task.IsCompleted)
             {
-                _logger.LogDebug(exception,
-                    "FunctionRpc relay session {SessionId} observed a secondary {OperationName} stream failure on the {Side} side.",
-                    Id, operationName, side);
+                Log.SecondaryStreamFailure(_logger, exception, Id, operationName, side);
             }
         }
 
@@ -339,5 +335,20 @@ internal sealed partial class FunctionRpcRelay
                 _released.TrySetResult(true);
             }
         }
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(0, LogLevel.Warning, "FunctionRpc relay session {SessionId} faulted on the {Side} side.")]
+        public static partial void SessionFaulted(ILogger logger, Exception? exception, long sessionId, FunctionRpcRelaySide? side);
+
+        [LoggerMessage(1, LogLevel.Debug, "FunctionRpc relay session {SessionId} terminated with {Reason} on the {Side} side.")]
+        public static partial void SessionTerminated(ILogger logger, Exception? exception, long sessionId,
+            FunctionRpcRelayTerminationReason reason, FunctionRpcRelaySide? side);
+
+        [LoggerMessage(2, LogLevel.Debug,
+            "FunctionRpc relay session {SessionId} observed a secondary {OperationName} stream failure on the {Side} side.")]
+        public static partial void SecondaryStreamFailure(ILogger logger, Exception exception, long sessionId, string operationName,
+            FunctionRpcRelaySide side);
     }
 }
