@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class RpcFunctionInvocationDispatcher : IFunctionInvocationDispatcher
     {
+        private const int ErrorEventsThresholdMultiplier = 3;
         private static readonly int MultiLanguageDefaultProcessCount = 1;
 
         private readonly IMetricsLogger _metricsLogger;
@@ -102,21 +103,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _hostingConfigOptions = hostingConfigOptions;
             _hostMetrics = hostMetrics ?? throw new ArgumentNullException(nameof(hostMetrics));
             State = FunctionInvocationDispatcherState.Default;
+            _maxProcessCount = new Lazy<Task<int>>(GetMaxProcessCount);
+            InitializeErrorEventsThreshold(_workerRuntime);
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>().Subscribe(WorkerError);
             _workerRestartSubscription = _eventManager.OfType<WorkerRestartEvent>().Subscribe(WorkerRestart);
-
             _shutdownStandbyWorkerChannels = ShutdownWebhostLanguageWorkerChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
-
-            _maxProcessCount = new Lazy<Task<int>>(GetMaxProcessCount);
         }
 
         internal Task<int> MaxProcessCount => _maxProcessCount.Value;
 
         public FunctionInvocationDispatcherState State { get; private set; }
 
-        public int ErrorEventsThreshold { get; private set; }
+        public int ErrorEventsThreshold { get; private set; } = ErrorEventsThresholdMultiplier;
 
         public IJobHostRpcWorkerChannelManager JobHostLanguageWorkerChannelManager => _jobHostLanguageWorkerChannelManager;
 
@@ -149,6 +149,30 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return (await GetAllWorkerChannelsAsync()).Count();
         }
 
+        private void InitializeErrorEventsThreshold(string workerRuntime)
+        {
+            if (_environment.IsMultiLanguageRuntimeEnvironment())
+            {
+                SetErrorEventsThreshold(MultiLanguageDefaultProcessCount);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(workerRuntime))
+            {
+                var workerConfig = _workerConfigs
+                    .FirstOrDefault(c => c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase));
+                if (workerConfig is not null)
+                {
+                    SetErrorEventsThreshold(workerConfig.CountOptions.ProcessCount);
+                }
+            }
+        }
+
+        private void SetErrorEventsThreshold(int maxProcessCount)
+        {
+            ErrorEventsThreshold = ErrorEventsThresholdMultiplier * Math.Max(MultiLanguageDefaultProcessCount, maxProcessCount);
+        }
+
         internal async Task InitializeJobhostLanguageWorkerChannelAsync(IEnumerable<string> languages = null)
         {
             if (languages == null)
@@ -174,8 +198,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", language, rpcWorkerChannel.Id);
 
                 // if the worker is indexing, we will not have function metadata yet. So, we cannot set up invocation buffers or send load requests
-                rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+                if (_functions is not null)
+                {
+                    rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
+                    rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+                }
             }
             SetFunctionDispatcherStateToInitializedAndLog();
         }
@@ -325,7 +352,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _restartWait = workerConfig?.CountOptions.ProcessRestartInterval ?? _defaultProcessRestartInterval;
                 _shutdownTimeout = workerConfig?.CountOptions.ProcessShutdownTimeout ?? _defaultProcessShutdownInterval;
             }
-            ErrorEventsThreshold = 3 * await _maxProcessCount.Value;
+
+            // This was initialized to a default, but it's possible that the worker name was not known at that time. Re-initialize now just in case it's changed.
+            SetErrorEventsThreshold(await _maxProcessCount.Value);
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs) || _environment.IsMultiLanguageRuntimeEnvironment())
             {
