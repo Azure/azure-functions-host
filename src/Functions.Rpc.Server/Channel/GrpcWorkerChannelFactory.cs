@@ -61,11 +61,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 throw new InvalidOperationException($"WorkerConfig for runtime: {runtime} not found");
             }
             string workerId = Guid.NewGuid().ToString();
-            DuplexChannel<StreamingMessage> channel = _channelRegistry.CreateRegisteredChannel(workerId);
+            DuplexChannel<StreamingMessage> channelLease = _channelRegistry.CreateLease(workerId);
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
             IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
 
-            return CreateInternal(workerId, channel, _eventManager, _hostManager,
+            return CreateInternal(workerId, channelLease, _eventManager, _hostManager,
                 languageWorkerConfig, rpcWorkerProcess, workerLogger, metricsLogger, attemptCount, _environment, _applicationHostOptions,
                 _sharedMemoryManager, _workerConcurrencyOptions, _hostingConfigOptions, _appCapabilitiesStore, _httpProxyService);
         }

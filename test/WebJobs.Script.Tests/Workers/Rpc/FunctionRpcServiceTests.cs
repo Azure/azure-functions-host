@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             const string workerId = "worker-id";
             var channelRegistry = new ServerDuplexChannelRegistry();
-            await using DuplexChannel<StreamingMessage> channel = channelRegistry.CreateRegisteredChannel(workerId);
+            await using DuplexChannel<StreamingMessage> channelLease = channelRegistry.CreateLease(workerId);
             var service = new FunctionRpcService(channelRegistry, NullLogger<FunctionRpcService>.Instance);
             var requestStream = new TestAsyncStreamReader<StreamingMessage>();
             var responseStream = new TestServerStreamWriter<StreamingMessage>();
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Task eventStreamTask = service.EventStream(requestStream, responseStream, context.Object);
 
-            StreamingMessage receivedStartStream = await channel.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+            StreamingMessage receivedStartStream = await channelLease.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
             Assert.Same(startStreamMessage, receivedStartStream);
 
             var inboundMessage = new StreamingMessage
@@ -47,14 +47,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             await requestStream.WriteAsync(inboundMessage);
 
-            StreamingMessage receivedInbound = await channel.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+            StreamingMessage receivedInbound = await channelLease.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
             Assert.Same(inboundMessage, receivedInbound);
 
             var outboundMessage = new StreamingMessage
             {
                 WorkerInitRequest = new WorkerInitRequest(),
             };
-            await channel.Writer.WriteAsync(outboundMessage);
+            await channelLease.Writer.WriteAsync(outboundMessage);
 
             StreamingMessage receivedOutbound = await responseStream.ReadAsync().WaitAsync(TimeSpan.FromSeconds(5));
             Assert.Same(outboundMessage, receivedOutbound);

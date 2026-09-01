@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly string _scriptRootPath = "c:\\testdir";
         private readonly IScriptEventManager _eventManager = new ScriptEventManager();
         private readonly ServerDuplexChannelRegistry _channelRegistry = new();
-        private readonly DuplexChannel<StreamingMessage> _channel;
+        private readonly DuplexChannel<StreamingMessage> _channelLease;
         private readonly FunctionRpcChannelEndpoints _serviceEndpoints;
         private readonly Mock<IScriptHostManager> _mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
         private readonly TestMetricsLogger _metricsLogger = new TestMetricsLogger();
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public GrpcWorkerChannelTests(ITestOutputHelper testOutput)
         {
-            _channel = _channelRegistry.CreateRegisteredChannel(_workerId);
+            _channelLease = _channelRegistry.CreateLease(_workerId);
             Assert.True(_channelRegistry.TryGetServiceEndpoints(_workerId, out _serviceEndpoints));
             _testOutput = testOutput;
             _logger = new TestLogger("FunctionDispatcherTests", testOutput: testOutput);
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _channel,
+               _channelLease,
                _eventManager,
                _mockScriptHostManager.Object,
                _testWorkerConfig,
@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _channel,
+               _channelLease,
                _eventManager,
                _mockScriptHostManager.Object,
                _testWorkerConfig,
@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
 
             _workerChannel.Dispose();
-            Assert.True(_channel.Reader.Completion.IsCompletedSuccessfully);
+            Assert.True(_channelLease.Reader.Completion.IsCompletedSuccessfully);
             Assert.True(_serviceEndpoints.HostToWorkerReader.Completion.IsCompletedSuccessfully);
             Assert.False(_channelRegistry.TryGetServiceEndpoints(_workerId, out _));
             var traces = _logger.GetLogMessages();
@@ -344,7 +344,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.Equal(1, channel.DisposeCount);
 
-            await _channel.DisposeAsync();
+            await _channelLease.DisposeAsync();
         }
 
         [Fact]
@@ -773,7 +773,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Guid invocationId = Guid.NewGuid();
             GrpcWorkerChannel channel = new GrpcWorkerChannel(
                _workerId,
-               _channel,
+               _channelLease,
                _eventManager,
                _mockScriptHostManager.Object,
                _testWorkerConfig,
@@ -1667,7 +1667,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _channel,
+               _channelLease,
                _eventManager,
                _mockScriptHostManager.Object,
                config,
@@ -1710,7 +1710,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, null);
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _channel,
+               _channelLease,
                _eventManager,
                _mockScriptHostManager.Object,
                config,

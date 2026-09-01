@@ -11,41 +11,41 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc;
 
 internal class ServerDuplexChannelRegistry
 {
-    private readonly ConcurrentDictionary<string, Registration> _registrations = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, Lease> _leases = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Creates and registers a channel whose ownership transfers to the caller.
+    /// Creates an exclusive channel lease whose ownership transfers to the caller.
     /// </summary>
     /// <param name="workerId">The worker identifier used to resolve the service endpoints.</param>
     /// <returns>
-    /// The registered channel. Disposing it unregisters the worker and disposes the underlying server channel.
+    /// The channel lease. Disposing it releases the worker registration and disposes the underlying server channel.
     /// </returns>
-    internal DuplexChannel<StreamingMessage> CreateRegisteredChannel(string workerId)
+    internal DuplexChannel<StreamingMessage> CreateLease(string workerId)
     {
         ArgumentException.ThrowIfNullOrEmpty(workerId);
 
         ServerDuplexChannel channel = CreateChannel();
-        var registration = new Registration(this, workerId, channel);
-        if (!_registrations.TryAdd(workerId, registration))
+        var lease = new Lease(this, workerId, channel);
+        if (!_leases.TryAdd(workerId, lease))
         {
-            registration.DisposeAsync().GetAwaiter().GetResult();
+            lease.DisposeAsync().GetAwaiter().GetResult();
             throw new ArgumentException("Duplicate worker id: " + workerId, nameof(workerId));
         }
 
-        return registration;
+        return lease;
     }
 
     /// <summary>
     /// Tries to get the borrowed endpoints used by <c>FunctionRpcService</c>.
     /// </summary>
     /// <param name="workerId">The worker identifier.</param>
-    /// <param name="endpoints">The borrowed service endpoints when registration exists.</param>
-    /// <returns><see langword="true"/> when the worker is registered; otherwise, <see langword="false"/>.</returns>
+    /// <param name="endpoints">The borrowed service endpoints when a lease exists.</param>
+    /// <returns><see langword="true"/> when the worker has an active lease; otherwise, <see langword="false"/>.</returns>
     internal bool TryGetServiceEndpoints(string workerId, out FunctionRpcChannelEndpoints endpoints)
     {
-        if (_registrations.TryGetValue(workerId, out Registration registration))
+        if (_leases.TryGetValue(workerId, out Lease lease))
         {
-            endpoints = registration.ServiceEndpoints;
+            endpoints = lease.ServiceEndpoints;
             return true;
         }
 
@@ -56,22 +56,22 @@ internal class ServerDuplexChannelRegistry
     /// <summary>
     /// Creates the underlying server channel.
     /// </summary>
-    /// <returns>The channel to own through the registration.</returns>
+    /// <returns>The channel owned by the lease.</returns>
     protected virtual ServerDuplexChannel CreateChannel() => new();
 
-    private void Unregister(string workerId, Registration registration)
+    private void Release(string workerId, Lease lease)
     {
-        ICollection<KeyValuePair<string, Registration>> registrations = _registrations;
-        registrations.Remove(new(workerId, registration));
+        ICollection<KeyValuePair<string, Lease>> leases = _leases;
+        leases.Remove(new(workerId, lease));
     }
 
-    private sealed class Registration : DuplexChannel<StreamingMessage>
+    private sealed class Lease : DuplexChannel<StreamingMessage>
     {
         private readonly ServerDuplexChannelRegistry _registry;
         private readonly string _workerId;
         private readonly ServerDuplexChannel _ownedChannel;
 
-        internal Registration(ServerDuplexChannelRegistry registry, string workerId, ServerDuplexChannel ownedChannel)
+        internal Lease(ServerDuplexChannelRegistry registry, string workerId, ServerDuplexChannel ownedChannel)
         {
             _registry = registry;
             _workerId = workerId;
@@ -85,7 +85,7 @@ internal class ServerDuplexChannelRegistry
 
         protected override ValueTask DisposeAsyncCore()
         {
-            _registry.Unregister(_workerId, this);
+            _registry.Release(_workerId, this);
             return _ownedChannel.DisposeAsync();
         }
     }
