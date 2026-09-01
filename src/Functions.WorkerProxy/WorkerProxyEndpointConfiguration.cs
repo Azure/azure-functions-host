@@ -13,7 +13,6 @@ namespace Azure.Functions.WorkerProxy;
 /// </summary>
 internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptions> workerProxyOptions) : IConfigureOptions<KestrelServerOptions>
 {
-    private readonly WorkerProxyOptions _options = workerProxyOptions.Value;
     private ListenOptions? _management;
     private ListenOptions? _runtime;
     private ListenOptions? _worker;
@@ -21,22 +20,24 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
     /// <inheritdoc />
     public void Configure(KestrelServerOptions options)
     {
+        WorkerProxyOptions configuredOptions = workerProxyOptions.Value;
+
         if (_management is not null || _runtime is not null || _worker is not null)
         {
             throw new InvalidOperationException("WorkerProxy Kestrel endpoints have already been configured.");
         }
 
-        options.ListenAnyIP(_options.ManagementPort, listener =>
+        options.ListenAnyIP(configuredOptions.ManagementPort, listener =>
         {
             listener.Protocols = HttpProtocols.Http1;
             _management = listener;
         });
-        options.ListenAnyIP(_options.RuntimeGrpcPort, listener =>
+        options.ListenAnyIP(configuredOptions.RuntimeGrpcPort, listener =>
         {
             listener.Protocols = HttpProtocols.Http2;
             _runtime = listener;
         });
-        options.Listen(IPAddress.Loopback, _options.WorkerGrpcPort, listener =>
+        options.Listen(IPAddress.Loopback, configuredOptions.WorkerGrpcPort, listener =>
         {
             listener.Protocols = HttpProtocols.Http2;
             _worker = listener;

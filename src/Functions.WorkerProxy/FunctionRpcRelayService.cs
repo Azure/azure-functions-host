@@ -19,15 +19,12 @@ namespace Azure.Functions.WorkerProxy;
 /// </remarks>
 internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints) : FunctionRpc.FunctionRpcBase
 {
-    private readonly FunctionRpcRelay _relay = relay;
-    private readonly WorkerProxyEndpointConfiguration _endpoints = endpoints;
-
     /// <inheritdoc />
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
         IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
     {
         HttpContext httpContext = context.GetHttpContext();
-        if (!_endpoints.TryGetRelaySide(httpContext.Connection.LocalPort, out FunctionRpcRelaySide side))
+        if (!endpoints.TryGetRelaySide(httpContext.Connection.LocalPort, out FunctionRpcRelaySide side))
         {
             throw new GrpcRpcException(new Status(StatusCode.Unimplemented, "FunctionRpc is unavailable on this listener."));
         }
@@ -35,7 +32,7 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
         FunctionRpcRelayTerminalState terminalState;
         try
         {
-            terminalState = await _relay.AttachAsync(side, requestStream, responseStream, context.CancellationToken);
+            terminalState = await relay.AttachAsync(side, requestStream, responseStream, context.CancellationToken);
         }
         catch (FunctionRpcRelayAttachmentException exception)
         {

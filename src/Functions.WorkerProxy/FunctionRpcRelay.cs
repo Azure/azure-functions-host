@@ -22,7 +22,6 @@ namespace Azure.Functions.WorkerProxy;
 internal sealed partial class FunctionRpcRelay(ILogger<FunctionRpcRelay> logger) : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
-    private readonly ILogger<FunctionRpcRelay> _logger = logger;
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
@@ -117,7 +116,7 @@ internal sealed partial class FunctionRpcRelay(ILogger<FunctionRpcRelay> logger)
                 ClearCurrentSessionLocked();
             }
 
-            session = _currentSession ??= new FunctionRpcRelaySession(Interlocked.Increment(ref _nextSessionId), _logger);
+            session = _currentSession ??= new FunctionRpcRelaySession(Interlocked.Increment(ref _nextSessionId), logger);
 
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)

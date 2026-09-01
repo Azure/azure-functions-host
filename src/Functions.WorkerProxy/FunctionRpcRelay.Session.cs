@@ -27,15 +27,9 @@ internal sealed partial class FunctionRpcRelay
 
         private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        private readonly ILogger _logger = logger;
         private FunctionRpcRelayTerminalState? _terminalState;
         private bool _runtimeAttached;
         private bool _workerAttached;
-
-        /// <summary>
-        /// Gets the relay session identifier.
-        /// </summary>
-        public long Id { get; } = id;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -166,7 +160,7 @@ internal sealed partial class FunctionRpcRelay
         /// </summary>
         public void RequestShutdown()
         {
-            TryTerminate(new FunctionRpcRelayTerminalState(Id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
+            TryTerminate(new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
         }
 
         private static Channel<StreamingMessage> CreateChannel()
@@ -211,7 +205,7 @@ internal sealed partial class FunctionRpcRelay
             {
                 await completedTask;
 
-                return new FunctionRpcRelayTerminalState(Id, FunctionRpcRelayTerminationReason.PeerClosed, side, Exception: null);
+                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.PeerClosed, side, Exception: null);
             }
             catch (OperationCanceledException exception)
             {
@@ -220,15 +214,15 @@ internal sealed partial class FunctionRpcRelay
                     return await _completion.Task;
                 }
 
-                return new FunctionRpcRelayTerminalState(Id, FunctionRpcRelayTerminationReason.Canceled, side, exception);
+                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Canceled, side, exception);
             }
             catch (Exception exception) when (callCancellationToken.IsCancellationRequested)
             {
-                return new FunctionRpcRelayTerminalState(Id, FunctionRpcRelayTerminationReason.Canceled, side, exception);
+                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Canceled, side, exception);
             }
             catch (Exception exception)
             {
-                return new FunctionRpcRelayTerminalState(Id, FunctionRpcRelayTerminationReason.Faulted, side, exception);
+                return new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Faulted, side, exception);
             }
         }
 
@@ -256,11 +250,11 @@ internal sealed partial class FunctionRpcRelay
 
             if (terminalState.Reason == FunctionRpcRelayTerminationReason.Faulted)
             {
-                Log.SessionFaulted(_logger, terminalState.Exception, terminalState.SessionId, terminalState.Side);
+                Log.SessionFaulted(logger, terminalState.Exception, terminalState.SessionId, terminalState.Side);
             }
             else
             {
-                Log.SessionTerminated(_logger, terminalState.Exception, terminalState.SessionId, terminalState.Reason, terminalState.Side);
+                Log.SessionTerminated(logger, terminalState.Exception, terminalState.SessionId, terminalState.Reason, terminalState.Side);
             }
 
             try
@@ -292,7 +286,7 @@ internal sealed partial class FunctionRpcRelay
             }
             catch (Exception exception) when (_completion.Task.IsCompleted)
             {
-                Log.SecondaryStreamFailure(_logger, exception, Id, operationName, side);
+                Log.SecondaryStreamFailure(logger, exception, id, operationName, side);
             }
         }
 
