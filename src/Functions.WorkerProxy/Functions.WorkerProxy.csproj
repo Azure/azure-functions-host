@@ -32,6 +32,11 @@
       Include="..\WebJobs.Script.Grpc\azure-functions-language-worker-protobuf\src\proto\**\*.proto"
       GrpcServices="server"
       ProtoRoot="..\WebJobs.Script.Grpc\azure-functions-language-worker-protobuf\src\proto" />
+    <Protobuf
+      Include="..\WebJobs.Script.Grpc\Protos\ExtensionRpc.proto"
+      AdditionalImportDirs="..\WebJobs.Script.Grpc\azure-functions-language-worker-protobuf\src\proto"
+      GrpcServices="server"
+      ProtoRoot="..\WebJobs.Script.Grpc\Protos" />
   </ItemGroup>
 
 </Project>
