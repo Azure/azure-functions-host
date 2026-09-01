@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         var workerId = currentMessage.StartStream?.WorkerId;
                         if (!string.IsNullOrEmpty(workerId) &&
-                            _channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcServiceEndpoints endpoints))
+                            _channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcChannelEndpoints endpoints))
                         {
                             // send work
                             _ = PushFromOutboundToGrpc(workerId, responseStream, endpoints.HostToWorkerReader, cts.Token);

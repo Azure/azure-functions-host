@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             const string workerId = "worker-id";
             var channelRegistry = new ServerDuplexChannelRegistry();
             DuplexChannel<StreamingMessage> channel = channelRegistry.CreateRegisteredChannel(workerId);
-            Assert.True(channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcServiceEndpoints serviceEndpoints));
+            Assert.True(channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcChannelEndpoints serviceEndpoints));
 
             var outbound = new StreamingMessage { RequestId = "outbound" };
             Assert.True(channel.Writer.TryWrite(outbound));
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             const string workerId = "worker-id";
             var channelRegistry = new ServerDuplexChannelRegistry();
             DuplexChannel<StreamingMessage> channel = channelRegistry.CreateRegisteredChannel(workerId);
-            Assert.True(channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcServiceEndpoints serviceEndpoints));
+            Assert.True(channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcChannelEndpoints serviceEndpoints));
 
             await channel.DisposeAsync();
 

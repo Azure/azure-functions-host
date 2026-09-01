@@ -41,7 +41,7 @@ internal class ServerDuplexChannelRegistry
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="endpoints">The borrowed service endpoints when registration exists.</param>
     /// <returns><see langword="true"/> when the worker is registered; otherwise, <see langword="false"/>.</returns>
-    internal bool TryGetServiceEndpoints(string workerId, out FunctionRpcServiceEndpoints endpoints)
+    internal bool TryGetServiceEndpoints(string workerId, out FunctionRpcChannelEndpoints endpoints)
     {
         if (_registrations.TryGetValue(workerId, out Registration registration))
         {
@@ -81,7 +81,7 @@ internal class ServerDuplexChannelRegistry
             Writer = ownedChannel.Writer;
         }
 
-        internal FunctionRpcServiceEndpoints ServiceEndpoints => _ownedChannel.ServiceEndpoints;
+        internal FunctionRpcChannelEndpoints ServiceEndpoints => _ownedChannel.ServiceEndpoints;
 
         protected override ValueTask DisposeAsyncCore()
         {

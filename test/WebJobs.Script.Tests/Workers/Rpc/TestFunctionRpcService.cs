@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _logger = logger;
             _workerId = workerId;
-            if (channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcServiceEndpoints endpoints))
+            if (channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcChannelEndpoints endpoints))
             {
                 _ = ListenAsync(endpoints.HostToWorkerReader, expectedLogMsg);
                 _inboundWriter = endpoints.WorkerToHostWriter;

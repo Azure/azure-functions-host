@@ -14,6 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc;
 /// <remarks>
 /// This value does not own the channel lifetime. The associated <see cref="ServerDuplexChannel"/> owns both endpoints.
 /// </remarks>
-internal readonly record struct FunctionRpcServiceEndpoints(
+internal readonly record struct FunctionRpcChannelEndpoints(
     ChannelReader<StreamingMessage> HostToWorkerReader,
     ChannelWriter<StreamingMessage> WorkerToHostWriter);

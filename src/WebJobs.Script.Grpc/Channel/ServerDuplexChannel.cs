@@ -50,7 +50,7 @@ internal sealed class ServerDuplexChannel : DuplexChannel<StreamingMessage>
     /// <summary>
     /// Gets the borrowed endpoints used by <c>FunctionRpcService</c> to bridge this channel to gRPC.
     /// </summary>
-    internal FunctionRpcServiceEndpoints ServiceEndpoints =>
+    internal FunctionRpcChannelEndpoints ServiceEndpoints =>
         new(_hostToWorker.Reader, _workerToHost.Writer);
 
     protected override ValueTask DisposeAsyncCore()

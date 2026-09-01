@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IScriptEventManager _eventManager = new ScriptEventManager();
         private readonly ServerDuplexChannelRegistry _channelRegistry = new();
         private readonly DuplexChannel<StreamingMessage> _channel;
-        private readonly FunctionRpcServiceEndpoints _serviceEndpoints;
+        private readonly FunctionRpcChannelEndpoints _serviceEndpoints;
         private readonly Mock<IScriptHostManager> _mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
         private readonly TestMetricsLogger _metricsLogger = new TestMetricsLogger();
         private readonly Mock<IWorkerConsoleLogSource> _mockConsoleLogger = new Mock<IWorkerConsoleLogSource>();
