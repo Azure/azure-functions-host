@@ -53,6 +53,8 @@ internal static class WorkerProxyApplication
         builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
         builder.Services.AddSingleton<ExtensionRpcStreamCoordinator>();
         builder.Services.AddSingleton<ExtensionRpcRelay>();
+        builder.Services.AddMetrics();
+        builder.Services.AddSingleton<ExtensionGrpcMetrics>();
         builder.Services.AddSingleton<ExtensionGrpcIngress>();
         ConfigureHttpForwarding(builder);
 
