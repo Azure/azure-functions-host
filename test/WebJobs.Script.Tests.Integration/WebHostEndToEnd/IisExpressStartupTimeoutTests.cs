@@ -102,7 +102,7 @@ internal sealed class IisExpressTestServer : IAsyncDisposable
     public static async Task<IisExpressTestServer> StartAsync()
     {
         IisExpressInstallation installation = IisExpressTestEnvironment.GetInstallation();
-        string testRoot = Path.Combine(TestHelpers.FunctionsTestDirectory, nameof(IisExpressStartupTimeoutTests), Guid.NewGuid().ToString("N"));
+        string testRoot = Directory.CreateTempSubdirectory($"{nameof(IisExpressStartupTimeoutTests)}-").FullName;
         string hostRoot = Path.Combine(testRoot, "host");
         string functionRoot = Path.Combine(testRoot, "function");
         string startupMarkerPath = Path.Combine(testRoot, "first-worker-started");
@@ -124,7 +124,7 @@ internal sealed class IisExpressTestServer : IAsyncDisposable
             var output = new ConcurrentQueue<string>();
             process = StartIisExpress(
                 installation.ExecutablePath, applicationHostConfigPath, functionRoot, Path.Combine(hostOutputPath, "workers"),
-                startupMarkerPath, port, output);
+                startupMarkerPath, testRoot, port, output);
 
             return new IisExpressTestServer(testRoot, hostRoot, startupMarkerPath, port, process, output);
         }
@@ -253,8 +253,20 @@ internal sealed class IisExpressTestServer : IAsyncDisposable
 
     private static Process StartIisExpress(
         string iisExpressPath, string applicationHostConfigPath, string functionRoot, string workersRoot, string startupMarkerPath,
-        int port, ConcurrentQueue<string> output)
+        string testRoot, int port, ConcurrentQueue<string> output)
     {
+        string iisUserHome = Path.Combine(testRoot, "iisexpress");
+        string processTempPath = Path.Combine(testRoot, "temp");
+        string appDataPath = Path.Combine(testRoot, "appdata");
+        string localAppDataPath = Path.Combine(testRoot, "localappdata");
+        string dotnetHomePath = Path.Combine(testRoot, "dotnet");
+        string functionsDataPath = Path.Combine(testRoot, "functions");
+        string[] testDirectories = [iisUserHome, processTempPath, appDataPath, localAppDataPath, dotnetHomePath, functionsDataPath];
+        foreach (string path in testDirectories)
+        {
+            Directory.CreateDirectory(path);
+        }
+
         var startInfo = new ProcessStartInfo
         {
             FileName = iisExpressPath,
@@ -266,16 +278,25 @@ internal sealed class IisExpressTestServer : IAsyncDisposable
         };
         startInfo.ArgumentList.Add($"/config:{applicationHostConfigPath}");
         startInfo.ArgumentList.Add($"/site:{SiteName}");
+        startInfo.ArgumentList.Add($"/userhome:{iisUserHome}");
         startInfo.ArgumentList.Add("/systray:false");
         startInfo.ArgumentList.Add("/trace:error");
 
+        startInfo.Environment["APPDATA"] = appDataPath;
         startInfo.Environment["AZURE_FUNCTIONS_ENVIRONMENT"] = "Development";
         startInfo.Environment["AzureWebJobsFeatureFlags"] = "EnableWorkerIndexing";
         startInfo.Environment["AzureWebJobsScriptRoot"] = functionRoot;
         startInfo.Environment["AzureWebJobsSecretStorageType"] = "files";
+        startInfo.Environment["DOTNET_CLI_HOME"] = dotnetHomePath;
         startInfo.Environment["FUNCTIONS_TEST_WORKER_STARTUP_MARKER"] = startupMarkerPath;
+        startInfo.Environment["FUNCTIONS_LOG_PATH"] = Path.Combine(functionsDataPath, "logs");
+        startInfo.Environment["FUNCTIONS_SECRETS_PATH"] = Path.Combine(functionsDataPath, "secrets");
+        startInfo.Environment["FUNCTIONS_TEST_DATA_PATH"] = Path.Combine(functionsDataPath, "testdata");
         startInfo.Environment["FUNCTIONS_WORKER_RUNTIME"] = "dotnet-isolated";
         startInfo.Environment["FUNCTIONS_WORKER_RUNTIME_VERSION"] = "8.0";
+        startInfo.Environment["LOCALAPPDATA"] = localAppDataPath;
+        startInfo.Environment["TEMP"] = processTempPath;
+        startInfo.Environment["TMP"] = processTempPath;
         startInfo.Environment["WEBSITE_HOSTNAME"] = $"127.0.0.1:{port}";
         startInfo.Environment["WEBSITE_SITE_NAME"] = "iis-express-startup-timeout";
         startInfo.Environment["languageWorkers__workersDirectory"] = workersRoot;

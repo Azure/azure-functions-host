@@ -28,22 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             InitializeProcess();
 
             IHost host = BuildHost(args);
-            try
-            {
-                await RunHostAsync(host);
-            }
-            finally
-            {
-                // Preserve RunAsync's disposal behavior while allowing RunHostAsync to stop a partially started host first.
-                if (host is IAsyncDisposable asyncDisposable)
-                {
-                    await asyncDisposable.DisposeAsync();
-                }
-                else
-                {
-                    host.Dispose();
-                }
-            }
+            await RunHostAsync(host);
         }
 
         public static IHost BuildHost(string[] args)
@@ -56,19 +41,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             ArgumentNullException.ThrowIfNull(host);
 
-            IHostApplicationLifetime applicationLifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
+            // This is exactly what Generic Host's RunAsync does, but we need to ensure StopAsync is called if StopApplication occurs during StartAsync.
+            // See https://github.com/Azure/azure-functions-host/issues/11954 for details.
             try
             {
-                await host.StartAsync();
-            }
-            catch (OperationCanceledException) when (applicationLifetime.ApplicationStopping.IsCancellationRequested)
-            {
-                // Generic Host's RunAsync skips StopAsync when StopApplication cancels startup.
-                await host.StopAsync(CancellationToken.None);
-                throw;
-            }
+                IHostApplicationLifetime applicationLifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
 
-            await host.WaitForShutdownAsync();
+                try
+                {
+                    await host.StartAsync();
+                }
+                catch (OperationCanceledException) when (applicationLifetime.ApplicationStopping.IsCancellationRequested)
+                {
+                    // Generic Host's RunAsync skips StopAsync when StopApplication cancels startup.
+                    await host.StopAsync(CancellationToken.None);
+                    throw;
+                }
+
+                await host.WaitForShutdownAsync();
+            }
+            finally
+            {
+                if (host is IAsyncDisposable asyncDisposable)
+                {
+                    await asyncDisposable.DisposeAsync();
+                }
+                else
+                {
+                    host.Dispose();
+                }
+            }
         }
 
         /// <summary>
