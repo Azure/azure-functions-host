@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -22,20 +23,62 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             InitializeProcess();
 
-            var host = BuildHost(args);
-
-            host.RunAsync()
-                .Wait();
+            IHost host = BuildHost(args);
+            await RunHostAsync(host);
         }
 
         public static IHost BuildHost(string[] args)
         {
             return CreateHostBuilder(args)
                 .Build();
+        }
+
+        internal static async Task RunHostAsync(IHost host)
+        {
+            ArgumentNullException.ThrowIfNull(host);
+
+            // This mirrors Generic Host's RunAsync, but ensures StopAsync is called if StopApplication occurs during StartAsync.
+            // See https://github.com/Azure/azure-functions-host/issues/11954 for details.
+            try
+            {
+                IHostApplicationLifetime applicationLifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
+
+                try
+                {
+                    await host.StartAsync();
+                }
+                catch (Exception startupException) when (applicationLifetime.ApplicationStopping.IsCancellationRequested)
+                {
+                    // Generic Host's RunAsync skips StopAsync when StopApplication cancels startup.
+                    try
+                    {
+                        await host.StopAsync(CancellationToken.None);
+                    }
+                    catch (Exception shutdownException)
+                    {
+                        throw new AggregateException("Host startup failed and shutdown also failed.", startupException, shutdownException);
+                    }
+
+                    throw;
+                }
+
+                await host.WaitForShutdownAsync();
+            }
+            finally
+            {
+                if (host is IAsyncDisposable asyncDisposable)
+                {
+                    await asyncDisposable.DisposeAsync();
+                }
+                else
+                {
+                    host.Dispose();
+                }
+            }
         }
 
         /// <summary>
