@@ -6,7 +6,9 @@
       "launchBrowser": false,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_HTTP_PORTS": "8080"
+        "WORKERPROXY__MANAGEMENTPORT": "8080",
+        "WORKERPROXY__RUNTIMEGRPCPORT": "50053",
+        "WORKERPROXY__WORKERGRPCPORT": "50054"
       }
     }
   }

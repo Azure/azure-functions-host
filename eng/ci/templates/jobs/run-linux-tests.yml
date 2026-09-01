@@ -77,7 +77,7 @@ jobs:
       echo "Probing http://127.0.0.1:$managementPort/admin/instance/ready"
       httpStatus="$(curl --fail --silent --show-error \
         --output /dev/null --write-out '%{http_code}' \
-        --retry 60 --retry-delay 1 --retry-connrefused \
+        --retry 60 --retry-delay 1 --retry-connrefused --retry-all-errors \
         "http://127.0.0.1:$managementPort/admin/instance/ready")"
       echo "WorkerProxy readiness probe succeeded with HTTP $httpStatus."
       echo "WorkerProxy container logs:"

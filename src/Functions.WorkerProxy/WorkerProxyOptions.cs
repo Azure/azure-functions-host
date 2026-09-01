@@ -1,0 +1,30 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+namespace Azure.Functions.WorkerProxy;
+
+/// <summary>
+/// Defines the WorkerProxy listener ports.
+/// </summary>
+internal sealed class WorkerProxyOptions
+{
+    /// <summary>
+    /// The configuration section containing WorkerProxy settings.
+    /// </summary>
+    public const string SectionName = "WorkerProxy";
+
+    /// <summary>
+    /// Gets or sets the HTTP/1 management listener port.
+    /// </summary>
+    public int ManagementPort { get; set; } = 80;
+
+    /// <summary>
+    /// Gets or sets the runtime-facing HTTP/2 FunctionRpc listener port.
+    /// </summary>
+    public int RuntimeGrpcPort { get; set; } = 50053;
+
+    /// <summary>
+    /// Gets or sets the worker-facing HTTP/2 FunctionRpc listener port.
+    /// </summary>
+    public int WorkerGrpcPort { get; set; } = 50054;
+}

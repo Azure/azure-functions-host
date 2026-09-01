@@ -8,6 +8,8 @@ WORKDIR /app
 # Native AOT currently produces one required runtime artifact. Revisit if the publish layout changes.
 COPY Azure.Functions.WorkerProxy ./
 
-ENV ASPNETCORE_HTTP_PORTS=80
-EXPOSE 80
+ENV WORKERPROXY__MANAGEMENTPORT=80 \
+    WORKERPROXY__RUNTIMEGRPCPORT=50053 \
+    WORKERPROXY__WORKERGRPCPORT=50054
+EXPOSE 80 50053 50054
 ENTRYPOINT ["./Azure.Functions.WorkerProxy"]

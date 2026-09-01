@@ -13,6 +13,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Google.Protobuf" VersionOverride="3.35.1" />
+    <PackageReference Include="Grpc.AspNetCore" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Core.Api" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Net.Client" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Tools" VersionOverride="2.76.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" VersionOverride="10.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
