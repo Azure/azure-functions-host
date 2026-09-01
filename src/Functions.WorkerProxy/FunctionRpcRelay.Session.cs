@@ -105,9 +105,8 @@ internal sealed partial class FunctionRpcRelay
         /// <param name="requestStream">The messages produced by this peer.</param>
         /// <param name="responseStream">The messages consumed by this peer.</param>
         /// <param name="cancellationToken">The gRPC call cancellation token.</param>
-        /// <returns>A task that always terminates with the session's terminal state.</returns>
-        /// <exception cref="FunctionRpcRelayTerminatedException">The relay session has terminated.</exception>
-        public async Task RunAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
+        /// <returns>A task that returns the first terminal state recorded for the session.</returns>
+        public async Task<FunctionRpcRelayTerminalState> RunAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
             IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
         {
             using CancellationTokenSource linkedSource = CancellationTokenSource.CreateLinkedTokenSource(_terminationSource.Token, cancellationToken);
@@ -141,8 +140,7 @@ internal sealed partial class FunctionRpcRelay
             _ = ObserveStreamOperationAfterTerminationAsync(side, "read", readTask);
             await ObserveStreamOperationAfterTerminationAsync(side, "write", writeTask);
 
-            FunctionRpcRelayTerminalState finalState = await _completion.Task;
-            throw new FunctionRpcRelayTerminatedException(finalState);
+            return await _completion.Task;
         }
 
         /// <summary>

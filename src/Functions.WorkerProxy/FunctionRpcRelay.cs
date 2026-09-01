@@ -92,11 +92,11 @@ internal sealed partial class FunctionRpcRelay(ILogger<FunctionRpcRelay> logger)
     /// <param name="requestStream">The messages produced by the attached peer.</param>
     /// <param name="responseStream">The messages relayed from the opposite peer.</param>
     /// <param name="cancellationToken">The gRPC call cancellation token.</param>
-    /// <returns>A task that completes after the session terminates and this attachment releases.</returns>
+    /// <returns>A task that returns the first terminal state after the session terminates and this attachment releases.</returns>
     /// <exception cref="FunctionRpcRelayAttachmentException">
     /// The side is already attached, the previous session is still tearing down, or shutdown has started.
     /// </exception>
-    public Task AttachAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
+    public Task<FunctionRpcRelayTerminalState> AttachAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
         IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(requestStream);
@@ -172,12 +172,12 @@ internal sealed partial class FunctionRpcRelay(ILogger<FunctionRpcRelay> logger)
         await StopAsync(CancellationToken.None);
     }
 
-    private async Task RunAttachmentAsync(FunctionRpcRelaySession session, FunctionRpcRelaySide side,
+    private async Task<FunctionRpcRelayTerminalState> RunAttachmentAsync(FunctionRpcRelaySession session, FunctionRpcRelaySide side,
         IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
     {
         try
         {
-            await session.RunAsync(side, requestStream, responseStream, cancellationToken);
+            return await session.RunAsync(side, requestStream, responseStream, cancellationToken);
         }
         finally
         {

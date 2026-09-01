@@ -32,9 +32,10 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
             throw new GrpcRpcException(new Status(StatusCode.Unimplemented, "FunctionRpc is unavailable on this listener."));
         }
 
+        FunctionRpcRelayTerminalState terminalState;
         try
         {
-            await _relay.AttachAsync(side, requestStream, responseStream, context.CancellationToken);
+            terminalState = await _relay.AttachAsync(side, requestStream, responseStream, context.CancellationToken);
         }
         catch (FunctionRpcRelayAttachmentException exception)
         {
@@ -48,31 +49,25 @@ internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProx
 
             throw new GrpcRpcException(new Status(statusCode, exception.Message));
         }
-        catch (FunctionRpcRelayTerminatedException exception)
+
+        context.Status = terminalState.Reason switch
         {
-            if (exception.TerminalState.Reason == FunctionRpcRelayTerminationReason.Shutdown)
-            {
-                httpContext.Abort();
-            }
+            FunctionRpcRelayTerminationReason.PeerClosed =>
+                new Status(StatusCode.Unavailable, "A FunctionRpc relay peer closed its stream."),
+            FunctionRpcRelayTerminationReason.Canceled =>
+                new Status(StatusCode.Cancelled, "The FunctionRpc relay session was canceled."),
+            FunctionRpcRelayTerminationReason.Faulted =>
+                new Status(StatusCode.Unavailable, "A FunctionRpc relay stream operation failed."),
+            FunctionRpcRelayTerminationReason.Shutdown =>
+                new Status(StatusCode.Unavailable, "The FunctionRpc relay is shutting down."),
+            _ => new Status(StatusCode.Unknown, "The FunctionRpc relay session terminated.")
+        };
 
-            StatusCode statusCode = exception.TerminalState.Reason switch
-            {
-                FunctionRpcRelayTerminationReason.PeerClosed => StatusCode.Unavailable,
-                FunctionRpcRelayTerminationReason.Canceled => StatusCode.Cancelled,
-                FunctionRpcRelayTerminationReason.Faulted => StatusCode.Unavailable,
-                FunctionRpcRelayTerminationReason.Shutdown => StatusCode.Unavailable,
-                _ => StatusCode.Unknown
-            };
-            string detail = exception.TerminalState.Reason switch
-            {
-                FunctionRpcRelayTerminationReason.PeerClosed => "A FunctionRpc relay peer closed its stream.",
-                FunctionRpcRelayTerminationReason.Canceled => "The FunctionRpc relay session was canceled.",
-                FunctionRpcRelayTerminationReason.Faulted => "A FunctionRpc relay stream operation failed.",
-                FunctionRpcRelayTerminationReason.Shutdown => "The FunctionRpc relay is shutting down.",
-                _ => "The FunctionRpc relay session terminated."
-            };
-
-            throw new GrpcRpcException(new Status(statusCode, detail));
+        if (terminalState.Reason == FunctionRpcRelayTerminationReason.Shutdown)
+        {
+            httpContext.Abort();
         }
+
+        return;
     }
 }

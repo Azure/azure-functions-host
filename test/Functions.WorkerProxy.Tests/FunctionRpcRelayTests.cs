@@ -232,21 +232,21 @@ public partial class FunctionRpcRelayTests
         TestServerStreamWriter responseWriter = new();
         TestServerStreamWriter workerResponseWriter = new();
 
-        Task runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime, faultingReader, responseWriter, timeout.Token);
-        Task workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker, blockingReader, workerResponseWriter, timeout.Token);
+        Task<FunctionRpcRelayTerminalState> runtimeTask =
+            relay.AttachAsync(FunctionRpcRelaySide.Runtime, faultingReader, responseWriter, timeout.Token);
+        Task<FunctionRpcRelayTerminalState> workerTask =
+            relay.AttachAsync(FunctionRpcRelaySide.Worker, blockingReader, workerResponseWriter, timeout.Token);
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Worker, timeout.Token);
 
         releaseFault.TrySetResult(true);
 
-        FunctionRpcRelayTerminatedException runtimeException =
-            await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => runtimeTask.WaitAsync(timeout.Token));
-        FunctionRpcRelayTerminatedException workerException =
-            await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => workerTask.WaitAsync(timeout.Token));
-        Assert.Same(expectedException, runtimeException.TerminalState.Exception);
-        Assert.Same(runtimeException.TerminalState, workerException.TerminalState);
-        Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, runtimeException.TerminalState.Reason);
-        Assert.Equal(FunctionRpcRelaySide.Runtime, runtimeException.TerminalState.Side);
+        FunctionRpcRelayTerminalState runtimeState = await runtimeTask.WaitAsync(timeout.Token);
+        FunctionRpcRelayTerminalState workerState = await workerTask.WaitAsync(timeout.Token);
+        Assert.Same(expectedException, runtimeState.Exception);
+        Assert.Same(runtimeState, workerState);
+        Assert.Equal(FunctionRpcRelayTerminationReason.Faulted, runtimeState.Reason);
+        Assert.Equal(FunctionRpcRelaySide.Runtime, runtimeState.Side);
 
         await relay.DisposeAsync();
     }
@@ -260,9 +260,10 @@ public partial class FunctionRpcRelayTests
         using CancellationTokenSource stopCancellation = new();
         BlockingServerStreamWriter blockingWriter = new();
 
-        Task runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
+        Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             new SingleMessageThenBlockStreamReader(CreateMessage("block-stop")), new TestServerStreamWriter(), timeout.Token);
-        Task workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker, new BlockingStreamReader(), blockingWriter, timeout.Token);
+        Task<FunctionRpcRelayTerminalState> workerTask =
+            relay.AttachAsync(FunctionRpcRelaySide.Worker, new BlockingStreamReader(), blockingWriter, timeout.Token);
         await blockingWriter.WriteEntered.WaitAsync(timeout.Token);
 
         Task stopTask = Task.Run(() => relay.StopAsync(stopCancellation.Token), timeout.Token);
@@ -277,8 +278,9 @@ public partial class FunctionRpcRelayTests
             Assert.False(disposeTask.IsCompleted);
             blockingWriter.Release();
 
-            await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => runtimeTask.WaitAsync(timeout.Token));
-            await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => workerTask.WaitAsync(timeout.Token));
+            FunctionRpcRelayTerminalState[] terminalStates =
+                await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
+            Assert.All(terminalStates, static state => Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, state.Reason));
             await disposeTask.WaitAsync(timeout.Token);
             Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
         }
@@ -333,9 +335,9 @@ public partial class FunctionRpcRelayTests
         using CancellationTokenSource timeout = new(TestTimeout);
         BlockingServerStreamWriter blockingWriter = new();
 
-        Task runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
+        Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             new SingleMessageThenBlockStreamReader(CreateMessage("shared-stop")), new TestServerStreamWriter(), timeout.Token);
-        Task workerTask = relay.AttachAsync(
+        Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(
             FunctionRpcRelaySide.Worker, new BlockingStreamReader(), blockingWriter, timeout.Token);
         await blockingWriter.WriteEntered.WaitAsync(timeout.Token);
 
@@ -353,8 +355,9 @@ public partial class FunctionRpcRelayTests
         }
 
         await Task.WhenAll(firstStop, secondStop).WaitAsync(timeout.Token);
-        await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => runtimeTask.WaitAsync(timeout.Token));
-        await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => workerTask.WaitAsync(timeout.Token));
+        FunctionRpcRelayTerminalState[] terminalStates =
+            await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
+        Assert.All(terminalStates, static state => Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, state.Reason));
         Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
     }
 
@@ -364,8 +367,10 @@ public partial class FunctionRpcRelayTests
         using BlockingLogger<FunctionRpcRelay> logger = new();
         FunctionRpcRelay relay = new(logger);
         using CancellationTokenSource timeout = new(TestTimeout);
-        Task runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
-        Task workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
+        Task<FunctionRpcRelayTerminalState> runtimeTask =
+            relay.AttachAsync(FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
+        Task<FunctionRpcRelayTerminalState> workerTask =
+            relay.AttachAsync(FunctionRpcRelaySide.Worker, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Worker, timeout.Token);
 
@@ -373,8 +378,9 @@ public partial class FunctionRpcRelayTests
         try
         {
             await logger.LogEntered.WaitAsync(timeout.Token);
-            await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => runtimeTask.WaitAsync(timeout.Token));
-            await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => workerTask.WaitAsync(timeout.Token));
+            FunctionRpcRelayTerminalState[] terminalStates =
+                await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
+            Assert.All(terminalStates, static state => Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, state.Reason));
         }
         finally
         {
