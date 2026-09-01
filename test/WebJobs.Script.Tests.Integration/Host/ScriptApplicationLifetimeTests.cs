@@ -3,7 +3,9 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.WebJobs.Script.Tests;
@@ -38,6 +40,95 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
             await outerStopping.Task.TestWaitAsync(TimeSpan.FromSeconds(5));
             Assert.True(outerLifetime.ApplicationStopping.IsCancellationRequested);
+        }
+
+        [Fact]
+        public async Task RunHostAsync_StopApplicationDuringOuterHostStartup_StopsHostedServices()
+        {
+            var startedService = new TrackingHostedService();
+            using IHost host = new HostBuilder()
+                .ConfigureServices(services =>
+                {
+                    services.AddSingleton<IScriptApplicationLifetime, ScriptApplicationLifetime>();
+                    services.AddSingleton<IHostedService>(startedService);
+                    services.AddSingleton<WorkerStartupTimeoutHostedService>();
+                    services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<WorkerStartupTimeoutHostedService>());
+                })
+                .Build();
+            var timeoutService = host.Services.GetRequiredService<WorkerStartupTimeoutHostedService>();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Program.RunHostAsync(host));
+
+            Assert.True(startedService.Started);
+            Assert.True(startedService.Stopped);
+            Assert.True(timeoutService.Stopped);
+        }
+
+        [Fact]
+        public async Task RunHostAsync_StopApplicationAfterOuterHostStartup_StopsHostedServices()
+        {
+            var service = new TrackingHostedService();
+            using IHost host = new HostBuilder()
+                .ConfigureServices(services => services.AddSingleton<IHostedService>(service))
+                .Build();
+            IHostApplicationLifetime applicationLifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
+            var applicationStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using CancellationTokenRegistration registration =
+                applicationLifetime.ApplicationStarted.Register(() => applicationStarted.TrySetResult());
+
+            Task runTask = Program.RunHostAsync(host);
+            await applicationStarted.Task.TestWaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.False(runTask.IsCompleted);
+
+            applicationLifetime.StopApplication();
+
+            await runTask.TestWaitAsync(TimeSpan.FromSeconds(5));
+            Assert.True(service.Started);
+            Assert.True(service.Stopped);
+        }
+
+        private sealed class TrackingHostedService : IHostedService
+        {
+            public bool Started { get; private set; }
+
+            public bool Stopped { get; private set; }
+
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                Started = true;
+                return Task.CompletedTask;
+            }
+
+            public Task StopAsync(CancellationToken cancellationToken)
+            {
+                Stopped = true;
+                return Task.CompletedTask;
+            }
+        }
+
+        private sealed class WorkerStartupTimeoutHostedService : IHostedService
+        {
+            private readonly IScriptApplicationLifetime _applicationLifetime;
+
+            public WorkerStartupTimeoutHostedService(IScriptApplicationLifetime applicationLifetime)
+            {
+                _applicationLifetime = applicationLifetime;
+            }
+
+            public bool Stopped { get; private set; }
+
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                _applicationLifetime.StopApplication();
+                return Task.Delay(Timeout.Infinite, cancellationToken);
+            }
+
+            public Task StopAsync(CancellationToken cancellationToken)
+            {
+                Stopped = true;
+                return Task.CompletedTask;
+            }
         }
     }
 }

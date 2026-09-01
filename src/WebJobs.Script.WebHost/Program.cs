@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -22,20 +23,52 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             InitializeProcess();
 
-            var host = BuildHost(args);
-
-            host.RunAsync()
-                .Wait();
+            IHost host = BuildHost(args);
+            try
+            {
+                await RunHostAsync(host);
+            }
+            finally
+            {
+                // Preserve RunAsync's disposal behavior while allowing RunHostAsync to stop a partially started host first.
+                if (host is IAsyncDisposable asyncDisposable)
+                {
+                    await asyncDisposable.DisposeAsync();
+                }
+                else
+                {
+                    host.Dispose();
+                }
+            }
         }
 
         public static IHost BuildHost(string[] args)
         {
             return CreateHostBuilder(args)
                 .Build();
+        }
+
+        internal static async Task RunHostAsync(IHost host)
+        {
+            ArgumentNullException.ThrowIfNull(host);
+
+            IHostApplicationLifetime applicationLifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
+            try
+            {
+                await host.StartAsync();
+            }
+            catch (OperationCanceledException) when (applicationLifetime.ApplicationStopping.IsCancellationRequested)
+            {
+                // Generic Host's RunAsync skips StopAsync when StopApplication cancels startup.
+                await host.StopAsync(CancellationToken.None);
+                throw;
+            }
+
+            await host.WaitForShutdownAsync();
         }
 
         /// <summary>
