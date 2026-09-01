@@ -23,6 +23,8 @@ internal sealed partial class FunctionRpcRelay : IAsyncDisposable, IHostedLifecy
 {
     private readonly Lock _syncLock = new();
     private readonly ILogger<FunctionRpcRelay> _logger;
+    // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
+    private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
     private FunctionRpcRelayTerminalState? _lastTerminalState;
     private long _nextSessionId;
@@ -161,23 +163,27 @@ internal sealed partial class FunctionRpcRelay : IAsyncDisposable, IHostedLifecy
     /// </summary>
     /// <param name="cancellationToken">A token that bounds the wait for all attachments to release.</param>
     /// <returns>A task that completes when the active session has been cleared.</returns>
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public Task StopAsync(CancellationToken cancellationToken)
     {
-        FunctionRpcRelaySession? session;
+        FunctionRpcRelaySession? session = null;
+        bool initiateStop = false;
+
         lock (_syncLock)
         {
-            _stopping = true;
-            session = _currentSession;
+            if (!_stopping)
+            {
+                _stopping = true;
+                session = _currentSession;
+                initiateStop = true;
+            }
         }
 
-        if (session is null)
+        if (initiateStop)
         {
-            return;
+            _ = CompleteStopAsync(session);
         }
 
-        session.RequestShutdown();
-        await session.Released.WaitAsync(cancellationToken);
-        TryClearReleasedSession(session);
+        return _stopCompletionSource.Task.WaitAsync(cancellationToken);
     }
 
     /// <inheritdoc />
@@ -200,6 +206,25 @@ internal sealed partial class FunctionRpcRelay : IAsyncDisposable, IHostedLifecy
         }
     }
 
+    private async Task CompleteStopAsync(FunctionRpcRelaySession? session)
+    {
+        try
+        {
+            if (session is not null)
+            {
+                session.RequestShutdown();
+                await session.Released;
+                TryClearReleasedSession(session);
+            }
+
+            _stopCompletionSource.TrySetResult(true);
+        }
+        catch (Exception exception)
+        {
+            _stopCompletionSource.TrySetException(exception);
+        }
+    }
+
     private void TryClearReleasedSession(FunctionRpcRelaySession session)
     {
         lock (_syncLock)
@@ -214,7 +239,7 @@ internal sealed partial class FunctionRpcRelay : IAsyncDisposable, IHostedLifecy
     private void ClearCurrentSessionLocked()
     {
         FunctionRpcRelaySession session = _currentSession ?? throw new InvalidOperationException("There is no current relay session to clear.");
-        _lastTerminalState = session.Completion.GetAwaiter().GetResult();
+        _lastTerminalState = session.TerminalState;
         _currentSession = null;
     }
 }

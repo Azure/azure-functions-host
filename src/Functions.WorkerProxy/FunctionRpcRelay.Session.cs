@@ -28,6 +28,7 @@ internal sealed partial class FunctionRpcRelay
         private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private readonly ILogger _logger;
+        private FunctionRpcRelayTerminalState? _terminalState;
         private bool _runtimeAttached;
         private bool _workerAttached;
 
@@ -50,9 +51,19 @@ internal sealed partial class FunctionRpcRelay
         public long Id { get; }
 
         /// <summary>
-        /// Gets a task that yields the first terminal state recorded for this session.
+        /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
         /// </summary>
-        public Task<FunctionRpcRelayTerminalState> Completion => _completion.Task;
+        public FunctionRpcRelayTerminalState? TerminalState
+        {
+            get
+            {
+                // The reference read is atomic, but this pairs with TryTerminate's to prevent returning during a state change.
+                lock (_stateLock)
+                {
+                    return _terminalState;
+                }
+            }
+        }
 
         /// <summary>
         /// Gets a task that completes after every accepted attachment has released.
@@ -68,7 +79,7 @@ internal sealed partial class FunctionRpcRelay
             {
                 lock (_stateLock)
                 {
-                    return _completion.Task.IsCompleted && !HasAttachmentsLocked();
+                    return _terminalState is not null && !HasAttachmentsLocked();
                 }
             }
         }
@@ -82,7 +93,7 @@ internal sealed partial class FunctionRpcRelay
         {
             lock (_stateLock)
             {
-                if (_completion.Task.IsCompleted)
+                if (_terminalState is not null)
                 {
                     return FunctionRpcRelayAttachResult.Terminated;
                 }
@@ -250,10 +261,13 @@ internal sealed partial class FunctionRpcRelay
         {
             lock (_stateLock)
             {
-                if (!_completion.TrySetResult(terminalState))
+                if (_terminalState is not null)
                 {
                     return false;
                 }
+
+                _terminalState = terminalState;
+                _completion.SetResult(terminalState);
             }
 
             Exception? completionException = terminalState.Reason switch
@@ -343,7 +357,7 @@ internal sealed partial class FunctionRpcRelay
 
         private void SignalReleasedIfCompleteLocked()
         {
-            if (_completion.Task.IsCompleted && !HasAttachmentsLocked())
+            if (_terminalState is not null && !HasAttachmentsLocked())
             {
                 _released.TrySetResult(true);
             }

@@ -252,7 +252,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task Relay_CanceledStopIsCompletedByDispose()
+    public async Task Relay_CanceledStopWaitDoesNotCancelSharedStop()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new();
         FunctionRpcRelay relay = new(logger);
@@ -272,17 +272,21 @@ public partial class FunctionRpcRelayTests
             stopCancellation.Cancel();
             logger.Release();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => stopTask.WaitAsync(timeout.Token));
+
+            Task disposeTask = relay.DisposeAsync().AsTask();
+            Assert.False(disposeTask.IsCompleted);
+            blockingWriter.Release();
+
+            await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => runtimeTask.WaitAsync(timeout.Token));
+            await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => workerTask.WaitAsync(timeout.Token));
+            await disposeTask.WaitAsync(timeout.Token);
+            Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
         }
         finally
         {
             logger.Release();
             blockingWriter.Release();
         }
-
-        await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => runtimeTask.WaitAsync(timeout.Token));
-        await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => workerTask.WaitAsync(timeout.Token));
-        await relay.DisposeAsync();
-        Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
     }
 
     [Fact]
@@ -319,6 +323,38 @@ public partial class FunctionRpcRelayTests
         await Task.WhenAll(runtime.WaitForTerminationAsync(timeout.Token), worker.WaitForTerminationAsync(timeout.Token));
 
         Assert.All(disposalTasks, static task => Assert.True(task.IsCompletedSuccessfully));
+        Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
+    }
+
+    [Fact]
+    public async Task Relay_ConcurrentStopsJoinSharedCompletion()
+    {
+        FunctionRpcRelay relay = CreateInProcessRelay();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        BlockingServerStreamWriter blockingWriter = new();
+
+        Task runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
+            new SingleMessageThenBlockStreamReader(CreateMessage("shared-stop")), new TestServerStreamWriter(), timeout.Token);
+        Task workerTask = relay.AttachAsync(
+            FunctionRpcRelaySide.Worker, new BlockingStreamReader(), blockingWriter, timeout.Token);
+        await blockingWriter.WriteEntered.WaitAsync(timeout.Token);
+
+        Task firstStop = relay.StopAsync(CancellationToken.None);
+        Task secondStop = relay.StopAsync(CancellationToken.None);
+
+        try
+        {
+            Assert.False(firstStop.IsCompleted);
+            Assert.False(secondStop.IsCompleted);
+        }
+        finally
+        {
+            blockingWriter.Release();
+        }
+
+        await Task.WhenAll(firstStop, secondStop).WaitAsync(timeout.Token);
+        await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => runtimeTask.WaitAsync(timeout.Token));
+        await Assert.ThrowsAsync<FunctionRpcRelayTerminatedException>(() => workerTask.WaitAsync(timeout.Token));
         Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
     }
 
