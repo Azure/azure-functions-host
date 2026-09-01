@@ -14,7 +14,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void ExtensionTraffic_UsesDedicatedService()
         {
-            Assert.Equal(ExtensionRpcMessage.Descriptor, ExtensionRpc.Descriptor.Methods[0].InputType);
+            var method = Assert.Single(
+                ExtensionRpc.Descriptor.Methods,
+                method => string.Equals(method.Name, "EventStream", StringComparison.Ordinal));
+
+            Assert.Equal(ExtensionRpcMessage.Descriptor, method.InputType);
         }
 
         [Fact]
