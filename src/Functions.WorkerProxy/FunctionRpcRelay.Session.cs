@@ -16,54 +16,31 @@ internal sealed partial class FunctionRpcRelay
     /// <summary>
     /// Owns the queues, forwarding tasks, and terminal state for one runtime/worker stream pair.
     /// </summary>
-    private sealed class FunctionRpcRelaySession
+    private sealed class FunctionRpcRelaySession(long id, ILogger logger)
     {
         private readonly Lock _stateLock = new();
-        private readonly Channel<StreamingMessage> _toRuntime;
-        private readonly Channel<StreamingMessage> _toWorker;
+        private readonly Channel<StreamingMessage> _toRuntime = CreateChannel();
+        private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
         // Linked call sources unregister when disposed, so cancellation can safely finish after this session is cleared.
         private readonly CancellationTokenSource _terminationSource = new();
         private readonly TaskCompletionSource<FunctionRpcRelayTerminalState> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        private readonly ILogger _logger;
+        private readonly ILogger _logger = logger;
         private FunctionRpcRelayTerminalState? _terminalState;
         private bool _runtimeAttached;
         private bool _workerAttached;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="FunctionRpcRelaySession"/> class.
-        /// </summary>
-        /// <param name="id">The monotonically increasing session identifier.</param>
-        /// <param name="logger">The logger used for stream termination.</param>
-        public FunctionRpcRelaySession(long id, ILogger logger)
-        {
-            Id = id;
-            _logger = logger;
-            _toRuntime = CreateQueue();
-            _toWorker = CreateQueue();
-        }
-
-        /// <summary>
         /// Gets the relay session identifier.
         /// </summary>
-        public long Id { get; }
+        public long Id { get; } = id;
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
         /// </summary>
-        public FunctionRpcRelayTerminalState? TerminalState
-        {
-            get
-            {
-                // The reference read is atomic, but this pairs with TryTerminate's to prevent returning during a state change.
-                lock (_stateLock)
-                {
-                    return _terminalState;
-                }
-            }
-        }
+        public FunctionRpcRelayTerminalState? TerminalState => _terminalState;
 
         /// <summary>
         /// Gets a task that completes after every accepted attachment has released.
@@ -194,7 +171,7 @@ internal sealed partial class FunctionRpcRelay
             TryTerminate(new FunctionRpcRelayTerminalState(Id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
         }
 
-        private static Channel<StreamingMessage> CreateQueue()
+        private static Channel<StreamingMessage> CreateChannel()
         {
             return Channel.CreateUnbounded<StreamingMessage>(new UnboundedChannelOptions
             {

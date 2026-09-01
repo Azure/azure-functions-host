@@ -19,25 +19,16 @@ namespace Azure.Functions.WorkerProxy;
 /// cancellation, stream failure, or application shutdown terminates the whole session. A replacement
 /// session is created only after both attachments from the previous session have released.
 /// </remarks>
-internal sealed partial class FunctionRpcRelay : IAsyncDisposable, IHostedLifecycleService
+internal sealed partial class FunctionRpcRelay(ILogger<FunctionRpcRelay> logger) : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
-    private readonly ILogger<FunctionRpcRelay> _logger;
+    private readonly ILogger<FunctionRpcRelay> _logger = logger;
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
     private FunctionRpcRelayTerminalState? _lastTerminalState;
     private long _nextSessionId;
     private bool _stopping;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FunctionRpcRelay"/> class.
-    /// </summary>
-    /// <param name="logger">The logger used for terminal and secondary stream failures.</param>
-    public FunctionRpcRelay(ILogger<FunctionRpcRelay> logger)
-    {
-        _logger = logger;
-    }
 
     private enum FunctionRpcRelayAttachResult
     {
@@ -49,16 +40,7 @@ internal sealed partial class FunctionRpcRelay : IAsyncDisposable, IHostedLifecy
     /// <summary>
     /// Gets the terminal state of the most recently completed relay session.
     /// </summary>
-    internal FunctionRpcRelayTerminalState? LastTerminalState
-    {
-        get
-        {
-            lock (_syncLock)
-            {
-                return _lastTerminalState;
-            }
-        }
-    }
+    internal FunctionRpcRelayTerminalState? LastTerminalState => _lastTerminalState;
 
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
@@ -140,16 +122,14 @@ internal sealed partial class FunctionRpcRelay : IAsyncDisposable, IHostedLifecy
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)
             {
-                FunctionRpcRelayAttachmentFailure failure = attachResult switch
+                (FunctionRpcRelayAttachmentFailure failure, string message) = attachResult switch
                 {
-                    FunctionRpcRelayAttachResult.Duplicate => FunctionRpcRelayAttachmentFailure.Duplicate,
-                    FunctionRpcRelayAttachResult.Terminated =>
-                        FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
+                    FunctionRpcRelayAttachResult.Duplicate => (FunctionRpcRelayAttachmentFailure.Duplicate,
+                        $"A {side} FunctionRpc stream is already attached."),
+                    FunctionRpcRelayAttachResult.Terminated => (FunctionRpcRelayAttachmentFailure.PreviousSessionTearingDown,
+                        "The previous FunctionRpc relay session is still tearing down."),
                     _ => throw new InvalidOperationException($"Unexpected attach result '{attachResult}'.")
                 };
-                string message = failure == FunctionRpcRelayAttachmentFailure.Duplicate
-                    ? $"A {side} FunctionRpc stream is already attached."
-                    : "The previous FunctionRpc relay session is still tearing down.";
 
                 throw new FunctionRpcRelayAttachmentException(side, failure, message);
             }

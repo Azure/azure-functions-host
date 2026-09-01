@@ -17,21 +17,10 @@ namespace Azure.Functions.WorkerProxy;
 /// The local listener port determines stream ownership, so callers cannot select or change
 /// ownership through headers or FunctionRpc messages.
 /// </remarks>
-internal sealed class FunctionRpcRelayService : FunctionRpc.FunctionRpcBase
+internal sealed class FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints) : FunctionRpc.FunctionRpcBase
 {
-    private readonly FunctionRpcRelay _relay;
-    private readonly WorkerProxyEndpointConfiguration _endpoints;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FunctionRpcRelayService"/> class.
-    /// </summary>
-    /// <param name="relay">The shared FunctionRpc relay.</param>
-    /// <param name="endpoints">The configured WorkerProxy listener endpoints.</param>
-    public FunctionRpcRelayService(FunctionRpcRelay relay, WorkerProxyEndpointConfiguration endpoints)
-    {
-        _relay = relay;
-        _endpoints = endpoints;
-    }
+    private readonly FunctionRpcRelay _relay = relay;
+    private readonly WorkerProxyEndpointConfiguration _endpoints = endpoints;
 
     /// <inheritdoc />
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,

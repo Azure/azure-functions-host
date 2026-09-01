@@ -11,21 +11,12 @@ namespace Azure.Functions.WorkerProxy;
 /// <summary>
 /// Configures the WorkerProxy Kestrel listeners and resolves requests to their listener roles.
 /// </summary>
-internal sealed class WorkerProxyEndpointConfiguration : IConfigureOptions<KestrelServerOptions>
+internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptions> workerProxyOptions) : IConfigureOptions<KestrelServerOptions>
 {
-    private readonly WorkerProxyOptions _options;
+    private readonly WorkerProxyOptions _options = workerProxyOptions.Value;
     private ListenOptions? _management;
     private ListenOptions? _runtime;
     private ListenOptions? _worker;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="WorkerProxyEndpointConfiguration"/> class.
-    /// </summary>
-    /// <param name="options">The validated WorkerProxy listener options.</param>
-    public WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptions> options)
-    {
-        _options = options.Value;
-    }
 
     /// <inheritdoc />
     public void Configure(KestrelServerOptions options)
