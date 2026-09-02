@@ -101,7 +101,7 @@ internal sealed class ExtensionCall(ExtensionRpcStream stream, string callId, Ex
         await _inbound.Writer.WriteAsync(message, cancellationToken);
         if (message.ContentCase is ExtensionRpcMessage.ContentOneofCase.Complete)
         {
-            _inbound.Writer.TryComplete();
+            await DisposeAsync();
         }
     }
 

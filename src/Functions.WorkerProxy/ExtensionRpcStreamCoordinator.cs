@@ -100,7 +100,8 @@ internal sealed class ExtensionRpcStreamCoordinator
                     TimeSpan remaining = timeout.Value - Stopwatch.GetElapsedTime(waitStart);
                     if (remaining <= TimeSpan.Zero)
                     {
-                        throw new OperationCanceledException(cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        throw new TimeoutException("The extension RPC call timed out before it could be opened.");
                     }
 
                     start.Timeout = Duration.FromTimeSpan(remaining);

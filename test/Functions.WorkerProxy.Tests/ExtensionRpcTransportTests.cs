@@ -125,6 +125,24 @@ public class ExtensionRpcTransportTests
     }
 
     [Fact]
+    public async Task OpenExtensionCall_ThrowsTimeoutExceptionWhenTimeoutExpires()
+    {
+        var streamCoordinator = new ExtensionRpcStreamCoordinator();
+        await using ExtensionRpcStreamLease lease = streamCoordinator.Open(CancellationToken.None);
+        ExtensionRpcMessage hello = await lease.Stream.Outbound.ReadAsync();
+        await lease.Stream.HandleInboundAsync(CreateReady(hello), CancellationToken.None);
+
+        await Assert.ThrowsAsync<TimeoutException>(
+            () => streamCoordinator.OpenExtensionCallAsync(
+                new ExtensionRpcStart
+                {
+                    Method = "/extensions.Echo/Unary",
+                    Timeout = Duration.FromTimeSpan(TimeSpan.Zero),
+                },
+                CancellationToken.None));
+    }
+
+    [Fact]
     public async Task SessionClosed_AllowsNewSession()
     {
         var streamCoordinator = new ExtensionRpcStreamCoordinator();
@@ -235,6 +253,33 @@ public class ExtensionRpcTransportTests
         await blockedWrite;
         ExtensionRpcMessage data = await lease.Stream.Outbound.ReadAsync();
         Assert.Equal(ByteString.CopyFrom([3, 4]), data.Data.Payload);
+    }
+
+    [Fact]
+    public async Task Complete_RemovesCallFromStream()
+    {
+        var streamCoordinator = new ExtensionRpcStreamCoordinator();
+        await using ExtensionRpcStreamLease lease = streamCoordinator.Open(CancellationToken.None);
+        ExtensionRpcMessage hello = await lease.Stream.Outbound.ReadAsync();
+        await lease.Stream.HandleInboundAsync(CreateReady(hello), CancellationToken.None);
+        await using ExtensionCall call = await streamCoordinator.OpenExtensionCallAsync(
+            new ExtensionRpcStart { Method = "/extensions.Echo/Unary" },
+            CancellationToken.None);
+        await lease.Stream.Outbound.ReadAsync();
+
+        await lease.Stream.HandleInboundAsync(
+            new ExtensionRpcMessage
+            {
+                SessionId = hello.SessionId,
+                ShardId = hello.ShardId,
+                CallId = call.CallId,
+                Complete = new ExtensionRpcComplete(),
+            },
+            CancellationToken.None);
+
+        Assert.Equal(0, lease.Stream.ActiveCallCount);
+        ExtensionRpcMessage complete = await FirstAsync(call.ReadAllAsync(CancellationToken.None));
+        Assert.Equal(ExtensionRpcMessage.ContentOneofCase.Complete, complete.ContentCase);
     }
 
     [Fact]

@@ -50,6 +50,7 @@ internal static class WorkerProxyApplication
         });
         builder.Services.AddSingleton<FunctionRpcRelay>();
         builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
+        builder.Services.AddSingleton<ExtensionRpcStreamCoordinator>();
         ConfigureHttpForwarding(builder);
 
         WebApplication app = builder.Build();
