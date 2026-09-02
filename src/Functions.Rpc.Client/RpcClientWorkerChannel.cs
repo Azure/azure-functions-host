@@ -36,13 +36,16 @@ internal sealed class RpcClientWorkerChannel(string workerId, DuplexChannel<Stre
     : WorkerChannel(workerId, ownedChannel, eventManager, hostManager, workerConfig, logger, metricsLogger, attemptCount, environment,
         applicationHostOptions, sharedMemoryManager, workerConcurrencyOptions, hostingConfigOptions, appCapabilitiesStore, httpProxyService)
 {
-    private const int NotStarted = 0;
-    private const int Started = 1;
-    private const int Disposed = 2;
-
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TimeSpan _startStreamTimeout = ValidateStartStreamTimeout(startStreamTimeout);
     private int _lifecycleState;
+
+    private enum LifecycleState
+    {
+        NotStarted,
+        Started,
+        Disposed,
+    }
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -56,10 +59,11 @@ internal sealed class RpcClientWorkerChannel(string workerId, DuplexChannel<Stre
             return Task.FromCanceled(cancellationToken);
         }
 
-        int state = Interlocked.CompareExchange(ref _lifecycleState, Started, NotStarted);
-        ObjectDisposedException.ThrowIf(state == Disposed, this);
+        LifecycleState state = (LifecycleState)Interlocked.CompareExchange(
+            ref _lifecycleState, (int)LifecycleState.Started, (int)LifecycleState.NotStarted);
+        ObjectDisposedException.ThrowIf(state is LifecycleState.Disposed, this);
 
-        if (state == NotStarted)
+        if (state is LifecycleState.NotStarted)
         {
             try
             {
@@ -78,7 +82,7 @@ internal sealed class RpcClientWorkerChannel(string workerId, DuplexChannel<Stre
 
     protected override void Dispose(bool disposing)
     {
-        Interlocked.Exchange(ref _lifecycleState, Disposed);
+        Interlocked.Exchange(ref _lifecycleState, (int)LifecycleState.Disposed);
         base.Dispose(disposing);
     }
 

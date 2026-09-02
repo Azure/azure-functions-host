@@ -55,7 +55,7 @@ internal sealed class TestDuplexChannel<T> : DuplexChannel<T>
     internal void AllowDispose() => _allowDispose.TrySetResult();
 
     /// <summary>
-    /// Completes the response boundary, optionally with a channel failure.
+    /// Completes both channel boundaries, optionally with a channel failure.
     /// </summary>
     /// <param name="exception">The channel failure, or <see langword="null"/> for clean completion.</param>
     internal void CompleteResponses(Exception exception = null)
