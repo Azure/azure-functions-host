@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.IO
         private readonly object _syncRoot = new object();
         private CancellationTokenSource _cancellationTokenSource;
         private FileSystemWatcher _fileWatcher;
-        private bool _disposed = false;
+        private int _disposed = 0;
         private int _recovering = 0;
 
         public AutoRecoveringFileSystemWatcher(string path, string filter = "*.*",
@@ -97,7 +97,10 @@ namespace Microsoft.Azure.WebJobs.Script.IO
 
         protected void OnFileChanged(object sender, FileSystemEventArgs e)
         {
-            Changed?.Invoke(this, e);
+            if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 0)
+            {
+                Changed?.Invoke(this, e);
+            }
         }
 
         protected void OnFileWatcherError(ErrorEventArgs args)
@@ -167,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.IO
 
         private void Dispose(bool disposing)
         {
-            if (!_disposed)
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
             {
                 if (disposing)
                 {
@@ -179,7 +182,6 @@ namespace Microsoft.Azure.WebJobs.Script.IO
 
                 _cancellationTokenSource = null;
                 _fileWatcher = null;
-                _disposed = true;
             }
         }
 
