@@ -37,6 +37,8 @@ public class WorkerProxyKestrelTests
         Uri workerAddress = endpoints.GetRelayAddress(FunctionRpcRelaySide.Worker);
         Assert.True(IPAddress.IsLoopback(IPAddress.Parse(workerAddress.Host)));
         Assert.False(endpoints.TryGetRelaySide(endpoints.GetManagementAddress().Port, out _));
+        Assert.True(endpoints.IsHttpForwardingPort(endpoints.GetHttpForwardingAddress().Port));
+        Assert.False(endpoints.IsHttpForwardingPort(endpoints.GetManagementAddress().Port));
 
         using HttpClient runtimeClient = new() { BaseAddress = factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime) };
         using HttpRequestMessage runtimeRequest = new(HttpMethod.Get, "/admin/instance/ready")
