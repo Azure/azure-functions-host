@@ -1,9 +1,11 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Script.Composition;
+using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -13,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public sealed class DefaultScriptHostBuilder : IScriptHostBuilder
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
+        private readonly IWorkerComposition _composition;
         private readonly IServiceProvider _rootServiceProvider;
         private readonly IServiceCollection _rootServices;
 
@@ -21,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _rootServiceProvider = rootServiceProvider ?? throw new ArgumentNullException(nameof(rootServiceProvider));
             _rootServices = rootServices ?? throw new ArgumentNullException(nameof(rootServices));
+            _composition = rootServiceProvider.GetService<SelectedWorkerComposition>()?.Value
+                ?? ServerWorkerComposition.Instance;
         }
 
         public IHost BuildHost(bool skipHostStartup, bool skipHostConfigurationParsing)
@@ -41,7 +46,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             builder.SetAzureFunctionsEnvironment()
-                .AddWebScriptHost(_rootServiceProvider, _rootServices, _applicationHostOptions.CurrentValue);
+                .AddWebScriptHost(
+                    _rootServiceProvider,
+                    _rootServices,
+                    _applicationHostOptions.CurrentValue,
+                    configureWebJobs: null,
+                    composition: _composition);
 
             if (skipHostStartup)
             {

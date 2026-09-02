@@ -28,6 +28,7 @@ public class RpcClientAssemblyTests
 
         Assert.Contains("Microsoft.Azure.WebJobs.Script.Grpc", references);
         Assert.DoesNotContain("Azure.Functions.Rpc.Server", references);
+        Assert.DoesNotContain("Azure.Functions.WorkerProxy", references);
     }
 
     [Fact]
@@ -47,15 +48,19 @@ public class RpcClientAssemblyTests
         Assert.Equal(["..\\WebJobs.Script\\WebJobs.Script.csproj"], GetProjectReferences("WebJobs.Script.Grpc.csproj"));
         Assert.DoesNotContain(GetProjectReferences("Functions.Rpc.Server.csproj"),
             reference => reference.Contains("Functions.Rpc.Client", StringComparison.Ordinal));
-        Assert.DoesNotContain(GetProjectReferences("WebJobs.Script.WebHost.csproj"),
-            reference => reference.Contains("Functions.Rpc.Client", StringComparison.Ordinal));
+        string[] webHostReferences = GetProjectReferences("WebJobs.Script.WebHost.csproj");
+        Assert.Contains("..\\Functions.Rpc.Server\\Functions.Rpc.Server.csproj", webHostReferences);
+        Assert.DoesNotContain(webHostReferences, reference => reference.Contains("Functions.Rpc.Client", StringComparison.Ordinal));
+        Assert.DoesNotContain(webHostReferences, reference => reference.Contains("Functions.WorkerProxy", StringComparison.Ordinal));
     }
 
     [Fact]
     public void StandardSolutionDoesNotContainClient()
     {
         string solution = File.ReadAllText(GetProjectFilePath("WebJobs.Script.sln"));
+        Assert.DoesNotContain("Functions.Host", solution, StringComparison.Ordinal);
         Assert.DoesNotContain("Functions.Rpc.Client", solution, StringComparison.Ordinal);
+        Assert.DoesNotContain("Functions.WorkerProxy", solution, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -69,9 +74,11 @@ public class RpcClientAssemblyTests
 
         Assert.Contains("src/Functions.Rpc.Client/Functions.Rpc.Client.csproj", projects);
         Assert.Contains("src/Functions.Rpc.Server/Functions.Rpc.Server.csproj", projects);
+        Assert.Contains("src/Functions.Host/Functions.Host.csproj", projects);
         Assert.Contains("src/WebJobs.Script/WebJobs.Script.csproj", projects);
         Assert.Contains("src/WebJobs.Script.Grpc/WebJobs.Script.Grpc.csproj", projects);
         Assert.Contains("src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj", projects);
+        Assert.Contains("test/Functions.Host.Tests/Functions.Host.Tests.csproj", projects);
         Assert.Contains("test/Functions.Rpc.Client.Tests/Functions.Rpc.Client.Tests.csproj", projects);
     }
 

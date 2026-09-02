@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
+using Microsoft.Azure.WebJobs.Script.Composition;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -43,7 +44,8 @@ namespace Microsoft.WebJobs.Script.Tests
         }
 
         public static IHostBuilder ConfigureDefaultTestWebScriptHost(this IHostBuilder builder, Action<IWebJobsBuilder> configureWebJobs,
-            Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false, Action<IServiceCollection> configureRootServices = null)
+            Action<ScriptApplicationHostOptions> configure = null, bool runStartupHostedServices = false,
+            Action<IServiceCollection> configureRootServices = null, IWorkerComposition composition = null)
         {
             var webHostOptions = new ScriptApplicationHostOptions()
             {
@@ -112,14 +114,25 @@ namespace Microsoft.WebJobs.Script.Tests
 
             var rootProvider = services.BuildServiceProvider();
 
-            builder
-                .AddWebScriptHost(rootProvider, services, webHostOptions,
-                    webJobsBuilder =>
-                    {
-                        configureWebJobs?.Invoke(webJobsBuilder);
-                        webJobsBuilder.Services.AddCommonRpcServices();
-                    })
-                .ConfigureAppConfiguration(c =>
+            Action<IWebJobsBuilder> configureWebJobsAction = webJobsBuilder =>
+            {
+                configureWebJobs?.Invoke(webJobsBuilder);
+                if (composition is null)
+                {
+                    webJobsBuilder.Services.AddCommonRpcServices();
+                }
+            };
+
+            if (composition is null)
+            {
+                builder.AddWebScriptHost(rootProvider, services, webHostOptions, configureWebJobsAction);
+            }
+            else
+            {
+                builder.AddWebScriptHost(rootProvider, services, webHostOptions, configureWebJobsAction, composition);
+            }
+
+            builder.ConfigureAppConfiguration(c =>
                 {
                     c.AddTestSettings();
                 })
