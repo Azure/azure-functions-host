@@ -39,7 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public static IHostBuilder AddWebScriptHost(this IHostBuilder builder, IServiceProvider rootServiceProvider, IServiceCollection rootServices,
            ScriptApplicationHostOptions webHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
-            IWorkerComposition composition = rootServiceProvider?.GetService<SelectedWorkerComposition>()?.Value
+            ArgumentNullException.ThrowIfNull(rootServiceProvider);
+
+            IWorkerComposition composition = rootServiceProvider.GetService<SelectedWorkerComposition>()?.Value
                 ?? ServerWorkerComposition.Instance;
 
             return builder.AddWebScriptHost(
@@ -68,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Action<IWebJobsBuilder> configureWebJobs,
             IWorkerComposition composition)
         {
+            ArgumentNullException.ThrowIfNull(rootServiceProvider);
             ArgumentNullException.ThrowIfNull(composition);
 
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();

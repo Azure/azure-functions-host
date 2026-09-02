@@ -120,6 +120,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void AddWebJobsScriptHost_AllowsNullConfiguration()
+        {
+            var services = new ServiceCollection();
+
+            services.AddWebJobsScriptHost(configuration: null);
+
+            Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(SelectedWorkerComposition));
+        }
+
+        [Fact]
         public void AddWebJobsScriptHost_AllowsCompositionToRegisterServicesAndControllers()
         {
             var services = new ServiceCollection();

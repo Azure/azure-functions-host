@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Script.Composition;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,6 +66,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Build();
 
             Assert.NotNull(host.Services.GetService<DeferredLogSource>());
+        }
+
+        [Fact]
+        public void AddWebScriptHost_ThrowsWhenRootServiceProviderIsNull()
+        {
+            var builder = new HostBuilder();
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(
+                () => builder.AddWebScriptHost(
+                    rootServiceProvider: null,
+                    rootServices: new ServiceCollection(),
+                    webHostOptions: new ScriptApplicationHostOptions()));
+
+            Assert.True(string.Equals("rootServiceProvider", exception.ParamName, StringComparison.Ordinal));
         }
 
         [Fact]

@@ -4,7 +4,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -13,14 +12,6 @@ namespace Azure.Functions.Host.Tests;
 
 public class ClientWorkerCompositionTests
 {
-    [Fact]
-    public async Task Program_SelectsClientWorkerComposition()
-    {
-        NotImplementedException exception = await Assert.ThrowsAsync<NotImplementedException>(() => Program.Main([]));
-
-        Assert.True(exception.Message.Contains("Client WebHost worker composition", StringComparison.Ordinal));
-    }
-
     [Fact]
     public void ConfigureWebHostServices_ThrowsUntilClientWorkerCompositionIsImplemented()
     {

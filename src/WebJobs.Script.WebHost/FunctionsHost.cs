@@ -44,8 +44,7 @@ public static class FunctionsHost
 
     internal static IHost BuildHost(string[] args, IWorkerComposition composition)
     {
-        return CreateHostBuilder(args, composition)
-            .Build();
+        return CreateHostBuilder(args, composition).Build();
     }
 
     internal static async Task RunHostAsync(IHost host)
