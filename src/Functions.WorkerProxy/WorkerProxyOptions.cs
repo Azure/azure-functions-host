@@ -27,4 +27,14 @@ internal sealed class WorkerProxyOptions
     /// Gets or sets the worker-facing HTTP/2 FunctionRpc listener port.
     /// </summary>
     public int WorkerGrpcPort { get; set; } = 50054;
+
+    /// <summary>
+    /// Gets or sets the runtime-facing HTTP/1 forwarding listener port.
+    /// </summary>
+    public int HttpPort { get; set; } = 28080;
+
+    /// <summary>
+    /// Gets or sets an optional explicit worker HTTP destination.
+    /// </summary>
+    public string? WorkerHttpEndpoint { get; set; }
 }

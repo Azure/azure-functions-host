@@ -20,11 +20,13 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         ValidatePort(options.ManagementPort, nameof(options.ManagementPort), failures);
         ValidatePort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), failures);
         ValidatePort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), failures);
+        ValidatePort(options.HttpPort, nameof(options.HttpPort), failures);
 
         HashSet<int> configuredPorts = [];
         AddDistinctPort(options.ManagementPort, nameof(options.ManagementPort), configuredPorts, failures);
         AddDistinctPort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), configuredPorts, failures);
         AddDistinctPort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), configuredPorts, failures);
+        AddDistinctPort(options.HttpPort, nameof(options.HttpPort), configuredPorts, failures);
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }

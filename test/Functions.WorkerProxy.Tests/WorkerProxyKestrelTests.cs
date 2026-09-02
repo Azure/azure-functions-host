@@ -37,6 +37,8 @@ public class WorkerProxyKestrelTests
         Uri workerAddress = endpoints.GetRelayAddress(FunctionRpcRelaySide.Worker);
         Assert.True(IPAddress.IsLoopback(IPAddress.Parse(workerAddress.Host)));
         Assert.False(endpoints.TryGetRelaySide(endpoints.GetManagementAddress().Port, out _));
+        Assert.True(endpoints.IsHttpPort(endpoints.GetHttpAddress().Port));
+        Assert.False(endpoints.IsHttpPort(endpoints.GetManagementAddress().Port));
 
         foreach (FunctionRpcRelaySide side in Enum.GetValues<FunctionRpcRelaySide>())
         {
@@ -49,6 +51,16 @@ public class WorkerProxyKestrelTests
             using HttpResponseMessage readyResponse = await grpcClient.SendAsync(readyRequest, timeout.Token);
             Assert.Equal(HttpStatusCode.NotFound, readyResponse.StatusCode);
         }
+
+        using HttpClient runtimeClient = new() { BaseAddress = factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime) };
+        using HttpRequestMessage runtimeFallbackRequest = new(HttpMethod.Get, "/not-a-function-rpc-route")
+        {
+            Version = HttpVersion.Version20,
+            VersionPolicy = HttpVersionPolicy.RequestVersionExact
+        };
+        using HttpResponseMessage runtimeFallbackResponse =
+            await runtimeClient.SendAsync(runtimeFallbackRequest, timeout.Token);
+        Assert.Equal(HttpStatusCode.NotFound, runtimeFallbackResponse.StatusCode);
     }
 
     private static int GetAvailablePort()

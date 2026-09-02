@@ -16,13 +16,14 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
     private ListenOptions? _management;
     private ListenOptions? _runtime;
     private ListenOptions? _worker;
+    private ListenOptions? _http;
 
     /// <inheritdoc />
     public void Configure(KestrelServerOptions options)
     {
         WorkerProxyOptions configuredOptions = workerProxyOptions.Value;
 
-        if (_management is not null || _runtime is not null || _worker is not null)
+        if (_management is not null || _runtime is not null || _worker is not null || _http is not null)
         {
             throw new InvalidOperationException("WorkerProxy Kestrel endpoints have already been configured.");
         }
@@ -42,6 +43,11 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
             listener.Protocols = HttpProtocols.Http2;
             _worker = listener;
         });
+        options.ListenAnyIP(configuredOptions.HttpPort, listener =>
+        {
+            listener.Protocols = HttpProtocols.Http1;
+            _http = listener;
+        });
     }
 
     /// <summary>
@@ -52,6 +58,16 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
     public bool IsManagementPort(int localPort)
     {
         return GetPort(_management) == localPort;
+    }
+
+    /// <summary>
+    /// Determines whether a request arrived on the HTTP forwarding listener.
+    /// </summary>
+    /// <param name="localPort">The local port that accepted the request.</param>
+    /// <returns><see langword="true"/> for the HTTP forwarding listener; otherwise, <see langword="false"/>.</returns>
+    public bool IsHttpPort(int localPort)
+    {
+        return GetPort(_http) == localPort;
     }
 
     /// <summary>
@@ -81,6 +97,11 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
     internal Uri GetManagementAddress()
     {
         return GetAddress(_management, "management");
+    }
+
+    internal Uri GetHttpAddress()
+    {
+        return GetAddress(_http, "HTTP forwarding");
     }
 
     internal Uri GetRelayAddress(FunctionRpcRelaySide side)
