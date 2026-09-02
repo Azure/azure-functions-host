@@ -35,6 +35,23 @@ public partial class FunctionRpcRelayTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
+    public async Task FunctionRpc_IsAvailableOnBothRpcListeners(bool runtimeListener)
+    {
+        FunctionRpcRelaySide side = runtimeListener ? FunctionRpcRelaySide.Runtime : FunctionRpcRelaySide.Worker;
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient client = CreateClient(factory, side, timeout.Token);
+
+        await client.WriteAsync(CreateMessage("attach"), timeout.Token);
+
+        await WaitForAttachmentAsync(relay, side, timeout.Token);
+        Assert.True(relay.IsAttached(side));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
     public async Task Relay_ConnectsEitherSideFirstAndForwardsBothDirections(bool runtimeConnectsFirst)
     {
         FunctionRpcRelaySide firstSide = runtimeConnectsFirst ? FunctionRpcRelaySide.Runtime : FunctionRpcRelaySide.Worker;

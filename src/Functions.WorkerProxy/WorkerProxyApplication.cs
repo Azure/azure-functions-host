@@ -47,13 +47,28 @@ internal static class WorkerProxyApplication
         builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
 
         WebApplication app = builder.Build();
-        app.MapGrpcService<FunctionRpcRelayService>();
-        app.MapGet(ReadyPath, static (HttpContext context) =>
-        {
-            WorkerProxyEndpointConfiguration endpoints = context.RequestServices.GetRequiredService<WorkerProxyEndpointConfiguration>();
-            return endpoints.IsManagementPort(context.Connection.LocalPort) ? Results.Ok() : Results.NotFound();
-        }).AllowAnonymous();
+        app.MapWhen(static context => context.IsManagementPort(), ConfigureManagementPipeline);
+        app.MapWhen(static context => context.IsAnyGrpcPort(), ConfigureGrpcPipeline);
+        app.Run(static context => Results.NotFound().ExecuteAsync(context));
 
         return app;
+    }
+
+    private static void ConfigureManagementPipeline(IApplicationBuilder app)
+    {
+        app.UseRouting();
+        app.UseEndpoints(static endpoints =>
+        {
+            endpoints.MapGet(ReadyPath, static () => Results.Ok()).AllowAnonymous();
+        });
+    }
+
+    private static void ConfigureGrpcPipeline(IApplicationBuilder app)
+    {
+        app.UseRouting();
+        app.UseEndpoints(static endpoints =>
+        {
+            endpoints.MapGrpcService<FunctionRpcRelayService>();
+        });
     }
 }

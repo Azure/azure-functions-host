@@ -38,14 +38,17 @@ public class WorkerProxyKestrelTests
         Assert.True(IPAddress.IsLoopback(IPAddress.Parse(workerAddress.Host)));
         Assert.False(endpoints.TryGetRelaySide(endpoints.GetManagementAddress().Port, out _));
 
-        using HttpClient runtimeClient = new() { BaseAddress = factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime) };
-        using HttpRequestMessage runtimeRequest = new(HttpMethod.Get, "/admin/instance/ready")
+        foreach (FunctionRpcRelaySide side in Enum.GetValues<FunctionRpcRelaySide>())
         {
-            Version = HttpVersion.Version20,
-            VersionPolicy = HttpVersionPolicy.RequestVersionExact
-        };
-        using HttpResponseMessage runtimeResponse = await runtimeClient.SendAsync(runtimeRequest, timeout.Token);
-        Assert.Equal(HttpStatusCode.NotFound, runtimeResponse.StatusCode);
+            using HttpClient grpcClient = new() { BaseAddress = factory.GetFunctionRpcAddress(side) };
+            using HttpRequestMessage readyRequest = new(HttpMethod.Get, "/admin/instance/ready")
+            {
+                Version = HttpVersion.Version20,
+                VersionPolicy = HttpVersionPolicy.RequestVersionExact
+            };
+            using HttpResponseMessage readyResponse = await grpcClient.SendAsync(readyRequest, timeout.Token);
+            Assert.Equal(HttpStatusCode.NotFound, readyResponse.StatusCode);
+        }
     }
 
     private static int GetAvailablePort()
