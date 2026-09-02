@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private AutoRecoveringFileSystemWatcher _diagnosticModeFileWatcher;
         private FileWatcherEventSource _fileEventSource;
         private bool _restartScheduled;
-        private bool _shutdownScheduled;
+        private long _shutdownScheduled;
         private long _restartRequested;
         private bool _disposed = false;
         private bool _watchersStopped = false;
@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _restartScheduled = true;
             if (shutdown)
             {
-                _shutdownScheduled = true;
+                Interlocked.Exchange(ref _shutdownScheduled, 1);
             }
 
             await ScheduleRestartAsync(reason);
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else
             {
-                if (_shutdownScheduled)
+                if (Interlocked.Read(ref _shutdownScheduled) == 1)
                 {
                     _shutdown();
                 }
@@ -296,9 +296,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 changeDescription = "File";
                 if (File.Exists(e.FullPath))
                 {
+                    // Ensure a previously queued restart cannot win after app_offline.htm is detected.
+                    Interlocked.Exchange(ref _shutdownScheduled, 1);
                     string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "{0} change of type '{1}' detected for '{2}'", changeDescription, e.ChangeType.ToString(), e.FullPath);
                     TraceFileChangeRestart(fileChangeMsg, isShutdown: true);
                     Shutdown();
+                    return;
                 }
             }
             else if (_scriptOptions.WatchFiles.Any(f => string.Equals(fileName, f, StringComparison.OrdinalIgnoreCase)))
@@ -333,9 +336,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 string fileChangeMsg = string.Format(CultureInfo.InvariantCulture, "{0} change of type '{1}' detected for '{2}'", changeDescription, e.ChangeType.ToString(), e.FullPath);
-                TraceFileChangeRestart(fileChangeMsg, shutdown);
-                ScheduleRestartAsync(fileChangeMsg, shutdown)
-                    .ContinueWith(t => _logger.LogError(t.Exception, $"Error restarting host (full shutdown: {shutdown})"),
+                bool shutdownRequested = shutdown || Interlocked.Read(ref _shutdownScheduled) == 1;
+                TraceFileChangeRestart(fileChangeMsg, shutdownRequested);
+                ScheduleRestartAsync(fileChangeMsg, shutdownRequested)
+                    .ContinueWith(t => _logger.LogError(t.Exception, $"Error restarting host (full shutdown: {shutdownRequested})"),
                         TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
         }
@@ -368,7 +372,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private Task RestartAsync(string reason)
         {
-            if (!_shutdownScheduled && Interlocked.Exchange(ref _restartRequested, 1) == 0)
+            if (Interlocked.Read(ref _shutdownScheduled) == 0 && Interlocked.Exchange(ref _restartRequested, 1) == 0)
             {
                 return _scriptHostManager.RestartHostAsync(reason);
             }
