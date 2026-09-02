@@ -62,9 +62,10 @@ internal sealed class RpcClientWorkerChannel(
         appCapabilitiesStore,
         httpProxyService)
 {
+    private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TimeSpan _startStreamTimeout = ValidateStartStreamTimeout(startStreamTimeout);
-    private int _lifecycleState;
+    private LifecycleState _lifecycleState;
 
     private enum LifecycleState
     {
@@ -85,21 +86,24 @@ internal sealed class RpcClientWorkerChannel(
             return Task.FromCanceled(cancellationToken);
         }
 
-        LifecycleState state = (LifecycleState)Interlocked.CompareExchange(
-            ref _lifecycleState, (int)LifecycleState.Started, (int)LifecycleState.NotStarted);
-        ObjectDisposedException.ThrowIf(state is LifecycleState.Disposed, this);
-
-        if (state is LifecycleState.NotStarted)
+        lock (_lifecycleLock)
         {
-            try
+            ObjectDisposedException.ThrowIf(_lifecycleState is LifecycleState.Disposed, this);
+
+            if (_lifecycleState is LifecycleState.NotStarted)
             {
-                MarkWorkerInitializing();
-                BeginInboundProcessing(_startStreamTimeout);
-                _ = CompleteStartAsync();
-            }
-            catch (Exception exception)
-            {
-                _startCompletion.TrySetException(exception);
+                _lifecycleState = LifecycleState.Started;
+
+                try
+                {
+                    MarkWorkerInitializing();
+                    BeginInboundProcessing(_startStreamTimeout);
+                    _ = CompleteStartAsync();
+                }
+                catch (Exception exception)
+                {
+                    _startCompletion.TrySetException(exception);
+                }
             }
         }
 
@@ -108,7 +112,11 @@ internal sealed class RpcClientWorkerChannel(
 
     protected override void Dispose(bool disposing)
     {
-        Interlocked.Exchange(ref _lifecycleState, (int)LifecycleState.Disposed);
+        lock (_lifecycleLock)
+        {
+            _lifecycleState = LifecycleState.Disposed;
+        }
+
         base.Dispose(disposing);
     }
 
