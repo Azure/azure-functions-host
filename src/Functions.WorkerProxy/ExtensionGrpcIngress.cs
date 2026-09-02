@@ -136,6 +136,11 @@ internal sealed partial class ExtensionGrpcIngress(
             await CompleteWithStatusAsync(context.Response, ExtensionRpcStatus.Unavailable, exception.Message);
             return;
         }
+        catch (TimeoutException exception)
+        {
+            await CompleteWithStatusAsync(context.Response, ExtensionRpcStatus.DeadlineExceeded, exception.Message);
+            return;
+        }
         catch (OperationCanceledException) when (requestLifetimeToken.IsCancellationRequested)
         {
             if (!context.RequestAborted.IsCancellationRequested)
