@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.ExtensionRpc;
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -140,6 +141,24 @@ public class ExtensionRpcTransportTests
                     Timeout = Duration.FromTimeSpan(TimeSpan.Zero),
                 },
                 CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task OpenExtensionCall_ThrowsTimeoutExceptionWhenNegotiationTimesOut()
+    {
+        var streamCoordinator = new ExtensionRpcStreamCoordinator();
+        await using ExtensionRpcStreamLease lease = streamCoordinator.Open(CancellationToken.None);
+        await lease.Stream.Outbound.ReadAsync();
+        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        await Assert.ThrowsAsync<TimeoutException>(
+            () => streamCoordinator.OpenExtensionCallAsync(
+                new ExtensionRpcStart
+                {
+                    Method = "/extensions.Echo/Unary",
+                    Timeout = Duration.FromTimeSpan(TimeSpan.Zero),
+                },
+                cancellationTokenSource.Token));
     }
 
     [Fact]

@@ -11,7 +11,7 @@ using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
-namespace Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy.ExtensionRpc;
 
 /// <summary>
 /// Coordinates the active host extension RPC stream and worker-originated logical calls.
@@ -69,8 +69,7 @@ internal sealed class ExtensionRpcStreamCoordinator
     /// <param name="cancellationToken">A token that cancels opening the call.</param>
     /// <returns>The opened extension call.</returns>
     public async Task<ExtensionCall> OpenExtensionCallAsync(
-        ExtensionRpcStart start,
-        CancellationToken cancellationToken)
+        ExtensionRpcStart start, CancellationToken cancellationToken)
     {
         TimeSpan? timeout = start.Timeout?.ToTimeSpan();
         long waitStart = Stopwatch.GetTimestamp();
@@ -97,13 +96,7 @@ internal sealed class ExtensionRpcStreamCoordinator
             {
                 if (timeout is not null)
                 {
-                    TimeSpan remaining = timeout.Value - Stopwatch.GetElapsedTime(waitStart);
-                    if (remaining <= TimeSpan.Zero)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        throw new TimeoutException("The extension RPC call timed out before it could be opened.");
-                    }
-
+                    TimeSpan remaining = GetRemainingTimeout(timeout.Value, waitStart, cancellationToken);
                     start.Timeout = Duration.FromTimeSpan(remaining);
                     UpdateTimeoutMetadata(start, remaining);
                 }
@@ -124,7 +117,15 @@ internal sealed class ExtensionRpcStreamCoordinator
                 continue;
             }
 
-            await availabilityTask!.WaitAsync(cancellationToken);
+            if (timeout is null)
+            {
+                await availabilityTask!.WaitAsync(cancellationToken);
+            }
+            else
+            {
+                TimeSpan remaining = GetRemainingTimeout(timeout.Value, waitStart, cancellationToken);
+                await availabilityTask!.WaitAsync(remaining, cancellationToken);
+            }
         }
     }
 
@@ -163,6 +164,19 @@ internal sealed class ExtensionRpcStreamCoordinator
         }
 
         stream.Close();
+    }
+
+    private static TimeSpan GetRemainingTimeout(
+        TimeSpan timeout, long waitStart, CancellationToken cancellationToken)
+    {
+        TimeSpan remaining = timeout - Stopwatch.GetElapsedTime(waitStart);
+        if (remaining <= TimeSpan.Zero)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new TimeoutException("The extension RPC call timed out before it could be opened.");
+        }
+
+        return remaining;
     }
 
     /// <summary>

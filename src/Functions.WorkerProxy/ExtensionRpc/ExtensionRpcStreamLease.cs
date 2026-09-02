@@ -4,7 +4,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy.ExtensionRpc;
 
 /// <summary>
 /// Owns the lifetime of the single physical extension RPC stream registered with the coordinator.

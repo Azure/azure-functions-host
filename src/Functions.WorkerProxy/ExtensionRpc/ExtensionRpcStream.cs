@@ -8,7 +8,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
-namespace Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy.ExtensionRpc;
 
 /// <summary>
 /// Represents the physical host extension RPC stream that multiplexes logical extension calls.
@@ -38,10 +38,7 @@ internal sealed class ExtensionRpcStream
     /// <param name="streamId">The identifier for this physical stream instance.</param>
     /// <param name="cancellationToken">A token that is cancelled when the transport ends.</param>
     public ExtensionRpcStream(
-        ExtensionRpcStreamCoordinator owner,
-        string sessionId,
-        string streamId,
-        CancellationToken cancellationToken)
+        ExtensionRpcStreamCoordinator owner, string sessionId, string streamId, CancellationToken cancellationToken)
     {
         _owner = owner;
         SessionId = sessionId;
@@ -132,9 +129,7 @@ internal sealed class ExtensionRpcStream
     /// <param name="cancellationToken">A token that cancels opening the call.</param>
     /// <returns>The registered extension call.</returns>
     public async Task<ExtensionCall> OpenExtensionCallAsync(
-        string callId,
-        ExtensionRpcStart start,
-        CancellationToken cancellationToken)
+        string callId, ExtensionRpcStart start, CancellationToken cancellationToken)
     {
         ExtensionRpcReady ready = _ready
             ?? throw new InvalidOperationException($"Extension RPC stream '{StreamId}' is not ready.");
@@ -200,9 +195,7 @@ internal sealed class ExtensionRpcStream
     /// <param name="cancellationToken">A token that cancels queueing the message.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     internal async ValueTask WriteExtensionMessageAsync(
-        string callId,
-        ExtensionRpcMessage message,
-        CancellationToken cancellationToken)
+        string callId, ExtensionRpcMessage message, CancellationToken cancellationToken)
     {
         message.SessionId = SessionId;
         message.ShardId = StreamId;

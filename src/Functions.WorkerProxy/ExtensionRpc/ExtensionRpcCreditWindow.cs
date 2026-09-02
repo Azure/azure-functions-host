@@ -4,7 +4,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy.ExtensionRpc;
 
 /// <summary>
 /// Coordinates byte-based flow-control credits for one direction of an extension RPC call.

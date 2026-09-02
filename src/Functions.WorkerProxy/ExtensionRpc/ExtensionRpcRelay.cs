@@ -7,9 +7,10 @@ using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using ExtensionRpcService = Microsoft.Azure.WebJobs.Script.Grpc.Messages.ExtensionRpc;
 using GrpcRpcException = Grpc.Core.RpcException;
 
-namespace Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy.ExtensionRpc;
 
 /// <summary>
 /// Implements the runtime-facing extension RPC service and attaches its stream to the coordinator.
@@ -17,9 +18,8 @@ namespace Azure.Functions.WorkerProxy;
 /// <param name="endpoints">The WorkerProxy listener configuration.</param>
 /// <param name="streamCoordinator">The coordinator that owns the active extension RPC stream.</param>
 internal sealed class ExtensionRpcRelay(
-    WorkerProxyEndpointConfiguration endpoints,
-    ExtensionRpcStreamCoordinator streamCoordinator)
-    : ExtensionRpc.ExtensionRpcBase
+    WorkerProxyEndpointConfiguration endpoints, ExtensionRpcStreamCoordinator streamCoordinator)
+    : ExtensionRpcService.ExtensionRpcBase
 {
     /// <inheritdoc />
     public override Task EventStream(
