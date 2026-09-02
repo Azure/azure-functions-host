@@ -45,8 +45,22 @@ internal sealed class RpcClientWorkerChannelFactory(IScriptEventManager eventMan
         ArgumentNullException.ThrowIfNull(httpProxyService);
 
         ILogger workerLogger = loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{workerConfig.Description.Language}.{workerId}");
-        return new RpcClientWorkerChannel(workerId, ownedChannel, workerConfig.CountOptions.ProcessStartupTimeout, eventManager, hostManager,
-            workerConfig, workerLogger, metricsLogger, attemptCount, environment, applicationHostOptions, sharedMemoryManager,
-            workerConcurrencyOptions, hostingConfigOptions, appCapabilitiesStore, httpProxyService);
+        return new RpcClientWorkerChannel(
+            workerId,
+            ownedChannel,
+            workerConfig.CountOptions.ProcessStartupTimeout,
+            eventManager,
+            hostManager,
+            workerConfig,
+            workerLogger,
+            metricsLogger,
+            attemptCount,
+            environment,
+            applicationHostOptions,
+            sharedMemoryManager,
+            workerConcurrencyOptions,
+            hostingConfigOptions,
+            appCapabilitiesStore,
+            httpProxyService);
     }
 }
