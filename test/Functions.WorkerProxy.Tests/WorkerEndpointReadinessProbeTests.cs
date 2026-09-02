@@ -30,6 +30,18 @@ public class WorkerEndpointReadinessProbeTests
     }
 
     [Fact]
+    public async Task WaitForReadyAsync_LocalhostBoundToIpv6_ReturnsTrue()
+    {
+        using TcpListener listener = new(IPAddress.IPv6Loopback, 0);
+        listener.Server.DualMode = false;
+        listener.Start();
+        Uri destination = new($"http://localhost:{((IPEndPoint)listener.LocalEndpoint).Port}");
+        WorkerEndpointReadinessProbe probe = CreateProbe();
+
+        Assert.True(await probe.WaitForReadyAsync(destination, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task WaitForReadyAsync_CallerCancellation_Throws()
     {
         WorkerEndpointReadinessProbe probe = CreateProbe();

@@ -36,11 +36,7 @@ internal sealed class WorkerHttpForwarder(
         ArgumentNullException.ThrowIfNull(destination);
 
         return await httpForwarder.SendAsync(
-            context,
-            destination.AbsoluteUri,
-            _invoker,
-            RequestConfig,
-            HttpTransformer.Default);
+            context, destination.AbsoluteUri, _invoker, RequestConfig, HttpTransformer.Default);
     }
 
     /// <inheritdoc />

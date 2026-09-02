@@ -22,9 +22,6 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// eventually surface as a worker startup timeout. This probe closes that race by waiting for the
 /// advertised port to accept TCP connections before forwarding the first request.
 /// </remarks>
-/// <remarks>
-/// Initializes a new instance of the <see cref="WorkerEndpointReadinessProbe"/> class.
-/// </remarks>
 internal sealed partial class WorkerEndpointReadinessProbe(
     IOptions<WorkerEndpointReadinessProbeOptions> options,
     ILogger<WorkerEndpointReadinessProbe> logger)
@@ -71,7 +68,7 @@ internal sealed partial class WorkerEndpointReadinessProbe(
         IPAddress[] addresses;
         if (string.Equals(destination.Host, "localhost", StringComparison.OrdinalIgnoreCase))
         {
-            addresses = [IPAddress.Loopback];
+            addresses = [IPAddress.Loopback, IPAddress.IPv6Loopback];
         }
         else
         {

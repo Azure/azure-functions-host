@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
@@ -21,7 +22,8 @@ internal sealed class WorkerHttpForwardingMiddleware(
     /// </summary>
     public async Task InvokeAsync(HttpContext context)
     {
-        System.Uri? destination = WorkerHttpDestinationResolver.Resolve(
+        // TODO: Supply the worker-advertised HTTP endpoint once FunctionRpc exposes it.
+        Uri? destination = WorkerHttpDestinationResolver.Resolve(
             options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
 
         if (destination is null || (!readinessProbe.IsKnownReady(destination)

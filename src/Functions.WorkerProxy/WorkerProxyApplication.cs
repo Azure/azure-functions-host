@@ -83,6 +83,7 @@ internal static class WorkerProxyApplication
         app.UseRouting();
         app.UseEndpoints(static endpoints =>
         {
+            // Admin paths are reserved for the platform. We intentionally block them to make that clear.
             endpoints.Map("/admin/{**path}", static () => Results.NotFound()).AllowAnonymous();
             endpoints.Map(
                 "/{**path}",
