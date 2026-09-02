@@ -92,7 +92,7 @@ public class WorkerHttpForwardingTests
     }
 
     [Fact]
-    public async Task ManagementListener_DoesNotForward()
+    public async Task ManagementListener_DoesNotForwardNonAdminPath()
     {
         await using WebApplication worker = await StartWorkerAsync(context =>
         {
@@ -109,6 +109,30 @@ public class WorkerHttpForwardingTests
         using HttpResponseMessage response = await client.GetAsync("/not-a-management-route");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task HttpListener_UnknownAdminPath_DoesNotForward()
+    {
+        int requestCount = 0;
+        await using WebApplication worker = await StartWorkerAsync(context =>
+        {
+            Interlocked.Increment(ref requestCount);
+            context.Response.StatusCode = StatusCodes.Status202Accepted;
+            return Task.CompletedTask;
+        });
+        Dictionary<string, string?> configuration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] =
+                GetAddress(worker).AbsoluteUri
+        };
+        await using WorkerProxyWebApplicationFactory factory = new(configuration);
+        using HttpClient client = factory.CreateHttpForwardingClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/admin/worker/ready");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(0, requestCount);
     }
 
     private static async Task<WebApplication> StartWorkerAsync(RequestDelegate handler)

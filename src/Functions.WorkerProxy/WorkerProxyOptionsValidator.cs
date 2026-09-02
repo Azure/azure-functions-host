@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using Microsoft.Extensions.Options;
 
@@ -18,12 +17,6 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
     public ValidateOptionsResult Validate(string? name, WorkerProxyOptions options)
     {
         List<string> failures = [];
-        if (string.IsNullOrWhiteSpace(options.PodName)
-            || Uri.CheckHostName(options.PodName.Trim('[', ']')) == UriHostNameType.Unknown)
-        {
-            failures.Add($"{nameof(options.PodName)} must be a valid host name or IP address.");
-        }
-
         ValidatePort(options.ManagementPort, nameof(options.ManagementPort), failures);
         ValidatePort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), failures);
         ValidatePort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), failures);

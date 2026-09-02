@@ -7,6 +7,7 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "WORKERPROXY__MANAGEMENTPORT": "8080",
+        "WORKERPROXY__HTTPPORT": "28080",
         "WORKERPROXY__RUNTIMEGRPCPORT": "50053",
         "WORKERPROXY__WORKERGRPCPORT": "50054"
       }

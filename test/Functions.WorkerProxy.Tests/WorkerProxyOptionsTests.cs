@@ -16,11 +16,10 @@ public class WorkerProxyOptionsTests
     {
         WorkerProxyOptions options = GetOptions();
 
-        Assert.Equal(Environment.MachineName, options.PodName);
         Assert.Equal(80, options.ManagementPort);
         Assert.Equal(50053, options.RuntimeGrpcPort);
         Assert.Equal(50054, options.WorkerGrpcPort);
-        Assert.Equal(50055, options.HttpPort);
+        Assert.Equal(28080, options.HttpPort);
         Assert.Null(options.WorkerHttpEndpoint);
     }
 
@@ -28,14 +27,12 @@ public class WorkerProxyOptionsTests
     public void Options_BindFromStandardConfiguration()
     {
         WorkerProxyOptions options = GetOptions(
-            "--WorkerProxy:PodName", "worker-pod",
             "--WorkerProxy:ManagementPort", "41000",
             "--WorkerProxy:RuntimeGrpcPort", "41001",
             "--WorkerProxy:WorkerGrpcPort", "41002",
             "--WorkerProxy:HttpPort", "41003",
             "--WorkerProxy:WorkerHttpEndpoint", "http://localhost:41004");
 
-        Assert.Equal("worker-pod", options.PodName);
         Assert.Equal(41000, options.ManagementPort);
         Assert.Equal(41001, options.RuntimeGrpcPort);
         Assert.Equal(41002, options.WorkerGrpcPort);
@@ -58,12 +55,6 @@ public class WorkerProxyOptionsTests
     public void Options_RejectNonNumericValues()
     {
         Assert.Throws<InvalidOperationException>(() => GetOptions("--WorkerProxy:WorkerGrpcPort", "not-a-number"));
-    }
-
-    [Fact]
-    public void Options_RejectEmptyPodName()
-    {
-        Assert.Throws<OptionsValidationException>(() => GetOptions("--WorkerProxy:PodName", " "));
     }
 
     [Fact]

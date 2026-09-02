@@ -44,15 +44,43 @@ internal static class WorkerProxyApplication
         ConfigureHttpForwarding(builder);
 
         WebApplication app = builder.Build();
-        app.UseMiddleware<WorkerHttpForwardingMiddleware>();
-        app.MapGrpcService<FunctionRpcRelayService>();
-        app.MapGet(ReadyPath, static (HttpContext context) =>
-        {
-            WorkerProxyEndpointConfiguration endpoints = context.RequestServices.GetRequiredService<WorkerProxyEndpointConfiguration>();
-            return endpoints.IsManagementPort(context.Connection.LocalPort) ? Results.Ok() : Results.NotFound();
-        }).AllowAnonymous();
+        app.MapWhen(static context => context.IsManagementPort(), ConfigureManagementPipeline);
+        app.MapWhen(static context => context.IsAnyGrpcPort(), ConfigureRpcPipeline);
+        app.MapWhen(static context => context.IsHttpPort(), ConfigureHttpPipeline);
+        app.Run(static context => Results.NotFound().ExecuteAsync(context));
 
         return app;
+    }
+
+    private static void ConfigureManagementPipeline(IApplicationBuilder app)
+    {
+        app.UseRouting();
+        app.UseEndpoints(static endpoints =>
+        {
+            endpoints.MapGet(ReadyPath, static () => Results.Ok()).AllowAnonymous();
+        });
+    }
+
+    private static void ConfigureRpcPipeline(IApplicationBuilder app)
+    {
+        app.UseRouting();
+        app.UseEndpoints(static endpoints =>
+        {
+            endpoints.MapGrpcService<FunctionRpcRelayService>();
+        });
+    }
+
+    private static void ConfigureHttpPipeline(IApplicationBuilder app)
+    {
+        app.UseRouting();
+        app.UseEndpoints(static endpoints =>
+        {
+            endpoints.Map("/admin/{**path}", static () => Results.NotFound()).AllowAnonymous();
+            endpoints.Map(
+                "/{**path}",
+                static (HttpContext context, WorkerHttpForwardingMiddleware middleware) => middleware.InvokeAsync(context))
+                .AllowAnonymous();
+        });
     }
 
     private static void ConfigureWebHostSettings(WebApplicationBuilder builder)
@@ -99,5 +127,6 @@ internal static class WorkerProxyApplication
             });
 
         builder.Services.AddSingleton<WorkerHttpForwarder>();
+        builder.Services.AddSingleton<WorkerHttpForwardingMiddleware>();
     }
 }

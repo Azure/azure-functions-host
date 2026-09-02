@@ -9,26 +9,18 @@ using Yarp.ReverseProxy.Forwarder;
 namespace Azure.Functions.WorkerProxy.Http;
 
 /// <summary>
-/// Restricts worker HTTP forwarding to the dedicated forwarding listener.
+/// Resolves the worker endpoint, waits for readiness, and forwards eligible requests through YARP.
 /// </summary>
-internal sealed class WorkerHttpForwardingMiddleware(RequestDelegate next)
+internal sealed class WorkerHttpForwardingMiddleware(
+    IOptions<WorkerProxyOptions> options,
+    WorkerEndpointReadinessProbe readinessProbe,
+    WorkerHttpForwarder forwarder)
 {
     /// <summary>
-    /// Forwards requests arriving on the HTTP forwarding listener.
+    /// Forwards a request to the configured worker HTTP endpoint.
     /// </summary>
-    public async Task InvokeAsync(
-        HttpContext context,
-        WorkerProxyEndpointConfiguration endpoints,
-        IOptions<WorkerProxyOptions> options,
-        WorkerEndpointReadinessProbe readinessProbe,
-        WorkerHttpForwarder forwarder)
+    public async Task InvokeAsync(HttpContext context)
     {
-        if (!endpoints.IsHttpForwardingPort(context.Connection.LocalPort))
-        {
-            await next(context);
-            return;
-        }
-
         System.Uri? destination = WorkerHttpDestinationResolver.Resolve(
             options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
 

@@ -45,7 +45,7 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
         });
         options.ListenAnyIP(configuredOptions.HttpPort, listener =>
         {
-            listener.Protocols = HttpProtocols.Http1AndHttp2;
+            listener.Protocols = HttpProtocols.Http1;
             _http = listener;
         });
     }
@@ -65,7 +65,7 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
     /// </summary>
     /// <param name="localPort">The local port that accepted the request.</param>
     /// <returns><see langword="true"/> for the HTTP forwarding listener; otherwise, <see langword="false"/>.</returns>
-    public bool IsHttpForwardingPort(int localPort)
+    public bool IsHttpPort(int localPort)
     {
         return GetPort(_http) == localPort;
     }
@@ -99,17 +99,9 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
         return GetAddress(_management, "management");
     }
 
-    internal Uri GetHttpForwardingAddress()
+    internal Uri GetHttpAddress()
     {
         return GetAddress(_http, "HTTP forwarding");
-    }
-
-    internal Uri GetAdvertisedHttpForwardingAddress(string host)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(host);
-        Uri boundAddress = GetHttpForwardingAddress();
-
-        return new UriBuilder(Uri.UriSchemeHttp, host, boundAddress.Port).Uri;
     }
 
     internal Uri GetRelayAddress(FunctionRpcRelaySide side)

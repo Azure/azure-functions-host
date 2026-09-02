@@ -37,17 +37,30 @@ public class WorkerProxyKestrelTests
         Uri workerAddress = endpoints.GetRelayAddress(FunctionRpcRelaySide.Worker);
         Assert.True(IPAddress.IsLoopback(IPAddress.Parse(workerAddress.Host)));
         Assert.False(endpoints.TryGetRelaySide(endpoints.GetManagementAddress().Port, out _));
-        Assert.True(endpoints.IsHttpForwardingPort(endpoints.GetHttpForwardingAddress().Port));
-        Assert.False(endpoints.IsHttpForwardingPort(endpoints.GetManagementAddress().Port));
+        Assert.True(endpoints.IsHttpPort(endpoints.GetHttpAddress().Port));
+        Assert.False(endpoints.IsHttpPort(endpoints.GetManagementAddress().Port));
+
+        foreach (FunctionRpcRelaySide side in Enum.GetValues<FunctionRpcRelaySide>())
+        {
+            using HttpClient grpcClient = new() { BaseAddress = factory.GetFunctionRpcAddress(side) };
+            using HttpRequestMessage fallbackRequest = new(HttpMethod.Get, "/admin/not-allowed")
+            {
+                Version = HttpVersion.Version20,
+                VersionPolicy = HttpVersionPolicy.RequestVersionExact
+            };
+            using HttpResponseMessage fallbackResponse = await grpcClient.SendAsync(fallbackRequest, timeout.Token);
+            Assert.Equal(HttpStatusCode.NotFound, fallbackResponse.StatusCode);
+        }
 
         using HttpClient runtimeClient = new() { BaseAddress = factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime) };
-        using HttpRequestMessage runtimeRequest = new(HttpMethod.Get, "/admin/instance/ready")
+        using HttpRequestMessage runtimeFallbackRequest = new(HttpMethod.Get, "/not-a-function-rpc-route")
         {
             Version = HttpVersion.Version20,
             VersionPolicy = HttpVersionPolicy.RequestVersionExact
         };
-        using HttpResponseMessage runtimeResponse = await runtimeClient.SendAsync(runtimeRequest, timeout.Token);
-        Assert.Equal(HttpStatusCode.NotFound, runtimeResponse.StatusCode);
+        using HttpResponseMessage runtimeFallbackResponse =
+            await runtimeClient.SendAsync(runtimeFallbackRequest, timeout.Token);
+        Assert.Equal(HttpStatusCode.NotFound, runtimeFallbackResponse.StatusCode);
     }
 
     private static int GetAvailablePort()
