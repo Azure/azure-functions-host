@@ -3,8 +3,8 @@
 
 using System;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 
@@ -30,7 +30,7 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     }
 
     /// <inheritdoc />
-    public async Task<Channel<StreamingMessage>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
+    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
     {
         FunctionRpc.FunctionRpcClient client = await _clientFactory.CreateAsync(endpoint, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();

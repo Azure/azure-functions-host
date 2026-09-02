@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Xunit;
 
@@ -42,9 +43,20 @@ public class RpcClientAssemblyTests
     }
 
     [Fact]
+    public void RpcClientWorkerChannelDerivesPublicSharedWorkerChannel()
+    {
+        Assert.True(typeof(WorkerChannel).IsPublic);
+        Assert.Equal(typeof(WorkerChannel), typeof(RpcClientWorkerChannel).BaseType);
+        Assert.Equal("Azure.Functions.Rpc.Client", typeof(RpcClientWorkerChannel).Assembly.GetName().Name);
+    }
+
+    [Fact]
     public void ProductProjectReferencesPreserveSiblingBoundaries()
     {
-        Assert.Equal(["..\\WebJobs.Script.Grpc\\WebJobs.Script.Grpc.csproj"], GetProjectReferences("Functions.Rpc.Client.csproj"));
+        string[] clientReferences = GetProjectReferences("Functions.Rpc.Client.csproj");
+        string[] expectedClientReferences = ["..\\WebJobs.Script.Grpc\\WebJobs.Script.Grpc.csproj", "..\\WebJobs.Script\\WebJobs.Script.csproj"];
+        Assert.Equal(expectedClientReferences.OrderBy(reference => reference, StringComparer.Ordinal),
+            clientReferences.OrderBy(reference => reference, StringComparer.Ordinal));
         Assert.Equal(["..\\WebJobs.Script\\WebJobs.Script.csproj"], GetProjectReferences("WebJobs.Script.Grpc.csproj"));
         Assert.DoesNotContain(GetProjectReferences("Functions.Rpc.Server.csproj"),
             reference => reference.Contains("Functions.Rpc.Client", StringComparison.Ordinal));

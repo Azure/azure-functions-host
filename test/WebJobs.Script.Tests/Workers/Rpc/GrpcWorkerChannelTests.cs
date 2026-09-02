@@ -228,6 +228,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task StartWorkerProcessAsync_ChannelCompletesBeforeInitialization_Throws()
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            Task start = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+
+            Assert.True(_serviceEndpoints.WorkerToHostWriter.TryComplete());
+
+            InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => start)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal("The RPC channel closed unexpectedly before the worker initialized.", exception.Message);
+            Assert.False(start.IsCanceled);
+        }
+
+        [Fact]
         public async Task StartWorkerProcessAsync_TimesOut()
         {
             await CreateDefaultWorkerChannel(autoStart: false); // suppress for timeout
