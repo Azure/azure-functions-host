@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(WorkersProps)" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
+    <PackageId>Azure.Functions.Host</PackageId>
+    <AssemblyName>Azure.Functions.Host</AssemblyName>
+    <RootNamespace>Azure.Functions.Host</RootNamespace>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <TieredCompilation>false</TieredCompilation>
+    <UserRuntimeConfig>$(MSBuildThisFileDirectory)..\WebJobs.Script.WebHost\runtimeconfig.template.json</UserRuntimeConfig>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunUseCrossgen2>true</PublishReadyToRunUseCrossgen2>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
+    <PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols>
+    <PublishReadyToRunShowWarnings>true</PublishReadyToRunShowWarnings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- This interim reference makes the shared FunctionsHost entrypoint explicit. A later project split removes the
+         transitive Rpc.Server implementation from the compute publish graph. -->
+    <ProjectReference Include="..\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
+  </ItemGroup>
+
+  <!-- WebHost is referenced for its shared implementation, not as a second executable or IIS artifact. -->
+  <Target Name="RemoveStandardWebHostEntrypointFromPublish" AfterTargets="ComputeFilesToPublish">
+    <ItemGroup>
+      <ResolvedFileToPublish
+        Remove="@(ResolvedFileToPublish)"
+        Condition="'%(RelativePath)' == 'Microsoft.Azure.WebJobs.Script.WebHost' Or
+                   '%(RelativePath)' == 'Microsoft.Azure.WebJobs.Script.WebHost.exe' Or
+                   '%(RelativePath)' == 'Microsoft.Azure.WebJobs.Script.WebHost.deps.json' Or
+                   '%(RelativePath)' == 'Microsoft.Azure.WebJobs.Script.WebHost.runtimeconfig.json'" />
+      <ResolvedFileToPublish
+        Remove="@(ResolvedFileToPublish)"
+        Condition="'%(RelativePath)' == 'web.config' And
+                   $([System.String]::Copy('%(FullPath)').Contains('WebJobs.Script.WebHost'))" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Azure.Functions.Host.Tests" />
+  </ItemGroup>
+
+</Project>

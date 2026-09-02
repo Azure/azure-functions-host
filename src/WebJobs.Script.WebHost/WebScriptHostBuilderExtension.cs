@@ -12,11 +12,13 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Composition;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
+using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -37,6 +39,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public static IHostBuilder AddWebScriptHost(this IHostBuilder builder, IServiceProvider rootServiceProvider, IServiceCollection rootServices,
            ScriptApplicationHostOptions webHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
+            IWorkerComposition composition = rootServiceProvider?.GetService<SelectedWorkerComposition>()?.Value
+                ?? ServerWorkerComposition.Instance;
+
+            return builder.AddWebScriptHost(
+                rootServiceProvider,
+                rootServices,
+                webHostOptions,
+                configureWebJobs,
+                composition);
+        }
+
+        /// <summary>
+        /// Adds a ScriptHost using the specified host composition.
+        /// </summary>
+        /// <param name="builder">The host builder to update.</param>
+        /// <param name="rootServiceProvider">The root WebHost service provider.</param>
+        /// <param name="rootServices">The root WebHost service collection.</param>
+        /// <param name="webHostOptions">The application host options.</param>
+        /// <param name="configureWebJobs">An optional action that configures WebJobs services.</param>
+        /// <param name="composition">The statically selected host composition.</param>
+        /// <returns>The updated host builder.</returns>
+        public static IHostBuilder AddWebScriptHost(
+            this IHostBuilder builder,
+            IServiceProvider rootServiceProvider,
+            IServiceCollection rootServices,
+            ScriptApplicationHostOptions webHostOptions,
+            Action<IWebJobsBuilder> configureWebJobs,
+            IWorkerComposition composition)
+        {
+            ArgumentNullException.ThrowIfNull(composition);
+
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
             IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
             IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
@@ -59,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
-                    webJobsBuilder.Services.AddRpcScriptHostServices();
+                    composition.ConfigureScriptHostServices(webJobsBuilder.Services, rootServiceProvider);
 
                     // Adds necessary Azure-based services to the ScriptHost, which will use the host-provided IAzureBlobStorageProvider registered below.
                     webJobsBuilder.AddAzureStorageCoreServices();

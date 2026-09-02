@@ -5,6 +5,7 @@
     <Platform Name="x86" />
   </Configurations>
   <Folder Name="/src/">
+    <Project Path="src/Functions.Host/Functions.Host.csproj" />
     <Project Path="src/Functions.Rpc.Client/Functions.Rpc.Client.csproj" />
     <Project Path="src/Functions.Rpc.Server/Functions.Rpc.Server.csproj" />
     <Project Path="src/Functions.WorkerProxy/Functions.WorkerProxy.csproj" />
@@ -13,6 +14,7 @@
     <Project Path="src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <Project Path="test/Functions.Host.Tests/Functions.Host.Tests.csproj" />
     <Project Path="test/Functions.Rpc.Client.Tests/Functions.Rpc.Client.Tests.csproj" />
     <Project Path="test/Functions.WorkerProxy.Tests/Functions.WorkerProxy.Tests.csproj" />
   </Folder>

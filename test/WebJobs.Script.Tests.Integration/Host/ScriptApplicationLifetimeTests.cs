@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 .Build();
             var timeoutService = host.Services.GetRequiredService<WorkerStartupTimeoutHostedService>();
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Program.RunHostAsync(host));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => FunctionsHost.RunHostAsync(host));
 
             Assert.True(startedService.Started);
             Assert.True(startedService.Stopped);
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             var startupService = host.Services.GetRequiredService<StopApplicationAndThrowHostedService>();
 
             InvalidOperationException exception =
-                await Assert.ThrowsAsync<InvalidOperationException>(() => Program.RunHostAsync(host));
+                await Assert.ThrowsAsync<InvalidOperationException>(() => FunctionsHost.RunHostAsync(host));
 
             Assert.Same(startupService.StartupException, exception);
             Assert.True(startedService.Started);
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 .Build();
 
             AggregateException exception =
-                await Assert.ThrowsAsync<AggregateException>(() => Program.RunHostAsync(host));
+                await Assert.ThrowsAsync<AggregateException>(() => FunctionsHost.RunHostAsync(host));
 
             Assert.StartsWith("Host startup failed and shutdown also failed.", exception.Message);
             Assert.Collection(
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             using CancellationTokenRegistration registration =
                 applicationLifetime.ApplicationStarted.Register(() => applicationStarted.TrySetResult());
 
-            Task runTask = Program.RunHostAsync(host);
+            Task runTask = FunctionsHost.RunHostAsync(host);
             await applicationStarted.Task.TestWaitAsync(TimeSpan.FromSeconds(5));
 
             Assert.False(runTask.IsCompleted);
