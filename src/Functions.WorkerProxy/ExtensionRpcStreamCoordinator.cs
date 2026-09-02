@@ -133,12 +133,29 @@ internal sealed class ExtensionRpcStreamCoordinator
     /// <param name="stream">The stream to close.</param>
     internal void Close(ExtensionRpcStream stream)
     {
+        Close(stream, endSession: false);
+    }
+
+    /// <summary>
+    /// Ends the session and closes its active physical stream.
+    /// </summary>
+    /// <param name="stream">The stream whose session is ending.</param>
+    internal void CloseSession(ExtensionRpcStream stream)
+    {
+        Close(stream, endSession: true);
+    }
+
+    private void Close(ExtensionRpcStream stream, bool endSession)
+    {
         lock (_syncLock)
         {
             if (ReferenceEquals(_stream, stream))
             {
                 _stream = null;
-                _sessionId = null;
+                if (endSession)
+                {
+                    _sessionId = null;
+                }
             }
 
             SignalAvailabilityChangedUnsynchronized();

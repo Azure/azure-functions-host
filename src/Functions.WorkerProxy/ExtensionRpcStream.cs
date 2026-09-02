@@ -101,7 +101,7 @@ internal sealed class ExtensionRpcStream
 
         if (message.ContentCase is ExtensionRpcMessage.ContentOneofCase.SessionClosed)
         {
-            _owner.Close(this);
+            _owner.CloseSession(this);
             return;
         }
 

@@ -52,7 +52,7 @@ internal sealed class ExtensionRpcRelay(
     {
         using CancellationTokenSource cancellationTokenSource =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        await using ExtensionRpcStreamLease lease = streamCoordinator.Open(cancellationTokenSource.Token);
+        await using ExtensionRpcStreamLease lease = OpenStream(cancellationTokenSource.Token);
         Task readTask = ReadInboundAsync(lease.Stream, requestStream, cancellationTokenSource.Token);
         Task writeTask = WriteOutboundAsync(lease.Stream, responseStream, cancellationTokenSource.Token);
 
@@ -70,6 +70,18 @@ internal sealed class ExtensionRpcRelay(
             await Task.WhenAll(
                 IgnoreCancellationAsync(readTask, cancellationTokenSource.Token),
                 IgnoreCancellationAsync(writeTask, cancellationTokenSource.Token));
+        }
+    }
+
+    private ExtensionRpcStreamLease OpenStream(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return streamCoordinator.Open(cancellationToken);
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new GrpcRpcException(new Status(StatusCode.AlreadyExists, exception.Message));
         }
     }
 

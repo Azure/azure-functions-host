@@ -13,6 +13,7 @@ using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Options;
 using Xunit;
+using GrpcRpcException = Grpc.Core.RpcException;
 
 namespace Azure.Functions.WorkerProxy.Tests;
 
@@ -153,6 +154,26 @@ public class ExtensionRpcTransportTests
     }
 
     [Fact]
+    public async Task TransportDisconnect_PreservesSessionForReconnect()
+    {
+        var streamCoordinator = new ExtensionRpcStreamCoordinator();
+        string firstSessionId;
+        string firstStreamId;
+        await using (ExtensionRpcStreamLease firstLease = streamCoordinator.Open(CancellationToken.None))
+        {
+            ExtensionRpcMessage hello = await firstLease.Stream.Outbound.ReadAsync();
+            firstSessionId = hello.SessionId;
+            firstStreamId = hello.ShardId;
+        }
+
+        await using ExtensionRpcStreamLease secondLease = streamCoordinator.Open(CancellationToken.None);
+        ExtensionRpcMessage secondHello = await secondLease.Stream.Outbound.ReadAsync();
+
+        Assert.Equal(firstSessionId, secondHello.SessionId);
+        Assert.NotEqual(firstStreamId, secondHello.ShardId);
+    }
+
+    [Fact]
     public async Task OpenExtensionCall_RejectsInvalidNegotiation()
     {
         var streamCoordinator = new ExtensionRpcStreamCoordinator();
@@ -239,6 +260,34 @@ public class ExtensionRpcTransportTests
         await relayTask;
 
         Assert.False(streamCoordinator.HasConnectedStream);
+    }
+
+    [Fact]
+    public async Task RelayAsync_RejectsSecondConcurrentPhysicalStreamWithAlreadyExists()
+    {
+        var streamCoordinator = new ExtensionRpcStreamCoordinator();
+        var endpoints = new WorkerProxyEndpointConfiguration(
+            Options.Create(new WorkerProxyOptions()));
+        var relay = new ExtensionRpcRelay(endpoints, streamCoordinator);
+        Channel<ExtensionRpcMessage> firstInbound = Channel.CreateUnbounded<ExtensionRpcMessage>();
+        var firstOutbound = new TestServerStreamWriter<ExtensionRpcMessage>();
+        Task firstRelayTask = relay.RelayAsync(
+            new TestAsyncStreamReader<ExtensionRpcMessage>(firstInbound.Reader),
+            firstOutbound,
+            CancellationToken.None);
+        await firstOutbound.Messages.ReadAsync();
+
+        GrpcRpcException exception = await Assert.ThrowsAsync<GrpcRpcException>(
+            () => relay.RelayAsync(
+                new TestAsyncStreamReader<ExtensionRpcMessage>(
+                    Channel.CreateUnbounded<ExtensionRpcMessage>().Reader),
+                new TestServerStreamWriter<ExtensionRpcMessage>(),
+                CancellationToken.None));
+
+        Assert.Equal(StatusCode.AlreadyExists, exception.StatusCode);
+
+        firstInbound.Writer.TryComplete();
+        await firstRelayTask;
     }
 
     private static ExtensionRpcMessage CreateReady(ExtensionRpcMessage hello)
