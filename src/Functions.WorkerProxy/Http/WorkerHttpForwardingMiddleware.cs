@@ -50,6 +50,7 @@ internal sealed class WorkerHttpForwardingMiddleware(
             return;
         }
 
+        readinessProbe.Invalidate(destination);
         if (!context.Response.HasStarted)
         {
             context.Response.StatusCode = StatusCodes.Status502BadGateway;
