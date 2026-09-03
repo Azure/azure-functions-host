@@ -58,10 +58,10 @@ internal sealed class RpcClientWorkerChannelFactory(
                 Language = "external",
                 WorkerDirectory = string.Empty,
             },
-            CountOptions = new WorkerProcessCountOptions(),
+            CountOptions = new(),
         };
         ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{workerConfig.Description.Language}.{workerId}");
-        return new RpcClientWorkerChannel(
+        return new(
             workerId,
             ownedChannel,
             _eventManager,

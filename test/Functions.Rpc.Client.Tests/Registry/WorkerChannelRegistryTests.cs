@@ -26,6 +26,9 @@ using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
 
+/// <summary>
+/// Tests client-backed worker channel registry lifecycle.
+/// </summary>
 public sealed class WorkerChannelRegistryTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
@@ -92,6 +95,32 @@ public sealed class WorkerChannelRegistryTests
         harness.ChannelFactory.Verify(factory => factory.Create("worker", It.IsAny<DuplexChannel<StreamingMessage>>()), Times.Once);
         channel.AllowStart();
         await firstLink.WaitAsync(TestTimeout);
+    }
+
+    [Fact]
+    public async Task UnlinkAsync_CanceledWhileLinkIsPending_DoesNotRemoveSlot()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        using CancellationTokenSource cancellationSource = new();
+
+        Task<WorkerChannel> link = LinkAsync(registry, "worker");
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        Task<bool> unlink = registry.UnlinkAsync("worker", cancellationSource.Token);
+        cancellationSource.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => unlink.WaitAsync(TestTimeout));
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => LinkAsync(registry, "worker"));
+        Assert.Equal("Worker 'worker' is already linked.", exception.Message);
+
+        channel.AllowStart();
+        WorkerChannel linkedChannel = await link.WaitAsync(TestTimeout);
+        Assert.Same(channel.Channel, linkedChannel);
+        Assert.True(registry.TryGetInitializedChannel("worker", out WorkerChannel initializedChannel));
+        Assert.Same(channel.Channel, initializedChannel);
     }
 
     [Fact]
@@ -377,7 +406,7 @@ public sealed class WorkerChannelRegistryTests
         appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
             .Returns(true);
 
-        return new RpcClientWorkerChannelFactory(
+        return new(
             new ScriptEventManager(),
             hostManager.Object,
             Mock.Of<IEnvironment>(),
@@ -414,7 +443,7 @@ public sealed class WorkerChannelRegistryTests
                     }
                     else
                     {
-                        transport = new TestDuplexChannel<StreamingMessage>();
+                        transport = new();
                     }
 
                     _transports.Enqueue(transport);
@@ -433,7 +462,7 @@ public sealed class WorkerChannelRegistryTests
                     control.Attach(channel);
                     return channel;
                 });
-            Registry = new WorkerChannelRegistry(
+            Registry = new(
                 DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance);
         }
 
@@ -465,7 +494,7 @@ public sealed class WorkerChannelRegistryTests
         internal ChannelControl(string id, bool blockStart = false, bool blockDisposal = false)
         {
             Id = id;
-            Transport = new TestDuplexChannel<StreamingMessage>(blockDisposal);
+            Transport = new(blockDisposal);
             if (!blockStart)
             {
                 _startRelease.TrySetResult();
@@ -514,7 +543,7 @@ public sealed class WorkerChannelRegistryTests
         {
             try
             {
-                await Transport.SendResponseAsync(new StreamingMessage { StartStream = new StartStream { WorkerId = Id } });
+                await Transport.SendResponseAsync(new() { StartStream = new() { WorkerId = Id } });
                 await Transport.Requests.ReadAsync().AsTask();
                 _startEntered.TrySetResult();
 
@@ -535,7 +564,7 @@ public sealed class WorkerChannelRegistryTests
                 {
                     WorkerInitResponse = new WorkerInitResponse
                     {
-                        Result = new StatusResult { Status = StatusResult.Types.Status.Success },
+                        Result = new() { Status = StatusResult.Types.Status.Success },
                     },
                 });
             }

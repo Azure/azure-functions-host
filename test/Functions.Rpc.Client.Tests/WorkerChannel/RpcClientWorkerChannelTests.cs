@@ -47,7 +47,7 @@ public sealed class RpcClientWorkerChannelTests
         _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
             .Returns(true);
 
-        _factory = new RpcClientWorkerChannelFactory(
+        _factory = new(
             new ScriptEventManager(),
             hostManager.Object,
             Mock.Of<IEnvironment>(),
@@ -78,7 +78,7 @@ public sealed class RpcClientWorkerChannelTests
             RuntimeVersion = "24.0",
         };
 
-        await duplexChannel.SendResponseAsync(new StreamingMessage { WorkerInitResponse = initResponse });
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = initResponse });
         await start.WaitAsync(TestTimeout);
 
         Assert.Equal(StreamingMessage.ContentOneofCase.WorkerInitRequest, initRequest.ContentCase);
@@ -105,11 +105,11 @@ public sealed class RpcClientWorkerChannelTests
             Result = new StatusResult
             {
                 Status = StatusResult.Types.Status.Failure,
-                Exception = new RpcExceptionMessage { Message = "worker initialization failed" },
+                Exception = new() { Message = "worker initialization failed" },
             },
         };
 
-        await duplexChannel.SendResponseAsync(new StreamingMessage { WorkerInitResponse = initResponse });
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = initResponse });
 
         Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException exception =
             await Assert.ThrowsAsync<Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException>(() => start.WaitAsync(TestTimeout));
@@ -190,7 +190,7 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Same(first, concurrent);
 
         await SendStartStreamAndReadInitRequestAsync(duplexChannel);
-        await duplexChannel.SendResponseAsync(new StreamingMessage { WorkerInitResponse = CreateSuccessfulInitResponse() });
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = CreateSuccessfulInitResponse() });
         await Task.WhenAll(first, concurrent).WaitAsync(TestTimeout);
 
         Task repeated = channel.StartAsync(CancellationToken.None);
@@ -214,7 +214,7 @@ public sealed class RpcClientWorkerChannelTests
 
         Task sharedStart = channel.StartAsync(CancellationToken.None);
         await SendStartStreamAndReadInitRequestAsync(duplexChannel);
-        await duplexChannel.SendResponseAsync(new StreamingMessage { WorkerInitResponse = CreateSuccessfulInitResponse() });
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = CreateSuccessfulInitResponse() });
         await sharedStart.WaitAsync(TestTimeout);
 
         await channel.DisposeAsync();
@@ -235,7 +235,7 @@ public sealed class RpcClientWorkerChannelTests
         Assert.False(sharedStart.IsCompleted);
 
         await SendStartStreamAndReadInitRequestAsync(duplexChannel);
-        await duplexChannel.SendResponseAsync(new StreamingMessage { WorkerInitResponse = CreateSuccessfulInitResponse() });
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = CreateSuccessfulInitResponse() });
         await sharedStart.WaitAsync(TestTimeout);
 
         await channel.DisposeAsync();
@@ -280,14 +280,14 @@ public sealed class RpcClientWorkerChannelTests
     private static WorkerInitResponse CreateSuccessfulInitResponse()
         => new()
         {
-            Result = new StatusResult { Status = StatusResult.Types.Status.Success },
+            Result = new() { Status = StatusResult.Types.Status.Success },
         };
 
     private static async Task<StreamingMessage> SendStartStreamAndReadInitRequestAsync(TestDuplexChannel<StreamingMessage> duplexChannel)
     {
-        await duplexChannel.SendResponseAsync(new StreamingMessage
+        await duplexChannel.SendResponseAsync(new()
         {
-            StartStream = new StartStream { WorkerId = WorkerId },
+            StartStream = new() { WorkerId = WorkerId },
         });
 
         return await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);

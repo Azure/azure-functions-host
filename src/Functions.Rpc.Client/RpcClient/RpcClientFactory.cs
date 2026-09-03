@@ -88,7 +88,6 @@ internal sealed class RpcClientFactory : IRpcClientFactory
         cancellationToken.ThrowIfCancellationRequested();
 
         GrpcChannel candidate = null;
-        bool gateEntered = false;
         SemaphoreSlim connectGate;
 
         // Coordinate cache access with disposal and register this cold-path operation before releasing the lock.
@@ -98,12 +97,12 @@ internal sealed class RpcClientFactory : IRpcClientFactory
             ThrowIfDisposed();
             if (_channels.TryGetValue(endpoint, out GrpcChannel cachedChannel))
             {
-                return new FunctionRpc.FunctionRpcClient(cachedChannel);
+                return new(cachedChannel);
             }
 
             if (!_connectGates.TryGetValue(endpoint, out connectGate))
             {
-                connectGate = new SemaphoreSlim(1, 1);
+                connectGate = new(1, 1);
                 _connectGates.Add(endpoint, connectGate);
             }
 
@@ -117,8 +116,7 @@ internal sealed class RpcClientFactory : IRpcClientFactory
 
             // Only one caller connects a channel for an endpoint at a time. Each caller retains its own cancellation token,
             // so canceling one attempt does not cancel another caller waiting to retry.
-            await connectGate.WaitAsync(connectionSource.Token);
-            gateEntered = true;
+            using SemaphoreLock gate = await connectGate.LockAsync(connectionSource.Token);
 
             // Another caller may have populated the cache while this caller waited for the endpoint gate.
             lock (_syncLock)
@@ -126,7 +124,7 @@ internal sealed class RpcClientFactory : IRpcClientFactory
                 ThrowIfDisposed();
                 if (_channels.TryGetValue(endpoint, out GrpcChannel cachedChannel))
                 {
-                    return new FunctionRpc.FunctionRpcClient(cachedChannel);
+                    return new(cachedChannel);
                 }
             }
 
@@ -145,7 +143,7 @@ internal sealed class RpcClientFactory : IRpcClientFactory
                 candidate = null;
             }
 
-            return new FunctionRpc.FunctionRpcClient(channel);
+            return new(channel);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -158,13 +156,7 @@ internal sealed class RpcClientFactory : IRpcClientFactory
         }
         finally
         {
-            // Release the endpoint for the next waiter, dispose any candidate that was not cached, and signal disposal
-            // when this was the final active cold-path operation.
-            if (gateEntered)
-            {
-                connectGate.Release();
-            }
-
+            // Dispose any candidate that was not cached and signal disposal when this was the final active cold-path operation.
             TryCleanup(() => candidate?.Dispose(), endpoint, "dispose the unused gRPC channel");
 
             // Disposal waits for all cold-path operations to leave this block before releasing the connection gates and
@@ -207,7 +199,7 @@ internal sealed class RpcClientFactory : IRpcClientFactory
             _ = CompleteDisposalAsync(channels);
         }
 
-        return new ValueTask(_disposeCompletion.Task);
+        return new(_disposeCompletion.Task);
     }
 
     /// <summary>
@@ -248,20 +240,6 @@ internal sealed class RpcClientFactory : IRpcClientFactory
         {
             throw new ArgumentException("The endpoint must not include user information, a path, a query, or a fragment.", nameof(endpoint));
         }
-    }
-
-    private static Exception CaptureCleanupFailure(Exception currentException, Action cleanup)
-    {
-        try
-        {
-            cleanup();
-        }
-        catch (Exception exception)
-        {
-            return currentException is null ? exception : new AggregateException(currentException, exception);
-        }
-
-        return currentException;
     }
 
     private async Task CompleteDisposalAsync(IReadOnlyCollection<GrpcChannel> channels)
@@ -313,7 +291,7 @@ internal sealed class RpcClientFactory : IRpcClientFactory
 
         foreach (GrpcChannel channel in channels)
         {
-            cleanupException = CaptureCleanupFailure(cleanupException, channel.Dispose);
+            cleanupException = channel.DisposeAndCaptureException(cleanupException);
         }
 
         await _operationsCompleted.Task;
@@ -327,10 +305,10 @@ internal sealed class RpcClientFactory : IRpcClientFactory
 
         foreach (SemaphoreSlim connectGate in connectGates)
         {
-            cleanupException = CaptureCleanupFailure(cleanupException, connectGate.Dispose);
+            cleanupException = connectGate.DisposeAndCaptureException(cleanupException);
         }
 
-        cleanupException = CaptureCleanupFailure(cleanupException, _shutdownSource.Dispose);
+        cleanupException = _shutdownSource.DisposeAndCaptureException(cleanupException);
 
         if (cleanupException is not null)
         {

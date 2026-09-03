@@ -15,23 +15,24 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Owns initialized client-backed worker channels and their terminal cleanup.
+/// Owns initialized client-backed worker channels and terminal cleanup.
 /// </summary>
 /// <remarks>
 /// Link and unlink operations serialize per worker ID using ordinal identity while different workers can connect concurrently.
 /// The registry publishes a channel only after its WorkerInit handshake succeeds.
 /// </remarks>
-internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
+internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 {
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
-    private readonly TaskCompletionSource _disposeCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly Lock _disposeLock = new();
     private readonly IDuplexChannelFactory<StreamingMessage> _duplexChannelFactory;
     private readonly ILogger<WorkerChannelRegistry> _logger;
     private readonly HashSet<Task> _monitorTasks = [];
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
     private readonly Lock _stateLock = new();
-    private int _disposed;
+    private Task _disposeTask;
+    private bool _disposed;
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public WorkerChannelRegistry(IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
@@ -42,8 +43,6 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    private bool IsDisposed => Interlocked.CompareExchange(ref _disposed, 0, 0) != 0;
-
     public async Task<WorkerChannel> LinkAsync(string workerId, Uri grpcEndpoint, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
@@ -51,14 +50,12 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
         cancellationToken.ThrowIfCancellationRequested();
 
         WorkerSlot slot = ReserveLinkSlot(workerId);
-        bool gateEntered = false;
 
         try
         {
             using CancellationTokenSource operationSource =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token);
-            await slot.Gate.WaitAsync(operationSource.Token);
-            gateEntered = true;
+            using SemaphoreLock gate = await slot.Gate.LockAsync(operationSource.Token);
 
             DuplexChannel<StreamingMessage> ownedChannel = null;
             RpcClientWorkerChannel candidate = null;
@@ -88,26 +85,22 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
             }
             catch (Exception exception)
             {
-                Exception failure = exception is OperationCanceledException && !cancellationToken.IsCancellationRequested && IsDisposed
+                Exception failure = exception is OperationCanceledException && !cancellationToken.IsCancellationRequested &&
+                    _shutdownSource.IsCancellationRequested
                     ? new ObjectDisposedException(GetType().FullName)
                     : exception;
-                failure = await CaptureCleanupFailureAsync(failure, candidate);
-                failure = await CaptureCleanupFailureAsync(failure, ownedChannel);
+                failure = await candidate.DisposeAndCaptureExceptionAsync(failure);
+                failure = await ownedChannel.DisposeAndCaptureExceptionAsync(failure);
                 ExceptionDispatchInfo.Capture(failure).Throw();
                 throw;
             }
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && IsDisposed)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && _shutdownSource.IsCancellationRequested)
         {
             throw new ObjectDisposedException(GetType().FullName);
         }
         finally
         {
-            if (gateEntered)
-            {
-                slot.Gate.Release();
-            }
-
             RemoveEmptySlot(workerId, slot);
         }
     }
@@ -120,52 +113,52 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
         WorkerSlot slot;
         lock (_stateLock)
         {
-            if (IsDisposed || !_slots.TryGetValue(workerId, out slot))
+            if (_disposed || !_slots.TryGetValue(workerId, out slot))
             {
                 return false;
             }
         }
 
-        bool gateEntered = false;
         try
         {
             using CancellationTokenSource operationSource =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token);
-            await slot.Gate.WaitAsync(operationSource.Token);
-            gateEntered = true;
-            operationSource.Token.ThrowIfCancellationRequested();
 
-            RpcClientWorkerChannel channel;
-            lock (_stateLock)
+            SemaphoreLock gate = await slot.Gate.LockAsync(operationSource.Token);
+            try
             {
-                if (IsDisposed)
+                using (gate)
                 {
-                    return false;
+                    operationSource.Token.ThrowIfCancellationRequested();
+
+                    RpcClientWorkerChannel channel;
+                    lock (_stateLock)
+                    {
+                        if (_disposed)
+                        {
+                            return false;
+                        }
+
+                        channel = DetachChannelLocked(slot, expectedChannel: null);
+                    }
+
+                    if (channel is null)
+                    {
+                        return false;
+                    }
+
+                    await channel.DisposeAsync();
+                    return true;
                 }
-
-                channel = DetachChannelLocked(slot, expectedChannel: null);
             }
-
-            if (channel is null)
+            finally
             {
-                return false;
+                RemoveEmptySlot(workerId, slot);
             }
-
-            await channel.DisposeAsync();
-            return true;
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && IsDisposed)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && _shutdownSource.IsCancellationRequested)
         {
             return false;
-        }
-        finally
-        {
-            if (gateEntered)
-            {
-                slot.Gate.Release();
-            }
-
-            RemoveEmptySlot(workerId, slot);
         }
     }
 
@@ -175,7 +168,7 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
 
         lock (_stateLock)
         {
-            if (!IsDisposed && _slots.TryGetValue(workerId, out WorkerSlot slot) && slot.Channel is not null)
+            if (!_disposed && _slots.TryGetValue(workerId, out WorkerSlot slot) && slot.Channel is not null)
             {
                 channel = slot.Channel;
                 return true;
@@ -190,15 +183,12 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
     {
         lock (_stateLock)
         {
-            if (IsDisposed)
+            if (_disposed)
             {
                 return [];
             }
 
-            return _slots.Values
-                .Where(slot => slot.Channel is not null)
-                .Select(slot => (WorkerChannel)slot.Channel)
-                .ToArray();
+            return [.. _slots.Values.Where(slot => slot.Channel is not null).Select(slot => (WorkerChannel)slot.Channel)];
         }
     }
 
@@ -211,7 +201,7 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
             Task initializedChannelAvailable;
             lock (_stateLock)
             {
-                ObjectDisposedException.ThrowIf(IsDisposed, this);
+                ObjectDisposedException.ThrowIf(_disposed, this);
                 RpcClientWorkerChannel channel = _slots.Values.FirstOrDefault(slot => slot.Channel is not null)?.Channel;
                 if (channel is not null)
                 {
@@ -227,41 +217,18 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
 
     public ValueTask DisposeAsync()
     {
-        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+        lock (_disposeLock)
         {
-            _ = CompleteDisposalAsync();
+            _disposeTask ??= DisposeAsyncCore();
+            return new(_disposeTask);
         }
-
-        return new ValueTask(_disposeCompletion.Task);
-    }
-
-    private static Exception CombineExceptions(Exception currentException, Exception nextException)
-        => currentException is null ? nextException : new AggregateException(currentException, nextException);
-
-    private static async Task<Exception> CaptureCleanupFailureAsync(Exception currentException, IAsyncDisposable disposable)
-    {
-        if (disposable is null)
-        {
-            return currentException;
-        }
-
-        try
-        {
-            await disposable.DisposeAsync();
-        }
-        catch (Exception exception)
-        {
-            return CombineExceptions(currentException, exception);
-        }
-
-        return currentException;
     }
 
     private WorkerSlot ReserveLinkSlot(string workerId)
     {
         lock (_stateLock)
         {
-            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             WorkerSlot slot = new();
             if (!_slots.TryAdd(workerId, slot))
             {
@@ -272,28 +239,16 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
-    private async Task CompleteDisposalAsync()
-    {
-        try
-        {
-            await DisposeCoreAsync();
-            _disposeCompletion.TrySetResult();
-        }
-        catch (Exception exception)
-        {
-            _disposeCompletion.TrySetException(exception);
-        }
-    }
-
-    private async Task DisposeCoreAsync()
+    private async Task DisposeAsyncCore()
     {
         KeyValuePair<string, WorkerSlot>[] slots;
         Task[] monitorTasks;
 
         lock (_stateLock)
         {
-            slots = _slots.ToArray();
-            monitorTasks = _monitorTasks.ToArray();
+            _disposed = true;
+            slots = [.. _slots];
+            monitorTasks = [.. _monitorTasks];
             _initializedChannelAvailable.TrySetResult();
         }
 
@@ -307,13 +262,13 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
             disposalException = exception;
         }
 
-        Task<Exception>[] slotDisposals = slots.Select(slot => ShutdownSlotAsync(slot.Key, slot.Value)).ToArray();
+        Task<Exception>[] slotDisposals = [.. slots.Select(slot => ShutdownSlotAsync(slot.Key, slot.Value))];
         Exception[] slotExceptions = await Task.WhenAll(slotDisposals);
         foreach (Exception exception in slotExceptions)
         {
             if (exception is not null)
             {
-                disposalException = CombineExceptions(disposalException, exception);
+                disposalException = AggregateException.Combine(disposalException, exception);
             }
         }
 
@@ -334,7 +289,7 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
         }
 
         slot.Channel = null;
-        if (!IsDisposed && !_slots.Values.Any(slot => slot.Channel is not null))
+        if (!_disposed && !_slots.Values.Any(slot => slot.Channel is not null))
         {
             _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
         }
@@ -370,48 +325,50 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
             terminalException = exception;
         }
 
-        await slot.Gate.WaitAsync();
+        SemaphoreLock gate = await slot.Gate.LockAsync();
         try
         {
-            // LinkAsync holds this gate until the monitor is tracked and publication completes. It also serializes this
-            // cleanup with unlink and shutdown.
-            RpcClientWorkerChannel removedChannel;
-            lock (_stateLock)
+            using (gate)
             {
-                // Do not let an old channel's completion remove a replacement that reused the same worker ID.
-                removedChannel = DetachChannelLocked(slot, channel);
-            }
+                // LinkAsync holds this gate until the monitor is tracked and publication completes. It also serializes this
+                // cleanup with unlink and shutdown.
+                RpcClientWorkerChannel removedChannel;
+                lock (_stateLock)
+                {
+                    // Do not let an old channel's completion remove a replacement that reused the same worker ID.
+                    removedChannel = DetachChannelLocked(slot, channel);
+                }
 
-            if (removedChannel is null)
-            {
-                return;
-            }
+                if (removedChannel is null)
+                {
+                    return;
+                }
 
-            if (terminalException is null)
-            {
-                _logger.LogDebug("FunctionRpc channel for worker {WorkerId} completed and was removed.", workerId);
-            }
-            else
-            {
-                _logger.LogWarning(terminalException, "FunctionRpc channel for worker {WorkerId} failed and was removed.", workerId);
-            }
+                if (terminalException is null)
+                {
+                    Log.ChannelCompleted(_logger, workerId);
+                }
+                else
+                {
+                    Log.ChannelFailed(_logger, terminalException, workerId);
+                }
 
-            try
-            {
-                await removedChannel.DisposeAsync();
-            }
-            catch (Exception exception)
-            {
-                _logger.LogError(exception, "Failed to dispose the completed FunctionRpc channel for worker {WorkerId}.", workerId);
+                try
+                {
+                    await removedChannel.DisposeAsync();
+                }
+                catch (Exception exception)
+                {
+                    Log.ChannelDisposalFailed(_logger, exception, workerId);
+                }
             }
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Failed to remove the completed FunctionRpc channel for worker {WorkerId}.", workerId);
+            Log.ChannelRemovalFailed(_logger, exception, workerId);
         }
         finally
         {
-            slot.Gate.Release();
             RemoveEmptySlot(workerId, slot);
         }
     }
@@ -430,7 +387,7 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
 
         lock (_stateLock)
         {
-            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             slot.Channel = channel;
             monitorTask = MonitorChannelCompletionAsync(workerId, slot, channel);
             _monitorTasks.Add(monitorTask);
@@ -448,24 +405,26 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
     {
         Exception disposalException = null;
 
-        await slot.Gate.WaitAsync();
+        SemaphoreLock gate = await slot.Gate.LockAsync();
         try
         {
-            RpcClientWorkerChannel channel;
-            lock (_stateLock)
+            using (gate)
             {
-                channel = DetachChannelLocked(slot, expectedChannel: null);
-            }
+                RpcClientWorkerChannel channel;
+                lock (_stateLock)
+                {
+                    channel = DetachChannelLocked(slot, expectedChannel: null);
+                }
 
-            disposalException = await CaptureCleanupFailureAsync(disposalException, channel);
+                disposalException = await channel.DisposeAndCaptureExceptionAsync(disposalException);
+            }
         }
         catch (Exception exception)
         {
-            disposalException = CombineExceptions(disposalException, exception);
+            disposalException = AggregateException.Combine(disposalException, exception);
         }
         finally
         {
-            slot.Gate.Release();
             RemoveEmptySlot(workerId, slot);
         }
 
@@ -477,5 +436,20 @@ internal sealed class WorkerChannelRegistry : IWorkerChannelRegistry
         public RpcClientWorkerChannel Channel { get; set; }
 
         public SemaphoreSlim Gate { get; } = new(1, 1);
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(0, LogLevel.Debug, "FunctionRpc channel for worker {WorkerId} completed and was removed.")]
+        public static partial void ChannelCompleted(ILogger logger, string workerId);
+
+        [LoggerMessage(1, LogLevel.Warning, "FunctionRpc channel for worker {WorkerId} failed and was removed.")]
+        public static partial void ChannelFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(2, LogLevel.Error, "Failed to dispose the completed FunctionRpc channel for worker {WorkerId}.")]
+        public static partial void ChannelDisposalFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(3, LogLevel.Error, "Failed to remove the completed FunctionRpc channel for worker {WorkerId}.")]
+        public static partial void ChannelRemovalFailed(ILogger logger, Exception exception, string workerId);
     }
 }

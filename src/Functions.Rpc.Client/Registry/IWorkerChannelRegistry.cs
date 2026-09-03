@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Owns initialized client-backed worker channels keyed by worker ID.
+/// Defines initialized client-backed worker channel ownership keyed by worker ID.
 /// </summary>
 /// <remarks>
 /// An initialized channel has completed its transport connection and WorkerInit handshake. Invocation readiness remains
