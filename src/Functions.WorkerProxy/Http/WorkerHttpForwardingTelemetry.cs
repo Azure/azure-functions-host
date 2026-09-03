@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Yarp.ReverseProxy.Forwarder;
@@ -14,6 +15,7 @@ namespace Azure.Functions.WorkerProxy.Http;
 internal static class WorkerHttpForwardingTelemetry
 {
     internal const string ForwardingResultAttribute = "azure.functions.worker_proxy.http.forwarding.result";
+    internal const string ForwarderErrorAttribute = "azure.functions.worker_proxy.http.forwarding.error";
     internal const string ErrorTypeAttribute = "error.type";
 
     internal const string CanceledResult = "canceled";
@@ -21,8 +23,6 @@ internal static class WorkerHttpForwardingTelemetry
     internal const string DestinationNotReadyResult = "destination_not_ready";
     internal const string ForwarderErrorResult = "forwarder_error";
 
-    internal const string DestinationNotConfiguredErrorType = "worker_http_destination_not_configured";
-    internal const string DestinationNotReadyErrorType = "worker_http_destination_not_ready";
     internal const string ForwarderErrorTypePrefix = "Yarp.ReverseProxy.Forwarder.ForwarderError.";
 
     /// <summary>
@@ -38,7 +38,7 @@ internal static class WorkerHttpForwardingTelemetry
     /// </summary>
     public static void RecordDestinationNotConfigured(HttpContext context)
     {
-        SetError(context, DestinationNotConfiguredResult, DestinationNotConfiguredErrorType);
+        SetError(context, DestinationNotConfiguredResult);
     }
 
     /// <summary>
@@ -46,7 +46,7 @@ internal static class WorkerHttpForwardingTelemetry
     /// </summary>
     public static void RecordDestinationNotReady(HttpContext context)
     {
-        SetError(context, DestinationNotReadyResult, DestinationNotReadyErrorType);
+        SetError(context, DestinationNotReadyResult);
     }
 
     /// <summary>
@@ -54,7 +54,7 @@ internal static class WorkerHttpForwardingTelemetry
     /// </summary>
     public static void RecordForwarderError(HttpContext context, ForwarderError error)
     {
-        SetError(context, ForwarderErrorResult, $"{ForwarderErrorTypePrefix}{error}");
+        SetError(context, ForwarderErrorResult, error);
     }
 
     private static void SetResult(HttpContext context, string result)
@@ -62,13 +62,21 @@ internal static class WorkerHttpForwardingTelemetry
         GetRequestActivity(context)?.SetTag(ForwardingResultAttribute, result);
     }
 
-    private static void SetError(HttpContext context, string result, string errorType)
+    private static void SetError(HttpContext context, string result, ForwarderError? forwarderError = null)
     {
         Activity? activity = GetRequestActivity(context);
         activity?.SetTag(ForwardingResultAttribute, result);
 
+        if (forwarderError is not null)
+        {
+            activity?.SetTag(ForwarderErrorAttribute, forwarderError.Value.ToString());
+        }
+
         if (activity?.GetTagItem(ErrorTypeAttribute) is null)
         {
+            string errorType = context.Response.StatusCode >= StatusCodes.Status500InternalServerError
+                ? context.Response.StatusCode.ToString(CultureInfo.InvariantCulture)
+                : $"{ForwarderErrorTypePrefix}{forwarderError}";
             activity?.SetTag(ErrorTypeAttribute, errorType);
         }
 

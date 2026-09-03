@@ -112,7 +112,7 @@ public class WorkerHttpForwardingTests
             WorkerHttpForwardingTelemetry.DestinationNotConfiguredResult,
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
         Assert.Equal(
-            WorkerHttpForwardingTelemetry.DestinationNotConfiguredErrorType,
+            StatusCodes.Status503ServiceUnavailable.ToString(),
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ErrorTypeAttribute));
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }
@@ -144,7 +144,7 @@ public class WorkerHttpForwardingTests
             WorkerHttpForwardingTelemetry.DestinationNotReadyResult,
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
         Assert.Equal(
-            WorkerHttpForwardingTelemetry.DestinationNotReadyErrorType,
+            StatusCodes.Status503ServiceUnavailable.ToString(),
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ErrorTypeAttribute));
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }
@@ -183,8 +183,11 @@ public class WorkerHttpForwardingTests
             WorkerHttpForwardingTelemetry.ForwarderErrorResult,
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
         Assert.Equal(
-            $"{WorkerHttpForwardingTelemetry.ForwarderErrorTypePrefix}Request",
+            StatusCodes.Status502BadGateway.ToString(),
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ErrorTypeAttribute));
+        Assert.Equal(
+            Yarp.ReverseProxy.Forwarder.ForwarderError.Request.ToString(),
+            activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwarderErrorAttribute));
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }
 

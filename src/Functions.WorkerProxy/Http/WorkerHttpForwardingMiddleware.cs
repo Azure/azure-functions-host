@@ -28,16 +28,16 @@ internal sealed class WorkerHttpForwardingMiddleware(
 
         if (destination is null)
         {
-            WorkerHttpForwardingTelemetry.RecordDestinationNotConfigured(context);
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            WorkerHttpForwardingTelemetry.RecordDestinationNotConfigured(context);
             return;
         }
 
         if (!readinessProbe.IsKnownReady(destination)
             && !await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted))
         {
-            WorkerHttpForwardingTelemetry.RecordDestinationNotReady(context);
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            WorkerHttpForwardingTelemetry.RecordDestinationNotReady(context);
             return;
         }
 
@@ -53,10 +53,11 @@ internal sealed class WorkerHttpForwardingMiddleware(
             return;
         }
 
-        WorkerHttpForwardingTelemetry.RecordForwarderError(context, error);
         if (!context.Response.HasStarted)
         {
             context.Response.StatusCode = StatusCodes.Status502BadGateway;
         }
+
+        WorkerHttpForwardingTelemetry.RecordForwarderError(context, error);
     }
 }
