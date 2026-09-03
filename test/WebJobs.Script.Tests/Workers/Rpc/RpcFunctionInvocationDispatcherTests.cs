@@ -534,12 +534,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Guid concurrentInvocationId = Guid.NewGuid();
             using var disposeStarted = new ManualResetEventSlim();
             using var allowDispose = new ManualResetEventSlim();
+
+            // Use one logger for every component so the cross-component recovery log order is deterministic.
             var orderedLogger = new TestLogger<WebScriptHostExceptionHandler>();
             var loggerProvider = new Mock<ILoggerProvider>();
             loggerProvider.Setup(p => p.CreateLogger(It.IsAny<string>())).Returns(orderedLogger);
             using var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider.Object);
 
+            // Pause disposal after Shutdown has aborted invocations, reproducing the point where recovery hangs.
             var timedOutChannel = new TestRpcWorkerChannel(
                 workerId,
                 runtime,
@@ -561,6 +564,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     It.IsAny<IEnumerable<RpcWorkerConfig>>()))
                 .Returns((string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IEnumerable<RpcWorkerConfig> workerConfigs) =>
                 {
+                    // Return the blocked channel first and a normal replacement if recovery reaches restart.
                     if (Interlocked.Increment(ref channelsCreated) == 1)
                     {
                         return timedOutChannel;
@@ -582,6 +586,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await functionDispatcher.InitializeAsync(GetTestFunctionsList(runtime));
             await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, 1);
 
+            // The production incident occurred while the timed-out worker had concurrent invocations in flight.
             timedOutChannel.SendInvocationRequest(new ScriptInvocationContext
             {
                 ExecutionContext = new ExecutionContext
@@ -622,11 +627,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             ];
 
             orderedLogger.ClearLogMessages();
+
+            // Run recovery separately because the synchronous Dispose call is intentionally blocked.
             Task recoveryTask = Task.Run(
                 () => exceptionHandler.OnTimeoutExceptionAsync(ExceptionDispatchInfo.Capture(timeoutException), TimeSpan.Zero));
 
             try
             {
+                // At the hang, Shutdown completed but restart cannot begin, leaving the dispatcher with no workers.
                 Assert.True(disposeStarted.Wait(TimeSpan.FromSeconds(5)));
                 Assert.False(recoveryTask.IsCompleted);
                 Assert.Empty(functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels());
