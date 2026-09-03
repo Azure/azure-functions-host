@@ -27,7 +27,7 @@ internal sealed class ExtensionRpcStream
             FullMode = BoundedChannelFullMode.Wait,
         });
 
-    private ExtensionRpcReady? _ready;
+    private volatile ExtensionRpcReady? _ready;
     private int _closed;
 
     /// <summary>
