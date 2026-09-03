@@ -47,8 +47,9 @@ internal static class WorkerProxyApplication
         builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
 
         WebApplication app = builder.Build();
-        app.MapWhen(static context => context.IsManagementPort(), ConfigureManagementPipeline);
-        app.MapWhen(static context => context.IsAnyGrpcPort(), ConfigureGrpcPipeline);
+        WorkerProxyEndpointConfiguration endpoints = app.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
+        app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
+        app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out _), ConfigureGrpcPipeline);
         app.Run(static context => Results.NotFound().ExecuteAsync(context));
 
         return app;
