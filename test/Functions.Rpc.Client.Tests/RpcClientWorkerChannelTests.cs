@@ -32,7 +32,6 @@ public sealed class RpcClientWorkerChannelTests
     private readonly Mock<IAppCapabilitiesStore> _appCapabilitiesStore = new();
     private readonly RpcClientWorkerChannelFactory _factory;
     private readonly IMetricsLogger _metricsLogger = Mock.Of<IMetricsLogger>();
-    private readonly RpcWorkerConfig _workerConfig;
 
     public RpcClientWorkerChannelTests()
     {
@@ -45,19 +44,6 @@ public sealed class RpcClientWorkerChannelTests
         applicationHostOptions.SetupGet(options => options.CurrentValue)
             .Returns(new ScriptApplicationHostOptions { ScriptPath = "c:\\test" });
 
-        _workerConfig = new RpcWorkerConfig
-        {
-            Description = new RpcWorkerDescription
-            {
-                Language = "node",
-                WorkerDirectory = "c:\\worker",
-            },
-            CountOptions = new WorkerProcessCountOptions
-            {
-                ProcessStartupTimeout = TimeSpan.FromSeconds(5),
-                InitializationTimeout = TimeSpan.FromSeconds(5),
-            },
-        };
         _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
             .Returns(true);
 
@@ -71,7 +57,8 @@ public sealed class RpcClientWorkerChannelTests
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             _appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>());
+            Mock.Of<IHttpProxyService>(),
+            _metricsLogger);
     }
 
     [Fact]
@@ -96,8 +83,8 @@ public sealed class RpcClientWorkerChannelTests
 
         Assert.Equal(StreamingMessage.ContentOneofCase.WorkerInitRequest, initRequest.ContentCase);
         Assert.Equal("c:\\test", initRequest.WorkerInitRequest.FunctionAppDirectory);
-        Assert.Equal("node", _workerConfig.Description.DefaultRuntimeName);
-        Assert.Equal("24.0", _workerConfig.Description.DefaultRuntimeVersion);
+        Assert.Equal("node", channel.WorkerConfig.Description.DefaultRuntimeName);
+        Assert.Equal("24.0", channel.WorkerConfig.Description.DefaultRuntimeVersion);
         _appCapabilitiesStore.Verify(store => store.TrySetAll(
             It.Is<IEnumerable<KeyValuePair<string, string>>>(capabilities =>
                 capabilities.Any(capability => string.Equals(capability.Key, "TestAppCapability", StringComparison.Ordinal) &&
@@ -134,9 +121,9 @@ public sealed class RpcClientWorkerChannelTests
     [Fact]
     public async Task StartAsync_StartStreamTimeout_PropagatesTimeout()
     {
-        _workerConfig.CountOptions.ProcessStartupTimeout = TimeSpan.FromMilliseconds(50);
         TestDuplexChannel<StreamingMessage> duplexChannel = new();
         RpcClientWorkerChannel channel = CreateChannel(duplexChannel);
+        channel.WorkerConfig.CountOptions.ProcessStartupTimeout = TimeSpan.FromMilliseconds(50);
 
         await Assert.ThrowsAsync<TimeoutException>(() => channel.StartAsync(CancellationToken.None).WaitAsync(TestTimeout));
 
@@ -146,9 +133,9 @@ public sealed class RpcClientWorkerChannelTests
     [Fact]
     public async Task StartAsync_InitializationTimeout_PropagatesTimeout()
     {
-        _workerConfig.CountOptions.InitializationTimeout = TimeSpan.FromMilliseconds(50);
         TestDuplexChannel<StreamingMessage> duplexChannel = new();
         RpcClientWorkerChannel channel = CreateChannel(duplexChannel);
+        channel.WorkerConfig.CountOptions.InitializationTimeout = TimeSpan.FromMilliseconds(50);
         Task start = channel.StartAsync(CancellationToken.None);
         await SendStartStreamAndReadInitRequestAsync(duplexChannel);
 
@@ -288,7 +275,7 @@ public sealed class RpcClientWorkerChannelTests
     }
 
     private RpcClientWorkerChannel CreateChannel(TestDuplexChannel<StreamingMessage> duplexChannel)
-        => _factory.Create(WorkerId, duplexChannel, _workerConfig, _metricsLogger, attemptCount: 0);
+        => _factory.Create(WorkerId, duplexChannel);
 
     private static WorkerInitResponse CreateSuccessfulInitResponse()
         => new()

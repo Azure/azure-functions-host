@@ -28,44 +28,47 @@ namespace Azure.Functions.Rpc.Client;
 /// begin initialization. Once initialization begins, cancellation only stops the individual caller's wait; shared initialization continues
 /// until it succeeds, fails, times out, or the channel is disposed.
 /// </remarks>
-internal sealed class RpcClientWorkerChannel(
-    string workerId,
-    DuplexChannel<StreamingMessage> ownedChannel,
-    TimeSpan startStreamTimeout,
-    IScriptEventManager eventManager,
-    IScriptHostManager hostManager,
-    RpcWorkerConfig workerConfig,
-    ILogger logger,
-    IMetricsLogger metricsLogger,
-    int attemptCount,
-    IEnvironment environment,
-    IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-    ISharedMemoryManager sharedMemoryManager,
-    IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
-    IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
-    IAppCapabilitiesStore appCapabilitiesStore,
-    IHttpProxyService httpProxyService)
-    : WorkerChannel(
-        workerId,
-        ownedChannel,
-        eventManager,
-        hostManager,
-        workerConfig,
-        logger,
-        metricsLogger,
-        attemptCount,
-        environment,
-        applicationHostOptions,
-        sharedMemoryManager,
-        workerConcurrencyOptions,
-        hostingConfigOptions,
-        appCapabilitiesStore,
-        httpProxyService)
+internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly TimeSpan _startStreamTimeout = ValidateStartStreamTimeout(startStreamTimeout);
     private LifecycleState _lifecycleState;
+
+    public RpcClientWorkerChannel(
+        string workerId,
+        DuplexChannel<StreamingMessage> ownedChannel,
+        IScriptEventManager eventManager,
+        IScriptHostManager hostManager,
+        RpcWorkerConfig workerConfig,
+        ILogger logger,
+        IMetricsLogger metricsLogger,
+        int attemptCount,
+        IEnvironment environment,
+        IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+        ISharedMemoryManager sharedMemoryManager,
+        IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
+        IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
+        IAppCapabilitiesStore appCapabilitiesStore,
+        IHttpProxyService httpProxyService)
+        : base(
+            workerId,
+            ownedChannel,
+            eventManager,
+            hostManager,
+            workerConfig,
+            logger,
+            metricsLogger,
+            attemptCount,
+            environment,
+            applicationHostOptions,
+            sharedMemoryManager,
+            workerConcurrencyOptions,
+            hostingConfigOptions,
+            appCapabilitiesStore,
+            httpProxyService)
+    {
+        Completion = ownedChannel.Reader.Completion;
+    }
 
     private enum LifecycleState
     {
@@ -73,6 +76,8 @@ internal sealed class RpcClientWorkerChannel(
         Started,
         Disposed,
     }
+
+    internal Task Completion { get; }
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -97,7 +102,7 @@ internal sealed class RpcClientWorkerChannel(
                 try
                 {
                     MarkWorkerInitializing();
-                    BeginInboundProcessing(_startStreamTimeout);
+                    BeginInboundProcessing(ValidateStartStreamTimeout(WorkerConfig.CountOptions.ProcessStartupTimeout));
                     _ = CompleteStartAsync();
                 }
                 catch (Exception exception)
