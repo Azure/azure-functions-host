@@ -28,8 +28,13 @@ internal sealed class ExtensionRpcRelay(
         ServerCallContext context)
     {
         HttpContext httpContext = context.GetHttpContext();
-        if (!endpoints.TryGetRelaySide(httpContext.Connection.LocalPort, out FunctionRpcRelaySide side)
-            || side is not FunctionRpcRelaySide.Runtime)
+        if (!endpoints.TryGetRelaySide(httpContext.Connection.LocalPort, out FunctionRpcRelaySide side))
+        {
+            throw new GrpcRpcException(
+                new Status(StatusCode.Unimplemented, "ExtensionRpc is unavailable on this listener."));
+        }
+
+        if (side is not FunctionRpcRelaySide.Runtime)
         {
             throw new GrpcRpcException(
                 new Status(StatusCode.PermissionDenied, "ExtensionRpc is only available on the runtime gRPC port."));
@@ -68,8 +73,8 @@ internal sealed class ExtensionRpcRelay(
         {
             cancellationTokenSource.Cancel();
             await Task.WhenAll(
-                IgnoreCancellationAsync(readTask, cancellationTokenSource.Token),
-                IgnoreCancellationAsync(writeTask, cancellationTokenSource.Token));
+                ObserveCompletionAsync(readTask),
+                ObserveCompletionAsync(writeTask));
         }
     }
 
@@ -107,14 +112,8 @@ internal sealed class ExtensionRpcRelay(
         }
     }
 
-    private static async Task IgnoreCancellationAsync(Task task, CancellationToken cancellationToken)
+    private static async Task ObserveCompletionAsync(Task task)
     {
-        try
-        {
-            await task;
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
+        await task.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
     }
 }

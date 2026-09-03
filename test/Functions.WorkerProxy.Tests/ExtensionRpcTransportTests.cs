@@ -116,7 +116,7 @@ public class ExtensionRpcTransportTests
             await streamCoordinator.OpenExtensionCallAsync(start, CancellationToken.None);
         ExtensionRpcMessage message = await lease.Stream.Outbound.ReadAsync();
 
-        Assert.True(message.Start.Timeout.ToTimeSpan() < TimeSpan.FromSeconds(1));
+        Assert.InRange(message.Start.Timeout.ToTimeSpan(), TimeSpan.Zero, TimeSpan.FromSeconds(1));
         Assert.NotEqual(
             "1S",
             Assert.Single(
@@ -156,7 +156,7 @@ public class ExtensionRpcTransportTests
                 new ExtensionRpcStart
                 {
                     Method = "/extensions.Echo/Unary",
-                    Timeout = Duration.FromTimeSpan(TimeSpan.Zero),
+                    Timeout = Duration.FromTimeSpan(TimeSpan.FromMilliseconds(50)),
                 },
                 cancellationTokenSource.Token));
     }
@@ -354,6 +354,24 @@ public class ExtensionRpcTransportTests
         await firstRelayTask;
     }
 
+    [Fact]
+    public async Task RelayAsync_PreservesFirstFailureDuringCleanup()
+    {
+        var streamCoordinator = new ExtensionRpcStreamCoordinator();
+        var endpoints = new WorkerProxyEndpointConfiguration(
+            Options.Create(new WorkerProxyOptions()));
+        var relay = new ExtensionRpcRelay(endpoints, streamCoordinator);
+        var expectedException = new InvalidOperationException("The inbound stream failed.");
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => relay.RelayAsync(
+                new ThrowingAsyncStreamReader<ExtensionRpcMessage>(expectedException),
+                new FailAfterCancellationServerStreamWriter<ExtensionRpcMessage>(),
+                CancellationToken.None));
+
+        Assert.Same(expectedException, exception);
+    }
+
     private static ExtensionRpcMessage CreateReady(ExtensionRpcMessage hello)
     {
         return new ExtensionRpcMessage
@@ -397,6 +415,38 @@ public class ExtensionRpcTransportTests
             }
 
             return false;
+        }
+    }
+
+    private sealed class ThrowingAsyncStreamReader<T>(Exception exception) : IAsyncStreamReader<T>
+    {
+        public T Current { get; } = default!;
+
+        public Task<bool> MoveNext(CancellationToken cancellationToken)
+        {
+            return Task.FromException<bool>(exception);
+        }
+    }
+
+    private sealed class FailAfterCancellationServerStreamWriter<T> : IServerStreamWriter<T>
+    {
+        public WriteOptions? WriteOptions { get; set; }
+
+        public Task WriteAsync(T message)
+        {
+            return Task.FromException(new InvalidOperationException("The outbound stream failed."));
+        }
+
+        public async Task WriteAsync(T message, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw new InvalidOperationException("The outbound stream failed.");
+            }
         }
     }
 
