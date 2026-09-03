@@ -68,7 +68,6 @@ public class WorkerHttpForwardingTests
         Activity activity = await activityRecorder.WaitForActivityAsync();
         AssertRequestActivity(activity, "POST", "/invoke");
         Assert.Null(activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
-        Assert.Null(activity.GetTagItem(WorkerHttpForwardingTelemetry.ErrorTypeAttribute));
         Assert.Equal(ActivityStatusCode.Unset, activity.Status);
     }
 
@@ -111,9 +110,6 @@ public class WorkerHttpForwardingTests
         Assert.Equal(
             WorkerHttpForwardingTelemetry.DestinationNotConfiguredResult,
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
-        Assert.Equal(
-            StatusCodes.Status503ServiceUnavailable.ToString(),
-            activity.GetTagItem(WorkerHttpForwardingTelemetry.ErrorTypeAttribute));
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }
 
@@ -144,8 +140,8 @@ public class WorkerHttpForwardingTests
             WorkerHttpForwardingTelemetry.DestinationNotReadyResult,
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
         Assert.Equal(
-            StatusCodes.Status503ServiceUnavailable.ToString(),
-            activity.GetTagItem(WorkerHttpForwardingTelemetry.ErrorTypeAttribute));
+            WorkerHttpForwardingTelemetry.TimeoutError,
+            activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwarderErrorAttribute));
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }
 
@@ -182,9 +178,6 @@ public class WorkerHttpForwardingTests
         Assert.Equal(
             WorkerHttpForwardingTelemetry.ForwarderErrorResult,
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
-        Assert.Equal(
-            StatusCodes.Status502BadGateway.ToString(),
-            activity.GetTagItem(WorkerHttpForwardingTelemetry.ErrorTypeAttribute));
         Assert.Equal(
             Yarp.ReverseProxy.Forwarder.ForwarderError.Request.ToString(),
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwarderErrorAttribute));

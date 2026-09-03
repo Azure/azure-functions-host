@@ -1,10 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Diagnostics;
-using System.Globalization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
 using Yarp.ReverseProxy.Forwarder;
 
 namespace Azure.Functions.WorkerProxy.Http;
@@ -16,75 +14,59 @@ internal static class WorkerHttpForwardingTelemetry
 {
     internal const string ForwardingResultAttribute = "azure.functions.worker_proxy.http.forwarding.result";
     internal const string ForwarderErrorAttribute = "azure.functions.worker_proxy.http.forwarding.error";
-    internal const string ErrorTypeAttribute = "error.type";
 
-    internal const string CanceledResult = "canceled";
     internal const string DestinationNotConfiguredResult = "destination_not_configured";
     internal const string DestinationNotReadyResult = "destination_not_ready";
     internal const string ForwarderErrorResult = "forwarder_error";
 
-    internal const string ForwarderErrorTypePrefix = "Yarp.ReverseProxy.Forwarder.ForwarderError.";
-
-    /// <summary>
-    /// Records that forwarding was canceled by the caller.
-    /// </summary>
-    public static void RecordCanceled(HttpContext context)
-    {
-        SetResult(context, CanceledResult);
-    }
+    internal const string NameResolutionFailedError = "name_resolution_failed";
+    internal const string ConnectionRefusedError = "connection_refused";
+    internal const string TimeoutError = "timeout";
+    internal const string ConnectionFailedError = "connection_failed";
 
     /// <summary>
     /// Records that no worker HTTP destination was configured or advertised.
     /// </summary>
-    public static void RecordDestinationNotConfigured(HttpContext context)
+    public static void RecordDestinationNotConfigured()
     {
-        SetError(context, DestinationNotConfiguredResult);
+        RecordFailure(DestinationNotConfiguredResult);
     }
 
     /// <summary>
     /// Records that the worker HTTP destination did not become ready.
     /// </summary>
-    public static void RecordDestinationNotReady(HttpContext context)
+    public static void RecordDestinationNotReady(WorkerEndpointReadinessResult readinessResult)
     {
-        SetError(context, DestinationNotReadyResult);
+        string error = readinessResult switch
+        {
+            WorkerEndpointReadinessResult.NameResolutionFailed => NameResolutionFailedError,
+            WorkerEndpointReadinessResult.ConnectionRefused => ConnectionRefusedError,
+            WorkerEndpointReadinessResult.Timeout => TimeoutError,
+            WorkerEndpointReadinessResult.ConnectionFailed => ConnectionFailedError,
+            _ => throw new ArgumentOutOfRangeException(nameof(readinessResult))
+        };
+
+        RecordFailure(DestinationNotReadyResult, error);
     }
 
     /// <summary>
     /// Records an error returned by the YARP HTTP forwarder.
     /// </summary>
-    public static void RecordForwarderError(HttpContext context, ForwarderError error)
+    public static void RecordForwarderError(ForwarderError error)
     {
-        SetError(context, ForwarderErrorResult, error);
+        RecordFailure(ForwarderErrorResult, error.ToString());
     }
 
-    private static void SetResult(HttpContext context, string result)
+    private static void RecordFailure(string result, string? error = null)
     {
-        GetRequestActivity(context)?.SetTag(ForwardingResultAttribute, result);
-    }
-
-    private static void SetError(HttpContext context, string result, ForwarderError? forwarderError = null)
-    {
-        Activity? activity = GetRequestActivity(context);
+        Activity? activity = Activity.Current;
         activity?.SetTag(ForwardingResultAttribute, result);
 
-        if (forwarderError is not null)
+        if (error is not null)
         {
-            activity?.SetTag(ForwarderErrorAttribute, forwarderError.Value.ToString());
-        }
-
-        if (activity?.GetTagItem(ErrorTypeAttribute) is null)
-        {
-            string errorType = context.Response.StatusCode >= StatusCodes.Status500InternalServerError
-                ? context.Response.StatusCode.ToString(CultureInfo.InvariantCulture)
-                : $"{ForwarderErrorTypePrefix}{forwarderError}";
-            activity?.SetTag(ErrorTypeAttribute, errorType);
+            activity?.SetTag(ForwarderErrorAttribute, error);
         }
 
         activity?.SetStatus(ActivityStatusCode.Error);
-    }
-
-    private static Activity? GetRequestActivity(HttpContext context)
-    {
-        return context.Features.Get<IHttpActivityFeature>()?.Activity;
     }
 }

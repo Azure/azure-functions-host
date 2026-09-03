@@ -29,27 +29,26 @@ internal sealed class WorkerHttpForwardingMiddleware(
         if (destination is null)
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            WorkerHttpForwardingTelemetry.RecordDestinationNotConfigured(context);
+            WorkerHttpForwardingTelemetry.RecordDestinationNotConfigured();
             return;
         }
 
-        if (!readinessProbe.IsKnownReady(destination)
-            && !await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted))
+        if (!readinessProbe.IsKnownReady(destination))
         {
-            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            WorkerHttpForwardingTelemetry.RecordDestinationNotReady(context);
-            return;
+            WorkerEndpointReadinessResult readinessResult =
+                await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted);
+
+            if (readinessResult is not WorkerEndpointReadinessResult.Ready)
+            {
+                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                WorkerHttpForwardingTelemetry.RecordDestinationNotReady(readinessResult);
+                return;
+            }
         }
 
         ForwarderError error = await forwarder.ForwardAsync(context, destination);
-        if (error is ForwarderError.None)
+        if (error is ForwarderError.None || context.RequestAborted.IsCancellationRequested)
         {
-            return;
-        }
-
-        if (context.RequestAborted.IsCancellationRequested)
-        {
-            WorkerHttpForwardingTelemetry.RecordCanceled(context);
             return;
         }
 
@@ -58,6 +57,6 @@ internal sealed class WorkerHttpForwardingMiddleware(
             context.Response.StatusCode = StatusCodes.Status502BadGateway;
         }
 
-        WorkerHttpForwardingTelemetry.RecordForwarderError(context, error);
+        WorkerHttpForwardingTelemetry.RecordForwarderError(error);
     }
 }
