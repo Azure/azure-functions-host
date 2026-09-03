@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
     internal class TestRpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
         private readonly RpcWorkerConfig _workerConfig;
+        private readonly Action _disposeAction;
 
         private string _workerId;
         private bool _isWebhostChannel;
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private bool _isDisposed;
 
         public TestRpcWorkerChannel(string workerId, string runtime = null, IScriptEventManager eventManager = null, ILogger testLogger = null,
-            bool isWebhostChannel = false, bool throwOnProcessStartUp = false, RpcWorkerConfig workerConfig = null)
+            bool isWebhostChannel = false, bool throwOnProcessStartUp = false, RpcWorkerConfig workerConfig = null, Action disposeAction = null)
         {
             _workerId = workerId;
             _isWebhostChannel = isWebhostChannel;
@@ -44,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _executingInvocations = new HashSet<string>();
             _isDisposed = false;
             _workerConfig = workerConfig;
+            _disposeAction = disposeAction;
         }
 
         public string Id => _workerId;
@@ -60,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public void Dispose()
         {
+            _disposeAction?.Invoke();
             _isDisposed = true;
         }
 

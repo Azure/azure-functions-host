@@ -5,9 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors.Internal;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -15,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Metrics;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
@@ -523,6 +526,135 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task TimeoutRecovery_WhenChannelDisposeHangs_DoesNotRestartAndLogsExpectedSequence()
+        {
+            const string workerId = "timed-out-worker";
+            const string runtime = RpcWorkerConstants.NodeLanguageWorkerName;
+            Guid timedOutInvocationId = Guid.NewGuid();
+            Guid concurrentInvocationId = Guid.NewGuid();
+            using var disposeStarted = new ManualResetEventSlim();
+            using var allowDispose = new ManualResetEventSlim();
+            var orderedLogger = new TestLogger<WebScriptHostExceptionHandler>();
+            var loggerProvider = new Mock<ILoggerProvider>();
+            loggerProvider.Setup(p => p.CreateLogger(It.IsAny<string>())).Returns(orderedLogger);
+            using var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider.Object);
+
+            var timedOutChannel = new TestRpcWorkerChannel(
+                workerId,
+                runtime,
+                testLogger: _testLogger,
+                disposeAction: () =>
+                {
+                    disposeStarted.Set();
+                    allowDispose.Wait();
+                });
+
+            int channelsCreated = 0;
+            var channelFactory = new Mock<IRpcWorkerChannelFactory>();
+            channelFactory
+                .Setup(m => m.Create(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IMetricsLogger>(),
+                    It.IsAny<int>(),
+                    It.IsAny<IEnumerable<RpcWorkerConfig>>()))
+                .Returns((string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IEnumerable<RpcWorkerConfig> workerConfigs) =>
+                {
+                    if (Interlocked.Increment(ref channelsCreated) == 1)
+                    {
+                        return timedOutChannel;
+                    }
+
+                    RpcWorkerConfig workerConfig = workerConfigs.SingleOrDefault(
+                        p => string.Equals(language, p.Description.Language, StringComparison.OrdinalIgnoreCase));
+                    return new TestRpcWorkerChannel(
+                        Guid.NewGuid().ToString(),
+                        language,
+                        testLogger: _testLogger,
+                        workerConfig: workerConfig);
+                });
+
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(
+                runtime: runtime,
+                channelFactory: channelFactory.Object,
+                loggerFactory: loggerFactory);
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(runtime));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, 1);
+
+            timedOutChannel.SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext
+                {
+                    InvocationId = timedOutInvocationId
+                }
+            });
+            timedOutChannel.SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext
+                {
+                    InvocationId = concurrentInvocationId
+                }
+            });
+
+            var workerManager = new Mock<IScriptHostWorkerManager>();
+            workerManager.Setup(m => m.State).Returns(WorkerManagerState.Initialized);
+            var timeoutException = new FunctionTimeoutException("Test timeout")
+            {
+                InstanceId = timedOutInvocationId
+            };
+            workerManager
+                .Setup(m => m.RestartWorkerWithInvocationIdAsync(timedOutInvocationId.ToString(), timeoutException))
+                .Returns(() => functionDispatcher.RestartWorkerWithInvocationIdAsync(timedOutInvocationId.ToString(), timeoutException));
+            var applicationLifetime = new Mock<IScriptApplicationLifetime>();
+            var exceptionHandler = new WebScriptHostExceptionHandler(applicationLifetime.Object, orderedLogger, workerManager.Object);
+
+            string[] expectedLogs =
+            [
+                $"A function timeout has occurred. Restarting worker process executing invocationId '{timedOutInvocationId}'.",
+                $"Restarting channel with workerId: '{workerId}' that is executing invocation: '{timedOutInvocationId}' and timed out.",
+                $"Attempting to dispose webhost or jobhost channel for workerId: '{workerId}', runtime: '{runtime}'",
+                $"Disposing language worker channel with id:{workerId}",
+                $"Disposed language worker channel with id:{workerId}",
+                $"No initialized worker channels for runtime '{runtime}'. Delaying future invocations",
+                $"Restarting worker channel for runtime: '{runtime}'",
+                "Attempt to restart language worker process(es) completed."
+            ];
+
+            orderedLogger.ClearLogMessages();
+            Task recoveryTask = Task.Run(
+                () => exceptionHandler.OnTimeoutExceptionAsync(ExceptionDispatchInfo.Capture(timeoutException), TimeSpan.Zero));
+
+            try
+            {
+                Assert.True(disposeStarted.Wait(TimeSpan.FromSeconds(5)));
+                Assert.False(recoveryTask.IsCompleted);
+                Assert.Empty(functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels());
+                Assert.False(timedOutChannel.IsExecutingInvocation(timedOutInvocationId.ToString()));
+                Assert.False(timedOutChannel.IsExecutingInvocation(concurrentInvocationId.ToString()));
+                Assert.Equal(expectedLogs[..4], GetRecoveryLogs());
+            }
+            finally
+            {
+                allowDispose.Set();
+            }
+
+            await recoveryTask.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, 1);
+
+            Assert.Equal(expectedLogs, GetRecoveryLogs());
+            workerManager.VerifyAll();
+
+            string[] GetRecoveryLogs()
+            {
+                return orderedLogger.GetLogMessages()
+                    .Select(p => p.FormattedMessage)
+                    .Where(p => expectedLogs.Contains(p, StringComparer.Ordinal))
+                    .ToArray();
+            }
+        }
+
+        [Fact]
         public async Task FunctionDispatcher_Restart_ErroredChannels_And_DoesNot_Change_State()
         {
             int expectedProcessCount = 2;
@@ -796,7 +928,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             IRpcWorkerChannelFactory channelFactory = null,
             CancellationTokenSource applicationStoppingSource = null,
             Mock<IHostApplicationLifetime> mockApplicationLifetime = null,
-            IScriptEventManager eventManager = null)
+            IScriptEventManager eventManager = null,
+            ILoggerFactory loggerFactory = null)
         {
             eventManager ??= new ScriptEventManager();
             var metricsLogger = new Mock<IMetricsLogger>();
@@ -833,7 +966,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             channelFactory ??= new TestRpcWorkerChannelFactory(eventManager, _testLogger, scriptOptions.Value.RootScriptPath, throwOnProcessStartUp);
             IWebHostRpcWorkerChannelManager testWebHostLanguageWorkerChannelManager = new TestRpcWorkerChannelManager(
                 eventManager, _testLogger, scriptOptions.Value.RootScriptPath, channelFactory);
-            IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager = new JobHostRpcWorkerChannelManager(_testLoggerFactory);
+            loggerFactory ??= _testLoggerFactory;
+            IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager = new JobHostRpcWorkerChannelManager(loggerFactory);
 
             if (addWebhostChannel)
             {
@@ -861,7 +995,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 testEnv,
                 mockApplicationLifetime.Object,
                 eventManager,
-                _testLoggerFactory,
+                loggerFactory,
                 channelFactory,
                 optionsMonitor,
                 testWebHostLanguageWorkerChannelManager,
