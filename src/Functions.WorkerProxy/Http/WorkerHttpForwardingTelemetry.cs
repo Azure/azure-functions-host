@@ -16,7 +16,6 @@ internal static class WorkerHttpForwardingTelemetry
     internal const string ForwardingResultAttribute = "azure.functions.worker_proxy.http.forwarding.result";
     internal const string ErrorTypeAttribute = "error.type";
 
-    internal const string SuccessResult = "success";
     internal const string CanceledResult = "canceled";
     internal const string DestinationNotConfiguredResult = "destination_not_configured";
     internal const string DestinationNotReadyResult = "destination_not_ready";
@@ -25,14 +24,6 @@ internal static class WorkerHttpForwardingTelemetry
     internal const string DestinationNotConfiguredErrorType = "worker_http_destination_not_configured";
     internal const string DestinationNotReadyErrorType = "worker_http_destination_not_ready";
     internal const string ForwarderErrorTypePrefix = "Yarp.ReverseProxy.Forwarder.ForwarderError.";
-
-    /// <summary>
-    /// Records a successful forwarding operation.
-    /// </summary>
-    public static void RecordSuccess(HttpContext context)
-    {
-        SetResult(context, SuccessResult);
-    }
 
     /// <summary>
     /// Records that forwarding was canceled by the caller.

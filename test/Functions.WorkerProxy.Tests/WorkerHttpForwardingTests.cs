@@ -52,7 +52,7 @@ public class WorkerHttpForwardingTests
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
         using HttpClient client = factory.CreateHttpForwardingClient();
-        using RequestActivityRecorder activityRecorder = new();
+        using RequestActivityRecorder activityRecorder = new("/invoke");
         using HttpRequestMessage request = new(HttpMethod.Post, "/invoke?name=worker")
         {
             Content = new StringContent("payload", Encoding.UTF8, "text/plain")
@@ -67,9 +67,7 @@ public class WorkerHttpForwardingTests
 
         Activity activity = await activityRecorder.WaitForActivityAsync();
         AssertRequestActivity(activity, "POST", "/invoke");
-        Assert.Equal(
-            WorkerHttpForwardingTelemetry.SuccessResult,
-            activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
+        Assert.Null(activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
         Assert.Null(activity.GetTagItem(WorkerHttpForwardingTelemetry.ErrorTypeAttribute));
         Assert.Equal(ActivityStatusCode.Unset, activity.Status);
     }
@@ -102,7 +100,7 @@ public class WorkerHttpForwardingTests
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         using HttpClient client = factory.CreateHttpForwardingClient();
-        using RequestActivityRecorder activityRecorder = new();
+        using RequestActivityRecorder activityRecorder = new("/");
 
         using HttpResponseMessage response = await client.GetAsync("/");
 
@@ -134,7 +132,7 @@ public class WorkerHttpForwardingTests
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
         using HttpClient client = factory.CreateHttpForwardingClient();
-        using RequestActivityRecorder activityRecorder = new();
+        using RequestActivityRecorder activityRecorder = new("/not-ready");
 
         using HttpResponseMessage response = await client.GetAsync("/not-ready");
 
@@ -173,7 +171,7 @@ public class WorkerHttpForwardingTests
         }
 
         await worker.StopAsync();
-        using RequestActivityRecorder activityRecorder = new();
+        using RequestActivityRecorder activityRecorder = new("/forwarding-failure");
 
         using HttpResponseMessage failedResponse = await client.GetAsync("/forwarding-failure");
 
@@ -281,7 +279,7 @@ public class WorkerHttpForwardingTests
 
         private readonly ActivityListener _listener;
 
-        public RequestActivityRecorder()
+        public RequestActivityRecorder(string requestPath)
         {
             _listener = new ActivityListener
             {
@@ -293,7 +291,10 @@ public class WorkerHttpForwardingTests
                     ActivitySamplingResult.AllDataAndRecorded,
                 ActivityStopped = activity =>
                 {
-                    if (activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute) is not null)
+                    if (string.Equals(
+                        activity.GetTagItem("url.path") as string,
+                        requestPath,
+                        StringComparison.Ordinal))
                     {
                         _completion.TrySetResult(activity);
                     }

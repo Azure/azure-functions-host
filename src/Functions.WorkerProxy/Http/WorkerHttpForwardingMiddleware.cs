@@ -44,7 +44,6 @@ internal sealed class WorkerHttpForwardingMiddleware(
         ForwarderError error = await forwarder.ForwardAsync(context, destination);
         if (error is ForwarderError.None)
         {
-            WorkerHttpForwardingTelemetry.RecordSuccess(context);
             return;
         }
 
