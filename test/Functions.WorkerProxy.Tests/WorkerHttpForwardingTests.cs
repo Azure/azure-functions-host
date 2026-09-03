@@ -183,7 +183,9 @@ public class WorkerHttpForwardingTests
         using TcpListener unrelatedListener = new(IPAddress.Loopback, 0);
         unrelatedListener.Start();
         Uri unrelatedDestination = new($"http://localhost:{((IPEndPoint)unrelatedListener.LocalEndpoint).Port}");
-        Assert.True(await readinessProbe.WaitForReadyAsync(unrelatedDestination, CancellationToken.None));
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await readinessProbe.WaitForReadyAsync(unrelatedDestination, CancellationToken.None));
 
         await worker.StopAsync();
         using RequestActivityRecorder activityRecorder = new("/forwarding-failure");
