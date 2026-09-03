@@ -400,7 +400,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 try
                 {
+                    _workerChannelLogger.LogDebug("[dispose-trace] reader-loop enter ownedChannel.DisposeAsync for workerId:{workerId}", _workerId);
                     await _ownedChannel.DisposeAsync();
+                    _workerChannelLogger.LogDebug("[dispose-trace] reader-loop exit ownedChannel.DisposeAsync for workerId:{workerId}", _workerId);
                 }
                 catch (Exception ex)
                 {
@@ -1575,7 +1577,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         _workerChannelLogger.LogDebug("The input links collection is null. Skipping disposal of any individual input links.");
                     }
 
+                    _workerChannelLogger.LogDebug("[dispose-trace] enter DisposeWorkerResources for workerId:{workerId}", _workerId);
                     DisposeWorkerResources();
+                    _workerChannelLogger.LogDebug("[dispose-trace] exit DisposeWorkerResources for workerId:{workerId}", _workerId);
 
                     if (_eventSubscriptions is not null)
                     {
@@ -1622,6 +1626,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _disposing = true;
             Exception disposalException = null;
 
+            // [dispose-trace] Temporary diagnostics to localize a teardown hang. See ShutdownAndDispose.
+            _workerChannelLogger.LogDebug("[dispose-trace] enter Dispose(true) for workerId:{workerId}", _workerId);
             try
             {
                 Dispose(true);
@@ -1631,6 +1637,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 disposalException = ex;
             }
 
+            _workerChannelLogger.LogDebug("[dispose-trace] exit Dispose(true) / enter ownedChannel.DisposeAsync for workerId:{workerId}", _workerId);
             try
             {
                 await _ownedChannel.DisposeAsync().ConfigureAwait(false);
@@ -1640,6 +1647,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 disposalException = disposalException is null ? ex : new AggregateException(disposalException, ex);
             }
 
+            _workerChannelLogger.LogDebug("[dispose-trace] exit ownedChannel.DisposeAsync for workerId:{workerId}", _workerId);
             _disposed = true;
             GC.SuppressFinalize(this);
 

@@ -95,10 +95,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             if (disposing)
             {
+                // [dispose-trace] Temporary diagnostics to localize a teardown hang. See ShutdownAndDispose.
+                WorkerChannelLogger.LogDebug("[dispose-trace] enter StopWorkerProcess for workerId:{workerId}", Id);
                 StopWorkerProcess();
+                WorkerChannelLogger.LogDebug("[dispose-trace] exit StopWorkerProcess for workerId:{workerId}", Id);
             }
 
+            WorkerChannelLogger.LogDebug("[dispose-trace] enter base.Dispose for workerId:{workerId}", Id);
             base.Dispose(disposing);
+            WorkerChannelLogger.LogDebug("[dispose-trace] exit base.Dispose for workerId:{workerId}", Id);
         }
 
         internal override void DisposeWorkerResources()
