@@ -275,6 +275,41 @@ public class ExtensionRpcTransportTests
     }
 
     [Fact]
+    public async Task WriteAsync_StopsWaitingForReceiveWindowWhenStreamCloses()
+    {
+        var streamCoordinator = new ExtensionRpcStreamCoordinator();
+        await using ExtensionRpcStreamLease lease = streamCoordinator.Open(CancellationToken.None);
+        ExtensionRpcMessage hello = await lease.Stream.Outbound.ReadAsync();
+        ExtensionRpcMessage ready = CreateReady(hello);
+        ready.Ready.InitialReceiveWindowBytes = 1;
+        ready.Ready.MaxDataChunkBytes = 1;
+        await lease.Stream.HandleInboundAsync(ready, CancellationToken.None);
+        await using ExtensionCall call = await streamCoordinator.OpenExtensionCallAsync(
+            new ExtensionRpcStart { Method = "/extensions.Echo/Unary" },
+            CancellationToken.None);
+        await lease.Stream.Outbound.ReadAsync();
+        await call.WriteAsync(
+            new ExtensionRpcMessage
+            {
+                Data = new ExtensionRpcData { Payload = ByteString.CopyFrom([1]) },
+            },
+            CancellationToken.None);
+        await lease.Stream.Outbound.ReadAsync();
+
+        ValueTask blockedWrite = call.WriteAsync(
+            new ExtensionRpcMessage
+            {
+                Data = new ExtensionRpcData { Payload = ByteString.CopyFrom([2]) },
+            },
+            CancellationToken.None);
+        Assert.False(blockedWrite.IsCompleted);
+
+        await lease.DisposeAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => blockedWrite.AsTask());
+    }
+
+    [Fact]
     public async Task Complete_RemovesCallFromStream()
     {
         var streamCoordinator = new ExtensionRpcStreamCoordinator();

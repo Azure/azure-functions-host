@@ -76,6 +76,9 @@ internal sealed class ExtensionCall(ExtensionRpcStream stream, string callId, Ex
     /// <returns>A task that represents the asynchronous write.</returns>
     public async ValueTask WriteAsync(ExtensionRpcMessage message, CancellationToken cancellationToken)
     {
+        using CancellationTokenSource cancellationTokenSource =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, CancellationToken);
+        cancellationToken = cancellationTokenSource.Token;
         if (message.ContentCase is ExtensionRpcMessage.ContentOneofCase.Data)
         {
             await _requestCredits.ReserveAsync((ulong)message.Data.Payload.Length, cancellationToken);
