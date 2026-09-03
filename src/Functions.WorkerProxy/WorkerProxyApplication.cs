@@ -107,6 +107,7 @@ internal static class WorkerProxyApplication
         builder.Services.AddHttpClient(nameof(WorkerHttpForwarder))
             .ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
             {
+                ActivityHeadersPropagator = null,
                 AllowAutoRedirect = false,
                 AutomaticDecompression = DecompressionMethods.None,
                 UseCookies = false,
