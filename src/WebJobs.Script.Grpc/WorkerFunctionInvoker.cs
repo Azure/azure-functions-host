@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 BindingData = bindingData,
                 ExecutionContext = context.ExecutionContext,
                 Inputs = inputs,
-                ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
+                ResultSource = new TaskCompletionSource<ScriptInvocationResult>(TaskCreationOptions.RunContinuationsAsynchronously),
                 AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
                 Traceparent = Activity.Current?.Id,
                 Tracestate = Activity.Current?.TraceStateString,
