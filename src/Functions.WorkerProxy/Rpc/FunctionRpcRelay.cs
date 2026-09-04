@@ -9,7 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy.Rpc;
 
 /// <summary>
 /// Owns the active pair of runtime-facing and worker-facing FunctionRpc streams.

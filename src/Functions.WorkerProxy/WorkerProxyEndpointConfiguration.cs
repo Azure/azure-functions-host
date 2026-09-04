@@ -3,6 +3,7 @@
 
 using System;
 using System.Net;
+using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
 

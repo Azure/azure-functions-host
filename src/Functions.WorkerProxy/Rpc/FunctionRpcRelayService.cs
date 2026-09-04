@@ -2,13 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy;
 using Grpc.AspNetCore.Server;
 using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using GrpcRpcException = Grpc.Core.RpcException;
 
-namespace Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy.Rpc;
 
 /// <summary>
 /// Adapts FunctionRpc endpoint requests to the shared relay.
