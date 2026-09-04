@@ -49,8 +49,7 @@ internal sealed partial class WorkerEndpointReadinessProbe(
     /// <param name="cancellationToken">The caller cancellation token.</param>
     /// <returns>The bounded readiness result.</returns>
     public async ValueTask<WorkerEndpointReadinessResult> WaitForReadyAsync(
-        Uri destination,
-        CancellationToken cancellationToken)
+        Uri destination, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(destination);
 

@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Diagnostics;
 using Yarp.ReverseProxy.Forwarder;
 
@@ -15,14 +14,9 @@ internal static class WorkerHttpForwardingTelemetry
     internal const string ForwardingResultAttribute = "azure.functions.worker_proxy.http.forwarding.result";
     internal const string ForwarderErrorAttribute = "azure.functions.worker_proxy.http.forwarding.error";
 
-    internal const string DestinationNotConfiguredResult = "destination_not_configured";
-    internal const string DestinationNotReadyResult = "destination_not_ready";
-    internal const string ForwarderErrorResult = "forwarder_error";
-
-    internal const string NameResolutionFailedError = "name_resolution_failed";
-    internal const string ConnectionRefusedError = "connection_refused";
-    internal const string TimeoutError = "timeout";
-    internal const string ConnectionFailedError = "connection_failed";
+    internal const string DestinationNotConfiguredResult = "DestinationNotConfigured";
+    internal const string DestinationNotReadyResult = "DestinationNotReady";
+    internal const string ForwarderErrorResult = "ForwarderError";
 
     /// <summary>
     /// Records that no worker HTTP destination was configured or advertised.
@@ -37,16 +31,7 @@ internal static class WorkerHttpForwardingTelemetry
     /// </summary>
     public static void RecordDestinationNotReady(WorkerEndpointReadinessResult readinessResult)
     {
-        string error = readinessResult switch
-        {
-            WorkerEndpointReadinessResult.NameResolutionFailed => NameResolutionFailedError,
-            WorkerEndpointReadinessResult.ConnectionRefused => ConnectionRefusedError,
-            WorkerEndpointReadinessResult.Timeout => TimeoutError,
-            WorkerEndpointReadinessResult.ConnectionFailed => ConnectionFailedError,
-            _ => throw new ArgumentOutOfRangeException(nameof(readinessResult))
-        };
-
-        RecordFailure(DestinationNotReadyResult, error);
+        RecordFailure(DestinationNotReadyResult, readinessResult.ToString());
     }
 
     /// <summary>

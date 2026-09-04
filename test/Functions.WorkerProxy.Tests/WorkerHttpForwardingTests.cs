@@ -140,7 +140,7 @@ public class WorkerHttpForwardingTests
             WorkerHttpForwardingTelemetry.DestinationNotReadyResult,
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
         Assert.Equal(
-            WorkerHttpForwardingTelemetry.TimeoutError,
+            WorkerEndpointReadinessResult.Timeout.ToString(),
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwarderErrorAttribute));
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }

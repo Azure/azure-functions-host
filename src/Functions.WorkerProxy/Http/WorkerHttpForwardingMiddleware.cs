@@ -13,9 +13,7 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// Resolves the worker endpoint, waits for readiness, and forwards eligible requests through YARP.
 /// </summary>
 internal sealed class WorkerHttpForwardingMiddleware(
-    IOptions<WorkerProxyOptions> options,
-    WorkerEndpointReadinessProbe readinessProbe,
-    WorkerHttpForwarder forwarder)
+    IOptions<WorkerProxyOptions> options, WorkerEndpointReadinessProbe readinessProbe, WorkerHttpForwarder forwarder)
 {
     /// <summary>
     /// Forwards a request to the configured worker HTTP endpoint.

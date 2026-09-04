@@ -13,8 +13,8 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// Streams HTTP requests and responses between the runtime and worker.
 /// </summary>
 internal sealed class WorkerHttpForwarder(
-    IHttpForwarder httpForwarder,
-    IHttpMessageHandlerFactory httpMessageHandlerFactory) : IDisposable
+    IHttpForwarder httpForwarder, IHttpMessageHandlerFactory httpMessageHandlerFactory)
+    : IDisposable
 {
     private static readonly ForwarderRequestConfig RequestConfig = new()
     {
