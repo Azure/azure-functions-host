@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,11 +26,6 @@ namespace Azure.Functions.WorkerProxy.Tests;
 
 public class WorkerHttpForwardingTests
 {
-    static WorkerHttpForwardingTests()
-    {
-        AppContext.SetSwitch("Microsoft.AspNetCore.Hosting.SuppressActivityOpenTelemetryData", false);
-    }
-
     [Fact]
     public async Task HttpListener_ForwardsStatusHeadersBodyAndQuery()
     {
@@ -313,5 +309,14 @@ public class WorkerHttpForwardingTests
         {
             _listener.Dispose();
         }
+    }
+}
+
+internal static class WorkerHttpForwardingTestsModuleInitializer
+{
+    [ModuleInitializer]
+    public static void Initialize()
+    {
+        AppContext.SetSwitch("Microsoft.AspNetCore.Hosting.SuppressActivityOpenTelemetryData", false);
     }
 }
