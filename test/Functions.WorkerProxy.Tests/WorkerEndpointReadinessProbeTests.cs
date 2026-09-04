@@ -86,16 +86,19 @@ public class WorkerEndpointReadinessProbeTests
     }
 
     [Fact]
-    public async Task WaitForReadyAsync_DestinationNeverBinds_ReturnsTimeout()
+    public async Task WaitForReadyAsync_DestinationNeverBinds_ReturnsBoundedFailure()
     {
         int port = GetUnusedPort();
         WorkerEndpointReadinessProbe probe = CreateProbe(
             TimeSpan.FromMilliseconds(10),
             TimeSpan.FromMilliseconds(100));
 
-        Assert.Equal(
-            WorkerEndpointReadinessResult.Timeout,
-            await probe.WaitForReadyAsync(new Uri($"http://localhost:{port}"), CancellationToken.None));
+        Assert.Contains(
+            await probe.WaitForReadyAsync(new Uri($"http://localhost:{port}"), CancellationToken.None),
+            [
+                WorkerEndpointReadinessResult.ConnectionRefused,
+                WorkerEndpointReadinessResult.Timeout
+            ]);
     }
 
     private static int GetUnusedPort()

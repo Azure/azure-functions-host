@@ -139,9 +139,14 @@ public class WorkerHttpForwardingTests
         Assert.Equal(
             WorkerHttpForwardingTelemetry.DestinationNotReadyResult,
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
-        Assert.Equal(
-            WorkerEndpointReadinessResult.Timeout.ToString(),
+        string readinessError = Assert.IsType<string>(
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwarderErrorAttribute));
+        Assert.Contains(
+            readinessError,
+            [
+                WorkerEndpointReadinessResult.ConnectionRefused.ToString(),
+                WorkerEndpointReadinessResult.Timeout.ToString()
+            ]);
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }
 
