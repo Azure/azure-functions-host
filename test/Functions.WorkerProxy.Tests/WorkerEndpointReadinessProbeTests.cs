@@ -34,6 +34,29 @@ public class WorkerEndpointReadinessProbeTests
     }
 
     [Fact]
+    public async Task Invalidate_KnownDestination_RemovesOnlySpecifiedDestination()
+    {
+        using TcpListener firstListener = new(IPAddress.Loopback, 0);
+        using TcpListener secondListener = new(IPAddress.Loopback, 0);
+        firstListener.Start();
+        secondListener.Start();
+        Uri firstDestination = new($"http://localhost:{((IPEndPoint)firstListener.LocalEndpoint).Port}");
+        Uri secondDestination = new($"http://localhost:{((IPEndPoint)secondListener.LocalEndpoint).Port}");
+        WorkerEndpointReadinessProbe probe = CreateProbe();
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await probe.WaitForReadyAsync(firstDestination, CancellationToken.None));
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await probe.WaitForReadyAsync(secondDestination, CancellationToken.None));
+
+        probe.Invalidate(firstDestination);
+
+        Assert.False(probe.IsKnownReady(firstDestination));
+        Assert.True(probe.IsKnownReady(secondDestination));
+    }
+
+    [Fact]
     public async Task WaitForReadyAsync_LocalhostBoundToIpv6_ReturnsReady()
     {
         using TcpListener listener = new(IPAddress.IPv6Loopback, 0);

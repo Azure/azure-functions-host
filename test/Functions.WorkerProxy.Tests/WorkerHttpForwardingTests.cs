@@ -20,11 +20,17 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using Yarp.ReverseProxy.Forwarder;
 
 namespace Azure.Functions.WorkerProxy.Tests;
 
 public class WorkerHttpForwardingTests
 {
+    public static IEnumerable<object[]> ForwarderErrors =>
+        Enum.GetValues<ForwarderError>()
+            .Where(static error => error is not ForwarderError.None)
+            .Select(static error => new object[] { error });
+
     [Fact]
     public async Task HttpListener_ForwardsStatusHeadersBodyAndQuery()
     {
@@ -146,25 +152,40 @@ public class WorkerHttpForwardingTests
     }
 
     [Fact]
-    public async Task HttpListener_ForwarderError_ReturnsBadGateway()
+    public async Task HttpListener_ForwarderError_InvalidatesReadinessAndRecovers()
     {
         await using WebApplication worker = await StartWorkerAsync(context =>
         {
             context.Response.StatusCode = StatusCodes.Status204NoContent;
             return Task.CompletedTask;
         });
+        Uri workerAddress = GetAddress(worker);
         Dictionary<string, string?> configuration = new()
         {
             [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] =
-                GetAddress(worker).AbsoluteUri
+                workerAddress.AbsoluteUri,
+            [$"{WorkerEndpointReadinessProbeOptions.SectionName}:{nameof(WorkerEndpointReadinessProbeOptions.RetryDelay)}"] =
+                "00:00:00.010",
+            [$"{WorkerEndpointReadinessProbeOptions.SectionName}:{nameof(WorkerEndpointReadinessProbeOptions.TotalTimeout)}"] =
+                "00:00:00.100"
         };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
         using HttpClient client = factory.CreateHttpForwardingClient();
+        WorkerEndpointReadinessProbe readinessProbe = factory.Services.GetRequiredService<WorkerEndpointReadinessProbe>();
 
         using (HttpResponseMessage response = await client.GetAsync("/warmup"))
         {
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         }
+
+        Assert.True(readinessProbe.IsKnownReady(workerAddress));
+
+        using TcpListener unrelatedListener = new(IPAddress.Loopback, 0);
+        unrelatedListener.Start();
+        Uri unrelatedDestination = new($"http://localhost:{((IPEndPoint)unrelatedListener.LocalEndpoint).Port}");
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await readinessProbe.WaitForReadyAsync(unrelatedDestination, CancellationToken.None));
 
         await worker.StopAsync();
         using RequestActivityRecorder activityRecorder = new("/forwarding-failure");
@@ -172,6 +193,8 @@ public class WorkerHttpForwardingTests
         using HttpResponseMessage failedResponse = await client.GetAsync("/forwarding-failure");
 
         Assert.Equal(HttpStatusCode.BadGateway, failedResponse.StatusCode);
+        Assert.False(readinessProbe.IsKnownReady(workerAddress));
+        Assert.True(readinessProbe.IsKnownReady(unrelatedDestination));
 
         Activity activity = await activityRecorder.WaitForActivityAsync();
         AssertRequestActivity(activity, "GET", "/forwarding-failure");
@@ -182,6 +205,132 @@ public class WorkerHttpForwardingTests
             Yarp.ReverseProxy.Forwarder.ForwarderError.Request.ToString(),
             activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwarderErrorAttribute));
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
+
+        using (HttpResponseMessage unavailableResponse = await client.GetAsync("/unavailable"))
+        {
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, unavailableResponse.StatusCode);
+        }
+
+        Assert.False(readinessProbe.IsKnownReady(workerAddress));
+
+        await using WebApplication restartedWorker = await StartWorkerAsync(context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status202Accepted;
+            return Task.CompletedTask;
+        }, workerAddress.Port);
+
+        using HttpResponseMessage recoveredResponse = await client.GetAsync("/recovered");
+
+        Assert.Equal(HttpStatusCode.Accepted, recoveredResponse.StatusCode);
+        Assert.True(readinessProbe.IsKnownReady(workerAddress));
+    }
+
+    [Fact]
+    public async Task HttpListener_CallerCancellation_PreservesCachedReadiness()
+    {
+        TaskCompletionSource requestStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using WebApplication worker = await StartWorkerAsync(async context =>
+        {
+            if (context.Request.Path == "/warmup")
+            {
+                context.Response.StatusCode = StatusCodes.Status204NoContent;
+                return;
+            }
+
+            requestStarted.TrySetResult();
+
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, context.RequestAborted);
+            }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+            {
+            }
+        });
+        Uri workerAddress = GetAddress(worker);
+        Dictionary<string, string?> configuration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] =
+                workerAddress.AbsoluteUri
+        };
+        await using WorkerProxyWebApplicationFactory factory = new(configuration);
+        using HttpClient client = factory.CreateHttpForwardingClient();
+        WorkerEndpointReadinessProbe readinessProbe = factory.Services.GetRequiredService<WorkerEndpointReadinessProbe>();
+        using RequestActivityRecorder activityRecorder = new("/cancel", client.BaseAddress!.Port);
+
+        using (HttpResponseMessage response = await client.GetAsync("/warmup"))
+        {
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        }
+
+        using CancellationTokenSource cancellation = new();
+        Task<HttpResponseMessage> requestTask = client.GetAsync("/cancel", cancellation.Token);
+        await requestStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await requestTask);
+        Activity activity = await activityRecorder.WaitForActivityAsync();
+        Assert.Null(activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
+        Assert.Null(activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwarderErrorAttribute));
+        Assert.Equal(ActivityStatusCode.Unset, activity.Status);
+        Assert.True(readinessProbe.IsKnownReady(workerAddress));
+    }
+
+    [Fact]
+    public async Task HttpListener_ResponseStartedForwarderError_InvalidatesReadiness()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        Uri workerAddress = new($"http://localhost:{((IPEndPoint)listener.LocalEndpoint).Port}");
+        Dictionary<string, string?> configuration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] =
+                workerAddress.AbsoluteUri
+        };
+        await using WorkerProxyWebApplicationFactory factory = new(
+            configuration,
+            services => services.AddSingleton<IHttpForwarder>(
+                new TestForwarder(ForwarderError.ResponseBodyDestination, startResponse: true)));
+        using HttpClient client = factory.CreateHttpForwardingClient();
+        WorkerEndpointReadinessProbe readinessProbe = factory.Services.GetRequiredService<WorkerEndpointReadinessProbe>();
+        using RequestActivityRecorder activityRecorder = new("/partial-response", client.BaseAddress!.Port);
+
+        using HttpResponseMessage response = await client.GetAsync("/partial-response");
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Activity activity = await activityRecorder.WaitForActivityAsync();
+        Assert.Equal(
+            WorkerHttpForwardingTelemetry.ForwarderErrorResult,
+            activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
+        Assert.Equal(
+            ForwarderError.ResponseBodyDestination.ToString(),
+            activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwarderErrorAttribute));
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
+        Assert.False(readinessProbe.IsKnownReady(workerAddress));
+    }
+
+    [Theory]
+    [MemberData(nameof(ForwarderErrors))]
+    public async Task HttpListener_NonCanceledForwarderError_InvalidatesReadiness(ForwarderError error)
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        Uri workerAddress = new($"http://localhost:{((IPEndPoint)listener.LocalEndpoint).Port}");
+        Dictionary<string, string?> configuration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] =
+                workerAddress.AbsoluteUri
+        };
+        await using WorkerProxyWebApplicationFactory factory = new(
+            configuration,
+            services => services.AddSingleton<IHttpForwarder>(new TestForwarder(error, startResponse: false)));
+        using HttpClient client = factory.CreateHttpForwardingClient();
+        WorkerEndpointReadinessProbe readinessProbe = factory.Services.GetRequiredService<WorkerEndpointReadinessProbe>();
+
+        using HttpResponseMessage response = await client.GetAsync("/forwarder-error");
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.False(readinessProbe.IsKnownReady(workerAddress));
     }
 
     [Fact]
@@ -228,10 +377,10 @@ public class WorkerHttpForwardingTests
         Assert.Equal(0, requestCount);
     }
 
-    private static async Task<WebApplication> StartWorkerAsync(RequestDelegate handler)
+    private static async Task<WebApplication> StartWorkerAsync(RequestDelegate handler, int port = 0)
     {
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
-        builder.WebHost.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
+        builder.WebHost.UseKestrel(options => options.Listen(IPAddress.Loopback, port));
         WebApplication app = builder.Build();
         app.Run(handler);
         await app.StartAsync();
@@ -275,7 +424,7 @@ public class WorkerHttpForwardingTests
 
         private readonly ActivityListener _listener;
 
-        public RequestActivityRecorder(string requestPath)
+        public RequestActivityRecorder(string requestPath, int? serverPort = null)
         {
             _listener = new ActivityListener
             {
@@ -290,7 +439,8 @@ public class WorkerHttpForwardingTests
                     if (string.Equals(
                         activity.GetTagItem("url.path") as string,
                         requestPath,
-                        StringComparison.Ordinal))
+                        StringComparison.Ordinal)
+                        && (serverPort is null || Equals(activity.GetTagItem("server.port"), serverPort.Value)))
                     {
                         _completion.TrySetResult(activity);
                     }
@@ -307,6 +457,25 @@ public class WorkerHttpForwardingTests
         public void Dispose()
         {
             _listener.Dispose();
+        }
+    }
+
+    private sealed class TestForwarder(ForwarderError error, bool startResponse) : IHttpForwarder
+    {
+        public async ValueTask<ForwarderError> SendAsync(
+            HttpContext context,
+            string destinationPrefix,
+            HttpMessageInvoker httpClient,
+            ForwarderRequestConfig requestConfig,
+            HttpTransformer transformer)
+        {
+            if (startResponse)
+            {
+                context.Response.StatusCode = StatusCodes.Status202Accepted;
+                await context.Response.StartAsync();
+            }
+
+            return error;
         }
     }
 }

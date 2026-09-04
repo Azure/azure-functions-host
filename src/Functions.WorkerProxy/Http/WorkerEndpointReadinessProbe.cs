@@ -43,6 +43,20 @@ internal sealed partial class WorkerEndpointReadinessProbe(
     }
 
     /// <summary>
+    /// Invalidates the cached readiness state for a destination.
+    /// </summary>
+    /// <param name="destination">The destination to invalidate.</param>
+    public void Invalidate(Uri destination)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        if (_readyDestinations.TryRemove(destination, out _))
+        {
+            Log.DestinationInvalidated(_logger, destination);
+        }
+    }
+
+    /// <summary>
     /// Waits for a destination to accept a TCP connection within the readiness deadline.
     /// </summary>
     /// <param name="destination">The destination to probe.</param>
@@ -192,5 +206,8 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             Uri destination,
             double elapsedMilliseconds,
             int attempts);
+
+        [LoggerMessage(3, LogLevel.Debug, "Worker HTTP destination {Destination} readiness was invalidated.")]
+        public static partial void DestinationInvalidated(ILogger logger, Uri destination);
     }
 }
