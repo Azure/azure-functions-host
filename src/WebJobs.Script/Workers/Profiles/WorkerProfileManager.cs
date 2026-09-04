@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Script.Conditions;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -16,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     {
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
-        private readonly IEnumerable<IWorkerProfileConditionProvider> _conditionProviders;
+        private readonly IEnumerable<IConditionProvider> _conditionProviders;
 
         private Dictionary<string, string> _activeProfiles;
         private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
@@ -28,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
             _activeProfiles = new Dictionary<string, string>();
             _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
-            _conditionProviders = new List<IWorkerProfileConditionProvider>
+            _conditionProviders = new List<IConditionProvider>
             {
                 new WorkerProfileConditionProvider(_logger, _environment)
             };
@@ -74,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         }
 
         /// <inheritdoc />
-        public bool TryCreateWorkerProfileCondition(WorkerProfileConditionDescriptor conditionDescriptor, out IWorkerProfileCondition condition)
+        public bool TryCreateWorkerProfileCondition(ConditionDescriptor conditionDescriptor, out ICondition condition)
         {
             foreach (var provider in _conditionProviders)
             {
