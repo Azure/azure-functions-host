@@ -213,6 +213,23 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Fact]
+    public async Task SetupChannelAsync_AfterPreShutdownDoesNotConfigureChannel()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        FunctionMetadata function = CreateFunction();
+        await dispatcher.InitializeAsync([function]);
+        dispatcher.PreShutdown();
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => dispatcher.SetupChannelAsync(worker.Channel));
+
+        Assert.Contains("stopping", exception.Message, StringComparison.Ordinal);
+        Assert.False(worker.Channel.InvocationBuffersInitialization.IsCompleted);
+        Assert.Empty(worker.Channel.FunctionInputBuffers);
+    }
+
+    [Fact]
     public async Task InvokeAsync_ChannelFailureDoesNotPreventLaterDispatch()
     {
         await using ClientWorkerChannelTestHarness failed = await ClientWorkerChannelTestHarness.CreateAsync("a-worker");

@@ -36,7 +36,6 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private readonly ILogger<RpcClientFunctionInvocationDispatcher> _logger;
     private readonly ManagedDependencyOptions _managedDependencyOptions;
     private readonly TimeSpan _channelWaitTimeout;
-    private readonly Lock _stateLock = new();
     private readonly ScriptJobHostOptions _scriptHostOptions;
     private IReadOnlyList<FunctionMetadata> _functions = [];
     private int _nextChannelIndex = -1;
@@ -143,8 +142,8 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             throw new InvalidOperationException("The invocation dispatcher is stopping.");
         }
 
-        State = FunctionInvocationDispatcherState.Initializing;
         _functions = functionArray;
+        State = FunctionInvocationDispatcherState.Initializing;
 
         // Metadata is available before this lifecycle callback, so eagerly load every worker linked during startup.
         IReadOnlyList<WorkerChannel> channels = _channelRegistry.GetInitializedChannels();
@@ -172,7 +171,10 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         }
 
         AddLogUserCategory(functionArray);
-        State = FunctionInvocationDispatcherState.Initialized;
+        if (!_disposed && !_stopping)
+        {
+            State = FunctionInvocationDispatcherState.Initialized;
+        }
     }
 
     public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
@@ -216,42 +218,28 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     public void PreShutdown()
     {
-        bool stop;
-        lock (_stateLock)
+        if (_disposed || _stopping)
         {
-            // This latch is best effort. A ready-channel invocation racing shutdown may still be accepted and drained.
-            stop = !_disposed && !_stopping;
-            if (stop)
-            {
-                _stopping = true;
-                State = FunctionInvocationDispatcherState.Disposing;
-            }
+            return;
         }
 
-        if (stop)
-        {
-            _dispatcherStoppedSource.Cancel();
-        }
+        // This latch is best effort. A ready-channel invocation racing shutdown may still be accepted and drained.
+        _stopping = true;
+        State = FunctionInvocationDispatcherState.Disposing;
+        _dispatcherStoppedSource.Cancel();
     }
 
     public void Dispose()
     {
-        bool dispose;
-        lock (_stateLock)
+        if (_disposed)
         {
-            dispose = !_disposed;
-            if (dispose)
-            {
-                _disposed = true;
-                _stopping = true;
-                State = FunctionInvocationDispatcherState.Disposed;
-            }
+            return;
         }
 
-        if (dispose)
-        {
-            _dispatcherStoppedSource.Cancel();
-        }
+        _disposed = true;
+        _stopping = true;
+        State = FunctionInvocationDispatcherState.Disposed;
+        _dispatcherStoppedSource.Cancel();
     }
 
     private WorkerChannel GetReadyChannel()
