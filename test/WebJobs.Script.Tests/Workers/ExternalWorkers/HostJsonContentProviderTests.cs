@@ -8,14 +8,19 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
+using Grpc.Core;
 using Grpc.Net.Client.Balancer;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -329,6 +334,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
         }
 
         [Fact]
+        public void Factory_Create_ReturnsFunctionRpcClient()
+        {
+            var eventManager = new Mock<IScriptEventManager>().Object;
+            var factory = new OutboundGrpcClientFactory(eventManager, NullLoggerFactory.Instance);
+
+            IOutboundGrpcClient client = factory.Create();
+
+            Assert.IsType<OutboundGrpcClient>(client);
+        }
+
+        [Fact]
         public void ConstantBackoffPolicy_AlwaysReturnsSameInterval()
         {
             var policy = new ConstantBackoffPolicy(TimeSpan.FromMilliseconds(42));
@@ -472,6 +488,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.ExternalWorkers
                 }
             });
             return listener;
+        }
+
+        private sealed class TestAsyncStreamReader<T>(ChannelReader<T> reader) : IAsyncStreamReader<T>
+        {
+            public T Current { get; private set; } = default;
+
+            public async Task<bool> MoveNext(CancellationToken cancellationToken)
+            {
+                if (await reader.WaitToReadAsync(cancellationToken) && reader.TryRead(out T item))
+                {
+                    Current = item;
+
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        private sealed class TestClientStreamWriter<T> : IClientStreamWriter<T>
+        {
+            private readonly Channel<T> _channel = Channel.CreateUnbounded<T>();
+
+            public WriteOptions WriteOptions { get; set; }
+
+            public Task CompleteAsync()
+            {
+                _channel.Writer.Complete();
+
+                return Task.CompletedTask;
+            }
+
+            public Task WriteAsync(T message)
+                => _channel.Writer.WriteAsync(message).AsTask();
+
+            public Task WriteAsync(T message, CancellationToken cancellationToken)
+                => _channel.Writer.WriteAsync(message, cancellationToken).AsTask();
+
+            public ValueTask<T> ReadAsync()
+                => _channel.Reader.ReadAsync();
         }
     }
 }

@@ -72,8 +72,7 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     internal readonly Channel<StreamingMessage> _toWorker = Channel.CreateUnbounded<StreamingMessage>();
     private readonly Channel<StreamingMessage> _toRuntime = Channel.CreateUnbounded<StreamingMessage>();
 
-    // Signals raised once each side has called EventStream.
-    private readonly TaskCompletionSource _runtimeConnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    // Signal raised once the worker has called EventStream.
     internal readonly TaskCompletionSource _workerConnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     // Cached state from worker initialization (populated by SpecializeWorkerAsync).
@@ -103,7 +102,16 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     // Guard against concurrent or repeated /assign calls.
     private int _specializationStarted;
 
-    public FunctionRpcRelay(RelayOptions options, ILogger<FunctionRpcRelay> logger, WorkerPodStateManager stateManager)
+    /// <summary>
+    /// Initializes the bidirectional relay for runtime and worker FunctionRpc streams.
+    /// </summary>
+    /// <param name="options">The configured relay endpoints.</param>
+    /// <param name="logger">The logger used for relay diagnostics.</param>
+    /// <param name="stateManager">The worker pod lifecycle state manager.</param>
+    public FunctionRpcRelay(
+        RelayOptions options,
+        ILogger<FunctionRpcRelay> logger,
+        WorkerPodStateManager stateManager)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -325,13 +333,17 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             var runtimeConnectTimestamp = Stopwatch.GetTimestamp();
             var workerAlreadyConnected = _workerConnected.Task.IsCompleted;
             _logger.LogInformation("WorkerProxy runtime stream connected. Port: {Port}, WorkerAlreadyConnected: {WorkerAlreadyConnected}.", localPort, workerAlreadyConnected);
-            _runtimeConnected.TrySetResult();
-
             // Start relay immediately without blocking on _workerConnected. Each
             // runtime stream gets StartStream replayed from cache once the worker has
             // connected; WorkerInitRequest remains gated by _specializationCompleted
             // in ReadInboundAsync, preserving correctness.
-            await RelayAsync(requestStream, responseStream, _toWorker, _toRuntime, RelaySide.Runtime, context.CancellationToken);
+            await RelayAsync(
+                requestStream,
+                responseStream,
+                _toWorker,
+                _toRuntime,
+                RelaySide.Runtime,
+                context.CancellationToken);
             _logger.LogInformation("WorkerProxy runtime relay completed. Port: {Port}, TotalElapsedMilliseconds: {TotalElapsedMilliseconds}.", localPort, Stopwatch.GetElapsedTime(runtimeConnectTimestamp).TotalMilliseconds);
         }
         else
@@ -341,7 +353,13 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             // Start the relay immediately. The proxy needs to read worker messages
             // (for /assign) and write to the worker (WorkerInitRequest, etc.) before
             // the runtime connects.
-            await RelayAsync(requestStream, responseStream, _toRuntime, _toWorker, RelaySide.Worker, context.CancellationToken);
+            await RelayAsync(
+                requestStream,
+                responseStream,
+                _toRuntime,
+                _toWorker,
+                RelaySide.Worker,
+                context.CancellationToken);
         }
     }
 
@@ -501,6 +519,10 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         _logger.LogInformation("Set HttpUri capability to {Uri}.", _options.HttpProxyEndpoint);
     }
 
+    /// <summary>
+    /// Records function identifiers and names returned by worker metadata discovery.
+    /// </summary>
+    /// <param name="response">The metadata response to record.</param>
     internal void TrackFunctionMetadataResponse(FunctionMetadataResponse? response)
     {
         if (response is null)
@@ -514,6 +536,10 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
         }
     }
 
+    /// <summary>
+    /// Records and logs a function load request forwarded to the worker.
+    /// </summary>
+    /// <param name="request">The function load request.</param>
     internal void TrackFunctionLoadRequest(FunctionLoadRequest? request)
     {
         if (request is null)
@@ -528,6 +554,11 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             functionId);
     }
 
+    /// <summary>
+    /// Logs and records correlation details for an invocation request.
+    /// </summary>
+    /// <param name="side">The relay side forwarding the request.</param>
+    /// <param name="request">The invocation request.</param>
     internal void LogInvocationRequest(RelaySide side, InvocationRequest? request)
     {
         if (request is null)
@@ -553,6 +584,11 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
             traceParent);
     }
 
+    /// <summary>
+    /// Logs an invocation response with its recorded request correlation details.
+    /// </summary>
+    /// <param name="side">The relay side forwarding the response.</param>
+    /// <param name="response">The invocation response.</param>
     internal void LogInvocationResponse(RelaySide side, InvocationResponse? response)
     {
         if (response is null)
@@ -613,6 +649,16 @@ internal sealed class FunctionRpcRelay : FunctionRpc.FunctionRpcBase
     private static string NormalizeForLog(string? value, string placeholder = NoCorrelationValue)
         => string.IsNullOrWhiteSpace(value) ? placeholder : value;
 
+    /// <summary>
+    /// Relays FunctionRpc messages between one connected side and its paired channel.
+    /// </summary>
+    /// <param name="inbound">The source stream for incoming messages.</param>
+    /// <param name="outbound">The destination stream for outgoing messages.</param>
+    /// <param name="sendChannel">The channel that receives messages from this side.</param>
+    /// <param name="receiveChannel">The channel containing messages for this side.</param>
+    /// <param name="side">The connected relay side.</param>
+    /// <param name="cancellationToken">A token that cancels the relay.</param>
+    /// <returns>A task that represents the relay lifetime.</returns>
     internal async Task RelayAsync(
         IAsyncStreamReader<StreamingMessage> inbound,
         IServerStreamWriter<StreamingMessage> outbound,

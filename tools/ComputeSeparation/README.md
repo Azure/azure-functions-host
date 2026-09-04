@@ -4,6 +4,8 @@ E2E development harness for Azure Functions **compute separation**. Orchestrates
 
 ## Architecture
 
+The proposed design for carrying WebJobs extension gRPC calls over the worker channel is documented in [gRPC Extensibility over the Worker Channel](grpc-extensibility-design.md).
+
 ```mermaid
 graph LR
     subgraph RuntimePod["Runtime Pod"]

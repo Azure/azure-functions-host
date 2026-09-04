@@ -15,10 +15,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
     /// Manages <see cref="ConnectedWorkerChannel"/> instances for externally-connected workers.
     /// Thread-safe. Supports blocking waits for the first available channel.
     /// </summary>
-    internal class ConnectedWorkerChannelManager : IConnectedWorkerChannelManager
+    /// <remarks>
+    /// Initializes a new instance of the <see cref="ConnectedWorkerChannelManager"/> class.
+    /// </remarks>
+    /// <param name="extensionRpcEndpointRegistry">The optional extension endpoint registry.</param>
+    internal class ConnectedWorkerChannelManager(ExtensionRpcEndpointRegistry extensionRpcEndpointRegistry = null)
+        : IConnectedWorkerChannelManager
     {
         private readonly ConcurrentDictionary<string, IRpcWorkerChannel> _channels = new();
-        private readonly object _channelAvailableLock = new();
+        private readonly Lock _channelAvailableLock = new();
+        private readonly ExtensionRpcEndpointRegistry _extensionRpcEndpointRegistry = extensionRpcEndpointRegistry;
         private TaskCompletionSource _channelAvailable = new();
 
         /// <inheritdoc/>
@@ -27,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
             lock (_channelAvailableLock)
             {
                 _channels[workerId] = channel;
+                _extensionRpcEndpointRegistry?.BindWorker(workerId);
                 _channelAvailable.TrySetResult();
             }
         }
@@ -47,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers
             lock (_channelAvailableLock)
             {
                 _channels.TryRemove(workerId, out channel);
+                _extensionRpcEndpointRegistry?.UnbindWorker(workerId);
 
                 if (channel is not null && _channels.IsEmpty)
                 {

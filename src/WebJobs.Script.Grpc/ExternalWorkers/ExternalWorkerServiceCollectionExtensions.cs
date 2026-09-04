@@ -38,6 +38,9 @@ internal static class ExternalWorkerServiceCollectionExtensions
 
         // Core singletons
         services.AddSingleton<HostJsonContentProvider>();
+        services.AddSingleton<ExtensionRpcEndpointRegistry>();
+        services.AddSingleton<IExtensionRpcEndpointRouter>(
+            services => services.GetRequiredService<ExtensionRpcEndpointRegistry>());
         services.AddSingleton<IConnectedWorkerChannelFactory, ConnectedWorkerChannelFactory>();
         services.AddSingleton<IConnectedWorkerChannelManager, ConnectedWorkerChannelManager>();
         services.AddSingleton<IOutboundGrpcClientFactory, OutboundGrpcClientFactory>();
@@ -72,6 +75,10 @@ internal static class ExternalWorkerServiceCollectionExtensions
         // Forward the WebHost-level channel manager into the ScriptHost container
         services.AddSingleton<IConnectedWorkerChannelManager>(
             rootServiceProvider.GetRequiredService<IConnectedWorkerChannelManager>());
+        services.AddSingleton(rootServiceProvider.GetRequiredService<ExtensionRpcEndpointRegistry>());
+        services.AddSingleton<ScriptHostExtensionRpcEndpointCatalog>();
+        services.AddSingleton<IHostedService>(
+            services => services.GetRequiredService<ScriptHostExtensionRpcEndpointCatalog>());
 
         // Forward the external metadata provider so ScriptHost uses it instead of WorkerFunctionMetadataProvider
         services.AddSingleton<IWorkerFunctionMetadataProvider>(
@@ -97,6 +104,8 @@ internal static class ExternalWorkerServiceCollectionExtensions
     /// Returns <see langword="true"/> when the <c>FUNCTIONS_WORKER_EXTERNAL_ENABLED</c>
     /// setting is set to <c>true</c> or <c>1</c>.
     /// </summary>
+    /// <param name="configuration">The configuration containing external worker settings.</param>
+    /// <returns><see langword="true"/> when external worker mode is enabled.</returns>
     public static bool IsExternalWorkerEnabled(this IConfiguration configuration)
     {
         if (configuration is null)

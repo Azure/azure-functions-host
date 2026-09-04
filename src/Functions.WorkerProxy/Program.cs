@@ -69,6 +69,11 @@ string podName = !string.IsNullOrWhiteSpace(configuredPodName)
 builder.Services.AddSingleton(new RelayOptions(runtimeGrpcPort, workerGrpcPort, httpProxyPort, hostJsonPath, httpProxyEndpoint, podName));
 builder.Services.AddSingleton<WorkerPodStateManager>();
 builder.Services.AddSingleton<FunctionRpcRelay>();
+builder.Services.AddSingleton<ExtensionRpcStreamCoordinator>();
+builder.Services.AddSingleton<ExtensionRpcRelay>();
+builder.Services.AddMetrics();
+builder.Services.AddSingleton<ExtensionGrpcMetrics>();
+builder.Services.AddSingleton<ExtensionGrpcIngress>();
 builder.Services.AddSingleton(sp => new WorkerEndpointReadinessProbe(
     sp.GetRequiredService<ILogger<WorkerEndpointReadinessProbe>>(),
     retryDelay: TimeSpan.FromMilliseconds(probeRetryDelayMs),
@@ -160,8 +165,14 @@ app.Use(async (ctx, next) =>
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.Use((context, next) =>
+{
+    ExtensionGrpcIngress ingress = context.RequestServices.GetRequiredService<ExtensionGrpcIngress>();
+    return ingress.CanHandle(context) ? ingress.HandleAsync(context) : next(context);
+});
 
 app.MapGrpcService<FunctionRpcRelay>();
+app.MapGrpcService<ExtensionRpcRelay>();
 
 // ---------------------------------------------------------------------------
 // Management API endpoints (minimal APIs for AOT compatibility).

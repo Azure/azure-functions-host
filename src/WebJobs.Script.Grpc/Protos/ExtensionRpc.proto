@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Grpc.Messages";
+
+package AzureFunctionsExtensionRpcMessages;
+
+import "google/protobuf/duration.proto";
+
+// Host-to-proxy service for multiplexed extension RPC calls.
+// The current runtime opens one stream; the contract remains shard-ready.
+service ExtensionRpc {
+  rpc EventStream (stream ExtensionRpcMessage) returns (stream ExtensionRpcMessage) {}
+}
+
+// A logical extension RPC event multiplexed over one ExtensionRpc.EventStream.
+message ExtensionRpcMessage {
+  string session_id = 1;
+  string call_id = 2;
+  // Identifies the physical stream for compatibility with future multi-stream expansion.
+  string shard_id = 13;
+
+  oneof content {
+    ExtensionRpcHello hello = 3;
+    ExtensionRpcReady ready = 4;
+    ExtensionRpcStart start = 5;
+    ExtensionRpcData data = 6;
+    ExtensionRpcHalfClose half_close = 7;
+    ExtensionRpcCancel cancel = 8;
+    ExtensionRpcHeaders headers = 9;
+    ExtensionRpcComplete complete = 10;
+    ExtensionRpcWindowUpdate window_update = 11;
+    ExtensionRpcSessionClosed session_closed = 12;
+  }
+}
+
+// Capabilities offered when an extension RPC session is established.
+message ExtensionRpcHello {
+  repeated uint32 supported_versions = 1;
+  uint64 initial_receive_window_bytes = 2;
+  uint32 max_data_chunk_bytes = 3;
+  uint64 max_message_bytes = 4;
+}
+
+// Negotiated extension RPC session settings.
+message ExtensionRpcReady {
+  uint32 selected_version = 1;
+  bool enabled = 2;
+  string rejection_reason = 3;
+  uint64 initial_receive_window_bytes = 4;
+  uint32 max_data_chunk_bytes = 5;
+  uint64 max_message_bytes = 6;
+}
+
+// Starts a logical extension RPC call.
+message ExtensionRpcStart {
+  string method = 1;
+  repeated ExtensionRpcMetadataEntry metadata = 2;
+  google.protobuf.Duration timeout = 3;
+}
+
+// A bounded chunk of a serialized extension RPC application message.
+message ExtensionRpcData {
+  uint64 message_id = 1;
+  uint64 offset = 2;
+  bytes payload = 3;
+  bool end_of_message = 4;
+  bool compressed = 5;
+  uint64 message_length = 6;
+}
+
+// Indicates that the caller has finished sending request messages.
+message ExtensionRpcHalfClose {
+}
+
+// Cancels both directions of a logical extension RPC call.
+message ExtensionRpcCancel {
+  string detail = 1;
+}
+
+// Response headers for a logical extension RPC call.
+message ExtensionRpcHeaders {
+  repeated ExtensionRpcMetadataEntry metadata = 1;
+}
+
+// Completes a logical extension RPC call.
+message ExtensionRpcComplete {
+  ExtensionRpcStatus status = 1;
+  string detail = 2;
+  repeated ExtensionRpcMetadataEntry trailers = 3;
+}
+
+// Returns flow-control credits to the sender.
+message ExtensionRpcWindowUpdate {
+  uint64 byte_count = 1;
+}
+
+// Ends an extension RPC session and all logical calls associated with it.
+message ExtensionRpcSessionClosed {
+  string detail = 1;
+}
+
+// A gRPC metadata entry. Values are bytes to support both ASCII and binary metadata.
+message ExtensionRpcMetadataEntry {
+  string key = 1;
+  bytes value = 2;
+}
+
+// Standard gRPC status codes represented without a Grpc.Core dependency.
+enum ExtensionRpcStatus {
+  EXTENSION_RPC_STATUS_OK = 0;
+  EXTENSION_RPC_STATUS_CANCELLED = 1;
+  EXTENSION_RPC_STATUS_UNKNOWN = 2;
+  EXTENSION_RPC_STATUS_INVALID_ARGUMENT = 3;
+  EXTENSION_RPC_STATUS_DEADLINE_EXCEEDED = 4;
+  EXTENSION_RPC_STATUS_NOT_FOUND = 5;
+  EXTENSION_RPC_STATUS_ALREADY_EXISTS = 6;
+  EXTENSION_RPC_STATUS_PERMISSION_DENIED = 7;
+  EXTENSION_RPC_STATUS_RESOURCE_EXHAUSTED = 8;
+  EXTENSION_RPC_STATUS_FAILED_PRECONDITION = 9;
+  EXTENSION_RPC_STATUS_ABORTED = 10;
+  EXTENSION_RPC_STATUS_OUT_OF_RANGE = 11;
+  EXTENSION_RPC_STATUS_UNIMPLEMENTED = 12;
+  EXTENSION_RPC_STATUS_INTERNAL = 13;
+  EXTENSION_RPC_STATUS_UNAVAILABLE = 14;
+  EXTENSION_RPC_STATUS_DATA_LOSS = 15;
+  EXTENSION_RPC_STATUS_UNAUTHENTICATED = 16;
+}

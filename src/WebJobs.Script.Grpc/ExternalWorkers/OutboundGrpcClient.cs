@@ -4,14 +4,11 @@
 #nullable enable
 
 using System;
-using System.Diagnostics;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Grpc.Net.Client;
-using Grpc.Net.Client.Balancer;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -21,140 +18,128 @@ using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.Co
 namespace Microsoft.Azure.WebJobs.Script.Grpc.ExternalWorkers;
 
 /// <summary>
-/// gRPC client that connects outbound to a remote endpoint implementing
-/// <c>FunctionRpc.EventStream</c>. Establishes a bidirectional stream and
-/// bridges it to the in-process <see cref="Channel{T}"/> infrastructure consumed by
-/// <see cref="ConnectedWorkerChannel"/>.
+/// Outbound client for the legacy <c>FunctionRpc.EventStream</c> relay.
 /// </summary>
-internal class OutboundGrpcClient : IOutboundGrpcClient
+internal sealed partial class OutboundGrpcClient : OutboundGrpcClientBase
 {
-    internal static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(5);
-    internal static readonly TimeSpan DefaultReadyTimeout = TimeSpan.FromSeconds(1);
-    internal static readonly TimeSpan DefaultKeepAlivePingDelay = TimeSpan.FromSeconds(30);
-    internal static readonly TimeSpan DefaultKeepAlivePingTimeout = TimeSpan.FromSeconds(10);
-
-    // The runtime-to-worker link is a single host-local pair with no load
-    // concerns, so we replace gRPC's default ExponentialBackoffPolicy with
-    // a constant 25 ms policy. Within the 1 s DefaultReadyTimeout that
-    // yields ~40 retry attempts — maximising the chance of catching the
-    // worker proxy at the moment its gRPC listener binds, while still
-    // imposing zero meaningful load on either side (each failed attempt is
-    // just a fast-fail ECONNREFUSED on Linux).
-    //
-    // The corresponding ExponentialBackoffPolicy with 25 ms initial would
-    // stretch to 25, 40, 64, 102, 164, 262, 419, ... ms — making the
-    // worst-case "discovery latency" several hundred ms once the listener
-    // becomes available. Constant 25 ms bounds that worst case at 25 ms.
-    internal static readonly TimeSpan DefaultRetryInterval = TimeSpan.FromMilliseconds(25);
-
-    private readonly IScriptEventManager _eventManager;
-    private readonly ILogger _logger;
-    private readonly Func<Uri, GrpcChannel> _channelFactory;
-
-    private GrpcChannel? _channel;
-    private AsyncDuplexStreamingCall<StreamingMessage, StreamingMessage>? _call;
-    private CancellationTokenSource? _cts;
+    private readonly IExtensionRpcEndpointRouter _extensionRpcEndpointRouter;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OutboundGrpcClient"/> class.
+    /// Initializes a client that relays language-worker and extension traffic over one channel.
     /// </summary>
-    /// <param name="eventManager">The event manager that holds per-worker gRPC channels.</param>
-    /// <param name="logger">Logger instance.</param>
-    public OutboundGrpcClient(IScriptEventManager eventManager, ILogger<OutboundGrpcClient> logger)
-        : this(eventManager, logger, CreateGrpcChannel)
+    /// <param name="eventManager">The event manager containing worker message channels.</param>
+    /// <param name="logger">The logger used for client diagnostics.</param>
+    /// <param name="extensionRpcEndpointRouter">The router for registered extension endpoints.</param>
+    public OutboundGrpcClient(
+        IScriptEventManager eventManager,
+        ILogger<OutboundGrpcClient> logger,
+        IExtensionRpcEndpointRouter extensionRpcEndpointRouter)
+        : this(eventManager, logger, extensionRpcEndpointRouter, CreateGrpcChannel)
     {
     }
 
+    /// <summary>
+    /// Initializes a client with extension endpoint routing disabled.
+    /// </summary>
+    /// <param name="eventManager">The event manager containing worker message channels.</param>
+    /// <param name="logger">The logger used for client diagnostics.</param>
+    internal OutboundGrpcClient(IScriptEventManager eventManager, ILogger<OutboundGrpcClient> logger)
+        : this(eventManager, logger, new UnavailableExtensionRpcEndpointRouter(), CreateGrpcChannel)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a client with extension routing disabled and a custom channel factory.
+    /// </summary>
+    /// <param name="eventManager">The event manager containing worker message channels.</param>
+    /// <param name="logger">The logger used for client diagnostics.</param>
+    /// <param name="channelFactory">The factory used to create the outbound channel.</param>
     internal OutboundGrpcClient(
         IScriptEventManager eventManager,
         ILogger<OutboundGrpcClient> logger,
         Func<Uri, GrpcChannel> channelFactory)
+        : this(eventManager, logger, new UnavailableExtensionRpcEndpointRouter(), channelFactory)
     {
-        _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
     }
 
-    /// <inheritdoc/>
-    public Task? InboundPumpTask { get; private set; }
-
     /// <summary>
-    /// Connects to the remote gRPC endpoint and starts the bidirectional message pump.
+    /// Initializes a client with custom extension routing and channel creation.
     /// </summary>
-    /// <param name="workerId">The worker identifier whose channels have been pre-registered via
-    /// <see cref="GrpcEventExtensions.AddGrpcChannels"/>.</param>
-    /// <param name="endpoint">The URI of the remote <c>FunctionRpc</c> service.</param>
-    /// <param name="cancellationToken">Token to cancel the connection attempt.</param>
-    /// <returns>A task that completes once the stream is established and background pumps are running.</returns>
-    public async Task ConnectAsync(string workerId, Uri endpoint, CancellationToken cancellationToken)
+    /// <param name="eventManager">The event manager containing worker message channels.</param>
+    /// <param name="logger">The logger used for client diagnostics.</param>
+    /// <param name="extensionRpcEndpointRouter">The router for registered extension endpoints.</param>
+    /// <param name="channelFactory">The factory used to create the outbound channel.</param>
+    internal OutboundGrpcClient(
+        IScriptEventManager eventManager,
+        ILogger<OutboundGrpcClient> logger,
+        IExtensionRpcEndpointRouter extensionRpcEndpointRouter,
+        Func<Uri, GrpcChannel> channelFactory)
+        : base(eventManager, logger, channelFactory)
     {
-        var connectStart = Stopwatch.GetTimestamp();
-        _logger.LogInformation("OutboundGrpcClient connect started. WorkerId: {workerId}, Endpoint: {endpoint}.", workerId, endpoint);
+        _extensionRpcEndpointRouter = extensionRpcEndpointRouter
+            ?? throw new ArgumentNullException(nameof(extensionRpcEndpointRouter));
+    }
+
+    protected override OutboundGrpcStreamConnection OpenStream(
+        string workerId,
+        GrpcChannel channel,
+        Channel<InboundGrpcEvent> inbound,
+        Channel<OutboundGrpcEvent> outbound,
+        CancellationToken cancellationToken)
+    {
+        var client = new FunctionRpc.FunctionRpcClient(channel);
+        var call = client.EventStream(cancellationToken: cancellationToken);
+        var extensionClient = new ExtensionRpc.ExtensionRpcClient(channel);
+
+        return new OutboundGrpcStreamConnection(
+            call,
+            RunStreamAsync(
+                workerId,
+                call.RequestStream,
+                call.ResponseStream,
+                inbound,
+                outbound.Reader,
+                extensionClient,
+                cancellationToken));
+    }
+
+    private async Task RunStreamAsync(
+        string workerId,
+        IClientStreamWriter<StreamingMessage> requestStream,
+        IAsyncStreamReader<StreamingMessage> responseStream,
+        Channel<InboundGrpcEvent> inbound,
+        ChannelReader<OutboundGrpcEvent> outbound,
+        ExtensionRpc.ExtensionRpcClient extensionClient,
+        CancellationToken cancellationToken)
+    {
+        using CancellationTokenSource cancellationTokenSource =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        await using var extensionStreamCoordinator = new ExtensionRpcStreamCoordinator(
+            workerId,
+            extensionClient,
+            _extensionRpcEndpointRouter,
+            Logger,
+            cancellationTokenSource.Token);
+        Task workerOutboundTask = PushOutbound(workerId, requestStream, outbound, cancellationTokenSource.Token);
+        Task readerTask = PullInbound(workerId, responseStream, inbound, cancellationTokenSource.Token);
+        Task extensionStreamTask = extensionStreamCoordinator.RunAsync();
 
         try
         {
-            _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            _channel = _channelFactory(endpoint);
-
-            using var readinessCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
-            readinessCts.CancelAfter(DefaultReadyTimeout);
-
-            var readinessStart = Stopwatch.GetTimestamp();
-            await _channel.ConnectAsync(readinessCts.Token);
-            _logger.LogInformation("OutboundGrpcClient channel connected. WorkerId: {workerId}, Endpoint: {endpoint}, StepElapsedMilliseconds: {stepElapsedMilliseconds}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, endpoint, Stopwatch.GetElapsedTime(readinessStart).TotalMilliseconds, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
-
-            var client = new FunctionRpc.FunctionRpcClient(_channel);
-            _call = client.EventStream(cancellationToken: _cts.Token);
-
-            if (!_eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
-            {
-                throw new InvalidOperationException($"No pre-registered gRPC channels found for worker '{workerId}'.");
-            }
-
-            _ = PushOutbound(workerId, _call.RequestStream, outbound.Reader, _cts.Token);
-            InboundPumpTask = PullInbound(workerId, _call.ResponseStream, inbound, _cts.Token);
-
-            _logger.LogInformation("OutboundGrpcClient stream established. WorkerId: {workerId}, Endpoint: {endpoint}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, endpoint, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
+            Task completedTask = await Task.WhenAny(workerOutboundTask, readerTask);
+            await completedTask;
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning(ex, "OutboundGrpcClient connect failed. WorkerId: {workerId}, Endpoint: {endpoint}, ElapsedMilliseconds: {elapsedMilliseconds}.", workerId, endpoint, Stopwatch.GetElapsedTime(connectStart).TotalMilliseconds);
-
-            // Dispose-and-null each resource so a subsequent DisposeAsync
-            // call cannot operate on a disposed CancellationTokenSource
-            // (cts.CancelAsync throws ObjectDisposedException, and the
-            // for-loop retry in WorkerConnectionService would silently
-            // escape with that exception instead of iterating).
-            Interlocked.Exchange(ref _call, null)?.Dispose();
-            Interlocked.Exchange(ref _channel, null)?.Dispose();
-            Interlocked.Exchange(ref _cts, null)?.Dispose();
-            throw;
         }
-    }
-
-    internal static GrpcChannel CreateGrpcChannel(Uri endpoint)
-    {
-        return GrpcChannel.ForAddress(endpoint, CreateGrpcChannelOptions());
-    }
-
-    internal static GrpcChannelOptions CreateGrpcChannelOptions()
-    {
-        return new GrpcChannelOptions
+        finally
         {
-            HttpHandler = CreateHttpHandler(),
-            ServiceProvider = BackoffPolicyServiceProvider.Instance
-        };
-    }
-
-    private static SocketsHttpHandler CreateHttpHandler()
-    {
-        return new SocketsHttpHandler
-        {
-            ConnectTimeout = DefaultConnectTimeout,
-            KeepAlivePingDelay = DefaultKeepAlivePingDelay,
-            KeepAlivePingTimeout = DefaultKeepAlivePingTimeout,
-            KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always
-        };
+            cancellationTokenSource.Cancel();
+            await Task.WhenAll(
+                IgnoreCancellationAsync(workerOutboundTask, cancellationTokenSource.Token),
+                IgnoreCancellationAsync(readerTask, cancellationTokenSource.Token),
+                IgnoreCancellationAsync(extensionStreamTask, cancellationTokenSource.Token));
+        }
     }
 
     private async Task PushOutbound(
@@ -170,18 +155,19 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
             {
                 if (evt.MessageType == MsgType.InvocationRequest)
                 {
-                    _logger.LogTrace("Writing invocation request invocationId: {invocationId} to workerId: {workerId}",
-                        evt.Message.InvocationRequest.InvocationId, workerId);
+                    Log.WritingInvocationRequest(
+                        Logger,
+                        evt.Message.InvocationRequest.InvocationId,
+                        workerId);
                 }
 
                 try
                 {
-                    await requestStream.WriteAsync(evt.Message);
+                    await requestStream.WriteAsync(evt.Message, cancellationToken);
                 }
                 catch (Exception writeEx)
                 {
-                    _logger.LogError(writeEx, "Error writing message type {messageType} to workerId: {workerId}",
-                        evt.MessageType, workerId);
+                    Log.MessageWriteFailed(Logger, writeEx, evt.MessageType, workerId);
                 }
             }
         }
@@ -191,7 +177,7 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error pushing outbound messages to gRPC for workerId: {workerId}", workerId);
+            Log.PushOutboundFailed(Logger, ex, workerId);
         }
     }
 
@@ -206,13 +192,14 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
             await Task.Yield();
             while (await responseStream.MoveNext(cancellationToken))
             {
-                var message = responseStream.Current;
-
+                StreamingMessage message = responseStream.Current;
                 if (message.ContentCase == MsgType.InvocationResponse
                     && !string.IsNullOrEmpty(message.InvocationResponse?.InvocationId))
                 {
-                    _logger.LogTrace("Received invocation response for invocationId: {invocationId} from workerId: {workerId}",
-                        message.InvocationResponse.InvocationId, workerId);
+                    Log.InvocationResponseReceived(
+                        Logger,
+                        message.InvocationResponse.InvocationId,
+                        workerId);
                 }
 
                 var inboundEvent = new InboundGrpcEvent(workerId, message);
@@ -232,63 +219,79 @@ internal class OutboundGrpcClient : IOutboundGrpcClient
         }
         catch (Exception ex)
         {
-            // Log full gRPC status detail to help diagnose whether the worker-proxy
-            // container is not started, gRPC service not registered, or network issue.
             if (ex is global::Grpc.Core.RpcException rpcEx)
             {
-                _logger.LogError(ex, "Error pulling inbound messages from gRPC for workerId: {workerId}. GrpcStatusCode: {grpcStatusCode}, GrpcStatusDetail: {grpcStatusDetail}.",
-                    workerId, rpcEx.StatusCode, rpcEx.Status.Detail);
+                Log.PullInboundGrpcFailed(
+                    Logger,
+                    ex,
+                    workerId,
+                    rpcEx.StatusCode,
+                    rpcEx.Status.Detail);
             }
             else
             {
-                _logger.LogError(ex, "Error pulling inbound messages from gRPC for workerId: {workerId}. ExceptionType: {exceptionType}.",
-                    workerId, ex.GetType().FullName);
+                Log.PullInboundFailed(Logger, ex, workerId, ex.GetType().FullName);
             }
         }
     }
 
-    /// <summary>
-    /// Cancels background pumps and releases the gRPC channel and call resources.
-    /// This method is idempotent and safe to call multiple times.
-    /// </summary>
-    public async ValueTask DisposeAsync()
+    private static async Task IgnoreCancellationAsync(Task task, CancellationToken cancellationToken)
     {
-        var cts = Interlocked.Exchange(ref _cts, null);
-        if (cts is not null)
+        try
         {
-            await cts.CancelAsync();
-            cts.Dispose();
+            await task;
         }
-
-        Interlocked.Exchange(ref _call, null)?.Dispose();
-        Interlocked.Exchange(ref _channel, null)?.Dispose();
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
     }
 
-    /// <summary>
-    /// Minimal <see cref="IServiceProvider"/> that supplies only the
-    /// <see cref="IBackoffPolicyFactory"/> override used by
-    /// <see cref="CreateGrpcChannelOptions"/>. Returning <c>null</c> for
-    /// every other service makes gRPC fall through to its built-in defaults.
-    /// Implemented as a singleton because the factory is stateless.
-    /// </summary>
-    private sealed class BackoffPolicyServiceProvider : IServiceProvider
+    private static partial class Log
     {
-        public static readonly BackoffPolicyServiceProvider Instance = new BackoffPolicyServiceProvider();
+        [LoggerMessage(
+            LogLevel.Trace,
+            "Writing invocation request invocationId: {invocationId} to workerId: {workerId}")]
+        public static partial void WritingInvocationRequest(
+            ILogger logger,
+            string invocationId,
+            string workerId);
 
-        private static readonly IBackoffPolicyFactory _factory = new ConstantBackoffPolicyFactory(DefaultRetryInterval);
+        [LoggerMessage(LogLevel.Error, "Error writing message type {messageType} to workerId: {workerId}")]
+        public static partial void MessageWriteFailed(
+            ILogger logger,
+            Exception exception,
+            MsgType messageType,
+            string workerId);
 
-        private BackoffPolicyServiceProvider()
-        {
-        }
+        [LoggerMessage(LogLevel.Error, "Error pushing outbound messages to gRPC for workerId: {workerId}")]
+        public static partial void PushOutboundFailed(ILogger logger, Exception exception, string workerId);
 
-        public object? GetService(Type serviceType)
-        {
-            if (serviceType == typeof(IBackoffPolicyFactory))
-            {
-                return _factory;
-            }
+        [LoggerMessage(
+            LogLevel.Trace,
+            "Received invocation response for invocationId: {invocationId} from workerId: {workerId}")]
+        public static partial void InvocationResponseReceived(
+            ILogger logger,
+            string invocationId,
+            string workerId);
 
-            return null;
-        }
+        [LoggerMessage(
+            LogLevel.Error,
+            "Error pulling inbound messages from gRPC for workerId: {workerId}. "
+            + "GrpcStatusCode: {grpcStatusCode}, GrpcStatusDetail: {grpcStatusDetail}.")]
+        public static partial void PullInboundGrpcFailed(
+            ILogger logger,
+            Exception exception,
+            string workerId,
+            StatusCode grpcStatusCode,
+            string grpcStatusDetail);
+
+        [LoggerMessage(
+            LogLevel.Error,
+            "Error pulling inbound messages from gRPC for workerId: {workerId}. ExceptionType: {exceptionType}.")]
+        public static partial void PullInboundFailed(
+            ILogger logger,
+            Exception exception,
+            string workerId,
+            string? exceptionType);
     }
 }
