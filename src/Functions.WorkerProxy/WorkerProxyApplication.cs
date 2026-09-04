@@ -5,6 +5,7 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.ExtensionRpc;
 using Azure.Functions.WorkerProxy.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -50,6 +51,7 @@ internal static class WorkerProxyApplication
         });
         builder.Services.AddSingleton<FunctionRpcRelay>();
         builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
+        builder.Services.AddSingleton<ExtensionRpcStreamCoordinator>();
         ConfigureHttpForwarding(builder);
 
         WebApplication app = builder.Build();
@@ -77,6 +79,7 @@ internal static class WorkerProxyApplication
         app.UseEndpoints(static endpoints =>
         {
             endpoints.MapGrpcService<FunctionRpcRelayService>();
+            endpoints.MapGrpcService<ExtensionRpcRelay>();
         });
     }
 
