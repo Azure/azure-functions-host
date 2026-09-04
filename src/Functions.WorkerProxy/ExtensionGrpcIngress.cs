@@ -743,7 +743,7 @@ internal sealed partial class ExtensionGrpcIngress(
     private static partial class Log
     {
         [LoggerMessage(
-            LogLevel.Information,
+            LogLevel.Debug,
             "Extension gRPC call opened. Method: {Method}, CallId: {CallId}, "
             + "ActiveCallCount: {ActiveCallCount}, OpenElapsedMilliseconds: {OpenElapsedMilliseconds}.")]
         public static partial void CallOpened(
@@ -754,7 +754,7 @@ internal sealed partial class ExtensionGrpcIngress(
             double openElapsedMilliseconds);
 
         [LoggerMessage(
-            LogLevel.Information,
+            LogLevel.Debug,
             "Extension gRPC call completed. Method: {Method}, CallId: {CallId}, "
             + "ActiveCallCountAtOpen: {ActiveCallCountAtOpen}, "
             + "ActiveCallCountAtCompletion: {ActiveCallCountAtCompletion}, "
