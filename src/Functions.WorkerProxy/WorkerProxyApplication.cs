@@ -4,10 +4,12 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -80,15 +82,28 @@ internal static class WorkerProxyApplication
 
     private static void ConfigureHttpPipeline(IApplicationBuilder app)
     {
+        static Task UpdateMaxRequestBodySizeAsync(HttpContext context, RequestDelegate next)
+        {
+            // Allow unlimited request body size for requests forwarded to the worker. This is safe because the worker
+            // is trusted and the host will enforce its own limits on the request body size.
+            if (context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } requestBodySizeFeature)
+            {
+                requestBodySizeFeature.MaxRequestBodySize = null;
+            }
+
+            return next(context);
+        }
+
+        static Task ForwardAsync(HttpContext context, WorkerHttpForwardingMiddleware middleware)
+            => middleware.InvokeAsync(context);
+
         app.UseRouting();
+        app.Use(UpdateMaxRequestBodySizeAsync);
         app.UseEndpoints(static endpoints =>
         {
             // Admin paths are reserved for the platform. We intentionally block them to make that clear.
             endpoints.Map("/admin/{**path}", static () => Results.NotFound()).AllowAnonymous();
-            endpoints.Map(
-                "/{**path}",
-                static (HttpContext context, WorkerHttpForwardingMiddleware middleware) => middleware.InvokeAsync(context))
-                .AllowAnonymous();
+            endpoints.Map("/{**path}", ForwardAsync).AllowAnonymous();
         });
     }
 
