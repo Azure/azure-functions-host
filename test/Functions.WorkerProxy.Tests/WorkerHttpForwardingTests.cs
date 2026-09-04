@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Yarp.ReverseProxy.Forwarder;
@@ -115,6 +116,40 @@ public class WorkerHttpForwardingTests
         Assert.Equal(
             bodyLength.ToString(CultureInfo.InvariantCulture),
             await response.Content.ReadAsStringAsync(timeout.Token));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HttpListener_RequestBodySizeLimitCannotBeDisabled_StillForwards(bool featureAvailable)
+    {
+        await using WebApplication worker = await StartWorkerAsync(async context =>
+        {
+            string requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync();
+            context.Response.StatusCode = StatusCodes.Status201Created;
+            await context.Response.WriteAsync(requestBody);
+        });
+        Dictionary<string, string?> configuration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] =
+                GetAddress(worker).AbsoluteUri
+        };
+        IHttpMaxRequestBodySizeFeature? feature = featureAvailable
+            ? new ReadOnlyRequestBodySizeFeature()
+            : null;
+        await using WorkerProxyWebApplicationFactory factory = new(
+            configuration,
+            services => services.AddSingleton<IStartupFilter>(new RequestBodySizeFeatureStartupFilter(feature)));
+        using HttpClient client = factory.CreateHttpForwardingClient();
+        using HttpRequestMessage request = new(HttpMethod.Post, "/invoke")
+        {
+            Content = new StringContent("payload", Encoding.UTF8, "text/plain")
+        };
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal("payload", await response.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -557,6 +592,33 @@ public class WorkerHttpForwardingTests
         {
             computedLength = length;
             return true;
+        }
+    }
+
+    private sealed class RequestBodySizeFeatureStartupFilter(IHttpMaxRequestBodySizeFeature? feature) : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
+        {
+            return app =>
+            {
+                app.Use(async (context, nextMiddleware) =>
+                {
+                    context.Features.Set(feature);
+                    await nextMiddleware(context);
+                });
+                next(app);
+            };
+        }
+    }
+
+    private sealed class ReadOnlyRequestBodySizeFeature : IHttpMaxRequestBodySizeFeature
+    {
+        public bool IsReadOnly => true;
+
+        public long? MaxRequestBodySize
+        {
+            get => KestrelDefaultMaxRequestBodySize;
+            set => throw new InvalidOperationException("The request body size limit is read-only.");
         }
     }
 }

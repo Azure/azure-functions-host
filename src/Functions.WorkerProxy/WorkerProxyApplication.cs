@@ -82,35 +82,29 @@ internal static class WorkerProxyApplication
 
     private static void ConfigureHttpPipeline(IApplicationBuilder app)
     {
+        static Task UpdateMaxRequestBodySizeAsync(HttpContext context, RequestDelegate next)
+        {
+            // Allow unlimited request body size for requests forwarded to the worker. This is safe because the worker
+            // is trusted and the host will enforce its own limits on the request body size.
+            if (context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } requestBodySizeFeature)
+            {
+                requestBodySizeFeature.MaxRequestBodySize = null;
+            }
+
+            return next(context);
+        }
+
+        static Task ForwardAsync(HttpContext context, WorkerHttpForwardingMiddleware middleware)
+            => middleware.InvokeAsync(context);
+
         app.UseRouting();
+        app.Use(UpdateMaxRequestBodySizeAsync);
         app.UseEndpoints(static endpoints =>
         {
             // Admin paths are reserved for the platform. We intentionally block them to make that clear.
             endpoints.Map("/admin/{**path}", static () => Results.NotFound()).AllowAnonymous();
-            endpoints.Map(
-                "/{**path}",
-                ForwardHttpRequestAsync)
-                .AllowAnonymous();
+            endpoints.Map("/{**path}", ForwardAsync).AllowAnonymous();
         });
-    }
-
-    private static Task ForwardHttpRequestAsync(
-        HttpContext context, WorkerHttpForwardingMiddleware middleware)
-    {
-        IHttpMaxRequestBodySizeFeature requestBodySizeFeature =
-            context.Features.Get<IHttpMaxRequestBodySizeFeature>()
-            ?? throw new InvalidOperationException(
-                "Unable to disable the forwarded request body size limit because IHttpMaxRequestBodySizeFeature is unavailable.");
-
-        if (requestBodySizeFeature.IsReadOnly)
-        {
-            throw new InvalidOperationException(
-                "Unable to disable the forwarded request body size limit after the request body has been read.");
-        }
-
-        requestBodySizeFeature.MaxRequestBodySize = null;
-
-        return middleware.InvokeAsync(context);
     }
 
     private static void ConfigureHttpForwarding(WebApplicationBuilder builder)
