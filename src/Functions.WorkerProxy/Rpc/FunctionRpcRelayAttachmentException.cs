@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy.Rpc;
 
 /// <summary>
 /// Represents a deterministic rejection of a FunctionRpc stream attachment.

@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy.Rpc;
 
 /// <summary>
 /// Describes the first terminal condition observed by a relay session.
