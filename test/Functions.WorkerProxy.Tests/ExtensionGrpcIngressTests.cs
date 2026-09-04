@@ -259,6 +259,47 @@ public class ExtensionGrpcIngressTests
         Assert.Equal("14", context.Response.Headers["grpc-status"]);
     }
 
+    [Fact]
+    public async Task HandleAsync_HostCancellationReturnsCancelled()
+    {
+        var streamCoordinator = new ExtensionRpcStreamCoordinator();
+        await using ExtensionRpcStreamLease lease = streamCoordinator.Open(CancellationToken.None);
+        ExtensionRpcMessage hello = await lease.Stream.Outbound.ReadAsync();
+        await lease.Stream.HandleInboundAsync(CreateReady(hello), CancellationToken.None);
+
+        var context = CreateContext([]);
+        ExtensionGrpcIngress ingress = CreateIngress(streamCoordinator);
+
+        Task ingressTask = ingress.HandleAsync(context);
+        ExtensionRpcMessage start = await lease.Stream.Outbound.ReadAsync();
+        await lease.Stream.Outbound.ReadAsync();
+        await lease.Stream.HandleInboundAsync(
+            new ExtensionRpcMessage
+            {
+                SessionId = hello.SessionId,
+                ShardId = hello.ShardId,
+                CallId = start.CallId,
+                Cancel = new ExtensionRpcCancel { Detail = "Cancelled by the host." },
+            },
+            CancellationToken.None);
+
+        await ingressTask;
+
+        Assert.Equal("1", context.Response.Headers["grpc-status"]);
+        Assert.Equal("Cancelled%20by%20the%20host.", context.Response.Headers["grpc-message"]);
+    }
+
+    [Fact]
+    public void CalculateRequestBufferSize_RejectsUnsupportedSize()
+    {
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(
+            () => ExtensionGrpcIngress.CalculateRequestBufferSize(
+                (ulong)int.MaxValue + 1,
+                (ulong)int.MaxValue + 1));
+
+        Assert.Contains("exceeds the supported limit", exception.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("1n", 1)]
     [InlineData("99n", 1)]

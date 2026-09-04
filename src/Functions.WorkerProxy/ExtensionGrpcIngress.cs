@@ -286,7 +286,7 @@ internal sealed partial class ExtensionGrpcIngress(
             messageId++;
             ulong chunkSize = Math.Max(
                 1UL, Math.Min(call.Ready.MaxDataChunkBytes, call.Ready.InitialReceiveWindowBytes));
-            int bufferSize = checked((int)Math.Min(messageLength, chunkSize));
+            int bufferSize = CalculateRequestBufferSize(messageLength, chunkSize);
             byte[] buffer = new byte[bufferSize];
             ulong offset = 0;
 
@@ -427,10 +427,29 @@ internal sealed partial class ExtensionGrpcIngress(
                     await response.Body.FlushAsync(cancellationToken);
 
                     return;
+                case ExtensionRpcMessage.ContentOneofCase.Cancel:
+                    await CompleteWithStatusAsync(
+                        response,
+                        ExtensionRpcStatus.Cancelled,
+                        message.Cancel.Detail);
+
+                    return;
             }
         }
 
         throw new InvalidDataException("The runtime RPC stream closed before the extension call completed.");
+    }
+
+    internal static int CalculateRequestBufferSize(ulong messageLength, ulong chunkSize)
+    {
+        ulong bufferSize = Math.Min(messageLength, chunkSize);
+        if (bufferSize > int.MaxValue)
+        {
+            throw new InvalidDataException(
+                $"The request buffer size '{bufferSize}' exceeds the supported limit '{int.MaxValue}'.");
+        }
+
+        return (int)bufferSize;
     }
 
     private static async ValueTask WriteDataAsync(
