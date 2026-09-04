@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -62,6 +63,16 @@ public class RpcClientAssemblyTests
             typeof(RpcClientFunctionInvocationDispatcher).GetInterfaces());
         Assert.Contains(typeof(IRpcClientFunctionInvocationDispatcher),
             typeof(RpcClientFunctionInvocationDispatcher).GetInterfaces());
+    }
+
+    [Fact]
+    public void ClientMetadataProviderUsesPublicSharedContracts()
+    {
+        Assert.True(typeof(IWorkerFunctionMetadataProvider).IsPublic);
+        Assert.True(typeof(FunctionMetadataResult).IsPublic);
+        Assert.True(typeof(WorkerFunctionMetadataValidator).IsPublic);
+        Assert.Contains(typeof(IWorkerFunctionMetadataProvider),
+            typeof(RpcClientWorkerFunctionMetadataProvider).GetInterfaces());
     }
 
     [Fact]
