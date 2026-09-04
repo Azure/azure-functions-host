@@ -22,9 +22,6 @@ namespace Azure.Functions.WorkerProxy;
 /// <summary>
 /// Accepts arbitrary worker-facing gRPC requests and relays them over the host extension RPC stream.
 /// </summary>
-/// <remarks>
-/// Initializes a new instance of the <see cref="ExtensionGrpcIngress"/> class.
-/// </remarks>
 /// <param name="endpoints">The WorkerProxy listener configuration.</param>
 /// <param name="streamCoordinator">The extension RPC stream coordinator.</param>
 /// <param name="logger">The logger used for ingress diagnostics.</param>
@@ -287,9 +284,10 @@ internal sealed partial class ExtensionGrpcIngress(
             }
 
             messageId++;
-            uint chunkSize = (uint)Math.Max(
-                1, Math.Min(call.Ready.MaxDataChunkBytes, call.Ready.InitialReceiveWindowBytes));
-            byte[] buffer = new byte[Math.Min(messageLength, chunkSize)];
+            ulong chunkSize = Math.Max(
+                1UL, Math.Min(call.Ready.MaxDataChunkBytes, call.Ready.InitialReceiveWindowBytes));
+            int bufferSize = checked((int)Math.Min(messageLength, chunkSize));
+            byte[] buffer = new byte[bufferSize];
             ulong offset = 0;
 
             if (messageLength is 0)
