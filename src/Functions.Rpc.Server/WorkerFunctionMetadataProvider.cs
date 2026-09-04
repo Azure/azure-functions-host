@@ -9,26 +9,25 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     internal class WorkerFunctionMetadataProvider : IWorkerFunctionMetadataProvider, IDisposable
     {
         private const string _metadataProviderName = "Worker";
-        private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _scriptOptions;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IWebHostRpcWorkerChannelManager _channelManager;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly WorkerFunctionMetadataValidator _metadataValidator;
         private readonly IWorkerRuntimeResolver _workerRuntimeResolver;
         private string _workerRuntime;
         private ImmutableArray<FunctionMetadata> _functions;
@@ -48,13 +47,14 @@ namespace Microsoft.Azure.WebJobs.Script
             _channelManager = webHostRpcWorkerChannelManager;
             _scriptHostManager = scriptHostManager;
             _workerRuntimeResolver = workerRuntimeResolver;
+            _metadataValidator = new(logger, workerRuntimeResolver);
             _workerRuntime = workerRuntimeResolver.GetWorkerRuntime();
 
             _scriptHostManager.ActiveHostChanged += OnHostChanged;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
-            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
+            => _metadataValidator.FunctionErrors;
 
         public async Task<FunctionMetadataResult> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
@@ -235,110 +235,10 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         internal IEnumerable<FunctionMetadata> ValidateMetadata(IEnumerable<RawFunctionMetadata> functions)
-        {
-            List<FunctionMetadata> validatedMetadata = new List<FunctionMetadata>();
-            if (IsNullOrEmpty(functions))
-            {
-                _logger.LogDebug("There is no metadata to be validated.");
-                return validatedMetadata;
-            }
-            _functionErrors.Clear();
-            foreach (RawFunctionMetadata rawFunction in functions)
-            {
-                var function = rawFunction.Metadata;
-                try
-                {
-                    Utility.ValidateName(function.Name);
-
-                    function.Language = _workerRuntimeResolver.GetWorkerRuntime();
-
-                    // skip function directory validation because this involves reading function.json
-
-                    // skip function ScriptFile validation for now because this involves enumerating file directory
-
-                    // configuration source validation
-                    if (!string.IsNullOrEmpty(rawFunction.ConfigurationSource))
-                    {
-                        JToken isDirect = JToken.Parse(rawFunction.ConfigurationSource);
-                        var isDirectValue = isDirect?.ToString();
-                        if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
-                        {
-                            function.SetIsDirect(true);
-                        }
-                        else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
-                        {
-                            throw new FormatException($"Illegal value '{isDirectValue}' for 'configurationSource' property in {function.Name}'.");
-                        }
-                    }
-
-                    // populate retry options if json string representation is provided
-                    if (!string.IsNullOrEmpty(rawFunction.RetryOptions))
-                    {
-                        function.Retry = JObject.Parse(rawFunction.RetryOptions).ToObject<RetryOptions>();
-                    }
-
-                    // retry option validation
-                    if (function.Retry is not null)
-                    {
-                        Utility.ValidateRetryOptions(function.Retry);
-                    }
-
-                    // binding validation
-                    function = ValidateBindings(rawFunction.Bindings, function);
-
-                    // add validated metadata to validated list if it gets this far
-                    validatedMetadata.Add(function);
-                }
-                catch (Exception ex)
-                {
-                    Utility.AddFunctionError(_functionErrors, function.Name, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
-                }
-            }
-            return validatedMetadata;
-        }
+            => _metadataValidator.ValidateMetadata(functions);
 
         internal FunctionMetadata ValidateBindings(IEnumerable<string> rawBindings, FunctionMetadata function)
-        {
-            HashSet<string> bindingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            // This method takes the RawBindings and adds them to the FunctionMetadata object. It's possible
-            // to call this twice, and we don't want to duplicate the bindings in that case.
-            function.Bindings.Clear();
-
-            foreach (string binding in rawBindings)
-            {
-                var sanitizedBinding = MetadataJsonHelper.CreateJObjectWithSanitizedPropertyValue(binding, ScriptConstants.SensitiveMetadataBindingPropertyNames, DateParseHandling.None);
-                var functionBinding = BindingMetadata.Create(sanitizedBinding);
-
-                Utility.ValidateBinding(functionBinding);
-
-                // Ensure no duplicate binding names exist
-                if (bindingNames.Contains(functionBinding.Name))
-                {
-                    throw new InvalidOperationException($"{nameof(WorkerFunctionDescriptorProvider)}: Multiple bindings with name '{functionBinding.Name}' discovered. Binding names must be unique.");
-                }
-
-                bindingNames.Add(functionBinding.Name);
-
-                // add binding to function.Bindings once validation is complete
-                function.Bindings.Add(functionBinding);
-            }
-
-            // ensure there is at least one binding after validation
-            if (function.Bindings == null || function.Bindings.Count == 0)
-            {
-                throw new FormatException("At least one binding must be declared.");
-            }
-
-            // ensure that there is a trigger binding
-            var triggerMetadata = function.InputBindings.FirstOrDefault(p => p.IsTrigger);
-            if (triggerMetadata == null)
-            {
-                throw new InvalidOperationException("No trigger binding specified. A function must have a trigger input binding.");
-            }
-
-            return function;
-        }
+            => WorkerFunctionMetadataValidator.ValidateBindings(rawBindings, function);
 
         private bool IsNullOrEmpty(IEnumerable<RawFunctionMetadata> functions)
         {
