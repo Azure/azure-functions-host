@@ -13,9 +13,7 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// Resolves the worker endpoint, waits for readiness, and forwards eligible requests through YARP.
 /// </summary>
 internal sealed class WorkerHttpForwardingMiddleware(
-    IOptions<WorkerProxyOptions> options,
-    WorkerEndpointReadinessProbe readinessProbe,
-    WorkerHttpForwarder forwarder)
+    IOptions<WorkerProxyOptions> options, WorkerEndpointReadinessProbe readinessProbe, WorkerHttpForwarder forwarder)
 {
     /// <summary>
     /// Forwards a request to the configured worker HTTP endpoint.
@@ -26,18 +24,37 @@ internal sealed class WorkerHttpForwardingMiddleware(
         Uri? destination = WorkerHttpDestinationResolver.Resolve(
             options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
 
-        if (destination is null || (!readinessProbe.IsKnownReady(destination)
-            && !await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted)))
+        if (destination is null)
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            WorkerHttpForwardingTelemetry.RecordDestinationNotConfigured();
             return;
         }
 
+        if (!readinessProbe.IsKnownReady(destination))
+        {
+            WorkerEndpointReadinessResult readinessResult =
+                await readinessProbe.WaitForReadyAsync(destination, context.RequestAborted);
+
+            if (readinessResult is not WorkerEndpointReadinessResult.Ready)
+            {
+                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                WorkerHttpForwardingTelemetry.RecordDestinationNotReady(readinessResult);
+                return;
+            }
+        }
+
         ForwarderError error = await forwarder.ForwardAsync(context, destination);
-        if (error is not ForwarderError.None && !context.RequestAborted.IsCancellationRequested
-            && !context.Response.HasStarted)
+        if (error is ForwarderError.None || context.RequestAborted.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (!context.Response.HasStarted)
         {
             context.Response.StatusCode = StatusCodes.Status502BadGateway;
         }
+
+        WorkerHttpForwardingTelemetry.RecordForwarderError(error);
     }
 }

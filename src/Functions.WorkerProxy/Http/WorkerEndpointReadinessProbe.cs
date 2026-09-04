@@ -47,14 +47,15 @@ internal sealed partial class WorkerEndpointReadinessProbe(
     /// </summary>
     /// <param name="destination">The destination to probe.</param>
     /// <param name="cancellationToken">The caller cancellation token.</param>
-    /// <returns><see langword="true"/> when ready; otherwise, <see langword="false"/>.</returns>
-    public async ValueTask<bool> WaitForReadyAsync(Uri destination, CancellationToken cancellationToken)
+    /// <returns>The bounded readiness result.</returns>
+    public async ValueTask<WorkerEndpointReadinessResult> WaitForReadyAsync(
+        Uri destination, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(destination);
 
         if (_readyDestinations.ContainsKey(destination))
         {
-            return true;
+            return WorkerEndpointReadinessResult.Ready;
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -79,7 +80,7 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             catch (SocketException exception)
             {
                 Log.DestinationResolutionFailed(_logger, exception, destination);
-                return false;
+                return WorkerEndpointReadinessResult.NameResolutionFailed;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -88,14 +89,14 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             catch (OperationCanceledException)
             {
                 Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
-                return false;
+                return GetFailureResult(lastError);
             }
         }
 
         if (addresses.Length == 0)
         {
             Log.DestinationResolutionFailed(_logger, exception: null, destination);
-            return false;
+            return WorkerEndpointReadinessResult.NameResolutionFailed;
         }
 
         while (!deadline.IsCancellationRequested)
@@ -113,7 +114,7 @@ internal sealed partial class WorkerEndpointReadinessProbe(
                         Log.DestinationReady(_logger, destination, stopwatch.Elapsed.TotalMilliseconds, attempts);
                     }
 
-                    return true;
+                    return WorkerEndpointReadinessResult.Ready;
                 }
                 catch (SocketException exception)
                 {
@@ -126,7 +127,7 @@ internal sealed partial class WorkerEndpointReadinessProbe(
                 catch (OperationCanceledException)
                 {
                     Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
-                    return false;
+                    return GetFailureResult(lastError);
                 }
             }
 
@@ -141,14 +142,27 @@ internal sealed partial class WorkerEndpointReadinessProbe(
             catch (OperationCanceledException)
             {
                 Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
-                return false;
+                return GetFailureResult(lastError);
             }
         }
 
         cancellationToken.ThrowIfCancellationRequested();
         Log.DestinationNotReady(_logger, lastError, destination, stopwatch.Elapsed, attempts);
 
-        return false;
+        return GetFailureResult(lastError);
+    }
+
+    private static WorkerEndpointReadinessResult GetFailureResult(Exception? lastError)
+    {
+        return lastError switch
+        {
+            SocketException { SocketErrorCode: SocketError.ConnectionRefused } =>
+                WorkerEndpointReadinessResult.ConnectionRefused,
+            SocketException { SocketErrorCode: SocketError.TimedOut } =>
+                WorkerEndpointReadinessResult.Timeout,
+            SocketException => WorkerEndpointReadinessResult.ConnectionFailed,
+            _ => WorkerEndpointReadinessResult.Timeout
+        };
     }
 
     private static partial class Log

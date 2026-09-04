@@ -16,21 +16,25 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public class WorkerEndpointReadinessProbeTests
 {
     [Fact]
-    public async Task WaitForReadyAsync_ListeningDestination_CachesSuccess()
+    public async Task WaitForReadyAsync_ListeningDestination_ReturnsReadyAndCachesSuccess()
     {
         using TcpListener listener = new(IPAddress.Loopback, 0);
         listener.Start();
         Uri destination = new($"http://localhost:{((IPEndPoint)listener.LocalEndpoint).Port}");
         WorkerEndpointReadinessProbe probe = CreateProbe();
 
-        Assert.True(await probe.WaitForReadyAsync(destination, CancellationToken.None));
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await probe.WaitForReadyAsync(destination, CancellationToken.None));
         listener.Stop();
         Assert.True(probe.IsKnownReady(destination));
-        Assert.True(await probe.WaitForReadyAsync(destination, CancellationToken.None));
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await probe.WaitForReadyAsync(destination, CancellationToken.None));
     }
 
     [Fact]
-    public async Task WaitForReadyAsync_LocalhostBoundToIpv6_ReturnsTrue()
+    public async Task WaitForReadyAsync_LocalhostBoundToIpv6_ReturnsReady()
     {
         using TcpListener listener = new(IPAddress.IPv6Loopback, 0);
         listener.Server.DualMode = false;
@@ -38,7 +42,9 @@ public class WorkerEndpointReadinessProbeTests
         Uri destination = new($"http://localhost:{((IPEndPoint)listener.LocalEndpoint).Port}");
         WorkerEndpointReadinessProbe probe = CreateProbe();
 
-        Assert.True(await probe.WaitForReadyAsync(destination, CancellationToken.None));
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await probe.WaitForReadyAsync(destination, CancellationToken.None));
     }
 
     [Fact]
@@ -53,43 +59,46 @@ public class WorkerEndpointReadinessProbeTests
     }
 
     [Fact]
-    public async Task WaitForReadyAsync_UnresolvableDestination_ReturnsFalse()
+    public async Task WaitForReadyAsync_UnresolvableDestination_ReturnsNameResolutionFailed()
     {
         WorkerEndpointReadinessProbe probe = CreateProbe();
 
-        Assert.False(await probe.WaitForReadyAsync(
-            new Uri("http://host.invalid"),
-            CancellationToken.None));
+        Assert.Equal(
+            WorkerEndpointReadinessResult.NameResolutionFailed,
+            await probe.WaitForReadyAsync(new Uri("http://host.invalid"), CancellationToken.None));
     }
 
     [Fact]
-    public async Task WaitForReadyAsync_DestinationBindsDuringBudget_ReturnsTrue()
+    public async Task WaitForReadyAsync_DestinationBindsDuringBudget_ReturnsReady()
     {
         int port = GetUnusedPort();
         WorkerEndpointReadinessProbe probe = CreateProbe(
             TimeSpan.FromMilliseconds(10),
             TimeSpan.FromSeconds(2));
         using TcpListener listener = new(IPAddress.Loopback, port);
-        ValueTask<bool> ready = probe.WaitForReadyAsync(
+        ValueTask<WorkerEndpointReadinessResult> ready = probe.WaitForReadyAsync(
             new Uri($"http://localhost:{port}"),
             CancellationToken.None);
         await Task.Delay(100);
         listener.Start();
 
-        Assert.True(await ready);
+        Assert.Equal(WorkerEndpointReadinessResult.Ready, await ready);
     }
 
     [Fact]
-    public async Task WaitForReadyAsync_DestinationNeverBinds_ReturnsFalse()
+    public async Task WaitForReadyAsync_DestinationNeverBinds_ReturnsBoundedFailure()
     {
         int port = GetUnusedPort();
         WorkerEndpointReadinessProbe probe = CreateProbe(
             TimeSpan.FromMilliseconds(10),
             TimeSpan.FromMilliseconds(100));
 
-        Assert.False(await probe.WaitForReadyAsync(
-            new Uri($"http://localhost:{port}"),
-            CancellationToken.None));
+        Assert.Contains(
+            await probe.WaitForReadyAsync(new Uri($"http://localhost:{port}"), CancellationToken.None),
+            [
+                WorkerEndpointReadinessResult.ConnectionRefused,
+                WorkerEndpointReadinessResult.Timeout
+            ]);
     }
 
     private static int GetUnusedPort()

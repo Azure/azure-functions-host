@@ -13,6 +13,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <RuntimeHostConfigurationOption
+      Include="Microsoft.AspNetCore.Hosting.SuppressActivityOpenTelemetryData"
+      Value="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Google.Protobuf" VersionOverride="3.35.1" />
     <PackageReference Include="Grpc.AspNetCore" VersionOverride="2.76.0" />
     <PackageReference Include="Grpc.Core.Api" VersionOverride="2.76.0" />
