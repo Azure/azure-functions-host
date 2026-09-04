@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Azure.Functions.WorkerProxy.ExtensionArtifacts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -45,6 +46,7 @@ internal static class WorkerProxyApplication
         });
         builder.Services.AddSingleton<FunctionRpcRelay>();
         builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
+        builder.Services.AddSingleton<IExtensionArtifactShim, ExtensionArtifactShim>();
 
         WebApplication app = builder.Build();
         WorkerProxyEndpointConfiguration endpoints = app.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
