@@ -83,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string WebsiteNodeDefaultVersion = "WEBSITE_NODE_DEFAULT_VERSION";
         public const string FunctionsMetricsPublishPath = "FUNCTIONS_METRICS_PUBLISH_PATH";
         public const string FunctionsAlwaysReadyInstance = "FUNCTIONS_ALWAYSREADY_INSTANCE";
+        public const string FunctionsPrescaledInstance = "FUNCTIONS_PRESCALED_INSTANCE";
         public const string FunctionsTimeZone = "TZ";
         public const string FunctionsWebsiteTimeZone = "WEBSITE_TIME_ZONE";
         public const string FunctionsTargetGroup = "FUNCTIONS_TARGET_GROUP";

@@ -367,11 +367,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else if (environment.IsFlexConsumptionSku())
                 {
+                    var configuration = s.GetService<IConfiguration>();
                     var options = s.GetService<IOptions<FlexConsumptionMetricsPublisherOptions>>();
                     var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
                     var logger = s.GetService<ILogger<FlexConsumptionMetricsPublisher>>();
                     var metricsProvider = s.GetService<IHostMetricsProvider>();
-                    return new FlexConsumptionMetricsPublisher(environment, standbyOptions, options, logger, new FileSystem(), metricsProvider);
+                    return new FlexConsumptionMetricsPublisher(environment, configuration, standbyOptions, options, logger, new FileSystem(), metricsProvider);
                 }
                 else if (environment.IsLinuxMetricsPublishingEnabled())
                 {
