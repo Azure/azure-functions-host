@@ -246,9 +246,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             File.Delete(firstLogFile.FullName);
 
             // wait until the timestamp used in the filename has advanced
+            string instanceId = FileWriter.GetInstanceId();
             await TestHelpers.Await(() =>
             {
-                string currentLogFileName = FileWriter.GetFileName(DateTime.UtcNow, FileWriter.GetInstanceId());
+                string currentLogFileName = FileWriter.GetFileName(instanceId);
                 return !File.Exists(firstLogFile.FullName) &&
                     !string.Equals(firstLogFile.Name, currentLogFileName, StringComparison.Ordinal);
             });
