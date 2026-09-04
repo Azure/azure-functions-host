@@ -72,7 +72,7 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
             cleanupException = exception;
         }
 
-        cleanupException = CaptureCleanupFailure(cleanupException, _call.Dispose);
+        cleanupException = _call.DisposeAndCaptureException(cleanupException);
 
         try
         {
@@ -80,10 +80,10 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
         }
         catch (Exception exception)
         {
-            cleanupException = CombineCleanupExceptions(cleanupException, exception);
+            cleanupException = AggregateException.Combine(cleanupException, exception);
         }
 
-        cleanupException = CaptureCleanupFailure(cleanupException, _shutdownSource.Dispose);
+        cleanupException = _shutdownSource.DisposeAndCaptureException(cleanupException);
 
         if (cleanupException is not null)
         {
@@ -151,26 +151,4 @@ internal sealed class GrpcDuplexChannel<T> : DuplexChannel<T>
             }
         }
     }
-
-    private static Exception CaptureCleanupFailure(Exception currentException, Action cleanup)
-    {
-        if (cleanup is null)
-        {
-            return currentException;
-        }
-
-        try
-        {
-            cleanup();
-        }
-        catch (Exception exception)
-        {
-            return CombineCleanupExceptions(currentException, exception);
-        }
-
-        return currentException;
-    }
-
-    private static Exception CombineCleanupExceptions(Exception currentException, Exception nextException)
-        => currentException is null ? nextException : new AggregateException(currentException, nextException);
 }
