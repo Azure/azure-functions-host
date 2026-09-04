@@ -4,10 +4,12 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -87,9 +89,28 @@ internal static class WorkerProxyApplication
             endpoints.Map("/admin/{**path}", static () => Results.NotFound()).AllowAnonymous();
             endpoints.Map(
                 "/{**path}",
-                static (HttpContext context, WorkerHttpForwardingMiddleware middleware) => middleware.InvokeAsync(context))
+                ForwardHttpRequestAsync)
                 .AllowAnonymous();
         });
+    }
+
+    private static Task ForwardHttpRequestAsync(
+        HttpContext context, WorkerHttpForwardingMiddleware middleware)
+    {
+        IHttpMaxRequestBodySizeFeature requestBodySizeFeature =
+            context.Features.Get<IHttpMaxRequestBodySizeFeature>()
+            ?? throw new InvalidOperationException(
+                "Unable to disable the forwarded request body size limit because IHttpMaxRequestBodySizeFeature is unavailable.");
+
+        if (requestBodySizeFeature.IsReadOnly)
+        {
+            throw new InvalidOperationException(
+                "Unable to disable the forwarded request body size limit after the request body has been read.");
+        }
+
+        requestBodySizeFeature.MaxRequestBodySize = null;
+
+        return middleware.InvokeAsync(context);
     }
 
     private static void ConfigureHttpForwarding(WebApplicationBuilder builder)

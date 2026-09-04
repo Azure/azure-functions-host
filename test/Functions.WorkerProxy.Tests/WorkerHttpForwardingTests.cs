@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -26,6 +27,8 @@ namespace Azure.Functions.WorkerProxy.Tests;
 
 public class WorkerHttpForwardingTests
 {
+    private const long KestrelDefaultMaxRequestBodySize = 30_000_000;
+
     public static IEnumerable<object[]> ForwarderErrors =>
         Enum.GetValues<ForwarderError>()
             .Where(static error => error is not ForwarderError.None)
@@ -70,6 +73,48 @@ public class WorkerHttpForwardingTests
         AssertRequestActivity(activity, "POST", "/invoke");
         Assert.Null(activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
         Assert.Equal(ActivityStatusCode.Unset, activity.Status);
+    }
+
+    [Fact]
+    public async Task HttpListener_ForwardsBodyLargerThanKestrelDefaultLimit()
+    {
+        const long bodyLength = KestrelDefaultMaxRequestBodySize + 1;
+        await using WebApplication worker = await StartWorkerAsync(async context =>
+        {
+            byte[] buffer = new byte[16 * 1024];
+            long receivedLength = 0;
+            bool contentIsValid = true;
+            int read;
+            while ((read = await context.Request.Body.ReadAsync(buffer)) > 0)
+            {
+                contentIsValid &= buffer.AsSpan(0, read).IndexOfAnyExcept((byte)0x5a) < 0;
+                receivedLength += read;
+            }
+
+            context.Response.StatusCode = contentIsValid
+                ? StatusCodes.Status200OK
+                : StatusCodes.Status422UnprocessableEntity;
+            await context.Response.WriteAsync(receivedLength.ToString(CultureInfo.InvariantCulture));
+        }, allowUnlimitedRequestBody: true);
+        Dictionary<string, string?> configuration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] =
+                GetAddress(worker).AbsoluteUri
+        };
+        await using WorkerProxyWebApplicationFactory factory = new(configuration);
+        using HttpClient client = factory.CreateHttpForwardingClient();
+        using HttpRequestMessage request = new(HttpMethod.Post, "/large-body")
+        {
+            Content = new RepeatedByteContent(bodyLength, 0x5a)
+        };
+        using CancellationTokenSource timeout = new(TimeSpan.FromMinutes(1));
+
+        using HttpResponseMessage response = await client.SendAsync(request, timeout.Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(
+            bodyLength.ToString(CultureInfo.InvariantCulture),
+            await response.Content.ReadAsStringAsync(timeout.Token));
     }
 
     [Fact]
@@ -377,10 +422,18 @@ public class WorkerHttpForwardingTests
         Assert.Equal(0, requestCount);
     }
 
-    private static async Task<WebApplication> StartWorkerAsync(RequestDelegate handler, int port = 0)
+    private static async Task<WebApplication> StartWorkerAsync(
+        RequestDelegate handler, int port = 0, bool allowUnlimitedRequestBody = false)
     {
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
-        builder.WebHost.UseKestrel(options => options.Listen(IPAddress.Loopback, port));
+        builder.WebHost.UseKestrel(options =>
+        {
+            options.Listen(IPAddress.Loopback, port);
+            if (allowUnlimitedRequestBody)
+            {
+                options.Limits.MaxRequestBodySize = null;
+            }
+        });
         WebApplication app = builder.Build();
         app.Run(handler);
         await app.StartAsync();
@@ -476,6 +529,34 @@ public class WorkerHttpForwardingTests
             }
 
             return error;
+        }
+    }
+
+    private sealed class RepeatedByteContent(long length, byte value) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            return SerializeToStreamAsync(stream, context, CancellationToken.None);
+        }
+
+        protected override async Task SerializeToStreamAsync(
+            Stream stream, TransportContext? context, CancellationToken cancellationToken)
+        {
+            byte[] buffer = new byte[16 * 1024];
+            Array.Fill(buffer, value);
+            long remaining = length;
+            while (remaining > 0)
+            {
+                int count = (int)Math.Min(remaining, buffer.Length);
+                await stream.WriteAsync(buffer.AsMemory(0, count), cancellationToken);
+                remaining -= count;
+            }
+        }
+
+        protected override bool TryComputeLength(out long computedLength)
+        {
+            computedLength = length;
+            return true;
         }
     }
 }
