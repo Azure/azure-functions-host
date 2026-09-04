@@ -2,6 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Net;
+using System.Net.Http;
+using Azure.Functions.WorkerProxy.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -45,11 +48,13 @@ internal static class WorkerProxyApplication
         });
         builder.Services.AddSingleton<FunctionRpcRelay>();
         builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
+        ConfigureHttpForwarding(builder);
 
         WebApplication app = builder.Build();
         WorkerProxyEndpointConfiguration endpoints = app.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
         app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
         app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out _), ConfigureGrpcPipeline);
+        app.MapWhen(context => endpoints.IsHttpPort(context.Connection.LocalPort), ConfigureHttpPipeline);
         app.Run(static context => Results.NotFound().ExecuteAsync(context));
 
         return app;
@@ -71,5 +76,44 @@ internal static class WorkerProxyApplication
         {
             endpoints.MapGrpcService<FunctionRpcRelayService>();
         });
+    }
+
+    private static void ConfigureHttpPipeline(IApplicationBuilder app)
+    {
+        app.UseRouting();
+        app.UseEndpoints(static endpoints =>
+        {
+            // Admin paths are reserved for the platform. We intentionally block them to make that clear.
+            endpoints.Map("/admin/{**path}", static () => Results.NotFound()).AllowAnonymous();
+            endpoints.Map(
+                "/{**path}",
+                static (HttpContext context, WorkerHttpForwardingMiddleware middleware) => middleware.InvokeAsync(context))
+                .AllowAnonymous();
+        });
+    }
+
+    private static void ConfigureHttpForwarding(WebApplicationBuilder builder)
+    {
+        builder.Services.AddOptions<WorkerEndpointReadinessProbeOptions>()
+            .BindConfiguration(WorkerEndpointReadinessProbeOptions.SectionName)
+            .ValidateOnStart();
+
+        builder.Services.AddSingleton<
+            IValidateOptions<WorkerEndpointReadinessProbeOptions>,
+            WorkerEndpointReadinessProbeOptionsValidator>();
+
+        builder.Services.AddSingleton<WorkerEndpointReadinessProbe>();
+        builder.Services.AddHttpForwarder();
+        builder.Services.AddHttpClient(nameof(WorkerHttpForwarder))
+            .ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                AutomaticDecompression = DecompressionMethods.None,
+                UseCookies = false,
+                UseProxy = false
+            });
+
+        builder.Services.AddSingleton<WorkerHttpForwarder>();
+        builder.Services.AddSingleton<WorkerHttpForwardingMiddleware>();
     }
 }

@@ -13,7 +13,7 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public class WorkerProxyApplicationTests
 {
     [Fact]
-    public async Task ManagementListener_MapsOnlyStartupProbe()
+    public async Task ManagementListener_ProtectsAdminRoutes()
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         using HttpClient client = factory.CreateWorkerProxyClient();
@@ -28,5 +28,10 @@ public class WorkerProxyApplicationTests
 
         using HttpResponseMessage unrelatedRouteResponse = await client.GetAsync("/admin/worker/ready", timeout.Token);
         Assert.Equal(HttpStatusCode.NotFound, unrelatedRouteResponse.StatusCode);
+
+        using HttpClient forwardingClient = factory.CreateHttpForwardingClient();
+        using HttpResponseMessage forwardingReadyResponse =
+            await forwardingClient.GetAsync("/admin/instance/ready", timeout.Token);
+        Assert.Equal(HttpStatusCode.NotFound, forwardingReadyResponse.StatusCode);
     }
 }
