@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -218,8 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         // create a new log file
                         // we include a machine identifier in the log file name to ensure we don't have any
                         // log file contention between scaled out instances
-                        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ssK");
-                        string filePath = Path.Combine(_logFilePath, $"{timestamp}-{_instanceId}.log");
+                        string filePath = Path.Combine(_logFilePath, GetFileName(_instanceId));
                         _currentLogFileInfo = new FileInfo(filePath);
                         _currentLogFileInfo.Create().Close();
                         newLogFileCreated = true;
@@ -290,6 +289,11 @@ namespace Microsoft.Azure.WebJobs.Script
             instanceId = instanceId.Length > 10 ? instanceId.Substring(0, 10) : instanceId;
 
             return instanceId.ToLowerInvariant();
+        }
+
+        internal static string GetFileName(string instanceId)
+        {
+            return $"{DateTime.UtcNow:yyyy-MM-ddTHH-mm-ssK}-{instanceId}.log";
         }
     }
 }
