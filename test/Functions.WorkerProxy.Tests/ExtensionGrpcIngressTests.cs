@@ -128,7 +128,7 @@ public class ExtensionGrpcIngressTests
         Assert.Equal(start.CallId, activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.call_id"));
         Assert.Equal(hello.ShardId, activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.stream_id"));
         Assert.Equal(1, activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.active_calls_at_open"));
-        Assert.Equal(1, activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.active_calls_at_completion"));
+        Assert.Equal(0, activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.active_calls_at_completion"));
         Assert.Null(activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.call.open.duration_ms"));
         Assert.Null(activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.call.duration_ms"));
     }
