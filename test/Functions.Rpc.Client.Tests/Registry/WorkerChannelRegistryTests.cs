@@ -247,7 +247,7 @@ public sealed class WorkerChannelRegistryTests
         Assert.False(registry.TryGetInitializedChannel("first", out _));
         Assert.True(registry.TryGetInitializedChannel("second", out WorkerChannel healthyChannel));
         Assert.Same(second.Channel, healthyChannel);
-        WorkerChannel relinkedChannel = await LinkAsync(registry, "first");
+        WorkerChannel relinkedChannel = await LinkWhenAvailableAsync(registry, "first");
         Assert.Same(replacement.Channel, relinkedChannel);
     }
 
@@ -380,6 +380,23 @@ public sealed class WorkerChannelRegistryTests
 
     private static Task<WorkerChannel> LinkAsync(WorkerChannelRegistry registry, string workerId)
         => registry.LinkAsync(workerId, CreateEndpoint(workerId));
+
+    private static async Task<WorkerChannel> LinkWhenAvailableAsync(WorkerChannelRegistry registry, string workerId)
+    {
+        using CancellationTokenSource timeoutSource = new(TestTimeout);
+        while (true)
+        {
+            try
+            {
+                return await registry.LinkAsync(workerId, CreateEndpoint(workerId), timeoutSource.Token);
+            }
+            catch (InvalidOperationException exception)
+                when (string.Equals(exception.Message, $"Worker '{workerId}' is already linked.", StringComparison.Ordinal))
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(10), timeoutSource.Token);
+            }
+        }
+    }
 
     private static Uri CreateEndpoint(string workerId)
         => new($"http://{workerId}.test:5000");
