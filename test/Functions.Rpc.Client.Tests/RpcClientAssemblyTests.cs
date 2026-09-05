@@ -122,6 +122,7 @@ public class RpcClientAssemblyTests
     private static string[] GetProjectReferences(string projectFile)
     {
         XDocument project = XDocument.Load(GetProjectFilePath(projectFile));
+
         return project.Descendants("ProjectReference")
             .Select(reference => reference.Attribute("Include")?.Value)
             .Where(reference => reference is not null)

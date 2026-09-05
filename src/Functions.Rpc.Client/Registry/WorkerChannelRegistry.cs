@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -18,8 +19,8 @@ namespace Azure.Functions.Rpc.Client;
 /// Owns initialized client-backed worker channels and terminal cleanup.
 /// </summary>
 /// <remarks>
-/// Link and unlink operations serialize per worker ID using ordinal identity while different workers can connect concurrently.
-/// The registry publishes a channel only after its WorkerInit handshake succeeds.
+/// Admission and replay decisions are atomic. Different workers can link concurrently.
+/// The registry publishes a channel only after its WorkerInit handshake succeeds and retains terminal identities.
 /// </remarks>
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 {
@@ -27,6 +28,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private readonly Lock _disposeLock = new();
     private readonly IDuplexChannelFactory<StreamingMessage> _duplexChannelFactory;
     private readonly ILogger<WorkerChannelRegistry> _logger;
+    private readonly Dictionary<string, WorkerSlot> _linkAttempts = new(StringComparer.Ordinal);
     private readonly HashSet<Task> _monitorTasks = [];
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
@@ -43,19 +45,61 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<WorkerChannel> LinkAsync(string workerId, Uri grpcEndpoint, CancellationToken cancellationToken = default)
+    public Task<WorkerChannel> LinkAsync(string workerId, Uri grpcEndpoint, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
         cancellationToken.ThrowIfCancellationRequested();
 
-        WorkerSlot slot = ReserveLinkSlot(workerId);
+        TaskCompletionSource start;
+        Task<WorkerChannel> link;
+        lock (_stateLock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_linkAttempts.TryGetValue(workerId, out WorkerSlot existing))
+            {
+                if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal))
+                {
+                    throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
+                        "The worker is already associated with a different gRPC endpoint.");
+                }
 
+                if (existing.Terminal || existing.Channel?.Completion.IsCompleted == true)
+                {
+                    throw new WorkerLinkException(WorkerLinkFailureReason.WorkerTerminated,
+                        "The worker's initialized channel has terminated.");
+                }
+
+                Task<WorkerChannel> replay = existing.LinkTask.WaitAsync(cancellationToken);
+
+                return replay;
+            }
+
+            start = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            WorkerSlot slot = new() { Endpoint = grpcEndpoint };
+            _slots.Add(workerId, slot);
+            _linkAttempts.Add(workerId, slot);
+            link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
+            slot.LinkTask = link;
+        }
+
+        // Publish the shared attempt before starting I/O so a retry cannot start a second connection.
+        start.SetResult();
+
+        return link;
+    }
+
+    private async Task<WorkerChannel> LinkCoreAsync(string workerId, Uri grpcEndpoint, WorkerSlot slot,
+        Task start, CancellationToken cancellationToken)
+    {
+        await start;
+        using SemaphoreLock gate = new(slot.Gate);
+        bool initialized = false;
         try
         {
             using CancellationTokenSource operationSource =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token);
-            using SemaphoreLock gate = await slot.Gate.LockAsync(operationSource.Token);
+            operationSource.Token.ThrowIfCancellationRequested();
 
             DuplexChannel<StreamingMessage> ownedChannel = null;
             RpcClientWorkerChannel candidate = null;
@@ -75,12 +119,22 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                         $"The client worker channel factory returned worker '{candidate.Id}' for requested worker '{workerId}'.");
                 }
 
-                await candidate.StartAsync(operationSource.Token);
+                try
+                {
+                    await candidate.StartAsync(operationSource.Token);
+                }
+                catch (InvalidOperationException exception) when (candidate.Completion.IsCompleted)
+                {
+                    throw new IOException("The worker channel closed before initialization completed.", exception);
+                }
+
                 operationSource.Token.ThrowIfCancellationRequested();
                 RegisterInitializedChannel(workerId, slot, candidate);
 
                 WorkerChannel linkedChannel = candidate;
                 candidate = null;
+                initialized = true;
+
                 return linkedChannel;
             }
             catch (Exception exception)
@@ -102,6 +156,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         finally
         {
             RemoveEmptySlot(workerId, slot);
+            if (!initialized)
+            {
+                lock (_stateLock)
+                {
+                    _linkAttempts.Remove(workerId);
+                }
+            }
         }
     }
 
@@ -224,21 +285,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
-    private WorkerSlot ReserveLinkSlot(string workerId)
-    {
-        lock (_stateLock)
-        {
-            ObjectDisposedException.ThrowIf(_disposed, this);
-            WorkerSlot slot = new();
-            if (!_slots.TryAdd(workerId, slot))
-            {
-                throw new InvalidOperationException($"Worker '{workerId}' is already linked.");
-            }
-
-            return slot;
-        }
-    }
-
     private async Task DisposeAsyncCore()
     {
         KeyValuePair<string, WorkerSlot>[] slots;
@@ -289,6 +335,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
 
         slot.Channel = null;
+        if (slot.LinkTask is not null)
+        {
+            slot.Terminal = true;
+            slot.LinkTask = null;
+        }
+
         if (!_disposed && !_slots.Values.Any(slot => slot.Channel is not null))
         {
             _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -335,7 +387,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 RpcClientWorkerChannel removedChannel;
                 lock (_stateLock)
                 {
-                    // Do not let an old channel's completion remove a replacement that reused the same worker ID.
+                    // Only detach the channel associated with this completion signal.
                     removedChannel = DetachChannelLocked(slot, channel);
                 }
 
@@ -401,8 +453,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             monitorTask = MonitorChannelCompletionAsync(workerId, slot, channel);
             _monitorTasks.Add(monitorTask);
 
-            // A separate root lifecycle coordinator observes the first completed link and starts ScriptHost.
-            // The registry only exposes channel availability.
+            // Signal initialized-channel availability without starting ScriptHost here.
             _initializedChannelAvailable.TrySetResult();
         }
 
@@ -444,7 +495,17 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     {
         public RpcClientWorkerChannel Channel { get; set; }
 
-        public SemaphoreSlim Gate { get; } = new(1, 1);
+        // The initial link owns this gate before its slot is published.
+        public SemaphoreSlim Gate { get; } = new(0, 1);
+
+        // The recorded gRPC endpoint used to distinguish exact retries from conflicting requests.
+        public Uri Endpoint { get; init; }
+
+        // The link task shared by exact retries; cleared when the accepted channel is detached.
+        public Task<WorkerChannel> LinkTask { get; set; }
+
+        // Indicates that a previously accepted link has terminated and cannot be replayed.
+        public bool Terminal { get; set; }
     }
 
     private static partial class Log
