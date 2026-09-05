@@ -3,8 +3,15 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    internal interface IFunctionInvocationDispatcherFactory
+    /// <summary>
+    /// Provides the invocation dispatcher selected by the worker topology.
+    /// </summary>
+    public interface IFunctionInvocationDispatcherFactory
     {
+        /// <summary>
+        /// Gets the selected invocation dispatcher.
+        /// </summary>
+        /// <returns>The selected dispatcher.</returns>
         IFunctionInvocationDispatcher GetFunctionDispatcher();
     }
 }

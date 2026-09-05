@@ -72,6 +72,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly string _workerInvocationFailedMetric;
         private readonly IAppCapabilitiesStore _appCapabilitiesStore;
         private readonly DuplexChannel<StreamingMessage> _ownedChannel;
+        private readonly TaskCompletionSource _invocationBuffersInitialized =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         private Task _disposeTask;
         private RpcWorkerChannelState _state;
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -194,6 +197,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// Gets the current script job host options.
         /// </summary>
         public IOptions<ScriptJobHostOptions> JobHostOptions => _scriptHostOptions;
+
+        /// <summary>
+        /// Gets a task that completes after invocation buffers are initialized.
+        /// </summary>
+        public Task InvocationBuffersInitialization => _invocationBuffersInitialized.Task;
 
         internal bool IsSharedMemoryDataTransferEnabled => _isSharedMemoryDataTransferEnabled;
 
@@ -678,6 +686,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _functionInputBuffers[functionId] = new BufferBlock<ScriptInvocationContext>();
             }
             _state |= RpcWorkerChannelState.InvocationBuffersInitialized;
+            _invocationBuffersInitialized.TrySetResult();
         }
 
         /// <inheritdoc />

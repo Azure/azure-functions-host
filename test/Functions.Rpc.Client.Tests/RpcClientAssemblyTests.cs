@@ -7,6 +7,7 @@ using System.Linq;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
@@ -48,6 +49,19 @@ public class RpcClientAssemblyTests
         Assert.True(typeof(WorkerChannel).IsPublic);
         Assert.Equal(typeof(WorkerChannel), typeof(RpcClientWorkerChannel).BaseType);
         Assert.Equal("Azure.Functions.Rpc.Client", typeof(RpcClientWorkerChannel).Assembly.GetName().Name);
+    }
+
+    [Fact]
+    public void ClientDispatcherUsesPublicSharedContracts()
+    {
+        Assert.True(typeof(IFunctionInvocationDispatcher).IsPublic);
+        Assert.True(typeof(IFunctionInvocationDispatcherFactory).IsPublic);
+        Assert.True(typeof(FunctionInvocationDispatcherState).IsPublic);
+        Assert.True(typeof(IRpcClientFunctionInvocationDispatcher).IsPublic);
+        Assert.Contains(typeof(IFunctionInvocationDispatcher),
+            typeof(RpcClientFunctionInvocationDispatcher).GetInterfaces());
+        Assert.Contains(typeof(IRpcClientFunctionInvocationDispatcher),
+            typeof(RpcClientFunctionInvocationDispatcher).GetInterfaces());
     }
 
     [Fact]
