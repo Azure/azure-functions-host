@@ -3,6 +3,8 @@
 
 using System;
 using System.Buffers.Binary;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -23,6 +25,7 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public class ExtensionGrpcIngressTests
 {
     private const int WorkerGrpcPort = 50052;
+    private static readonly ExtensionGrpcMetrics Metrics = new(new TestMeterFactory());
 
     [Fact]
     public async Task HandleAsync_RelaysOpaqueGrpcFramesAndMetadata()
@@ -42,6 +45,7 @@ public class ExtensionGrpcIngressTests
         context.Features.Set<IHttpResponseTrailersFeature>(trailersFeature);
 
         ExtensionGrpcIngress ingress = CreateIngress(streamCoordinator);
+        using var activity = new Activity("extension-rpc-test").Start();
         Task ingressTask = ingress.HandleAsync(context);
 
         ExtensionRpcMessage start = await lease.Stream.Outbound.ReadAsync();
@@ -121,6 +125,12 @@ public class ExtensionGrpcIngressTests
         Assert.Equal("CQo=", context.Response.Headers["response-bin"]);
         Assert.Equal("Cww=", trailersFeature.Trailers["trailer-bin"]);
         Assert.Equal("0", trailersFeature.Trailers["grpc-status"]);
+        Assert.Equal(start.CallId, activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.call_id"));
+        Assert.Equal(hello.ShardId, activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.stream_id"));
+        Assert.Equal(1, activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.active_calls_at_open"));
+        Assert.Equal(0, activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.active_calls_at_completion"));
+        Assert.Null(activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.call.open.duration_ms"));
+        Assert.Null(activity.GetTagItem("azure.functions.worker_proxy.extension_rpc.call.duration_ms"));
     }
 
     [Fact]
@@ -371,6 +381,7 @@ public class ExtensionGrpcIngressTests
         return new ExtensionGrpcIngress(
             endpoints,
             streamCoordinator,
+            Metrics,
             NullLogger<ExtensionGrpcIngress>.Instance);
     }
 
@@ -416,5 +427,14 @@ public class ExtensionGrpcIngressTests
     private sealed class TestResponseTrailersFeature : IHttpResponseTrailersFeature
     {
         public IHeaderDictionary Trailers { get; set; } = new HeaderDictionary();
+    }
+
+    private sealed class TestMeterFactory : IMeterFactory
+    {
+        public Meter Create(MeterOptions options) => new(options);
+
+        public void Dispose()
+        {
+        }
     }
 }
