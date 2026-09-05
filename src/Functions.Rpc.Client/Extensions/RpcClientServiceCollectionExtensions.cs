@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +44,7 @@ internal static class RpcClientServiceCollectionExtensions
 
         services.TryAddSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>();
         services.TryAddSingleton<IFunctionInvocationDispatcherFactory, RpcClientFunctionInvocationDispatcherFactory>();
+        services.TryAddSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>();
 
         return services;
     }
