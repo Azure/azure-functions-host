@@ -280,21 +280,45 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     }
 
     [Fact]
-    public async Task Dispose_AllowsBestEffortDispatchWithoutDisposingChannel()
+    public async Task Dispose_RejectsNewInvocationsWithoutDisposingChannel()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
         _channels.Add(worker.Channel);
-        RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await InitializeDispatcherAsync(dispatcher, function, worker);
+        _registry.Invocations.Clear();
 
         dispatcher.Dispose();
 
-        await dispatcher.InvokeAsync(CreateInvocation(function));
+        ObjectDisposedException exception = await Assert.ThrowsAsync<ObjectDisposedException>(
+            () => dispatcher.InvokeAsync(CreateInvocation(function)));
 
-        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        Assert.Equal(typeof(RpcClientFunctionInvocationDispatcher).FullName, exception.ObjectName);
         Assert.Equal(FunctionInvocationDispatcherState.Disposed, dispatcher.State);
         Assert.Equal(0, worker.Transport.DisposeCount);
+        _registry.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task PreShutdown_WithReadyChannelRejectsNewInvocations()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        _channels.Add(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        FunctionMetadata function = CreateFunction();
+        await InitializeDispatcherAsync(dispatcher, function, worker);
+        _registry.Invocations.Clear();
+
+        dispatcher.PreShutdown();
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => dispatcher.InvokeAsync(CreateInvocation(function)));
+
+        Assert.Contains("stopping", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(FunctionInvocationDispatcherState.Disposing, dispatcher.State);
+        Assert.Equal(0, worker.Transport.DisposeCount);
+        _registry.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -303,6 +327,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await dispatcher.InitializeAsync([function]);
+        _registry.Invocations.Clear();
 
         dispatcher.PreShutdown();
 
@@ -310,6 +335,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
             () => dispatcher.InvokeAsync(CreateInvocation(function)));
         Assert.Contains("stopping", exception.Message, StringComparison.Ordinal);
         Assert.Equal(FunctionInvocationDispatcherState.Disposing, dispatcher.State);
+        _registry.VerifyNoOtherCalls();
     }
 
     private RpcClientFunctionInvocationDispatcher CreateDispatcher(TimeSpan? channelWaitTimeout = null)

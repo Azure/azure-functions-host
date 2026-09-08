@@ -78,6 +78,11 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     public Task InvokeAsync(ScriptInvocationContext invocationContext)
     {
         ArgumentNullException.ThrowIfNull(invocationContext);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_stopping)
+        {
+            throw new InvalidOperationException("The invocation dispatcher is stopping.");
+        }
 
         // Keep the common path synchronous and allocation-free after the registry snapshot.
         WorkerChannel channel = GetReadyChannel();
@@ -273,12 +278,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     private async Task InvokeWhenChannelIsReadyAsync(ScriptInvocationContext invocationContext)
     {
-        // Lifecycle checks and cancellation linking stay off the ready-channel hot path.
-        if (_stopping)
-        {
-            throw new InvalidOperationException("The invocation dispatcher is stopping.");
-        }
-
+        // Initialization checks and cancellation linking stay off the ready-channel hot path.
         if (State is not FunctionInvocationDispatcherState.Initialized)
         {
             throw new InvalidOperationException("The invocation dispatcher has not been initialized.");
