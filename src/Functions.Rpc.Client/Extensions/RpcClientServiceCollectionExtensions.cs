@@ -3,12 +3,12 @@
 
 using System;
 using System.Linq;
+using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace Azure.Functions.Rpc.Client;
+namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// Registers the Client worker service graph.

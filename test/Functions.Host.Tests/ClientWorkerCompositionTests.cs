@@ -54,7 +54,7 @@ public class ClientWorkerCompositionTests
     public void ConfigureWebHostServices_RegistersExplicitRootClientGraph()
     {
         var services = new ServiceCollection();
-        IMvcBuilder mvcBuilder = new ServiceCollection().AddMvc();
+        IMvcBuilder mvcBuilder = services.AddMvc();
 
         ClientWorkerComposition.Instance.ConfigureWebHostServices(services, mvcBuilder);
 
@@ -135,7 +135,7 @@ public class ClientWorkerCompositionTests
     public void ConfigureServices_ValidatesArguments()
     {
         var services = new ServiceCollection();
-        IMvcBuilder mvcBuilder = new ServiceCollection().AddMvc();
+        IMvcBuilder mvcBuilder = services.AddMvc();
         using ServiceProvider rootServiceProvider = new ServiceCollection().BuildServiceProvider();
 
         Assert.Throws<ArgumentNullException>(() =>
