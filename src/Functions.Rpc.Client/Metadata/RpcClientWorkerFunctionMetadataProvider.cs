@@ -21,8 +21,9 @@ namespace Azure.Functions.Rpc.Client;
 /// Retrieves and validates function metadata from a client-backed worker channel.
 /// </summary>
 /// <remarks>
-/// One provider belongs to a ScriptHost child container so its metadata cache is replaced on host restart. The provider
-/// borrows the root-owned registry and requests registry cleanup when a metadata operation makes a channel unusable.
+/// One provider belongs to the root container so the root metadata manager and ScriptHost children share one cache.
+/// The provider borrows the root-owned registry and requests registry cleanup when a metadata operation makes a channel
+/// unusable.
 /// </remarks>
 internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerFunctionMetadataProvider
 {

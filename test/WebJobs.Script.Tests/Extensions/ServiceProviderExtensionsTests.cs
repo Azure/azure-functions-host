@@ -3,7 +3,9 @@
 
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using AwesomeAssertions;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
@@ -116,6 +118,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             object result = serviceProvider.CreateInstance(descriptor);
 
             result.Should().BeOfType<TestClass>();
+        }
+
+        [Fact]
+        public async Task CreateChildContainer_AsyncDisposableSingleton_IsBorrowedWithoutChildOwnership()
+        {
+            ServiceCollection rootServices = new();
+            rootServices.AddSingleton<ITestInterface, AsyncDisposableTestClass>();
+            await using ServiceProvider rootProvider = rootServices.BuildServiceProvider();
+            var rootInstance = (AsyncDisposableTestClass)rootProvider.GetRequiredService<ITestInterface>();
+            IServiceCollection childServices = rootProvider.CreateChildContainer(rootServices);
+            ServiceDescriptor descriptor = childServices.Single(service => service.ServiceType == typeof(ITestInterface));
+
+            descriptor.ImplementationInstance.Should().BeSameAs(rootInstance);
+
+            await using (ServiceProvider childProvider = childServices.BuildServiceProvider())
+            {
+                childProvider.GetRequiredService<ITestInterface>().Should().BeSameAs(rootInstance);
+            }
+
+            rootInstance.IsDisposed.Should().BeFalse();
+        }
+
+        private sealed class AsyncDisposableTestClass : ITestInterface, IAsyncDisposable
+        {
+            public bool IsDisposed { get; private set; }
+
+            public ValueTask DisposeAsync()
+            {
+                IsDisposed = true;
+                return ValueTask.CompletedTask;
+            }
         }
     }
 }

@@ -30,6 +30,7 @@
   <ItemGroup>
     <!-- This interim reference makes the shared FunctionsHost entrypoint explicit. A later project split removes the
          transitive Rpc.Server implementation from the compute publish graph. -->
+    <ProjectReference Include="..\Functions.Rpc.Client\Functions.Rpc.Client.csproj" />
     <ProjectReference Include="..\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj" />
   </ItemGroup>
 
