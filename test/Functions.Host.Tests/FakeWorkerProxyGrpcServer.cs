@@ -19,12 +19,15 @@ using Microsoft.Extensions.Logging;
 
 namespace Azure.Functions.Host.Tests;
 
-internal sealed class WorkerLinkTestRpcServer : IAsyncDisposable
+/// <summary>
+/// Simulates WorkerProxy's runtime-facing initialization protocol over a real gRPC listener.
+/// </summary>
+internal sealed class FakeWorkerProxyGrpcServer : IAsyncDisposable
 {
     private readonly WebApplication _application;
     private readonly TestFunctionRpcService _service;
 
-    private WorkerLinkTestRpcServer(WebApplication application, Uri endpoint, TestFunctionRpcService service)
+    private FakeWorkerProxyGrpcServer(WebApplication application, Uri endpoint, TestFunctionRpcService service)
     {
         _application = application;
         _service = service;
@@ -35,7 +38,7 @@ internal sealed class WorkerLinkTestRpcServer : IAsyncDisposable
 
     internal int StreamCount => _service.StreamCount;
 
-    internal static async Task<WorkerLinkTestRpcServer> StartAsync(CancellationToken cancellationToken)
+    internal static async Task<FakeWorkerProxyGrpcServer> StartAsync(CancellationToken cancellationToken)
     {
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
@@ -54,7 +57,7 @@ internal sealed class WorkerLinkTestRpcServer : IAsyncDisposable
             IServerAddressesFeature addresses = server.Features.Get<IServerAddressesFeature>()
                 ?? throw new InvalidOperationException("Kestrel did not publish a loopback endpoint.");
 
-            return new WorkerLinkTestRpcServer(application, new Uri(addresses.Addresses.Single()), service);
+            return new FakeWorkerProxyGrpcServer(application, new Uri(addresses.Addresses.Single()), service);
         }
         catch
         {
@@ -63,12 +66,22 @@ internal sealed class WorkerLinkTestRpcServer : IAsyncDisposable
         }
     }
 
-    internal Handshake Enqueue(string workerId)
+    // Replies successfully to initialization without manual test coordination.
+    internal TestWorker AddWorker(string workerId)
     {
-        Handshake handshake = new(workerId);
-        _service.Handshakes.Enqueue(handshake);
+        TestWorker worker = AddPendingWorker(workerId);
+        worker.CompleteInitialization();
 
-        return handshake;
+        return worker;
+    }
+
+    // Leaves initialization pending until the test explicitly completes or fails it.
+    internal TestWorker AddPendingWorker(string workerId)
+    {
+        TestWorker worker = new(workerId);
+        _service.Workers.Enqueue(worker);
+
+        return worker;
     }
 
     public async ValueTask DisposeAsync()
@@ -84,25 +97,23 @@ internal sealed class WorkerLinkTestRpcServer : IAsyncDisposable
         }
     }
 
-    internal sealed class Handshake(string workerId)
+    internal sealed class TestWorker(string workerId)
     {
+        private readonly TaskCompletionSource _initializationStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _disconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<WorkerInitResponse> _initializationResponse = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         internal string WorkerId { get; } = workerId;
 
-        internal TaskCompletionSource InitRequest { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal Task InitializationStarted => _initializationStarted.Task;
 
-        internal TaskCompletionSource StreamClosed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal Task Disconnected => _disconnected.Task;
 
-        internal TaskCompletionSource<WorkerInitResponse> InitResponse { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal void CompleteInitialization()
+            => _initializationResponse.SetResult(new WorkerInitResponse { Result = new StatusResult { Status = StatusResult.Types.Status.Success } });
 
-        internal Task InitReceived => InitRequest.Task;
-
-        internal Task Disconnected => StreamClosed.Task;
-
-        internal void Succeed()
-            => InitResponse.SetResult(new WorkerInitResponse { Result = new StatusResult { Status = StatusResult.Types.Status.Success } });
-
-        internal void Fail(string detail)
-            => InitResponse.SetResult(new WorkerInitResponse
+        internal void FailInitialization(string detail)
+            => _initializationResponse.SetResult(new WorkerInitResponse
             {
                 Result = new StatusResult
                 {
@@ -110,13 +121,21 @@ internal sealed class WorkerLinkTestRpcServer : IAsyncDisposable
                     Exception = new() { Message = detail, StackTrace = detail },
                 },
             });
+
+        internal Task<WorkerInitResponse> GetInitializationResponseAsync(CancellationToken cancellationToken)
+        {
+            _initializationStarted.TrySetResult();
+            return _initializationResponse.Task.WaitAsync(cancellationToken);
+        }
+
+        internal void MarkDisconnected() => _disconnected.TrySetResult();
     }
 
     private sealed class TestFunctionRpcService : FunctionRpc.FunctionRpcBase
     {
         private int _streamCount;
 
-        internal ConcurrentQueue<Handshake> Handshakes { get; } = new();
+        internal ConcurrentQueue<TestWorker> Workers { get; } = new();
 
         internal int StreamCount => Volatile.Read(ref _streamCount);
 
@@ -124,7 +143,7 @@ internal sealed class WorkerLinkTestRpcServer : IAsyncDisposable
             IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
         {
             Interlocked.Increment(ref _streamCount);
-            if (!Handshakes.TryDequeue(out Handshake? handshake))
+            if (!Workers.TryDequeue(out TestWorker? worker))
             {
                 throw new Grpc.Core.RpcException(new Status(StatusCode.FailedPrecondition, "Unexpected test worker connection."));
             }
@@ -133,7 +152,7 @@ internal sealed class WorkerLinkTestRpcServer : IAsyncDisposable
             {
                 await responseStream.WriteAsync(new StreamingMessage
                 {
-                    StartStream = new StartStream { WorkerId = handshake.WorkerId },
+                    StartStream = new StartStream { WorkerId = worker.WorkerId },
                 });
 
                 while (await requestStream.MoveNext(context.CancellationToken))
@@ -141,8 +160,7 @@ internal sealed class WorkerLinkTestRpcServer : IAsyncDisposable
                     StreamingMessage request = requestStream.Current;
                     if (request.ContentCase is StreamingMessage.ContentOneofCase.WorkerInitRequest)
                     {
-                        handshake.InitRequest.TrySetResult();
-                        WorkerInitResponse response = await handshake.InitResponse.Task.WaitAsync(context.CancellationToken);
+                        WorkerInitResponse response = await worker.GetInitializationResponseAsync(context.CancellationToken);
                         await responseStream.WriteAsync(new StreamingMessage
                         {
                             RequestId = request.RequestId,
@@ -156,7 +174,7 @@ internal sealed class WorkerLinkTestRpcServer : IAsyncDisposable
             }
             finally
             {
-                handshake.StreamClosed.TrySetResult();
+                worker.MarkDisconnected();
             }
         }
     }

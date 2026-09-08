@@ -103,7 +103,10 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
         }
     }
 
-    internal PendingRequest Put(string? json, CancellationToken cancellationToken)
+    internal Task<HttpResponseMessage> PutAsync(string? json, CancellationToken cancellationToken)
+        => SendAsync(null, json, cancellationToken);
+
+    internal PendingRequest BeginPut(string? json, CancellationToken cancellationToken)
     {
         string requestId = Guid.NewGuid().ToString("N");
         PendingRequest pending = new();
@@ -164,10 +167,14 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
         services.AddSingleton(Mock.Of<IMetricsLogger>());
     }
 
-    private async Task<HttpResponseMessage> SendAsync(string requestId, string? json, CancellationToken cancellationToken)
+    private async Task<HttpResponseMessage> SendAsync(string? requestId, string? json, CancellationToken cancellationToken)
     {
         using HttpRequestMessage request = new(HttpMethod.Put, "/admin/workers");
-        request.Headers.Add(RequestIdHeader, requestId);
+        if (requestId is not null)
+        {
+            request.Headers.Add(RequestIdHeader, requestId);
+        }
+
         request.Content = new StringContent(json ?? string.Empty, Encoding.UTF8, "application/json");
 
         return await Client.SendAsync(request, cancellationToken);

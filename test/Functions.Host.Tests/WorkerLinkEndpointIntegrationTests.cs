@@ -22,51 +22,66 @@ public sealed class WorkerLinkEndpointIntegrationTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Fact]
-    public async Task Put_ValidRequest_WaitsForInitializationAndExactRetryReusesStream()
+    public async Task Put_ValidRequest_ReturnsLinkedAndExactRetryReusesStream()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
-        WorkerLinkTestRpcServer.Handshake handshake = worker.Enqueue(WorkerId);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        server.AddWorker(WorkerId);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
+        string requestJson = LinkJson(server.Endpoint);
 
-        WorkerLinkTestHost.PendingRequest request = host.Put(LinkJson(worker.Endpoint), timeout.Token);
-        await request.WaitForProgressAsync(handshake.InitReceived, timeout.Token);
+        using HttpResponseMessage response = await host.PutAsync(requestJson, timeout.Token);
 
-        Assert.False(request.Response.IsCompleted);
-        Assert.Equal(1, worker.StreamCount);
-
-        handshake.Succeed();
-        using HttpResponseMessage response = await request.Response.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(response, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
+        Assert.Equal(1, server.StreamCount);
 
-        using HttpResponseMessage retry = await host.Put(LinkJson(worker.Endpoint), timeout.Token).Response.WaitAsync(timeout.Token);
+        using HttpResponseMessage retry = await host.PutAsync(requestJson, timeout.Token);
         await AssertLinkResponseAsync(retry, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
-        Assert.Equal(1, worker.StreamCount);
+        Assert.Equal(1, server.StreamCount);
     }
 
     [Fact]
-    public async Task Put_ConcurrentExactRetry_SharesPendingHandshake()
+    public async Task Put_PendingInitialization_WaitsBeforeReturningLinked()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
-        WorkerLinkTestRpcServer.Handshake handshake = worker.Enqueue(WorkerId);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        var worker = server.AddPendingWorker(WorkerId);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
 
-        WorkerLinkTestHost.PendingRequest original = host.Put(LinkJson(worker.Endpoint), timeout.Token);
-        await original.WaitForProgressAsync(handshake.InitReceived, timeout.Token);
-        WorkerLinkTestHost.PendingRequest retry = host.Put(LinkJson(worker.Endpoint), timeout.Token);
+        var request = host.BeginPut(LinkJson(server.Endpoint), timeout.Token);
+        await request.WaitForProgressAsync(worker.InitializationStarted, timeout.Token);
+
+        Assert.False(request.Response.IsCompleted);
+
+        worker.CompleteInitialization();
+        using HttpResponseMessage response = await request.Response.WaitAsync(timeout.Token);
+        await AssertLinkResponseAsync(response, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
+    }
+
+    [Fact]
+    public async Task Put_ConcurrentExactRetry_SharesPendingInitialization()
+    {
+        using var timeout = new CancellationTokenSource(TestTimeout);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        var worker = server.AddPendingWorker(WorkerId);
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
+        string requestJson = LinkJson(server.Endpoint);
+
+        var original = host.BeginPut(requestJson, timeout.Token);
+        await original.WaitForProgressAsync(worker.InitializationStarted, timeout.Token);
+        var retry = host.BeginPut(requestJson, timeout.Token);
         await retry.WaitForProgressAsync(retry.ActionInvoked, timeout.Token);
 
         Assert.False(original.Response.IsCompleted);
         Assert.False(retry.Response.IsCompleted);
-        Assert.Equal(1, worker.StreamCount);
+        Assert.Equal(1, server.StreamCount);
 
-        handshake.Succeed();
+        worker.CompleteInitialization();
         using HttpResponseMessage originalResponse = await original.Response.WaitAsync(timeout.Token);
         using HttpResponseMessage retryResponse = await retry.Response.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(originalResponse, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
         await AssertLinkResponseAsync(retryResponse, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
-        Assert.Equal(1, worker.StreamCount);
+        Assert.Equal(1, server.StreamCount);
     }
 
     [Theory]
@@ -76,36 +91,35 @@ public sealed class WorkerLinkEndpointIntegrationTests
     {
         const string secondWorkerId = "worker-pod-def456";
         using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestRpcServer firstWorker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
-        await using WorkerLinkTestRpcServer otherEndpoint = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
-        WorkerLinkTestRpcServer secondWorker = shareEndpoint ? firstWorker : otherEndpoint;
-        WorkerLinkTestRpcServer.Handshake firstHandshake = firstWorker.Enqueue(WorkerId);
-        WorkerLinkTestRpcServer.Handshake secondHandshake = secondWorker.Enqueue(secondWorkerId);
+        await using FakeWorkerProxyGrpcServer firstServer = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        await using FakeWorkerProxyGrpcServer otherEndpoint = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        FakeWorkerProxyGrpcServer secondServer = shareEndpoint ? firstServer : otherEndpoint;
+        var firstWorker = firstServer.AddPendingWorker(WorkerId);
+        var secondWorker = secondServer.AddPendingWorker(secondWorkerId);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
 
-        WorkerLinkTestHost.PendingRequest first = host.Put(LinkJson(firstWorker.Endpoint), timeout.Token);
-        await first.WaitForProgressAsync(firstHandshake.InitReceived, timeout.Token);
-        WorkerLinkTestHost.PendingRequest second = host.Put(LinkJson(secondWorker.Endpoint, secondWorkerId), timeout.Token);
-        await second.WaitForProgressAsync(secondHandshake.InitReceived, timeout.Token);
+        var first = host.BeginPut(LinkJson(firstServer.Endpoint), timeout.Token);
+        await first.WaitForProgressAsync(firstWorker.InitializationStarted, timeout.Token);
+        var second = host.BeginPut(LinkJson(secondServer.Endpoint, secondWorkerId), timeout.Token);
+        await second.WaitForProgressAsync(secondWorker.InitializationStarted, timeout.Token);
 
         Assert.False(first.Response.IsCompleted);
         Assert.False(second.Response.IsCompleted);
-        Assert.Equal(2, firstWorker.StreamCount + otherEndpoint.StreamCount);
+        Assert.Equal(2, firstServer.StreamCount + otherEndpoint.StreamCount);
 
-        secondHandshake.Succeed();
+        secondWorker.CompleteInitialization();
         using HttpResponseMessage secondResponse = await second.Response.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(secondResponse, HttpStatusCode.OK, secondWorkerId, "Linked", timeout.Token);
         Assert.False(first.Response.IsCompleted);
 
-        firstHandshake.Succeed();
+        firstWorker.CompleteInitialization();
         using HttpResponseMessage firstResponse = await first.Response.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(firstResponse, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
-        using HttpResponseMessage firstReplay = await host.Put(LinkJson(firstWorker.Endpoint), timeout.Token).Response.WaitAsync(timeout.Token);
-        using HttpResponseMessage secondReplay = await host.Put(
-            LinkJson(secondWorker.Endpoint, secondWorkerId), timeout.Token).Response.WaitAsync(timeout.Token);
+        using HttpResponseMessage firstReplay = await host.PutAsync(LinkJson(firstServer.Endpoint), timeout.Token);
+        using HttpResponseMessage secondReplay = await host.PutAsync(LinkJson(secondServer.Endpoint, secondWorkerId), timeout.Token);
         await AssertLinkResponseAsync(firstReplay, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
         await AssertLinkResponseAsync(secondReplay, HttpStatusCode.OK, secondWorkerId, "Linked", timeout.Token);
-        Assert.Equal(shareEndpoint ? 2 : 1, firstWorker.StreamCount);
+        Assert.Equal(shareEndpoint ? 2 : 1, firstServer.StreamCount);
         Assert.Equal(shareEndpoint ? 0 : 1, otherEndpoint.StreamCount);
     }
 
@@ -116,22 +130,23 @@ public sealed class WorkerLinkEndpointIntegrationTests
     {
         const string privateWorkerError = "private-worker-path-and-secret-do-not-return";
         using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
-        WorkerLinkTestRpcServer.Handshake rejected = worker.Enqueue(WorkerId);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        var worker = server.AddPendingWorker(WorkerId);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
+        string requestJson = LinkJson(server.Endpoint);
 
-        WorkerLinkTestHost.PendingRequest request = host.Put(LinkJson(worker.Endpoint), timeout.Token);
-        await request.WaitForProgressAsync(rejected.InitReceived, timeout.Token);
+        var request = host.BeginPut(requestJson, timeout.Token);
+        await request.WaitForProgressAsync(worker.InitializationStarted, timeout.Token);
         WorkerLinkTestHost.PendingRequest? duplicate = null;
         if (concurrentRetry)
         {
-            duplicate = host.Put(LinkJson(worker.Endpoint), timeout.Token);
+            duplicate = host.BeginPut(requestJson, timeout.Token);
             await duplicate.WaitForProgressAsync(duplicate.ActionInvoked, timeout.Token);
             Assert.False(duplicate.Response.IsCompleted);
         }
 
-        Assert.Equal(1, worker.StreamCount);
-        rejected.Fail(privateWorkerError);
+        Assert.Equal(1, server.StreamCount);
+        worker.FailInitialization(privateWorkerError);
 
         using HttpResponseMessage failure = await request.Response.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(failure, HttpStatusCode.ServiceUnavailable, WorkerId, "LinkFailed", timeout.Token);
@@ -143,95 +158,94 @@ public sealed class WorkerLinkEndpointIntegrationTests
             Assert.DoesNotContain(privateWorkerError, await duplicateFailure.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
         }
 
-        await rejected.Disconnected.WaitAsync(timeout.Token);
+        await worker.Disconnected.WaitAsync(timeout.Token);
 
-        WorkerLinkTestRpcServer.Handshake accepted = worker.Enqueue(WorkerId);
-        accepted.Succeed();
-        using HttpResponseMessage retry = await host.Put(LinkJson(worker.Endpoint), timeout.Token).Response.WaitAsync(timeout.Token);
+        server.AddWorker(WorkerId);
+        using HttpResponseMessage retry = await host.PutAsync(requestJson, timeout.Token);
 
         await AssertLinkResponseAsync(retry, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
-        Assert.True(accepted.InitReceived.IsCompletedSuccessfully);
-        Assert.Equal(2, worker.StreamCount);
+        Assert.Equal(2, server.StreamCount);
     }
 
     [Fact]
     public async Task Put_SameWorkerWithConflictingEndpoint_ReturnsConflictWithoutDialing()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
-        await using WorkerLinkTestRpcServer otherEndpoint = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
-        WorkerLinkTestRpcServer.Handshake handshake = worker.Enqueue(WorkerId);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        await using FakeWorkerProxyGrpcServer otherEndpoint = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        var worker = server.AddPendingWorker(WorkerId);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
 
-        WorkerLinkTestHost.PendingRequest original = host.Put(LinkJson(worker.Endpoint), timeout.Token);
-        await original.WaitForProgressAsync(handshake.InitReceived, timeout.Token);
+        var original = host.BeginPut(LinkJson(server.Endpoint), timeout.Token);
+        await original.WaitForProgressAsync(worker.InitializationStarted, timeout.Token);
         string conflictJson = LinkJson(otherEndpoint.Endpoint);
 
-        using HttpResponseMessage pendingConflict = await host.Put(conflictJson, timeout.Token).Response.WaitAsync(timeout.Token);
+        using HttpResponseMessage pendingConflict = await host.PutAsync(conflictJson, timeout.Token);
         await AssertLinkResponseAsync(pendingConflict, HttpStatusCode.Conflict, WorkerId, "LinkFailed", timeout.Token);
         Assert.False(original.Response.IsCompleted);
-        Assert.Equal(1, worker.StreamCount);
+        Assert.Equal(1, server.StreamCount);
         Assert.Equal(0, otherEndpoint.StreamCount);
 
-        handshake.Succeed();
+        worker.CompleteInitialization();
         using HttpResponseMessage linked = await original.Response.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(linked, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
 
-        using HttpResponseMessage linkedConflict = await host.Put(conflictJson, timeout.Token).Response.WaitAsync(timeout.Token);
+        using HttpResponseMessage linkedConflict = await host.PutAsync(conflictJson, timeout.Token);
         await AssertLinkResponseAsync(linkedConflict, HttpStatusCode.Conflict, WorkerId, "LinkFailed", timeout.Token);
-        Assert.Equal(1, worker.StreamCount);
+        Assert.Equal(1, server.StreamCount);
         Assert.Equal(0, otherEndpoint.StreamCount);
     }
 
     [Fact]
-    public async Task Put_CanceledHandshake_CleansAttemptAndAllowsRetry()
+    public async Task Put_CanceledInitialization_CleansAttemptAndAllowsRetry()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
-        WorkerLinkTestRpcServer.Handshake canceled = worker.Enqueue(WorkerId);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        var worker = server.AddPendingWorker(WorkerId);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
+        string requestJson = LinkJson(server.Endpoint);
 
-        WorkerLinkTestHost.PendingRequest request = host.Put(LinkJson(worker.Endpoint), cancellation.Token);
-        await request.WaitForProgressAsync(canceled.InitReceived, timeout.Token);
+        var request = host.BeginPut(requestJson, cancellation.Token);
+        await request.WaitForProgressAsync(worker.InitializationStarted, timeout.Token);
         cancellation.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => request.Response.WaitAsync(timeout.Token));
         await request.ActionCompleted.WaitAsync(timeout.Token);
-        await canceled.Disconnected.WaitAsync(timeout.Token);
+        await worker.Disconnected.WaitAsync(timeout.Token);
 
-        WorkerLinkTestRpcServer.Handshake accepted = worker.Enqueue(WorkerId);
-        accepted.Succeed();
-        using HttpResponseMessage retry = await host.Put(LinkJson(worker.Endpoint), timeout.Token).Response.WaitAsync(timeout.Token);
+        server.AddWorker(WorkerId);
+        using HttpResponseMessage retry = await host.PutAsync(requestJson, timeout.Token);
 
         await AssertLinkResponseAsync(retry, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
-        Assert.Equal(2, worker.StreamCount);
+        Assert.Equal(2, server.StreamCount);
     }
 
     [Fact]
-    public async Task Put_CanceledExactRetry_DoesNotCancelOriginalHandshake()
+    public async Task Put_CanceledExactRetry_DoesNotCancelOriginalInitialization()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
-        WorkerLinkTestRpcServer.Handshake handshake = worker.Enqueue(WorkerId);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        var worker = server.AddPendingWorker(WorkerId);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
+        string requestJson = LinkJson(server.Endpoint);
 
-        WorkerLinkTestHost.PendingRequest original = host.Put(LinkJson(worker.Endpoint), timeout.Token);
-        await original.WaitForProgressAsync(handshake.InitReceived, timeout.Token);
-        WorkerLinkTestHost.PendingRequest retry = host.Put(LinkJson(worker.Endpoint), cancellation.Token);
+        var original = host.BeginPut(requestJson, timeout.Token);
+        await original.WaitForProgressAsync(worker.InitializationStarted, timeout.Token);
+        var retry = host.BeginPut(requestJson, cancellation.Token);
         await retry.WaitForProgressAsync(retry.ActionInvoked, timeout.Token);
         cancellation.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => retry.Response.WaitAsync(timeout.Token));
         await retry.ActionCompleted.WaitAsync(timeout.Token);
         Assert.False(original.Response.IsCompleted);
-        Assert.False(handshake.Disconnected.IsCompleted);
+        Assert.False(worker.Disconnected.IsCompleted);
 
-        handshake.Succeed();
+        worker.CompleteInitialization();
         using HttpResponseMessage response = await original.Response.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(response, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
-        Assert.Equal(1, worker.StreamCount);
+        Assert.Equal(1, server.StreamCount);
     }
 
     [Theory]
@@ -247,50 +261,49 @@ public sealed class WorkerLinkEndpointIntegrationTests
     public async Task Put_InvalidRequest_ReturnsBadRequestWithoutDialing(string? json)
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
 
-        using HttpResponseMessage response = await host.Put(
-            json?.Replace("{endpoint}", worker.Endpoint.AbsoluteUri, StringComparison.Ordinal),
-            timeout.Token).Response.WaitAsync(timeout.Token);
+        using HttpResponseMessage response = await host.PutAsync(
+            json?.Replace("{endpoint}", server.Endpoint.AbsoluteUri, StringComparison.Ordinal), timeout.Token);
 
         await ReadValidationErrorsAsync(response, timeout.Token);
-        Assert.Equal(0, worker.StreamCount);
+        Assert.Equal(0, server.StreamCount);
     }
 
     [Fact]
     public async Task Put_EmptyObject_ReturnsBothRequiredFieldErrors()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
 
-        using HttpResponseMessage response = await host.Put("{}", timeout.Token).Response.WaitAsync(timeout.Token);
+        using HttpResponseMessage response = await host.PutAsync("{}", timeout.Token);
         JsonElement[] errors = await ReadValidationErrorsAsync(response, timeout.Token);
 
         Assert.Equal(
             [("workerPodName", "Required"), ("workerGrpcEndpoint", "Required")],
             errors.Select(error => (error.GetProperty("target").GetString(), error.GetProperty("code").GetString())));
-        Assert.Equal(0, worker.StreamCount);
+        Assert.Equal(0, server.StreamCount);
     }
 
     [Fact]
     public async Task Put_MultipleInvalidFields_ReturnsAllErrors()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
         const string json = """
             {"workerPodName":" ","workerGrpcEndpoint":"relative/grpc","workerHttpEndpoint":"relative/http"}
             """;
 
-        using HttpResponseMessage response = await host.Put(json, timeout.Token).Response.WaitAsync(timeout.Token);
+        using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
         JsonElement[] errors = await ReadValidationErrorsAsync(response, timeout.Token);
 
         Assert.Equal(
             [("workerPodName", "Required"), ("workerGrpcEndpoint", "InvalidEndpoint"), ("workerHttpEndpoint", "InvalidEndpoint")],
             errors.Select(error => (error.GetProperty("target").GetString(), error.GetProperty("code").GetString())));
-        Assert.Equal(0, worker.StreamCount);
+        Assert.Equal(0, server.StreamCount);
     }
 
     [Theory]
@@ -304,16 +317,16 @@ public sealed class WorkerLinkEndpointIntegrationTests
     public async Task Put_UnbindableBody_ReturnsSafeRequestError(string? json)
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
 
-        using HttpResponseMessage response = await host.Put(json, timeout.Token).Response.WaitAsync(timeout.Token);
+        using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
         JsonElement error = Assert.Single(await ReadValidationErrorsAsync(response, timeout.Token));
 
         Assert.Equal("InvalidBody", error.GetProperty("code").GetString());
         Assert.Equal("request", error.GetProperty("target").GetString());
         Assert.DoesNotContain("do-not-echo", await response.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
-        Assert.Equal(0, worker.StreamCount);
+        Assert.Equal(0, server.StreamCount);
     }
 
     [Fact]
@@ -331,13 +344,13 @@ public sealed class WorkerLinkEndpointIntegrationTests
     public async Task Put_WithoutComputeComposition_DoesNotExposeWorkerRoute()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        await using WorkerLinkTestRpcServer worker = await WorkerLinkTestRpcServer.StartAsync(timeout.Token);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, includeCompute: false);
 
-        using HttpResponseMessage response = await host.Put(LinkJson(worker.Endpoint), timeout.Token).Response.WaitAsync(timeout.Token);
+        using HttpResponseMessage response = await host.PutAsync(LinkJson(server.Endpoint), timeout.Token);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal(0, worker.StreamCount);
+        Assert.Equal(0, server.StreamCount);
     }
 
     private static string LinkJson(Uri endpoint, string workerId = WorkerId)
