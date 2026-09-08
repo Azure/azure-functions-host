@@ -3,6 +3,7 @@
 
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -23,6 +24,19 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         AssertSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>(services);
         AssertSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>(services);
         AssertSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>(services);
+    }
+
+    [Fact]
+    public void AddRpcClientScriptHostServices_RegistersDispatcherFactoryAsSingleton()
+    {
+        ServiceCollection services = new();
+
+        IServiceCollection result = services.AddRpcClientScriptHostServices();
+        services.AddRpcClientScriptHostServices();
+
+        Assert.Same(services, result);
+        AssertSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>(services);
+        AssertSingleton<IFunctionInvocationDispatcherFactory, RpcClientFunctionInvocationDispatcherFactory>(services);
     }
 
     private static void AssertSingleton<TService, TImplementation>(IServiceCollection services)

@@ -355,6 +355,15 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
                 try
                 {
+                    removedChannel.Shutdown(terminalException);
+                }
+                catch (Exception exception)
+                {
+                    Log.ChannelShutdownFailed(_logger, exception, workerId);
+                }
+
+                try
+                {
                     await removedChannel.DisposeAsync();
                 }
                 catch (Exception exception)
@@ -451,5 +460,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         [LoggerMessage(3, LogLevel.Error, "Failed to remove the completed FunctionRpc channel for worker {WorkerId}.")]
         public static partial void ChannelRemovalFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(4, LogLevel.Error, "Failed to shut down the completed FunctionRpc channel for worker {WorkerId}.")]
+        public static partial void ChannelShutdownFailed(ILogger logger, Exception exception, string workerId);
     }
 }
