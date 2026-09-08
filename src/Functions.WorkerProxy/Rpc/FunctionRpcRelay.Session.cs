@@ -9,7 +9,7 @@ using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 
-namespace Azure.Functions.WorkerProxy;
+namespace Azure.Functions.WorkerProxy.Rpc;
 
 internal sealed partial class FunctionRpcRelay
 {

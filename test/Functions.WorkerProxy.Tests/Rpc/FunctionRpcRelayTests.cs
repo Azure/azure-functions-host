@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Rpc;
 using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Net.Client;

@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
