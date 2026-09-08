@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script.Composition;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Azure.Functions.Host;
@@ -10,10 +12,6 @@ namespace Azure.Functions.Host;
 /// <summary>
 /// Defines the Client-backed worker composition for the separate Functions Host.
 /// </summary>
-/// <remarks>
-/// Client-backed registrations land in later milestones. The throwing methods make the intentionally incomplete
-/// boundary visible until those registrations are supplied.
-/// </remarks>
 internal sealed class ClientWorkerComposition : IWorkerComposition
 {
     private ClientWorkerComposition()
@@ -24,11 +22,18 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
 
     public void ConfigureWebHostServices(IServiceCollection services, IMvcBuilder mvcBuilder)
     {
-        throw new NotImplementedException("Client WebHost worker composition is not implemented.");
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(mvcBuilder);
+
+        services.AddRpcClientServices();
+        services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
     }
 
     public void ConfigureScriptHostServices(IServiceCollection services, IServiceProvider rootServiceProvider)
     {
-        throw new NotImplementedException("Client ScriptHost worker composition is not implemented.");
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(rootServiceProvider);
+
+        services.AddRpcClientScriptHostServices(rootServiceProvider);
     }
 }

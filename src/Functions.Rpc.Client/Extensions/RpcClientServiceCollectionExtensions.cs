@@ -2,50 +2,77 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Registers the Client transport and channel lifecycle for isolated tests.
+/// Registers the Client worker service graph.
 /// </summary>
-/// <remarks>Production composition must remain absent until compute composition explicitly consumes these registrations.</remarks>
-internal static class RpcClientServiceCollectionExtensions
+public static class RpcClientServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds the Client lifecycle as root-container singletons.
+    /// Adds the root-owned Client transport, channel factory, registry, and metadata services.
     /// </summary>
     /// <param name="services">The service collection to update.</param>
     /// <returns>The supplied service collection.</returns>
-    internal static IServiceCollection AddRpcClientServices(this IServiceCollection services)
+    public static IServiceCollection AddRpcClientServices(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ThrowIfRegistered<IRpcClientFactory>(services, nameof(AddRpcClientServices));
 
-        services.TryAddSingleton<IRpcClientFactory, RpcClientFactory>();
-        services.TryAddSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>();
-        services.TryAddSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>();
-        services.TryAddSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>();
+        services.AddDefaultHttpProxyService();
+        services.AddSingleton<IRpcClientFactory, RpcClientFactory>();
+        services.AddSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>();
+        services.AddSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>();
+        services.AddSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>();
+        services.AddSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>();
 
         return services;
     }
 
     /// <summary>
-    /// Adds Client services owned by one ScriptHost child container.
+    /// Adds Client services owned by one ScriptHost child container while borrowing the root-owned channel registry.
     /// </summary>
     /// <param name="services">The service collection to update.</param>
+    /// <param name="rootServiceProvider">The root provider that owns the Client channel registry.</param>
     /// <returns>The supplied service collection.</returns>
-    internal static IServiceCollection AddRpcClientScriptHostServices(this IServiceCollection services)
+    public static IServiceCollection AddRpcClientScriptHostServices(
+        this IServiceCollection services,
+        IServiceProvider rootServiceProvider)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(rootServiceProvider);
+        ThrowIfRegistered<IRpcClientFunctionInvocationDispatcher>(services, nameof(AddRpcClientScriptHostServices));
 
-        services.TryAddSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>();
-        services.TryAddSingleton<IFunctionInvocationDispatcherFactory, RpcClientFunctionInvocationDispatcherFactory>();
-        services.TryAddSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>();
+        IWorkerChannelRegistry channelRegistry = rootServiceProvider.GetService<IWorkerChannelRegistry>()
+            ?? throw new InvalidOperationException(
+                $"The root service provider must be configured with {nameof(AddRpcClientServices)} before configuring ScriptHost services.");
+        IWorkerFunctionMetadataProvider metadataProvider = rootServiceProvider.GetService<IWorkerFunctionMetadataProvider>()
+            ?? throw new InvalidOperationException(
+                $"The root service provider must be configured with {nameof(AddRpcClientServices)} before configuring ScriptHost services.");
+
+        // ScriptHost children borrow these root-owned instances so child disposal cannot tear down linked channels or
+        // fork the metadata cache used by the root metadata manager.
+        services.AddSingleton(channelRegistry);
+        services.AddSingleton(metadataProvider);
+        services.AddSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>();
+        services.AddSingleton<IFunctionInvocationDispatcherFactory, RpcClientFunctionInvocationDispatcherFactory>();
+        services.AddSingleton<IScriptHostWorkerManager, RpcClientScriptHostWorkerManager>();
+        services.AddRpcScriptHostCoreServices();
 
         return services;
+    }
+
+    private static void ThrowIfRegistered<TService>(IServiceCollection services, string registrationMethod)
+    {
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(TService)))
+        {
+            throw new InvalidOperationException($"{registrationMethod} has already been called for this service collection.");
+        }
     }
 }
