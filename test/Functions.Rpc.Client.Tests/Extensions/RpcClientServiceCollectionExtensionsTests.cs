@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,6 +38,7 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         Assert.Same(services, result);
         AssertSingleton<IRpcClientFunctionInvocationDispatcher, RpcClientFunctionInvocationDispatcher>(services);
         AssertSingleton<IFunctionInvocationDispatcherFactory, RpcClientFunctionInvocationDispatcherFactory>(services);
+        AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
     }
 
     private static void AssertSingleton<TService, TImplementation>(IServiceCollection services)

@@ -35,10 +35,10 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
 
     internal TestDuplexChannel<StreamingMessage> Transport { get; }
 
-    internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId)
+    internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId, IScriptEventManager eventManager = null)
     {
         TestDuplexChannel<StreamingMessage> transport = new();
-        RpcClientWorkerChannel channel = CreateFactory().Create(workerId, transport);
+        RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager()).Create(workerId, transport);
         Task start = channel.StartAsync(CancellationToken.None);
 
         await transport.SendResponseAsync(new()
@@ -119,7 +119,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
 
     public ValueTask DisposeAsync() => Channel.DisposeAsync();
 
-    private static RpcClientWorkerChannelFactory CreateFactory()
+    private static RpcClientWorkerChannelFactory CreateFactory(IScriptEventManager eventManager)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -133,7 +133,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             .Returns(true);
 
         return new(
-            new ScriptEventManager(),
+            eventManager,
             hostManager.Object,
             Mock.Of<IEnvironment>(),
             NullLoggerFactory.Instance,

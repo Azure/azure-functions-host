@@ -252,6 +252,24 @@ public sealed class WorkerChannelRegistryTests
     }
 
     [Fact]
+    public async Task Completion_DuringMetadataRequest_FailsProvider()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker");
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        await LinkAsync(registry, "worker");
+        RpcClientWorkerFunctionMetadataProvider provider = new(
+            registry, NullLogger<RpcClientWorkerFunctionMetadataProvider>.Instance, Mock.Of<IWorkerRuntimeResolver>());
+        Task<FunctionMetadataResult> metadata = provider.GetFunctionMetadataAsync([]);
+
+        channel.Complete();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => metadata.WaitAsync(TestTimeout));
+        Assert.False(registry.TryGetInitializedChannel("worker", out _));
+    }
+
+    [Fact]
     public async Task UnlinkAsync_RejectsRelinkUntilCleanupCompletes()
     {
         RegistryHarness harness = new();
