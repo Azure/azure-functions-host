@@ -396,6 +396,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             catch (Exception ex)
             {
                 _workerInitTask.TrySetException(ex);
+                OnChannelFailure(ex);
                 _workerChannelLogger.LogError(ex, "Error processing inbound messages");
             }
             finally
@@ -1148,8 +1149,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 });
             }
 
-            // set it as task result because we cannot directly return from SendWorkerMetadataRequest
-            _functionsIndexingTask.SetResult(functions);
+            // Client channel failure can complete the pending request before a response arrives.
+            _functionsIndexingTask.TrySetResult(functions);
         }
 
         private async Task<object> GetBindingDataAsync(ParameterBinding binding, string invocationId)
@@ -1467,11 +1468,37 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void HandleWorkerMetadataRequestError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Requesting metadata from worker failed.");
+            OnMetadataRequestError(exc);
+        }
+
+        /// <summary>
+        /// Reports a metadata request failure through the worker-error event by default.
+        /// </summary>
+        /// <param name="exception">The metadata request failure.</param>
+        protected virtual void OnMetadataRequestError(Exception exception)
+        {
             if (_disposing || _disposed)
             {
                 return;
             }
-            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exception));
+        }
+
+        /// <summary>
+        /// Allows derived channels to complete topology-specific operations when transport or shutdown fails.
+        /// </summary>
+        /// <param name="exception">The channel failure.</param>
+        protected virtual void OnChannelFailure(Exception exception)
+        {
+        }
+
+        /// <summary>
+        /// Fails the pending metadata request without replacing an existing result or failure.
+        /// </summary>
+        /// <param name="exception">The metadata request failure.</param>
+        protected void FailPendingMetadataRequest(Exception exception)
+        {
+            _functionsIndexingTask.TrySetException(exception);
         }
 
         private void HandleWorkerWarmupError(Exception exc)
@@ -1678,6 +1705,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public void Shutdown(Exception workerException)
         {
             TryFailPendingReload(workerException);
+            if (workerException is not null)
+            {
+                OnChannelFailure(workerException);
+            }
 
             var shutdownException = workerException;
 

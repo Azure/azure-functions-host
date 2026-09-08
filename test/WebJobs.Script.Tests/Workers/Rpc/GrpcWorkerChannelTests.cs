@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Channels;
@@ -989,6 +990,70 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.Equal(functions[0].Metadata.Properties.Count, 4);
             Assert.Equal(functions[0].Metadata.Properties["worker.functionId"], "fn1");
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadata_MetadataRequestError_PublishesWorkerErrorWithoutCompletingMetadata()
+        {
+            await CreateDefaultWorkerChannel();
+            TaskCompletionSource<WorkerErrorEvent> workerError = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            using IDisposable subscription = _eventManager.OfType<WorkerErrorEvent>().Subscribe(error => workerError.TrySetResult(error));
+            Task<List<RawFunctionMetadata>> metadata = _workerChannel.GetFunctionMetadata();
+            TimeoutException expectedException = new("Metadata request timed out.");
+
+            _workerChannel.HandleWorkerMetadataRequestError(expectedException);
+
+            WorkerErrorEvent errorEvent = await workerError.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Same(expectedException, errorEvent.Exception);
+            Assert.Equal(_workerId, errorEvent.WorkerId);
+            Assert.False(metadata.IsCompleted);
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadata_ShutdownWithWorkerException_LeavesMetadataPending()
+        {
+            await CreateDefaultWorkerChannel();
+            Task<List<RawFunctionMetadata>> metadata = _workerChannel.GetFunctionMetadata();
+            WorkerProcessExitException expectedException = new("Language Worker Process exited.") { Pid = 910 };
+
+            _workerChannel.Shutdown(expectedException);
+
+            Assert.False(metadata.IsCompleted);
+
+            _workerChannel.ProcessFunctionMetadataResponses(new()
+            {
+                Result = new() { Status = StatusResult.Types.Status.Success },
+                UseDefaultMetadataIndexing = false,
+            });
+
+            Assert.Empty(await metadata.WaitAsync(TimeSpan.FromSeconds(3)));
+        }
+
+        [Fact]
+        public async Task Dispose_WithPendingMetadata_LeavesMetadataPending()
+        {
+            await CreateDefaultWorkerChannel();
+            Task<List<RawFunctionMetadata>> metadata = _workerChannel.GetFunctionMetadata();
+
+            _workerChannel.Dispose();
+
+            Assert.False(metadata.IsCompleted);
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadata_TransportFailure_LeavesMetadataPending()
+        {
+            await CreateDefaultWorkerChannel();
+            Task<List<RawFunctionMetadata>> metadata = _workerChannel.GetFunctionMetadata();
+
+            Assert.True(_serviceEndpoints.WorkerToHostWriter.TryComplete(new InvalidOperationException("Transport failed.")));
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(message =>
+                    string.Equals(message.FormattedMessage, "Error processing inbound messages", StringComparison.Ordinal)),
+                timeout: 3000,
+                pollingInterval: 50);
+
+            Assert.False(metadata.IsCompleted);
         }
 
         [Fact]

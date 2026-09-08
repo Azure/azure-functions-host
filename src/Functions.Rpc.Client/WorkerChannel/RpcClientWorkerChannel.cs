@@ -115,11 +115,21 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         return _startCompletion.Task.WaitAsync(cancellationToken);
     }
 
+    protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
+
+    protected override void OnChannelFailure(Exception exception) => FailPendingMetadataRequest(exception);
+
     protected override void Dispose(bool disposing)
     {
         lock (_lifecycleLock)
         {
             _lifecycleState = LifecycleState.Disposed;
+        }
+
+        if (disposing)
+        {
+            // Metadata callers did not request cancellation; fail so host startup can retry.
+            FailPendingMetadataRequest(new ObjectDisposedException(GetType().FullName));
         }
 
         base.Dispose(disposing);

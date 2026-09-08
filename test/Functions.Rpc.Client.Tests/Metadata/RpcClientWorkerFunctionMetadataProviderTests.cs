@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -82,6 +83,65 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
             () => provider.GetFunctionMetadataAsync([]).WaitAsync(TestTimeout));
 
         Assert.Contains("No client-backed worker channel initialized", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetFunctionMetadataAsync_MetadataRequestCanOutlastChannelWaitTimeout()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        _channels.Add(worker.Channel);
+        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider(TimeSpan.FromMilliseconds(50));
+
+        Task<FunctionMetadataResult> getMetadata = provider.GetFunctionMetadataAsync([]);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
+        await Task.Delay(TimeSpan.FromMilliseconds(250));
+        await worker.SendFunctionMetadataResponseAsync([CreateMetadata("HttpFunction", "function-id", HttpTriggerBinding)]);
+
+        Assert.Single((await getMetadata.WaitAsync(TestTimeout)).Functions);
+        _registry.Verify(registry => registry.UnlinkAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(0, worker.Transport.DisposeCount);
+    }
+
+    [Fact]
+    public async Task GetFunctionMetadataAsync_ChannelShutdownUnlinksChannel()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        _channels.Add(worker.Channel);
+        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider(TimeSpan.FromMilliseconds(50));
+
+        Task<FunctionMetadataResult> getMetadata = provider.GetFunctionMetadataAsync([]);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
+        Task<List<RawFunctionMetadata>> channelMetadata = worker.Channel.GetFunctionMetadata();
+        TimeoutException channelFailure = new("Metadata request timed out.");
+
+        worker.Channel.Shutdown(channelFailure);
+
+        TimeoutException exception = await Assert.ThrowsAsync<TimeoutException>(() => getMetadata.WaitAsync(TestTimeout));
+        Assert.Same(channelFailure, exception);
+        Assert.True(channelMetadata.IsFaulted);
+        Assert.Same(exception, await Assert.ThrowsAsync<TimeoutException>(() => channelMetadata));
+        _registry.Verify(registry => registry.UnlinkAsync("worker", It.IsAny<CancellationToken>()), Times.Once);
+        _registry.Verify(registry => registry.DisposeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetFunctionMetadataAsync_RequestErrorUnlinksWithoutPublishingWorkerError()
+    {
+        Mock<IScriptEventManager> eventManager = new();
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker", eventManager.Object);
+        _channels.Add(worker.Channel);
+        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider();
+        RpcFunctionMetadata metadata = CreateMetadata("HttpFunction", "function-id", HttpTriggerBinding);
+        metadata.RetryOptions = new() { RetryStrategy = (RpcRetryOptions.Types.RetryStrategy)(-1) };
+
+        Task<FunctionMetadataResult> getMetadata = provider.GetFunctionMetadataAsync([]);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
+        await worker.SendFunctionMetadataResponseAsync([metadata]);
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => getMetadata.WaitAsync(TestTimeout));
+        Assert.Equal("Unknown RetryStrategy RpcDataType: -1.", exception.Message);
+        _registry.Verify(registry => registry.UnlinkAsync("worker", It.IsAny<CancellationToken>()), Times.Once);
+        eventManager.Verify(manager => manager.Publish(It.IsAny<WorkerErrorEvent>()), Times.Never);
     }
 
     [Fact]
@@ -221,7 +281,9 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
         await failed.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
         InvalidOperationException transportFailure = new("transport failed");
         failed.Transport.CompleteResponses(transportFailure);
-        await Assert.ThrowsAnyAsync<Exception>(() => failedRequest.WaitAsync(TestTimeout));
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => failedRequest.WaitAsync(TestTimeout));
+        Assert.Same(transportFailure, exception);
 
         _channels.Clear();
         _channels.Add(replacement.Channel);
@@ -232,6 +294,27 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
         Assert.Equal("Recovered", Assert.Single((await replacementRequest.WaitAsync(TestTimeout)).Functions).Name);
         _registry.Verify(registry => registry.UnlinkAsync("failed", It.IsAny<CancellationToken>()), Times.Once);
         _registry.Verify(registry => registry.DisposeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetFunctionMetadataAsync_ChannelFailurePreservesUnlinkFailure()
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        _channels.Add(worker.Channel);
+        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider();
+        InvalidOperationException transportFailure = new("transport failed");
+        InvalidOperationException unlinkFailure = new("unlink failed");
+        _registry.Setup(registry => registry.UnlinkAsync("worker", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(unlinkFailure);
+
+        Task<FunctionMetadataResult> getMetadata = provider.GetFunctionMetadataAsync([]);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
+        worker.Transport.CompleteResponses(transportFailure);
+
+        AggregateException exception = await Assert.ThrowsAsync<AggregateException>(() => getMetadata.WaitAsync(TestTimeout));
+        Assert.Collection(exception.InnerExceptions,
+            failure => Assert.Same(transportFailure, failure),
+            failure => Assert.Same(unlinkFailure, failure));
     }
 
     private RpcClientWorkerFunctionMetadataProvider CreateProvider(TimeSpan? channelWaitTimeout = null)

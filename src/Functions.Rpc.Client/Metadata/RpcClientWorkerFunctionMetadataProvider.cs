@@ -80,7 +80,7 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
         List<RawFunctionMetadata> rawFunctions;
         try
         {
-            rawFunctions = await channel.GetFunctionMetadata().WaitAsync(_channelWaitTimeout);
+            rawFunctions = await channel.GetFunctionMetadata();
         }
         catch (Exception exception)
         {
