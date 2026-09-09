@@ -3,17 +3,14 @@
 
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
 using Xunit;
 
@@ -35,39 +32,9 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         AssertSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>(services);
         AssertSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>(services);
         AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
-        AssertSingleton<IWorkerLinker, WorkerLinker>(services);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => services.AddRpcClientServices());
         Assert.Contains(nameof(RpcClientServiceCollectionExtensions.AddRpcClientServices), exception.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task AddRpcClientServices_PublicLinkerResolvesSeparateSingletonUsingRegistry()
-    {
-        Uri endpoint = new("http://worker-proxy:50053");
-        Mock<IWorkerChannelRegistry> registry = new(MockBehavior.Strict);
-        registry.Setup(value => value.LinkAsync("worker", endpoint, It.Is<CancellationToken>(token => token.CanBeCanceled)))
-            .ReturnsAsync((WorkerChannel)null!);
-        ServiceCollection services = new();
-        services.AddRpcClientServices();
-        services.Replace(ServiceDescriptor.Singleton(registry.Object));
-        await using ServiceProvider provider = services.BuildServiceProvider();
-        using IServiceScope scope = provider.CreateScope();
-        IWorkerLinker linker = provider.GetRequiredService<IWorkerLinker>();
-
-        Assert.IsType<WorkerLinker>(linker);
-        Assert.NotSame(registry.Object, linker);
-        Assert.Same(registry.Object, provider.GetRequiredService<IWorkerChannelRegistry>());
-        Assert.Same(linker, provider.GetRequiredService<IWorkerLinker>());
-        Assert.Same(registry.Object, scope.ServiceProvider.GetRequiredService<IWorkerChannelRegistry>());
-        Assert.Same(linker, scope.ServiceProvider.GetRequiredService<IWorkerLinker>());
-        Assert.Single(provider.GetServices<IWorkerLinker>());
-        Assert.Single(provider.GetServices<IWorkerChannelRegistry>());
-
-        await linker.LinkAsync("worker", endpoint);
-
-        registry.Verify(value => value.LinkAsync("worker", endpoint, It.Is<CancellationToken>(token => token.CanBeCanceled)), Times.Once);
-        registry.VerifyNoOtherCalls();
     }
 
     [Fact]

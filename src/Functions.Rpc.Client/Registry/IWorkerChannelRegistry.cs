@@ -16,7 +16,7 @@ namespace Azure.Functions.Rpc.Client;
 /// An initialized channel has completed its transport connection and WorkerInit handshake. Invocation readiness remains
 /// a dispatcher concern. The registry owns disposal of returned channels.
 /// </remarks>
-internal interface IWorkerChannelRegistry : IAsyncDisposable
+public interface IWorkerChannelRegistry : IAsyncDisposable
 {
     /// <summary>
     /// Atomically admits one worker or reuses its matching pending or initialized link.

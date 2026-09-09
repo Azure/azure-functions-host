@@ -16,7 +16,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 public static class RpcClientServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds the root-owned Client transport, channel factory, registry, linker, and metadata services.
+    /// Adds the root-owned Client transport, channel factory, registry, and metadata services.
     /// </summary>
     /// <param name="services">The service collection to update.</param>
     /// <returns>The supplied service collection.</returns>
@@ -30,7 +30,6 @@ public static class RpcClientServiceCollectionExtensions
         services.AddSingleton<IDuplexChannelFactory<StreamingMessage>, FunctionRpcDuplexChannelFactory>();
         services.AddSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>();
         services.AddSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>();
-        services.AddSingleton<IWorkerLinker, WorkerLinker>();
         services.AddSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>();
 
         return services;

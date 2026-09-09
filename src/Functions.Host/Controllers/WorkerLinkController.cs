@@ -5,7 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Net.Http;
+using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerLink;
@@ -13,6 +17,8 @@ using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using GrpcException = Grpc.Core.RpcException;
+using WorkerRpcException = Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException;
 
 namespace Azure.Functions.Host.Controllers;
 
@@ -27,17 +33,25 @@ namespace Azure.Functions.Host.Controllers;
 public sealed partial class WorkerLinkController : Controller
 {
     private readonly ILogger<WorkerLinkController> _logger;
-    private readonly IWorkerLinker _workerLinker;
+    private readonly IWorkerChannelRegistry _registry;
+    private readonly TimeSpan _linkTimeout;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerLinkController"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
-    /// <param name="workerLinker">The worker link operation.</param>
-    public WorkerLinkController(ILogger<WorkerLinkController> logger, IWorkerLinker workerLinker)
+    /// <param name="registry">The registry that owns worker channels and link admission.</param>
+    public WorkerLinkController(ILogger<WorkerLinkController> logger, IWorkerChannelRegistry registry)
+        : this(logger, registry, TimeSpan.FromSeconds(30))
+    {
+    }
+
+    internal WorkerLinkController(ILogger<WorkerLinkController> logger, IWorkerChannelRegistry registry, TimeSpan linkTimeout)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _workerLinker = workerLinker ?? throw new ArgumentNullException(nameof(workerLinker));
+        _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
+        _linkTimeout = linkTimeout;
     }
 
     /// <summary>
@@ -104,7 +118,15 @@ public sealed partial class WorkerLinkController : Controller
     {
         try
         {
-            await _workerLinker.LinkAsync(workerPodName, grpcEndpoint, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            Task link = _registry.LinkAsync(workerPodName, grpcEndpoint, deadline.Token);
+            if (!link.IsCompleted)
+            {
+                deadline.CancelAfter(_linkTimeout);
+            }
+
+            await link;
             Log.LinkAccepted(_logger, workerPodName, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return Ok(new WorkerLinkResponse
@@ -115,24 +137,42 @@ public sealed partial class WorkerLinkController : Controller
         }
         catch (WorkerLinkException exception)
         {
-            int statusCode = exception.Reason is WorkerLinkFailureReason.Unavailable
-                ? StatusCodes.Status503ServiceUnavailable
-                : StatusCodes.Status409Conflict;
-            Log.LinkRejected(_logger, exception, workerPodName, exception.Reason.ToString(),
-                Stopwatch.GetElapsedTime(started).TotalMilliseconds);
-
-            return StatusCode(statusCode, new WorkerLinkResponse
-            {
-                WorkerPodName = workerPodName,
-                Status = WorkerLinkStatus.LinkFailed,
-                Detail = exception.Message,
-            });
+            return CreateLinkFailureResponse(workerPodName, exception.Reason, exception.Message, started, exception);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             Log.LinkCanceled(_logger, workerPodName, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            cancellationToken.ThrowIfCancellationRequested();
             throw;
         }
+        catch (ObjectDisposedException exception)
+        {
+            return CreateLinkFailureResponse(workerPodName, WorkerLinkFailureReason.RuntimeStopping,
+                "The runtime is stopping.", started, exception);
+        }
+        catch (Exception exception) when (exception is GrpcException or WorkerRpcException or HttpRequestException or
+            IOException or SocketException or TimeoutException or ChannelClosedException or OperationCanceledException or UriFormatException)
+        {
+            return CreateLinkFailureResponse(workerPodName, WorkerLinkFailureReason.Unavailable,
+                "The worker connection or initialization handshake was unavailable.", started, exception);
+        }
+    }
+
+    private ObjectResult CreateLinkFailureResponse(string workerPodName, WorkerLinkFailureReason reason, string detail,
+        long started, Exception exception)
+    {
+        Log.LinkRejected(_logger, exception, workerPodName, reason.ToString(),
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        int statusCode = reason is WorkerLinkFailureReason.Unavailable
+            ? StatusCodes.Status503ServiceUnavailable
+            : StatusCodes.Status409Conflict;
+
+        return StatusCode(statusCode, new WorkerLinkResponse
+        {
+            WorkerPodName = workerPodName,
+            Status = WorkerLinkStatus.LinkFailed,
+            Detail = detail,
+        });
     }
 
     // Accept only HTTP(S) authorities without credentials, non-root paths, queries, or fragments.

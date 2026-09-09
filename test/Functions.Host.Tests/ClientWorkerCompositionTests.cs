@@ -72,8 +72,6 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Rpc.Client.RpcClientWorkerChannelFactory");
         AssertSingleton(services, "Azure.Functions.Rpc.Client.IWorkerChannelRegistry",
             "Azure.Functions.Rpc.Client.WorkerChannelRegistry");
-        AssertSingleton(services, "Azure.Functions.Rpc.Client.IWorkerLinker",
-            "Azure.Functions.Rpc.Client.WorkerLinker");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IWorkerFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.IWebHostWorkerManager",
@@ -183,7 +181,7 @@ public class ClientWorkerCompositionTests
     }
 
     [Fact]
-    public async Task RootProviderConstruction_ResolvesClientRegistryWithoutActivation()
+    public async Task RootProviderConstruction_ResolvesClientRegistryAndControllerWithoutActivation()
     {
         IHost rootHost = CreateRootHost(out IServiceCollection services);
         try
@@ -195,7 +193,9 @@ public class ClientWorkerCompositionTests
                 rootHost.Services.GetRequiredService<IWorkerFunctionMetadataProvider>();
             IFunctionMetadataManager metadataManager = rootHost.Services.GetRequiredService<IFunctionMetadataManager>();
             IWebHostWorkerManager workerManager = rootHost.Services.GetRequiredService<IWebHostWorkerManager>();
+            WorkerLinkController controller = ActivatorUtilities.CreateInstance<WorkerLinkController>(rootHost.Services);
 
+            Assert.NotNull(controller);
             Assert.Equal("Azure.Functions.Rpc.Client.WorkerChannelRegistry", registry.GetType().FullName);
             Assert.Equal("Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider",
                 metadataProvider.GetType().FullName);
