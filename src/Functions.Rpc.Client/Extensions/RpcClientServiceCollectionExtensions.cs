@@ -7,6 +7,9 @@ using Azure.Functions.Rpc.Client;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -31,6 +34,34 @@ public static class RpcClientServiceCollectionExtensions
         services.AddSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>();
         services.AddSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>();
         services.AddSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds the Client worker graph, worker-backed Host metadata, and first-link ScriptHost activation.
+    /// </summary>
+    /// <param name="services">The root service collection to update.</param>
+    /// <param name="scriptHostFactory">Resolves the root-owned ScriptHost service whose activation is deferred.</param>
+    /// <returns>The supplied service collection.</returns>
+    /// <remarks>
+    /// The supplied ScriptHost service is borrowed, not registered as an automatically started <see cref="IHostedService"/>.
+    /// Use <see cref="AddRpcClientServices"/> when only transport and worker services are required, without ScriptHost activation.
+    /// </remarks>
+    public static IServiceCollection AddRpcClientWebHostServices(
+        this IServiceCollection services, Func<IServiceProvider, IHostedService> scriptHostFactory)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(scriptHostFactory);
+
+        services.AddRpcClientServices();
+        services.Replace(ServiceDescriptor.Singleton<IFunctionMetadataProvider, RpcClientFunctionMetadataProvider>());
+        services.AddSingleton(provider => new RpcClientScriptHostStartupCoordinator(
+            provider.GetRequiredService<IWorkerChannelRegistry>(),
+            scriptHostFactory(provider),
+            provider.GetRequiredService<IHostApplicationLifetime>(),
+            provider.GetRequiredService<ILogger<RpcClientScriptHostStartupCoordinator>>()));
+        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<RpcClientScriptHostStartupCoordinator>());
 
         return services;
     }
