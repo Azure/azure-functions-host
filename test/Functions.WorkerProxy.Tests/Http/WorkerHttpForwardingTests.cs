@@ -29,6 +29,7 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public class WorkerHttpForwardingTests
 {
     private const long KestrelDefaultMaxRequestBodySize = 30_000_000;
+    private const int StreamingChunkLength = 64 * 1024;
 
     public static IEnumerable<object[]> ForwarderErrors =>
         Enum.GetValues<ForwarderError>()
@@ -176,6 +177,80 @@ public class WorkerHttpForwardingTests
     }
 
     [Fact]
+    public async Task HttpListener_DoesNotRetryWorkerErrors()
+    {
+        int requestCount = 0;
+        await using WebApplication worker = await StartWorkerAsync(context =>
+        {
+            Interlocked.Increment(ref requestCount);
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return Task.CompletedTask;
+        });
+        Dictionary<string, string?> configuration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] = GetAddress(worker).AbsoluteUri
+        };
+        await using WorkerProxyWebApplicationFactory factory = new(configuration);
+        using HttpClient client = factory.CreateHttpForwardingClient();
+
+        using HttpResponseMessage response = await client.PostAsync("/invoke", new StringContent("payload"));
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Equal(1, requestCount);
+    }
+
+    [Fact]
+    public async Task HttpListener_StreamsChunkedRequestAndResponse()
+    {
+        TaskCompletionSource firstRequestChunk = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource releaseRequest = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource releaseResponse = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using WebApplication worker = await StartWorkerAsync(async context =>
+        {
+            Assert.Null(context.Request.ContentLength);
+            byte[] firstBytes = new byte[16 * 1024];
+            await context.Request.Body.ReadExactlyAsync(firstBytes, context.RequestAborted);
+            Assert.Equal(-1, firstBytes.AsSpan().IndexOfAnyExcept((byte)'a'));
+            firstRequestChunk.TrySetResult();
+            using StreamReader reader = new(context.Request.Body);
+            Assert.Equal(new string('a', StreamingChunkLength - firstBytes.Length) + "second", await reader.ReadToEndAsync(context.RequestAborted));
+            await context.Response.WriteAsync("first\n", context.RequestAborted);
+            await context.Response.Body.FlushAsync(context.RequestAborted);
+            await releaseResponse.Task.WaitAsync(context.RequestAborted);
+            await context.Response.WriteAsync("second", context.RequestAborted);
+        });
+        Dictionary<string, string?> configuration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] = GetAddress(worker).AbsoluteUri
+        };
+        await using WorkerProxyWebApplicationFactory factory = new(configuration);
+        using HttpClient client = factory.CreateHttpForwardingClient();
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
+        using HttpRequestMessage request = new(HttpMethod.Post, "/stream")
+        {
+            Content = new GatedRequestContent(releaseRequest.Task)
+        };
+        Task<HttpResponseMessage> responseTask = client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+
+        try
+        {
+            await firstRequestChunk.Task.WaitAsync(timeout.Token);
+            releaseRequest.TrySetResult();
+            using HttpResponseMessage response = await responseTask;
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using StreamReader reader = new(await response.Content.ReadAsStreamAsync(timeout.Token));
+            Assert.Equal("first", await reader.ReadLineAsync(timeout.Token));
+            releaseResponse.TrySetResult();
+            Assert.Equal("second", await reader.ReadToEndAsync(timeout.Token));
+        }
+        finally
+        {
+            releaseRequest.TrySetResult();
+            releaseResponse.TrySetResult();
+        }
+    }
+
+    [Fact]
     public async Task HttpListener_NoDestination_ReturnsServiceUnavailable()
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -309,6 +384,7 @@ public class WorkerHttpForwardingTests
     public async Task HttpListener_CallerCancellation_PreservesCachedReadiness()
     {
         TaskCompletionSource requestStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource requestAborted = new(TaskCreationOptions.RunContinuationsAsynchronously);
         await using WebApplication worker = await StartWorkerAsync(async context =>
         {
             if (context.Request.Path == "/warmup")
@@ -325,6 +401,7 @@ public class WorkerHttpForwardingTests
             }
             catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
             {
+                requestAborted.TrySetResult();
             }
         });
         Uri workerAddress = GetAddress(worker);
@@ -349,6 +426,7 @@ public class WorkerHttpForwardingTests
         await cancellation.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await requestTask);
+        await requestAborted.Task.WaitAsync(TimeSpan.FromSeconds(10));
         Activity activity = await activityRecorder.WaitForActivityAsync();
         Assert.Null(activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwardingResultAttribute));
         Assert.Null(activity.GetTagItem(WorkerHttpForwardingTelemetry.ForwarderErrorAttribute));
@@ -457,7 +535,7 @@ public class WorkerHttpForwardingTests
         Assert.Equal(0, requestCount);
     }
 
-    private static async Task<WebApplication> StartWorkerAsync(
+    internal static async Task<WebApplication> StartWorkerAsync(
         RequestDelegate handler, int port = 0, bool allowUnlimitedRequestBody = false)
     {
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
@@ -475,7 +553,7 @@ public class WorkerHttpForwardingTests
         return app;
     }
 
-    private static Uri GetAddress(WebApplication app)
+    internal static Uri GetAddress(WebApplication app)
     {
         IServer server = app.Services.GetRequiredService<IServer>();
         string address = server.Features.Get<IServerAddressesFeature>()!.Addresses.Single();
@@ -564,6 +642,29 @@ public class WorkerHttpForwardingTests
             }
 
             return error;
+        }
+    }
+
+    private sealed class GatedRequestContent(Task release) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
+        {
+            return SerializeToStreamAsync(stream, context, CancellationToken.None);
+        }
+
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext? context, CancellationToken cancellationToken)
+        {
+            // Exceed transport write buffers without completing the request body.
+            await stream.WriteAsync(Encoding.UTF8.GetBytes(new string('a', StreamingChunkLength)), cancellationToken);
+            await stream.FlushAsync(cancellationToken);
+            await release.WaitAsync(cancellationToken);
+            await stream.WriteAsync("second"u8.ToArray(), cancellationToken);
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
         }
     }
 

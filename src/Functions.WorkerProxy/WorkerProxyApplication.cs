@@ -119,6 +119,7 @@ internal static class WorkerProxyApplication
             WorkerEndpointReadinessProbeOptionsValidator>();
 
         builder.Services.AddSingleton<WorkerEndpointReadinessProbe>();
+        builder.Services.AddSingleton<WorkerHttpCapabilityProvider>();
         builder.Services.AddHttpForwarder();
         builder.Services.AddHttpClient(nameof(WorkerHttpForwarder))
             .ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
