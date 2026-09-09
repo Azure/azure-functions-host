@@ -168,6 +168,29 @@ public sealed class WorkerLinkEndpointIntegrationTests
     }
 
     [Fact]
+    public async Task Put_InvalidWorkerHttpUri_ReturnsUnavailableAndAllowsRetry()
+    {
+        const string invalidHttpUri = "not-an-absolute-uri";
+        using var timeout = new CancellationTokenSource(TestTimeout);
+        await using FakeWorkerProxyGrpcServer server = await FakeWorkerProxyGrpcServer.StartAsync(timeout.Token);
+        var worker = server.AddWorker(WorkerId, httpUri: invalidHttpUri);
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token);
+        string requestJson = LinkJson(server.Endpoint);
+
+        using HttpResponseMessage failure = await host.PutAsync(requestJson, timeout.Token);
+
+        await AssertLinkResponseAsync(failure, HttpStatusCode.ServiceUnavailable, WorkerId, "LinkFailed", timeout.Token);
+        Assert.DoesNotContain(invalidHttpUri, await failure.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
+        await worker.Disconnected.WaitAsync(timeout.Token);
+
+        server.AddWorker(WorkerId, httpUri: "http://127.0.0.1:8080");
+        using HttpResponseMessage retry = await host.PutAsync(requestJson, timeout.Token);
+
+        await AssertLinkResponseAsync(retry, HttpStatusCode.OK, WorkerId, "Linked", timeout.Token);
+        Assert.Equal(2, server.StreamCount);
+    }
+
+    [Fact]
     public async Task Put_SameWorkerWithConflictingEndpoint_ReturnsConflictWithoutDialing()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);

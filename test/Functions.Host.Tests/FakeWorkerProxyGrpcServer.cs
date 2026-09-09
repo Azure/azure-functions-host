@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -67,10 +68,10 @@ internal sealed class FakeWorkerProxyGrpcServer : IAsyncDisposable
     }
 
     // Replies successfully to initialization without manual test coordination.
-    internal TestWorker AddWorker(string workerId)
+    internal TestWorker AddWorker(string workerId, string? httpUri = null)
     {
         TestWorker worker = AddPendingWorker(workerId);
-        worker.CompleteInitialization();
+        worker.CompleteInitialization(httpUri);
 
         return worker;
     }
@@ -109,8 +110,16 @@ internal sealed class FakeWorkerProxyGrpcServer : IAsyncDisposable
 
         internal Task Disconnected => _disconnected.Task;
 
-        internal void CompleteInitialization()
-            => _initializationResponse.SetResult(new WorkerInitResponse { Result = new StatusResult { Status = StatusResult.Types.Status.Success } });
+        internal void CompleteInitialization(string? httpUri = null)
+        {
+            WorkerInitResponse response = new() { Result = new StatusResult { Status = StatusResult.Types.Status.Success } };
+            if (httpUri is not null)
+            {
+                response.Capabilities.Add(RpcWorkerConstants.HttpUri, httpUri);
+            }
+
+            _initializationResponse.SetResult(response);
+        }
 
         internal void FailInitialization(string detail)
             => _initializationResponse.SetResult(new WorkerInitResponse

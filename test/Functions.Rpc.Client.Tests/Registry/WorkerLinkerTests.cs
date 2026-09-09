@@ -241,6 +241,7 @@ public sealed class WorkerLinkerTests
     [InlineData(typeof(TimeoutException))]
     [InlineData(typeof(ChannelClosedException))]
     [InlineData(typeof(OperationCanceledException))]
+    [InlineData(typeof(UriFormatException))]
     public async Task LinkAsync_ExpectedFailure_ReportsSafeUnavailable(Type exceptionType)
     {
         Exception failure = exceptionType switch
@@ -253,6 +254,7 @@ public sealed class WorkerLinkerTests
             Type type when type == typeof(TimeoutException) => new TimeoutException(PrivateDiagnostic),
             Type type when type == typeof(ChannelClosedException) => new ChannelClosedException(PrivateDiagnostic),
             Type type when type == typeof(OperationCanceledException) => new OperationCanceledException(PrivateDiagnostic),
+            Type type when type == typeof(UriFormatException) => new UriFormatException(PrivateDiagnostic),
             _ => throw new ArgumentOutOfRangeException(nameof(exceptionType)),
         };
         _registry.Setup(registry => registry.LinkAsync(WorkerId, Endpoint, It.IsAny<CancellationToken>()))

@@ -60,7 +60,7 @@ internal sealed class WorkerLinker : IWorkerLinker
             throw new WorkerLinkException(WorkerLinkFailureReason.RuntimeStopping, "The runtime is stopping.", exception);
         }
         catch (Exception exception) when (exception is GrpcException or WorkerRpcException or HttpRequestException or
-            IOException or SocketException or TimeoutException or ChannelClosedException or OperationCanceledException)
+            IOException or SocketException or TimeoutException or ChannelClosedException or OperationCanceledException or UriFormatException)
         {
             throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
                 "The worker connection or initialization handshake was unavailable.", exception);
