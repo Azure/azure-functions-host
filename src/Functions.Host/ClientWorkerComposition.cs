@@ -25,7 +25,7 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(mvcBuilder);
 
-        services.AddRpcClientServices();
+        services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
         mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
     }

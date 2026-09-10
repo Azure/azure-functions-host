@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using Xunit;
 
@@ -32,9 +33,33 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         AssertSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>(services);
         AssertSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>(services);
         AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IHostedService));
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => services.AddRpcClientServices());
         Assert.Contains(nameof(RpcClientServiceCollectionExtensions.AddRpcClientServices), exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AddRpcClientWebHostServices_RegistersHostLifecycleWithoutDuplicatingMetadataProvider()
+    {
+        ServiceCollection services = new();
+        services.AddSingleton(Mock.Of<IFunctionMetadataProvider>());
+        IHostedService scriptHost = Mock.Of<IHostedService>();
+
+        IServiceCollection result = services.AddRpcClientWebHostServices(_ => scriptHost);
+
+        Assert.Same(services, result);
+        AssertSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>(services);
+        AssertSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>(services);
+        AssertSingleton<IFunctionMetadataProvider, RpcClientFunctionMetadataProvider>(services);
+        ServiceDescriptor coordinator = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(RpcClientScriptHostStartupCoordinator)));
+        Assert.Equal(ServiceLifetime.Singleton, coordinator.Lifetime);
+        Assert.NotNull(coordinator.ImplementationFactory);
+        ServiceDescriptor hostedService = Assert.Single(services.Where(descriptor => descriptor.ServiceType == typeof(IHostedService)));
+        Assert.Equal(ServiceLifetime.Singleton, hostedService.Lifetime);
+        Assert.NotNull(hostedService.ImplementationFactory);
+        Assert.Throws<InvalidOperationException>(() => services.AddRpcClientWebHostServices(_ => scriptHost));
     }
 
     [Fact]
@@ -98,6 +123,8 @@ public sealed class RpcClientServiceCollectionExtensionsTests
         using ServiceProvider rootServiceProvider = new ServiceCollection().BuildServiceProvider();
 
         Assert.Throws<ArgumentNullException>(() => RpcClientServiceCollectionExtensions.AddRpcClientServices(null));
+        Assert.Throws<ArgumentNullException>(() => RpcClientServiceCollectionExtensions.AddRpcClientWebHostServices(null, _ => Mock.Of<IHostedService>()));
+        Assert.Throws<ArgumentNullException>(() => services.AddRpcClientWebHostServices(null));
         Assert.Throws<ArgumentNullException>(() =>
             RpcClientServiceCollectionExtensions.AddRpcClientScriptHostServices(null, rootServiceProvider));
         Assert.Throws<ArgumentNullException>(() => services.AddRpcClientScriptHostServices(null));

@@ -30,6 +30,8 @@ namespace Azure.Functions.Host.Tests;
 
 public class ClientWorkerCompositionTests
 {
+    private const string StartupCoordinatorTypeName = "Azure.Functions.Rpc.Client.RpcClientScriptHostStartupCoordinator";
+
     private static readonly string[] ForbiddenWorkerImplementations =
     [
         "Microsoft.Azure.WebJobs.Script.Grpc.AspNetCoreGrpcServer",
@@ -76,6 +78,12 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.IWebHostWorkerManager",
             "Azure.Functions.Host.ClientWebHostWorkerManager");
+        AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IFunctionMetadataProvider",
+            "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider");
+        ServiceDescriptor coordinator = Assert.Single(services.Where(service =>
+            string.Equals(service.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal)));
+        Assert.Equal(ServiceLifetime.Singleton, coordinator.Lifetime);
+        Assert.NotNull(coordinator.ImplementationFactory);
         AssertNoServerWorkerServices(services);
     }
 
@@ -201,6 +209,15 @@ public class ClientWorkerCompositionTests
                 metadataProvider.GetType().FullName);
             Assert.IsType<FunctionMetadataManager>(metadataManager);
             Assert.IsType<ClientWebHostWorkerManager>(workerManager);
+            Assert.Equal("Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider",
+                rootHost.Services.GetRequiredService<IFunctionMetadataProvider>().GetType().FullName);
+            IHostedService[] hostedServices = rootHost.Services.GetServices<IHostedService>().ToArray();
+            Assert.DoesNotContain(hostedServices, service => service is WebJobsScriptHostService);
+            Type coordinatorType = GetServiceType(services, StartupCoordinatorTypeName);
+            Assert.Same(rootHost.Services.GetRequiredService(coordinatorType),
+                Assert.Single(hostedServices.Where(service => string.Equals(service.GetType().FullName, StartupCoordinatorTypeName, StringComparison.Ordinal))));
+            Assert.Same(rootHost.Services.GetRequiredService<WebJobsScriptHostService>(),
+                rootHost.Services.GetRequiredService<IScriptHostManager>());
             await workerManager.SpecializeAsync();
             await workerManager.WorkerWarmupAsync();
             AssertNoServerWorkerServices(services);
@@ -215,6 +232,17 @@ public class ClientWorkerCompositionTests
         {
             await ((IAsyncDisposable)rootHost).DisposeAsync();
         }
+    }
+
+    [Fact]
+    public void StandardComposition_DoesNotRegisterClientStartupOrMetadata()
+    {
+        var services = new ServiceCollection();
+        services.AddWebJobsScriptHost(new ConfigurationBuilder().Build());
+
+        Assert.DoesNotContain(services, descriptor => string.Equals(descriptor.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal));
+        Assert.DoesNotContain(services, descriptor =>
+            string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
     }
 
     [Fact]

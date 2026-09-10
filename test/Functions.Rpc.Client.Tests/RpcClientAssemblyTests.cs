@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Hosting;
 using Xunit;
 
 namespace Azure.Functions.Rpc.Client.Tests;
@@ -32,6 +33,8 @@ public class RpcClientAssemblyTests
         Assert.Contains("Microsoft.Azure.WebJobs.Script.Grpc", references);
         Assert.DoesNotContain("Azure.Functions.Rpc.Server", references);
         Assert.DoesNotContain("Azure.Functions.WorkerProxy", references);
+        Assert.DoesNotContain("Microsoft.Azure.WebJobs.Script.WebHost", references);
+        Assert.DoesNotContain("Azure.Functions.Host", references);
     }
 
     [Fact]
@@ -50,6 +53,23 @@ public class RpcClientAssemblyTests
         Assert.True(typeof(WorkerChannel).IsPublic);
         Assert.Equal(typeof(WorkerChannel), typeof(RpcClientWorkerChannel).BaseType);
         Assert.Equal("Azure.Functions.Rpc.Client", typeof(RpcClientWorkerChannel).Assembly.GetName().Name);
+    }
+
+    [Fact]
+    public void ClientRegistryAndStartupCoordinatorRemainInternal()
+    {
+        Assert.False(typeof(IWorkerChannelRegistry).IsPublic);
+        Assert.False(typeof(WorkerChannelRegistry).IsPublic);
+        Assert.False(typeof(RpcClientScriptHostStartupCoordinator).IsPublic);
+        Assert.Contains(typeof(IWorkerChannelRegistry), typeof(WorkerChannelRegistry).GetInterfaces());
+    }
+
+    [Fact]
+    public void ClientStartupCoordinatorUsesTheExistingHostedServiceContract()
+    {
+        var constructor = Assert.Single(typeof(RpcClientScriptHostStartupCoordinator).GetConstructors());
+        Assert.Contains(constructor.GetParameters(), parameter => parameter.ParameterType == typeof(IHostedService));
+        Assert.Equal(typeof(IWorkerChannelRegistry).Assembly, typeof(RpcClientScriptHostStartupCoordinator).Assembly);
     }
 
     [Fact]
