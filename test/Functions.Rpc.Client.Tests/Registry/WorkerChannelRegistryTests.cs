@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
@@ -34,6 +35,178 @@ public sealed class WorkerChannelRegistryTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     [Fact]
+    public async Task LinkAsync_ConcurrentAndCompletedReplayShareInitialization()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        IWorkerChannelRegistry linker = registry;
+
+        Task<WorkerChannel> first = linker.LinkAsync("worker", CreateEndpoint("worker"));
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        Task<WorkerChannel> replay = linker.LinkAsync("worker", CreateEndpoint("worker"));
+        Assert.False(first.IsCompleted);
+        Assert.False(replay.IsCompleted);
+        channel.AllowStart();
+        WorkerChannel linked = await first.WaitAsync(TestTimeout);
+
+        Assert.Same(linked, await replay.WaitAsync(TestTimeout));
+        Assert.Same(linked, await linker.LinkAsync("worker", CreateEndpoint("worker")));
+        Assert.Single(harness.Transports);
+        Assert.Single(registry.GetInitializedChannels());
+    }
+
+    [Fact]
+    public async Task LinkAsync_ConflictingEndpointIsRejectedWhilePendingAndReady()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        IWorkerChannelRegistry linker = registry;
+        Task<WorkerChannel> first = linker.LinkAsync("worker", CreateEndpoint("worker"));
+        await channel.StartEntered.WaitAsync(TestTimeout);
+
+        foreach (bool ready in new[] { false, true })
+        {
+            if (ready)
+            {
+                channel.AllowStart();
+                await first.WaitAsync(TestTimeout);
+            }
+
+            WorkerLinkException conflict = await Assert.ThrowsAsync<WorkerLinkException>(
+                () => linker.LinkAsync("worker", CreateEndpoint("different")));
+            Assert.Equal(WorkerLinkFailureReason.Conflict, conflict.Reason);
+        }
+
+        Assert.Single(harness.Transports);
+    }
+
+    [Fact]
+    public async Task LinkAsync_FailedHandshakeCleansBeforeRetry()
+    {
+        RegistryHarness harness = new();
+        ChannelControl failed = new("worker", blockStart: true);
+        ChannelControl replacement = new("worker");
+        harness.Enqueue(failed);
+        harness.Enqueue(replacement);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        IWorkerChannelRegistry linker = registry;
+        TimeoutException failure = new("WorkerInit timed out.");
+        Task<WorkerChannel> link = linker.LinkAsync("worker", CreateEndpoint("worker"));
+        await failed.StartEntered.WaitAsync(TestTimeout);
+        failed.FailStart(failure);
+
+        TimeoutException actual = await Assert.ThrowsAsync<TimeoutException>(() => link.WaitAsync(TestTimeout));
+        Assert.Same(failure, actual);
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.Equal(1, failed.DisposeCount);
+        WorkerChannel linked = await linker.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout);
+        Assert.Same(replacement.Channel, linked);
+        Assert.Single(registry.GetInitializedChannels());
+    }
+
+    [Fact]
+    public async Task LinkAsync_CleanCloseDuringHandshakeThrowsIOException()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        Task<WorkerChannel> link = registry.LinkAsync("worker", CreateEndpoint("worker"));
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        channel.Complete();
+
+        IOException failure = await Assert.ThrowsAsync<IOException>(() => link.WaitAsync(TestTimeout));
+        Assert.IsType<InvalidOperationException>(failure.InnerException);
+        Assert.Empty(registry.GetInitializedChannels());
+        Assert.Equal(1, channel.DisposeCount);
+    }
+
+    [Fact]
+    public async Task LinkAsync_CancelingReplayDoesNotCancelOriginal()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        IWorkerChannelRegistry linker = registry;
+        using CancellationTokenSource cancellation = new();
+        Task<WorkerChannel> first = linker.LinkAsync("worker", CreateEndpoint("worker"));
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        Task<WorkerChannel> replay = linker.LinkAsync("worker", CreateEndpoint("worker"), cancellation.Token);
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => replay);
+        Assert.False(first.IsCompleted);
+        channel.AllowStart();
+        Assert.Same(channel.Channel, await first.WaitAsync(TestTimeout));
+        Assert.Equal(0, channel.DisposeCount);
+    }
+
+    [Fact]
+    public async Task LinkAsync_CancelingOriginalCleansBeforeRetry()
+    {
+        RegistryHarness harness = new();
+        ChannelControl canceled = new("worker", blockStart: true);
+        ChannelControl replacement = new("worker");
+        harness.Enqueue(canceled);
+        harness.Enqueue(replacement);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        IWorkerChannelRegistry linker = registry;
+        using CancellationTokenSource cancellation = new();
+        Task<WorkerChannel> first = linker.LinkAsync("worker", CreateEndpoint("worker"), cancellation.Token);
+        await canceled.StartEntered.WaitAsync(TestTimeout);
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first.WaitAsync(TestTimeout));
+        Assert.Equal(1, canceled.DisposeCount);
+        Assert.Empty(registry.GetInitializedChannels());
+        WorkerChannel linked = await linker.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout);
+        Assert.Same(replacement.Channel, linked);
+    }
+
+    [Fact]
+    public async Task LinkAsync_TerminalWorkerCannotBeResurrected()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker");
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        IWorkerChannelRegistry linker = registry;
+        await linker.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout);
+        channel.Complete();
+        await channel.DisposeStarted.WaitAsync(TestTimeout);
+        await WaitUntilAsync(() => !registry.TryGetInitializedChannel("worker", out _));
+
+        WorkerLinkException failure = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => linker.LinkAsync("worker", CreateEndpoint("worker")));
+        Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, failure.Reason);
+        Assert.Single(harness.Transports);
+    }
+
+    [Fact]
+    public async Task LinkAsync_DisposalRejectsNewAndPendingLinks()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        IWorkerChannelRegistry linker = registry;
+        Task<WorkerChannel> link = linker.LinkAsync("worker", CreateEndpoint("worker"));
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        Task dispose = registry.DisposeAsync().AsTask();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => link.WaitAsync(TestTimeout));
+        await dispose.WaitAsync(TestTimeout);
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            () => linker.LinkAsync("other", CreateEndpoint("other")));
+        Assert.Equal(1, channel.DisposeCount);
+    }
+
+    [Fact]
     public async Task LinkAsync_PublishesOnlyAfterInitialization()
     {
         RegistryHarness harness = new();
@@ -58,29 +231,56 @@ public sealed class WorkerChannelRegistryTests
         Assert.Same(channel.Channel, await initialized.WaitAsync(TestTimeout));
     }
 
-    [Fact]
-    public async Task LinkAsync_DifferentWorkersInitializeConcurrently()
+    [Theory]
+    [InlineData("second", false)]
+    [InlineData("FIRST", false)]
+    [InlineData("second", true)]
+    public async Task LinkAsync_DifferentWorkersInitializeIndependently(string secondWorkerId, bool failFirst)
     {
         RegistryHarness harness = new();
         ChannelControl first = new("first", blockStart: true);
-        ChannelControl second = new("second", blockStart: true);
+        ChannelControl second = new(secondWorkerId, blockStart: true);
         harness.Enqueue(first);
         harness.Enqueue(second);
         await using WorkerChannelRegistry registry = harness.Registry;
 
         Task<WorkerChannel> firstLink = LinkAsync(registry, "first");
-        Task<WorkerChannel> secondLink = LinkAsync(registry, "second");
+        await first.StartEntered.WaitAsync(TestTimeout);
+        Task<WorkerChannel> secondLink = LinkAsync(registry, secondWorkerId);
+        await second.StartEntered.WaitAsync(TestTimeout);
 
-        await Task.WhenAll(first.StartEntered, second.StartEntered).WaitAsync(TestTimeout);
-        first.AllowStart();
+        Assert.False(firstLink.IsCompleted);
+        Assert.False(secondLink.IsCompleted);
+        Assert.Equal(2, harness.Transports.Count);
         second.AllowStart();
+        Assert.Same(second.Channel, await secondLink.WaitAsync(TestTimeout));
+        Assert.False(firstLink.IsCompleted);
+        Assert.Same(second.Channel, Assert.Single(registry.GetInitializedChannels()));
 
-        await Task.WhenAll(firstLink, secondLink).WaitAsync(TestTimeout);
-        Assert.Equal(2, registry.GetInitializedChannels().Count);
+        if (failFirst)
+        {
+            IOException failure = new("First worker initialization failed.");
+            first.FailStart(failure);
+            IOException actual = await Assert.ThrowsAsync<IOException>(() => firstLink.WaitAsync(TestTimeout));
+            Assert.Same(failure, actual);
+            Assert.Same(second.Channel, Assert.Single(registry.GetInitializedChannels()));
+            Assert.Equal(1, first.DisposeCount);
+            Assert.Equal(0, second.DisposeCount);
+        }
+        else
+        {
+            first.AllowStart();
+            Assert.Same(first.Channel, await firstLink.WaitAsync(TestTimeout));
+            Assert.Equal(2, registry.GetInitializedChannels().Count);
+            Assert.True(registry.TryGetInitializedChannel("first", out WorkerChannel firstChannel));
+            Assert.Same(first.Channel, firstChannel);
+            Assert.True(registry.TryGetInitializedChannel(secondWorkerId, out WorkerChannel secondChannel));
+            Assert.Same(second.Channel, secondChannel);
+        }
     }
 
     [Fact]
-    public async Task LinkAsync_SameWorkerRejectsDuplicateWhileFirstLinkIsPending()
+    public async Task LinkAsync_InterfaceAndConcreteCallsSharePendingAttempt()
     {
         RegistryHarness harness = new();
         ChannelControl channel = new("worker", blockStart: true);
@@ -89,12 +289,12 @@ public sealed class WorkerChannelRegistryTests
 
         Task<WorkerChannel> firstLink = LinkAsync(registry, "worker");
         await channel.StartEntered.WaitAsync(TestTimeout);
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => LinkAsync(registry, "worker"));
-        Assert.Equal("Worker 'worker' is already linked.", exception.Message);
+        Task<WorkerChannel> replay = ((IWorkerChannelRegistry)registry).LinkAsync("worker", CreateEndpoint("worker"));
+        Assert.False(replay.IsCompleted);
         harness.ChannelFactory.Verify(factory => factory.Create("worker", It.IsAny<DuplexChannel<StreamingMessage>>()), Times.Once);
         channel.AllowStart();
-        await firstLink.WaitAsync(TestTimeout);
+        WorkerChannel initialized = await firstLink.WaitAsync(TestTimeout);
+        Assert.Same(initialized, await replay.WaitAsync(TestTimeout));
     }
 
     [Fact]
@@ -112,15 +312,90 @@ public sealed class WorkerChannelRegistryTests
         cancellationSource.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => unlink.WaitAsync(TestTimeout));
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => LinkAsync(registry, "worker"));
-        Assert.Equal("Worker 'worker' is already linked.", exception.Message);
+        Task<WorkerChannel> replay = LinkAsync(registry, "worker");
+        Assert.False(replay.IsCompleted);
 
         channel.AllowStart();
         WorkerChannel linkedChannel = await link.WaitAsync(TestTimeout);
         Assert.Same(channel.Channel, linkedChannel);
         Assert.True(registry.TryGetInitializedChannel("worker", out WorkerChannel initializedChannel));
         Assert.Same(channel.Channel, initializedChannel);
+        Assert.Same(initializedChannel, await replay.WaitAsync(TestTimeout));
+    }
+
+    [Fact]
+    public async Task UnlinkAsync_BeforeLinkStarts_WaitsWithoutBlockingOtherWorkers()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        ChannelControl other = new("other");
+        harness.Enqueue(channel);
+        harness.Enqueue(other);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        QueuedSynchronizationContext context = new();
+        Task<WorkerChannel> link = context.Run(() => LinkAsync(registry, "worker"));
+        Task<bool> unlink = null;
+
+        try
+        {
+            Assert.Empty(harness.Transports);
+            unlink = registry.UnlinkAsync("worker");
+            Assert.False(unlink.IsCompleted);
+            Assert.Same(link, LinkAsync(registry, "worker"));
+            WorkerChannel otherChannel = await LinkAsync(registry, "other").WaitAsync(TestTimeout);
+            Assert.Same(other.Channel, otherChannel);
+            Assert.False(link.IsCompleted);
+            Assert.False(unlink.IsCompleted);
+        }
+        finally
+        {
+            context.RunContinuations();
+            channel.AllowStart();
+            await link.WaitAsync(TestTimeout);
+            if (unlink is not null)
+            {
+                await unlink.WaitAsync(TestTimeout);
+            }
+        }
+
+        Assert.True(await unlink);
+        Assert.Equal(1, channel.DisposeCount);
+        Assert.Equal(0, other.DisposeCount);
+        Assert.Equal(2, harness.Transports.Count);
+        Assert.Same(other.Channel, Assert.Single(registry.GetInitializedChannels()));
+    }
+
+    [Fact]
+    public async Task LinkAsync_CanceledBeforeQueuedStart_ReleasesReservationAndAllowsRetry()
+    {
+        RegistryHarness harness = new();
+        ChannelControl replacement = new("worker");
+        harness.Enqueue(replacement);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        using CancellationTokenSource cancellation = new();
+        QueuedSynchronizationContext context = new();
+        Task<WorkerChannel> link = context.Run(
+            () => registry.LinkAsync("worker", CreateEndpoint("worker"), cancellation.Token));
+        Task<bool> unlink = registry.UnlinkAsync("worker");
+
+        try
+        {
+            cancellation.Cancel();
+            Assert.False(unlink.IsCompleted);
+        }
+        finally
+        {
+            context.RunContinuations();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => link.WaitAsync(TestTimeout));
+            await unlink.WaitAsync(TestTimeout);
+        }
+
+        Assert.False(await unlink);
+        harness.DuplexFactory.Verify(
+            factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()), Times.Never);
+        WorkerChannel linked = await LinkAsync(registry, "worker").WaitAsync(TestTimeout);
+        Assert.Same(replacement.Channel, linked);
+        Assert.Single(harness.Transports);
     }
 
     [Fact]
@@ -132,13 +407,13 @@ public sealed class WorkerChannelRegistryTests
         harness.Enqueue(failedChannel);
         harness.Enqueue(replacement);
         await using WorkerChannelRegistry registry = harness.Registry;
-        InvalidOperationException expected = new("initialization failed");
+        IOException expected = new("initialization failed");
 
         Task<WorkerChannel> failedLink = LinkAsync(registry, "worker");
         await failedChannel.StartEntered.WaitAsync(TestTimeout);
         failedChannel.FailStart(expected);
 
-        InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(
+        IOException actual = await Assert.ThrowsAsync<IOException>(
             () => failedLink.WaitAsync(TestTimeout));
         Assert.Same(expected, actual);
 
@@ -208,47 +483,55 @@ public sealed class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task UnlinkAsync_IsIdempotentAndAllowsRelink()
+    public async Task UnlinkAsync_IsIdempotentAndLeavesOtherWorkersLinked()
     {
         RegistryHarness harness = new();
         ChannelControl first = new("worker");
-        ChannelControl second = new("worker");
+        ChannelControl second = new("replacement");
         harness.Enqueue(first);
         harness.Enqueue(second);
         await using WorkerChannelRegistry registry = harness.Registry;
 
         await LinkAsync(registry, "worker");
+        await LinkAsync(registry, "replacement");
 
         Assert.True(await registry.UnlinkAsync("worker"));
         Assert.False(await registry.UnlinkAsync("worker"));
         Assert.Equal(1, first.DisposeCount);
-        WorkerChannel replacement = await LinkAsync(registry, "worker");
-        Assert.Same(second.Channel, replacement);
+        WorkerLinkException terminal = await Assert.ThrowsAsync<WorkerLinkException>(() => LinkAsync(registry, "worker"));
+        Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, terminal.Reason);
+        Assert.Equal(0, second.DisposeCount);
+        Assert.Same(second.Channel, Assert.Single(registry.GetInitializedChannels()));
     }
 
     [Fact]
-    public async Task Completion_RemovesOnlyTerminalWorkerAndAllowsRelink()
+    public async Task Completion_RemovesOnlyTerminatedWorkerAndRetainsIdentity()
     {
         RegistryHarness harness = new();
         ChannelControl first = new("first");
-        ChannelControl second = new("second");
-        ChannelControl replacement = new("first");
+        ChannelControl other = new("other");
+        ChannelControl replacement = new("replacement");
         harness.Enqueue(first);
-        harness.Enqueue(second);
+        harness.Enqueue(other);
         harness.Enqueue(replacement);
         await using WorkerChannelRegistry registry = harness.Registry;
 
         await LinkAsync(registry, "first");
-        await LinkAsync(registry, "second");
+        await LinkAsync(registry, "other");
         first.Complete(new InvalidOperationException("transport failed"));
         await first.DisposeStarted.WaitAsync(TestTimeout);
         await WaitUntilAsync(() => !registry.TryGetInitializedChannel("first", out _));
 
         Assert.False(registry.TryGetInitializedChannel("first", out _));
-        Assert.True(registry.TryGetInitializedChannel("second", out WorkerChannel healthyChannel));
-        Assert.Same(second.Channel, healthyChannel);
-        WorkerChannel relinkedChannel = await LinkWhenAvailableAsync(registry, "first");
+        WorkerLinkException terminal = await Assert.ThrowsAsync<WorkerLinkException>(() => LinkAsync(registry, "first"));
+        Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, terminal.Reason);
+        Assert.Equal(0, other.DisposeCount);
+        Assert.True(registry.TryGetInitializedChannel("other", out WorkerChannel healthyChannel));
+        Assert.Same(other.Channel, healthyChannel);
+        Assert.Same(other.Channel, Assert.Single(registry.GetInitializedChannels()));
+        WorkerChannel relinkedChannel = await LinkAsync(registry, "replacement");
         Assert.Same(replacement.Channel, relinkedChannel);
+        Assert.Equal(2, registry.GetInitializedChannels().Count);
     }
 
     [Fact]
@@ -270,11 +553,11 @@ public sealed class WorkerChannelRegistryTests
     }
 
     [Fact]
-    public async Task UnlinkAsync_RejectsRelinkUntilCleanupCompletes()
+    public async Task UnlinkAsync_AllowsDifferentWorkerWhileCleanupIsPending()
     {
         RegistryHarness harness = new();
         ChannelControl first = new("worker", blockDisposal: true);
-        ChannelControl replacement = new("worker");
+        ChannelControl replacement = new("replacement");
         harness.Enqueue(first);
         harness.Enqueue(replacement);
         await using WorkerChannelRegistry registry = harness.Registry;
@@ -283,15 +566,21 @@ public sealed class WorkerChannelRegistryTests
         Task<bool> unlink = registry.UnlinkAsync("worker");
         await first.DisposeStarted.WaitAsync(TestTimeout);
 
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => LinkAsync(registry, "worker"));
-        Assert.Equal("Worker 'worker' is already linked.", exception.Message);
+        try
+        {
+            WorkerChannel linkedChannel = await LinkAsync(registry, "replacement").WaitAsync(TestTimeout);
+            Assert.Same(replacement.Channel, linkedChannel);
+            Assert.False(unlink.IsCompleted);
+            Assert.Same(replacement.Channel, Assert.Single(registry.GetInitializedChannels()));
+        }
+        finally
+        {
+            first.AllowDispose();
+            await unlink.WaitAsync(TestTimeout);
+        }
 
-        first.AllowDispose();
         Assert.True(await unlink.WaitAsync(TestTimeout));
-        WorkerChannel relinkedChannel = await LinkAsync(registry, "worker").WaitAsync(TestTimeout);
-        Assert.Same(replacement.Channel, relinkedChannel);
-        Assert.True(registry.TryGetInitializedChannel("worker", out WorkerChannel initializedChannel));
+        Assert.True(registry.TryGetInitializedChannel("replacement", out WorkerChannel initializedChannel));
         Assert.Same(replacement.Channel, initializedChannel);
     }
 
@@ -331,51 +620,87 @@ public sealed class WorkerChannelRegistryTests
     public async Task GetInitializedChannels_ReturnsCopy()
     {
         RegistryHarness harness = new();
-        ChannelControl last = new("z-worker");
-        ChannelControl first = new("a-worker");
-        ChannelControl middle = new("m-worker");
-        harness.Enqueue(last);
+        ChannelControl first = new("first");
+        ChannelControl second = new("second");
         harness.Enqueue(first);
-        harness.Enqueue(middle);
+        harness.Enqueue(second);
         await using WorkerChannelRegistry registry = harness.Registry;
 
-        await LinkAsync(registry, last.Id);
         await LinkAsync(registry, first.Id);
-        await LinkAsync(registry, middle.Id);
 
         IReadOnlyList<WorkerChannel> channels = registry.GetInitializedChannels();
+        await LinkAsync(registry, second.Id);
 
-        Assert.Equal(["a-worker", "m-worker", "z-worker"],
-            channels.Select(channel => channel.Id).OrderBy(id => id, StringComparer.Ordinal));
-        Assert.NotSame(channels, registry.GetInitializedChannels());
+        Assert.Same(first.Channel, Assert.Single(channels));
+        IReadOnlyList<WorkerChannel> current = registry.GetInitializedChannels();
+        Assert.Equal(2, current.Count);
+        Assert.Contains(first.Channel, current);
+        Assert.Contains(second.Channel, current);
+        Assert.NotSame(channels, current);
     }
 
-    [Fact]
-    public async Task DisposeAsync_CancelsLinksAndDisposesEveryChannelOnce()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DisposeAsync_CancelsLinksAndDisposesChannelsOnce(bool initialized)
     {
         RegistryHarness harness = new();
         ChannelControl ready = new("ready");
-        ChannelControl linking = new("linking", blockStart: true);
+        ChannelControl linking = new("worker", blockStart: true);
         harness.Enqueue(ready);
         harness.Enqueue(linking);
         WorkerChannelRegistry registry = harness.Registry;
         await LinkAsync(registry, "ready");
-        Task<WorkerChannel> link = LinkAsync(registry, "linking");
+        Task<WorkerChannel> link = LinkAsync(registry, "worker");
         await linking.StartEntered.WaitAsync(TestTimeout);
+        if (initialized)
+        {
+            linking.AllowStart();
+            await link.WaitAsync(TestTimeout);
+        }
 
         Task firstDispose = registry.DisposeAsync().AsTask();
         Task repeatedDispose = registry.DisposeAsync().AsTask();
 
         Assert.Same(firstDispose, repeatedDispose);
-        await Assert.ThrowsAsync<ObjectDisposedException>(() => link.WaitAsync(TestTimeout));
+        if (!initialized)
+        {
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => link.WaitAsync(TestTimeout));
+        }
+
         await firstDispose.WaitAsync(TestTimeout);
         Assert.Equal(1, ready.DisposeCount);
         Assert.Equal(1, linking.DisposeCount);
         ObjectDisposedException exception =
             await Assert.ThrowsAsync<ObjectDisposedException>(() => LinkAsync(registry, "late"));
         Assert.Equal(typeof(WorkerChannelRegistry).FullName, exception.ObjectName);
-        Assert.False(await registry.UnlinkAsync("ready"));
-        Assert.False(registry.TryGetInitializedChannel("ready", out _));
+        Assert.False(await registry.UnlinkAsync("worker"));
+        Assert.False(registry.TryGetInitializedChannel("worker", out _));
+        Assert.Empty(registry.GetInitializedChannels());
+    }
+
+    [Fact]
+    public async Task DisposeAsync_BeforeQueuedLinkStarts_WaitsForOperationCleanup()
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        QueuedSynchronizationContext context = new();
+        Task<WorkerChannel> link = context.Run(() => LinkAsync(registry, "worker"));
+        Task dispose = registry.DisposeAsync().AsTask();
+
+        try
+        {
+            Assert.False(dispose.IsCompleted);
+        }
+        finally
+        {
+            context.RunContinuations();
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => link.WaitAsync(TestTimeout));
+            await dispose.WaitAsync(TestTimeout);
+        }
+
+        harness.DuplexFactory.Verify(
+            factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Empty(registry.GetInitializedChannels());
     }
 
@@ -398,23 +723,6 @@ public sealed class WorkerChannelRegistryTests
 
     private static Task<WorkerChannel> LinkAsync(WorkerChannelRegistry registry, string workerId)
         => registry.LinkAsync(workerId, CreateEndpoint(workerId));
-
-    private static async Task<WorkerChannel> LinkWhenAvailableAsync(WorkerChannelRegistry registry, string workerId)
-    {
-        using CancellationTokenSource timeoutSource = new(TestTimeout);
-        while (true)
-        {
-            try
-            {
-                return await registry.LinkAsync(workerId, CreateEndpoint(workerId), timeoutSource.Token);
-            }
-            catch (InvalidOperationException exception)
-                when (string.Equals(exception.Message, $"Worker '{workerId}' is already linked.", StringComparison.Ordinal))
-            {
-                await Task.Delay(TimeSpan.FromMilliseconds(10), timeoutSource.Token);
-            }
-        }
-    }
 
     private static Uri CreateEndpoint(string workerId)
         => new($"http://{workerId}.test:5000");
@@ -455,6 +763,36 @@ public sealed class WorkerChannelRegistryTests
             Mock.Of<IMetricsLogger>());
     }
 
+    private sealed class QueuedSynchronizationContext : SynchronizationContext
+    {
+        private readonly ConcurrentQueue<(SendOrPostCallback Callback, object State)> _callbacks = new();
+
+        public override void Post(SendOrPostCallback callback, object state)
+            => _callbacks.Enqueue((callback, state));
+
+        internal Task<T> Run<T>(Func<Task<T>> callback)
+        {
+            SynchronizationContext previous = Current;
+            SetSynchronizationContext(this);
+            try
+            {
+                return callback();
+            }
+            finally
+            {
+                SetSynchronizationContext(previous);
+            }
+        }
+
+        internal void RunContinuations()
+        {
+            while (_callbacks.TryDequeue(out var callback))
+            {
+                callback.Callback(callback.State);
+            }
+        }
+    }
+
     private sealed class RegistryHarness
     {
         private readonly ConcurrentDictionary<Uri, ConcurrentQueue<ChannelControl>> _channels = new();
@@ -482,6 +820,7 @@ public sealed class WorkerChannelRegistryTests
                     }
 
                     _transports.Enqueue(transport);
+
                     return Task.FromResult<DuplexChannel<StreamingMessage>>(transport);
                 });
             ChannelFactory
@@ -495,6 +834,7 @@ public sealed class WorkerChannelRegistryTests
 
                     RpcClientWorkerChannel channel = _realChannelFactory.Create(control.Id, ownedChannel);
                     control.Attach(channel);
+
                     return channel;
                 });
             Registry = new(

@@ -16,26 +16,30 @@ namespace Azure.Functions.Rpc.Client;
 /// An initialized channel has completed its transport connection and WorkerInit handshake. Invocation readiness remains
 /// a dispatcher concern. The registry owns disposal of returned channels.
 /// </remarks>
-internal interface IWorkerChannelRegistry : IAsyncDisposable
+public interface IWorkerChannelRegistry : IAsyncDisposable
 {
     /// <summary>
-    /// Connects one worker and completes its FunctionRpc initialization handshake.
+    /// Atomically admits one worker or reuses its matching pending or initialized link.
     /// </summary>
     /// <remarks>
     /// This method returns after the outbound transport connects, the worker sends <c>StartStream</c>, and the channel
     /// processes a successful <c>WorkerInitResponse</c>. Function metadata has not been requested, invocation buffers
     /// have not been created, and function load requests have not been sent, so the channel is not yet ready for
     /// invocations.
+    /// Matching worker IDs and endpoint URIs share initialization. Different workers can link concurrently.
+    /// Conflicting or terminal links are rejected. Failed attempts can retry after cleanup.
     /// </remarks>
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
-    /// <param name="cancellationToken">A token that cancels this link attempt.</param>
+    /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
     /// <returns>The channel after its FunctionRpc initialization handshake completes.</returns>
+    /// <exception cref="WorkerLinkException">The request conflicts with the registry's admission state.</exception>
     Task<WorkerChannel> LinkAsync(string workerId, Uri grpcEndpoint, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes and disposes a linked worker when present.
     /// </summary>
+    /// <remarks>The accepted worker ID remains terminal and cannot be linked again in this registry.</remarks>
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="cancellationToken">A token that cancels waiting to begin the unlink.</param>
     /// <returns><see langword="true"/> when a channel was removed; otherwise, <see langword="false"/>.</returns>
