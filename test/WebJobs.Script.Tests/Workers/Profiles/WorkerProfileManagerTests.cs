@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Azure.WebJobs.Script.Conditions;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
@@ -57,12 +58,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         {
             var conditionJObject = new JsonObject
             {
-                [WorkerConstants.WorkerDescriptionProfileConditionType] = "environment",
-                [WorkerConstants.WorkerDescriptionProfileConditionName] = "PROFILE_TEST_ENVIRONMENT_VARIABLE",
-                [WorkerConstants.WorkerDescriptionProfileConditionExpression] = "true"
+                [ConditionConstants.ConditionType] = ConditionConstants.EnvironmentConditionType,
+                [ConditionConstants.ConditionName] = "PROFILE_TEST_ENVIRONMENT_VARIABLE",
+                [ConditionConstants.ConditionExpression] = "true"
             };
 
-            WorkerProfileConditionDescriptor conditionDescriptor = conditionJObject.Deserialize<WorkerProfileConditionDescriptor>();
+            ConditionDescriptor conditionDescriptor = conditionJObject.Deserialize<ConditionDescriptor>();
 
             WorkerProfileManager profileManager = new(_testLogger, _testEnvironment);
             var result = profileManager.TryCreateWorkerProfileCondition(conditionDescriptor, out var condition);
@@ -74,10 +75,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         public void TryCreateWorkerProfileCondition_InvalidCondition_ReturnsFalse()
         {
             var conditionJObject = new JObject();
-            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionType] = "faketype";
-            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionName] = "PROFILE_TEST_ENVIRONMENT_VARIABLE";
-            conditionJObject[WorkerConstants.WorkerDescriptionProfileConditionExpression] = "true";
-            var conditionDescriptor = conditionJObject.ToObject<WorkerProfileConditionDescriptor>();
+            conditionJObject[ConditionConstants.ConditionType] = "faketype";
+            conditionJObject[ConditionConstants.ConditionName] = "PROFILE_TEST_ENVIRONMENT_VARIABLE";
+            conditionJObject[ConditionConstants.ConditionExpression] = "true";
+            var conditionDescriptor = conditionJObject.ToObject<ConditionDescriptor>();
 
             WorkerProfileManager profileManager = new(_testLogger, _testEnvironment);
             var result = profileManager.TryCreateWorkerProfileCondition(conditionDescriptor, out var condition);
@@ -98,7 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             profileManager.SetWorkerDescriptionProfiles(profiles, "java");
             profileManager.LoadWorkerDescriptionFromProfiles(description, out var workerDescription);
 
-            // Same profile should load as we didn't change any condition outcomes
             Assert.True(profileManager.IsCorrectProfileLoaded("java"));
         }
 
@@ -115,7 +115,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             profileManager.SetWorkerDescriptionProfiles(profiles, "java");
             profileManager.LoadWorkerDescriptionFromProfiles(description, out var workerDescription);
 
-            // Change env var so the condition will evaluate for a different profile
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "false");
 
             Assert.False(profileManager.IsCorrectProfileLoaded("java"));
@@ -134,10 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             profileManager.SetWorkerDescriptionProfiles(profiles, "java");
             profileManager.LoadWorkerDescriptionFromProfiles(description, out var workerDescription);
 
-            // Same profile should load as we didn't change any condition outcomes
             Assert.True(profileManager.IsCorrectProfileLoaded("java"));
 
-            // Different runtime without profiles
             Assert.True(profileManager.IsCorrectProfileLoaded("dotnet"));
         }
 
@@ -161,10 +158,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             profileManager.SetWorkerDescriptionProfiles(dotnetProfiles, "dotnet");
             profileManager.LoadWorkerDescriptionFromProfiles(dotnetDescription, out var dotnetWorkerDescription);
 
-            // Same profile should load as we didn't change any condition outcomes
             Assert.True(profileManager.IsCorrectProfileLoaded("java"));
 
-            // Different runtime also loads same profile as we didn't change any condition outcomes
             Assert.True(profileManager.IsCorrectProfileLoaded("dotnet"));
         }
 
@@ -188,10 +183,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             profileManager.SetWorkerDescriptionProfiles(dotnetProfiles, "dotnet");
             profileManager.LoadWorkerDescriptionFromProfiles(dotnetDescription, out var dotnetWorkerDescription);
 
-            // Same profile should load as we didn't change any condition outcomes
             Assert.True(profileManager.IsCorrectProfileLoaded("java"));
 
-            // Changing the condition so a different profile evaluates to true
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "false");
             Assert.False(profileManager.IsCorrectProfileLoaded("dotnet"));
         }
@@ -201,11 +194,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
             var conditionLogger = new TestLogger("ConditionLogger");
             var profilesList = new List<WorkerDescriptionProfile>();
 
-            var conditionListA = new List<IWorkerProfileCondition>();
+            var conditionListA = new List<ICondition>();
             conditionListA.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(conditionLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "true"));
             var profileA = new WorkerDescriptionProfile("profileA", conditionListA, description);
 
-            var conditionListB = new List<IWorkerProfileCondition>();
+            var conditionListB = new List<ICondition>();
             conditionListB.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(conditionLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "false"));
             var profileB = new WorkerDescriptionProfile("profileB", conditionListB, description);
 

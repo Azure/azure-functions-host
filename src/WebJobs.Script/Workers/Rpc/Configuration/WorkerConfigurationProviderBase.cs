@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Conditions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
@@ -171,11 +172,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.Configuration
             {
                 foreach (var profile in profiles)
                 {
-                    var profileConditions = new List<IWorkerProfileCondition>(profile.Conditions.Count);
+                    var profileConditions = new List<ICondition>(profile.Conditions.Count);
 
                     foreach (var descriptor in profile.Conditions)
                     {
-                        if (!ProfileManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
+                        if (!ProfileManager.TryCreateWorkerProfileCondition(descriptor, out ICondition condition))
                         {
                             // Failed to resolve condition. This profile will be disabled using a mock false condition
                             Logger.LogInformation("Profile {name} is disabled. Cannot resolve the profile condition {condition}", profile.ProfileName, descriptor.Type);

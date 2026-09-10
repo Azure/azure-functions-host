@@ -3,8 +3,8 @@
 
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Azure.WebJobs.Script.Conditions;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Xunit;
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 
         [Theory]
         [MemberData(nameof(WorkerDescriptionProfileExceptionData))]
-        public void WorkerDescriptionProfile_ThrowsValidationException(string name, List<IWorkerProfileCondition> conditions, RpcWorkerDescription workerDescription)
+        public void WorkerDescriptionProfile_ThrowsValidationException(string name, List<ICondition> conditions, RpcWorkerDescription workerDescription)
         {
             Assert.Throws<ValidationException>(() => new WorkerDescriptionProfile(name, conditions, workerDescription));
         }
@@ -30,20 +30,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         {
             var description = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", argumentList);
 
-            var validConditionsList = new List<IWorkerProfileCondition>();
+            var validConditionsList = new List<ICondition>();
             validConditionsList.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(_testLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "true"));
             validConditionsList.Add(ProfilesTestUtilities.GetTestHostPropertyCondition(_testLogger, _testSystemRuntimeInfo, "hostversion", "4.*"));
 
             yield return new object[] { null, validConditionsList,  description };
             yield return new object[] { string.Empty, validConditionsList, description };
-            yield return new object[] { "profileName", new List<IWorkerProfileCondition>(0), description };
+            yield return new object[] { "profileName", new List<ICondition>(0), description };
             yield return new object[] { "profileName", null, description };
-            yield return new object[] { "profileName", new List<IWorkerProfileCondition>(1), description };
+            yield return new object[] { "profileName", new List<ICondition>(1), description };
         }
 
         [Theory]
         [MemberData(nameof(WorkerDescriptionProfileData))]
-        public void WorkerDescriptionProfile_ApplyProfile(string name, List<IWorkerProfileCondition> conditions, RpcWorkerDescription workerDescription)
+        public void WorkerDescriptionProfile_ApplyProfile(string name, List<ICondition> conditions, RpcWorkerDescription workerDescription)
         {
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
             var defaultDescription = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", new string[] { "-DefaultArgs" });
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         {
             var description = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", argumentList);
 
-            var validConditionsList = new List<IWorkerProfileCondition>();
+            var validConditionsList = new List<ICondition>();
             validConditionsList.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(_testLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "true"));
             yield return new object[] { "profileName", validConditionsList, description };
 
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 
         [Theory]
         [MemberData(nameof(WorkerDescriptionProfileInvalidData))]
-        public void WorkerDescriptionProfile_DoNotApplyProfile(string name, List<IWorkerProfileCondition> conditions, RpcWorkerDescription workerDescription)
+        public void WorkerDescriptionProfile_DoNotApplyProfile(string name, List<ICondition> conditions, RpcWorkerDescription workerDescription)
         {
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "false");
             var defaultDescription = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", new string[] { "-DefaultArgs" });
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         {
             var description = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", new string[] { });
 
-            var validConditionsList = new List<IWorkerProfileCondition>();
+            var validConditionsList = new List<ICondition>();
             validConditionsList.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(_testLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "true"));
             yield return new object[] { "profileName", validConditionsList, description };
 
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
         {
             var description = RpcWorkerConfigTestUtilities.GetTestDefaultWorkerDescription("java", argumentList);
 
-            var conditions = new List<IWorkerProfileCondition>();
+            var conditions = new List<ICondition>();
             conditions.Add(ProfilesTestUtilities.GetTestEnvironmentCondition(_testLogger, _testEnvironment, "APPLICATIONINSIGHTS_ENABLE_AGENT", "true"));
 
             var workerDescriptionProfile = new WorkerDescriptionProfile("profileName", conditions, description);

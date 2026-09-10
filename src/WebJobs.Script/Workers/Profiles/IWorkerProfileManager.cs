@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
+using Microsoft.Azure.WebJobs.Script.Conditions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
         /// <summary>
         /// Creates profile condition using different condition descriptor properties
         /// </summary>
-        bool TryCreateWorkerProfileCondition(WorkerProfileConditionDescriptor conditionDescriptor, out IWorkerProfileCondition condition);
+        bool TryCreateWorkerProfileCondition(ConditionDescriptor conditionDescriptor, out ICondition condition);
 
         /// <summary>
         /// Set the different profiles for a given worker runtime language
