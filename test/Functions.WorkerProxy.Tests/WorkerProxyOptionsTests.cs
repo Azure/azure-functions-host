@@ -66,11 +66,21 @@ public class WorkerProxyOptionsTests
     [InlineData("http://localhost:28080")]
     [InlineData(" https://worker-pod.example:48801/ ")]
     [InlineData("http://[::1]:28080")]
+    [InlineData("http://100.64.1.12:48801")]
+    [InlineData("http://[fd00::12]:48801")]
     public void Options_AllowAbsentOrExplicitAdvertisedHttpOrigin(string endpoint)
     {
         WorkerProxyOptions options = GetOptions("--WorkerProxy:HttpProxyEndpoint", endpoint);
 
         Assert.Equal(endpoint, options.HttpProxyEndpoint);
+    }
+
+    [Fact]
+    public void Options_RejectCredentialsInAdvertisedHttpOrigin()
+    {
+        UriBuilder endpoint = new("http://worker-pod:28080") { UserName = "user" };
+
+        Assert.Throws<OptionsValidationException>(() => GetOptions("--WorkerProxy:HttpProxyEndpoint", endpoint.Uri.AbsoluteUri));
     }
 
     [Theory]

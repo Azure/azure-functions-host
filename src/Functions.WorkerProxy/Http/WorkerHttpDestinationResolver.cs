@@ -11,11 +11,14 @@ namespace Azure.Functions.WorkerProxy.Http;
 internal static class WorkerHttpDestinationResolver
 {
     /// <summary>
-    /// Resolves an absolute HTTP or HTTPS destination, preferring the configured override.
+    /// Resolves an absolute HTTP or HTTPS destination prefix, preferring the configured override.
     /// </summary>
+    /// <remarks>
+    /// Destination prefixes can include a path, but require a nonzero port and cannot contain credentials, a query, or a fragment.
+    /// </remarks>
     /// <param name="overrideEndpoint">The configured destination override.</param>
     /// <param name="advertisedEndpoint">The worker-advertised destination.</param>
-    /// <returns>The resolved destination, or <see langword="null"/> when neither endpoint is usable.</returns>
+    /// <returns>The resolved destination, or <see langword="null"/> when the selected endpoint is absent or invalid.</returns>
     public static Uri? Resolve(string? overrideEndpoint, string? advertisedEndpoint)
     {
         if (!string.IsNullOrWhiteSpace(overrideEndpoint))
@@ -31,7 +34,11 @@ internal static class WorkerHttpDestinationResolver
         if (string.IsNullOrWhiteSpace(value)
             || !Uri.TryCreate(value.Trim(), UriKind.Absolute, out destination)
             || (!string.Equals(destination.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(destination.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+                && !string.Equals(destination.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            || destination.Port == 0
+            || destination.UserInfo.Length != 0
+            || destination.Query.Length != 0
+            || destination.Fragment.Length != 0)
         {
             destination = null;
             return false;

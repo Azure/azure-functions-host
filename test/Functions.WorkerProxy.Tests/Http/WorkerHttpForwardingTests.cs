@@ -250,12 +250,22 @@ public class WorkerHttpForwardingTests
         }
     }
 
-    [Fact]
-    public async Task HttpListener_NoDestination_ReturnsServiceUnavailable()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("http://localhost:0")]
+    [InlineData("http://user@localhost:1234")]
+    [InlineData("http://localhost:1234/worker?name=value")]
+    [InlineData("http://localhost:1234/worker#fragment")]
+    public async Task HttpListener_NoUsableDestination_ReturnsServiceUnavailable(string? endpoint)
     {
-        await using WorkerProxyWebApplicationFactory factory = new();
+        Dictionary<string, string?> configuration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}"] = endpoint,
+            [$"{WorkerEndpointReadinessProbeOptions.SectionName}:{nameof(WorkerEndpointReadinessProbeOptions.TotalTimeout)}"] = "00:00:00.100"
+        };
+        await using WorkerProxyWebApplicationFactory factory = new(configuration);
         using HttpClient client = factory.CreateHttpForwardingClient();
-        using RequestActivityRecorder activityRecorder = new("/");
+        using RequestActivityRecorder activityRecorder = new("/", client.BaseAddress!.Port);
 
         using HttpResponseMessage response = await client.GetAsync("/");
 

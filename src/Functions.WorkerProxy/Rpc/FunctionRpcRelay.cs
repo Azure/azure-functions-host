@@ -20,7 +20,9 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// cancellation, stream failure, or application shutdown terminates the whole session. A replacement
 /// session is created only after both attachments from the previous session have released.
 /// </remarks>
-internal sealed partial class FunctionRpcRelay(ILogger<FunctionRpcRelay> logger, WorkerHttpCapabilityProvider capabilityProvider)
+internal sealed partial class FunctionRpcRelay(
+    ILogger<FunctionRpcRelay> logger,
+    WorkerHttpCapabilityProvider capabilityProvider)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();

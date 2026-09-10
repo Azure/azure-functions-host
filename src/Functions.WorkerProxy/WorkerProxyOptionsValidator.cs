@@ -35,11 +35,7 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         {
             Uri? endpoint = WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, options.HttpProxyEndpoint);
             if (endpoint is null
-                || endpoint.Port == 0
                 || !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal)
-                || endpoint.UserInfo.Length != 0
-                || endpoint.Query.Length != 0
-                || endpoint.Fragment.Length != 0
                 || (IPAddress.TryParse(endpoint.Host.Trim('[', ']'), out IPAddress? address)
                     && (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))))
             {

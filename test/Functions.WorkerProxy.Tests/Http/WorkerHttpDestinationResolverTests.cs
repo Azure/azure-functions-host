@@ -22,6 +22,9 @@ public class WorkerHttpDestinationResolverTests
     [Theory]
     [InlineData(null, "http://advertised:5678", "http://advertised:5678/")]
     [InlineData(" ", "https://advertised:5678/path", "https://advertised:5678/path")]
+    [InlineData(null, "http://100.64.1.12:48801", "http://100.64.1.12:48801/")]
+    [InlineData(null, "http://[fd00::12]:48801/worker/", "http://[fd00::12]:48801/worker/")]
+    [InlineData(null, "https://advertised/prefix/", "https://advertised/prefix/")]
     public void Resolve_NoUsableOverride_ReturnsAdvertisedEndpoint(
         string? overrideEndpoint,
         string advertisedEndpoint,
@@ -39,6 +42,17 @@ public class WorkerHttpDestinationResolverTests
     public void Resolve_NoUsableEndpoint_ReturnsNull(string? overrideEndpoint, string? advertisedEndpoint)
     {
         Assert.Null(WorkerHttpDestinationResolver.Resolve(overrideEndpoint, advertisedEndpoint));
+    }
+
+    [Theory]
+    [InlineData("http://worker:0")]
+    [InlineData("http://user@worker:1234")]
+    [InlineData("http://worker:1234/prefix?name=value")]
+    [InlineData("http://worker:1234/prefix#fragment")]
+    public void Resolve_InvalidDestinationPrefix_ReturnsNullForAdvertisedEndpointAndOverride(string endpoint)
+    {
+        Assert.Null(WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, endpoint));
+        Assert.Null(WorkerHttpDestinationResolver.Resolve(endpoint, "http://advertised:5678"));
     }
 
     [Fact]

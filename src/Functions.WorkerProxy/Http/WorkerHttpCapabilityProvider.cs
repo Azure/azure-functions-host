@@ -13,7 +13,7 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// </summary>
 internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyOptions> options, ILogger<WorkerHttpCapabilityProvider> logger)
 {
-    internal const string HttpUriCapability = "HttpUri";
+    private const string HttpUriCapability = "HttpUri";
 
     private readonly WorkerProxyOptions _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
     private readonly ILogger<WorkerHttpCapabilityProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -53,7 +53,8 @@ internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyO
         if (endpoint is null)
         {
             Log.InvalidHttpEndpoint(_logger, name);
-            throw new InvalidOperationException($"{name} must specify an absolute HTTP or HTTPS endpoint.");
+            throw new InvalidOperationException($"{name} must specify an absolute HTTP or HTTPS endpoint with a nonzero port "
+                + "and no credentials, query, or fragment.");
         }
 
         return endpoint;
@@ -61,7 +62,8 @@ internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyO
 
     private static partial class Log
     {
-        [LoggerMessage(0, LogLevel.Error, "{Name} must specify an absolute HTTP or HTTPS endpoint.")]
+        [LoggerMessage(0, LogLevel.Error,
+            "{Name} must specify an absolute HTTP or HTTPS endpoint with a nonzero port and no credentials, query, or fragment.")]
         public static partial void InvalidHttpEndpoint(ILogger logger, string name);
 
         [LoggerMessage(1, LogLevel.Debug, "Worker HTTP origin {WorkerOrigin} is advertised through proxy origin {ProxyOrigin}.")]

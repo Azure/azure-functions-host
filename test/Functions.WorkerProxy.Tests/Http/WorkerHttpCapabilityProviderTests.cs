@@ -72,13 +72,18 @@ public class WorkerHttpCapabilityProviderTests
         Assert.Equal("true", capabilities["WorkerIndexing"]);
     }
 
-    [Fact]
-    public void FinalizeCapabilities_InvalidOverride_FailsInsteadOfFallingBack()
+    [Theory]
+    [InlineData("ftp://override:1234")]
+    [InlineData("http://override:0")]
+    [InlineData("http://user@override:1234")]
+    [InlineData("http://override:1234/prefix?name=value")]
+    [InlineData("http://override:1234/prefix#fragment")]
+    public void FinalizeCapabilities_InvalidOverride_FailsInsteadOfFallingBack(string endpoint)
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new()
         {
             HttpProxyEndpoint = "http://worker-pod:28080",
-            WorkerHttpEndpoint = "ftp://override:1234"
+            WorkerHttpEndpoint = endpoint
         });
         Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:5678" };
 
@@ -92,6 +97,10 @@ public class WorkerHttpCapabilityProviderTests
     [InlineData("relative")]
     [InlineData("ftp://localhost:1234")]
     [InlineData("http://localhost:invalid")]
+    [InlineData("http://localhost:0")]
+    [InlineData("http://user@localhost:1234")]
+    [InlineData("http://localhost:1234/worker?name=value")]
+    [InlineData("http://localhost:1234/worker#fragment")]
     public void FinalizeCapabilities_InvalidHttpCapability_FailsInsteadOfChangingInvocationTransport(string advertisedEndpoint)
     {
         WorkerHttpCapabilityProvider provider = CreateProvider(new() { HttpProxyEndpoint = "http://worker-pod:28080" });

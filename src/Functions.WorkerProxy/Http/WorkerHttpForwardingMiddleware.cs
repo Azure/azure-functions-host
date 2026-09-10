@@ -14,7 +14,10 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// Resolves the worker endpoint, waits for readiness, and forwards eligible requests through YARP.
 /// </summary>
 internal sealed class WorkerHttpForwardingMiddleware(
-    IOptions<WorkerProxyOptions> options, WorkerEndpointReadinessProbe readinessProbe, WorkerHttpForwarder forwarder, FunctionRpcRelay relay)
+    IOptions<WorkerProxyOptions> options,
+    WorkerEndpointReadinessProbe readinessProbe,
+    WorkerHttpForwarder forwarder,
+    FunctionRpcRelay relay)
 {
     private readonly FunctionRpcRelay _relay = relay ?? throw new ArgumentNullException(nameof(relay));
 
