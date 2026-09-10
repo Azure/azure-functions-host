@@ -18,6 +18,21 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public class WorkerProxyKestrelTests
 {
     [Fact]
+    public async Task HttpListener_RejectsHttp2OnlyRequests()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateHttpForwardingClient();
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
+        using HttpRequestMessage request = new(HttpMethod.Get, "/invoke")
+        {
+            Version = HttpVersion.Version20,
+            VersionPolicy = HttpVersionPolicy.RequestVersionExact
+        };
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => client.SendAsync(request, timeout.Token));
+    }
+
+    [Fact]
     public async Task WorkerProxyPorts_ConfigureRootKestrelListeners()
     {
         int port = GetAvailablePort();

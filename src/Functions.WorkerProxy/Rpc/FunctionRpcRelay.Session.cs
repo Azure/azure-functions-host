@@ -2,9 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Frozen;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
@@ -16,7 +18,7 @@ internal sealed partial class FunctionRpcRelay
     /// <summary>
     /// Owns the queues, forwarding tasks, and terminal state for one runtime/worker stream pair.
     /// </summary>
-    private sealed class FunctionRpcRelaySession(long id, ILogger logger)
+    private sealed class FunctionRpcRelaySession(long id, ILogger logger, WorkerHttpCapabilityProvider capabilityProvider)
     {
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel();
@@ -28,6 +30,8 @@ internal sealed partial class FunctionRpcRelay
         private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private FunctionRpcRelayTerminalState? _terminalState;
+        private FrozenDictionary<string, string>? _capabilities;
+        private Uri? _workerHttpDestination;
         private bool _runtimeAttached;
         private bool _workerAttached;
 
@@ -35,6 +39,20 @@ internal sealed partial class FunctionRpcRelay
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
         /// </summary>
         public FunctionRpcRelayTerminalState? TerminalState => _terminalState;
+
+        /// <summary>
+        /// Gets the initialized destination while this session remains live.
+        /// </summary>
+        public Uri? WorkerHttpDestination
+        {
+            get
+            {
+                lock (_stateLock)
+                {
+                    return _terminalState is null ? _workerHttpDestination : null;
+                }
+            }
+        }
 
         /// <summary>
         /// Gets a task that completes after every accepted attachment has released.
@@ -118,7 +136,7 @@ internal sealed partial class FunctionRpcRelay
                 _ => throw new ArgumentOutOfRangeException(nameof(side), side, "Unknown relay side.")
             };
 
-            Task readTask = ReadInboundAsync(requestStream, destination, linkedSource.Token);
+            Task readTask = ReadInboundAsync(side, requestStream, destination, linkedSource.Token);
             Task writeTask = WriteOutboundAsync(source, responseStream, linkedSource.Token);
             Task firstCompletedTask = await Task.WhenAny(readTask, writeTask);
 
@@ -173,13 +191,65 @@ internal sealed partial class FunctionRpcRelay
             });
         }
 
-        private static async Task ReadInboundAsync(IAsyncStreamReader<StreamingMessage> requestStream,
+        private async Task ReadInboundAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
             ChannelWriter<StreamingMessage> destination, CancellationToken cancellationToken)
         {
             while (await requestStream.MoveNext(cancellationToken))
             {
-                await destination.WriteAsync(requestStream.Current, cancellationToken);
+                StreamingMessage message = requestStream.Current;
+                if (side is FunctionRpcRelaySide.Worker
+                    && message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success })
+                {
+                    if (FinalizeCapabilities(message) is not { } finalized)
+                    {
+                        return;
+                    }
+
+                    message = finalized;
+                }
+
+                await destination.WriteAsync(message, cancellationToken);
             }
+        }
+
+        private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
+        {
+            FrozenDictionary<string, string>? capabilities;
+            lock (_stateLock)
+            {
+                if (_terminalState is not null)
+                {
+                    return null;
+                }
+
+                capabilities = _capabilities;
+            }
+
+            // Only the worker reader finalizes capabilities. Keep cloning and logging outside the lifecycle lock.
+            StreamingMessage finalized = message.Clone();
+            if (capabilities is null)
+            {
+                Uri? destination = capabilityProvider.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
+                capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
+                lock (_stateLock)
+                {
+                    if (_terminalState is not null)
+                    {
+                        return null;
+                    }
+
+                    // Publish the real destination before the rewritten response can reach the runtime.
+                    _capabilities = capabilities;
+                    _workerHttpDestination = destination;
+                }
+            }
+            else
+            {
+                finalized.WorkerInitResponse.Capabilities.Clear();
+                finalized.WorkerInitResponse.Capabilities.Add(capabilities);
+            }
+
+            return finalized;
         }
 
         private static async Task WriteOutboundAsync(ChannelReader<StreamingMessage> source,

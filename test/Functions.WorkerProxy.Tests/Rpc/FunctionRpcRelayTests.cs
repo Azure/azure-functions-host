@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Azure.Functions.WorkerProxy.Rpc;
 using Google.Protobuf;
 using Grpc.Core;
@@ -16,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 using GrpcRpcException = Grpc.Core.RpcException;
 
@@ -273,7 +275,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_CanceledStopWaitDoesNotCancelSharedStop()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new();
-        FunctionRpcRelay relay = new(logger);
+        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider());
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource stopCancellation = new();
         BlockingServerStreamWriter blockingWriter = new();
@@ -383,7 +385,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_ShutdownAllowsSessionClearBeforeCancellation()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new();
-        FunctionRpcRelay relay = new(logger);
+        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider());
         using CancellationTokenSource timeout = new(TestTimeout);
         Task<FunctionRpcRelayTerminalState> runtimeTask =
             relay.AttachAsync(FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
@@ -417,7 +419,12 @@ public partial class FunctionRpcRelayTests
 
     private static FunctionRpcRelay CreateInProcessRelay()
     {
-        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance);
+        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider());
+    }
+
+    private static WorkerHttpCapabilityProvider CreateCapabilityProvider(WorkerProxyOptions? options = null)
+    {
+        return new(Options.Create(options ?? new()), NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
 
     private static RelayClient CreateClient(WorkerProxyWebApplicationFactory factory, FunctionRpcRelaySide side, CancellationToken cancellationToken)

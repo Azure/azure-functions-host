@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Hosting;
@@ -19,9 +20,13 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// cancellation, stream failure, or application shutdown terminates the whole session. A replacement
 /// session is created only after both attachments from the previous session have released.
 /// </remarks>
-internal sealed partial class FunctionRpcRelay(ILogger<FunctionRpcRelay> logger) : IAsyncDisposable, IHostedLifecycleService
+internal sealed partial class FunctionRpcRelay(
+    ILogger<FunctionRpcRelay> logger,
+    WorkerHttpCapabilityProvider capabilityProvider)
+    : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
+    private readonly WorkerHttpCapabilityProvider _capabilityProvider = capabilityProvider ?? throw new ArgumentNullException(nameof(capabilityProvider));
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
@@ -40,6 +45,20 @@ internal sealed partial class FunctionRpcRelay(ILogger<FunctionRpcRelay> logger)
     /// Gets the terminal state of the most recently completed relay session.
     /// </summary>
     internal FunctionRpcRelayTerminalState? LastTerminalState => _lastTerminalState;
+
+    /// <summary>
+    /// Gets the frozen HTTP destination of the active, successfully initialized worker.
+    /// </summary>
+    internal Uri? WorkerHttpDestination
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                return _currentSession?.WorkerHttpDestination;
+            }
+        }
+    }
 
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
@@ -116,7 +135,7 @@ internal sealed partial class FunctionRpcRelay(ILogger<FunctionRpcRelay> logger)
                 ClearCurrentSessionLocked();
             }
 
-            session = _currentSession ??= new FunctionRpcRelaySession(Interlocked.Increment(ref _nextSessionId), logger);
+            session = _currentSession ??= new FunctionRpcRelaySession(Interlocked.Increment(ref _nextSessionId), logger, _capabilityProvider);
 
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)

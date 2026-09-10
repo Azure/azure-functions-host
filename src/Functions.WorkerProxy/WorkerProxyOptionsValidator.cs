@@ -1,13 +1,16 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
+using System.Net;
+using Azure.Functions.WorkerProxy.Http;
 using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
-/// Validates WorkerProxy listener port ranges and uniqueness.
+/// Validates WorkerProxy listener ports and the advertised HTTP origin.
 /// </summary>
 internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxyOptions>
 {
@@ -27,6 +30,19 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         AddDistinctPort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), configuredPorts, failures);
         AddDistinctPort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), configuredPorts, failures);
         AddDistinctPort(options.HttpPort, nameof(options.HttpPort), configuredPorts, failures);
+
+        if (!string.IsNullOrWhiteSpace(options.HttpProxyEndpoint))
+        {
+            Uri? endpoint = WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, options.HttpProxyEndpoint);
+            if (endpoint is null
+                || !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal)
+                || (IPAddress.TryParse(endpoint.Host.Trim('[', ']'), out IPAddress? address)
+                    && (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))))
+            {
+                failures.Add($"{nameof(options.HttpProxyEndpoint)} must be an absolute HTTP or HTTPS origin with a concrete host, "
+                    + "a nonzero port, and no credentials, path prefix, query, or fragment.");
+            }
+        }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }

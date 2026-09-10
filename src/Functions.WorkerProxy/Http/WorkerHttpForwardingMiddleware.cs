@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Yarp.ReverseProxy.Forwarder;
@@ -13,16 +14,20 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// Resolves the worker endpoint, waits for readiness, and forwards eligible requests through YARP.
 /// </summary>
 internal sealed class WorkerHttpForwardingMiddleware(
-    IOptions<WorkerProxyOptions> options, WorkerEndpointReadinessProbe readinessProbe, WorkerHttpForwarder forwarder)
+    IOptions<WorkerProxyOptions> options,
+    WorkerEndpointReadinessProbe readinessProbe,
+    WorkerHttpForwarder forwarder,
+    FunctionRpcRelay relay)
 {
+    private readonly FunctionRpcRelay _relay = relay ?? throw new ArgumentNullException(nameof(relay));
+
     /// <summary>
-    /// Forwards a request to the configured worker HTTP endpoint.
+    /// Forwards a request to the frozen worker destination or the configured standalone override.
     /// </summary>
     public async Task InvokeAsync(HttpContext context)
     {
-        // TODO: Supply the worker-advertised HTTP endpoint once FunctionRpc exposes it.
-        Uri? destination = WorkerHttpDestinationResolver.Resolve(
-            options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
+        Uri? destination = _relay.WorkerHttpDestination
+            ?? WorkerHttpDestinationResolver.Resolve(options.Value.WorkerHttpEndpoint, advertisedEndpoint: null);
 
         if (destination is null)
         {
