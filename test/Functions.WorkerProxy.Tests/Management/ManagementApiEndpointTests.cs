@@ -153,6 +153,60 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
+    [InlineData("application/json; charset=not-a-real-charset", "{}")]
+    [InlineData("application/json; charset=not-a-real-charset", ValidAssignment)]
+    [InlineData("application/json; charset=\"not-a-real-charset\"", ValidAssignment)]
+    [InlineData("application/problem+json; charset=not-a-real-charset", ValidAssignment)]
+    [InlineData("application/json; charset=utf-7", ValidAssignment)]
+    public async Task UnsupportedJsonCharsetUsesHostValidationEnvelope(string contentType, string body)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        WorkerPodState before = manager.State;
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using StringContent content = JsonBody(body);
+        content.Headers.Remove("Content-Type");
+        Assert.True(content.Headers.TryAddWithoutValidation("Content-Type", contentType));
+
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
+
+        await AssertValidationAsync(response, timeout.Token, ("InvalidBody", "request"));
+        Assert.Same(before, manager.State);
+        using StringContent validContent = JsonBody(ValidAssignment);
+        using HttpResponseMessage accepted = await client.PutAsync(AssignPath, validContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
+    }
+
+    [Theory]
+    [InlineData("application/json", "utf-8")]
+    [InlineData("application/json; charset=utf-8", "utf-8")]
+    [InlineData("application/json; charset=UTF-8", "utf-8")]
+    [InlineData("application/json; charset=utf-16", "utf-16")]
+    [InlineData("application/problem+json; charset=utf-16", "utf-16")]
+    public async Task SupportedJsonCharsetPreservesAssignment(string contentType, string encodingName)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        const string appName = "test-app-\u00e9";
+        string body = ValidAssignment.Replace("test-app", appName, StringComparison.Ordinal);
+        using StringContent content = new(body, Encoding.GetEncoding(encodingName));
+        content.Headers.Remove("Content-Type");
+        Assert.True(content.Headers.TryAddWithoutValidation("Content-Type", contentType));
+
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
+
+        await AssertAssignmentSuccessAsync(response, HttpStatusCode.Created, timeout.Token);
+        Assert.Equal(appName, manager.State.FunctionAppName);
+    }
+
+    [Theory]
     [InlineData("lastKnownRevision=-1")]
     [InlineData("lastKnownRevision=1")]
     [InlineData("lastKnownRevision=9223372036854775807")]
@@ -259,6 +313,8 @@ public class ManagementApiEndpointTests
     {
         Mock<TimeProvider> clock = new();
         Mock<ITimer> timer = new();
+        TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        timer.Setup(instance => instance.Dispose()).Callback(() => disposed.TrySetResult());
         TaskCompletionSource<Action> expire = new(TaskCreationOptions.RunContinuationsAsynchronously);
         clock.Setup(provider => provider.CreateTimer(
             It.IsAny<TimerCallback>(), It.IsAny<object?>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
@@ -283,6 +339,7 @@ public class ManagementApiEndpointTests
         AssertNoStore(response);
         Assert.Empty(await response.Content.ReadAsByteArrayAsync(timeout.Token));
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
+        await disposed.Task.WaitAsync(timeout.Token);
         timer.Verify(instance => instance.Dispose(), Times.AtLeastOnce);
     }
 

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Management;
@@ -408,7 +409,7 @@ public class ManagementApiHandlersTests
         WorkerInstanceState response = AssertState(await poll.WaitAsync(TestTimeout), manager.State);
         Assert.Equal(revision + 1, response.RevisionId);
         Assert.Equal(0, manager.PendingWaiterCount);
-        clock.VerifyTimersDisposed();
+        await clock.VerifyTimersDisposedAsync();
     }
 
     [Fact]
@@ -435,7 +436,7 @@ public class ManagementApiHandlersTests
         Assert.Equal(204, Assert.IsType<NoContent>(await poll.WaitAsync(TestTimeout)).StatusCode);
         Assert.Same(assigned, manager.State);
         Assert.Equal(0, manager.PendingWaiterCount);
-        clock.VerifyTimersDisposed();
+        await clock.VerifyTimersDisposedAsync();
     }
 
     [Fact]
@@ -460,7 +461,7 @@ public class ManagementApiHandlersTests
         manager.OnWorkerAttached(1);
         AssertState(await activePoll.WaitAsync(TestTimeout), manager.State);
         Assert.Equal(0, manager.PendingWaiterCount);
-        clock.VerifyTimersDisposed();
+        await clock.VerifyTimersDisposedAsync();
     }
 
     [Fact]
@@ -481,7 +482,7 @@ public class ManagementApiHandlersTests
         Assert.Equal(cancellation.Token, exception.CancellationToken);
         Assert.Same(initial, manager.State);
         Assert.Equal(0, manager.PendingWaiterCount);
-        clock.VerifyTimersDisposed();
+        await clock.VerifyTimersDisposedAsync();
     }
 
     [Theory]
@@ -569,6 +570,7 @@ public class ManagementApiHandlersTests
                 .Returns((TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
                 {
                     ScheduledTimer timer = new(callback, state, dueTime, period);
+                    timer.Timer.Setup(instance => instance.Dispose()).Callback(() => timer.Disposed.TrySetResult());
                     Timers.Add(timer);
                     return timer.Timer.Object;
                 });
@@ -579,12 +581,18 @@ public class ManagementApiHandlersTests
 
         public List<ScheduledTimer> Timers { get; } = [];
 
-        public void VerifyTimersDisposed() =>
+        public async Task VerifyTimersDisposedAsync()
+        {
+            // WaitAsync may complete its promise before disposing its timer.
+            await Task.WhenAll(Timers.Select(timer => timer.Disposed.Task)).WaitAsync(TestTimeout);
             Assert.All(Timers, timer => timer.Timer.Verify(instance => instance.Dispose(), Times.AtLeastOnce()));
+        }
 
         public sealed record ScheduledTimer(TimerCallback Callback, object? State, TimeSpan DueTime, TimeSpan Period)
         {
             public Mock<ITimer> Timer { get; } = new();
+
+            public TaskCompletionSource Disposed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
             public void Fire() => Callback(State);
         }

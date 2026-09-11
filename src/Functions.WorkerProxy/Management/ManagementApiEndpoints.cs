@@ -3,6 +3,7 @@
 
 using System;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.State;
@@ -17,7 +18,7 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </summary>
 /// <remarks>
 /// The PUT handler explicitly uses ReadFromJsonAsync rather than automatic body binding so malformed JSON,
-/// incompatible field types, and unsupported content types return our Host-aligned HTTP 400 InvalidBody
+/// incompatible field types, and unsupported content types or charsets return our Host-aligned HTTP 400 InvalidBody
 /// validation envelope. Automatic binding can reject requests before the handler runs with framework-owned
 /// 400/415 responses that do not guarantee that envelope.
 /// </remarks>
@@ -43,6 +44,20 @@ internal static class ManagementApiEndpoints
         if (!request.HasJsonContentType())
         {
             return ManagementApiHandlers.InvalidBody();
+        }
+
+        var charset = request.GetTypedHeaders().ContentType!.Charset;
+        if (charset.HasValue && !charset.Equals("utf-8", StringComparison.OrdinalIgnoreCase))
+        {
+            // ReadFromJsonAsync wraps unsupported encodings in InvalidOperationException, not JsonException.
+            try
+            {
+                _ = Encoding.GetEncoding(charset.Value);
+            }
+            catch (Exception exception) when (exception is ArgumentException or NotSupportedException)
+            {
+                return ManagementApiHandlers.InvalidBody();
+            }
         }
 
         WorkerAssignRequest? assignment;

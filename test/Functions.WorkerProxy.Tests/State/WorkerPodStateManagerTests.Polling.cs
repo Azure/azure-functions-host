@@ -108,7 +108,7 @@ public partial class WorkerPodStateManagerTests
             Assert.Equal(revision + 1, result.State!.Revision);
         });
         Assert.Equal(0, manager.PendingWaiterCount);
-        clock.VerifyTimersDisposed();
+        await clock.VerifyTimersDisposedAsync();
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Null(result.State);
         Assert.Same(initial, manager.State);
         Assert.Equal(0, manager.PendingWaiterCount);
-        clock.VerifyTimersDisposed();
+        await clock.VerifyTimersDisposedAsync();
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public partial class WorkerPodStateManagerTests
         manager.OnWorkerAttached(1);
         Assert.True((await activePoll.WaitAsync(TestTimeout)).HasChanged);
         Assert.Equal(0, manager.PendingWaiterCount);
-        clock.VerifyTimersDisposed();
+        await clock.VerifyTimersDisposedAsync();
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public partial class WorkerPodStateManagerTests
         manager.OnWorkerAttached(1);
         Assert.True((await activePoll.WaitAsync(TestTimeout)).HasChanged);
         Assert.Equal(0, manager.PendingWaiterCount);
-        clock.VerifyTimersDisposed();
+        await clock.VerifyTimersDisposedAsync();
     }
 
     [Theory]
@@ -321,7 +321,7 @@ public partial class WorkerPodStateManagerTests
 
             Assert.Equal(0, manager.PendingWaiterCount);
             Assert.Same(manager.State, (await manager.WaitForChangeAsync(0, timeout.Token)).State);
-            clock.VerifyTimersDisposed();
+            await clock.VerifyTimersDisposedAsync();
         }
     }
 
@@ -350,6 +350,7 @@ public partial class WorkerPodStateManagerTests
                 .Returns((TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
                 {
                     ScheduledTimer timer = new(callback, state, dueTime, period);
+                    timer.Timer.Setup(instance => instance.Dispose()).Callback(() => timer.Disposed.TrySetResult());
                     Timers.Add(timer);
                     return timer.Timer.Object;
                 });
@@ -360,14 +361,18 @@ public partial class WorkerPodStateManagerTests
 
         public List<ScheduledTimer> Timers { get; } = [];
 
-        public void VerifyTimersDisposed()
+        public async Task VerifyTimersDisposedAsync()
         {
+            // WaitAsync may complete its promise before disposing its timer.
+            await Task.WhenAll(Timers.Select(timer => timer.Disposed.Task)).WaitAsync(TestTimeout);
             Assert.All(Timers, timer => timer.Timer.Verify(instance => instance.Dispose(), Times.AtLeastOnce()));
         }
 
         public sealed record ScheduledTimer(TimerCallback Callback, object? State, TimeSpan DueTime, TimeSpan Period)
         {
             public Mock<ITimer> Timer { get; } = new();
+
+            public TaskCompletionSource Disposed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
             public void Fire() => Callback(State);
         }
