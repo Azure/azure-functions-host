@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -26,16 +27,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
     {
         private string _metricsFilePath;
         private IEnvironment _environment;
+        private IConfiguration _configuration;
         private StandbyOptions _standbyOptions;
         private TestOptionsMonitor<StandbyOptions> _standbyOptionsMonitor;
         private FlexConsumptionMetricsPublisherOptions _options;
         private TestLogger<FlexConsumptionMetricsPublisher> _logger;
-        private HostMetricsProvider _metricsProvider;
 
         public FlexConsumptionMetricsPublisherTests()
         {
             _metricsFilePath = Path.Combine(Path.GetTempPath(), "metrics");
             _environment = new TestEnvironment();
+            _configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
         }
 
         [Theory]
@@ -107,6 +109,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
 
             int executionDurationMS = 5700;
+            publisher.OnFunctionStarted("foo", "111");
+            publisher.OnFunctionCompleted("foo", "111");
             publisher.FunctionExecutionCount = 123;
             publisher.FunctionExecutionTimeMS = executionDurationMS;
 
@@ -127,6 +131,85 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             Assert.Equal(0, publisher.FunctionExecutionCount);
             Assert.Equal(0, publisher.FunctionExecutionTimeMS);
+        }
+
+        [Fact]
+        public async Task OnPublishMetrics_PrescaledInstance_PublishesAlwaysReadyBaselineUntilFirstExecution()
+        {
+            CleanupMetricsFiles();
+            _configuration[EnvironmentSettingNames.FunctionsPrescaledInstance] = "1";
+            using var publisher = CreatePublisher();
+
+            // Prescaled + unused: a baseline file is written even at zero activity, stamped AlwaysReady.
+            await Task.Delay(100);
+            await publisher.OnPublishMetrics(DateTime.UtcNow, ValueStopwatch.StartNew());
+            var files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Equal(1, files.Length);
+            var metrics = await ReadMetricsAsync(files[0].FullName);
+            Assert.True(metrics.IsAlwaysReady);
+            Assert.Equal(0, metrics.ExecutionCount);
+            Assert.Equal(0, metrics.ExecutionTimeMS);
+            files[0].Delete();
+
+            // First execution flips the instance to OnDemand.
+            publisher.OnFunctionStarted("foo", "111");
+            publisher.OnFunctionCompleted("foo", "111");
+            await Task.Delay(100);
+            await publisher.OnPublishMetrics(DateTime.UtcNow, ValueStopwatch.StartNew());
+            files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Equal(1, files.Length);
+            metrics = await ReadMetricsAsync(files[0].FullName);
+            Assert.False(metrics.IsAlwaysReady);
+            Assert.Equal(1, metrics.ExecutionCount);
+            files[0].Delete();
+
+            // Once served, an idle interval publishes nothing (no baseline).
+            await publisher.OnPublishMetrics(DateTime.UtcNow, ValueStopwatch.StartNew());
+            files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Equal(0, files.Length);
+        }
+
+        [Fact]
+        public async Task OnPublishMetrics_PrescaledInstance_FirstExecutionDuringPublish_PublishesOnDemand()
+        {
+            CleanupMetricsFiles();
+            _configuration[EnvironmentSettingNames.FunctionsPrescaledInstance] = "1";
+
+            var hasMetricsEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var continuePublish = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var metricsProvider = new Mock<IHostMetricsProvider>();
+            metricsProvider.SetupGet(p => p.InstanceId).Returns(string.Empty);
+            metricsProvider.SetupGet(p => p.FunctionGroup).Returns(string.Empty);
+            metricsProvider.Setup(p => p.HasMetrics()).Returns(() =>
+            {
+                hasMetricsEntered.TrySetResult(true);
+                continuePublish.Task.GetAwaiter().GetResult();
+                return false;
+            });
+            metricsProvider.Setup(p => p.GetHostMetricsOrNull()).Returns((IReadOnlyDictionary<string, long>)null);
+
+            using var publisher = CreatePublisher(metricsProvider: metricsProvider.Object);
+            Task publishTask = Task.Run(() => publisher.OnPublishMetrics(DateTime.UtcNow, ValueStopwatch.StartNew()));
+
+            try
+            {
+                await hasMetricsEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                publisher.OnFunctionStarted("foo", "111");
+                publisher.OnFunctionCompleted("foo", "111");
+            }
+            finally
+            {
+                continuePublish.TrySetResult(true);
+            }
+
+            await publishTask;
+
+            var files = GetMetricsFilesSafe(_metricsFilePath);
+            Assert.Equal(1, files.Length);
+            var metrics = await ReadMetricsAsync(files[0].FullName);
+            Assert.False(metrics.IsAlwaysReady);
+            Assert.Equal(1, metrics.ExecutionCount);
+            files[0].Delete();
         }
 
         [Fact]
@@ -571,7 +654,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
         }
 
-        private FlexConsumptionMetricsPublisher CreatePublisher(TimeSpan? metricsPublishInterval = null, bool inStandbyMode = false)
+        private FlexConsumptionMetricsPublisher CreatePublisher(TimeSpan? metricsPublishInterval = null, bool inStandbyMode = false, IHostMetricsProvider metricsProvider = null)
         {
             _standbyOptions = new StandbyOptions { InStandbyMode = inStandbyMode };
             _standbyOptionsMonitor = new TestOptionsMonitor<StandbyOptions>(_standbyOptions);
@@ -589,10 +672,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
             var optionsWrapper = new OptionsWrapper<FlexConsumptionMetricsPublisherOptions>(_options);
             _logger = new TestLogger<FlexConsumptionMetricsPublisher>();
-            var serviceProvider = new Mock<IServiceProvider>();
-            var hostMetricsLogger = new TestLogger<HostMetricsProvider>();
-            _metricsProvider = new HostMetricsProvider(serviceProvider.Object, _standbyOptionsMonitor, hostMetricsLogger, _environment);
-            var publisher = new FlexConsumptionMetricsPublisher(_environment, _standbyOptionsMonitor, optionsWrapper, _logger, new FileSystem(), _metricsProvider);
+            if (metricsProvider is null)
+            {
+                var serviceProvider = new Mock<IServiceProvider>();
+                var hostMetricsLogger = new TestLogger<HostMetricsProvider>();
+                metricsProvider = new HostMetricsProvider(serviceProvider.Object, _standbyOptionsMonitor, hostMetricsLogger, _environment);
+            }
+
+            var publisher = new FlexConsumptionMetricsPublisher(_environment, _configuration, _standbyOptionsMonitor, optionsWrapper, _logger, new FileSystem(), metricsProvider);
 
             return publisher;
         }
