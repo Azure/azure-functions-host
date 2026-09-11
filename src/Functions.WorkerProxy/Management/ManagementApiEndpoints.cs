@@ -13,6 +13,12 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// <summary>
 /// Registers worker lifecycle APIs on the management listener.
 /// </summary>
+/// <remarks>
+/// POST handlers explicitly use ReadFromJsonAsync rather than automatic body binding so malformed JSON,
+/// incompatible field types, and unsupported content types return our Host-aligned HTTP 400 InvalidBody
+/// validation envelope. Automatic binding can reject requests before the handler runs with framework-owned
+/// 400/415 responses that do not guarantee that envelope.
+/// </remarks>
 internal static class ManagementApiEndpoints
 {
     public static void Map(IEndpointRouteBuilder endpoints)
