@@ -46,7 +46,7 @@ public partial class WorkerPodStateManagerTests
         Assert.True(started.IsWorkerReady);
         Assert.Equal(WorkerPodStatus.None, started.PodStatus);
 
-        Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(CreateAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
         WorkerPodState assigned = manager.State;
         Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
         Assert.Equal(WorkerPodStatus.ReadyForRequest, assigned.PodStatus);
@@ -86,7 +86,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Same(attached, manager.State);
 
         manager.OnWorkerStartStream(1, "worker");
-        Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(CreateAssignment("accepted")));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment("accepted")));
         Assert.Equal("accepted", manager.State.FunctionAppName);
     }
 
@@ -94,10 +94,10 @@ public partial class WorkerPodStateManagerTests
     public void AssignmentReplayAndConflict_DoNotChangeRevision()
     {
         WorkerPodStateManager manager = CreateReadyManager();
-        Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(CreateAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
         WorkerPodState state = manager.State;
 
-        Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(CreateAssignment()));
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment()));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
         Assert.Same(state, manager.State);
     }
@@ -137,7 +137,7 @@ public partial class WorkerPodStateManagerTests
         Assert.False(manager.OnSessionTerminated(1));
         Assert.Same(replacement, manager.State);
         Assert.Equal(5, replacement.Revision);
-        Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(CreateAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
         Assert.Equal(6, manager.State.Revision);
     }
 
@@ -258,9 +258,10 @@ public partial class WorkerPodStateManagerTests
         })).ToArray();
 
         start.SetResult();
-        WorkerAssignmentResult[] results = await Task.WhenAll(attempts);
+        WorkerAssignmentResult[] results = await Task.WhenAll(attempts).WaitAsync(TestTimeout);
 
-        Assert.All(results, result => Assert.Equal(WorkerAssignmentResult.Success, result));
+        Assert.Single(results, result => result == WorkerAssignmentResult.Created);
+        Assert.Equal(31, results.Count(result => result == WorkerAssignmentResult.AlreadyAssigned));
         Assert.Equal(3, manager.State.Revision);
     }
 
@@ -277,8 +278,8 @@ public partial class WorkerPodStateManagerTests
         })).ToArray();
 
         start.SetResult();
-        (string AppName, WorkerAssignmentResult Result)[] results = await Task.WhenAll(attempts);
-        (string AppName, WorkerAssignmentResult Result) winner = Assert.Single(results, result => result.Result == WorkerAssignmentResult.Success);
+        (string AppName, WorkerAssignmentResult Result)[] results = await Task.WhenAll(attempts).WaitAsync(TestTimeout);
+        (string AppName, WorkerAssignmentResult Result) winner = Assert.Single(results, result => result.Result == WorkerAssignmentResult.Created);
 
         Assert.Equal(winner.AppName, manager.State.FunctionAppName);
         Assert.Equal(31, results.Count(result => result.Result == WorkerAssignmentResult.AssignmentConflict));
@@ -309,7 +310,7 @@ public partial class WorkerPodStateManagerTests
             WorkerAssignmentResult result = await assignment;
             Assert.False(manager.State.IsWorkerReady);
             Assert.Equal(WorkerPodStatus.None, manager.State.PodStatus);
-            if (result == WorkerAssignmentResult.Success)
+            if (result == WorkerAssignmentResult.Created)
             {
                 Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
                 Assert.Equal(WorkerAssignmentResult.WorkerTerminated, manager.Assign(CreateAssignment()));

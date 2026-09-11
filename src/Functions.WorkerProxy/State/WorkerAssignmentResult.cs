@@ -8,7 +8,8 @@ namespace Azure.Functions.WorkerProxy.State;
 /// </summary>
 internal enum WorkerAssignmentResult
 {
-    Success,
+    Created,
+    AlreadyAssigned,
     WorkerNotReady,
     AssignmentConflict,
     WorkerTerminated

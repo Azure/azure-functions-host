@@ -202,7 +202,7 @@ public partial class FunctionRpcRelayTests
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "teardown", timeout.Token);
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
-        Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
         Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(manager.State.Revision, timeout.Token);
 
         await runtime.CompleteRequestAsync(timeout.Token);

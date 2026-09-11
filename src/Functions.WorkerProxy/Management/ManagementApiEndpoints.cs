@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Globalization;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.State;
@@ -14,7 +16,7 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Registers worker lifecycle APIs on the management listener.
 /// </summary>
 /// <remarks>
-/// POST handlers explicitly use ReadFromJsonAsync rather than automatic body binding so malformed JSON,
+/// The PUT handler explicitly uses ReadFromJsonAsync rather than automatic body binding so malformed JSON,
 /// incompatible field types, and unsupported content types return our Host-aligned HTTP 400 InvalidBody
 /// validation envelope. Automatic binding can reject requests before the handler runs with framework-owned
 /// 400/415 responses that do not guarantee that envelope.
@@ -23,9 +25,17 @@ internal static class ManagementApiEndpoints
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/admin/worker/ready", ManagementApiHandlers.GetWorkerReady).AllowAnonymous();
-        endpoints.MapPost("/admin/worker/assign", AssignWorkerAsync).AllowAnonymous();
-        endpoints.MapPost("/admin/infra/instanceState", GetInstanceStateAsync).AllowAnonymous();
+        endpoints.MapGet("/admin/worker/ready", ManagementApiHandlers.GetWorkerReady)
+            .AddEndpointFilter(DisableCaching).AllowAnonymous();
+        endpoints.MapPut("/admin/worker/assignment", AssignWorkerAsync).AllowAnonymous();
+        endpoints.MapGet("/admin/worker/state", GetInstanceStateAsync)
+            .AddEndpointFilter(DisableCaching).AllowAnonymous();
+    }
+
+    private static ValueTask<object?> DisableCaching(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        context.HttpContext.Response.Headers.CacheControl = "no-store";
+        return next(context);
     }
 
     private static async Task<IResult> AssignWorkerAsync(HttpRequest request, WorkerPodStateManager manager)
@@ -51,22 +61,21 @@ internal static class ManagementApiEndpoints
 
     private static async Task<IResult> GetInstanceStateAsync(HttpRequest request, WorkerPodStateManager manager)
     {
-        if (!request.HasJsonContentType())
+        long? lastKnownRevision = null;
+        if (request.Query.TryGetValue("lastKnownRevision", out var revisions))
         {
-            return ManagementApiHandlers.InvalidBody();
+            string? value = revisions.Count == 1 ? revisions[0] : null;
+            // Accept invariant ASCII digits with an optional leading sign, not whitespace or JSON syntax.
+            if (value is null
+                || value.AsSpan().IndexOfAnyExcept("+-0123456789") >= 0
+                || !long.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long revision))
+            {
+                return ManagementApiHandlers.InvalidRevision();
+            }
+
+            lastKnownRevision = revision;
         }
 
-        InstanceStatePollRequest? poll;
-        try
-        {
-            poll = await request.ReadFromJsonAsync(
-                WorkerProxyJsonContext.Default.InstanceStatePollRequest, request.HttpContext.RequestAborted);
-        }
-        catch (JsonException)
-        {
-            return ManagementApiHandlers.InvalidBody();
-        }
-
-        return await ManagementApiHandlers.GetInstanceStateAsync(poll, manager, request.HttpContext.RequestAborted);
+        return await ManagementApiHandlers.GetInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
     }
 }

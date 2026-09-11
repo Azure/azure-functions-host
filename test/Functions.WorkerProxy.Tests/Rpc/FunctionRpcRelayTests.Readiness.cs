@@ -60,7 +60,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(start.StartStream.WorkerId, ready.WorkerId);
         Assert.Equal(WorkerPodStatus.None, ready.PodStatus);
 
-        Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
         Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
         Assert.Equal(3, manager.State.Revision);
         Assert.False(workerOutbound.Reader.TryRead(out _));
@@ -167,7 +167,7 @@ public partial class FunctionRpcRelayTests
             await workerInbound.Writer.WriteAsync(CreateStartStream(), timeout.Token);
             await blockingWriter.WriteEntered.WaitAsync(timeout.Token);
             WorkerAssignment assignment = CreateWorkerAssignment();
-            Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(assignment));
+            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
             WorkerPodState assigned = manager.State;
             Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(assigned.Revision, timeout.Token);
 
@@ -233,7 +233,7 @@ public partial class FunctionRpcRelayTests
 
         if (assigned)
         {
-            Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(assignment));
+            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
         }
 
         await worker.CompleteRequestAsync(timeout.Token);
@@ -256,7 +256,7 @@ public partial class FunctionRpcRelayTests
             Assert.True(manager.State.IsWorkerReady);
             Assert.True(manager.State.SessionId > terminated.SessionId);
             Assert.Equal(terminated.Revision + 2, manager.State.Revision);
-            Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(assignment));
+            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
         }
     }
 

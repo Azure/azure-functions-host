@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -36,8 +37,8 @@ public partial class FunctionRpcRelayTests
         using CancellationTokenSource timeout = new(TestTimeout);
         await AssertReadinessAsync(management, "/admin/instance/ready", HttpStatusCode.OK, timeout.Token);
         await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
-        using (HttpResponseMessage notReady = await PostManagementJsonAsync(
-            management, "/admin/worker/assign", ManagementAssignment, timeout.Token))
+        using (HttpResponseMessage notReady = await PutManagementJsonAsync(
+            management, "/admin/worker/assignment", ManagementAssignment, timeout.Token))
         {
             await AssertManagementErrorAsync(notReady, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
         }
@@ -69,25 +70,27 @@ public partial class FunctionRpcRelayTests
             }
 
             await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.OK, timeout.Token);
-            using (JsonDocument unassigned = await ReadManagementStateAsync(management, "{}", timeout.Token))
+            using (JsonDocument unassigned = await ReadManagementStateAsync(management, null, timeout.Token))
             {
                 Assert.Equal(2, unassigned.RootElement.GetProperty("revisionId").GetInt64());
                 Assert.Equal("None", unassigned.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
             }
 
-            Task<HttpResponseMessage> assignmentPoll = PostManagementJsonAsync(
-                management, "/admin/infra/instanceState", "{\"lastKnownRevision\":2}", timeout.Token);
+            Task<HttpResponseMessage> assignmentPoll = management.GetAsync(
+                "/admin/worker/state?lastKnownRevision=2", timeout.Token);
             await WaitForManagementPollAsync(manager, timeout.Token);
-            using (HttpResponseMessage assignment = await PostManagementJsonAsync(
-                management, "/admin/worker/assign", ManagementAssignment, timeout.Token))
+            using (HttpResponseMessage assignment = await PutManagementJsonAsync(
+                management, "/admin/worker/assignment", ManagementAssignment, timeout.Token))
             {
-                Assert.Equal(HttpStatusCode.OK, assignment.StatusCode);
+                Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
+                Assert.Equal("/admin/worker/assignment", assignment.Headers.Location?.OriginalString);
                 Assert.Empty(await assignment.Content.ReadAsByteArrayAsync(timeout.Token));
             }
 
             using (HttpResponseMessage changed = await assignmentPoll)
             {
                 Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
+                Assert.True(changed.Headers.CacheControl?.NoStore);
                 string body = await changed.Content.ReadAsStringAsync(timeout.Token);
                 using JsonDocument state = JsonDocument.Parse(body);
                 Assert.Equal("FunctionsWorkerPod", state.RootElement.GetProperty("functionsContainerType").GetString());
@@ -104,16 +107,16 @@ public partial class FunctionRpcRelayTests
 
             string replayBody = ManagementAssignment.Replace(
                 "\"B\":\"private-value\",\"A\":\"1\"", "\"A\":\"1\",\"B\":\"private-value\"", StringComparison.Ordinal);
-            using (HttpResponseMessage replay = await PostManagementJsonAsync(
-                management, "/admin/worker/assign", replayBody, timeout.Token))
+            using (HttpResponseMessage replay = await PutManagementJsonAsync(
+                management, "/admin/worker/assignment", replayBody, timeout.Token))
             {
-                Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+                Assert.Equal(HttpStatusCode.NoContent, replay.StatusCode);
                 Assert.Empty(await replay.Content.ReadAsByteArrayAsync(timeout.Token));
             }
 
             string conflictingBody = ManagementAssignment.Replace("test-group", "other-group", StringComparison.Ordinal);
-            using (HttpResponseMessage conflict = await PostManagementJsonAsync(
-                management, "/admin/worker/assign", conflictingBody, timeout.Token))
+            using (HttpResponseMessage conflict = await PutManagementJsonAsync(
+                management, "/admin/worker/assignment", conflictingBody, timeout.Token))
             {
                 await AssertManagementErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
             }
@@ -126,7 +129,9 @@ public partial class FunctionRpcRelayTests
             }
 
             Assert.Equal(start, await runtime.ReadAsync(timeout.Token));
-            Assert.Equal(init, await worker.ReadAsync(timeout.Token));
+            StreamingMessage relayedInit = await worker.ReadAsync(timeout.Token);
+            Assert.Equal(init, relayedInit);
+            Assert.Equal("runtime-authoritative-directory", relayedInit.WorkerInitRequest.FunctionAppDirectory);
             StreamingMessage initialized = CreateInitResponse(init.RequestId, "http://localhost:1234/");
             StreamingMessage expected = initialized.Clone();
             expected.WorkerInitResponse.Capabilities["HttpUri"] = proxyEndpoint;
@@ -134,8 +139,8 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
             Assert.Equal(3, manager.State.Revision);
 
-            Task<HttpResponseMessage> terminationPoll = PostManagementJsonAsync(
-                management, "/admin/infra/instanceState", "{\"lastKnownRevision\":3}", timeout.Token);
+            Task<HttpResponseMessage> terminationPoll = management.GetAsync(
+                "/admin/worker/state?lastKnownRevision=3", timeout.Token);
             await WaitForManagementPollAsync(manager, timeout.Token);
             await worker.CompleteRequestAsync(timeout.Token);
             Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
@@ -143,6 +148,7 @@ public partial class FunctionRpcRelayTests
             using (HttpResponseMessage changed = await terminationPoll)
             {
                 Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
+                Assert.True(changed.Headers.CacheControl?.NoStore);
                 using JsonDocument state = JsonDocument.Parse(await changed.Content.ReadAsStringAsync(timeout.Token));
                 Assert.Equal(4, state.RootElement.GetProperty("revisionId").GetInt64());
                 JsonElement pod = state.RootElement.GetProperty("workerPodState");
@@ -153,10 +159,13 @@ public partial class FunctionRpcRelayTests
 
             await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
             await AssertReadinessAsync(management, "/admin/instance/ready", HttpStatusCode.OK, timeout.Token);
-            using HttpResponseMessage terminalReplay = await PostManagementJsonAsync(
-                management, "/admin/worker/assign", ManagementAssignment, timeout.Token);
-            await AssertManagementErrorAsync(terminalReplay, HttpStatusCode.ServiceUnavailable, "WorkerTerminated", timeout.Token);
-            using JsonDocument current = await ReadManagementStateAsync(management, "{\"lastKnownRevision\":2}", timeout.Token);
+            using HttpResponseMessage terminalReplay = await PutManagementJsonAsync(
+                management, "/admin/worker/assignment", ManagementAssignment, timeout.Token);
+            await AssertManagementErrorAsync(terminalReplay, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
+            using HttpResponseMessage terminalConflict = await PutManagementJsonAsync(
+                management, "/admin/worker/assignment", conflictingBody, timeout.Token);
+            await AssertManagementErrorAsync(terminalConflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+            using JsonDocument current = await ReadManagementStateAsync(management, 2, timeout.Token);
             Assert.Equal(4, current.RootElement.GetProperty("revisionId").GetInt64());
         }
         finally
@@ -180,24 +189,27 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(StatusCode.Unavailable, exception.StatusCode);
         await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.ServiceUnavailable, timeout.Token);
-        using HttpResponseMessage assignment = await PostManagementJsonAsync(
-            management, "/admin/worker/assign", ManagementAssignment, timeout.Token);
+        using HttpResponseMessage assignment = await PutManagementJsonAsync(
+            management, "/admin/worker/assignment", ManagementAssignment, timeout.Token);
         await AssertManagementErrorAsync(assignment, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
     }
 
-    private static async Task<HttpResponseMessage> PostManagementJsonAsync(
+    private static async Task<HttpResponseMessage> PutManagementJsonAsync(
         HttpClient client, string path, string body, CancellationToken cancellationToken)
     {
         using StringContent content = new(body, Encoding.UTF8, "application/json");
-        return await client.PostAsync(path, content, cancellationToken);
+        return await client.PutAsync(path, content, cancellationToken);
     }
 
     private static async Task<JsonDocument> ReadManagementStateAsync(
-        HttpClient client, string body, CancellationToken cancellationToken)
+        HttpClient client, long? lastKnownRevision, CancellationToken cancellationToken)
     {
-        using HttpResponseMessage response = await PostManagementJsonAsync(
-            client, "/admin/infra/instanceState", body, cancellationToken);
+        string path = lastKnownRevision.HasValue
+            ? "/admin/worker/state?lastKnownRevision=" + lastKnownRevision.Value.ToString(CultureInfo.InvariantCulture)
+            : "/admin/worker/state";
+        using HttpResponseMessage response = await client.GetAsync(path, cancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
     }
 
@@ -207,6 +219,10 @@ public partial class FunctionRpcRelayTests
         using HttpResponseMessage response = await client.GetAsync(path, cancellationToken);
         Assert.Equal(statusCode, response.StatusCode);
         Assert.Empty(await response.Content.ReadAsByteArrayAsync(cancellationToken));
+        if (string.Equals(path, "/admin/worker/ready", StringComparison.Ordinal))
+        {
+            Assert.True(response.Headers.CacheControl?.NoStore);
+        }
     }
 
     private static async Task AssertManagementErrorAsync(

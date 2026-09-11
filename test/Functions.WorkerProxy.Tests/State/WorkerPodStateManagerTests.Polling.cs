@@ -212,7 +212,7 @@ public partial class WorkerPodStateManagerTests
 
         Assert.False(manager.OnWorkerAttached(1));
         Assert.False(manager.OnWorkerStartStream(1, "worker"));
-        Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(CreateAssignment()));
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment()));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
         Assert.False(poll.IsCompleted);
         Assert.Equal(1, manager.PendingWaiterCount);

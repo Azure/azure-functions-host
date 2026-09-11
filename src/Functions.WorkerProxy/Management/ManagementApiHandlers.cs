@@ -83,29 +83,25 @@ internal static class ManagementApiHandlers
             functionAppDirectory);
         return manager.Assign(assignment) switch
         {
-            WorkerAssignmentResult.Success => TypedResults.Ok(),
+            WorkerAssignmentResult.Created => TypedResults.Created("/admin/worker/assignment"),
+            WorkerAssignmentResult.AlreadyAssigned => TypedResults.NoContent(),
             WorkerAssignmentResult.WorkerNotReady => Error(
                 StatusCodes.Status503ServiceUnavailable, WorkerApiErrorCodes.WorkerNotReady, "The worker has not established a valid StartStream."),
             WorkerAssignmentResult.AssignmentConflict => Error(
                 StatusCodes.Status409Conflict, WorkerApiErrorCodes.AssignmentConflict, "The pod is already assigned to a different assignment."),
             WorkerAssignmentResult.WorkerTerminated => Error(
-                StatusCodes.Status503ServiceUnavailable, WorkerApiErrorCodes.WorkerTerminated, "The assigned worker stream has terminated."),
+                StatusCodes.Status409Conflict, WorkerApiErrorCodes.WorkerTerminated, "The assigned worker stream has terminated."),
             _ => throw new InvalidOperationException("Unexpected worker assignment result.")
         };
     }
 
     public static async Task<IResult> GetInstanceStateAsync(
-        InstanceStatePollRequest? request,
+        long? revision,
         WorkerPodStateManager manager,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (request is null)
-        {
-            return InvalidBody();
-        }
-
-        if (request.LastKnownRevision is not { } lastKnownRevision)
+        if (revision is not { } lastKnownRevision)
         {
             return StateResponse(manager.State);
         }
@@ -113,7 +109,7 @@ internal static class ManagementApiHandlers
         // Revisions never decrease, so a revision valid here remains valid when the manager registers the poll.
         if (lastKnownRevision < 0 || lastKnownRevision > manager.State.Revision)
         {
-            return ValidationError([new(WorkerApiErrorCodes.InvalidRevision, "lastKnownRevision")]);
+            return InvalidRevision();
         }
 
         WorkerStatePollResult result = await manager.WaitForChangeAsync(lastKnownRevision, cancellationToken);
@@ -122,6 +118,9 @@ internal static class ManagementApiHandlers
 
     internal static IResult InvalidBody() =>
         ValidationError([new(WorkerApiErrorCodes.InvalidBody, "request")]);
+
+    internal static IResult InvalidRevision() =>
+        ValidationError([new(WorkerApiErrorCodes.InvalidRevision, "lastKnownRevision")]);
 
     private static IResult ValidationError(IReadOnlyList<RequestValidationError> errors) =>
         TypedResults.Json(new RequestValidationResponse(errors),

@@ -244,7 +244,7 @@ internal sealed class WorkerPodStateManager
 
                 return _state.AssignmentState == WorkerAssignmentState.Failed
                     ? WorkerAssignmentResult.WorkerTerminated
-                    : WorkerAssignmentResult.Success;
+                    : WorkerAssignmentResult.AlreadyAssigned;
             }
 
             if (!_state.IsWorkerReady)
@@ -270,7 +270,7 @@ internal sealed class WorkerPodStateManager
 
             _assignment = assignment;
             UpdateStateAndNotifyWaitersLocked(assigned);
-            return WorkerAssignmentResult.Success;
+            return WorkerAssignmentResult.Created;
         }
     }
 

@@ -21,8 +21,8 @@ namespace Azure.Functions.WorkerProxy.Tests.Management;
 
 public class ManagementApiEndpointTests
 {
-    private const string AssignPath = "/admin/worker/assign";
-    private const string StatePath = "/admin/infra/instanceState";
+    private const string AssignPath = "/admin/worker/assignment";
+    private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
         {"functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
          "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot"}
@@ -30,18 +30,16 @@ public class ManagementApiEndpointTests
 
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
-    [Theory]
-    [InlineData("{}")]
-    [InlineData("{\"lastKnownRevision\":null}")]
-    public async Task InitialPollReturnsRevisionZeroImmediately(string body)
+    [Fact]
+    public async Task OmittedRevisionReturnsRevisionZeroImmediately()
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
-        using StringContent content = JsonBody(body);
-        using HttpResponseMessage response = await client.PostAsync(StatePath, content, timeout.Token);
+        using HttpResponseMessage response = await client.GetAsync(StatePath, timeout.Token);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        AssertNoStore(response);
         using JsonDocument state = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
         Assert.Equal(0, state.RootElement.GetProperty("revisionId").GetInt64());
         Assert.Equal("None", state.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
@@ -49,24 +47,19 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
-    [InlineData(AssignPath, "")]
-    [InlineData(AssignPath, "null")]
-    [InlineData(AssignPath, "[]")]
-    [InlineData(AssignPath, "{")]
-    [InlineData(StatePath, "")]
-    [InlineData(StatePath, "null")]
-    [InlineData(StatePath, "[]")]
-    [InlineData(StatePath, "{")]
-    [InlineData(StatePath, "{\"lastKnownRevision\":\"0\"}")]
-    [InlineData(StatePath, "{\"lastKnownRevision\":1.5}")]
-    [InlineData(StatePath, "{\"lastKnownRevision\":9223372036854775808}")]
-    public async Task MalformedBodyUsesHostValidationEnvelope(string path, string body)
+    [InlineData("")]
+    [InlineData("null")]
+    [InlineData("[]")]
+    [InlineData("{")]
+    [InlineData("true")]
+    [InlineData("\"assignment\"")]
+    public async Task MalformedBodyUsesHostValidationEnvelope(string body)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
         using StringContent content = JsonBody(body);
-        using HttpResponseMessage response = await client.PostAsync(path, content, timeout.Token);
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
 
         await AssertValidationAsync(response, timeout.Token, ("InvalidBody", "request"));
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
@@ -100,17 +93,26 @@ public class ManagementApiEndpointTests
         }
 
         await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
         using StringContent content = JsonBody(body.ToJsonString());
-        using HttpResponseMessage response = await client.PostAsync(AssignPath, content, timeout.Token);
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
 
         await AssertValidationAsync(response, timeout.Token,
             (code, string.Equals(code, "InvalidBody", StringComparison.Ordinal) ? "request" : field));
-        WorkerPodState state = factory.Services.GetRequiredService<WorkerPodStateManager>().State;
-        Assert.Equal(0, state.Revision);
+        WorkerPodState state = manager.State;
+        Assert.Equal(2, state.Revision);
         Assert.Equal(WorkerAssignmentState.Unassigned, state.AssignmentState);
         Assert.Null(state.FunctionAppName);
+
+        using StringContent validContent = JsonBody(
+            ValidAssignment.Replace("test-app", "another-app", StringComparison.Ordinal));
+        using HttpResponseMessage accepted = await client.PutAsync(AssignPath, validContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
+        Assert.Equal("another-app", manager.State.FunctionAppName);
     }
 
     [Theory]
@@ -125,7 +127,7 @@ public class ManagementApiEndpointTests
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
         using StringContent content = JsonBody(body);
-        using HttpResponseMessage response = await client.PostAsync(AssignPath, content, timeout.Token);
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
 
         await AssertValidationAsync(response, timeout.Token,
             ("Required", "functionAppName"),
@@ -138,40 +140,69 @@ public class ManagementApiEndpointTests
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
     }
 
-    [Theory]
-    [InlineData(AssignPath)]
-    [InlineData(StatePath)]
-    public async Task NonJsonContentUsesHostValidationEnvelope(string path)
+    [Fact]
+    public async Task NonJsonContentUsesHostValidationEnvelope()
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
         using StringContent content = new("{}", Encoding.UTF8, "text/plain");
-        using HttpResponseMessage response = await client.PostAsync(path, content, timeout.Token);
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
 
         await AssertValidationAsync(response, timeout.Token, ("InvalidBody", "request"));
     }
 
     [Theory]
-    [InlineData(-1)]
-    [InlineData(1)]
-    [InlineData(long.MaxValue)]
-    public async Task InvalidRevisionUsesHostValidationEnvelope(long revision)
+    [InlineData("lastKnownRevision=-1")]
+    [InlineData("lastKnownRevision=1")]
+    [InlineData("lastKnownRevision=9223372036854775807")]
+    [InlineData("lastKnownRevision=9223372036854775808")]
+    [InlineData("lastKnownRevision=-9223372036854775809")]
+    [InlineData("lastKnownRevision=-9223372036854775808")]
+    [InlineData("lastKnownRevision=null")]
+    [InlineData("lastKnownRevision=")]
+    [InlineData("lastKnownRevision")]
+    [InlineData("lastKnownRevision=0&lastKnownRevision=0")]
+    [InlineData("lastKnownRevision=0&lastKnownRevision=1")]
+    [InlineData("lastKnownRevision=0&lastKnownRevision=")]
+    [InlineData("lastKnownRevision=0&LASTKNOWNREVISION=0")]
+    [InlineData("lastKnownRevision=1.5")]
+    [InlineData("lastKnownRevision=0.0")]
+    [InlineData("lastKnownRevision=1e0")]
+    [InlineData("lastKnownRevision=%220%22")]
+    [InlineData("lastKnownRevision=true")]
+    [InlineData("lastKnownRevision=%200")]
+    [InlineData("lastKnownRevision=0%20")]
+    [InlineData("lastKnownRevision=%090")]
+    [InlineData("lastKnownRevision=0%0A")]
+    [InlineData("lastKnownRevision=0%00")]
+    [InlineData("lastKnownRevision=%000")]
+    [InlineData("lastKnownRevision=0%000")]
+    [InlineData("lastKnownRevision=%C2%A00")]
+    [InlineData("lastKnownRevision=%2B%200")]
+    [InlineData("lastKnownRevision=+0")]
+    [InlineData("lastKnownRevision=%2B")]
+    [InlineData("lastKnownRevision=-")]
+    [InlineData("lastKnownRevision=%2B-0")]
+    [InlineData("lastKnownRevision=0,0")]
+    [InlineData("lastKnownRevision=%D9%A0")]
+    public async Task InvalidRevisionUsesHostValidationEnvelope(string query)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
-        using StringContent content = JsonBody($"{{\"lastKnownRevision\":{revision}}}");
-        using HttpResponseMessage response = await client.PostAsync(StatePath, content, timeout.Token);
+        using HttpResponseMessage response = await client.GetAsync($"{StatePath}?{query}", timeout.Token);
 
         await AssertValidationAsync(response, timeout.Token, ("InvalidRevision", "lastKnownRevision"));
+        AssertNoStore(response);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
+        Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
     }
 
     [Theory]
     [InlineData("/admin/worker/ready", "GET")]
-    [InlineData(AssignPath, "POST")]
-    [InlineData(StatePath, "POST")]
+    [InlineData(AssignPath, "PUT")]
+    [InlineData(StatePath, "GET")]
     public async Task WorkerManagementRoutesAreUnavailableOnOtherListeners(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -183,7 +214,7 @@ public class ManagementApiEndpointTests
             {
                 Version = HttpVersion.Version20,
                 VersionPolicy = HttpVersionPolicy.RequestVersionExact,
-                Content = string.Equals(method, "POST", StringComparison.Ordinal) ? JsonBody("{}") : null
+                Content = string.Equals(method, "PUT", StringComparison.Ordinal) ? JsonBody("{}") : null
             };
             using HttpResponseMessage response = await rpcClient.SendAsync(request, timeout.Token);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -192,7 +223,7 @@ public class ManagementApiEndpointTests
         using HttpClient forwardingClient = factory.CreateHttpForwardingClient();
         using HttpRequestMessage forwardingRequest = new(new HttpMethod(method), path)
         {
-            Content = string.Equals(method, "POST", StringComparison.Ordinal) ? JsonBody("{}") : null
+            Content = string.Equals(method, "PUT", StringComparison.Ordinal) ? JsonBody("{}") : null
         };
         using HttpResponseMessage forwardingResponse = await forwardingClient.SendAsync(forwardingRequest, timeout.Token);
         Assert.Equal(HttpStatusCode.NotFound, forwardingResponse.StatusCode);
@@ -200,8 +231,14 @@ public class ManagementApiEndpointTests
 
     [Theory]
     [InlineData("/admin/worker/ready", "POST")]
+    [InlineData("/admin/worker/ready", "PUT")]
     [InlineData(AssignPath, "GET")]
-    [InlineData(StatePath, "GET")]
+    [InlineData(AssignPath, "POST")]
+    [InlineData(AssignPath, "PATCH")]
+    [InlineData(AssignPath, "DELETE")]
+    [InlineData(StatePath, "POST")]
+    [InlineData(StatePath, "PUT")]
+    [InlineData(StatePath, "DELETE")]
     public async Task ManagementRoutesRejectUnsupportedMethods(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -213,8 +250,12 @@ public class ManagementApiEndpointTests
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
 
-    [Fact]
-    public async Task EqualRevisionPollReturnsNoContentAtDeadline()
+    [Theory]
+    [InlineData("0")]
+    [InlineData("%2B0")]
+    [InlineData("-0")]
+    [InlineData("000")]
+    public async Task ExplicitZeroRevisionPollReturnsNoContentAtDeadline(string revision)
     {
         Mock<TimeProvider> clock = new();
         Mock<ITimer> timer = new();
@@ -232,14 +273,14 @@ public class ManagementApiEndpointTests
             services.Replace(ServiceDescriptor.Singleton<TimeProvider>(clock.Object)));
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
-        using StringContent content = JsonBody("{\"lastKnownRevision\":0}");
-        Task<HttpResponseMessage> poll = client.PostAsync(StatePath, content, timeout.Token);
+        Task<HttpResponseMessage> poll = client.GetAsync($"{StatePath}?lastKnownRevision={revision}", timeout.Token);
         Action fireTimer = await expire.Task.WaitAsync(timeout.Token);
         Assert.False(poll.IsCompleted);
 
         fireTimer();
         using HttpResponseMessage response = await poll;
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        AssertNoStore(response);
         Assert.Empty(await response.Content.ReadAsByteArrayAsync(timeout.Token));
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
         timer.Verify(instance => instance.Dispose(), Times.AtLeastOnce);
@@ -253,8 +294,7 @@ public class ManagementApiEndpointTests
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource cancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
-        using StringContent content = JsonBody("{\"lastKnownRevision\":0}");
-        Task<HttpResponseMessage> poll = client.PostAsync(StatePath, content, cancellation.Token);
+        Task<HttpResponseMessage> poll = client.GetAsync($"{StatePath}?lastKnownRevision=0", cancellation.Token);
         while (manager.PendingWaiterCount == 0)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
@@ -268,6 +308,211 @@ public class ManagementApiEndpointTests
         }
 
         Assert.Equal(0, manager.State.Revision);
+    }
+
+    [Theory]
+    [InlineData("/admin/worker/assign", "POST")]
+    [InlineData("/admin/worker/assign", "PUT")]
+    [InlineData("/admin/infra/instanceState", "POST")]
+    [InlineData("/admin/infra/instanceState", "GET")]
+    public async Task ObsoleteManagementRoutesAreNotFound(string path, string method)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using HttpRequestMessage request = new(new HttpMethod(method), path);
+        using HttpResponseMessage response = await client.SendAsync(request, timeout.Token);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("%2B0")]
+    [InlineData("-0")]
+    [InlineData("1")]
+    [InlineData("%2B1")]
+    [InlineData("0001")]
+    public async Task OlderSignedInvariantRevisionReturnsCurrentSnapshot(string revision)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using HttpResponseMessage response = await client.GetAsync($"{StatePath}?lastKnownRevision={revision}", timeout.Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        AssertNoStore(response);
+        using JsonDocument state = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+        Assert.Equal(2, state.RootElement.GetProperty("revisionId").GetInt64());
+        Assert.Equal(2, manager.State.Revision);
+        Assert.Equal(0, manager.PendingWaiterCount);
+    }
+
+    [Theory]
+    [InlineData(null, "{", "application/json")]
+    [InlineData(null, "not-json", "text/plain")]
+    [InlineData("0", "{\"lastKnownRevision\":999}", "application/json")]
+    [InlineData("%2B1", "not-json", "application/octet-stream")]
+    public async Task StateQueryIgnoresRequestBodyAndContentType(string? revision, string body, string contentType)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        string path = revision is null ? StatePath : $"{StatePath}?lastKnownRevision={revision}";
+        using HttpRequestMessage request = new(HttpMethod.Get, path)
+        {
+            Content = new StringContent(body, Encoding.UTF8, contentType)
+        };
+        using HttpResponseMessage response = await client.SendAsync(request, timeout.Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        AssertNoStore(response);
+        using JsonDocument state = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+        Assert.Equal(2, state.RootElement.GetProperty("revisionId").GetInt64());
+        Assert.Equal(2, manager.State.Revision);
+        Assert.Equal(0, manager.PendingWaiterCount);
+    }
+
+    [Fact]
+    public async Task ConcurrentIdenticalAssignmentsCreateOnceAndReplaysDoNotChangeRevision()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        TaskCompletionSource start = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<HttpStatusCode>[] assignments = Enumerable.Range(0, 12).Select(async _ =>
+        {
+            await start.Task.WaitAsync(timeout.Token);
+            using StringContent content = JsonBody(ValidAssignment);
+            using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
+            Assert.True(response.StatusCode is HttpStatusCode.Created or HttpStatusCode.NoContent);
+            await AssertAssignmentSuccessAsync(response, response.StatusCode, timeout.Token);
+            return response.StatusCode;
+        }).ToArray();
+
+        start.SetResult();
+        HttpStatusCode[] statuses = await Task.WhenAll(assignments).WaitAsync(timeout.Token);
+        Assert.Single(statuses, status => status == HttpStatusCode.Created);
+        Assert.Equal(statuses.Length - 1, statuses.Count(status => status == HttpStatusCode.NoContent));
+        Assert.Equal(3, manager.State.Revision);
+        WorkerPodState assigned = manager.State;
+
+        using StringContent replayContent = JsonBody(ValidAssignment);
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
+    }
+
+    [Theory]
+    [InlineData("functionAppName", "\"TEST-app\"", false)]
+    [InlineData("functionGroupName", "\"TEST-group\"", false)]
+    [InlineData("functionAppDirectory", "\"/home/site/WWWROOT\"", false)]
+    [InlineData("isAlwaysReady", "true", false)]
+    [InlineData("environment", "{\"SETTING\":\"PRIVATE-value\"}", false)]
+    [InlineData("environment", "{\"setting\":\"private-value\"}", false)]
+    [InlineData("functionAppName", "\"TEST-app\"", true)]
+    [InlineData("functionGroupName", "\"TEST-group\"", true)]
+    [InlineData("functionAppDirectory", "\"/home/site/WWWROOT\"", true)]
+    [InlineData("isAlwaysReady", "true", true)]
+    [InlineData("environment", "{\"SETTING\":\"PRIVATE-value\"}", true)]
+    [InlineData("environment", "{\"setting\":\"private-value\"}", true)]
+    public async Task AllIdentityFieldsConflictEvenAfterTermination(string field, string value, bool terminated)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using StringContent content = JsonBody(ValidAssignment);
+        using HttpResponseMessage created = await client.PutAsync(AssignPath, content, timeout.Token);
+        await AssertAssignmentSuccessAsync(created, HttpStatusCode.Created, timeout.Token);
+        if (terminated)
+        {
+            Assert.True(manager.OnSessionTerminated(1));
+        }
+
+        WorkerPodState assigned = manager.State;
+        JsonObject different = JsonNode.Parse(ValidAssignment)!.AsObject();
+        different[field] = JsonNode.Parse(value);
+        using StringContent conflictingContent = JsonBody(different.ToJsonString());
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictingContent, timeout.Token);
+        await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        using StringContent replayContent = JsonBody(ValidAssignment);
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        if (terminated)
+        {
+            await AssertAssignmentErrorAsync(replay, HttpStatusCode.Conflict, "WorkerTerminated", timeout.Token);
+        }
+        else
+        {
+            await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        }
+
+        Assert.Same(assigned, manager.State);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"SETTING\":\"\"}")]
+    public async Task EmptyEnvironmentOrValueIsValidAndNotReadyDoesNotReserveIdentity(string environment)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using StringContent notReadyContent = JsonBody(ValidAssignment);
+        using HttpResponseMessage notReady = await client.PutAsync(AssignPath, notReadyContent, timeout.Token);
+        await AssertAssignmentErrorAsync(notReady, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
+        Assert.Equal(0, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+        Assert.Null(manager.State.FunctionAppName);
+
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        JsonObject assignment = JsonNode.Parse(ValidAssignment)!.AsObject();
+        assignment["functionAppName"] = "other-app";
+        assignment["environment"] = JsonNode.Parse(environment);
+        using StringContent content = JsonBody(assignment.ToJsonString());
+        using HttpResponseMessage created = await client.PutAsync(AssignPath, content, timeout.Token);
+        await AssertAssignmentSuccessAsync(created, HttpStatusCode.Created, timeout.Token);
+        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal("other-app", manager.State.FunctionAppName);
+    }
+
+    private static void AssertNoStore(HttpResponseMessage response) =>
+        Assert.True(response.Headers.CacheControl?.NoStore);
+
+    private static async Task AssertAssignmentSuccessAsync(
+        HttpResponseMessage response, HttpStatusCode statusCode, CancellationToken cancellationToken)
+    {
+        Assert.Equal(statusCode, response.StatusCode);
+        Assert.Empty(await response.Content.ReadAsByteArrayAsync(cancellationToken));
+        if (statusCode == HttpStatusCode.Created)
+        {
+            Assert.Equal(AssignPath, response.Headers.Location?.OriginalString);
+        }
+    }
+
+    private static async Task AssertAssignmentErrorAsync(
+        HttpResponseMessage response, HttpStatusCode statusCode, string code, CancellationToken cancellationToken)
+    {
+        Assert.Equal(statusCode, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        using JsonDocument json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+        Assert.Equal("error", Assert.Single(json.RootElement.EnumerateObject()).Name);
+        Assert.Equal(code, json.RootElement.GetProperty("error").GetProperty("code").GetString());
     }
 
     private static StringContent JsonBody(string body) => new(body, Encoding.UTF8, "application/json");

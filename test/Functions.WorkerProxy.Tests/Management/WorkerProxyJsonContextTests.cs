@@ -103,53 +103,10 @@ public class WorkerProxyJsonContextTests
             JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.WorkerAssignRequest));
     }
 
-    [Theory]
-    [InlineData("{}", null)]
-    [InlineData("""{"lastKnownRevision":null}""", null)]
-    [InlineData("""{"lastKnownRevision":0}""", 0L)]
-    [InlineData("""{"LASTKNOWNREVISION":17}""", 17L)]
-    [InlineData("""{"lastKnownRevision":-1}""", -1L)]
-    [InlineData("""{"lastKnownRevision":9223372036854775807}""", long.MaxValue)]
-    public void PollRequest_PreservesNullableAndExactIntegerRevision(string json, long? expected)
-    {
-        InstanceStatePollRequest request = Assert.IsType<InstanceStatePollRequest>(
-            JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.InstanceStatePollRequest));
-
-        Assert.Equal(expected, request.LastKnownRevision);
-        string serialized = JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.InstanceStatePollRequest);
-        using JsonDocument document = JsonDocument.Parse(serialized);
-        if (expected.HasValue)
-        {
-            AssertProperties(document.RootElement, "lastKnownRevision");
-            Assert.Equal(JsonValueKind.Number, document.RootElement.GetProperty("lastKnownRevision").ValueKind);
-            Assert.Equal(expected.Value, document.RootElement.GetProperty("lastKnownRevision").GetInt64());
-        }
-        else
-        {
-            AssertProperties(document.RootElement);
-        }
-    }
-
-    [Theory]
-    [InlineData("""{"lastKnownRevision":"0"}""")]
-    [InlineData("""{"lastKnownRevision":true}""")]
-    [InlineData("""{"lastKnownRevision":1.5}""")]
-    [InlineData("""{"lastKnownRevision":9223372036854775808}""")]
-    [InlineData("""{"lastKnownRevision":-9223372036854775809}""")]
-    [InlineData("""{"lastKnownRevision":{}}""")]
-    [InlineData("[]")]
-    [InlineData("{")]
-    public void PollRequest_MalformedOrOutOfRangeRevisionThrowsJsonException(string json)
-    {
-        Assert.Throws<JsonException>(() =>
-            JsonSerializer.Deserialize(json, WorkerProxyJsonContext.Default.InstanceStatePollRequest));
-    }
-
     [Fact]
-    public void NullRequests_DeserializeAsNullForHandlerValidation()
+    public void NullAssignment_DeserializesAsNullForHandlerValidation()
     {
         Assert.Null(JsonSerializer.Deserialize("null", WorkerProxyJsonContext.Default.WorkerAssignRequest));
-        Assert.Null(JsonSerializer.Deserialize("null", WorkerProxyJsonContext.Default.InstanceStatePollRequest));
     }
 
     [Fact]

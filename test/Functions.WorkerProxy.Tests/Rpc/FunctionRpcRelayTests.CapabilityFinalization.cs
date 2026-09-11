@@ -88,7 +88,7 @@ public partial class FunctionRpcRelayTests
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
         WorkerAssignment assignment = CreateWorkerAssignment();
-        Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(assignment));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
         Task<WorkerStatePollResult> poll = manager.WaitForChangeAsync(manager.State.Revision, timeout.Token);
 
         await worker.WriteAsync(CreateInitResponse("init", null), timeout.Token);
@@ -129,7 +129,7 @@ public partial class FunctionRpcRelayTests
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
-        Assert.Equal(WorkerAssignmentResult.Success, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
 
         try
         {
