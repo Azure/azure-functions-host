@@ -292,25 +292,37 @@ public partial class FunctionRpcRelayTests
         await using FunctionRpcRelay relay = CreateInProcessRelay(manager);
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource runtimeCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
-        TaskCompletionSource<bool> delayedRead = new();
+        TaskCompletionSource<bool> delayedRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> currentRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        PumpingSynchronizationContext readContext = new();
         Mock<IAsyncStreamReader<StreamingMessage>> oldReader = new(MockBehavior.Strict);
         oldReader.Setup(reader => reader.MoveNext(It.IsAny<CancellationToken>())).Returns(delayedRead.Task);
-        oldReader.SetupGet(reader => reader.Current).Returns(new StreamingMessage
+        oldReader.SetupGet(reader => reader.Current).Returns(() =>
         {
-            StartStream = new() { WorkerId = "old-worker" }
+            currentRead.TrySetResult(true);
+            return new StreamingMessage { StartStream = new() { WorkerId = "old-worker" } };
         });
 
-        // Register the read without a test synchronization context. Completing delayedRead then processes it inline.
-        Task<FunctionRpcRelayTerminalState> oldWorker = await Task.Factory.StartNew(
-            () => relay.AttachAsync(FunctionRpcRelaySide.Worker, oldReader.Object, new TestServerStreamWriter(), timeout.Token),
-            timeout.Token, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+        Task<FunctionRpcRelayTerminalState> oldWorker;
+        SynchronizationContext? previousContext = SynchronizationContext.Current;
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(readContext);
+            oldWorker = relay.AttachAsync(FunctionRpcRelaySide.Worker,
+                oldReader.Object, new TestServerStreamWriter(), timeout.Token);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previousContext);
+        }
+
         Task<FunctionRpcRelayTerminalState> oldRuntime = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             new BlockingStreamReader(), new TestServerStreamWriter(), runtimeCancellation.Token);
 
         try
         {
             runtimeCancellation.Cancel();
-            await Task.WhenAll(oldRuntime, oldWorker).WaitAsync(timeout.Token);
+            await readContext.RunUntilAsync(Task.WhenAll(oldRuntime, oldWorker), timeout.Token);
             Assert.False(manager.State.IsWorkerReady);
 
             Task<FunctionRpcRelayTerminalState> replacement = relay.AttachAsync(FunctionRpcRelaySide.Worker,
@@ -319,6 +331,9 @@ public partial class FunctionRpcRelayTests
             Assert.True(ready.IsWorkerReady);
 
             delayedRead.SetResult(true);
+            // Current only marks entry. The pump returns after the entire callback, including
+            // ProcessInboundMessage and the stale reader's return, has finished.
+            await readContext.RunUntilAsync(currentRead.Task, timeout.Token);
             oldReader.VerifyGet(reader => reader.Current, Times.Once);
             Assert.Same(ready, manager.State);
             Assert.Equal("test-worker", manager.State.WorkerId);
@@ -335,4 +350,38 @@ public partial class FunctionRpcRelayTests
     private static WorkerAssignment CreateWorkerAssignment()
         => new("test-app", "test-group", isAlwaysReady: false,
             environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot");
+
+    private sealed class PumpingSynchronizationContext : SynchronizationContext
+    {
+        private readonly Channel<(SendOrPostCallback Callback, object? State)> _callbacks =
+            Channel.CreateUnbounded<(SendOrPostCallback, object?)>();
+
+        public override void Post(SendOrPostCallback callback, object? state) =>
+            _callbacks.Writer.TryWrite((callback, state));
+
+        public async Task RunUntilAsync(Task completion, CancellationToken cancellationToken)
+        {
+            // Wake a waiting pump even when completion happens outside a queued callback.
+            _ = completion.ContinueWith(
+                _ => Post(static _ => { }, null),
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+
+            while (!completion.IsCompleted)
+            {
+                (SendOrPostCallback callback, object? state) = await _callbacks.Reader.ReadAsync(cancellationToken);
+                SynchronizationContext? previousContext = Current;
+                try
+                {
+                    SetSynchronizationContext(this);
+                    callback(state);
+                }
+                finally
+                {
+                    SetSynchronizationContext(previousContext);
+                }
+            }
+
+            await completion.WaitAsync(cancellationToken);
+        }
+    }
 }
