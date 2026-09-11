@@ -63,7 +63,7 @@ public partial class WorkerPodStateManagerTests
     {
         PollClock clock = new();
         WorkerPodStateManager manager = new(CreateOptions(), clock.Provider);
-        if (transition != "attach")
+        if (!string.Equals(transition, "attach", StringComparison.Ordinal))
         {
             manager.OnWorkerAttached(1);
         }
@@ -73,7 +73,7 @@ public partial class WorkerPodStateManagerTests
             manager.OnWorkerStartStream(1, "worker");
         }
 
-        if (transition == "terminate")
+        if (string.Equals(transition, "terminate", StringComparison.Ordinal))
         {
             manager.Assign(CreateAssignment());
         }

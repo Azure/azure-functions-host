@@ -39,19 +39,20 @@ public class WorkerAssignmentTests
         WorkerAssignment original = Create(new Dictionary<string, string> { ["KEY"] = "Value" });
         Dictionary<string, string> environment = new(StringComparer.OrdinalIgnoreCase)
         {
-            [changedField == "key" ? "key" : "KEY"] = changedField == "value" ? "value" : "Value"
+            [string.Equals(changedField, "key", StringComparison.Ordinal) ? "key" : "KEY"] =
+                string.Equals(changedField, "value", StringComparison.Ordinal) ? "value" : "Value"
         };
-        if (changedField == "count")
+        if (string.Equals(changedField, "count", StringComparison.Ordinal))
         {
             environment.Add("EXTRA", "Value");
         }
 
         WorkerAssignment changed = new(
-            changedField == "app" ? "APP" : "app",
-            changedField == "group" ? "HTTP" : "http",
-            changedField == "alwaysReady",
+            string.Equals(changedField, "app", StringComparison.Ordinal) ? "APP" : "app",
+            string.Equals(changedField, "group", StringComparison.Ordinal) ? "HTTP" : "http",
+            string.Equals(changedField, "alwaysReady", StringComparison.Ordinal),
             environment,
-            changedField == "directory" ? "/HOME/site/wwwroot" : "/home/site/wwwroot");
+            string.Equals(changedField, "directory", StringComparison.Ordinal) ? "/HOME/site/wwwroot" : "/home/site/wwwroot");
 
         Assert.False(original.IsEquivalentTo(changed));
         Assert.False(changed.IsEquivalentTo(original));

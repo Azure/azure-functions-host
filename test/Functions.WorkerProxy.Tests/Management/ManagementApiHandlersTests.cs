@@ -380,7 +380,7 @@ public class ManagementApiHandlersTests
     {
         PollClock clock = new();
         WorkerPodStateManager manager = CreateManager(clock.Provider);
-        if (transition != "attach")
+        if (!string.Equals(transition, "attach", StringComparison.Ordinal))
         {
             manager.OnWorkerAttached(1);
         }
@@ -390,7 +390,7 @@ public class ManagementApiHandlersTests
             manager.OnWorkerStartStream(1, "worker");
         }
 
-        if (transition == "terminate")
+        if (string.Equals(transition, "terminate", StringComparison.Ordinal))
         {
             Assert.IsType<Ok>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         }

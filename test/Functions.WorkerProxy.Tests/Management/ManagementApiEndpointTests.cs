@@ -105,7 +105,8 @@ public class ManagementApiEndpointTests
         using StringContent content = JsonBody(body.ToJsonString());
         using HttpResponseMessage response = await client.PostAsync(AssignPath, content, timeout.Token);
 
-        await AssertValidationAsync(response, timeout.Token, (code, code == "InvalidBody" ? "request" : field));
+        await AssertValidationAsync(response, timeout.Token,
+            (code, string.Equals(code, "InvalidBody", StringComparison.Ordinal) ? "request" : field));
         WorkerPodState state = factory.Services.GetRequiredService<WorkerPodStateManager>().State;
         Assert.Equal(0, state.Revision);
         Assert.Equal(WorkerAssignmentState.Unassigned, state.AssignmentState);
@@ -131,7 +132,7 @@ public class ManagementApiEndpointTests
             ("Required", "functionGroupName"),
             ("Required", "isAlwaysReady"),
             ("Required", "functionAppDirectory"),
-            (body == "{}" ? "Required" : "InvalidValue", "environment"));
+            (string.Equals(body, "{}", StringComparison.Ordinal) ? "Required" : "InvalidValue", "environment"));
         string json = await response.Content.ReadAsStringAsync(timeout.Token);
         Assert.DoesNotContain("PRIVATE_SETTING", json);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
@@ -182,7 +183,7 @@ public class ManagementApiEndpointTests
             {
                 Version = HttpVersion.Version20,
                 VersionPolicy = HttpVersionPolicy.RequestVersionExact,
-                Content = method == "POST" ? JsonBody("{}") : null
+                Content = string.Equals(method, "POST", StringComparison.Ordinal) ? JsonBody("{}") : null
             };
             using HttpResponseMessage response = await rpcClient.SendAsync(request, timeout.Token);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -191,7 +192,7 @@ public class ManagementApiEndpointTests
         using HttpClient forwardingClient = factory.CreateHttpForwardingClient();
         using HttpRequestMessage forwardingRequest = new(new HttpMethod(method), path)
         {
-            Content = method == "POST" ? JsonBody("{}") : null
+            Content = string.Equals(method, "POST", StringComparison.Ordinal) ? JsonBody("{}") : null
         };
         using HttpResponseMessage forwardingResponse = await forwardingClient.SendAsync(forwardingRequest, timeout.Token);
         Assert.Equal(HttpStatusCode.NotFound, forwardingResponse.StatusCode);
