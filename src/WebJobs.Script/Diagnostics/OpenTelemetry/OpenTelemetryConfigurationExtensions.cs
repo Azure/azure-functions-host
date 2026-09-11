@@ -180,6 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
                 ReadOnlySpan<string> sources =
                 [
                     OpenTelemetryConstants.ActivitySourceNames.ServiceBusProcessor,
+                    OpenTelemetryConstants.ActivitySourceNames.ServiceBusSessionProcessor,
                     OpenTelemetryConstants.ActivitySourceNames.EventHubsProcessor,
                     OpenTelemetryConstants.ActivitySourceNames.Mcp,
                     OpenTelemetryConstants.ActivitySourceNames.WebJobsExtensions,
