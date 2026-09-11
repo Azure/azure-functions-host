@@ -384,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     while (_inbound.TryRead(out var msg))
                     {
-                        if (debug && msg.ContentCase != MsgType.RpcLog)
+                        if (msg.ContentCase != MsgType.RpcLog)
                         {
                             Logger.ChannelReceivedMessage(_workerChannelLogger, _workerId, msg.ContentCase);
                         }
@@ -2018,28 +2018,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // EventId range is 800-899
-        private static class Logger
+        private static partial class Logger
         {
-            private static readonly Action<ILogger, string, MsgType, Exception> _channelReceivedMessage = LoggerMessage.Define<string, MsgType>(
-                LogLevel.Debug,
-                new EventId(820, nameof(ChannelReceivedMessage)),
-                "[channel] received {workerId}: {msgType}");
+            [LoggerMessage(820, LogLevel.Trace, "[channel] received {workerId}: {msgType}")]
+            internal static partial void ChannelReceivedMessage(ILogger logger, string workerId, ContentOneofCase msgType);
 
-            private static readonly Action<ILogger, string, Exception> _invocationResponseReceived = LoggerMessage.Define<string>(
-                LogLevel.Debug,
-                new EventId(821, nameof(InvocationResponseReceived)),
-                "InvocationResponse received for invocation: '{invocationId}'");
+            [LoggerMessage(821, LogLevel.Trace, "InvocationResponse received for invocation: '{invocationId}'")]
+            internal static partial void InvocationResponseReceived(ILogger logger, string invocationId);
 
-            private static readonly Action<ILogger, string, Exception> _failedToRegisterAppCapabilities = LoggerMessage.Define<string>(
-                LogLevel.Warning,
-                new EventId(822, nameof(FailedToRegisterAppCapabilities)),
-                "Failed to register app capabilities from worker '{workerId}'");
-
-            internal static void ChannelReceivedMessage(ILogger logger, string workerId, ContentOneofCase msgType) => _channelReceivedMessage(logger, workerId, msgType, null);
-
-            internal static void InvocationResponseReceived(ILogger logger, string invocationId) => _invocationResponseReceived(logger, invocationId, null);
-
-            internal static void FailedToRegisterAppCapabilities(ILogger logger, Exception ex, string workerId) => _failedToRegisterAppCapabilities(logger, workerId, ex);
+            [LoggerMessage(822, LogLevel.Warning, "Failed to register app capabilities from worker '{workerId}'")]
+            internal static partial void FailedToRegisterAppCapabilities(ILogger logger, Exception ex, string workerId);
         }
     }
 }
