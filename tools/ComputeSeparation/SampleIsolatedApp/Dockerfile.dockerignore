@@ -1,0 +1,12 @@
+**
+!NuGet.config
+!tools/
+!tools/ComputeSeparation/
+!tools/ComputeSeparation/SampleIsolatedApp/
+!tools/ComputeSeparation/SampleIsolatedApp/**
+**/bin/
+**/obj/
+**/out/
+**/local.settings.json
+**/.env
+**/.env.*

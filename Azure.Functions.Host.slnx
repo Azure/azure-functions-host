@@ -18,4 +18,8 @@
     <Project Path="test/Functions.Rpc.Client.Tests/Functions.Rpc.Client.Tests.csproj" />
     <Project Path="test/Functions.WorkerProxy.Tests/Functions.WorkerProxy.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/ComputeSeparation/">
+    <Project Path="tools/ComputeSeparation/AppHost/ComputeSeparation.AppHost.csproj" />
+    <Project Path="tools/ComputeSeparation/SampleIsolatedApp/SampleIsolatedApp.csproj" />
+  </Folder>
 </Solution>

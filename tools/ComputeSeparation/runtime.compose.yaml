@@ -1,0 +1,20 @@
+services:
+  functions-host:
+    build:
+      context: ../..
+      dockerfile: tools/ComputeSeparation/FunctionsHost/Dockerfile
+    environment:
+      AzureFunctionsWebHost__hostid: aspire-worker
+      AzureFunctionsWebHost__IsFileSystemReadOnly: "true"
+      AzureFunctionsJobHost__logging__logLevel__default: Information
+      AzureFunctionsJobHost__logging__console__isEnabled: "true"
+    ports:
+      - "127.0.0.1:${COMPUTE_HOST_PORT:?Aspire must allocate the Host port}:8080"
+    tmpfs:
+      - /tmp/functions
+    networks:
+      - compute
+
+networks:
+  compute:
+    name: ${COMPUTE_NETWORK_NAME:?Aspire must supply the shared network name}
