@@ -56,9 +56,9 @@ public class RpcClientAssemblyTests
     }
 
     [Fact]
-    public void ClientRegistryAndStartupCoordinatorRemainInternal()
+    public void ClientRegistryAndStartupCoordinatorPreserveVisibilityBoundaries()
     {
-        Assert.False(typeof(IWorkerChannelRegistry).IsPublic);
+        Assert.True(typeof(IWorkerChannelRegistry).IsPublic);
         Assert.False(typeof(WorkerChannelRegistry).IsPublic);
         Assert.False(typeof(RpcClientScriptHostStartupCoordinator).IsPublic);
         Assert.Contains(typeof(IWorkerChannelRegistry), typeof(WorkerChannelRegistry).GetInterfaces());

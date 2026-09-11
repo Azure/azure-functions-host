@@ -8,9 +8,9 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Host.Controllers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.TestHost;
@@ -22,8 +22,6 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
-using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -76,7 +74,9 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                         if (includeCompute)
                         {
                             AddSharedChannelDependencies(services);
-                            ClientWorkerComposition.Instance.ConfigureWebHostServices(services, mvcBuilder);
+                            // This fixture isolates HTTP link admission from ScriptHost activation and metadata loading.
+                            services.AddRpcClientServices();
+                            mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
                         }
 
                         services.AddAuthentication();
