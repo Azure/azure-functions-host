@@ -81,6 +81,9 @@ public partial class FunctionRpcRelayTests
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await runtime.WriteAsync(CreateMessage("attach"), timeout.Token);
+        StreamingMessage start = CreateStartStream();
+        await worker.WriteAsync(start, timeout.Token);
+        Assert.Equal(start, await runtime.ReadAsync(timeout.Token));
         StreamingMessage response = CreateInitResponse("failed-init", "http://localhost:1234");
         response.WorkerInitResponse.Result = status is { } result ? new() { Status = result } : null;
 
@@ -98,7 +101,7 @@ public partial class FunctionRpcRelayTests
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
-        await worker.WriteAsync(CreateMessage("attach"), timeout.Token);
+        await worker.WriteAsync(CreateStartStream(), timeout.Token);
         StreamingMessage message = CreateInitResponse("runtime-message", "http://localhost:1234");
 
         await runtime.WriteAsync(message, timeout.Token);
@@ -113,14 +116,23 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_FinalizesCapabilitiesOnceOnAnOwnedCopy(string? firstHttpUri)
     {
         WorkerProxyOptions options = new() { HttpProxyEndpoint = "https://worker-pod.example:48801/" };
-        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(options));
+        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(options), CreatePodStateManager());
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
         Channel<StreamingMessage> outbound = Channel.CreateUnbounded<StreamingMessage>();
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(
-            FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), CreateMessageWriter(outbound.Writer), timeout.Token);
+            FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), CreateMessageWriter(outbound.Writer, message =>
+            {
+                if (message.WorkerInitResponse is not null)
+                {
+                    Assert.Equal(firstHttpUri is null ? null : new Uri(firstHttpUri), relay.WorkerHttpDestination);
+                }
+            }), timeout.Token);
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(
             FunctionRpcRelaySide.Worker, CreateMessageReader(inbound.Reader), new TestServerStreamWriter(), timeout.Token);
+        StreamingMessage start = CreateStartStream();
+        await inbound.Writer.WriteAsync(start, timeout.Token);
+        Assert.Equal(start, await outbound.Reader.ReadAsync(timeout.Token));
         StreamingMessage first = CreateInitResponse("first-init", firstHttpUri);
         StreamingMessage expected = first.Clone();
         if (firstHttpUri is not null)
@@ -206,13 +218,14 @@ public partial class FunctionRpcRelayTests
     {
         using BlockingLogger<WorkerHttpCapabilityProvider> logger = new();
         WorkerHttpCapabilityProvider provider = new(Options.Create(new WorkerProxyOptions()), logger);
-        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider);
+        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, CreatePodStateManager());
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(
             FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(
             FunctionRpcRelaySide.Worker, CreateMessageReader(inbound.Reader), new TestServerStreamWriter(), timeout.Token);
+        await inbound.Writer.WriteAsync(CreateStartStream(), timeout.Token);
         await inbound.Writer.WriteAsync(CreateInitResponse("init", "invalid"), timeout.Token);
 
         try
@@ -242,7 +255,9 @@ public partial class FunctionRpcRelayTests
         await using (RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token))
         {
             await ExchangeAsync(runtime, worker, "first", timeout.Token);
-            await worker.WriteAsync(CreateInitResponse("first-init", "http://localhost:1234"), timeout.Token);
+            StreamingMessage first = CreateInitResponse("first-init", "http://localhost:1234");
+            first.WorkerInitResponse.Capabilities["original-only"] = "true";
+            await worker.WriteAsync(first, timeout.Token);
             await runtime.ReadAsync(timeout.Token);
             Assert.Equal(new Uri("http://localhost:1234"), relay.WorkerHttpDestination);
             await runtime.CompleteRequestAsync(timeout.Token);
@@ -256,11 +271,15 @@ public partial class FunctionRpcRelayTests
         await ExchangeAsync(replacementRuntime, replacementWorker, "replacement", timeout.Token);
         Assert.Null(relay.WorkerHttpDestination);
 
-        await replacementWorker.WriteAsync(CreateInitResponse("replacement-init", replacementEndpoint), timeout.Token);
+        StreamingMessage replacement = CreateInitResponse("replacement-init", replacementEndpoint);
+        replacement.WorkerInitResponse.Capabilities["replacement-only"] = "true";
+        await replacementWorker.WriteAsync(replacement, timeout.Token);
         StreamingMessage response = await replacementRuntime.ReadAsync(timeout.Token);
 
         Assert.Equal(replacementEndpoint is null ? null : new Uri(replacementEndpoint), relay.WorkerHttpDestination);
         Assert.Equal(replacementEndpoint is not null, response.WorkerInitResponse.Capabilities.ContainsKey("HttpUri"));
+        Assert.False(response.WorkerInitResponse.Capabilities.ContainsKey("original-only"));
+        Assert.Equal("true", response.WorkerInitResponse.Capabilities["replacement-only"]);
     }
 
     [Fact]
@@ -388,17 +407,27 @@ public partial class FunctionRpcRelayTests
         reader.SetupGet(value => value.Current).Returns(() => current);
         reader.Setup(value => value.MoveNext(It.IsAny<CancellationToken>())).Returns(async (CancellationToken cancellationToken) =>
         {
+            if (!await messages.WaitToReadAsync(cancellationToken))
+            {
+                return false;
+            }
+
             current = await messages.ReadAsync(cancellationToken);
             return true;
         });
         return reader.Object;
     }
 
-    private static IServerStreamWriter<StreamingMessage> CreateMessageWriter(ChannelWriter<StreamingMessage> messages)
+    private static IServerStreamWriter<StreamingMessage> CreateMessageWriter(
+        ChannelWriter<StreamingMessage> messages, Action<StreamingMessage>? onWrite = null)
     {
         Mock<IServerStreamWriter<StreamingMessage>> writer = new(MockBehavior.Strict);
         writer.Setup(value => value.WriteAsync(It.IsAny<StreamingMessage>(), It.IsAny<CancellationToken>()))
-            .Returns((StreamingMessage message, CancellationToken cancellationToken) => messages.WriteAsync(message, cancellationToken).AsTask());
+            .Returns((StreamingMessage message, CancellationToken cancellationToken) =>
+            {
+                onWrite?.Invoke(message);
+                return messages.WriteAsync(message, cancellationToken).AsTask();
+            });
         return writer.Object;
     }
 }
