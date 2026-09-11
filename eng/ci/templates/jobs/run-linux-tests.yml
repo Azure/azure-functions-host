@@ -19,8 +19,6 @@ jobs:
 
   variables:
     localImage: functions-worker-proxy-ci:latest
-    # This solution will expand as the remaining compute-separation projects are introduced.
-    solution: Azure.Functions.Host.slnx
 
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
@@ -30,7 +28,8 @@ jobs:
     inputs:
       command: test
       arguments: -v m -c release
-      projects: $(solution)
+      # Build the product test graphs without bootstrapping the manual Aspire tool.
+      projects: test/Functions.*.Tests/*.csproj
 
   - script: sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev
     displayName: Install Native AOT prerequisites
