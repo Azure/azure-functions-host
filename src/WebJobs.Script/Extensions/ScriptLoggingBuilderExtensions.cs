@@ -23,8 +23,12 @@ namespace Microsoft.Extensions.Logging
         // suppressed to reduce noise in the FunctionsLogs table.
         private static readonly HashSet<string> _suppressedCategories = new(StringComparer.Ordinal)
         {
+            "Host.Triggers.Kafka",
+            "Microsoft.Azure.WebJobs.EventHubs.Listeners.EventHubListener.PartitionProcessor",
             "Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener",
+            "Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener",
             "Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl",
+            "Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener",
             "Host.Executor"
         };
 
