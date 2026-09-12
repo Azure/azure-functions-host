@@ -285,7 +285,7 @@ public partial class FunctionRpcRelayTests
     [Fact]
     public async Task Relay_TerminalSession_MakesHttpUnavailableBeforeAttachmentsRelease()
     {
-        using BlockingLogger<FunctionRpcRelay> logger = new();
+        using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
         Dictionary<string, string?> configuration = new()
         {
             [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}"] = "http://worker-pod:28080/"

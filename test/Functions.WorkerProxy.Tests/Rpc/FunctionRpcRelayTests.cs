@@ -17,6 +17,7 @@ using Grpc.Net.Client;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -28,6 +29,7 @@ public partial class FunctionRpcRelayTests
 {
     private const string FunctionRpcServiceName = "AzureFunctionsRpcMessages.FunctionRpc";
     private const string EventStreamMethodName = "EventStream";
+    private const int SessionTerminatedEventId = 1;
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     private static readonly Marshaller<StreamingMessage> StreamingMessageMarshaller =
@@ -193,7 +195,7 @@ public partial class FunctionRpcRelayTests
     [Fact]
     public async Task Relay_ReconnectDuringSessionTeardownReturnsUnavailable()
     {
-        using BlockingLogger<FunctionRpcRelay> logger = new();
+        using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
         await using WorkerProxyWebApplicationFactory factory = new(
             configureServices: services => services.AddSingleton<Microsoft.Extensions.Logging.ILogger<FunctionRpcRelay>>(logger));
         FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
@@ -281,7 +283,7 @@ public partial class FunctionRpcRelayTests
     [Fact]
     public async Task Relay_CanceledStopWaitDoesNotCancelSharedStop()
     {
-        using BlockingLogger<FunctionRpcRelay> logger = new();
+        using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
         FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager());
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource stopCancellation = new();
@@ -391,7 +393,7 @@ public partial class FunctionRpcRelayTests
     [Fact]
     public async Task Relay_ShutdownAllowsSessionClearBeforeCancellation()
     {
-        using BlockingLogger<FunctionRpcRelay> logger = new();
+        using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
         FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager());
         using CancellationTokenSource timeout = new(TestTimeout);
         Task<FunctionRpcRelayTerminalState> runtimeTask =
@@ -408,6 +410,10 @@ public partial class FunctionRpcRelayTests
             FunctionRpcRelayTerminalState[] terminalStates =
                 await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
             Assert.All(terminalStates, static state => Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, state.Reason));
+            Assert.False(relay.IsAttached(FunctionRpcRelaySide.Runtime));
+            Assert.False(relay.IsAttached(FunctionRpcRelaySide.Worker));
+            Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
+            Assert.False(stopTask.IsCompleted);
         }
         finally
         {
@@ -417,6 +423,31 @@ public partial class FunctionRpcRelayTests
         await stopTask.WaitAsync(timeout.Token);
         Assert.Equal(FunctionRpcRelayTerminationReason.Shutdown, relay.LastTerminalState?.Reason);
         await relay.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task BlockingLogger_SecondaryFailureDoesNotConsumeTerminationGate()
+    {
+        using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        Task logging = Task.Run(() =>
+        {
+            // Completing the channels can let a secondary log race ahead of the termination log.
+            logger.Log(LogLevel.Debug, new EventId(2), "Secondary stream failure", null, static (state, _) => state);
+            logger.Log(LogLevel.Debug, new EventId(SessionTerminatedEventId), "Session terminated", null, static (state, _) => state);
+        }, timeout.Token);
+
+        try
+        {
+            EventId blockedEvent = await logger.LogEntered.WaitAsync(timeout.Token);
+            Assert.Equal(SessionTerminatedEventId, blockedEvent.Id);
+            Assert.False(logging.IsCompleted);
+        }
+        finally
+        {
+            logger.Release();
+            await logging.WaitAsync(TestTimeout);
+        }
     }
 
     private static WorkerProxyWebApplicationFactory CreateFactory()
