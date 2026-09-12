@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
-/// Validates WorkerProxy listener ports and the advertised HTTP origin.
+/// Validates WorkerProxy pod identity, listener ports, and the advertised HTTP origin.
 /// </summary>
 internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxyOptions>
 {
@@ -20,6 +20,11 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
     public ValidateOptionsResult Validate(string? name, WorkerProxyOptions options)
     {
         List<string> failures = [];
+        if (string.IsNullOrWhiteSpace(options.PodName))
+        {
+            failures.Add($"{nameof(options.PodName)} must specify a nonempty platform-provided pod name.");
+        }
+
         ValidatePort(options.ManagementPort, nameof(options.ManagementPort), failures);
         ValidatePort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), failures);
         ValidatePort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), failures);

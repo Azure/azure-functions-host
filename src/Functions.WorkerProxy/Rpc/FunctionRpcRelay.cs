@@ -4,7 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Hosting;
@@ -19,14 +19,17 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// A relay session admits one stream per <see cref="FunctionRpcRelaySide"/>. The first peer close,
 /// cancellation, stream failure, or application shutdown terminates the whole session. A replacement
 /// session is created only after both attachments from the previous session have released.
+/// Locks are acquired in relay, session, then pod-state order; the state manager never calls back into the relay.
 /// </remarks>
 internal sealed partial class FunctionRpcRelay(
     ILogger<FunctionRpcRelay> logger,
-    WorkerHttpCapabilityProvider capabilityProvider)
+    IWorkerCapabilityFinalizer capabilityFinalizer,
+    WorkerPodStateManager stateManager)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
-    private readonly WorkerHttpCapabilityProvider _capabilityProvider = capabilityProvider ?? throw new ArgumentNullException(nameof(capabilityProvider));
+    private readonly IWorkerCapabilityFinalizer _capabilityFinalizer = capabilityFinalizer ?? throw new ArgumentNullException(nameof(capabilityFinalizer));
+    private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
@@ -135,7 +138,8 @@ internal sealed partial class FunctionRpcRelay(
                 ClearCurrentSessionLocked();
             }
 
-            session = _currentSession ??= new FunctionRpcRelaySession(Interlocked.Increment(ref _nextSessionId), logger, _capabilityProvider);
+            session = _currentSession ??= new FunctionRpcRelaySession(
+                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager);
 
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)
