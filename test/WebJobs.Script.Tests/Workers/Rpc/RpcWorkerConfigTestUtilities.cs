@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Conditions;
 using Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 profile[WorkerConstants.WorkerDescriptionProfileName] = "profileName";
                 if (invalidProfile)
                 {
-                    conditions.Add(ProfilesTestUtilities.GetTestWorkerProfileCondition(WorkerConstants.WorkerDescriptionProfileHostPropertyCondition, "hostVersion", "-1"));
+                    conditions.Add(ProfilesTestUtilities.GetTestWorkerProfileCondition(ConditionConstants.HostPropertyConditionType, "hostVersion", "-1"));
                 }
                 conditions.Add(ProfilesTestUtilities.GetTestWorkerProfileCondition());
                 profile[WorkerConstants.WorkerDescriptionProfileConditions] = conditions;

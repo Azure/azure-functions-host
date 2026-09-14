@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Azure.WebJobs.Script.Conditions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
@@ -13,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
     /// </summary>
     public class WorkerDescriptionProfile
     {
-        public WorkerDescriptionProfile(string name, List<IWorkerProfileCondition> conditions, RpcWorkerDescription profileDescription)
+        public WorkerDescriptionProfile(string name, List<ICondition> conditions, RpcWorkerDescription profileDescription)
         {
             Name = name;
             Conditions = conditions;
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
         /// <summary>
         /// Gets or sets the conditions which must be met for the profile to be used.
         /// </summary>
-        public List<IWorkerProfileCondition> Conditions { get; set; }
+        public List<ICondition> Conditions { get; set; }
 
         /// <summary>
         /// Gets or sets the worker description for the profile
@@ -57,17 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
             }
         }
 
-        public bool EvaluateConditions()
-        {
-            foreach (var condition in Conditions)
-            {
-                if (!condition.Evaluate())
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
+        public bool EvaluateConditions() => ConditionEvaluator.EvaluateAll(Conditions);
 
         /// <summary>
         /// Creates a new worker description and overrides parameters with those available in the profile
