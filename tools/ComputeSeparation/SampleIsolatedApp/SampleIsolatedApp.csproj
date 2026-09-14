@@ -20,6 +20,11 @@
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 
+  <!-- VS selects the Core Tools debug launcher through this capability, independently of the dotnet run targets. -->
+  <ItemGroup>
+    <ProjectCapability Remove="AzureFunctions" />
+  </ItemGroup>
+
   <!-- This worker-only fixture uses the .NET SDK's direct managed launch, not the Worker SDK's Core Tools host launcher. -->
   <Target Name="_FunctionsComputeRunArguments" />
   <Target Name="_FunctionsCheckForCoreTools" />
