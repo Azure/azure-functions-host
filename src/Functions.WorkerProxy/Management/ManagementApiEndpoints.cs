@@ -13,9 +13,11 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Registers worker lifecycle APIs on the management listener.
 /// </summary>
 /// <remarks>
-/// Platform callers are expected to send UTF-8 JSON. Assignment uses framework JSON binding;
-/// binding failures follow framework behavior without a guaranteed status or error envelope.
-/// Successfully bound requests use our field-validation envelope and lifecycle error codes.
+/// Platform callers are expected to send UTF-8 JSON. Assignment uses framework JSON binding:
+/// malformed or incompatible JSON with a supported charset returns HTTP 400;
+/// unsupported media types return HTTP 415. Binding errors do not guarantee our validation envelope.
+/// Other binding failures follow framework behavior. Successfully bound requests use our
+/// field-validation envelope and lifecycle error codes.
 /// </remarks>
 internal static class ManagementApiEndpoints
 {

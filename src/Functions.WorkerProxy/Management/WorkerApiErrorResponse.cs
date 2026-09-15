@@ -4,6 +4,6 @@
 namespace Azure.Functions.WorkerProxy.Management;
 
 /// <summary>
-/// Wraps validation and lifecycle failures in the same management API error envelope.
+/// Wraps worker lifecycle failures in the management API error envelope.
 /// </summary>
 internal sealed record WorkerApiErrorResponse(WorkerApiError Error);
