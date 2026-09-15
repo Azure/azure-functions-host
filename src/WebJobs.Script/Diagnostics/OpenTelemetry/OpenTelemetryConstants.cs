@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry
             internal const string WebJobs = "Microsoft.Azure.WebJobs";
             internal const string Host = "Microsoft.Azure.Functions.Host";
             internal const string ServiceBusProcessor = "Azure.Messaging.ServiceBus.ServiceBusProcessor";
+            internal const string ServiceBusSessionProcessor = "Azure.Messaging.ServiceBus.ServiceBusSessionProcessor";
             internal const string EventHubsProcessor = "Azure.Messaging.EventHubs.EventProcessor";
             internal const string Mcp = "Azure.Functions.Extensions.Mcp";
             internal const string WebJobsExtensions = "Microsoft.Azure.WebJobs.Extensions.*";
