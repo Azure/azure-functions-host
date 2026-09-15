@@ -1,0 +1,36 @@
+services:
+  worker-proxy:
+    build:
+      context: ../..
+      dockerfile: tools/ComputeSeparation/WorkerProxy/Dockerfile
+    environment:
+      WORKERPROXY__HTTPPROXYENDPOINT: http://${WORKER_PROXY_ALIAS:?Aspire must supply a unique Proxy alias}:28080
+      Logging__LogLevel__Azure.Functions.WorkerProxy.Http: Debug
+    ports:
+      - "127.0.0.1:${WORKER_PROXY_MANAGEMENT_PORT:?Aspire must allocate the management port}:80"
+    networks:
+      compute:
+        aliases:
+          - ${WORKER_PROXY_ALIAS:?Aspire must supply a unique Proxy alias}
+
+  isolated-worker:
+    build:
+      context: ../..
+      dockerfile: tools/ComputeSeparation/SampleIsolatedApp/Dockerfile
+    network_mode: service:worker-proxy
+    depends_on:
+      - worker-proxy
+    command:
+      - --functions-uri
+      - http://127.0.0.1:50054
+      - --functions-worker-id
+      - ${WORKER_ID:?Aspire must supply the worker identity}
+      - --functions-request-id
+      - ${WORKER_REQUEST_ID:?Aspire must supply the startup request identity}
+      - --functions-grpc-max-message-length
+      - "134217728"
+
+networks:
+  compute:
+    name: ${COMPUTE_NETWORK_NAME:?The runtime must supply the shared network name}
+    external: true
