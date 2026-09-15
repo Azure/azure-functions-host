@@ -57,6 +57,7 @@ jobs:
       echo "Starting WorkerProxy image: $(localImage)"
       containerId="$(docker run --detach \
         --publish 127.0.0.1::80 \
+        --env WORKERPROXY__PODNAME=ci-worker-pod \
         $(localImage))"
       echo "Started WorkerProxy container: $containerId"
       cleanup() {

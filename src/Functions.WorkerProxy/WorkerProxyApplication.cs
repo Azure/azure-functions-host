@@ -6,7 +6,9 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -41,6 +43,10 @@ internal static class WorkerProxyApplication
         builder.WebHost.UseSetting(WebHostDefaults.PreferHostingUrlsKey, bool.FalseString);
         builder.Services.AddOptions<WorkerProxyOptions>().BindConfiguration(WorkerProxyOptions.SectionName).ValidateOnStart();
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
+        builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+        builder.Services.AddSingleton<WorkerPodStateManager>();
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            options.SerializerOptions.TypeInfoResolverChain.Insert(0, WorkerProxyJsonContext.Default));
         builder.Services.AddSingleton<WorkerProxyEndpointConfiguration>();
         builder.Services.AddSingleton<IConfigureOptions<KestrelServerOptions>>(
             static services => services.GetRequiredService<WorkerProxyEndpointConfiguration>());
@@ -69,6 +75,7 @@ internal static class WorkerProxyApplication
         app.UseEndpoints(static endpoints =>
         {
             endpoints.MapGet(ReadyPath, static () => Results.Ok()).AllowAnonymous();
+            ManagementApiEndpoints.Map(endpoints);
         });
     }
 
@@ -119,7 +126,7 @@ internal static class WorkerProxyApplication
             WorkerEndpointReadinessProbeOptionsValidator>();
 
         builder.Services.AddSingleton<WorkerEndpointReadinessProbe>();
-        builder.Services.AddSingleton<WorkerHttpCapabilityProvider>();
+        builder.Services.AddSingleton<IWorkerCapabilityFinalizer, WorkerHttpCapabilityProvider>();
         builder.Services.AddHttpForwarder();
         builder.Services.AddHttpClient(nameof(WorkerHttpForwarder))
             .ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
