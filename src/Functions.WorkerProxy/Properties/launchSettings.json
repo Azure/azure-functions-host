@@ -6,6 +6,7 @@
       "launchBrowser": false,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
+        "WORKERPROXY__PODNAME": "local-worker-pod",
         "WORKERPROXY__MANAGEMENTPORT": "8080",
         "WORKERPROXY__HTTPPORT": "28080",
         "WORKERPROXY__HTTPPROXYENDPOINT": "http://localhost:28080",
