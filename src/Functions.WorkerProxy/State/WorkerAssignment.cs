@@ -8,7 +8,7 @@ using System.Collections.Generic;
 namespace Azure.Functions.WorkerProxy.State;
 
 /// <summary>
-/// Captures immutable assignment identity for an already-specialized worker.
+/// Captures immutable assignment identity, including the caller-selected startup mode.
 /// </summary>
 /// <remarks>
 /// Environment and app directory participate in retry equality only; this model does not apply them
@@ -20,19 +20,30 @@ internal sealed class WorkerAssignment
     /// Initializes a new instance of the <see cref="WorkerAssignment"/> class.
     /// </summary>
     /// <remarks>
-    /// Copies environment entries using ordinal key equality.
+    /// Copies environment entries using ordinal key equality. A directory is required in both modes,
+    /// but only SpecializationRequired requires it to be nonblank. No filesystem check is performed.
     /// </remarks>
     public WorkerAssignment(
+        WorkerStartupMode startupMode,
         string functionAppName,
         string functionGroupName,
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
         string functionAppDirectory)
     {
+        if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
+        {
+            throw new ArgumentOutOfRangeException(nameof(startupMode));
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(functionAppName);
         ArgumentException.ThrowIfNullOrWhiteSpace(functionGroupName);
         ArgumentNullException.ThrowIfNull(environment);
-        ArgumentException.ThrowIfNullOrWhiteSpace(functionAppDirectory);
+        ArgumentNullException.ThrowIfNull(functionAppDirectory);
+        if (startupMode is WorkerStartupMode.SpecializationRequired)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(functionAppDirectory);
+        }
 
         foreach ((string key, string value) in environment)
         {
@@ -40,6 +51,7 @@ internal sealed class WorkerAssignment
             ArgumentNullException.ThrowIfNull(value);
         }
 
+        StartupMode = startupMode;
         FunctionAppName = functionAppName;
         FunctionGroupName = functionGroupName;
         IsAlwaysReady = isAlwaysReady;
@@ -47,6 +59,11 @@ internal sealed class WorkerAssignment
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
         FunctionAppDirectory = functionAppDirectory;
     }
+
+    /// <summary>
+    /// Gets the startup mode fixed by the accepted assignment.
+    /// </summary>
+    public WorkerStartupMode StartupMode { get; }
 
     public string FunctionAppName { get; }
 
@@ -65,7 +82,8 @@ internal sealed class WorkerAssignment
     {
         ArgumentNullException.ThrowIfNull(other);
 
-        if (!string.Equals(FunctionAppName, other.FunctionAppName, StringComparison.Ordinal)
+        if (StartupMode != other.StartupMode
+            || !string.Equals(FunctionAppName, other.FunctionAppName, StringComparison.Ordinal)
             || !string.Equals(FunctionGroupName, other.FunctionGroupName, StringComparison.Ordinal)
             || IsAlwaysReady != other.IsAlwaysReady
             || !string.Equals(FunctionAppDirectory, other.FunctionAppDirectory, StringComparison.Ordinal)

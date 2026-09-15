@@ -13,6 +13,7 @@ internal sealed record WorkerPodState(
     bool IsWorkerAttached,
     string? WorkerId,
     WorkerAssignmentState AssignmentState,
+    WorkerStartupMode? StartupMode,
     string? FunctionAppName,
     string? FunctionGroupName,
     bool? IsAlwaysReady)
@@ -36,6 +37,7 @@ internal sealed record WorkerPodState(
             IsWorkerAttached: false,
             WorkerId: null,
             AssignmentState: WorkerAssignmentState.Unassigned,
+            StartupMode: null,
             FunctionAppName: null,
             FunctionGroupName: null,
             IsAlwaysReady: null);

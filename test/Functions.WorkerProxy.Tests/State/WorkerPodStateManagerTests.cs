@@ -26,6 +26,7 @@ public partial class WorkerPodStateManagerTests
         Assert.False(state.IsWorkerReady);
         Assert.Null(state.WorkerId);
         Assert.Equal(WorkerAssignmentState.Unassigned, state.AssignmentState);
+        Assert.Null(state.StartupMode);
         Assert.Equal(WorkerPodStatus.None, state.PodStatus);
         Assert.Null(state.FunctionAppName);
         Assert.Null(state.FunctionGroupName);
@@ -33,9 +34,12 @@ public partial class WorkerPodStateManagerTests
         Assert.Same(state, manager.State);
     }
 
-    [Fact]
-    public void Lifecycle_PublishesImmutableMonotonicSnapshots()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Lifecycle_PublishesImmutableMonotonicSnapshots(bool specializationRequired)
     {
+        WorkerStartupMode startupMode = specializationRequired ? WorkerStartupMode.SpecializationRequired : WorkerStartupMode.Preconfigured;
         WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
         WorkerPodState initial = manager.State;
         Assert.True(manager.OnWorkerAttached(1));
@@ -46,9 +50,10 @@ public partial class WorkerPodStateManagerTests
         Assert.True(started.IsWorkerReady);
         Assert.Equal(WorkerPodStatus.None, started.PodStatus);
 
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment(startupMode: startupMode)));
         WorkerPodState assigned = manager.State;
         Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
+        Assert.Equal(startupMode, assigned.StartupMode);
         Assert.Equal(WorkerPodStatus.ReadyForRequest, assigned.PodStatus);
         Assert.Equal("app", assigned.FunctionAppName);
         Assert.Equal("http", assigned.FunctionGroupName);
@@ -61,6 +66,7 @@ public partial class WorkerPodStateManagerTests
         Assert.False(failed.IsWorkerReady);
         Assert.False(failed.IsWorkerAttached);
         Assert.Equal(WorkerAssignmentState.Failed, failed.AssignmentState);
+        Assert.Equal(startupMode, failed.StartupMode);
         Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
         Assert.Equal("app", failed.FunctionAppName);
         Assert.Equal(new long[] { 0, 1, 2, 3, 4 },
@@ -69,6 +75,7 @@ public partial class WorkerPodStateManagerTests
         Assert.False(initial.IsWorkerAttached);
         Assert.Null(attached.WorkerId);
         Assert.Equal(WorkerAssignmentState.Unassigned, started.AssignmentState);
+        Assert.Null(started.StartupMode);
         Assert.True(assigned.IsWorkerReady);
     }
 
@@ -79,6 +86,7 @@ public partial class WorkerPodStateManagerTests
         WorkerPodState initial = manager.State;
         Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateAssignment("rejected")));
         Assert.Same(initial, manager.State);
+        Assert.Null(manager.State.StartupMode);
 
         manager.OnWorkerAttached(1);
         WorkerPodState attached = manager.State;
@@ -86,8 +94,9 @@ public partial class WorkerPodStateManagerTests
         Assert.Same(attached, manager.State);
 
         manager.OnWorkerStartStream(1, "worker");
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment("accepted")));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateAssignment("accepted", WorkerStartupMode.SpecializationRequired)));
         Assert.Equal("accepted", manager.State.FunctionAppName);
+        Assert.Equal(WorkerStartupMode.SpecializationRequired, manager.State.StartupMode);
     }
 
     [Fact]
@@ -287,6 +296,30 @@ public partial class WorkerPodStateManagerTests
     }
 
     [Fact]
+    public async Task ConcurrentStartupModes_ClaimOneImmutableMode()
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        TaskCompletionSource start = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task<(WorkerStartupMode Mode, WorkerAssignmentResult Result)>[] attempts = Enumerable.Range(0, 32).Select(index => Task.Run(async () =>
+        {
+            await start.Task;
+            WorkerStartupMode mode = index % 2 == 0 ? WorkerStartupMode.Preconfigured : WorkerStartupMode.SpecializationRequired;
+            return (mode, manager.Assign(CreateAssignment(startupMode: mode)));
+        })).ToArray();
+
+        start.SetResult();
+        (WorkerStartupMode Mode, WorkerAssignmentResult Result)[] results = await Task.WhenAll(attempts).WaitAsync(TestTimeout);
+        (WorkerStartupMode Mode, WorkerAssignmentResult Result) winner = Assert.Single(results, result => result.Result == WorkerAssignmentResult.Created);
+
+        Assert.Equal(winner.Mode, manager.State.StartupMode);
+        Assert.Equal(15, results.Count(result => result.Result == WorkerAssignmentResult.AlreadyAssigned));
+        Assert.Equal(16, results.Count(result => result.Result == WorkerAssignmentResult.AssignmentConflict));
+        Assert.All(results.Where(result => result.Mode != winner.Mode),
+            result => Assert.Equal(WorkerAssignmentResult.AssignmentConflict, result.Result));
+        Assert.Equal(3, manager.State.Revision);
+    }
+
+    [Fact]
     public async Task AssignmentRacingTermination_CannotLeaveReadyState()
     {
         for (int iteration = 0; iteration < 32; iteration++)
@@ -333,8 +366,8 @@ public partial class WorkerPodStateManagerTests
         return manager;
     }
 
-    private static WorkerAssignment CreateAssignment(string appName = "app")
-        => new(appName, "http", false, new Dictionary<string, string> { ["SETTING"] = "value" }, "/home/site/wwwroot");
+    private static WorkerAssignment CreateAssignment(string appName = "app", WorkerStartupMode startupMode = WorkerStartupMode.Preconfigured)
+        => new(startupMode, appName, "http", false, new Dictionary<string, string> { ["SETTING"] = "value" }, "/home/site/wwwroot");
 
     private static IOptions<WorkerProxyOptions> CreateOptions(string podName = "pod")
         => Options.Create(new WorkerProxyOptions { PodName = podName });

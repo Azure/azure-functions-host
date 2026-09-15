@@ -11,5 +11,6 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </summary>
 internal sealed record WorkerPodStateResponse(
     [property: JsonConverter(typeof(JsonStringEnumConverter<WorkerPodStatus>))] WorkerPodStatus PodStatus,
+    [property: JsonConverter(typeof(JsonStringEnumConverter<WorkerStartupMode>))] WorkerStartupMode? StartupMode,
     string? FunctionGroupName,
     bool? IsAlwaysReady);

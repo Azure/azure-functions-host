@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.State;
@@ -18,69 +19,14 @@ internal static class ManagementApiHandlers
     public static IResult GetWorkerReady(WorkerPodStateManager manager) =>
         manager.State.IsWorkerReady ? TypedResults.Ok() : TypedResults.StatusCode(StatusCodes.Status503ServiceUnavailable);
 
-    public static IResult AssignWorker(WorkerAssignRequest? request, WorkerPodStateManager manager)
+    public static IResult AssignWorker(WorkerAssignRequest request, WorkerPodStateManager manager)
     {
-        if (request is null)
-        {
-            return InvalidBody();
-        }
-
-        List<RequestValidationError> errors = [];
-        if (string.IsNullOrWhiteSpace(request.FunctionAppName))
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "functionAppName"));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.FunctionGroupName))
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "functionGroupName"));
-        }
-
-        if (request.IsAlwaysReady is null)
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "isAlwaysReady"));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.FunctionAppDirectory))
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "functionAppDirectory"));
-        }
-
-        Dictionary<string, string> environment = new(StringComparer.Ordinal);
-        if (request.Environment is null)
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "environment"));
-        }
-        else
-        {
-            foreach ((string key, string? value) in request.Environment)
-            {
-                if (string.IsNullOrEmpty(key) || value is null)
-                {
-                    // Report the invalid field once without exposing environment keys or values.
-                    errors.Add(new(WorkerApiErrorCodes.InvalidValue, "environment"));
-                    break;
-                }
-
-                environment.Add(key, value);
-            }
-        }
-
-        if (errors.Count > 0
-            || request.FunctionAppName is not { } functionAppName
-            || request.FunctionGroupName is not { } functionGroupName
-            || request.FunctionAppDirectory is not { } functionAppDirectory
-            || request.IsAlwaysReady is not { } isAlwaysReady)
+        if (!WorkerAssignRequestValidator.TryCreateAssignment(
+            request, out WorkerAssignment? assignment, out IReadOnlyList<RequestValidationError> errors))
         {
             return ValidationError(errors);
         }
 
-        WorkerAssignment assignment = new(
-            functionAppName,
-            functionGroupName,
-            isAlwaysReady,
-            environment,
-            functionAppDirectory);
         return manager.Assign(assignment) switch
         {
             WorkerAssignmentResult.Created => TypedResults.Created("/admin/worker/assignment"),
@@ -93,6 +39,19 @@ internal static class ManagementApiHandlers
                 StatusCodes.Status409Conflict, WorkerApiErrorCodes.WorkerTerminated, "The assigned worker stream has terminated."),
             _ => throw new InvalidOperationException("Unexpected worker assignment result.")
         };
+    }
+
+    /// <summary>
+    /// Parses the optional revision query and returns or polls worker state, honoring request cancellation.
+    /// </summary>
+    public static async Task<IResult> GetWorkerStateAsync(HttpRequest request, WorkerPodStateManager manager)
+    {
+        if (!TryGetLastKnownRevision(request.Query, out long? lastKnownRevision))
+        {
+            return InvalidRevision();
+        }
+
+        return await GetInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
     }
 
     public static async Task<IResult> GetInstanceStateAsync(
@@ -116,11 +75,30 @@ internal static class ManagementApiHandlers
         return result.State is { } state ? StateResponse(state) : TypedResults.NoContent();
     }
 
-    internal static IResult InvalidBody() =>
-        ValidationError([new(WorkerApiErrorCodes.InvalidBody, "request")]);
-
     internal static IResult InvalidRevision() =>
         ValidationError([new(WorkerApiErrorCodes.InvalidRevision, "lastKnownRevision")]);
+
+    private static bool TryGetLastKnownRevision(IQueryCollection query, out long? lastKnownRevision)
+    {
+        lastKnownRevision = null;
+        if (!query.TryGetValue("lastKnownRevision", out var revisions))
+        {
+            return true;
+        }
+
+        if (revisions is not [string value])
+        {
+            return false;
+        }
+
+        if (!long.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long revision))
+        {
+            return false;
+        }
+
+        lastKnownRevision = revision;
+        return true;
+    }
 
     private static IResult ValidationError(IReadOnlyList<RequestValidationError> errors) =>
         TypedResults.Json(new RequestValidationResponse(errors),

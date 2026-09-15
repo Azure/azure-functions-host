@@ -16,5 +16,5 @@ internal sealed record WorkerInstanceState(
     public string FunctionsContainerType => "FunctionsWorkerPod";
 
     public static WorkerInstanceState FromState(WorkerPodState state) =>
-        new(state.PodName, state.Revision, new(state.PodStatus, state.FunctionGroupName, state.IsAlwaysReady));
+        new(state.PodName, state.Revision, new(state.PodStatus, state.StartupMode, state.FunctionGroupName, state.IsAlwaysReady));
 }

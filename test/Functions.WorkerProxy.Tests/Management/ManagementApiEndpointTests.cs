@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +25,7 @@ public class ManagementApiEndpointTests
     private const string AssignPath = "/admin/worker/assignment";
     private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
-        {"functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
+        {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
          "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot"}
         """;
 
@@ -43,46 +44,94 @@ public class ManagementApiEndpointTests
         using JsonDocument state = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
         Assert.Equal(0, state.RootElement.GetProperty("revisionId").GetInt64());
         Assert.Equal("None", state.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
+        Assert.False(state.RootElement.GetProperty("workerPodState").TryGetProperty("startupMode", out _));
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
     }
 
     [Theory]
+    [InlineData(null)]
     [InlineData("")]
     [InlineData("null")]
     [InlineData("[]")]
     [InlineData("{")]
     [InlineData("true")]
     [InlineData("\"assignment\"")]
-    public async Task MalformedBodyUsesHostValidationEnvelope(string body)
+    public async Task InvalidBodyReturnsBadRequestWithoutChangingAssignment(string? body)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        WorkerPodState before = manager.State;
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
-        using StringContent content = JsonBody(body);
+        using StringContent? content = body is null ? null : JsonBody(body);
         using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
 
-        await AssertValidationAsync(response, timeout.Token, ("InvalidBody", "request"));
-        Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Same(before, manager.State);
+        Assert.Null(manager.State.StartupMode);
+
+        using StringContent validContent = JsonBody(ValidAssignment);
+        using HttpResponseMessage accepted = await client.PutAsync(AssignPath, validContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
+        WorkerPodState assigned = manager.State;
+
+        using StringContent? rejectedContent = body is null ? null : JsonBody(body);
+        using HttpResponseMessage rejected = await client.PutAsync(AssignPath, rejectedContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+        Assert.Same(assigned, manager.State);
+
+        using StringContent replayContent = JsonBody(ValidAssignment);
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
     }
 
     [Theory]
+    [InlineData("startupMode", null, "Required")]
+    [InlineData("startupMode", "null", "Required")]
+    [InlineData("startupMode", "\"\"", "Required")]
+    [InlineData("startupMode", "\" \\t\\r\\n\"", "Required")]
+    [InlineData("startupMode", "\"preconfigured\"", "InvalidValue")]
+    [InlineData("startupMode", "\"specializationRequired\"", "InvalidValue")]
+    [InlineData("startupMode", "\"Preconfigured \"", "InvalidValue")]
+    [InlineData("startupMode", "\" SpecializationRequired\"", "InvalidValue")]
+    [InlineData("startupMode", "\"Unknown\"", "InvalidValue")]
+    [InlineData("startupMode", "\"0\"", "InvalidValue")]
+    [InlineData("startupMode", "0", null)]
+    [InlineData("startupMode", "true", null)]
+    [InlineData("startupMode", "{}", null)]
+    [InlineData("startupMode", "[]", null)]
     [InlineData("functionAppName", null, "Required")]
     [InlineData("functionAppName", "\" \"", "Required")]
     [InlineData("functionGroupName", null, "Required")]
     [InlineData("functionGroupName", "\"\"", "Required")]
     [InlineData("functionAppDirectory", null, "Required")]
+    [InlineData("functionAppDirectory", "null", "Required")]
+    [InlineData("functionAppDirectory", "\"\"", "Required")]
     [InlineData("functionAppDirectory", "\" \"", "Required")]
+    [InlineData("functionAppDirectory", null, "Required", "Preconfigured")]
+    [InlineData("functionAppDirectory", "null", "Required", "Preconfigured")]
     [InlineData("isAlwaysReady", null, "Required")]
     [InlineData("isAlwaysReady", "null", "Required")]
-    [InlineData("isAlwaysReady", "\"false\"", "InvalidBody")]
+    [InlineData("isAlwaysReady", "\"false\"", null)]
     [InlineData("environment", null, "Required")]
     [InlineData("environment", "null", "Required")]
     [InlineData("environment", "{\"\":\"private-value\"}", "InvalidValue")]
     [InlineData("environment", "{\"SETTING\":null}", "InvalidValue")]
-    [InlineData("environment", "{\"SETTING\":123}", "InvalidBody")]
-    public async Task InvalidAssignmentDoesNotClaimIdentity(string field, string? value, string code)
+    [InlineData("environment", "{\"SETTING\":123}", null)]
+    [InlineData("environment", null, "Required", "Preconfigured")]
+    [InlineData("environment", "null", "Required", "Preconfigured")]
+    [InlineData("environment", "[]", null, "Preconfigured")]
+    [InlineData("environment", "{\"\":\"private-value\"}", "InvalidValue", "Preconfigured")]
+    [InlineData("environment", "{\"SETTING\":null}", "InvalidValue", "Preconfigured")]
+    [InlineData("environment", "{\"SETTING\":123}", null, "Preconfigured")]
+    public async Task InvalidAssignmentDoesNotClaimIdentity(
+        string field, string? value, string? code, string startupMode = "SpecializationRequired")
     {
         JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
+        body["startupMode"] = startupMode;
         if (value is null)
         {
             body.Remove(field);
@@ -96,29 +145,52 @@ public class ManagementApiEndpointTests
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         Assert.True(manager.OnWorkerAttached(1));
         Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        WorkerPodState before = manager.State;
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
         using StringContent content = JsonBody(body.ToJsonString());
         using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
 
-        await AssertValidationAsync(response, timeout.Token,
-            (code, string.Equals(code, "InvalidBody", StringComparison.Ordinal) ? "request" : field));
+        if (code is null)
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+        else
+        {
+            await AssertValidationAsync(response, timeout.Token, (code, field));
+        }
         WorkerPodState state = manager.State;
+        Assert.Same(before, state);
         Assert.Equal(2, state.Revision);
         Assert.Equal(WorkerAssignmentState.Unassigned, state.AssignmentState);
         Assert.Null(state.FunctionAppName);
+        Assert.Null(state.StartupMode);
 
         using StringContent validContent = JsonBody(
             ValidAssignment.Replace("test-app", "another-app", StringComparison.Ordinal));
         using HttpResponseMessage accepted = await client.PutAsync(AssignPath, validContent, timeout.Token);
         await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
         Assert.Equal("another-app", manager.State.FunctionAppName);
+
+        WorkerPodState assigned = manager.State;
+        using StringContent rejectedContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage rejected = await client.PutAsync(AssignPath, rejectedContent, timeout.Token);
+        if (code is null)
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+        }
+        else
+        {
+            await AssertValidationAsync(rejected, timeout.Token, (code, field));
+        }
+
+        Assert.Same(assigned, manager.State);
     }
 
     [Theory]
-    [InlineData("{}")]
+    [InlineData("""{"startupMode":"SpecializationRequired"}""")]
     [InlineData("""
-        {"functionAppName":" ","functionGroupName":"","isAlwaysReady":null,
+        {"startupMode":"SpecializationRequired","functionAppName":" ","functionGroupName":"","isAlwaysReady":null,
          "functionAppDirectory":" ","environment":{"PRIVATE_SETTING":null}}
         """)]
     public async Task AssignmentReturnsAllInvalidFieldsInOneResponse(string body)
@@ -129,36 +201,27 @@ public class ManagementApiEndpointTests
         using StringContent content = JsonBody(body);
         using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
 
+        string environmentError = string.Equals(body, """{"startupMode":"SpecializationRequired"}""", StringComparison.Ordinal)
+            ? "Required" : "InvalidValue";
         await AssertValidationAsync(response, timeout.Token,
             ("Required", "functionAppName"),
             ("Required", "functionGroupName"),
             ("Required", "isAlwaysReady"),
             ("Required", "functionAppDirectory"),
-            (string.Equals(body, "{}", StringComparison.Ordinal) ? "Required" : "InvalidValue", "environment"));
+            (environmentError, "environment"));
         string json = await response.Content.ReadAsStringAsync(timeout.Token);
         Assert.DoesNotContain("PRIVATE_SETTING", json);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
     }
 
-    [Fact]
-    public async Task NonJsonContentUsesHostValidationEnvelope()
-    {
-        await using WorkerProxyWebApplicationFactory factory = new();
-        using HttpClient client = factory.CreateWorkerProxyClient();
-        using CancellationTokenSource timeout = new(TestTimeout);
-        using StringContent content = new("{}", Encoding.UTF8, "text/plain");
-        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
-
-        await AssertValidationAsync(response, timeout.Token, ("InvalidBody", "request"));
-    }
-
     [Theory]
-    [InlineData("application/json; charset=not-a-real-charset", "{}")]
-    [InlineData("application/json; charset=not-a-real-charset", ValidAssignment)]
-    [InlineData("application/json; charset=\"not-a-real-charset\"", ValidAssignment)]
-    [InlineData("application/problem+json; charset=not-a-real-charset", ValidAssignment)]
-    [InlineData("application/json; charset=utf-7", ValidAssignment)]
-    public async Task UnsupportedJsonCharsetUsesHostValidationEnvelope(string contentType, string body)
+    [InlineData(null)]
+    [InlineData("text/plain")]
+    [InlineData("application/xml")]
+    [InlineData("application/octet-stream")]
+    [InlineData("text/json")]
+    [InlineData("text/plain; charset=not-a-real-charset")]
+    public async Task UnsupportedMediaTypeReturns415WithoutChangingAssignment(string? contentType)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -167,21 +230,76 @@ public class ManagementApiEndpointTests
         WorkerPodState before = manager.State;
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
-        using StringContent content = JsonBody(body);
+        using StringContent content = JsonBody(ValidAssignment);
         content.Headers.Remove("Content-Type");
-        Assert.True(content.Headers.TryAddWithoutValidation("Content-Type", contentType));
+        if (contentType is not null)
+        {
+            Assert.True(content.Headers.TryAddWithoutValidation("Content-Type", contentType));
+        }
 
         using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
 
-        await AssertValidationAsync(response, timeout.Token, ("InvalidBody", "request"));
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
         Assert.Same(before, manager.State);
+        Assert.Null(manager.State.StartupMode);
+
         using StringContent validContent = JsonBody(ValidAssignment);
         using HttpResponseMessage accepted = await client.PutAsync(AssignPath, validContent, timeout.Token);
         await AssertAssignmentSuccessAsync(accepted, HttpStatusCode.Created, timeout.Token);
+        WorkerPodState assigned = manager.State;
+
+        JsonObject different = JsonNode.Parse(ValidAssignment)!.AsObject();
+        different["startupMode"] = "Preconfigured";
+        different["functionAppName"] = "other-app";
+        using StringContent conflictingContent = JsonBody(different.ToJsonString());
+        conflictingContent.Headers.Remove("Content-Type");
+        if (contentType is not null)
+        {
+            Assert.True(conflictingContent.Headers.TryAddWithoutValidation("Content-Type", contentType));
+        }
+
+        using HttpResponseMessage rejected = await client.PutAsync(AssignPath, conflictingContent, timeout.Token);
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, rejected.StatusCode);
+        Assert.Same(assigned, manager.State);
+
+        using StringContent replayContent = JsonBody(ValidAssignment);
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
+    }
+
+    [Fact]
+    public async Task AssignmentBindingUsesRegisteredSourceGeneratedJsonMetadata()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new(configureServices: services =>
+            services.PostConfigure<Microsoft.AspNetCore.Http.Json.JsonOptions>(options =>
+            {
+                Assert.Same(WorkerProxyJsonContext.Default, options.SerializerOptions.TypeInfoResolverChain[0]);
+                // Retain only the registered context so this request cannot fall back to reflection.
+                while (options.SerializerOptions.TypeInfoResolverChain.Count > 1)
+                {
+                    options.SerializerOptions.TypeInfoResolverChain.RemoveAt(1);
+                }
+            }));
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        manager.OnWorkerAttached(1);
+        manager.OnWorkerStartStream(1, "worker");
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using StringContent content = JsonBody(ValidAssignment.Replace(
+            "startupMode", "STARTUPMODE", StringComparison.Ordinal));
+
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
+
+        await AssertAssignmentSuccessAsync(response, HttpStatusCode.Created, timeout.Token);
+        Assert.Equal(WorkerStartupMode.SpecializationRequired, manager.State.StartupMode);
+        Assert.False(manager.State.IsAlwaysReady);
     }
 
     [Theory]
     [InlineData("application/json", "utf-8")]
+    [InlineData("application/problem+json", "utf-8")]
+    [InlineData("APPLICATION/JSON", "utf-8")]
     [InlineData("application/json; charset=utf-8", "utf-8")]
     [InlineData("application/json; charset=UTF-8", "utf-8")]
     [InlineData("application/json; charset=utf-16", "utf-16")]
@@ -229,7 +347,6 @@ public class ManagementApiEndpointTests
     [InlineData("lastKnownRevision=0%20")]
     [InlineData("lastKnownRevision=%090")]
     [InlineData("lastKnownRevision=0%0A")]
-    [InlineData("lastKnownRevision=0%00")]
     [InlineData("lastKnownRevision=%000")]
     [InlineData("lastKnownRevision=0%000")]
     [InlineData("lastKnownRevision=%C2%A00")]
@@ -309,6 +426,7 @@ public class ManagementApiEndpointTests
     [InlineData("%2B0")]
     [InlineData("-0")]
     [InlineData("000")]
+    [InlineData("0%00")]
     public async Task ExplicitZeroRevisionPollReturnsNoContentAtDeadline(string revision)
     {
         Mock<TimeProvider> clock = new();
@@ -390,6 +508,7 @@ public class ManagementApiEndpointTests
     [InlineData("1")]
     [InlineData("%2B1")]
     [InlineData("0001")]
+    [InlineData("1%00")]
     public async Task OlderSignedInvariantRevisionReturnsCurrentSnapshot(string revision)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -470,12 +589,14 @@ public class ManagementApiEndpointTests
     }
 
     [Theory]
+    [InlineData("startupMode", "\"Preconfigured\"", false)]
     [InlineData("functionAppName", "\"TEST-app\"", false)]
     [InlineData("functionGroupName", "\"TEST-group\"", false)]
     [InlineData("functionAppDirectory", "\"/home/site/WWWROOT\"", false)]
     [InlineData("isAlwaysReady", "true", false)]
     [InlineData("environment", "{\"SETTING\":\"PRIVATE-value\"}", false)]
     [InlineData("environment", "{\"setting\":\"private-value\"}", false)]
+    [InlineData("startupMode", "\"Preconfigured\"", true)]
     [InlineData("functionAppName", "\"TEST-app\"", true)]
     [InlineData("functionGroupName", "\"TEST-group\"", true)]
     [InlineData("functionAppDirectory", "\"/home/site/WWWROOT\"", true)]
@@ -529,23 +650,70 @@ public class ManagementApiEndpointTests
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
+        WorkerPodState before = manager.State;
         using StringContent notReadyContent = JsonBody(ValidAssignment);
         using HttpResponseMessage notReady = await client.PutAsync(AssignPath, notReadyContent, timeout.Token);
         await AssertAssignmentErrorAsync(notReady, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
+        Assert.Same(before, manager.State);
         Assert.Equal(0, manager.State.Revision);
         Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
         Assert.Null(manager.State.FunctionAppName);
+        Assert.Null(manager.State.StartupMode);
 
         Assert.True(manager.OnWorkerAttached(1));
         Assert.True(manager.OnWorkerStartStream(1, "worker"));
         JsonObject assignment = JsonNode.Parse(ValidAssignment)!.AsObject();
         assignment["functionAppName"] = "other-app";
+        assignment["startupMode"] = "Preconfigured";
         assignment["environment"] = JsonNode.Parse(environment);
         using StringContent content = JsonBody(assignment.ToJsonString());
         using HttpResponseMessage created = await client.PutAsync(AssignPath, content, timeout.Token);
         await AssertAssignmentSuccessAsync(created, HttpStatusCode.Created, timeout.Token);
         Assert.Equal(3, manager.State.Revision);
         Assert.Equal("other-app", manager.State.FunctionAppName);
+        Assert.Equal(WorkerStartupMode.Preconfigured, manager.State.StartupMode);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" \t\r\n")]
+    public async Task PreconfiguredAssignmentPreservesEmptyOrWhitespaceDirectory(string directory)
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        JsonObject body = JsonNode.Parse(ValidAssignment)!.AsObject();
+        body["startupMode"] = "Preconfigured";
+        body["functionAppDirectory"] = directory;
+        body["environment"] = new JsonObject();
+        using StringContent content = JsonBody(body.ToJsonString());
+        using HttpResponseMessage response = await client.PutAsync(AssignPath, content, timeout.Token);
+
+        await AssertAssignmentSuccessAsync(response, HttpStatusCode.Created, timeout.Token);
+        WorkerPodState assigned = manager.State;
+        Assert.Equal(WorkerStartupMode.Preconfigured, assigned.StartupMode);
+        Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
+        Assert.Equal(WorkerPodStatus.ReadyForRequest, assigned.PodStatus);
+        Assert.Equal(3, assigned.Revision);
+
+        using StringContent replayContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage replay = await client.PutAsync(AssignPath, replayContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(replay, HttpStatusCode.NoContent, timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        body["functionAppDirectory"] = string.Equals(directory, string.Empty, StringComparison.Ordinal) ? " " : string.Empty;
+        using StringContent changedContent = JsonBody(body.ToJsonString());
+        using HttpResponseMessage changed = await client.PutAsync(AssignPath, changedContent, timeout.Token);
+        await AssertAssignmentErrorAsync(changed, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+        Assert.Same(assigned, manager.State);
+
+        using HttpResponseMessage current = await client.GetAsync(StatePath, timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, current.StatusCode);
+        using JsonDocument state = JsonDocument.Parse(await current.Content.ReadAsStringAsync(timeout.Token));
+        Assert.Equal("Preconfigured", state.RootElement.GetProperty("workerPodState").GetProperty("startupMode").GetString());
     }
 
     private static void AssertNoStore(HttpResponseMessage response) =>

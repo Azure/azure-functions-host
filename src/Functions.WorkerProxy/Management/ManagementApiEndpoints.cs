@@ -1,10 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Globalization;
-using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
@@ -17,80 +13,26 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Registers worker lifecycle APIs on the management listener.
 /// </summary>
 /// <remarks>
-/// The PUT handler explicitly uses ReadFromJsonAsync rather than automatic body binding so malformed JSON,
-/// incompatible field types, and unsupported content types or charsets return our Host-aligned HTTP 400 InvalidBody
-/// validation envelope. Automatic binding can reject requests before the handler runs with framework-owned
-/// 400/415 responses that do not guarantee that envelope.
+/// Platform callers are expected to send UTF-8 JSON. Assignment uses framework JSON binding;
+/// binding failures follow framework behavior without a guaranteed status or error envelope.
+/// Successfully bound requests use our field-validation envelope and lifecycle error codes.
 /// </remarks>
 internal static class ManagementApiEndpoints
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/admin/worker/ready", ManagementApiHandlers.GetWorkerReady)
-            .AddEndpointFilter(DisableCaching).AllowAnonymous();
-        endpoints.MapPut("/admin/worker/assignment", AssignWorkerAsync).AllowAnonymous();
-        endpoints.MapGet("/admin/worker/state", GetInstanceStateAsync)
-            .AddEndpointFilter(DisableCaching).AllowAnonymous();
+            .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();
+        endpoints.MapPut("/admin/worker/assignment",
+            (WorkerAssignRequest request, WorkerPodStateManager manager) => ManagementApiHandlers.AssignWorker(request, manager))
+            .AllowAnonymous();
+        endpoints.MapGet("/admin/worker/state", ManagementApiHandlers.GetWorkerStateAsync)
+            .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();
     }
 
-    private static ValueTask<object?> DisableCaching(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    private static ValueTask<object?> DisableResponseCaching(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         context.HttpContext.Response.Headers.CacheControl = "no-store";
         return next(context);
-    }
-
-    private static async Task<IResult> AssignWorkerAsync(HttpRequest request, WorkerPodStateManager manager)
-    {
-        if (!request.HasJsonContentType())
-        {
-            return ManagementApiHandlers.InvalidBody();
-        }
-
-        var charset = request.GetTypedHeaders().ContentType!.Charset;
-        if (charset.HasValue && !charset.Equals("utf-8", StringComparison.OrdinalIgnoreCase))
-        {
-            // ReadFromJsonAsync wraps unsupported encodings in InvalidOperationException, not JsonException.
-            try
-            {
-                _ = Encoding.GetEncoding(charset.Value);
-            }
-            catch (Exception exception) when (exception is ArgumentException or NotSupportedException)
-            {
-                return ManagementApiHandlers.InvalidBody();
-            }
-        }
-
-        WorkerAssignRequest? assignment;
-        try
-        {
-            assignment = await request.ReadFromJsonAsync(
-                WorkerProxyJsonContext.Default.WorkerAssignRequest, request.HttpContext.RequestAborted);
-        }
-        catch (JsonException)
-        {
-            return ManagementApiHandlers.InvalidBody();
-        }
-
-        return ManagementApiHandlers.AssignWorker(assignment, manager);
-    }
-
-    private static async Task<IResult> GetInstanceStateAsync(HttpRequest request, WorkerPodStateManager manager)
-    {
-        long? lastKnownRevision = null;
-        if (request.Query.TryGetValue("lastKnownRevision", out var revisions))
-        {
-            string? value = revisions.Count == 1 ? revisions[0] : null;
-            // Accept invariant ASCII digits with an optional leading sign, not whitespace or JSON syntax.
-            if (value is null
-                || value.AsSpan().IndexOfAnyExcept("+-0123456789") >= 0
-                || !long.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out long revision))
-            {
-                return ManagementApiHandlers.InvalidRevision();
-            }
-
-            lastKnownRevision = revision;
-        }
-
-        return await ManagementApiHandlers.GetInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
     }
 }

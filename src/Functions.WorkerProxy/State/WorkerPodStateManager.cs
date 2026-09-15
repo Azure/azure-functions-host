@@ -15,6 +15,7 @@ namespace Azure.Functions.WorkerProxy.State;
 /// <remarks>
 /// Lifecycle notifications use the relay's monotonically increasing session IDs.
 /// Assignment is synchronous bookkeeping; it never initializes or specializes a worker.
+/// Both startup modes are retained as identity; mode-specific preparation is not implemented.
 /// All state decisions and snapshot replacements share one lock, including assignment racing with termination.
 /// Readers can retain a snapshot after releasing the lock because subsequent transitions replace rather than mutate it.
 /// </remarks>
@@ -257,6 +258,7 @@ internal sealed class WorkerPodStateManager
             {
                 Revision = checked(_state.Revision + 1),
                 AssignmentState = WorkerAssignmentState.Ready,
+                StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
                 IsAlwaysReady = assignment.IsAlwaysReady

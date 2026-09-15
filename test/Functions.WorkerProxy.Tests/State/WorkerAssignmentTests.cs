@@ -34,6 +34,7 @@ public class WorkerAssignmentTests
     [InlineData("key")]
     [InlineData("value")]
     [InlineData("count")]
+    [InlineData("startupMode")]
     public void Equality_UsesEveryFieldAndOrdinalStrings(string changedField)
     {
         WorkerAssignment original = Create(new Dictionary<string, string> { ["KEY"] = "Value" });
@@ -48,6 +49,8 @@ public class WorkerAssignmentTests
         }
 
         WorkerAssignment changed = new(
+            string.Equals(changedField, "startupMode", StringComparison.Ordinal)
+                ? WorkerStartupMode.SpecializationRequired : WorkerStartupMode.Preconfigured,
             string.Equals(changedField, "app", StringComparison.Ordinal) ? "APP" : "app",
             string.Equals(changedField, "group", StringComparison.Ordinal) ? "HTTP" : "http",
             string.Equals(changedField, "alwaysReady", StringComparison.Ordinal),
@@ -75,9 +78,50 @@ public class WorkerAssignmentTests
     public void Construction_RejectsMissingIdentity(string? value)
     {
         Dictionary<string, string> environment = [];
-        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(value!, "http", false, environment, "/app"));
-        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment("app", value!, false, environment, "/app"));
-        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment("app", "http", false, environment, value!));
+        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.Preconfigured, value!, "http", false, environment, "/app"));
+        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.Preconfigured, "app", value!, false, environment, "/app"));
+        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.SpecializationRequired, "app", "http", false, environment, value!));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" \t")]
+    [InlineData("/app")]
+    public void Construction_PreconfiguredPreservesDirectoryWithoutApplyingValidationForSpecialization(string directory)
+    {
+        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), directory);
+
+        Assert.Equal(WorkerStartupMode.Preconfigured, assignment.StartupMode);
+        Assert.Equal(directory, assignment.FunctionAppDirectory);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Construction_RejectsNullDirectoryInBothModes(bool specializationRequired)
+    {
+        WorkerStartupMode startupMode = specializationRequired ? WorkerStartupMode.SpecializationRequired : WorkerStartupMode.Preconfigured;
+        Assert.Throws<ArgumentNullException>(() =>
+            new WorkerAssignment(startupMode, "app", "http", false, new Dictionary<string, string>(), null!));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(2)]
+    public void Construction_RejectsUndefinedStartupMode(int startupMode)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new WorkerAssignment((WorkerStartupMode)startupMode, "app", "http", false, new Dictionary<string, string>(), "/app"));
+    }
+
+    [Fact]
+    public void Equality_PreconfiguredEmptyDirectoryStillParticipatesInIdentity()
+    {
+        WorkerAssignment empty = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty);
+        WorkerAssignment whitespace = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), " ");
+
+        Assert.False(empty.IsEquivalentTo(whitespace));
+        Assert.False(whitespace.IsEquivalentTo(empty));
     }
 
     [Fact]
@@ -95,5 +139,5 @@ public class WorkerAssignmentTests
     }
 
     private static WorkerAssignment Create(IReadOnlyDictionary<string, string> environment)
-        => new("app", "http", false, environment, "/home/site/wwwroot");
+        => new(WorkerStartupMode.Preconfigured, "app", "http", false, environment, "/home/site/wwwroot");
 }

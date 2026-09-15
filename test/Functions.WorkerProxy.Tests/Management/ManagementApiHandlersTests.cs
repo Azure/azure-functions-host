@@ -45,18 +45,6 @@ public class ManagementApiHandlersTests
         Assert.Same(terminated, manager.State);
     }
 
-    [Fact]
-    public void AssignWorker_NullRequestIsInvalidEvenBeforeWorkerReady()
-    {
-        WorkerPodStateManager manager = CreateManager();
-        WorkerPodState initial = manager.State;
-
-        Assert.Equal(new("InvalidBody", "request"), Assert.Single(
-            AssertValidation(ManagementApiHandlers.AssignWorker(null, manager))));
-
-        Assert.Same(initial, manager.State);
-    }
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -69,6 +57,7 @@ public class ManagementApiHandlersTests
 
         Assert.Equal<RequestValidationError>(
             [
+                new("Required", "startupMode"),
                 new("Required", "functionAppName"),
                 new("Required", "functionGroupName"),
                 new("Required", "isAlwaysReady"),
@@ -86,6 +75,7 @@ public class ManagementApiHandlersTests
         WorkerPodState before = manager.State;
         WorkerAssignRequest request = new()
         {
+            StartupMode = nameof(WorkerStartupMode.SpecializationRequired),
             FunctionAppName = " ",
             FunctionGroupName = string.Empty,
             FunctionAppDirectory = "\t",
@@ -129,10 +119,11 @@ public class ManagementApiHandlersTests
         {
             "app" => CreateRequest(functionAppName: value),
             "group" => CreateRequest(functionGroupName: value),
-            "directory" => CreateRequest(functionAppDirectory: value),
+            "directory" => CreateRequest(functionAppDirectory: value, startupMode: nameof(WorkerStartupMode.SpecializationRequired)),
             "alwaysReady" => CreateRequest(isAlwaysReady: null),
             "environment" => new WorkerAssignRequest
             {
+                StartupMode = nameof(WorkerStartupMode.Preconfigured),
                 FunctionAppName = "app",
                 FunctionGroupName = "group",
                 FunctionAppDirectory = "app-directory",
@@ -195,15 +186,136 @@ public class ManagementApiHandlersTests
             CreateRequest(environment: new() { ["SETTING"] = string.Empty, [" "] = string.Empty }), manager));
     }
 
+    [Theory]
+    [InlineData(null, "Required")]
+    [InlineData("", "Required")]
+    [InlineData(" \t", "Required")]
+    [InlineData("preconfigured", "InvalidValue")]
+    [InlineData("specializationrequired", "InvalidValue")]
+    [InlineData("Preconfigured ", "InvalidValue")]
+    [InlineData("Unknown", "InvalidValue")]
+    [InlineData("0", "InvalidValue")]
+    [InlineData("Preconfigured, SpecializationRequired", "InvalidValue")]
+    public void AssignWorker_InvalidStartupModeDoesNotClaimOrChangeIdentity(string? startupMode, string code)
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        WorkerPodState before = manager.State;
+        WorkerAssignRequest invalid = CreateRequest(startupMode: startupMode);
+
+        Assert.Equal(new(code, "startupMode"), Assert.Single(
+            AssertValidation(ManagementApiHandlers.AssignWorker(invalid, manager))));
+        Assert.Same(before, manager.State);
+        Assert.Null(manager.State.StartupMode);
+
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
+        WorkerPodState assigned = manager.State;
+        Assert.Equal(new(code, "startupMode"), Assert.Single(
+            AssertValidation(ManagementApiHandlers.AssignWorker(invalid, manager))));
+        Assert.Same(assigned, manager.State);
+
+        manager.OnSessionTerminated(1);
+        WorkerPodState terminated = manager.State;
+        Assert.Equal(new(code, "startupMode"), Assert.Single(
+            AssertValidation(ManagementApiHandlers.AssignWorker(invalid, manager))));
+        Assert.Same(terminated, manager.State);
+    }
+
     [Fact]
-    public void AssignWorker_RecordsEnvironmentWithoutApplyingItToProxyProcess()
+    public void AssignWorker_InvalidStartupModeIsCollectedWithOtherFieldErrors()
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        WorkerPodState before = manager.State;
+        WorkerAssignRequest request = new()
+        {
+            StartupMode = "private-unsupported-mode",
+            Environment = new() { ["PRIVATE_SETTING"] = null }
+        };
+
+        Assert.Equal<RequestValidationError>(
+            [
+                new("InvalidValue", "startupMode"),
+                new("Required", "functionAppName"),
+                new("Required", "functionGroupName"),
+                new("Required", "isAlwaysReady"),
+                new("Required", "functionAppDirectory"),
+                new("InvalidValue", "environment")
+            ],
+            AssertValidation(ManagementApiHandlers.AssignWorker(request, manager)));
+        Assert.Same(before, manager.State);
+    }
+
+    [Theory]
+    [InlineData(null, "Required")]
+    [InlineData("unsupported", "InvalidValue")]
+    public void AssignWorker_InvalidStartupModeDoesNotSelectDirectoryRules(string? startupMode, string code)
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        WorkerPodState before = manager.State;
+
+        IReadOnlyList<RequestValidationError> errors = AssertValidation(ManagementApiHandlers.AssignWorker(
+            CreateRequest(startupMode: startupMode, functionAppDirectory: string.Empty), manager));
+
+        Assert.Equal(new(code, "startupMode"), Assert.Single(errors));
+        Assert.Same(before, manager.State);
+    }
+
+    [Theory]
+    [InlineData("Preconfigured", "")]
+    [InlineData("Preconfigured", " \t")]
+    [InlineData("Preconfigured", "/nonexistent-worker-path")]
+    [InlineData("SpecializationRequired", "/nonexistent-worker-path")]
+    public void AssignWorker_AcceptsModeDependentDirectoryAndRetainsMode(string startupMode, string directory)
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        WorkerPodState before = manager.State;
+        WorkerAssignRequest request = CreateRequest(startupMode: startupMode, functionAppDirectory: directory, environment: new());
+
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(request, manager));
+        WorkerPodState assigned = manager.State;
+        Assert.Equal(startupMode, assigned.StartupMode.ToString());
+        Assert.Equal(before.Revision + 1, assigned.Revision);
+        Assert.Equal(WorkerAssignmentState.Ready, assigned.AssignmentState);
+        Assert.Equal(WorkerPodStatus.ReadyForRequest, assigned.PodStatus);
+        Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(request, manager));
+        Assert.Same(assigned, manager.State);
+        AssertError(ManagementApiHandlers.AssignWorker(
+            CreateRequest(startupMode: startupMode, functionAppDirectory: directory + "/changed", environment: new()), manager),
+            409, "AssignmentConflict");
+        Assert.Same(assigned, manager.State);
+    }
+
+    [Theory]
+    [InlineData("Preconfigured")]
+    [InlineData("SpecializationRequired")]
+    public void AssignWorker_BothModesRequireEnvironmentAndDirectory(string startupMode)
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        WorkerPodState before = manager.State;
+        WorkerAssignRequest request = new()
+        {
+            StartupMode = startupMode,
+            FunctionAppName = "app",
+            FunctionGroupName = "group",
+            IsAlwaysReady = false
+        };
+
+        Assert.Equal<RequestValidationError>(
+            [new("Required", "functionAppDirectory"), new("Required", "environment")],
+            AssertValidation(ManagementApiHandlers.AssignWorker(request, manager)));
+        Assert.Same(before, manager.State);
+    }
+
+    [Theory]
+    [InlineData("Preconfigured")]
+    [InlineData("SpecializationRequired")]
+    public void AssignWorker_RecordsEnvironmentWithoutApplyingItToProxyProcess(string startupMode)
     {
         WorkerPodStateManager manager = CreateReadyManager();
         string setting = $"WORKERPROXY_ASSIGNMENT_TEST_{Guid.NewGuid():N}";
         Assert.Null(Environment.GetEnvironmentVariable(setting));
 
         Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(
-            CreateRequest(environment: new() { [setting] = "private-value" }), manager));
+            CreateRequest(startupMode: startupMode, environment: new() { [setting] = "private-value" }), manager));
 
         Assert.Null(Environment.GetEnvironmentVariable(setting));
         Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
@@ -263,12 +375,14 @@ public class ManagementApiHandlersTests
     [InlineData("alwaysReady")]
     [InlineData("environmentKey")]
     [InlineData("environmentValue")]
+    [InlineData("startupMode")]
     public void AssignWorker_DifferentIdentityConflictsBeforeAndAfterTermination(string field)
     {
         WorkerPodStateManager manager = CreateReadyManager();
         Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         WorkerAssignRequest different = field switch
         {
+            "startupMode" => CreateRequest(startupMode: nameof(WorkerStartupMode.SpecializationRequired)),
             "app" => CreateRequest(functionAppName: "APP"),
             "group" => CreateRequest(functionGroupName: "GROUP"),
             "directory" => CreateRequest(functionAppDirectory: "APP-DIRECTORY"),
@@ -286,6 +400,7 @@ public class ManagementApiHandlersTests
 
         AssertError(ManagementApiHandlers.AssignWorker(different, manager), 409, "AssignmentConflict");
         AssertError(ManagementApiHandlers.AssignWorker(CreateRequest(), manager), 409, "WorkerTerminated");
+        Assert.Equal(WorkerStartupMode.Preconfigured, terminated.StartupMode);
         Assert.Same(terminated, manager.State);
     }
 
@@ -520,9 +635,11 @@ public class ManagementApiHandlersTests
         string? functionGroupName = "group",
         bool? isAlwaysReady = false,
         string? functionAppDirectory = "app-directory",
-        Dictionary<string, string?>? environment = null) =>
+        Dictionary<string, string?>? environment = null,
+        string? startupMode = nameof(WorkerStartupMode.Preconfigured)) =>
         new()
         {
+            StartupMode = startupMode,
             FunctionAppName = functionAppName,
             FunctionGroupName = functionGroupName,
             IsAlwaysReady = isAlwaysReady,

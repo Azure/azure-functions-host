@@ -11,7 +11,6 @@ internal static class WorkerApiErrorCodes
     // Clients branch on these exact, case-sensitive wire values. Do not change or repurpose them.
     // Keep explicit literals rather than nameof so symbol renames cannot change the contract.
     public const string Required = "Required";
-    public const string InvalidBody = "InvalidBody";
     public const string InvalidValue = "InvalidValue";
     public const string InvalidRevision = "InvalidRevision";
     public const string WorkerNotReady = "WorkerNotReady";
