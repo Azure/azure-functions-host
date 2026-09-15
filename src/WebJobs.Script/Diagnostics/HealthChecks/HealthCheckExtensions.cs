@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
                 .AddWebHostHealthCheck()
                 .AddScriptHostHealthCheck()
                 .AddWebJobsStorageHealthCheck()
+                .AddDnsConnectivityHealthCheck()
                 .AddTelemetryPublisher(HealthCheckTags.Liveness, HealthCheckTags.Readiness)
                 .UseDynamicHealthCheckService();
             return builder;
@@ -142,6 +143,21 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
             builder.AddCheck<WebJobsStorageHealthCheck>(
                 HealthCheckNames.WebJobsStorage,
                 tags: [HealthCheckTags.Configuration, HealthCheckTags.Connectivity, HealthCheckTags.WebJobsStorage],
+                timeout: TimeSpan.FromSeconds(10));
+            return builder;
+        }
+
+        /// <summary>
+        /// Adds an SDK-free DNS connectivity check (Network Troubleshooter prototype).
+        /// </summary>
+        /// <param name="builder">The builder to register health checks with.</param>
+        /// <returns>The original builder, for call chaining.</returns>
+        public static IHealthChecksBuilder AddDnsConnectivityHealthCheck(this IHealthChecksBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            builder.AddCheck<DnsConnectivityHealthCheck>(
+                HealthCheckNames.DnsConnectivity,
+                tags: [HealthCheckTags.Connectivity],
                 timeout: TimeSpan.FromSeconds(10));
             return builder;
         }
