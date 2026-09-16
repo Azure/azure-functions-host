@@ -55,4 +55,4 @@ jobs:
       project: src/Functions.WorkerProxy/Functions.WorkerProxy.csproj
       publishDir: $(Agent.TempDirectory)/functions-host/worker-proxy
       archiveFile: $(linux_drop_path)/worker-proxy.linux-x64.tar.gz
-      publishArguments: '$(build_args) --self-contained true'
+      publishArguments: '$(build_args) --self-contained true -p:CopyOutputSymbolsToPublishDirectory=false -p:StaticWebAssetsEnabled=false'
