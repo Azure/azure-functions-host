@@ -22,17 +22,26 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// </remarks>
 internal sealed partial class FunctionRpcRelay(
     ILogger<FunctionRpcRelay> logger,
-    WorkerHttpCapabilityProvider capabilityProvider)
+    WorkerHttpCapabilityProvider capabilityProvider,
+    IFunctionRpcMessageInterceptorFactory messageInterceptorFactory)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
     private readonly WorkerHttpCapabilityProvider _capabilityProvider = capabilityProvider ?? throw new ArgumentNullException(nameof(capabilityProvider));
+    private readonly IFunctionRpcMessageInterceptorFactory _messageInterceptorFactory =
+        messageInterceptorFactory ?? throw new ArgumentNullException(nameof(messageInterceptorFactory));
+
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
     private FunctionRpcRelayTerminalState? _lastTerminalState;
     private long _nextSessionId;
     private bool _stopping;
+
+    internal FunctionRpcRelay(ILogger<FunctionRpcRelay> logger, WorkerHttpCapabilityProvider capabilityProvider)
+        : this(logger, capabilityProvider, new FunctionRpcMessageInterceptorFactory())
+    {
+    }
 
     private enum FunctionRpcRelayAttachResult
     {
@@ -135,7 +144,8 @@ internal sealed partial class FunctionRpcRelay(
                 ClearCurrentSessionLocked();
             }
 
-            session = _currentSession ??= new FunctionRpcRelaySession(Interlocked.Increment(ref _nextSessionId), logger, _capabilityProvider);
+            session = _currentSession ??= new FunctionRpcRelaySession(
+                Interlocked.Increment(ref _nextSessionId), logger, _capabilityProvider, _messageInterceptorFactory.Create());
 
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)
