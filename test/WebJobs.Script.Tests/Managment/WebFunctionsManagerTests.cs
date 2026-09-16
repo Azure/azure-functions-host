@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var hostSecretsInfo = new HostSecretsInfo();
             secretManagerMock.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecretsInfo);
             Dictionary<string, string> functionSecrets = new Dictionary<string, string>();
-            secretManagerMock.Setup(p => p.GetFunctionSecretsAsync("httptrigger", false)).ReturnsAsync(functionSecrets);
+            secretManagerMock.Setup(p => p.GetFunctionSecretsAsync("httptrigger")).ReturnsAsync(functionSecrets);
 
             var configurationMock = new Mock<IConfiguration>(MockBehavior.Strict);
             configurationMock.Setup(p => p.GetReloadToken()).Returns(new Mock<IChangeToken>().Object);
