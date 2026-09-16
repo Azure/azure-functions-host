@@ -1,0 +1,55 @@
+# Stops the perflab host and clears Windows IIS/ANCM settings.
+
+parameters:
+- name: os
+  type: string
+  values: [Windows, Linux]
+- name: displayName
+  type: string
+# Delay after stopping (e.g. let the OS release the listening port before relaunch).
+- name: postStopDelaySeconds
+  type: number
+  default: 0
+- name: condition
+  type: string
+  default: succeeded()
+
+steps:
+- pwsh: |
+    # $IsWindows is a read-only automatic variable in PowerShell, so use a distinct name.
+    $isWindowsOS = "${{ parameters.os }}" -eq "Windows"
+    if ($isWindowsOS) {
+        # IIS/ANCM: stop the site and app pool before the worker process.
+        $appcmd = "$env:SystemRoot\System32\inetsrv\appcmd.exe"
+        & $appcmd stop site "FunctionsHost" 2>$null
+        & $appcmd stop apppool "FunctionsHostPool" 2>$null
+
+        # The ANCM environment variables live in applicationHost.config and include
+        # AzureWebJobsStorage, so clear them rather than leaving a secret on a persistent agent.
+        & $appcmd clear config "FunctionsHost" /section:system.webServer/aspNetCore /commit:apphost 2>$null
+    }
+
+    $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
+    if (Test-Path $processIdFile) {
+        $hostProcessId = (Get-Content $processIdFile).Trim()
+        $proc = Get-Process -Id $hostProcessId -ErrorAction SilentlyContinue
+        if ($proc) {
+            if ($isWindowsOS) {
+                Write-Host "Stopping host process (w3wp) with PID: $hostProcessId"
+                Stop-Process -Id $hostProcessId -Force -ErrorAction SilentlyContinue
+            } else {
+                Write-Host "Sending SIGTERM to host process PID: $hostProcessId"
+                & kill -s TERM $hostProcessId 2>/dev/null
+            }
+        } else {
+            Write-Host "Host process (PID: $hostProcessId) is not running."
+        }
+    } else {
+        Write-Host "Process ID file not found."
+    }
+
+    Start-Sleep -Seconds ${{ parameters.postStopDelaySeconds }}
+
+    Write-Host "Host stopped."
+  displayName: ${{ parameters.displayName }}
+  condition: ${{ parameters.condition }}
