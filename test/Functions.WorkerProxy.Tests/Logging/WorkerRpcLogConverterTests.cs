@@ -32,8 +32,6 @@ public class WorkerRpcLogConverterTests
         WorkerUserLog result = Assert.IsType<WorkerUserLog>(_converter.Convert(rpcLog));
 
         Assert.Equal("invocation", result.InvocationId);
-        Assert.Equal("Functions.ProcessOrder", result.LoggerCategory);
-        Assert.Equal(RpcLog.Types.RpcLogCategory.User, result.RpcLogCategory);
         Assert.Equal(LogLevel.Warning, result.Level);
         Assert.Equal("message", result.Message);
         Assert.Equal(0, result.EventId.Id);
@@ -77,12 +75,8 @@ public class WorkerRpcLogConverterTests
 
         WorkerSystemLog result = Assert.IsType<WorkerSystemLog>(_converter.Convert(rpcLog));
 
-        Assert.Equal("worker.system", result.LoggerCategory);
-        Assert.Equal(RpcLog.Types.RpcLogCategory.System, result.RpcLogCategory);
         Assert.Equal(expected, result.Level);
         Assert.Equal("system message", result.Message);
-        Assert.Equal(0, result.EventId.Id);
-        Assert.Null(result.EventId.Name);
     }
 
     [Fact]
@@ -108,19 +102,20 @@ public class WorkerRpcLogConverterTests
 
         WorkerUserLog result = Assert.IsType<WorkerUserLog>(_converter.Convert(new RpcLog { LogCategory = unknown }));
 
-        Assert.Equal(unknown, result.RpcLogCategory);
+        Assert.NotNull(result);
     }
 
     [Fact]
-    public void Convert_UserExceptionPreservesEveryProtocolField()
+    public void Convert_UserExceptionMatchesHostObservableShape()
     {
         RpcLog rpcLog = new()
         {
+            Message = "outer result",
             Exception = new RpcException
             {
                 Source = "worker",
                 StackTrace = "stack",
-                Message = "exception message",
+                Message = "Password=secret",
                 IsUserException = true,
                 Type = "WorkerException"
             }
@@ -128,29 +123,51 @@ public class WorkerRpcLogConverterTests
 
         WorkerUserLog result = Assert.IsType<WorkerUserLog>(_converter.Convert(rpcLog));
 
-        Assert.Equal(new WorkerLogException("worker", "stack", "exception message", true, "WorkerException"), result.Exception);
+        Assert.Equal(
+            new WorkerLogException("outer result", "[Hidden Credential]", "stack"),
+            result.Exception);
     }
 
     [Fact]
-    public void Convert_SystemExceptionIsUsedOnlyForError()
+    public void Convert_SystemErrorUsesHostObservableException()
     {
-        RpcException exception = new() { Message = "failure" };
-
         WorkerSystemLog error = Assert.IsType<WorkerSystemLog>(_converter.Convert(new RpcLog
         {
             LogCategory = RpcLog.Types.RpcLogCategory.System,
             Level = RpcLog.Types.Level.Error,
-            Exception = exception
-        }));
-        WorkerSystemLog warning = Assert.IsType<WorkerSystemLog>(_converter.Convert(new RpcLog
-        {
-            LogCategory = RpcLog.Types.RpcLogCategory.System,
-            Level = RpcLog.Types.Level.Warning,
-            Exception = exception
+            Message = "outer result",
+            Exception = new RpcException
+            {
+                Source = "worker",
+                StackTrace = "stack",
+                Message = "AccountKey=secret",
+                IsUserException = true,
+                Type = "WorkerException"
+            }
         }));
 
-        Assert.NotNull(error.Exception);
-        Assert.Null(warning.Exception);
+        Assert.Equal(
+            new WorkerLogException("outer result", "[Hidden Credential]", "stack"),
+            error.Exception);
+    }
+
+    [Theory]
+    [InlineData(RpcLog.Types.Level.Warning)]
+    [InlineData(RpcLog.Types.Level.Information)]
+    [InlineData(RpcLog.Types.Level.Trace)]
+    [InlineData(RpcLog.Types.Level.Debug)]
+    [InlineData(RpcLog.Types.Level.Critical)]
+    [InlineData(RpcLog.Types.Level.None)]
+    public void Convert_SystemNonErrorIgnoresException(RpcLog.Types.Level level)
+    {
+        WorkerSystemLog result = Assert.IsType<WorkerSystemLog>(_converter.Convert(new RpcLog
+        {
+            LogCategory = RpcLog.Types.RpcLogCategory.System,
+            Level = level,
+            Exception = new RpcException { Message = "failure" }
+        }));
+
+        Assert.Null(result.Exception);
     }
 
     [Fact]
@@ -159,7 +176,6 @@ public class WorkerRpcLogConverterTests
         WorkerUserLog result = Assert.IsType<WorkerUserLog>(_converter.Convert(new RpcLog()));
 
         Assert.Equal(string.Empty, result.InvocationId);
-        Assert.Equal(string.Empty, result.LoggerCategory);
         Assert.Equal(string.Empty, result.Message);
         Assert.Equal(string.Empty, result.EventId.Name);
     }
@@ -209,22 +225,20 @@ public class WorkerRpcLogConverterTests
             rpcLog.PropertiesMap.Add("Value", new TypedData { Double = 1 });
         }
 
-        WorkerCustomMetricConversionFailure result =
-            Assert.IsType<WorkerCustomMetricConversionFailure>(_converter.Convert(rpcLog));
+        WorkerRpcLogDropped result =
+            Assert.IsType<WorkerRpcLogDropped>(_converter.Convert(rpcLog));
 
         Assert.Equal("invocation", result.InvocationId);
-        Assert.Equal((WorkerCustomMetricConversionFailureReason)expected, result.Reason);
+        Assert.Equal((WorkerRpcLogDropReason)expected, result.Reason);
     }
 
     [Theory]
-    [InlineData(true, 2)]
-    [InlineData(false, 3)]
-    public void Convert_InvalidCustomMetricTypeReturnsExplicitFailure(
-        bool invalidName,
-        int expected)
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Convert_CustomMetricWrongRequiredTypeUsesProtobufDefault(bool wrongNameType)
     {
         RpcLog rpcLog = CreateMetric();
-        if (invalidName)
+        if (wrongNameType)
         {
             rpcLog.PropertiesMap["Name"] = new TypedData { Int = 1 };
         }
@@ -233,10 +247,12 @@ public class WorkerRpcLogConverterTests
             rpcLog.PropertiesMap["Value"] = new TypedData { String = "1" };
         }
 
-        WorkerCustomMetricConversionFailure result =
-            Assert.IsType<WorkerCustomMetricConversionFailure>(_converter.Convert(rpcLog));
+        WorkerCustomMetric result = Assert.IsType<WorkerCustomMetric>(_converter.Convert(rpcLog));
 
-        Assert.Equal((WorkerCustomMetricConversionFailureReason)expected, result.Reason);
+        Assert.Equal(wrongNameType ? string.Empty : "OrdersProcessed", result.Name);
+        Assert.Equal(wrongNameType ? 1.5 : 0, result.Value);
+        Assert.False(result.Properties.ContainsKey("Name"));
+        Assert.False(result.Properties.ContainsKey("Value"));
     }
 
     [Fact]

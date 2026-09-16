@@ -3,10 +3,8 @@
 
 namespace Azure.Functions.WorkerProxy.Logging;
 
-internal enum WorkerCustomMetricConversionFailureReason
+internal enum WorkerRpcLogDropReason
 {
-    MissingName,
-    MissingValue,
-    InvalidNameType,
-    InvalidValueType
+    MissingMetricName,
+    MissingMetricValue
 }

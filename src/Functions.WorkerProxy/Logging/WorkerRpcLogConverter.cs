@@ -35,12 +35,10 @@ internal sealed class WorkerRpcLogConverter : IWorkerRpcLogConverter
     {
         return new WorkerUserLog(
             rpcLog.InvocationId,
-            rpcLog.Category,
-            rpcLog.LogCategory,
             (LogLevel)rpcLog.Level,
             rpcLog.Message,
             new EventId(0, rpcLog.EventId),
-            ConvertException(rpcLog.Exception));
+            ConvertException(rpcLog.Message, rpcLog.Exception));
     }
 
     private static WorkerSystemLog ConvertSystemLog(RpcLog rpcLog)
@@ -54,38 +52,23 @@ internal sealed class WorkerRpcLogConverter : IWorkerRpcLogConverter
         };
 
         return new WorkerSystemLog(
-            rpcLog.Category,
-            rpcLog.LogCategory,
             level,
             rpcLog.Message,
-            new EventId(0),
-            level == LogLevel.Error ? ConvertException(rpcLog.Exception) : null);
+            level == LogLevel.Error ? ConvertException(rpcLog.Message, rpcLog.Exception) : null);
     }
 
     private static WorkerRpcLogConversionResult ConvertCustomMetric(RpcLog rpcLog)
     {
         if (!rpcLog.PropertiesMap.TryGetValue(MetricNameKey, out TypedData? metricName))
         {
-            return new WorkerCustomMetricConversionFailure(
-                rpcLog.InvocationId, WorkerCustomMetricConversionFailureReason.MissingName);
+            return new WorkerRpcLogDropped(
+                rpcLog.InvocationId, WorkerRpcLogDropReason.MissingMetricName);
         }
 
         if (!rpcLog.PropertiesMap.TryGetValue(MetricValueKey, out TypedData? metricValue))
         {
-            return new WorkerCustomMetricConversionFailure(
-                rpcLog.InvocationId, WorkerCustomMetricConversionFailureReason.MissingValue);
-        }
-
-        if (metricName.DataCase != TypedData.DataOneofCase.String)
-        {
-            return new WorkerCustomMetricConversionFailure(
-                rpcLog.InvocationId, WorkerCustomMetricConversionFailureReason.InvalidNameType);
-        }
-
-        if (metricValue.DataCase != TypedData.DataOneofCase.Double)
-        {
-            return new WorkerCustomMetricConversionFailure(
-                rpcLog.InvocationId, WorkerCustomMetricConversionFailureReason.InvalidValueType);
+            return new WorkerRpcLogDropped(
+                rpcLog.InvocationId, WorkerRpcLogDropReason.MissingMetricValue);
         }
 
         Dictionary<string, object?> properties = rpcLog.PropertiesMap
@@ -195,15 +178,13 @@ internal sealed class WorkerRpcLogConverter : IWorkerRpcLogConverter
         return Tuple.Create(cookie.Name, cookie.Value, options);
     }
 
-    private static WorkerLogException? ConvertException(RpcException? exception)
+    private static WorkerLogException? ConvertException(string result, RpcException? exception)
     {
         return exception is null
             ? null
             : new WorkerLogException(
-                exception.Source,
-                exception.StackTrace,
-                exception.Message,
-                exception.IsUserException,
-                exception.Type);
+                result,
+                WorkerLogSanitizer.Sanitize(exception.Message),
+                exception.StackTrace);
     }
 }
