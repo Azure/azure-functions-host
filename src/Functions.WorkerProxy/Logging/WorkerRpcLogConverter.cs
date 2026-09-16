@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
-using System.Text.Json.Nodes;
+using System.Text.Json;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -85,12 +85,43 @@ internal sealed class WorkerRpcLogConverter : IWorkerRpcLogConverter
         {
             TypedData.DataOneofCase.None => null,
             TypedData.DataOneofCase.String => typedData.String,
-            TypedData.DataOneofCase.Json => JsonNode.Parse(typedData.Json),
+            TypedData.DataOneofCase.Json => ConvertJson(typedData.Json),
             TypedData.DataOneofCase.Bytes or TypedData.DataOneofCase.Stream => typedData.Bytes.ToByteArray(),
             TypedData.DataOneofCase.Http => ConvertHttp(typedData.Http),
             TypedData.DataOneofCase.Int => typedData.Int,
             TypedData.DataOneofCase.Double => typedData.Double,
             _ => throw new InvalidOperationException($"Unknown RpcDataType: {typedData.DataCase}")
+        };
+    }
+
+    // JSON metric properties use Native AOT-safe CLR primitives and collections. Their values are
+    // semantically equivalent to the host values without preserving Newtonsoft JObject/JArray types.
+    private static object? ConvertJson(string json)
+    {
+        using JsonDocument document = JsonDocument.Parse(json);
+
+        return ConvertJsonElement(document.RootElement);
+    }
+
+    private static object? ConvertJsonElement(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => element.EnumerateObject()
+                .ToDictionary(
+                    static property => property.Name,
+                    static property => ConvertJsonElement(property.Value),
+                    StringComparer.Ordinal),
+            JsonValueKind.Array => element.EnumerateArray()
+                .Select(ConvertJsonElement)
+                .ToList(),
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number when element.TryGetInt64(out long value) => value,
+            JsonValueKind.Number => element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => throw new InvalidOperationException($"Unsupported JSON value kind: {element.ValueKind}")
         };
     }
 

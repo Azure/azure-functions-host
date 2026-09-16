@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Text.Json.Nodes;
+using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Logging;
 using Google.Protobuf;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -197,13 +197,65 @@ public class WorkerRpcLogConverterTests
         Assert.Equal("OrdersProcessed", result.Name);
         Assert.Equal(1.5, result.Value);
         Assert.Equal("value", result.Properties["String"]);
-        Assert.Equal("{\"enabled\":true}", Assert.IsType<JsonObject>(result.Properties["Json"]).ToJsonString());
+        Dictionary<string, object?> json = Assert.IsType<Dictionary<string, object?>>(result.Properties["Json"]);
+        Assert.Equal(true, json["enabled"]);
         Assert.Equal("bytes", ByteString.CopyFrom(Assert.IsType<byte[]>(result.Properties["Bytes"])).ToStringUtf8());
         Assert.Equal(42L, result.Properties["Int"]);
         Assert.Equal(2.5, result.Properties["Double"]);
         Assert.Null(result.Properties["Null"]);
         Assert.False(result.Properties.ContainsKey("Name"));
         Assert.False(result.Properties.ContainsKey("Value"));
+    }
+
+    [Fact]
+    public void Convert_JsonObjectAndNestedValuesUseClrCollections()
+    {
+        WorkerCustomMetric result = ConvertMetricJson(
+            "{\"name\":\"sample\",\"items\":[1,2.5,true,null,{\"date\":\"2026-09-16T08:20:31Z\"}]}");
+
+        Dictionary<string, object?> root = Assert.IsType<Dictionary<string, object?>>(result.Properties["Json"]);
+        Assert.Equal("sample", root["name"]);
+        List<object?> items = Assert.IsType<List<object?>>(root["items"]);
+        Assert.Equal(1L, items[0]);
+        Assert.Equal(2.5, items[1]);
+        Assert.Equal(true, items[2]);
+        Assert.Null(items[3]);
+        Dictionary<string, object?> nested = Assert.IsType<Dictionary<string, object?>>(items[4]);
+        Assert.Equal("2026-09-16T08:20:31Z", nested["date"]);
+        Assert.IsType<string>(nested["date"]);
+    }
+
+    [Fact]
+    public void Convert_JsonArrayUsesClrList()
+    {
+        WorkerCustomMetric result = ConvertMetricJson("[1,\"two\",false,null]");
+
+        List<object?> array = Assert.IsType<List<object?>>(result.Properties["Json"]);
+        Assert.Equal(new object?[] { 1L, "two", false, null }, array);
+    }
+
+    [Theory]
+    [InlineData("\"text\"", "text", typeof(string))]
+    [InlineData("42", 42L, typeof(long))]
+    [InlineData("2.5", 2.5, typeof(double))]
+    [InlineData("true", true, typeof(bool))]
+    [InlineData("\"2026-09-16T08:20:31Z\"", "2026-09-16T08:20:31Z", typeof(string))]
+    public void Convert_JsonScalarUsesClrPrimitive(string json, object expected, Type expectedType)
+    {
+        WorkerCustomMetric result = ConvertMetricJson(json);
+
+        object value = result.Properties["Json"]!;
+        Assert.NotNull(value);
+        Assert.IsType(expectedType, value);
+        Assert.Equal(expected, value);
+    }
+
+    [Fact]
+    public void Convert_JsonNullReturnsNull()
+    {
+        WorkerCustomMetric result = ConvertMetricJson("null");
+
+        Assert.Null(result.Properties["Json"]);
     }
 
     [Theory]
@@ -291,5 +343,13 @@ public class WorkerRpcLogConverterTests
         rpcLog.PropertiesMap.Add("Name", new TypedData { String = "OrdersProcessed" });
         rpcLog.PropertiesMap.Add("Value", new TypedData { Double = 1.5 });
         return rpcLog;
+    }
+
+    private WorkerCustomMetric ConvertMetricJson(string json)
+    {
+        RpcLog rpcLog = CreateMetric();
+        rpcLog.PropertiesMap.Add("Json", new TypedData { Json = json });
+
+        return Assert.IsType<WorkerCustomMetric>(_converter.Convert(rpcLog));
     }
 }
