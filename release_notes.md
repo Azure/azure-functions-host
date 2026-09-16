@@ -11,3 +11,4 @@
 - Extract host-managed worker and Grpc Server behavior into Azure.Functions.Rpc.Server.csproj (#11916)
 - Use a structured composite key for the authorization cache to prevent cache key collisions.
 - Prevent extension system keys from being regenerated and overwritten when the startup context cache is stale, which previously could invalidate already-published extension webhook URLs (e.g. Event Grid, Durable Task).
+- Suppress Storage queue and blob listener polling noise from telemetry by event name, preserving listener lifecycle and diagnostic logs (#11947)
