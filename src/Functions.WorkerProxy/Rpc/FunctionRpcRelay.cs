@@ -22,11 +22,13 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 /// </remarks>
 internal sealed partial class FunctionRpcRelay(
     ILogger<FunctionRpcRelay> logger,
-    WorkerHttpCapabilityProvider capabilityProvider)
+    WorkerHttpCapabilityProvider capabilityProvider,
+    IFunctionRpcMessageInterceptor messageInterceptor)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
     private readonly WorkerHttpCapabilityProvider _capabilityProvider = capabilityProvider ?? throw new ArgumentNullException(nameof(capabilityProvider));
+    private readonly IFunctionRpcMessageInterceptor _messageInterceptor = messageInterceptor ?? throw new ArgumentNullException(nameof(messageInterceptor));
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
@@ -135,7 +137,8 @@ internal sealed partial class FunctionRpcRelay(
                 ClearCurrentSessionLocked();
             }
 
-            session = _currentSession ??= new FunctionRpcRelaySession(Interlocked.Increment(ref _nextSessionId), logger, _capabilityProvider);
+            session = _currentSession ??= new FunctionRpcRelaySession(
+                Interlocked.Increment(ref _nextSessionId), logger, _capabilityProvider, _messageInterceptor);
 
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)
