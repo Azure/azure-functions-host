@@ -14,14 +14,6 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    internal enum SystemLogSuppressionRule
-    {
-        None,
-        Category,
-        Queue,
-        Blob
-    }
-
     public class SystemLogger : ILogger
     {
         private readonly string _categoryName;
@@ -29,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly string _hostInstanceId;
         private readonly bool _isUserFunction;
         private readonly LogLevel _logLevel;
-        private readonly SystemLogSuppressionRule _suppressionRule;
+        private readonly SuppressionRule _suppressionRule;
         private readonly IEnvironment _environment;
         private readonly IEventGenerator _eventGenerator;
         private readonly IDebugStateProvider _debugStateProvider;
@@ -56,6 +48,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _appServiceOptions = appServiceOptionsMonitor.CurrentValue;
         }
 
+        /// <summary>
+        /// Identifies how high-volume logs are suppressed for a given category. Resolved once per
+        /// logger instance so the per-log check on the hot path is a simple branch.
+        /// </summary>
+        private enum SuppressionRule
+        {
+            /// <summary>Nothing is suppressed for this category.</summary>
+            None,
+
+            /// <summary>All Debug/Trace logs in the category are suppressed.</summary>
+            Category,
+
+            /// <summary>Only the named queue polling events are suppressed.</summary>
+            Queue,
+
+            /// <summary>Only the named blob scan events are suppressed.</summary>
+            Blob
+        }
+
         public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
 
         public bool IsEnabled(LogLevel logLevel)
@@ -72,7 +83,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            if ((_suppressionRule == SystemLogSuppressionRule.Category || !string.IsNullOrEmpty(eventId.Name))
+            // FunctionIndexingException must still be propagated below, so never short-circuit it here.
+            if (exception is not FunctionIndexingException
+                && (_suppressionRule == SuppressionRule.Category || !string.IsNullOrEmpty(eventId.Name))
                 && ShouldSuppress(eventId.Name, logLevel))
             {
                 return;
@@ -134,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             eventName = isDiagnosticEvent ? $"DiagnosticEvent-{diagnosticEventErrorCode}" : eventName;
 
             if (string.IsNullOrEmpty(eventId.Name)
-                && (_suppressionRule is SystemLogSuppressionRule.Queue or SystemLogSuppressionRule.Blob)
+                && (_suppressionRule is SuppressionRule.Queue or SuppressionRule.Blob)
                 && ShouldSuppress(eventName, logLevel))
             {
                 return;
@@ -211,10 +224,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             bool isSuppressionCandidate = _suppressionRule switch
             {
-                SystemLogSuppressionRule.Category => true,
-                SystemLogSuppressionRule.Queue => string.Equals(eventName, "BackoffDelay", StringComparison.Ordinal)
+                SuppressionRule.Category => true,
+                SuppressionRule.Queue => string.Equals(eventName, "BackoffDelay", StringComparison.Ordinal)
                     || string.Equals(eventName, "GetMessages", StringComparison.Ordinal),
-                SystemLogSuppressionRule.Blob => string.Equals(eventName, "BlobAlreadyProcessed", StringComparison.Ordinal)
+                SuppressionRule.Blob => string.Equals(eventName, "BlobAlreadyProcessed", StringComparison.Ordinal)
                     || string.Equals(eventName, "BlobDoesNotMatchPattern", StringComparison.Ordinal)
                     || string.Equals(eventName, "PollBlobContainer", StringComparison.Ordinal),
                 _ => false
@@ -225,30 +238,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return false;
             }
 
-            // Trace logs only pass IsEnabled when diagnostic mode is active.
-            return logLevel >= _logLevel && !_debugStateProvider.InDiagnosticMode;
+            // Diagnostic mode logs everything. Trace only reaches this point when diagnostic mode is
+            // active, since IsEnabled otherwise filters it out, so it is covered by the same check.
+            return !_debugStateProvider.InDiagnosticMode;
         }
 
-        private static SystemLogSuppressionRule GetSuppressionRule(string category)
+        private static SuppressionRule GetSuppressionRule(string category)
         {
             if (string.Equals(category, "Host.Executor", StringComparison.Ordinal)
                 || string.Equals(category, "Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl", StringComparison.Ordinal))
             {
-                return SystemLogSuppressionRule.Category;
+                return SuppressionRule.Category;
             }
 
             if (string.Equals(category, "Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", StringComparison.Ordinal)
                 || string.Equals(category, "Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener", StringComparison.Ordinal))
             {
-                return SystemLogSuppressionRule.Queue;
+                return SuppressionRule.Queue;
             }
 
             if (string.Equals(category, "Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", StringComparison.Ordinal))
             {
-                return SystemLogSuppressionRule.Blob;
+                return SuppressionRule.Blob;
             }
 
-            return SystemLogSuppressionRule.None;
+            return SuppressionRule.None;
         }
     }
 }
