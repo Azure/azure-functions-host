@@ -114,6 +114,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener", "GetMessages")]
         [InlineData("Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener", "BackoffDelay")]
         [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", "PollBlobContainer")]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", "BlobAlreadyProcessed")]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", "BlobDoesNotMatchPattern")]
         public void Log_SuppressedEvent_DoesNotEmitEvent(string category, string eventName)
         {
             bool formatterInvoked = false;

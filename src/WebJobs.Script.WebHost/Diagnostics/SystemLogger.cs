@@ -28,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             ["Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener"] = new(StringComparer.Ordinal)
             {
+                "BlobAlreadyProcessed",
+                "BlobDoesNotMatchPattern",
                 "PollBlobContainer"
             },
             ["Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener"] = new(StringComparer.Ordinal)
