@@ -259,11 +259,11 @@ public class WorkerRpcLogConverterTests
         Assert.Null(result.Properties["Json"]);
     }
 
-    [Fact]
-    public void Convert_JsonIntegerLargerThanInt64UsesBigInteger()
+    [Theory]
+    [InlineData("9223372036854775808")]
+    [InlineData("-9223372036854775809")]
+    public void Convert_JsonIntegerOutsideInt64UsesBigInteger(string value)
     {
-        const string value = "9223372036854775808";
-
         WorkerCustomMetric result = ConvertMetricJson(value);
 
         Assert.Equal(BigInteger.Parse(value), Assert.IsType<BigInteger>(result.Properties["Json"]));
