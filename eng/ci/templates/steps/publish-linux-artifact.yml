@@ -1,0 +1,64 @@
+parameters:
+- name: project
+  type: string
+- name: publishDir
+  type: string
+- name: archiveFile
+  type: string
+- name: restoreArguments
+  type: string
+  default: ''
+- name: buildArguments
+  type: string
+  default: ''
+- name: publishArguments
+  type: string
+- name: createWorkersDirectory
+  type: boolean
+  default: false
+
+steps:
+# ReadyToRun consumers restore and build separately; Native AOT uses the full publish pipeline.
+- ${{ if ne(parameters.restoreArguments, '') }}:
+  - task: DotNetCoreCLI@2
+    displayName: Restore
+    inputs:
+      command: custom
+      custom: restore
+      projects: ${{ parameters.project }}
+      arguments: ${{ parameters.restoreArguments }}
+
+- ${{ if ne(parameters.buildArguments, '') }}:
+  - task: DotNetCoreCLI@2
+    displayName: Build
+    inputs:
+      command: custom
+      custom: build
+      projects: ${{ parameters.project }}
+      arguments: ${{ parameters.buildArguments }}
+
+- task: DotNetCoreCLI@2
+  displayName: Publish
+  inputs:
+    command: custom
+    custom: publish
+    publishWebProjects: false # we use our own publish logic
+    zipAfterPublish: false # we use our own zip logic
+    modifyOutputPath: false
+    projects: ${{ parameters.project }}
+    arguments: '${{ parameters.publishArguments }} -o ${{ parameters.publishDir }}'
+
+- ${{ if eq(parameters.createWorkersDirectory, true) }}:
+  # Shared worker configuration probes this directory even when workers are not published.
+  - script: mkdir -p "${{ parameters.publishDir }}/workers"
+    displayName: Create empty workers directory
+
+# Pipeline artifacts lose file permission bits; tar/gzip preserves executable modes.
+- task: ArchiveFiles@2
+  displayName: Archive Linux Artifacts
+  inputs:
+    rootFolderOrFile: ${{ parameters.publishDir }}
+    includeRootFolder: false
+    archiveType: tar
+    tarCompression: gz
+    archiveFile: ${{ parameters.archiveFile }}
