@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
+using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Http;
@@ -98,6 +100,12 @@ internal sealed class WorkerRpcLogConverter : IWorkerRpcLogConverter
     // semantically equivalent to the host values without preserving Newtonsoft JObject/JArray types.
     private static object? ConvertJson(string json)
     {
+        if (string.IsNullOrWhiteSpace(json)
+            || string.Equals(json.Trim(), "undefined", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
         using JsonDocument document = JsonDocument.Parse(json);
 
         return ConvertJsonElement(document.RootElement);
@@ -107,22 +115,31 @@ internal sealed class WorkerRpcLogConverter : IWorkerRpcLogConverter
     {
         return element.ValueKind switch
         {
-            JsonValueKind.Object => element.EnumerateObject()
-                .ToDictionary(
-                    static property => property.Name,
-                    static property => ConvertJsonElement(property.Value),
-                    StringComparer.Ordinal),
+            JsonValueKind.Object => ConvertJsonObject(element),
             JsonValueKind.Array => element.EnumerateArray()
                 .Select(ConvertJsonElement)
                 .ToList(),
             JsonValueKind.String => element.GetString(),
             JsonValueKind.Number when element.TryGetInt64(out long value) => value,
+            JsonValueKind.Number when BigInteger.TryParse(
+                element.GetRawText(), NumberStyles.Integer, CultureInfo.InvariantCulture, out BigInteger value) => value,
             JsonValueKind.Number => element.GetDouble(),
             JsonValueKind.True => true,
             JsonValueKind.False => false,
             JsonValueKind.Null => null,
             _ => throw new InvalidOperationException($"Unsupported JSON value kind: {element.ValueKind}")
         };
+    }
+
+    private static Dictionary<string, object?> ConvertJsonObject(JsonElement element)
+    {
+        Dictionary<string, object?> result = new(StringComparer.Ordinal);
+        foreach (JsonProperty property in element.EnumerateObject())
+        {
+            result[property.Name] = ConvertJsonElement(property.Value);
+        }
+
+        return result;
     }
 
     private static ExpandoObject? ConvertHttp(RpcHttp? input)

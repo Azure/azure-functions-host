@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using Azure.Functions.WorkerProxy.Logging;
 using Google.Protobuf;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -256,6 +257,37 @@ public class WorkerRpcLogConverterTests
         WorkerCustomMetric result = ConvertMetricJson("null");
 
         Assert.Null(result.Properties["Json"]);
+    }
+
+    [Fact]
+    public void Convert_JsonIntegerLargerThanInt64UsesBigInteger()
+    {
+        const string value = "9223372036854775808";
+
+        WorkerCustomMetric result = ConvertMetricJson(value);
+
+        Assert.Equal(BigInteger.Parse(value), Assert.IsType<BigInteger>(result.Properties["Json"]));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("undefined")]
+    [InlineData(" undefined ")]
+    public void Convert_HostNullJsonValuesReturnNull(string json)
+    {
+        WorkerCustomMetric result = ConvertMetricJson(json);
+
+        Assert.Null(result.Properties["Json"]);
+    }
+
+    [Fact]
+    public void Convert_JsonObjectDuplicateKeysKeepLastValue()
+    {
+        WorkerCustomMetric result = ConvertMetricJson("{\"value\":1,\"value\":2}");
+
+        Dictionary<string, object?> value = Assert.IsType<Dictionary<string, object?>>(result.Properties["Json"]);
+        Assert.Equal(2L, value["value"]);
     }
 
     [Theory]
