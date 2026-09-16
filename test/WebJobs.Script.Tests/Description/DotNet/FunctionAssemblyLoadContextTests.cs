@@ -37,6 +37,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void RuntimeAssemblies_PreviousSystemMemoryDataVersion_UnifiesToHostAssembly()
+        {
+            var functionContext = new FunctionAssemblyLoadContext(AppContext.BaseDirectory);
+            var assembly = functionContext.LoadFromAssemblyName(new AssemblyName("System.Memory.Data, Version=8.0.0.1"));
+
+            Assert.Same(typeof(BinaryData).Assembly, assembly);
+            Assert.Same(AssemblyLoadContext.Default, AssemblyLoadContext.GetLoadContext(assembly));
+        }
+
+        [Fact]
         public void InitializeDeps_LoadsExpectedDependencies()
         {
             string depsPath = Path.Combine(Directory.GetCurrentDirectory(), "Description", "DotNet", "TestFiles", "DepsFiles");

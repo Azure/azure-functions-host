@@ -62,6 +62,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const int SuccessExitCode = 0;
         public const int IntentionalRestartExitCode = 200;
 
+        /// <summary>
+        /// The Linux exit code for a process terminated by SIGTERM (128 + 15).
+        /// </summary>
+        public const int LinuxSigTermExitCode = 143;
+
         // Http Constants
         public const string HttpBody = "body";
         public const string HttpHeaders = "headers";

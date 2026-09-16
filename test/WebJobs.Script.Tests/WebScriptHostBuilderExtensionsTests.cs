@@ -1,6 +1,10 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using Microsoft.Azure.WebJobs.Script.Composition;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -62,6 +66,73 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Build();
 
             Assert.NotNull(host.Services.GetService<DeferredLogSource>());
+        }
+
+        [Fact]
+        public void AddWebScriptHost_ThrowsWhenRootServiceProviderIsNull()
+        {
+            var builder = new HostBuilder();
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(
+                () => builder.AddWebScriptHost(
+                    rootServiceProvider: null,
+                    rootServices: new ServiceCollection(),
+                    webHostOptions: new ScriptApplicationHostOptions()));
+
+            Assert.True(string.Equals("rootServiceProvider", exception.ParamName, StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public void AddWebScriptHost_UsesSelectedComposition()
+        {
+            var composition = new RecordingWorkerComposition(addCommonRpcServices: true);
+
+            using IHost host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(configureWebJobs: null, composition: composition)
+                .Build();
+
+            Assert.Equal(1, composition.ScriptHostConfigurationCount);
+        }
+
+        [Fact]
+        public void AddWebScriptHost_CompatibilityOverloadUsesRootSelection()
+        {
+            var composition = new RecordingWorkerComposition(addCommonRpcServices: false);
+
+            using IHost host = new HostBuilder()
+                .ConfigureDefaultTestWebScriptHost(
+                    configureWebJobs: null,
+                    configureRootServices: services => services.AddSingleton(new SelectedWorkerComposition(composition)))
+                .Build();
+
+            Assert.Equal(1, composition.ScriptHostConfigurationCount);
+        }
+
+        private sealed class RecordingWorkerComposition : IWorkerComposition
+        {
+            private readonly bool _addCommonRpcServices;
+
+            public RecordingWorkerComposition(bool addCommonRpcServices)
+            {
+                _addCommonRpcServices = addCommonRpcServices;
+            }
+
+            public int ScriptHostConfigurationCount { get; private set; }
+
+            public void ConfigureWebHostServices(IServiceCollection services, IMvcBuilder mvcBuilder)
+            {
+                ServerWorkerComposition.Instance.ConfigureWebHostServices(services, mvcBuilder);
+            }
+
+            public void ConfigureScriptHostServices(IServiceCollection services, IServiceProvider rootServiceProvider)
+            {
+                ScriptHostConfigurationCount++;
+                ServerWorkerComposition.Instance.ConfigureScriptHostServices(services, rootServiceProvider);
+                if (_addCommonRpcServices)
+                {
+                    services.AddCommonRpcServices();
+                }
+            }
         }
     }
 }

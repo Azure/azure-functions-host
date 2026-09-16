@@ -5,14 +5,14 @@ using System;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc;
 
 /// <summary>
 /// An implementation of <see cref="IInvocationMessageDispatcher"/> that internally uses a per-invocation <see cref="Channel{T}"/> to ensure
-/// ordering of messages is maintained. The calls to <see cref="DispatchRpcLog(InboundGrpcEvent)"/> and <see cref="DispatchInvocationResponse(InboundGrpcEvent)"/>
+/// ordering of messages is maintained. The calls to <see cref="DispatchRpcLog(StreamingMessage)"/> and <see cref="DispatchInvocationResponse(StreamingMessage)"/>
 /// both write messages to the same <see cref="Channel{T}"/>. Then, a background <see cref="Task"/> reads messages from this channel and invokes the
 /// <see cref="Action"/> provided in the constructor.
 ///
@@ -23,12 +23,12 @@ internal sealed class OrderedInvocationMessageDispatcher : IInvocationMessageDis
 {
     private readonly ILogger _logger;
     private readonly string _invocationId;
-    private readonly Action<InboundGrpcEvent> _processItemWithChannel;
+    private readonly Action<StreamingMessage> _processItemWithChannel;
 
     // Separated these out for easier testing of the flow.
-    private readonly Action<InboundGrpcEvent> _processItemWithThreadPool;
+    private readonly Action<StreamingMessage> _processItemWithThreadPool;
 
-    private Channel<InboundGrpcEvent> _channel;
+    private Channel<StreamingMessage> _channel;
     private bool _isChannelInitialized = false;
     private bool _invocationComplete = false;
     private bool _disposed = false;
@@ -39,7 +39,7 @@ internal sealed class OrderedInvocationMessageDispatcher : IInvocationMessageDis
     /// <param name="invocationId">The function invocation id.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="processItem">A callback to be invoked when processing an item.</param>
-    public OrderedInvocationMessageDispatcher(string invocationId, ILogger logger, Action<InboundGrpcEvent> processItem)
+    public OrderedInvocationMessageDispatcher(string invocationId, ILogger logger, Action<StreamingMessage> processItem)
         : this(invocationId, logger, processItem, processItem)
     {
     }
@@ -53,8 +53,8 @@ internal sealed class OrderedInvocationMessageDispatcher : IInvocationMessageDis
     /// <param name="logger">The logger.</param>
     /// <param name="processItemWithChannel">A callback to be invoked when processing an item from the internal Channel.</param>
     /// <param name="processItemWithThreadPool">A callback to be invoked when processing an item on the ThreadPool. This is a fallback scenario.</param>
-    internal OrderedInvocationMessageDispatcher(string invocationId, ILogger logger, Action<InboundGrpcEvent> processItemWithChannel,
-        Action<InboundGrpcEvent> processItemWithThreadPool)
+    internal OrderedInvocationMessageDispatcher(string invocationId, ILogger logger, Action<StreamingMessage> processItemWithChannel,
+        Action<StreamingMessage> processItemWithThreadPool)
     {
         _logger = logger;
         _invocationId = invocationId;
@@ -63,17 +63,17 @@ internal sealed class OrderedInvocationMessageDispatcher : IInvocationMessageDis
     }
 
     // For testing
-    internal Channel<InboundGrpcEvent> MessageChannel => _channel;
+    internal Channel<StreamingMessage> MessageChannel => _channel;
 
-    private static Channel<InboundGrpcEvent> InitializeChannel() =>
-        Channel.CreateUnbounded<InboundGrpcEvent>(
+    private static Channel<StreamingMessage> InitializeChannel() =>
+        Channel.CreateUnbounded<StreamingMessage>(
             new UnboundedChannelOptions
             {
                 SingleReader = true,
                 SingleWriter = true
             });
 
-    public void DispatchRpcLog(InboundGrpcEvent msg)
+    public void DispatchRpcLog(StreamingMessage msg)
     {
         // This is not thread-safe, but it is always called in-order from the same thread, so no
         // need for locking.
@@ -97,7 +97,7 @@ internal sealed class OrderedInvocationMessageDispatcher : IInvocationMessageDis
         WriteToChannel(msg);
     }
 
-    public void DispatchInvocationResponse(InboundGrpcEvent msg)
+    public void DispatchInvocationResponse(StreamingMessage msg)
     {
         // Any other messages that come here shouldn't use the Channel.
         _invocationComplete = true;
@@ -116,24 +116,24 @@ internal sealed class OrderedInvocationMessageDispatcher : IInvocationMessageDis
         }
     }
 
-    private void WriteToChannel(InboundGrpcEvent msg)
+    private void WriteToChannel(StreamingMessage msg)
     {
         if (_channel is null || !_channel.Writer.TryWrite(msg))
         {
             // If this fails, fall back to the ThreadPool
-            _logger.LogDebug("Cannot write '{msgType}' to channel for InvocationId '{functionInvocationId}'. Dispatching message to the ThreadPool.", msg.MessageType, _invocationId);
+            _logger.LogDebug("Cannot write '{msgType}' to channel for InvocationId '{functionInvocationId}'. Dispatching message to the ThreadPool.", msg.ContentCase, _invocationId);
             DispatchToThreadPool(msg);
         }
     }
 
-    private void DispatchToThreadPool(InboundGrpcEvent msg) =>
-        ThreadPool.QueueUserWorkItem(state => _processItemWithThreadPool((InboundGrpcEvent)state), msg);
+    private void DispatchToThreadPool(StreamingMessage msg) =>
+        ThreadPool.QueueUserWorkItem(state => _processItemWithThreadPool((StreamingMessage)state), msg);
 
     private async Task ReadMessagesAsync()
     {
         try
         {
-            await foreach (InboundGrpcEvent msg in _channel.Reader.ReadAllAsync())
+            await foreach (StreamingMessage msg in _channel.Reader.ReadAllAsync())
             {
                 // Assume the Action being called is already wrapped in a try/catch
                 _processItemWithChannel(msg);

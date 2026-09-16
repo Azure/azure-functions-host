@@ -7,8 +7,7 @@ using System.Collections.Generic;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
@@ -19,30 +18,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
     {
         private ILogger _logger;
         private string _workerId;
-        private IDictionary<string, IDisposable> _outboundEventSubscriptions = new Dictionary<string, IDisposable>();
-        private ChannelWriter<InboundGrpcEvent> _inboundWriter;
-        private ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action<OutboundGrpcEvent>> _handlers = new ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action<OutboundGrpcEvent>>();
+        private ChannelWriter<StreamingMessage> _inboundWriter;
+        private ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action<StreamingMessage>> _handlers = new();
 
-        public TestFunctionRpcService(IScriptEventManager eventManager, string workerId, TestLogger logger, string expectedLogMsg = "")
+        public TestFunctionRpcService(ServerDuplexChannelRegistry channelRegistry, string workerId, TestLogger logger, string expectedLogMsg = "")
         {
             _logger = logger;
             _workerId = workerId;
-            if (eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
+            if (channelRegistry.TryGetServiceEndpoints(workerId, out FunctionRpcChannelEndpoints endpoints))
             {
-                _ = ListenAsync(outbound.Reader, expectedLogMsg);
-                _inboundWriter = inbound.Writer;
+                _ = ListenAsync(endpoints.HostToWorkerReader, expectedLogMsg);
+                _inboundWriter = endpoints.WorkerToHostWriter;
 
                 PublishStartStreamEvent(); // simulate the start-stream immediately
             }
         }
 
-        public void OnMessage(StreamingMessage.ContentOneofCase messageType, Action<OutboundGrpcEvent> callback)
+        public void OnMessage(StreamingMessage.ContentOneofCase messageType, Action<StreamingMessage> callback)
             => _handlers.AddOrUpdate(messageType, callback, (messageType, oldValue) => oldValue + callback);
 
         public void AutoReply(StreamingMessage.ContentOneofCase messageType, bool workerSupportsSpecialization = false)
         {
             // apply standard default responses
-            Action<OutboundGrpcEvent> callback = messageType switch
+            Action<StreamingMessage> callback = messageType switch
             {
                 StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest => _ => PublishFunctionEnvironmentReloadResponseEvent(workerSupportsSpecialization),
                 _ => null,
@@ -53,13 +51,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
-        private void OnMessage(OutboundGrpcEvent message)
+        private void OnMessage(StreamingMessage message)
         {
-            if (_handlers.TryRemove(message.MessageType, out var action))
+            if (_handlers.TryRemove(message.ContentCase, out var action))
             {
                 try
                 {
-                    _logger.LogDebug("[service] invoking auto-reply for {0}, {1}: {2}", _workerId, message.MessageType, action?.Method?.Name);
+                    _logger.LogDebug("[service] invoking auto-reply for {0}, {1}: {2}", _workerId, message.ContentCase, action?.Method?.Name);
                     action?.Invoke(message);
                 }
                 catch (Exception ex)
@@ -69,19 +67,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
-        private async Task ListenAsync(ChannelReader<OutboundGrpcEvent> source, string expectedLogMsg)
+        private async Task ListenAsync(ChannelReader<StreamingMessage> source, string expectedLogMsg)
         {
             await Task.Yield(); // free up caller
             try
             {
                 while (await source.WaitToReadAsync())
                 {
-                    while (source.TryRead(out var evt))
+                    while (source.TryRead(out var message))
                     {
-                        _logger.LogDebug("[service] received {0}, {1}", evt.WorkerId, evt.MessageType);
+                        _logger.LogDebug("[service] received {0}, {1}", _workerId, message.ContentCase);
                         _logger.LogInformation(expectedLogMsg);
 
-                        OnMessage(evt);
+                        OnMessage(message);
                     }
                 }
             }
@@ -92,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         private ValueTask WriteAsync(StreamingMessage message)
             => _inboundWriter is null ? default
-            : _inboundWriter.WriteAsync(new InboundGrpcEvent(_workerId, message));
+            : _inboundWriter.WriteAsync(message);
 
         private void Write(StreamingMessage message)
         {
@@ -101,13 +99,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 _logger.LogDebug("[service] no writer for {0}, {1}", _workerId, message.ContentCase);
                 return;
             }
-            var evt = new InboundGrpcEvent(_workerId, message);
-            _logger.LogDebug("[service] sending {0}, {1}", evt.WorkerId, evt.MessageType);
-            if (_inboundWriter.TryWrite(evt))
+            _logger.LogDebug("[service] sending {0}, {1}", _workerId, message.ContentCase);
+            if (_inboundWriter.TryWrite(message))
             {
                 return;
             }
-            var vt = _inboundWriter.WriteAsync(evt);
+            var vt = _inboundWriter.WriteAsync(message);
             if (vt.IsCompleted)
             {
                 try

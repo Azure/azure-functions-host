@@ -5,25 +5,30 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Azure.Functions.WorkerProxy.Tests;
 
 internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<global::Program>
 {
-    private readonly IReadOnlyDictionary<string, string?>? _configurationValues;
+    private readonly IReadOnlyDictionary<string, string?> _configurationValues;
+    private readonly Action<IServiceCollection>? _configureServices;
 
     public WorkerProxyWebApplicationFactory(
-        IReadOnlyDictionary<string, string?>? configurationValues = null,
-        bool useKestrel = false)
+        IReadOnlyDictionary<string, string?>? configurationValues = null, Action<IServiceCollection>? configureServices = null)
     {
-        _configurationValues = configurationValues;
-        if (useKestrel)
-        {
-            UseKestrel();
-        }
+        Dictionary<string, string?> values = configurationValues is null ? [] : new Dictionary<string, string?>(configurationValues);
+        values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.ManagementPort)}", "0");
+        values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.RuntimeGrpcPort)}", "0");
+        values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerGrpcPort)}", "0");
+        values.TryAdd($"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpPort)}", "0");
+        _configurationValues = values;
+        _configureServices = configureServices;
+        UseKestrel();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -33,25 +38,43 @@ internal sealed class WorkerProxyWebApplicationFactory : WebApplicationFactory<g
         builder.ConfigureAppConfiguration(configuration =>
         {
             configuration.Sources.Clear();
-            if (_configurationValues is not null)
-            {
-                configuration.AddInMemoryCollection(_configurationValues);
-            }
+            configuration.AddInMemoryCollection(_configurationValues);
         });
+        builder.ConfigureServices(services => _configureServices?.Invoke(services));
     }
 
     public HttpClient CreateWorkerProxyClient()
     {
-        HttpClient client = CreateClient();
-        Uri baseAddress =
-            client.BaseAddress ?? throw new InvalidOperationException("Kestrel did not publish an address.");
-        if (IPAddress.TryParse(baseAddress.Host.Trim('[', ']'), out IPAddress? address) &&
-            (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any)))
+        return new HttpClient { BaseAddress = NormalizeAddress(GetEndpoints().GetManagementAddress()) };
+    }
+
+    public Uri GetFunctionRpcAddress(FunctionRpcRelaySide side)
+    {
+        return NormalizeAddress(GetEndpoints().GetRelayAddress(side));
+    }
+
+    public HttpClient CreateHttpForwardingClient()
+    {
+        return new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
         {
-            client.BaseAddress =
-                new UriBuilder(baseAddress) { Host = IPAddress.Loopback.ToString() }.Uri;
+            BaseAddress = NormalizeAddress(GetEndpoints().GetHttpAddress())
+        };
+    }
+
+    private WorkerProxyEndpointConfiguration GetEndpoints()
+    {
+        return Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
+    }
+
+    private static Uri NormalizeAddress(Uri address)
+    {
+        UriBuilder normalizedAddress = new(address);
+        if (IPAddress.TryParse(address.Host.Trim('[', ']'), out IPAddress? ipAddress)
+            && (ipAddress.Equals(IPAddress.Any) || ipAddress.Equals(IPAddress.IPv6Any)))
+        {
+            normalizedAddress.Host = IPAddress.Loopback.ToString();
         }
 
-        return client;
+        return normalizedAddress.Uri;
     }
 }

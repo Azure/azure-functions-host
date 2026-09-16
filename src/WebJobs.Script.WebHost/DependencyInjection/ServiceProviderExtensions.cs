@@ -71,7 +71,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                         // An host singleton is shared across tenant containers but only registered instances are not disposed
                         // by the DI, so we check if it is disposable or if it uses a factory which may return a different type.
 
-                        if (typeof(IDisposable).IsAssignableFrom(service.GetImplementationType()) || service.ImplementationFactory != null)
+                        Type implementationType = service.GetImplementationType();
+                        if (typeof(IDisposable).IsAssignableFrom(implementationType) ||
+                            typeof(IAsyncDisposable).IsAssignableFrom(implementationType) ||
+                            service.ImplementationFactory != null)
                         {
                             // If disposable, register an instance that we resolve immediately from the main container.
                             clonedCollection.CloneSingleton(service, serviceProvider.GetService(service.ServiceType));

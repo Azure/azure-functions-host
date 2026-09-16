@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Tests.Integration.Fixtures;
 using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
@@ -171,7 +172,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
                     if (_addWorkerConcurrency && _addWorkerDelay > TimeSpan.Zero)
                     {
-                        services.AddSingleton<IScriptEventManager>(new WorkerConcurrencyManagerEndToEndTests.TestScriptEventManager(_addWorkerDelay.Value));
+                        services.AddSingleton<IScriptEventManager>(new WorkerConcurrencyManagerEndToEndTests.TestScriptEventManager());
+                        services.AddSingleton<ServerDuplexChannelRegistry>(
+                            new WorkerConcurrencyManagerEndToEndTests.TestServerDuplexChannelRegistry(_addWorkerDelay.Value));
                     }
 
                     services.AddSingleton<IHostMetrics, HostMetrics>();

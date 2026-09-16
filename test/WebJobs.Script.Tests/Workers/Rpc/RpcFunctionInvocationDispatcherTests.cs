@@ -110,6 +110,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task WorkerIndexing_FirstStartupTimeoutBeforeMetadata_StopsApplicationWithoutRetry()
+        {
+            var eventManager = new ScriptEventManager();
+            var applicationLifetime = new Mock<IHostApplicationLifetime>();
+            var stopRequested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            applicationLifetime.Setup(p => p.StopApplication()).Callback(() => stopRequested.TrySetResult());
+            var webHostChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
+            webHostChannelManager
+                .Setup(p => p.ShutdownChannelIfExistsAsync(
+                    RpcWorkerConstants.NodeLanguageWorkerName, "metadata-worker", It.IsAny<TimeoutException>()))
+                .ReturnsAsync(true);
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(
+                runtime: RpcWorkerConstants.NodeLanguageWorkerName, workerIndexing: true,
+                mockwebHostLanguageWorkerChannelManager: webHostChannelManager,
+                mockApplicationLifetime: applicationLifetime, eventManager: eventManager);
+
+            await functionDispatcher.InitializeAsync(Array.Empty<FunctionMetadata>());
+
+            eventManager.Publish(
+                new WorkerErrorEvent(RpcWorkerConstants.NodeLanguageWorkerName, "metadata-worker", new TimeoutException("StartStream was not received.")));
+
+            await stopRequested.Task.TestWaitAsync(TimeSpan.FromSeconds(5));
+
+            applicationLifetime.Verify(p => p.StopApplication(), Times.Once);
+            webHostChannelManager.VerifyAll();
+            Assert.Empty(functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels());
+        }
+
+        [Fact]
         public async Task Starting_MultipleJobhostChannels_Failed()
         {
             _testLoggerProvider.ClearAllLogMessages();
@@ -765,12 +794,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             bool workerIndexing = false,
             bool placeholder = false,
             IRpcWorkerChannelFactory channelFactory = null,
-            CancellationTokenSource applicationStoppingSource = null)
+            CancellationTokenSource applicationStoppingSource = null,
+            Mock<IHostApplicationLifetime> mockApplicationLifetime = null,
+            IScriptEventManager eventManager = null)
         {
-            var eventManager = new ScriptEventManager();
+            eventManager ??= new ScriptEventManager();
             var metricsLogger = new Mock<IMetricsLogger>();
-            var mockApplicationLifetime = new Mock<IHostApplicationLifetime>();
             var stoppingSource = applicationStoppingSource ?? new CancellationTokenSource();
+            mockApplicationLifetime ??= new Mock<IHostApplicationLifetime>();
             mockApplicationLifetime.Setup(m => m.ApplicationStopping).Returns(stoppingSource.Token);
             var testEnv = new TestEnvironment();
             TimeSpan intervals = startupIntervals ?? TimeSpan.FromMilliseconds(100);
