@@ -81,21 +81,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { "key1", "secret1" }
             };
-            _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("TestFunction1", false)).ReturnsAsync(keys);
+            _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("TestFunction1")).ReturnsAsync(keys);
 
             keys = new Dictionary<string, string>
             {
                 { "key1", "secret1" }
             };
-            _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("TestFunction2", false)).ReturnsAsync(keys);
+            _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("TestFunction2")).ReturnsAsync(keys);
 
             keys = new Dictionary<string, string>
             {
                 { "key1", "secret1" }
             };
-            _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("FunctionWithoutFile", false)).ReturnsAsync(keys);
+            _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("FunctionWithoutFile")).ReturnsAsync(keys);
 
-            _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("DNE", false)).ReturnsAsync((IDictionary<string, string>)null);
+            _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("DNE")).ReturnsAsync((IDictionary<string, string>)null);
 
             SetHttpContext();
         }

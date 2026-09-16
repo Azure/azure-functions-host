@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return await GetHostSecretsAsync();
         }
 
-        public async virtual Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName, bool merged = false)
+        public async virtual Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName)
         {
             if (string.IsNullOrEmpty(functionName))
             {
@@ -313,15 +313,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         functionSecretsLock.Release();
                     }
                 }
-            }
-
-            if (merged)
-            {
-                // If merged is true, we combine function specific keys with host level function keys,
-                // prioritizing function specific keys
-                var hostSecrets = await GetHostSecretsAsync();
-                functionSecrets = functionSecrets.Union(hostSecrets.FunctionKeys.Where(s => !functionSecrets.ContainsKey(s.Key)))
-                    .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
             }
 
             return functionSecrets;
