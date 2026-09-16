@@ -108,6 +108,179 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEventGenerator.VerifyAll();
         }
 
+        [Theory]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", "GetMessages")]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", "BackoffDelay")]
+        [InlineData("Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener", "GetMessages")]
+        [InlineData("Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener", "BackoffDelay")]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", "PollBlobContainer")]
+        public void Log_SuppressedEvent_DoesNotEmitEvent(string category, string eventName)
+        {
+            bool formatterInvoked = false;
+            var localLogger = new SystemLogger(_hostInstanceId, category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+
+            localLogger.Log(
+                LogLevel.Debug,
+                new EventId(1, eventName),
+                state: string.Empty,
+                exception: null,
+                (state, exception) =>
+                {
+                    formatterInvoked = true;
+                    return "TestMessage";
+                });
+
+            Assert.False(formatterInvoked);
+            _mockEventGenerator.Verify(
+                p => p.LogFunctionTraceEvent(
+                    It.IsAny<LogLevel>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>()),
+                Times.Never);
+        }
+
+        [Theory]
+        [InlineData("Host.Executor")]
+        [InlineData("Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl")]
+        public void Log_SuppressedCategory_DoesNotEmitEvent(string category)
+        {
+            var localLogger = new SystemLogger(_hostInstanceId, category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+
+            localLogger.LogDebug("TestMessage");
+
+            _mockEventGenerator.Verify(
+                p => p.LogFunctionTraceEvent(
+                    It.IsAny<LogLevel>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public void Log_SuppressedStateEventName_DoesNotEmitEvent()
+        {
+            const string category = "Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener";
+            var localLogger = new SystemLogger(_hostInstanceId, category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            var state = new Dictionary<string, object>
+            {
+                [ScriptConstants.LogPropertyEventNameKey] = "GetMessages"
+            };
+
+            localLogger.Log(LogLevel.Debug, eventId: 0, state, null, (logState, exception) => "TestMessage");
+
+            _mockEventGenerator.Verify(
+                p => p.LogFunctionTraceEvent(
+                    It.IsAny<LogLevel>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<DateTime>()),
+                Times.Never);
+        }
+
+        [Theory]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", "HandlingStorageException", LogLevel.Debug)]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", "GetMessages", LogLevel.Information)]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", "BlobMessageEnqueued", LogLevel.Debug)]
+        [InlineData("Microsoft.Azure.WebJobs.EventHubs.Listeners.EventHubListener.PartitionProcessor", "", LogLevel.Debug)]
+        [InlineData("Host.Triggers.Kafka", "", LogLevel.Debug)]
+        [InlineData("Host.Executor", "", LogLevel.Information)]
+        [InlineData("Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl", "", LogLevel.Error)]
+        public void Log_NonSuppressedEvent_EmitsEvent(string category, string eventName, LogLevel logLevel)
+        {
+            var localLogger = new SystemLogger(_hostInstanceId, category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(
+                logLevel,
+                _subscriptionId,
+                _websiteName,
+                string.Empty,
+                eventName,
+                category,
+                string.Empty,
+                "TestMessage",
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                _hostInstanceId,
+                string.Empty,
+                _runtimeSiteName,
+                _slotName,
+                It.IsAny<DateTime>()));
+
+            localLogger.Log(logLevel, new EventId(1, eventName), string.Empty, null, (state, exception) => "TestMessage");
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Fact]
+        public void Log_SuppressedEventInDiagnosticMode_EmitsEvent()
+        {
+            const string category = "Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener";
+            const string eventName = "GetMessages";
+            var localLogger = new SystemLogger(_hostInstanceId, category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            _inDiagnosticMode = true;
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(
+                LogLevel.Debug,
+                _subscriptionId,
+                _websiteName,
+                string.Empty,
+                eventName,
+                category,
+                string.Empty,
+                "TestMessage",
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                _hostInstanceId,
+                string.Empty,
+                _runtimeSiteName,
+                _slotName,
+                It.IsAny<DateTime>()));
+
+            localLogger.Log(LogLevel.Debug, new EventId(1, eventName), string.Empty, null, (state, exception) => "TestMessage");
+
+            _mockEventGenerator.VerifyAll();
+        }
+
         [Fact]
         public void Log_Verbose_LogData_EmitsExpectedEvent()
         {

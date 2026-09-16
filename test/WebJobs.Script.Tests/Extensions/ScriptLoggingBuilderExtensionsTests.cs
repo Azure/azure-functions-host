@@ -56,50 +56,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", LogLevel.Debug)]
-        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", LogLevel.Trace)]
-        [InlineData("Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl", LogLevel.Debug)]
-        [InlineData("Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl", LogLevel.Trace)]
-        [InlineData("Host.Executor", LogLevel.Debug)]
-        [InlineData("Host.Executor", LogLevel.Trace)]
-        [InlineData("Microsoft.Azure.WebJobs.EventHubs.Listeners.EventHubListener.PartitionProcessor", LogLevel.Debug)]
-        [InlineData("Microsoft.Azure.WebJobs.EventHubs.Listeners.EventHubListener.PartitionProcessor", LogLevel.Trace)]
-        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", LogLevel.Debug)]
-        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", LogLevel.Trace)]
-        [InlineData("Host.Triggers.Kafka", LogLevel.Debug)]
-        [InlineData("Host.Triggers.Kafka", LogLevel.Trace)]
-        [InlineData("Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener", LogLevel.Debug)]
-        [InlineData("Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener", LogLevel.Trace)]
-        public void Filter_SuppressedCategory_DebugAndTrace_ReturnsFalse(string category, LogLevel level)
-        {
-            Assert.False(ScriptLoggingBuilderExtensions.Filter(category, level, LogLevel.Trace));
-        }
-
-        [Theory]
-        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", LogLevel.Information)]
-        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", LogLevel.Warning)]
-        [InlineData("Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl", LogLevel.Information)]
-        [InlineData("Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl", LogLevel.Error)]
-        [InlineData("Host.Executor", LogLevel.Information)]
-        [InlineData("Host.Executor", LogLevel.Critical)]
-        [InlineData("Microsoft.Azure.WebJobs.EventHubs.Listeners.EventHubListener.PartitionProcessor", LogLevel.Information)]
-        [InlineData("Microsoft.Azure.WebJobs.EventHubs.Listeners.EventHubListener.PartitionProcessor", LogLevel.Warning)]
-        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", LogLevel.Information)]
-        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", LogLevel.Error)]
-        [InlineData("Host.Triggers.Kafka", LogLevel.Information)]
-        [InlineData("Host.Triggers.Kafka", LogLevel.Critical)]
-        [InlineData("Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener", LogLevel.Information)]
-        [InlineData("Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener", LogLevel.Warning)]
-        public void Filter_SuppressedCategory_InformationAndAbove_ReturnsTrue(string category, LogLevel level)
-        {
-            Assert.True(ScriptLoggingBuilderExtensions.Filter(category, level, LogLevel.Trace));
-        }
-
-        [Theory]
         [InlineData("Microsoft.Azure.WebJobs.Host", LogLevel.Debug)]
         [InlineData("Microsoft.Azure.WebJobs.Host", LogLevel.Trace)]
         [InlineData("Host.Startup", LogLevel.Debug)]
         [InlineData("Function.MyFunc", LogLevel.Trace)]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener", LogLevel.Debug)]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener", LogLevel.Debug)]
+        [InlineData("Microsoft.Azure.WebJobs.EventHubs.Listeners.EventHubListener.PartitionProcessor", LogLevel.Debug)]
+        [InlineData("Host.Triggers.Kafka", LogLevel.Debug)]
         public void Filter_NonSuppressedCategory_DebugAndTrace_ReturnsTrue(string category, LogLevel level)
         {
             Assert.True(ScriptLoggingBuilderExtensions.Filter(category, level, LogLevel.Trace));

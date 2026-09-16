@@ -16,6 +16,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class SystemLogger : ILogger
     {
+        // Preserve the category-wide suppression introduced in #11603.
+        private static readonly HashSet<string> _suppressedCategories = new(StringComparer.Ordinal)
+        {
+            "Host.Executor",
+            "Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl"
+        };
+
+        // Extension polling events are suppressed by name so other diagnostics in the same category remain available.
+        private static readonly Dictionary<string, HashSet<string>> _suppressedEvents = new(StringComparer.Ordinal)
+        {
+            ["Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener"] = new(StringComparer.Ordinal)
+            {
+                "PollBlobContainer"
+            },
+            ["Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener"] = new(StringComparer.Ordinal)
+            {
+                "BackoffDelay",
+                "GetMessages"
+            },
+            ["Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener"] = new(StringComparer.Ordinal)
+            {
+                "BackoffDelay",
+                "GetMessages"
+            }
+        };
+
         private readonly string _categoryName;
         private readonly string _functionName;
         private readonly string _hostInstanceId;
@@ -114,6 +140,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 _eventManager.Publish(new FunctionIndexingEvent(nameof(FunctionIndexingException), source, exception));
             }
 
+            string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
+            eventName = isDiagnosticEvent ? $"DiagnosticEvent-{diagnosticEventErrorCode}" : eventName;
+
+            if (!_debugStateProvider.InDiagnosticMode && ShouldSuppress(source, eventName, logLevel))
+            {
+                return;
+            }
+
             // If we don't have a message, there's nothing to log.
             string formattedMessage = formatter?.Invoke(state, exception);
             if (string.IsNullOrEmpty(formattedMessage))
@@ -152,9 +186,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // Apply standard event properties.
             // Note: we must be sure to default any null values to empty string
             // otherwise the ETW event will fail to be persisted (silently).
-            string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
-            eventName = isDiagnosticEvent ? $"DiagnosticEvent-{diagnosticEventErrorCode}" : eventName;
-
             string activityId = stateActivityId ?? scopeActivityId ?? string.Empty;
             var options = _appServiceOptions;
             string subscriptionId = options.SubscriptionId ?? string.Empty;
@@ -177,6 +208,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
+        }
+
+        private static bool ShouldSuppress(string category, string eventName, LogLevel logLevel)
+        {
+            if (logLevel >= LogLevel.Information)
+            {
+                return false;
+            }
+
+            if (_suppressedCategories.Contains(category))
+            {
+                return true;
+            }
+
+            return _suppressedEvents.TryGetValue(category, out HashSet<string> eventNames)
+                && eventNames.Contains(eventName);
         }
     }
 }
