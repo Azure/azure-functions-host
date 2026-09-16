@@ -18,7 +18,11 @@ internal sealed partial class FunctionRpcRelay
     /// <summary>
     /// Owns the queues, forwarding tasks, and terminal state for one runtime/worker stream pair.
     /// </summary>
-    private sealed class FunctionRpcRelaySession(long id, ILogger logger, WorkerHttpCapabilityProvider capabilityProvider)
+    private sealed class FunctionRpcRelaySession(
+        long id,
+        ILogger logger,
+        WorkerHttpCapabilityProvider capabilityProvider,
+        IFunctionRpcMessageInterceptor messageInterceptor)
     {
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel();
@@ -197,6 +201,12 @@ internal sealed partial class FunctionRpcRelay
             while (await requestStream.MoveNext(cancellationToken))
             {
                 StreamingMessage message = requestStream.Current;
+                FunctionRpcMessageDisposition disposition = await messageInterceptor.ProcessAsync(side, message, cancellationToken);
+                if (disposition is FunctionRpcMessageDisposition.Consumed)
+                {
+                    continue;
+                }
+
                 if (side is FunctionRpcRelaySide.Worker
                     && message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success })
                 {

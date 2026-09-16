@@ -49,6 +49,7 @@ internal static class WorkerProxyApplication
             options.MaxReceiveMessageSize = int.MaxValue;
             options.MaxSendMessageSize = int.MaxValue;
         });
+        builder.Services.AddSingleton<IFunctionRpcMessageInterceptorFactory, FunctionRpcMessageInterceptorFactory>();
         builder.Services.AddSingleton<FunctionRpcRelay>();
         builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
         ConfigureHttpForwarding(builder);
