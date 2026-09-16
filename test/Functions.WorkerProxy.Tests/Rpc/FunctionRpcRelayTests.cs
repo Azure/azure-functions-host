@@ -275,7 +275,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_CanceledStopWaitDoesNotCancelSharedStop()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new();
-        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider());
+        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePassThroughInterceptor());
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource stopCancellation = new();
         BlockingServerStreamWriter blockingWriter = new();
@@ -385,7 +385,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_ShutdownAllowsSessionClearBeforeCancellation()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new();
-        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider());
+        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePassThroughInterceptor());
         using CancellationTokenSource timeout = new(TestTimeout);
         Task<FunctionRpcRelayTerminalState> runtimeTask =
             relay.AttachAsync(FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
@@ -419,7 +419,12 @@ public partial class FunctionRpcRelayTests
 
     private static FunctionRpcRelay CreateInProcessRelay()
     {
-        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider());
+        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(), CreatePassThroughInterceptor());
+    }
+
+    private static IFunctionRpcMessageInterceptor CreatePassThroughInterceptor()
+    {
+        return new PassThroughFunctionRpcMessageInterceptor();
     }
 
     private static WorkerHttpCapabilityProvider CreateCapabilityProvider(WorkerProxyOptions? options = null)
