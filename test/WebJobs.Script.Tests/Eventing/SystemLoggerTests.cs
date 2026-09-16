@@ -250,6 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             localLogger.Log(logLevel, new EventId(1, eventName), string.Empty, null, (state, exception) => "TestMessage");
 
             _mockEventGenerator.VerifyAll();
+            _debugStateProvider.VerifyGet(p => p.InDiagnosticMode, Times.Never);
         }
 
         [Fact]
@@ -279,6 +280,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 It.IsAny<DateTime>()));
 
             localLogger.Log(LogLevel.Debug, new EventId(1, eventName), string.Empty, null, (state, exception) => "TestMessage");
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Fact]
+        public void Log_SuppressedCategoryInDiagnosticMode_EmitsEvent()
+        {
+            const string category = "Host.Executor";
+            var localLogger = new SystemLogger(_hostInstanceId, category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            _inDiagnosticMode = true;
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(
+                LogLevel.Debug,
+                _subscriptionId,
+                _websiteName,
+                string.Empty,
+                string.Empty,
+                category,
+                string.Empty,
+                "TestMessage",
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                _hostInstanceId,
+                string.Empty,
+                _runtimeSiteName,
+                _slotName,
+                It.IsAny<DateTime>()));
+
+            localLogger.LogDebug("TestMessage");
 
             _mockEventGenerator.VerifyAll();
         }
