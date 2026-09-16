@@ -201,6 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
         }
 
+        // Only called when _suppressedEventNames is not null, so the category has suppression configured.
         private bool ShouldSuppress(string eventName, LogLevel logLevel)
         {
             if (logLevel >= LogLevel.Information)

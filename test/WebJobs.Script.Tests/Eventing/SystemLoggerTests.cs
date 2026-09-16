@@ -155,6 +155,89 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public void Log_NullOrEmptyCategory_DoesNotThrow(string category)
+        {
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(
+                It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<DateTime>()));
+
+            var localLogger = new SystemLogger(_hostInstanceId, category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+
+            localLogger.LogDebug("TestMessage");
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Fact]
+        public void Log_SuppressedCategory_UnnamedEvent_IsEmitted()
+        {
+            // Listener lifecycle logs carry no EventName and must survive named-event suppression.
+            const string category = "Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener";
+            var localLogger = new SystemLogger(_hostInstanceId, category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(
+                LogLevel.Debug, _subscriptionId, _websiteName, string.Empty, string.Empty, category, string.Empty,
+                "Storage queue listener started", string.Empty, string.Empty, string.Empty, _hostInstanceId,
+                string.Empty, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+
+            localLogger.LogDebug("Storage queue listener started");
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Fact]
+        public void Log_SuppressedCategory_NullStateEventName_DoesNotThrow()
+        {
+            const string category = "Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener";
+            var localLogger = new SystemLogger(_hostInstanceId, category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+            var state = new Dictionary<string, object>
+            {
+                [ScriptConstants.LogPropertyEventNameKey] = null
+            };
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(
+                LogLevel.Debug, _subscriptionId, _websiteName, string.Empty, string.Empty, category, string.Empty,
+                "TestMessage", string.Empty, string.Empty, string.Empty, _hostInstanceId,
+                string.Empty, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+
+            localLogger.Log(LogLevel.Debug, eventId: 0, state, null, (s, e) => "TestMessage");
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Fact]
+        public void Log_SuppressedEvent_TraceLevel_DoesNotThrow()
+        {
+            // Trace only passes IsEnabled in diagnostic mode, where suppression is bypassed.
+            const string category = "Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener";
+            var localLogger = new SystemLogger(_hostInstanceId, category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), _appServiceOptions);
+
+            localLogger.Log(LogLevel.Trace, new EventId(1, "GetMessages"), string.Empty, null, (s, e) => "TestMessage");
+
+            _mockEventGenerator.Verify(
+                p => p.LogFunctionTraceEvent(
+                    It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<DateTime>()),
+                Times.Never);
+
+            _inDiagnosticMode = true;
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(
+                LogLevel.Trace, _subscriptionId, _websiteName, string.Empty, "GetMessages", category, string.Empty,
+                "TestMessage", string.Empty, string.Empty, string.Empty, _hostInstanceId,
+                string.Empty, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+
+            localLogger.Log(LogLevel.Trace, new EventId(1, "GetMessages"), string.Empty, null, (s, e) => "TestMessage");
+
+            _mockEventGenerator.VerifyAll();
+        }
+
+        [Theory]
         [InlineData("Host.Executor")]
         [InlineData("Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl")]
         public void Log_SuppressedCategory_DoesNotEmitEvent(string category)
