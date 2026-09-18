@@ -25,6 +25,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Moq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -144,21 +145,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             Assert.Equal(2, metadata.Count(p => p.Language == RpcWorkerConstants.NodeLanguageWorkerName));
             Assert.Equal(1, metadata.Count(p => string.IsNullOrEmpty(p.Language)));
-
-            // Test data is never surfaced on the response.
-            Assert.All(metadata, m =>
-            {
-                Assert.Null(m.TestData);
-                Assert.Null(m.TestDataHref);
-            });
         }
 
         [Fact]
         public async Task CreateOrUpdate_DoesNotPersistTestData()
         {
+            // test_data supplied on the request body is an unknown member now and is silently
+            // dropped on deserialization, so the host must never touch the .dat file.
             var functionMetadataResponse = new Management.Models.FunctionMetadataResponse
             {
-                TestData = "foo",
                 Config = JObject.Parse(Function1MetadataJson)
             };
 
@@ -168,15 +163,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var result = await _webFunctionsManager.CreateOrUpdate("function1", functionMetadataResponse, _mockHttpRequest.Object);
 
             Assert.True(result.Success);
-            Assert.Null(result.Response.TestData);
-            Assert.Null(result.Response.TestDataHref);
+
+            var serialized = JObject.Parse(JsonConvert.SerializeObject(result.Response));
+            Assert.False(serialized.ContainsKey("test_data"));
+            Assert.False(serialized.ContainsKey("test_data_href"));
+
             fileBaseMock.Verify(f => f.Open(testDataFilePath, It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>()), Times.Never());
+            fileBaseMock.Verify(f => f.WriteAllText(testDataFilePath, It.IsAny<string>()), Times.Never());
         }
 
         [Fact]
         public async Task TryDeleteFunction_DeletesTestDataFile()
         {
-            // TestDataHref is no longer populated, so the .dat path must be derived from the function name.
+            // The TestDataHref property no longer exists, so the .dat path must be derived from the function name.
             var function = new Management.Models.FunctionMetadataResponse
             {
                 Name = "function1"

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Moq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -182,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Fact]
-        public async Task ToFunctionMetadataResponse_NeverPopulatesTestData()
+        public async Task ToFunctionMetadataResponse_DoesNotEmitTestDataProperties()
         {
             var functionName = "TestFunction1";
             var functionMetadata = new FunctionMetadata
@@ -227,8 +228,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null);
 
                 Assert.Equal(functionName, result.Name);
-                Assert.Null(result.TestData);
-                Assert.Null(result.TestDataHref);
+
+                // The test_data / test_data_href keys must not appear in the serialized payload,
+                // even though a .dat file exists on disk and TestDataPath is configured.
+                var serialized = JObject.Parse(JsonConvert.SerializeObject(result));
+                Assert.False(serialized.ContainsKey("test_data"));
+                Assert.False(serialized.ContainsKey("test_data_href"));
+
                 mockFile.Verify(f => f.Open(It.Is<string>(path => path.EndsWith(testDataFileName)), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>()), Times.Never());
             }
             finally
