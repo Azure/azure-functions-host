@@ -1,0 +1,35 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.5.3">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Azure.Functions.ComputeSeparation.AppHost</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <!-- Resolve the matching CLI rather than using an unrelated version installed on PATH. -->
+    <AspireCliInvocationMode>DnxPinned</AspireCliInvocationMode>
+    <!-- Launch AppHost directly so the selected VS/dotnet launch profile controls this local session. -->
+    <ASPIRE_SUPPRESS_CLI_RUN_HOOK>true</ASPIRE_SUPPRESS_CLI_RUN_HOOK>
+    <AspireCliBundlePath>$([System.IO.Path]::Combine('$(ArtifactsPath)', 'aspire', '$(AspireHostingSDKVersion)', '$(NETCoreSdkRuntimeIdentifier)'))</AspireCliBundlePath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Functions.Host\Functions.Host.csproj" />
+    <ProjectReference Include="..\..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj" />
+    <ProjectReference Include="..\SampleIsolatedApp\SampleIsolatedApp.csproj" />
+  </ItemGroup>
+
+  <!-- Bundle discovery accepts older installations, so keep the paired runtime tooling in this worktree's build output. -->
+  <Target Name="PrepareAspireCliBundle"
+          BeforeTargets="ResolveAspireCliBundlePaths"
+          Condition="'$(DesignTimeBuild)' != 'true' and !Exists('$(AspireCliBundlePath)/.aspire-bundle-version')">
+    <Exec Command="dotnet dnx --yes aspire.cli@$(AspireHostingSDKVersion) -- setup --install-path &quot;$(AspireCliBundlePath)&quot;"
+          Timeout="240000" />
+  </Target>
+
+</Project>

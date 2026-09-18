@@ -1374,9 +1374,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var expectedLog = "InvocationResponse received for invocation: 'TestInvocationId'";
             await TestHelpers.Await(
-                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog, StringComparison.Ordinal)),
                 timeout: 3000,
                 pollingInterval: 50);
+
+            var traces = _logger.GetLogMessages();
+            var invocationResponseLog = Assert.Single(traces, m => string.Equals(m.FormattedMessage, expectedLog, StringComparison.Ordinal));
+            Assert.Equal(LogLevel.Trace, invocationResponseLog.Level);
+            Assert.Equal(821, invocationResponseLog.EventId.Id);
+            Assert.Equal("InvocationResponseReceived", invocationResponseLog.EventId.Name);
+
+            var channelReceivedLog = Assert.Single(traces, m => string.Equals(
+                m.FormattedMessage, $"[channel] received {_workerId}: InvocationResponse", StringComparison.Ordinal));
+            Assert.Equal(LogLevel.Trace, channelReceivedLog.Level);
+            Assert.Equal(820, channelReceivedLog.EventId.Id);
+            Assert.Equal("ChannelReceivedMessage", channelReceivedLog.EventId.Name);
         }
 
         [Fact]
@@ -1397,6 +1409,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
+
+            Assert.Contains(traces, m => m.Level == LogLevel.Trace && string.Equals(
+                m.FormattedMessage, $"[channel] received {_workerId}: FunctionLoadResponse", StringComparison.Ordinal));
 
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "FunctionInvocationBuffer TestFunctionId1");
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "FunctionInvocationBuffer TestFunctionId2");
