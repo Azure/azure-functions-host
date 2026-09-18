@@ -19,9 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// </summary>
         /// <param name="functionMetadata">FunctionMetadata to be mapped.</param>
         /// <param name="hostOptions">The host options.</param>
-        /// <param name="excludeTestData">If true, the returned <see cref="FunctionMetadataResponse"/> will not populate the <see cref="FunctionMetadataResponse.TestData"/> property.</param>
         /// <returns>Promise of a FunctionMetadataResponse.</returns>
-        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, string routePrefix, string baseUrl, bool excludeTestData)
+        public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, string routePrefix, string baseUrl)
         {
             string functionPath = GetFunctionPathOrNull(hostOptions.RootScriptPath, functionMetadata.Name);
             string functionMetadataFilePath = GetMetadataPathOrNull(functionPath);
@@ -53,13 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             if (!string.IsNullOrEmpty(functionMetadataFilePath))
             {
                 response.ConfigHref = VirtualFileSystem.FilePathToVfsUri(functionMetadataFilePath, baseUrl, hostOptions);
-            }
-
-            if (!excludeTestData && !string.IsNullOrEmpty(hostOptions.TestDataPath))
-            {
-                var testDataFilePath = functionMetadata.GetTestDataFilePath(hostOptions);
-                response.TestDataHref = VirtualFileSystem.FilePathToVfsUri(testDataFilePath, baseUrl, hostOptions);
-                response.TestData = await GetTestData(testDataFilePath, hostOptions);
             }
 
             if (!string.IsNullOrEmpty(functionMetadata.ScriptFile))
@@ -205,28 +197,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             };
 
             return JObject.FromObject(config);
-        }
-
-        private static async Task<string> GetTestData(string testDataPath, ScriptJobHostOptions config)
-        {
-            if (!FileUtility.FileExists(testDataPath))
-            {
-                FileUtility.EnsureDirectoryExists(Path.GetDirectoryName(testDataPath));
-                await FileUtility.WriteAsync(testDataPath, string.Empty);
-            }
-
-            string data = await FileUtility.ReadAsync(testDataPath);
-
-            // We avoid inlining test data beyond the specified length. We do this to
-            // provide back compat for the majority of cases. In all other cases, the caller
-            // is expected to follow TestDataHref to retrieve the data.
-            if (data.Length > ScriptConstants.MaxTestDataInlineStringLength &&
-                SystemEnvironment.Instance.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.TestDataCapEnabled, "1") == "1")
-            {
-                return null;
-            }
-
-            return data;
         }
 
         private static Uri GetFunctionHref(string functionName, string baseUrl) =>

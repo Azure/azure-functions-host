@@ -35,7 +35,10 @@ namespace Microsoft.Azure.WebJobs.Script.Management.Models
         public Uri ConfigHref { get; set; }
 
         /// <summary>
-        /// Gets or sets function test data url
+        /// Gets or sets function test data url.
+        /// This is no longer populated by the host on responses and is always null.
+        /// The property is retained so the <c>test_data_href</c> key continues to appear
+        /// in the serialized payload. Test data files remain accessible via <c>/admin/vfs</c>.
         /// </summary>
         [JsonProperty(PropertyName = "test_data_href")]
         public Uri TestDataHref { get; set; }
@@ -70,7 +73,10 @@ namespace Microsoft.Azure.WebJobs.Script.Management.Models
 
         /// <summary>
         /// Gets or sets the test data string.
-        /// This is only used for the UI and only supports string inputs.
+        /// This is no longer populated by the host on responses and is always null.
+        /// When supplied on a create/update request it is ignored and not persisted.
+        /// The property is retained so the <c>test_data</c> key continues to appear
+        /// in the serialized payload.
         /// </summary>
         [JsonProperty(PropertyName = "test_data")]
         public string TestData { get; set; }

@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             };
 
             AddSampleBindings(functionMetadata);
-            var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null, excludeTestData: false);
+            var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null);
 
             Assert.Null(result.ScriptRootPathHref);
             Assert.Null(result.ConfigHref);
@@ -181,10 +181,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             Assert.Equal("httpTrigger", binding[0]["type"].Value<string>());
         }
 
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task ToFunctionMetadataResponse_TestData_Exclusion(bool shouldExcludeTestDataFromApiResponse)
+        [Fact]
+        public async Task ToFunctionMetadataResponse_NeverPopulatesTestData()
         {
             var functionName = "TestFunction1";
             var functionMetadata = new FunctionMetadata
@@ -214,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 {
                     Position = 0
                 };
-                // Mock the file system
+
                 var mockFileSystem = new Mock<IFileSystem>();
                 var mockFile = new Mock<FileBase>();
                 mockFileSystem.Setup(f => f.Directory.Exists(It.IsAny<string>())).Returns(true);
@@ -226,14 +224,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 FileUtility.Instance = mockFileSystem.Object;
 
                 AddSampleBindings(functionMetadata);
-                var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null, excludeTestData: shouldExcludeTestDataFromApiResponse);
+                var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null);
 
                 Assert.Equal(functionName, result.Name);
-                Assert.Equal(shouldExcludeTestDataFromApiResponse, result.TestData == null);
-                if (!shouldExcludeTestDataFromApiResponse)
-                {
-                    Assert.True(result.TestData.Trim().Length > 0);
-                }
+                Assert.Null(result.TestData);
+                Assert.Null(result.TestDataHref);
+                mockFile.Verify(f => f.Open(It.Is<string>(path => path.EndsWith(testDataFileName)), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>()), Times.Never());
             }
             finally
             {
