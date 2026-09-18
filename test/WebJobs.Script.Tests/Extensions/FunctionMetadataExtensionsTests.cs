@@ -191,7 +191,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 Name = functionName
             };
             var testDataFileName = $"{functionName}.dat";
-            var testDataFilePath = Path.Combine(_testRootScriptPath, testDataFileName);
             var options = new ScriptJobHostOptions
             {
                 RootScriptPath = _testRootScriptPath

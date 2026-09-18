@@ -82,8 +82,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         /// <summary>
         /// It handles creating a new function or updating an existing one.
-        /// It attempts to clean left over artifacts from a possible previous function with the same name
-        /// if config is changed, then `configChanged` is set to true so the caller can call SyncTriggers if needed.
+        /// It writes out any included files and the function config.
+        /// If config is changed, then `configChanged` is set to true so the caller can call SyncTriggers if needed.
         /// </summary>
         /// <param name="name">name of the function to be created.</param>
         /// <param name="functionMetadata">in case of update for function.json.</param>
