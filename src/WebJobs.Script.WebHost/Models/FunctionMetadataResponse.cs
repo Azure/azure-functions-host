@@ -35,12 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Management.Models
         public Uri ConfigHref { get; set; }
 
         /// <summary>
-        /// Gets or sets function test data url
-        /// </summary>
-        [JsonProperty(PropertyName = "test_data_href")]
-        public Uri TestDataHref { get; set; }
-
-        /// <summary>
         /// Gets or sets current function self link
         /// </summary>
         [JsonProperty(PropertyName = "href")]
@@ -67,13 +61,6 @@ namespace Microsoft.Azure.WebJobs.Script.Management.Models
         /// </summary>
         [JsonProperty(PropertyName = "files")]
         public IDictionary<string, string> Files { get; set; }
-
-        /// <summary>
-        /// Gets or sets the test data string.
-        /// This is only used for the UI and only supports string inputs.
-        /// </summary>
-        [JsonProperty(PropertyName = "test_data")]
-        public string TestData { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the function is disabled

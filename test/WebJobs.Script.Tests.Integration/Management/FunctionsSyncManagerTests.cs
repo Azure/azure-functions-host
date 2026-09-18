@@ -54,14 +54,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly Mock<ISecretManagerProvider> _secretManagerProviderMock;
         private readonly Mock<ISecretManager> _secretManagerMock;
         private readonly TestScriptHostService _scriptHostManager; // To refresh underlying IConfiguration for IAzureBlobStorageProvider
-        private readonly FunctionsHostingConfigOptions _hostingConfigOptions;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
-        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptionsWrapper;
         private readonly IScriptHostManager _syncScriptHostManager;
         private string _function1;
         private bool _emptyContent;
@@ -81,8 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 ScriptPath = Path.Combine("x:", "root"),
                 IsSelfHost = false,
                 LogPath = Path.Combine("x:", "tmp", "log"),
-                SecretsPath = Path.Combine("x:", "secrets"),
-                TestDataPath = Path.Combine("x:", "sampledata")
+                SecretsPath = Path.Combine("x:", "secrets")
             };
 
             var jobHostOptions = new ScriptJobHostOptions
@@ -173,9 +170,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _scriptHostManager = new TestScriptHostService(configuration);
             var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configuration, scriptHostManager: _scriptHostManager);
 
-            _hostingConfigOptions = new FunctionsHostingConfigOptions();
-            var hostingConfigOptionsWrapper = new OptionsWrapper<FunctionsHostingConfigOptions>(_hostingConfigOptions);
-
             var mockHostOptionsProvider = new Mock<IHostOptionsProvider>(MockBehavior.Strict);
             mockHostOptionsProvider.Setup(p => p.GetOptions()).Returns(() => _testHostOptions);
             var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
@@ -205,7 +199,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _httpClientFactory = httpClientFactory;
             _functionMetadataManager = functionMetadataManager;
             _azureBlobStorageProvider = azureBlobStorageProvider;
-            _hostingConfigOptionsWrapper = hostingConfigOptionsWrapper;
             _syncScriptHostManager = mockScriptHostManager.Object;
 
             _functionsSyncManager = CreateFunctionsSyncManager();
@@ -224,7 +217,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _hostNameProvider,
                 _functionMetadataManager,
                 _azureBlobStorageProvider,
-                _hostingConfigOptionsWrapper,
                 _syncScriptHostManager,
                 meshServiceClient);
         }
@@ -397,7 +389,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _hostNameProvider,
                 metadataManagerMock.Object,
                 _azureBlobStorageProvider,
-                _hostingConfigOptionsWrapper,
                 standbyScriptHostManagerMock.Object,
                 null);
 
@@ -1262,17 +1253,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 ScriptPath = "somePath",
                 IsSelfHost = false,
-                TestDataPath = "testDataPath",
                 LogPath = "rootLogPath"
             };
 
             var optionsMonitorMock = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
             optionsMonitorMock.Setup(m => m.CurrentValue).Returns(scriptAppHostOptions);
             optionsMonitorMock.Setup(m => m.Get(It.IsAny<string>())).Returns(scriptAppHostOptions);
-
-            var hostingConfigOptions = new FunctionsHostingConfigOptions();
-            var hostingConfigOptionsMock = new Mock<IOptions<FunctionsHostingConfigOptions>>();
-            hostingConfigOptionsMock.Setup(m => m.Value).Returns(hostingConfigOptions);
 
             var syncManager = new FunctionsSyncManager(
                 Mock.Of<IHostIdProvider>(),
@@ -1285,7 +1271,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 hostNameProviderMock.Object,
                 functionMetadataManagerMock.Object,
                 Mock.Of<IAzureBlobStorageProvider>(),
-                hostingConfigOptionsMock.Object,
                 Mock.Of<IScriptHostManager>());
 
             // Use the public GetTriggersAsync method (main change is in a private method wrapped by this)
@@ -1311,7 +1296,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private IFileSystem CreateFileSystem(ScriptApplicationHostOptions hostOptions, string hostJsonContent = null, string extensionsJsonContent = null)
         {
             var rootPath = hostOptions.ScriptPath;
-            string testDataPath = hostOptions.TestDataPath;
 
             var fullFileSystem = new FileSystem();
             var fileSystem = new Mock<IFileSystem>();
@@ -1425,11 +1409,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
             });
-            fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function1.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
-            {
-                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
-            });
-
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\function.json"))).Returns(true);
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\main.js"))).Returns(true);
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function2\function.json"))).Returns(function2);
@@ -1437,21 +1416,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 return new MemoryStream(Encoding.UTF8.GetBytes(function2));
             });
-            fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function2.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
-            {
-                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
-            });
-
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\function.json"))).Returns(true);
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\main.js"))).Returns(true);
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function3\function.json"))).Returns(function3);
             fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function3\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
                 return new MemoryStream(Encoding.UTF8.GetBytes(function3));
-            });
-            fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function3.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
-            {
-                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
             });
 
             return fileSystem.Object;

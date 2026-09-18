@@ -79,7 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.RootScriptPath = webHostOptions.ScriptPath;
             options.RootLogPath = webHostOptions.LogPath;
             options.IsSelfHost = webHostOptions.IsSelfHost;
-            options.TestDataPath = webHostOptions.TestDataPath;
             options.IsFileSystemReadOnly = webHostOptions.IsFileSystemReadOnly;
             options.IsStandbyConfiguration = webHostOptions.IsStandbyConfiguration;
 
