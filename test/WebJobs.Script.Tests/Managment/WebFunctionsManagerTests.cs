@@ -62,7 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly Mock<HttpRequest> _mockHttpRequest;
         private readonly IFileSystem _fileSystem;
         private readonly Mock<FileInfoBase> _fileInfoMock;
-        private readonly FunctionsHostingConfigOptions _hostingConfigOptions;
 
         public WebFunctionsManagerTests()
         {
@@ -118,9 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var workerRuntimeResolverMock = new Mock<IWorkerRuntimeResolver>(MockBehavior.Strict);
             workerRuntimeResolverMock.Setup(p => p.GetWorkerRuntime(It.IsAny<string>())).Returns((string)null);
 
-            _hostingConfigOptions = new FunctionsHostingConfigOptions();
-            var hostingConfigOptionsWrapper = new OptionsWrapper<FunctionsHostingConfigOptions>(_hostingConfigOptions);
-
             var workerOptions = new LanguageWorkerOptions();
             FileUtility.Instance = fileSystem;
             _fileSystem = fileSystem;
@@ -134,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var emptyOptions = new JobHostInternalStorageOptions();
             var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configurationMock.Object, storageOptions: emptyOptions);
-            var functionsSyncManager = new FunctionsSyncManager(hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, functionMetadataManager, azureBlobStorageProvider, hostingConfigOptionsWrapper, mockScriptHostManager.Object);
+            var functionsSyncManager = new FunctionsSyncManager(hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, functionMetadataManager, azureBlobStorageProvider, mockScriptHostManager.Object);
             _webFunctionsManager = new WebFunctionsManager(optionsMonitor, loggerFactory, httpClientFactory, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, functionMetadataManager, metadataProvider, new TestOptionsMonitor<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
         }
 
@@ -150,12 +146,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task CreateOrUpdate_DoesNotPersistTestData()
         {
-            // test_data supplied on the request body is an unknown member now and is silently
-            // dropped on deserialization, so the host must never touch the .dat file.
-            var functionMetadataResponse = new Management.Models.FunctionMetadataResponse
-            {
-                Config = JObject.Parse(Function1MetadataJson)
-            };
+            // A request body that still carries a test_data member must deserialize cleanly --
+            // Newtonsoft ignores the now-unknown member rather than throwing -- and the host must
+            // never open or write the function's .dat file as a result.
+            string requestBody = $@"{{
+              ""test_data"": ""foo"",
+              ""config"": {Function1MetadataJson}
+            }}";
+
+            var functionMetadataResponse = JsonConvert.DeserializeObject<Management.Models.FunctionMetadataResponse>(requestBody);
+            Assert.NotNull(functionMetadataResponse);
+            Assert.NotNull(functionMetadataResponse.Config);
 
             string testDataFilePath = Path.Combine(_hostOptions.TestDataPath, "function1.dat");
             var fileBaseMock = Mock.Get(_fileSystem.File);

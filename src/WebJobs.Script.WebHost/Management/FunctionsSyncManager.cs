@@ -63,14 +63,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
-        private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IMeshServiceClient _meshServiceClient;
         private readonly bool _notifyPlatformOnSync;
 
         private BlobClient _hashBlobClient;
 
-        public FunctionsSyncManager(IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider, IOptions<FunctionsHostingConfigOptions> functionsHostingConfigOptions, IScriptHostManager scriptHostManager, IMeshServiceClient meshServiceClient = null)
+        public FunctionsSyncManager(IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider, IScriptHostManager scriptHostManager, IMeshServiceClient meshServiceClient = null)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
@@ -82,7 +81,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
             _azureBlobStorageProvider = azureBlobStorageProvider;
-            _hostingConfigOptions = functionsHostingConfigOptions;
             _scriptHostManager = scriptHostManager;
             _meshServiceClient = meshServiceClient ?? NullMeshServiceClient.Instance;
             _notifyPlatformOnSync = environment?.ShouldNotifyPlatformOnSync() ?? false;
