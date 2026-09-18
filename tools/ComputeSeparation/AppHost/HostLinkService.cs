@@ -34,7 +34,7 @@ internal sealed partial class HostLinkService(
             string httpEndpoint = await proxyHttpEndpoint.GetValueAsync(startup.Token)
                 ?? throw new InvalidOperationException("The WorkerProxy HTTP invocation endpoint was not allocated.");
             using HttpClient client = new() { BaseAddress = new Uri(address), Timeout = Timeout.InfiniteTimeSpan };
-            using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{workerId}", new
+            using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
             {
                 workerGrpcEndpoint = grpcEndpoint,
                 workerHttpEndpoint = httpEndpoint,
