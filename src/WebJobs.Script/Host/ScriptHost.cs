@@ -474,6 +474,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
+            // Log Azure Monitor diagnostic logging usage. Only an explicit category subscription
+            // counts: an unset variable defaults to enabled and is not a usage signal.
+            if (_environment.IsAzureMonitorExplicitlyEnabled())
+            {
+                _metricsLogger.LogEvent(MetricEventNames.AzureMonitorEnabled);
+            }
+
             InitializeFileSystem();
         }
 
