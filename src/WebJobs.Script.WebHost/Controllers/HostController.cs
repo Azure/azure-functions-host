@@ -442,8 +442,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 HasParentScope = hostOptionsValue.HasParentScope,
                 LogPath = hostOptionsValue.LogPath,
                 ScriptPath = hostOptionsValue.ScriptPath,
-                SecretsPath = hostOptionsValue.SecretsPath,
-                TestDataPath = hostOptionsValue.TestDataPath
+                SecretsPath = hostOptionsValue.SecretsPath
             };
 
             return Ok(response);

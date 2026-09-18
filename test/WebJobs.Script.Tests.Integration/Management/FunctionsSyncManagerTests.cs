@@ -79,8 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 ScriptPath = Path.Combine("x:", "root"),
                 IsSelfHost = false,
                 LogPath = Path.Combine("x:", "tmp", "log"),
-                SecretsPath = Path.Combine("x:", "secrets"),
-                TestDataPath = Path.Combine("x:", "sampledata")
+                SecretsPath = Path.Combine("x:", "secrets")
             };
 
             var jobHostOptions = new ScriptJobHostOptions
@@ -1254,7 +1253,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 ScriptPath = "somePath",
                 IsSelfHost = false,
-                TestDataPath = "testDataPath",
                 LogPath = "rootLogPath"
             };
 
@@ -1298,7 +1296,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private IFileSystem CreateFileSystem(ScriptApplicationHostOptions hostOptions, string hostJsonContent = null, string extensionsJsonContent = null)
         {
             var rootPath = hostOptions.ScriptPath;
-            string testDataPath = hostOptions.TestDataPath;
 
             var fullFileSystem = new FileSystem();
             var fileSystem = new Mock<IFileSystem>();
@@ -1412,11 +1409,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
             });
-            fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function1.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
-            {
-                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
-            });
-
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\function.json"))).Returns(true);
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\main.js"))).Returns(true);
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function2\function.json"))).Returns(function2);
@@ -1424,21 +1416,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 return new MemoryStream(Encoding.UTF8.GetBytes(function2));
             });
-            fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function2.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
-            {
-                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
-            });
-
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\function.json"))).Returns(true);
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\main.js"))).Returns(true);
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function3\function.json"))).Returns(function3);
             fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function3\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
                 return new MemoryStream(Encoding.UTF8.GetBytes(function3));
-            });
-            fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function3.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
-            {
-                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
             });
 
             return fileSystem.Object;

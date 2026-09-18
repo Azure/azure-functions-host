@@ -61,7 +61,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly Mock<HttpRequest> _mockHttpRequest;
         private readonly IFileSystem _fileSystem;
-        private readonly Mock<FileInfoBase> _fileInfoMock;
 
         public WebFunctionsManagerTests()
         {
@@ -78,13 +77,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 ScriptPath = @"x:\root",
                 IsSelfHost = false,
                 LogPath = @"x:\tmp\log",
-                SecretsPath = @"x:\secrets",
-                TestDataPath = @"x:\test"
+                SecretsPath = @"x:\secrets"
             };
 
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "sample");
 
-            var fileSystem = CreateFileSystem(_hostOptions, out _fileInfoMock);
+            var fileSystem = CreateFileSystem(_hostOptions);
             var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
             var contentBuilder = new StringBuilder();
             var httpClientFactory = CreateHttpClientFactory(contentBuilder);
@@ -148,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             // A request body that still carries a test_data member must deserialize cleanly --
             // Newtonsoft ignores the now-unknown member rather than throwing -- and the host must
-            // never open or write the function's .dat file as a result.
+            // never write a test data file as a result.
             string requestBody = $@"{{
               ""test_data"": ""foo"",
               ""config"": {Function1MetadataJson}
@@ -158,7 +156,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.NotNull(functionMetadataResponse);
             Assert.NotNull(functionMetadataResponse.Config);
 
-            string testDataFilePath = Path.Combine(_hostOptions.TestDataPath, "function1.dat");
             var fileBaseMock = Mock.Get(_fileSystem.File);
 
             var result = await _webFunctionsManager.CreateOrUpdate("function1", functionMetadataResponse, _mockHttpRequest.Object);
@@ -169,27 +166,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(serialized.ContainsKey("test_data"));
             Assert.False(serialized.ContainsKey("test_data_href"));
 
-            fileBaseMock.Verify(f => f.Open(testDataFilePath, It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>()), Times.Never());
-            fileBaseMock.Verify(f => f.WriteAllText(testDataFilePath, It.IsAny<string>()), Times.Never());
-        }
-
-        [Fact]
-        public async Task TryDeleteFunction_DeletesTestDataFile()
-        {
-            // The TestDataHref property no longer exists, so the .dat path must be derived from the function name.
-            var function = new Management.Models.FunctionMetadataResponse
-            {
-                Name = "function1"
-            };
-
-            string expectedTestDataFilePath = Path.Combine(_hostOptions.TestDataPath, "function1.dat");
-            var fileInfoFactoryMock = Mock.Get(_fileSystem.FileInfo);
-
-            var result = await _webFunctionsManager.TryDeleteFunction(function);
-
-            Assert.True(result.Success);
-            fileInfoFactoryMock.Verify(f => f.FromFileName(expectedTestDataFilePath), Times.Once());
-            _fileInfoMock.Verify(f => f.Delete(), Times.Once());
+            fileBaseMock.Verify(f => f.Open(It.Is<string>(p => p.EndsWith(".dat")), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>()), Times.Never());
+            fileBaseMock.Verify(f => f.WriteAllText(It.Is<string>(p => p.EndsWith(".dat")), It.IsAny<string>()), Times.Never());
         }
 
         [Fact]
@@ -264,7 +242,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private static IFileSystem CreateEmptyFileSystem(ScriptApplicationHostOptions options)
         {
             string rootPath = options.ScriptPath;
-            string testDataPath = options.TestDataPath;
 
             var fullFileSystem = new FileSystem();
             var fileSystem = new Mock<IFileSystem>();
@@ -286,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return fileSystem.Object;
         }
 
-        private static IFileSystem CreateFileSystem(ScriptApplicationHostOptions options, out Mock<FileInfoBase> fileInfoMock)
+        private static IFileSystem CreateFileSystem(ScriptApplicationHostOptions options)
         {
             string rootPath = options.ScriptPath;
 
@@ -294,13 +271,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var fileSystem = new Mock<IFileSystem>();
             var fileBase = new Mock<FileBase>();
             var dirBase = new Mock<DirectoryBase>();
-
-            fileInfoMock = new Mock<FileInfoBase>();
-            fileInfoMock.SetupGet(f => f.Exists).Returns(true);
-            var fileInfoFactory = new Mock<IFileInfoFactory>();
-            var capturedFileInfo = fileInfoMock.Object;
-            fileInfoFactory.Setup(f => f.FromFileName(It.IsAny<string>())).Returns(capturedFileInfo);
-            fileSystem.SetupGet(f => f.FileInfo).Returns(fileInfoFactory.Object);
 
             fileSystem.SetupGet(f => f.Path).Returns(fullFileSystem.Path);
             fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);

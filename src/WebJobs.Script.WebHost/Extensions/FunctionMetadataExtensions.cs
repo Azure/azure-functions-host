@@ -108,12 +108,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             return null;
         }
 
-        public static string GetTestDataFilePath(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions) =>
-            GetTestDataFilePath(functionMetadata.Name, hostOptions);
-
-        public static string GetTestDataFilePath(string functionName, ScriptJobHostOptions hostOptions) =>
-            Path.Combine(hostOptions.TestDataPath, $"{functionName}.dat");
-
         private static string GetFunctionPathOrNull(string scriptRoot, string functionName)
         {
             var functionPath = Path.Combine(scriptRoot, functionName);

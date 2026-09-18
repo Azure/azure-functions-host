@@ -194,8 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             var testDataFilePath = Path.Combine(_testRootScriptPath, testDataFileName);
             var options = new ScriptJobHostOptions
             {
-                RootScriptPath = _testRootScriptPath,
-                TestDataPath = testDataFilePath
+                RootScriptPath = _testRootScriptPath
             };
 
             IFileSystem fileSystem = FileUtility.Instance;
@@ -230,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 Assert.Equal(functionName, result.Name);
 
                 // The test_data / test_data_href keys must not appear in the serialized payload,
-                // even though a .dat file exists on disk and TestDataPath is configured.
+                // even though a .dat file exists on disk.
                 var serialized = JObject.Parse(JsonConvert.SerializeObject(result));
                 Assert.False(serialized.ContainsKey("test_data"));
                 Assert.False(serialized.ContainsKey("test_data_href"));

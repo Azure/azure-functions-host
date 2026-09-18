@@ -291,7 +291,6 @@ internal sealed class IisExpressTestServer : IAsyncDisposable
         startInfo.Environment["FUNCTIONS_TEST_WORKER_STARTUP_MARKER"] = startupMarkerPath;
         startInfo.Environment["FUNCTIONS_LOG_PATH"] = Path.Combine(functionsDataPath, "logs");
         startInfo.Environment["FUNCTIONS_SECRETS_PATH"] = Path.Combine(functionsDataPath, "secrets");
-        startInfo.Environment["FUNCTIONS_TEST_DATA_PATH"] = Path.Combine(functionsDataPath, "testdata");
         startInfo.Environment["FUNCTIONS_WORKER_RUNTIME"] = "dotnet-isolated";
         startInfo.Environment["FUNCTIONS_WORKER_RUNTIME_VERSION"] = "8.0";
         startInfo.Environment["LOCALAPPDATA"] = localAppDataPath;

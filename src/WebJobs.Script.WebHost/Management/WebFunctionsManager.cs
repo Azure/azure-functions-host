@@ -98,8 +98,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // Make sure the function folder exists
             if (!FileUtility.DirectoryExists(functionDir))
             {
-                // Cleanup any leftover artifacts from a function with the same name before.
-                DeleteFunctionArtifacts(name);
                 Directory.CreateDirectory(functionDir);
             }
 
@@ -213,8 +211,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     FileUtility.DeleteDirectoryContentsSafe(functionPath);
                 }
 
-                DeleteFunctionArtifacts(function.Name);
-
                 await _functionsSyncManager.TrySyncTriggersAsync();
 
                 return (true, string.Empty);
@@ -223,24 +219,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 return (false, e.ToString());
             }
-        }
-
-        private void DeleteFunctionArtifacts(string name)
-        {
-            if (string.IsNullOrEmpty(name))
-            {
-                return;
-            }
-
-            var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-
-            if (string.IsNullOrEmpty(hostOptions.TestDataPath))
-            {
-                return;
-            }
-
-            var testDataPath = Extensions.FunctionMetadataExtensions.GetTestDataFilePath(name, hostOptions);
-            FileUtility.DeleteFileSafe(testDataPath);
         }
 
         private static async Task<FunctionMetadataResponse> GetFunctionMetadataResponseAsync(FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, HttpRequest request)
