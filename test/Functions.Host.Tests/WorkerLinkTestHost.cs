@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Host.Controllers;
+using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -19,6 +20,7 @@ using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
@@ -46,7 +48,8 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
 
     internal HttpClient Client { get; }
 
-    internal static async Task<WorkerLinkTestHost> StartAsync(CancellationToken cancellationToken, bool includeCompute = true)
+    internal static async Task<WorkerLinkTestHost> StartAsync(CancellationToken cancellationToken, bool includeCompute = true,
+        TimeSpan? linkTimeout = null, IWorkerChannelRegistry? registry = null)
     {
         RequestObserver observer = new();
         IHost host = new HostBuilder()
@@ -77,6 +80,18 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                             // This fixture isolates HTTP link admission from ScriptHost activation and metadata loading.
                             services.AddRpcClientServices();
                             mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
+                            if (registry is not null)
+                            {
+                                services.AddSingleton(registry);
+                            }
+
+                            if (linkTimeout.HasValue)
+                            {
+                                services.AddSingleton<IWorkerChannelRegistry>(provider => new WorkerChannelRegistry(
+                                    provider.GetRequiredService<IDuplexChannelFactory<StreamingMessage>>(),
+                                    provider.GetRequiredService<IRpcClientWorkerChannelFactory>(),
+                                    provider.GetRequiredService<ILogger<WorkerChannelRegistry>>(), linkTimeout.Value));
+                            }
                         }
 
                         services.AddAuthentication();
@@ -103,15 +118,15 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
         }
     }
 
-    internal Task<HttpResponseMessage> PutAsync(string? json, CancellationToken cancellationToken)
-        => SendAsync(null, json, cancellationToken);
+    internal Task<HttpResponseMessage> PutAsync(string? json, CancellationToken cancellationToken, string workerPodName = "worker-pod-abc123")
+        => SendAsync(null, workerPodName, json, cancellationToken);
 
-    internal PendingRequest BeginPut(string? json, CancellationToken cancellationToken)
+    internal PendingRequest BeginPut(string? json, CancellationToken cancellationToken, string workerPodName = "worker-pod-abc123")
     {
         string requestId = Guid.NewGuid().ToString("N");
         PendingRequest pending = new();
         _observer.Requests.TryAdd(requestId, pending);
-        pending.Response = SendAsync(requestId, json, cancellationToken);
+        pending.Response = SendAsync(requestId, workerPodName, json, cancellationToken);
 
         return pending;
     }
@@ -167,9 +182,9 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
         services.AddSingleton(Mock.Of<IMetricsLogger>());
     }
 
-    private async Task<HttpResponseMessage> SendAsync(string? requestId, string? json, CancellationToken cancellationToken)
+    private async Task<HttpResponseMessage> SendAsync(string? requestId, string workerPodName, string? json, CancellationToken cancellationToken)
     {
-        using HttpRequestMessage request = new(HttpMethod.Put, "/admin/workers");
+        using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{workerPodName}");
         if (requestId is not null)
         {
             request.Headers.Add(RequestIdHeader, requestId);

@@ -24,11 +24,14 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 {
+    private static readonly TimeSpan DefaultLinkTimeout = TimeSpan.FromSeconds(30);
+
     private readonly IRpcClientWorkerChannelFactory _channelFactory;
     private readonly Lock _disposeLock = new();
     private readonly IDuplexChannelFactory<StreamingMessage> _duplexChannelFactory;
     private readonly ILogger<WorkerChannelRegistry> _logger;
     private readonly Dictionary<string, WorkerSlot> _linkAttempts = new(StringComparer.Ordinal);
+    private readonly TimeSpan _linkTimeout;
     private readonly HashSet<Task> _monitorTasks = [];
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
@@ -37,18 +40,41 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private bool _disposed;
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public WorkerChannelRegistry(IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
-        IRpcClientWorkerChannelFactory channelFactory, ILogger<WorkerChannelRegistry> logger)
+    public WorkerChannelRegistry(
+        IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
+        IRpcClientWorkerChannelFactory channelFactory,
+        ILogger<WorkerChannelRegistry> logger)
+        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout)
+    {
+    }
+
+    internal WorkerChannelRegistry(
+        IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
+        IRpcClientWorkerChannelFactory channelFactory,
+        ILogger<WorkerChannelRegistry> logger,
+        TimeSpan linkTimeout)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
+        _linkTimeout = linkTimeout;
     }
 
-    public Task<WorkerChannel> LinkAsync(string workerId, Uri grpcEndpoint, CancellationToken cancellationToken = default)
+    public Task<WorkerLinkResult> LinkAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        Uri httpEndpoint = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
+        if (httpEndpoint is not null)
+        {
+            RpcClientFactory.ValidateEndpoint(httpEndpoint);
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
 
         TaskCompletionSource start;
@@ -58,10 +84,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_linkAttempts.TryGetValue(workerId, out WorkerSlot existing))
             {
-                if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal))
+                if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal) ||
+                    !string.Equals(existing.HttpEndpoint?.AbsoluteUri, httpEndpoint?.AbsoluteUri, StringComparison.Ordinal))
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
-                        "The worker is already associated with a different gRPC endpoint.");
+                        "The worker is already associated with different gRPC or HTTP endpoint values.");
                 }
 
                 if (existing.Terminal || existing.Channel?.Completion.IsCompleted == true)
@@ -70,46 +97,53 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                         "The worker's initialized channel has terminated.");
                 }
 
-                Task<WorkerChannel> replay = existing.LinkTask.WaitAsync(cancellationToken);
-
-                return replay;
+                return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, cancellationToken), isNewLink: false);
             }
 
             start = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            WorkerSlot slot = new() { Endpoint = grpcEndpoint };
+            WorkerSlot slot = new() { Endpoint = grpcEndpoint, HttpEndpoint = httpEndpoint };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
-            link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
+            link = LinkCoreAsync(workerId, grpcEndpoint, httpEndpoint, slot, start.Task, cancellationToken);
             slot.LinkTask = link;
         }
 
         // Publish the shared attempt before starting I/O so a retry cannot start a second connection.
         start.SetResult();
 
-        return link;
+        return CompleteLinkAsync(link, isNewLink: true);
     }
 
-    private async Task<WorkerChannel> LinkCoreAsync(string workerId, Uri grpcEndpoint, WorkerSlot slot,
-        Task start, CancellationToken cancellationToken)
+    private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, bool isNewLink)
+        => new(await link.ConfigureAwait(false), isNewLink);
+
+    private async Task<WorkerChannel> LinkCoreAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        Uri httpEndpoint,
+        WorkerSlot slot,
+        Task start,
+        CancellationToken cancellationToken)
     {
         await start;
         using SemaphoreLock gate = new(slot.Gate);
         bool initialized = false;
         try
         {
+            using CancellationTokenSource deadline = new(_linkTimeout);
             using CancellationTokenSource operationSource =
-                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token);
-            operationSource.Token.ThrowIfCancellationRequested();
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownSource.Token, deadline.Token);
 
             DuplexChannel<StreamingMessage> ownedChannel = null;
             RpcClientWorkerChannel candidate = null;
 
             try
             {
+                operationSource.Token.ThrowIfCancellationRequested();
                 ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token);
                 operationSource.Token.ThrowIfCancellationRequested();
 
-                candidate = _channelFactory.Create(workerId, ownedChannel)
+                candidate = _channelFactory.Create(workerId, ownedChannel, httpEndpoint)
                     ?? throw new InvalidOperationException("The client worker channel factory returned no channel.");
                 ownedChannel = null;
 
@@ -139,10 +173,14 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             }
             catch (Exception exception)
             {
-                Exception failure = exception is OperationCanceledException && !cancellationToken.IsCancellationRequested &&
-                    _shutdownSource.IsCancellationRequested
-                    ? new ObjectDisposedException(GetType().FullName)
-                    : exception;
+                Exception failure = exception switch
+                {
+                    OperationCanceledException when !cancellationToken.IsCancellationRequested && _shutdownSource.IsCancellationRequested
+                        => new ObjectDisposedException(GetType().FullName),
+                    OperationCanceledException when !cancellationToken.IsCancellationRequested && deadline.IsCancellationRequested
+                        => new TimeoutException("The worker link initialization deadline expired.", exception),
+                    _ => exception,
+                };
                 failure = await candidate.DisposeAndCaptureExceptionAsync(failure);
                 failure = await ownedChannel.DisposeAndCaptureExceptionAsync(failure);
                 ExceptionDispatchInfo.Capture(failure).Throw();
@@ -498,8 +536,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         // The initial link owns this gate before its slot is published.
         public SemaphoreSlim Gate { get; } = new(0, 1);
 
-        // The recorded gRPC endpoint used to distinguish exact retries from conflicting requests.
+        // The recorded endpoints, including HTTP absence, distinguish exact retries from conflicting requests.
         public Uri Endpoint { get; init; }
+
+        public Uri HttpEndpoint { get; init; }
 
         // The link task shared by exact retries; cleared when the accepted channel is detached.
         public Task<WorkerChannel> LinkTask { get; set; }

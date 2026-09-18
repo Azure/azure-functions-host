@@ -6,18 +6,10 @@ using Newtonsoft.Json;
 namespace Azure.Functions.Host.WorkerLink;
 
 /// <summary>
-/// Request body for linking a worker pod through <c>PUT /admin/workers</c>.
+/// Request body for linking a worker pod through <c>PUT /admin/workers/{workerPodName}</c>.
 /// </summary>
 public sealed class WorkerLinkRequest
 {
-    /// <summary>
-    /// Gets or sets the required worker pod name used as the link's correlation key.
-    /// Compared using ordinal equality and kept unchanged across retries; it does not
-    /// replace the language worker's FunctionRpc <c>worker_id</c>.
-    /// </summary>
-    [JsonProperty("workerPodName")]
-    public string? WorkerPodName { get; set; }
-
     /// <summary>
     /// Gets or sets the required HTTP or HTTPS authority of WorkerProxy's runtime-facing
     /// gRPC listener. The endpoint must be reachable from this runtime.
