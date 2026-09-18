@@ -13,6 +13,7 @@ namespace Azure.Functions.ComputeSeparation.AppHost;
 internal sealed partial class HostLinkService(
     EndpointReference hostEndpoint,
     ReferenceExpression proxyEndpoint,
+    ReferenceExpression proxyHttpEndpoint,
     string workerId,
     string[] dependencies,
     ResourceNotificationService notifications,
@@ -30,11 +31,13 @@ internal sealed partial class HostLinkService(
                 ?? throw new InvalidOperationException("The Host HTTP endpoint was not allocated.");
             string grpcEndpoint = await proxyEndpoint.GetValueAsync(startup.Token)
                 ?? throw new InvalidOperationException("The WorkerProxy runtime gRPC endpoint was not allocated.");
+            string httpEndpoint = await proxyHttpEndpoint.GetValueAsync(startup.Token)
+                ?? throw new InvalidOperationException("The WorkerProxy HTTP invocation endpoint was not allocated.");
             using HttpClient client = new() { BaseAddress = new Uri(address), Timeout = Timeout.InfiniteTimeSpan };
-            using HttpResponseMessage response = await client.PutAsJsonAsync("/admin/workers", new
+            using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
             {
-                workerPodName = workerId,
-                workerGrpcEndpoint = grpcEndpoint
+                workerGrpcEndpoint = grpcEndpoint,
+                workerHttpEndpoint = httpEndpoint,
             }, startup.Token);
 
             if (!response.IsSuccessStatusCode)

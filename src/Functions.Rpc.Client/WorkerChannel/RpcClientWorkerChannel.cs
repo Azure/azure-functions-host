@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
@@ -31,6 +32,7 @@ namespace Azure.Functions.Rpc.Client;
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
     private readonly Lock _lifecycleLock = new();
+    private readonly Uri _httpEndpoint;
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private LifecycleState _lifecycleState;
 
@@ -49,7 +51,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
         IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
         IAppCapabilitiesStore appCapabilitiesStore,
-        IHttpProxyService httpProxyService)
+        IHttpProxyService httpProxyService,
+        Uri httpEndpoint = null)
         : base(
             workerId,
             ownedChannel,
@@ -67,6 +70,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             appCapabilitiesStore,
             httpProxyService)
     {
+        _httpEndpoint = httpEndpoint;
         Completion = ownedChannel.Reader.Completion;
     }
 
@@ -78,6 +82,17 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     }
 
     internal Task Completion { get; }
+
+    protected override bool SupportsHttpInvocation => _httpEndpoint is not null;
+
+    protected override IDictionary<string, string> GetEffectiveCapabilities(IDictionary<string, string> capabilities)
+    {
+        // Keep routing and RPC HTTP serialization tied to the link, including on capability reloads.
+        return new Dictionary<string, string>(capabilities, StringComparer.Ordinal)
+        {
+            [RpcWorkerConstants.HttpUri] = _httpEndpoint?.AbsoluteUri ?? string.Empty,
+        };
+    }
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
