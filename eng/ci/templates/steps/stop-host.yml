@@ -40,6 +40,10 @@ steps:
             } else {
                 Write-Host "Sending SIGTERM to host process PID: $hostProcessId"
                 & kill -s TERM $hostProcessId 2>/dev/null
+                if (-not $proc.WaitForExit(30000))
+                {
+                    throw "Host process $hostProcessId did not exit within 30 seconds."
+                }
             }
         } else {
             Write-Host "Host process (PID: $hostProcessId) is not running."

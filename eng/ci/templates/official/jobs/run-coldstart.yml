@@ -210,7 +210,8 @@ jobs:
       parameters:
         os: ${{ parameters.os }}
         displayName: Stop temporary host
-        postStopDelaySeconds: 2
+        ${{ if eq(parameters.os, 'Windows') }}:
+          postStopDelaySeconds: 2
 
   # ── Host Setup ────────────────────────────────────────────────────────────────
   # Windows: IIS/ANCM hosting (production parity). Linux: direct process launch.
