@@ -267,6 +267,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.OpenTelemetry
         }
 
         [Fact]
+        public void OpenTelemetryBuilder_ListensToServiceBusSessionProcessor()
+        {
+            using IHost host = new HostBuilder()
+                .ConfigureLogging((context, builder) =>
+                {
+                    builder.ConfigureOpenTelemetry(context, TelemetryMode.Placeholder);
+                })
+                .ConfigureServices(s =>
+                {
+                    s.AddSingleton<IEnvironment>(SystemEnvironment.Instance);
+                })
+                .Build();
+
+            host.Services.GetRequiredService<TracerProvider>();
+
+            using var source = new ActivitySource(OpenTelemetryConstants.ActivitySourceNames.ServiceBusSessionProcessor);
+            using var activity = source.StartActivity("ServiceBusSessionProcessor.ProcessSessionMessage");
+
+            Assert.NotNull(activity);
+        }
+
+        [Fact]
         public void OpenTelemetryBuilder_NotInPlaceholderMode()
         {
             IHost host;

@@ -16,6 +16,10 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Azure.Functions.Rpc.Server",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "Azure.Identity",
       "resolutionPolicy": "private"
     },

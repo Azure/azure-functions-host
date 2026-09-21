@@ -63,6 +63,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Functions.Rpc.Server\Functions.Rpc.Server.csproj" />
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
     <ProjectReference Include="..\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
   </ItemGroup>

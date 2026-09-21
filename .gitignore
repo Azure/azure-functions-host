@@ -69,6 +69,10 @@ artifacts/
 # Tye
 .tye/
 
+# Aspire CLI's local AppHost selection
+/aspire.config.json
+/tools/ComputeSeparation/AppHost/aspire.config.json
+
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 

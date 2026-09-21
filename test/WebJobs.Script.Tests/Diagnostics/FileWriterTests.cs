@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -195,15 +195,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await Task.Delay(5);
             }
 
-            await Task.Delay(100);
+            int GetLogLineCount()
+            {
+                var directory = new DirectoryInfo(_logFilePath);
+                int count = directory.EnumerateFiles().Count();
+                if (count < 1)
+                {
+                    return 0;
+                }
 
-            var directory = new DirectoryInfo(_logFilePath);
-            int count = directory.EnumerateFiles().Count();
-            Assert.Equal(1, count);
+                string logFile = directory.EnumerateFiles().First().FullName;
+                string[] fileLines = File.ReadAllLines(logFile);
+                return fileLines.Length;
+            }
 
-            string logFile = directory.EnumerateFiles().First().FullName;
-            string[] fileLines = File.ReadAllLines(logFile);
-            Assert.Equal(numLogs, fileLines.Length);
+            await TestHelpers.Await(() => GetLogLineCount() == numLogs, timeout: 5000);
         }
 
         [Fact]
@@ -239,9 +245,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // created
             File.Delete(firstLogFile.FullName);
 
-            // wait at least a second to ensure the file gets a distinct timestamp
-            await TestHelpers.Await(() => !File.Exists(firstLogFile.FullName));
-            await Task.Delay(1000);
+            // wait until the timestamp used in the filename has advanced
+            string instanceId = FileWriter.GetInstanceId();
+            await TestHelpers.Await(() =>
+            {
+                string currentLogFileName = FileWriter.GetFileName(instanceId);
+                return !File.Exists(firstLogFile.FullName) &&
+                    !string.Equals(firstLogFile.Name, currentLogFileName, StringComparison.Ordinal);
+            });
 
             fileWriter.AppendLine("test trace");
             fileWriter.Flush();

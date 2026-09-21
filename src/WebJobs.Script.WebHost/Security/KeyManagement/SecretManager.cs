@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -32,9 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Lazy<bool> _strictHISWarnFeatureEnabled = new Lazy<bool>(() => FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagStrictHISModeWarn));
         private readonly HashSet<string> _invalidNonHISKeys = new HashSet<string>();
         private ConcurrentDictionary<string, IDictionary<string, string>> _functionSecrets;
-        private ConcurrentDictionary<string, (string, AuthorizationLevel)> _authorizationCache = new ConcurrentDictionary<string, (string, AuthorizationLevel)>(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<AuthorizationCacheKey, (string, AuthorizationLevel)> _authorizationCache = new ConcurrentDictionary<AuthorizationCacheKey, (string, AuthorizationLevel)>();
         private HostSecretsInfo _hostSecrets;
         private SemaphoreSlim _hostSecretsLock = new SemaphoreSlim(1, 1);
+        private SemaphoreSlim _systemKeyCreationLock = new SemaphoreSlim(1, 1);
         private ConcurrentDictionary<string, SemaphoreSlim> _functionSecretsLocks = new ConcurrentDictionary<string, SemaphoreSlim>(StringComparer.OrdinalIgnoreCase);
         private IMetricsLogger _metricsLogger;
         private string _repositoryClassName;
@@ -76,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 (_repository as IDisposable)?.Dispose();
                 _hostSecretsLock.Dispose();
+                _systemKeyCreationLock.Dispose();
             }
         }
 
@@ -146,8 +148,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                         // before caching  any secrets, validate them
                         string masterKeyValue = hostSecrets.MasterKey?.Value;
-                        var functionKeys = hostSecrets.FunctionKeys.ToDictionary(p => p.Name, p => p.Value);
-                        var systemKeys = hostSecrets.SystemKeys.ToDictionary(p => p.Name, p => p.Value);
+                        var functionKeys = hostSecrets.FunctionKeys.ToDictionarySafe(p => p.Name, p => p.Value, StringComparer.OrdinalIgnoreCase, _logger);
+                        var systemKeys = hostSecrets.SystemKeys.ToDictionarySafe(p => p.Name, p => p.Value, StringComparer.OrdinalIgnoreCase, _logger);
                         ValidateHostSecrets(masterKeyValue, functionKeys, systemKeys);
 
                         _hostSecrets = new HostSecretsInfo
@@ -165,6 +167,68 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return _hostSecrets;
+        }
+
+        public async virtual Task<string> GetOrCreateSystemKeyAsync(string keyName)
+        {
+            var hostSecrets = await GetHostSecretsAsync();
+            if (hostSecrets.SystemKeys.TryGetValue(keyName, out string keyValue))
+            {
+                return keyValue;
+            }
+
+            // The key wasn't present in our host secrets. Creation is serialized so that concurrent callers
+            // don't each generate a different value for the same key - the last write would win, invalidating
+            // extension webhook URLs already published using an earlier value.
+            await _systemKeyCreationLock.WaitAsync();
+            try
+            {
+                // Double-check under the lock. If another caller created the key, persisting it invalidated
+                // the cache, so this reads back the newly written value.
+                hostSecrets = await GetHostSecretsAsync();
+                if (hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))
+                {
+                    return keyValue;
+                }
+
+                // Because the cache can be seeded from a one-time startup context snapshot (see
+                // StartupContextProvider) that predates this key, a miss is not a reliable signal that the key
+                // is absent from storage. Before generating a new key -- which would overwrite any existing key
+                // in storage and invalidate previously issued extension webhook URLs -- invalidate the cache and
+                // reload the authoritative secrets from storage.
+                hostSecrets = await ReloadHostSecretsAsync();
+                if (hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))
+                {
+                    _logger.LogDebug("System key '{KeyName}' was found in storage after reloading a stale host secrets cache.", keyName);
+                    return keyValue;
+                }
+
+                // The key genuinely doesn't exist, so create it on demand.
+                keyValue = SecretGenerator.GenerateSystemKeyValue();
+                var result = await AddOrUpdateFunctionSecretAsync(keyName, keyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
+
+                return result.Secret;
+            }
+            finally
+            {
+                _systemKeyCreationLock.Release();
+            }
+        }
+
+        private async Task<HostSecretsInfo> ReloadHostSecretsAsync()
+        {
+            await _hostSecretsLock.WaitAsync();
+            try
+            {
+                _hostSecrets = null;
+                _authorizationCache.Clear();
+            }
+            finally
+            {
+                _hostSecretsLock.Release();
+            }
+
+            return await GetHostSecretsAsync();
         }
 
         public async virtual Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName, bool merged = false)
@@ -239,7 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         }
 
                         // before caching any secrets, validate them
-                        var result = secrets.Keys.ToDictionary(s => s.Name, s => s.Value);
+                        var result = secrets.Keys.ToDictionarySafe(s => s.Name, s => s.Value, StringComparer.OrdinalIgnoreCase, _logger);
                         ValidateSecrets(result, SecretGenerator.FunctionKeySeed, functionName);
 
                         functionSecrets = _functionSecrets.AddOrUpdate(functionName, result, (n, r) => result);
@@ -257,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // prioritizing function specific keys
                 var hostSecrets = await GetHostSecretsAsync();
                 functionSecrets = functionSecrets.Union(hostSecrets.FunctionKeys.Where(s => !functionSecrets.ContainsKey(s.Key)))
-                    .ToDictionary(kv => kv.Key, kv => kv.Value);
+                    .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
             }
 
             return functionSecrets;
@@ -513,7 +577,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (keyValue != null)
             {
-                string cacheKey = $"{keyValue}{functionName}";
+                var cacheKey = new AuthorizationCacheKey(keyValue, functionName);
                 if (_authorizationCache.TryGetValue(cacheKey, out (string, AuthorizationLevel) value))
                 {
                     // we've already authorized this key value so return the cached result
@@ -541,6 +605,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _hostSecrets = null;
                         _functionSecrets.Clear();
                         _invalidNonHISKeys.Clear();
+                        _authorizationCache.Clear();
                         _lastCacheResetTime = DateTime.UtcNow;
 
                         return await GetAuthorizationLevelAndValidateAsync(keyValue, functionName);
@@ -932,6 +997,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // We're only serializing access to secrets per-function, not across all functions,
             // so we need to ensure we're using a single shared lock per-function.
             return _functionSecretsLocks.GetOrAdd(functionName, static k => new SemaphoreSlim(1, 1));
+        }
+
+        private readonly record struct AuthorizationCacheKey(string KeyValue, string FunctionName)
+        {
+            public bool Equals(AuthorizationCacheKey other)
+            {
+                return string.Equals(KeyValue, other.KeyValue, StringComparison.Ordinal)
+                    && string.Equals(FunctionName, other.FunctionName, StringComparison.OrdinalIgnoreCase);
+            }
+
+            public override int GetHashCode()
+            {
+                return HashCode.Combine(
+                    KeyValue is null ? 0 : StringComparer.Ordinal.GetHashCode(KeyValue),
+                    FunctionName is null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(FunctionName));
+            }
         }
     }
 }

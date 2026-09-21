@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" />
-    <PackageReference Include="Mono.Posix.NETStandard" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Rpc.Core" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Core.Api" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,8 +20,13 @@
   <ItemGroup>
     <Protobuf
       Include=".\azure-functions-language-worker-protobuf\src\proto\**\*.proto"
-      GrpcServices="server"
+      GrpcServices="both"
       ProtoRoot=".\azure-functions-language-worker-protobuf\src\proto" />
+    <Protobuf
+      Include=".\Protos\ExtensionRpc.proto"
+      AdditionalImportDirs=".\azure-functions-language-worker-protobuf\src\proto"
+      GrpcServices="both"
+      ProtoRoot=".\Protos" />
   </ItemGroup>
 
 </Project>

@@ -405,52 +405,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task DisposesScriptHost()
         {
             var metricsLogger = new TestMetricsLogger();
+            using var disposedSemaphore = new SemaphoreSlim(0, 1);
+            TaskCompletionSource stopBlock = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            var services = new ServiceCollection()
-                .AddLogging(l =>
-                {
-                    l.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>();
-                    l.AddFilter(_ => true);
-                })
-                .BuildServiceProvider();
+            var previousHost = CreateMockHost(disposedSemaphore);
+            previousHost.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            previousHost.Setup(h => h.StopAsync(It.IsAny<CancellationToken>()))
+                .Returns(stopBlock.Task);
 
-            var host = new Mock<IHost>();
+            var replacementHost = CreateMockHost();
+            replacementHost.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            replacementHost.Setup(h => h.StopAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
 
-            host.Setup(h => h.Services)
-                .Returns(services);
-
-            host.Setup(h => h.Dispose())
-                .Callback(() =>
-                {
-                    services.Dispose();
-                });
-
-            var hostBuilder = new Mock<IScriptHostBuilder>();
-            hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
-                .Returns(host.Object);
+            var hostBuilder = new OrderedScriptHostBuilder(previousHost.Object, replacementHost.Object);
 
             _webHostLoggerProvider = new TestLoggerProvider();
             _loggerFactory = new LoggerFactory();
             _loggerFactory.AddProvider(_webHostLoggerProvider);
 
             _hostService = new WebJobsScriptHostService(
-                _monitor, hostBuilder.Object, _loggerFactory,
+                _monitor, hostBuilder, _loggerFactory,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IHostApplicationLifetime>().Object,
                 _mockConfig, new TestScriptEventManager(), _hostMetrics, _mockWorkerRuntimeResolver.Object, _functionsHostingConfigOptions, _workerConfigCacheInvalidator, _mockAppCapabilitiesStore.Object);
 
-            var hostLogger = host.Object.GetTestLoggerProvider();
+            var hostLogger = previousHost.Object.GetTestLoggerProvider();
 
             await _hostService.StartAsync(CancellationToken.None);
-            await _hostService.RestartHostAsync("test", CancellationToken.None);
+
+            // Hold old-host disposal until the replacement is active to exercise the overlapping restart path.
+            try
+            {
+                await _hostService.RestartHostAsync("test", CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+                previousHost.Verify(m => m.Dispose(), Times.Never);
+            }
+            finally
+            {
+                stopBlock.TrySetResult();
+            }
+
+            bool disposalCompleted = await disposedSemaphore.WaitAsync(TimeSpan.FromSeconds(10));
 
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
+            Assert.Same(replacementHost.Object.Services, _hostService.Services);
 
-            int stopAsyncCalls = host.Invocations.Count(i => string.Equals(i.Method.Name, nameof(IHost.StopAsync), StringComparison.Ordinal));
+            int stopAsyncCalls = previousHost.Invocations.Count(i => string.Equals(i.Method.Name, nameof(IHost.StopAsync), StringComparison.Ordinal));
             Assert.True(stopAsyncCalls == 1, BuildDisposesScriptHostFailureMessage(nameof(IHost.StopAsync), 1, stopAsyncCalls, hostLogger));
 
-            int disposeCalls = host.Invocations.Count(i => string.Equals(i.Method.Name, nameof(IDisposable.Dispose), StringComparison.Ordinal));
+            int disposeCalls = previousHost.Invocations.Count(i => string.Equals(i.Method.Name, nameof(IDisposable.Dispose), StringComparison.Ordinal));
+            Assert.True(disposalCompleted, BuildDisposesScriptHostFailureMessage(nameof(IDisposable.Dispose), 1, disposeCalls, hostLogger));
             Assert.True(disposeCalls == 1, BuildDisposesScriptHostFailureMessage(nameof(IDisposable.Dispose), 1, disposeCalls, hostLogger));
 
             var allLogMessages = _webHostLoggerProvider.GetAllLogMessages();
@@ -458,6 +465,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Contains(allLogMessages,
                 m => m.FormattedMessage != null &&
                      m.FormattedMessage.Contains("ScriptHost disposed"));
+
+            await _hostService.StopAsync(CancellationToken.None);
+            replacementHost.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Once);
+            replacementHost.Verify(m => m.Dispose(), Times.Once);
         }
 
         private string BuildDisposesScriptHostFailureMessage(string methodName, int expectedCalls, int actualCalls, TestLoggerProvider hostLogger)

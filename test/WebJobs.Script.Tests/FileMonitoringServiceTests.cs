@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string tempDir = directory.Path;
                 Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
 
-                var fileMonitoringService = GetFileMonitoringService(tempDir, rootScriptPath);
+                using var fileMonitoringService = GetFileMonitoringService(tempDir, rootScriptPath);
                 Assert.False(fileMonitoringService.GetDirectorySnapshot().IsDefault);
                 Assert.True(fileMonitoringService.GetDirectorySnapshot().IsEmpty);
             }
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 string tempDir = directory.Path;
                 Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
-                var fileMonitoringService = GetFileMonitoringService(tempDir, tempDir);
+                using var fileMonitoringService = GetFileMonitoringService(tempDir, tempDir);
                 Assert.Equal(fileMonitoringService.GetDirectorySnapshot().Length, 1);
                 Assert.Equal(fileMonitoringService.GetDirectorySnapshot()[0], Path.Combine(tempDir, "Host"));
             }
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
 
                 // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
 
                 // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
 
                 // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
 
                 // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
@@ -325,7 +325,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
 
                 // Act
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
@@ -364,9 +364,119 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public static async Task AppOfflineCreated_ShutdownWinsOverRestart()
+        {
+            using (var directory = new TempDirectory())
+            using (var logDirectory = new TempDirectory())
+            {
+                string tempDir = directory.Path;
+                File.WriteAllText(Path.Combine(tempDir, ScriptConstants.AppOfflineFileName), string.Empty);
+
+                var jobHostOptions = new ScriptJobHostOptions
+                {
+                    RootLogPath = logDirectory.Path,
+                    RootScriptPath = tempDir,
+                    FileWatchingEnabled = true,
+                    WatchFiles = { "host.json" }
+                };
+                var loggerProvider = new TestLoggerProvider();
+                var loggerFactory = new LoggerFactory();
+                loggerFactory.AddProvider(loggerProvider);
+
+                int shutdownCount = 0;
+                TaskCompletionSource firstShutdown = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                TaskCompletionSource secondShutdown = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                var mockApplicationLifetime = new Mock<IScriptApplicationLifetime>();
+                mockApplicationLifetime.Setup(m => m.StopApplication()).Callback(() =>
+                {
+                    switch (Interlocked.Increment(ref shutdownCount))
+                    {
+                        case 1:
+                            firstShutdown.TrySetResult();
+                            break;
+                        case 2:
+                            secondShutdown.TrySetResult();
+                            break;
+                    }
+                });
+
+                TaskCompletionSource restart = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                var mockScriptHostManager = new Mock<IScriptHostManager>();
+                mockScriptHostManager.Setup(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .Callback<string, CancellationToken>((reason, ct) => restart.TrySetResult())
+                    .Returns(Task.CompletedTask);
+
+                var mockEventManager = new ScriptEventManager();
+                var environment = new TestEnvironment();
+
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                    loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
+                await fileMonitoringService.StartAsync(CancellationToken.None);
+
+                mockEventManager.Publish(new FileEvent(EventSources.ScriptFiles,
+                    new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, ScriptConstants.AppOfflineFileName)));
+                await firstShutdown.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.Single(loggerProvider.GetAllLogMessages(),
+                    m => string.Equals(m.FormattedMessage, "Host configuration has changed. Signaling shutdown", StringComparison.Ordinal));
+                Assert.DoesNotContain(loggerProvider.GetAllLogMessages(),
+                    m => string.Equals(m.FormattedMessage, "Host configuration has changed. Signaling restart", StringComparison.Ordinal));
+
+                mockEventManager.Publish(new FileEvent(EventSources.ScriptFiles,
+                    new FileSystemEventArgs(WatcherChangeTypes.Changed, tempDir, "host.json")));
+
+                Task completedTask = await Task.WhenAny(secondShutdown.Task, restart.Task).WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.Same(secondShutdown.Task, completedTask);
+                mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Exactly(2));
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+                Assert.DoesNotContain(loggerProvider.GetAllLogMessages(),
+                    m => string.Equals(m.FormattedMessage, "Host configuration has changed. Signaling restart", StringComparison.Ordinal));
+            }
+        }
+
+        [Fact]
+        public static async Task AppOfflineDeleted_RestartsHost()
+        {
+            using (var directory = new TempDirectory())
+            using (var logDirectory = new TempDirectory())
+            {
+                string tempDir = directory.Path;
+                var jobHostOptions = new ScriptJobHostOptions
+                {
+                    RootLogPath = logDirectory.Path,
+                    RootScriptPath = tempDir,
+                    FileWatchingEnabled = true
+                };
+                var loggerFactory = new LoggerFactory();
+                var mockApplicationLifetime = new Mock<IScriptApplicationLifetime>();
+
+                TaskCompletionSource restart = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                var mockScriptHostManager = new Mock<IScriptHostManager>();
+                mockScriptHostManager.Setup(m => m.RestartHostAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                    .Callback<string, CancellationToken>((reason, ct) => restart.TrySetResult())
+                    .Returns(Task.CompletedTask);
+
+                var mockEventManager = new ScriptEventManager();
+                var environment = new TestEnvironment();
+
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                    loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
+                await fileMonitoringService.StartAsync(CancellationToken.None);
+
+                mockEventManager.Publish(new FileEvent(EventSources.ScriptFiles,
+                    new FileSystemEventArgs(WatcherChangeTypes.Deleted, tempDir, ScriptConstants.AppOfflineFileName)));
+
+                await restart.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                string expectedReason = $"File change of type 'Deleted' detected for '{Path.Combine(tempDir, ScriptConstants.AppOfflineFileName)}'";
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(expectedReason, default), Times.Once);
+                mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Never);
+            }
+        }
+
+        [Fact]
         public static async Task OnFileChanged_DirectoryDeleted_DoesNotThrow_AndTriggersRestart()
         {
             using (var directory = new TempDirectory())
+            using (var logDirectory = new TempDirectory())
             {
                 // The root script path is intentionally left empty. Deleting an empty watched
                 // directory does not raise child change notifications from the real file watcher,
@@ -377,7 +487,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var jobHostOptions = new ScriptJobHostOptions
                 {
-                    RootLogPath = tempDir,
+                    RootLogPath = logDirectory.Path,
                     RootScriptPath = tempDir,
                     FileWatchingEnabled = true
                 };
@@ -396,7 +506,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockEventManager = new ScriptEventManager();
                 var environment = new TestEnvironment();
 
-                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                using FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
                     loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 

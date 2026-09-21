@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         // These are changed often and controlled by us, so we don't need to fail if they are updated.
         private static readonly string[] _excludedList = new[]
         {
+            "Azure.Functions.Rpc.Server.dll",
             "Microsoft.Azure.WebJobs.Script.dll",
             "Microsoft.Azure.WebJobs.Script.Grpc.dll",
             "Microsoft.Azure.WebJobs.Script.WebHost.dll",

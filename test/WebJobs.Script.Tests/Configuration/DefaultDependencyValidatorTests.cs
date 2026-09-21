@@ -165,21 +165,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 channel = null;
                 return false;
             }
-
-            bool IScriptEventManager.TryAddWorkerState<T>(string workerId, T state)
-                => false;
-
-            bool IScriptEventManager.TryGetWorkerState<T>(string workerId, out T state)
-            {
-                state = default;
-                return false;
-            }
-
-            bool IScriptEventManager.TryRemoveWorkerState<T>(string workerId, out T state)
-            {
-                state = default;
-                return false;
-            }
         }
 
         private class MyMetricsLogger : IMetricsLogger

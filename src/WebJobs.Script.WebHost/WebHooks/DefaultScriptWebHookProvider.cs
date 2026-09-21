@@ -86,17 +86,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private async Task<string> GetOrCreateExtensionKey(string extensionName)
         {
             ISecretManager secretManager = _secretManagerProvider.Current;
-            var hostSecrets = await secretManager.GetHostSecretsAsync();
             string keyName = GetKeyName(extensionName);
-            string keyValue;
-            if (!hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))
-            {
-                // if the requested secret doesn't exist, create it on demand
-                keyValue = SecretGenerator.GenerateSystemKeyValue();
-                await secretManager.AddOrUpdateFunctionSecretAsync(keyName, keyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
-            }
 
-            return keyValue;
+            return await secretManager.GetOrCreateSystemKeyAsync(keyName);
         }
 
         internal static string GetKeyName(string extensionName)

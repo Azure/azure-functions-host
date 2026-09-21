@@ -3,10 +3,13 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    internal enum FunctionInvocationDispatcherState
+    /// <summary>
+    /// Describes the lifecycle state of an invocation dispatcher.
+    /// </summary>
+    public enum FunctionInvocationDispatcherState
     {
         /// <summary>
-        /// The FunctionDispatcher has not yet been created
+        /// The FunctionDispatcher has not yet been created.
         /// </summary>
         Default,
 
@@ -28,12 +31,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         WorkerProcessRestarting,
 
         /// <summary>
-        /// The FunctionDispatcher is disposing
+        /// The FunctionDispatcher is disposing.
         /// </summary>
         Disposing,
 
         /// <summary>
-        /// The FunctionDispatcher is disposed
+        /// The FunctionDispatcher is disposed.
         /// </summary>
         Disposed
     }

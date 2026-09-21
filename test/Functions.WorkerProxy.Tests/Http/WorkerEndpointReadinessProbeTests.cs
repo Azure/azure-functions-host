@@ -1,0 +1,149 @@
+// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Http;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Xunit;
+
+namespace Azure.Functions.WorkerProxy.Tests;
+
+public class WorkerEndpointReadinessProbeTests
+{
+    [Fact]
+    public async Task WaitForReadyAsync_ListeningDestination_ReturnsReadyAndCachesSuccess()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+        Uri destination = new($"http://localhost:{((IPEndPoint)listener.LocalEndpoint).Port}");
+        WorkerEndpointReadinessProbe probe = CreateProbe();
+
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await probe.WaitForReadyAsync(destination, CancellationToken.None));
+        listener.Stop();
+        Assert.True(probe.IsKnownReady(destination));
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await probe.WaitForReadyAsync(destination, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Invalidate_KnownDestination_RemovesOnlySpecifiedDestination()
+    {
+        using TcpListener firstListener = new(IPAddress.Loopback, 0);
+        using TcpListener secondListener = new(IPAddress.Loopback, 0);
+        firstListener.Start();
+        secondListener.Start();
+        Uri firstDestination = new($"http://localhost:{((IPEndPoint)firstListener.LocalEndpoint).Port}");
+        Uri secondDestination = new($"http://localhost:{((IPEndPoint)secondListener.LocalEndpoint).Port}");
+        WorkerEndpointReadinessProbe probe = CreateProbe();
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await probe.WaitForReadyAsync(firstDestination, CancellationToken.None));
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await probe.WaitForReadyAsync(secondDestination, CancellationToken.None));
+
+        probe.Invalidate(firstDestination);
+
+        Assert.False(probe.IsKnownReady(firstDestination));
+        Assert.True(probe.IsKnownReady(secondDestination));
+    }
+
+    [Fact]
+    public async Task WaitForReadyAsync_LocalhostBoundToIpv6_ReturnsReady()
+    {
+        using TcpListener listener = new(IPAddress.IPv6Loopback, 0);
+        listener.Server.DualMode = false;
+        listener.Start();
+        Uri destination = new($"http://localhost:{((IPEndPoint)listener.LocalEndpoint).Port}");
+        WorkerEndpointReadinessProbe probe = CreateProbe();
+
+        Assert.Equal(
+            WorkerEndpointReadinessResult.Ready,
+            await probe.WaitForReadyAsync(destination, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task WaitForReadyAsync_CallerCancellation_Throws()
+    {
+        WorkerEndpointReadinessProbe probe = CreateProbe();
+        using CancellationTokenSource cancellation = new();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => probe.WaitForReadyAsync(new Uri("http://localhost:1"), cancellation.Token).AsTask());
+    }
+
+    [Fact]
+    public async Task WaitForReadyAsync_UnresolvableDestination_ReturnsNameResolutionFailed()
+    {
+        WorkerEndpointReadinessProbe probe = CreateProbe();
+
+        Assert.Equal(
+            WorkerEndpointReadinessResult.NameResolutionFailed,
+            await probe.WaitForReadyAsync(new Uri("http://host.invalid"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task WaitForReadyAsync_DestinationBindsDuringBudget_ReturnsReady()
+    {
+        int port = GetUnusedPort();
+        WorkerEndpointReadinessProbe probe = CreateProbe(
+            TimeSpan.FromMilliseconds(10),
+            TimeSpan.FromSeconds(2));
+        using TcpListener listener = new(IPAddress.Loopback, port);
+        ValueTask<WorkerEndpointReadinessResult> ready = probe.WaitForReadyAsync(
+            new Uri($"http://localhost:{port}"),
+            CancellationToken.None);
+        await Task.Delay(100);
+        listener.Start();
+
+        Assert.Equal(WorkerEndpointReadinessResult.Ready, await ready);
+    }
+
+    [Fact]
+    public async Task WaitForReadyAsync_DestinationNeverBinds_ReturnsBoundedFailure()
+    {
+        int port = GetUnusedPort();
+        WorkerEndpointReadinessProbe probe = CreateProbe(
+            TimeSpan.FromMilliseconds(10),
+            TimeSpan.FromMilliseconds(100));
+
+        Assert.Contains(
+            await probe.WaitForReadyAsync(new Uri($"http://localhost:{port}"), CancellationToken.None),
+            [
+                WorkerEndpointReadinessResult.ConnectionRefused,
+                WorkerEndpointReadinessResult.Timeout
+            ]);
+    }
+
+    private static int GetUnusedPort()
+    {
+        using TcpListener listener = new(IPAddress.Loopback, 0);
+        listener.Start();
+
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
+
+    private static WorkerEndpointReadinessProbe CreateProbe(
+        TimeSpan? retryDelay = null,
+        TimeSpan? totalTimeout = null)
+    {
+        WorkerEndpointReadinessProbeOptions options = new()
+        {
+            RetryDelay = retryDelay ?? TimeSpan.FromMilliseconds(25),
+            TotalTimeout = totalTimeout ?? TimeSpan.FromSeconds(5)
+        };
+
+        return new WorkerEndpointReadinessProbe(
+            Options.Create(options),
+            NullLogger<WorkerEndpointReadinessProbe>.Instance);
+    }
+}

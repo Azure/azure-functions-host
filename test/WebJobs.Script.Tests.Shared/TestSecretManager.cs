@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -67,6 +68,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             string resultSecret = secret ?? "generated";
             return Task.FromResult(new KeyOperationResult(resultSecret, OperationResult.Created));
+        }
+
+        public virtual async Task<string> GetOrCreateSystemKeyAsync(string keyName)
+        {
+            var hostSecrets = await GetHostSecretsAsync();
+            if (hostSecrets.SystemKeys.TryGetValue(keyName, out string keyValue))
+            {
+                return keyValue;
+            }
+
+            keyValue = SecretGenerator.GenerateSystemKeyValue();
+            var result = await AddOrUpdateFunctionSecretAsync(keyName, keyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
+
+            return result.Secret;
         }
 
         public virtual Task<KeyOperationResult> SetMasterKeyAsync(string value)

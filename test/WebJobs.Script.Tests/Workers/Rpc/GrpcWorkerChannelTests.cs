@@ -6,8 +6,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
@@ -18,7 +20,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.OpenTelemetry;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -49,6 +50,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly string _workerId = "testWorkerId";
         private readonly string _scriptRootPath = "c:\\testdir";
         private readonly IScriptEventManager _eventManager = new ScriptEventManager();
+        private readonly ServerDuplexChannelRegistry _channelRegistry = new();
+        private readonly DuplexChannel<StreamingMessage> _channelLease;
+        private readonly FunctionRpcChannelEndpoints _serviceEndpoints;
         private readonly Mock<IScriptHostManager> _mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
         private readonly TestMetricsLogger _metricsLogger = new TestMetricsLogger();
         private readonly Mock<IWorkerConsoleLogSource> _mockConsoleLogger = new Mock<IWorkerConsoleLogSource>();
@@ -73,10 +77,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public GrpcWorkerChannelTests(ITestOutputHelper testOutput)
         {
-            _eventManager.AddGrpcChannels(_workerId);
+            _channelLease = _channelRegistry.CreateLease(_workerId);
+            Assert.True(_channelRegistry.TryGetServiceEndpoints(_workerId, out _serviceEndpoints));
             _testOutput = testOutput;
             _logger = new TestLogger("FunctionDispatcherTests", testOutput: testOutput);
-            _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
+            _testFunctionRpcService = new TestFunctionRpcService(_channelRegistry, _workerId, _logger, _expectedLogMsg);
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _testWorkerConfig.CountOptions.ProcessStartupTimeout = TimeSpan.FromSeconds(5);
             _testWorkerConfig.CountOptions.InitializationTimeout = TimeSpan.FromSeconds(5);
@@ -132,6 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
+               _channelLease,
                _eventManager,
                _mockScriptHostManager.Object,
                _testWorkerConfig,
@@ -223,6 +229,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task StartWorkerProcessAsync_ChannelCompletesBeforeInitialization_Throws()
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            Task start = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+
+            Assert.True(_serviceEndpoints.WorkerToHostWriter.TryComplete());
+
+            InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => start)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal("The RPC channel closed unexpectedly before the worker initialized.", exception.Message);
+            Assert.False(start.IsCanceled);
+        }
+
+        [Fact]
         public async Task StartWorkerProcessAsync_TimesOut()
         {
             await CreateDefaultWorkerChannel(autoStart: false); // suppress for timeout
@@ -239,6 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
+               _channelLease,
                _eventManager,
                _mockScriptHostManager.Object,
                _testWorkerConfig,
@@ -282,13 +303,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
 
             // Send worker init request and enable the capabilities
-            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
             _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.WorkerInitRequest);
-            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _workerChannel.SendWorkerInitRequest(startStreamMessage);
 
             var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
 
             _workerChannel.Dispose();
+            Assert.True(_channelLease.Reader.Completion.IsCompletedSuccessfully);
+            Assert.True(_serviceEndpoints.HostToWorkerReader.Completion.IsCompletedSuccessfully);
+            Assert.False(_channelRegistry.TryGetServiceEndpoints(_workerId, out _));
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
         }
@@ -302,6 +325,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var traces = _logger.GetLogMessages();
             var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
             Assert.False(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
+        }
+
+        [Fact]
+        public async Task DisposeAsync_WaitsForOwnedChannelAndDisposesOnce()
+        {
+            var channel = new ControlledDuplexChannel();
+            _workerChannel = new GrpcWorkerChannel(
+                _workerId,
+                channel,
+                _eventManager,
+                _mockScriptHostManager.Object,
+                _testWorkerConfig,
+                _mockRpcWorkerProcess.Object,
+                _logger,
+                _metricsLogger,
+                0,
+                _testEnvironment,
+                _hostOptionsMonitor,
+                _sharedMemoryManager,
+                _workerConcurrencyOptions,
+                _hostingConfigOptions,
+                _mockAppCapabilitiesStore.Object,
+                _httpProxyService);
+
+            ValueTask firstDispose = _workerChannel.DisposeAsync();
+            ValueTask secondDispose = _workerChannel.DisposeAsync();
+
+            Assert.False(firstDispose.IsCompleted);
+            Assert.False(secondDispose.IsCompleted);
+            channel.AllowDispose();
+            await Task.WhenAll(firstDispose.AsTask(), secondDispose.AsTask());
+
+            Assert.Equal(1, channel.DisposeCount);
+
+            await _channelLease.DisposeAsync();
         }
 
         [Fact]
@@ -360,9 +418,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 StartStream = startStream
             };
-            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
             _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.WorkerInitRequest);
-            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _workerChannel.SendWorkerInitRequest(startStreamMessage);
 
             await TestHelpers.Await(
                 () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)),
@@ -744,6 +801,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Guid invocationId = Guid.NewGuid();
             GrpcWorkerChannel channel = new GrpcWorkerChannel(
                _workerId,
+               _channelLease,
                _eventManager,
                _mockScriptHostManager.Object,
                _testWorkerConfig,
@@ -877,8 +935,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 StartStream = startStream
             };
-            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
-            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _workerChannel.SendWorkerInitRequest(startStreamMessage);
             _testFunctionRpcService.PublishWorkerInitResponseEvent(new Dictionary<string, string>() { { RpcWorkerConstants.SupportsLoadResponseCollection, "true" } });
 
             _metricsLogger.ClearCollections();
@@ -949,6 +1006,70 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task GetFunctionMetadata_MetadataRequestError_PublishesWorkerErrorWithoutCompletingMetadata()
+        {
+            await CreateDefaultWorkerChannel();
+            TaskCompletionSource<WorkerErrorEvent> workerError = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            using IDisposable subscription = _eventManager.OfType<WorkerErrorEvent>().Subscribe(error => workerError.TrySetResult(error));
+            Task<List<RawFunctionMetadata>> metadata = _workerChannel.GetFunctionMetadata();
+            TimeoutException expectedException = new("Metadata request timed out.");
+
+            _workerChannel.HandleWorkerMetadataRequestError(expectedException);
+
+            WorkerErrorEvent errorEvent = await workerError.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Same(expectedException, errorEvent.Exception);
+            Assert.Equal(_workerId, errorEvent.WorkerId);
+            Assert.False(metadata.IsCompleted);
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadata_ShutdownWithWorkerException_LeavesMetadataPending()
+        {
+            await CreateDefaultWorkerChannel();
+            Task<List<RawFunctionMetadata>> metadata = _workerChannel.GetFunctionMetadata();
+            WorkerProcessExitException expectedException = new("Language Worker Process exited.") { Pid = 910 };
+
+            _workerChannel.Shutdown(expectedException);
+
+            Assert.False(metadata.IsCompleted);
+
+            _workerChannel.ProcessFunctionMetadataResponses(new()
+            {
+                Result = new() { Status = StatusResult.Types.Status.Success },
+                UseDefaultMetadataIndexing = false,
+            });
+
+            Assert.Empty(await metadata.WaitAsync(TimeSpan.FromSeconds(3)));
+        }
+
+        [Fact]
+        public async Task Dispose_WithPendingMetadata_LeavesMetadataPending()
+        {
+            await CreateDefaultWorkerChannel();
+            Task<List<RawFunctionMetadata>> metadata = _workerChannel.GetFunctionMetadata();
+
+            _workerChannel.Dispose();
+
+            Assert.False(metadata.IsCompleted);
+        }
+
+        [Fact]
+        public async Task GetFunctionMetadata_TransportFailure_LeavesMetadataPending()
+        {
+            await CreateDefaultWorkerChannel();
+            Task<List<RawFunctionMetadata>> metadata = _workerChannel.GetFunctionMetadata();
+
+            Assert.True(_serviceEndpoints.WorkerToHostWriter.TryComplete(new InvalidOperationException("Transport failed.")));
+            await TestHelpers.Await(
+                () => _logger.GetLogMessages().Any(message =>
+                    string.Equals(message.FormattedMessage, "Error processing inbound messages", StringComparison.Ordinal)),
+                timeout: 3000,
+                pollingInterval: 50);
+
+            Assert.False(metadata.IsCompleted);
+        }
+
+        [Fact]
         public async Task SendLoadRequests_IncludesMetadataProperties()
         {
             await CreateDefaultWorkerChannel();
@@ -967,7 +1088,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionLoadRequest,
                (m) =>
                {
-                   Assert.Contains("\"worker.functionId\": \"fn1\"", m.Message.ToString());
+                   Assert.Contains("\"worker.functionId\": \"fn1\"", m.ToString());
                });
         }
 
@@ -1266,9 +1387,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var expectedLog = "InvocationResponse received for invocation: 'TestInvocationId'";
             await TestHelpers.Await(
-                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog)),
+                () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, expectedLog, StringComparison.Ordinal)),
                 timeout: 3000,
                 pollingInterval: 50);
+
+            var traces = _logger.GetLogMessages();
+            var invocationResponseLog = Assert.Single(traces, m => string.Equals(m.FormattedMessage, expectedLog, StringComparison.Ordinal));
+            Assert.Equal(LogLevel.Trace, invocationResponseLog.Level);
+            Assert.Equal(821, invocationResponseLog.EventId.Id);
+            Assert.Equal("InvocationResponseReceived", invocationResponseLog.EventId.Name);
+
+            var channelReceivedLog = Assert.Single(traces, m => string.Equals(
+                m.FormattedMessage, $"[channel] received {_workerId}: InvocationResponse", StringComparison.Ordinal));
+            Assert.Equal(LogLevel.Trace, channelReceivedLog.Level);
+            Assert.Equal(820, channelReceivedLog.EventId.Id);
+            Assert.Equal("ChannelReceivedMessage", channelReceivedLog.EventId.Name);
         }
 
         [Fact]
@@ -1289,6 +1422,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
+
+            Assert.Contains(traces, m => m.Level == LogLevel.Trace && string.Equals(
+                m.FormattedMessage, $"[channel] received {_workerId}: FunctionLoadResponse", StringComparison.Ordinal));
 
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "FunctionInvocationBuffer TestFunctionId1");
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "FunctionInvocationBuffer TestFunctionId2");
@@ -1324,8 +1460,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 }
             };
 
-            var rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
-            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _workerChannel.SendWorkerInitRequest(startStreamMessage);
 
             var functionMetadataList = GetTestFunctionsList("node", numberOfFunctions: 250);
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadataList);
@@ -1372,8 +1507,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 StartStream = startStream
             };
 
-            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
-            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _workerChannel.SendWorkerInitRequest(startStreamMessage);
 
             var functionMetadatas = GetTestFunctionsList("node");
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
@@ -1413,8 +1547,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 StartStream = startStream
             };
 
-            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
-            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _workerChannel.SendWorkerInitRequest(startStreamMessage);
 
             var functionMetadatas = GetTestFunctionsList("node");
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
@@ -1641,6 +1774,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
                _workerId,
+               _channelLease,
                _eventManager,
                _mockScriptHostManager.Object,
                config,
@@ -1683,6 +1817,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, null);
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
                _workerId,
+               _channelLease,
                _eventManager,
                _mockScriptHostManager.Object,
                config,
@@ -1716,7 +1851,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             RpcTraceContext ctx = null;
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.InvocationRequest, evt =>
             {
-                ctx = evt.Message.InvocationRequest.TraceContext;
+                ctx = evt.InvocationRequest.TraceContext;
             });
 
             await TestHelpers.Await(
@@ -1747,20 +1882,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             activity.Start();
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
 
-            OutboundGrpcEvent grpcEvent = null;
+            StreamingMessage grpcMessage = null;
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.InvocationRequest, evt =>
             {
-                grpcEvent = evt;
+                grpcMessage = evt;
             });
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
 
             await TestHelpers.Await(
-                () => grpcEvent is not null,
+                () => grpcMessage is not null,
                 timeout: 3000,
                 pollingInterval: 50);
 
             activity.Stop();
-            var attribs = grpcEvent.Message.InvocationRequest.TraceContext.Attributes;
+            var attribs = grpcMessage.InvocationRequest.TraceContext.Attributes;
 
             Assert.True(attribs.TryGetValue(ScriptConstants.LiveLogsSessionAIKey, out var aiKey), "ScriptConstants.LiveLogsSessionAIKey");
             Assert.Equal(sessionId, aiKey);
@@ -2142,7 +2277,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 InvocationRequest invocationRequest = null;
                 _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.InvocationRequest, evt =>
                 {
-                    invocationRequest = evt.Message.InvocationRequest;
+                    invocationRequest = evt.InvocationRequest;
                 });
 
                 // Act
@@ -2197,8 +2332,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return GetTestFunctionsList(runtime, numberOfFunctions: 2, addWorkerProperties);
         }
 
-        private GrpcEvent CreateRpcLogEvent(RpcLog.Types.RpcLogCategory logCategory)
-            => new(_workerId, new StreamingMessage() { RpcLog = new RpcLog() { LogCategory = logCategory, InvocationId = Guid.NewGuid().ToString() } });
+        private static StreamingMessage CreateRpcLogEvent(RpcLog.Types.RpcLogCategory logCategory)
+            => new() { RpcLog = new RpcLog() { LogCategory = logCategory, InvocationId = Guid.NewGuid().ToString() } };
 
         public static ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource,
              CancellationToken? token = null, ILogger logger = null, string scriptRootPath = null)
@@ -2405,6 +2540,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             });
 
             return functionMetadata;
+        }
+
+        private sealed class ControlledDuplexChannel : DuplexChannel<StreamingMessage>
+        {
+            private readonly TaskCompletionSource _allowDispose = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            private readonly Channel<StreamingMessage> _messages = Channel.CreateUnbounded<StreamingMessage>();
+            private int _disposeCount;
+
+            public ControlledDuplexChannel()
+            {
+                Reader = _messages.Reader;
+                Writer = _messages.Writer;
+            }
+
+            public int DisposeCount => Interlocked.CompareExchange(ref _disposeCount, 0, 0);
+
+            public void AllowDispose() => _allowDispose.TrySetResult();
+
+            protected override async ValueTask DisposeAsyncCore()
+            {
+                Interlocked.Increment(ref _disposeCount);
+                await _allowDispose.Task;
+                _messages.Writer.TryComplete();
+            }
         }
     }
 }

@@ -69,6 +69,7 @@ namespace Microsoft.WebJobs.Script.Tests
         // Non-E2E test groups for process isolation
         public const string NonE2ESpecialization = "NonE2E_Specialization";
         public const string NonE2EWebHost = "NonE2E_WebHost";
+        public const string NonE2EIisExpress = "NonE2E_IisExpress";
         public const string NonE2EAppInsights = "NonE2E_AppInsights";
         public const string NonE2ETimeout = "NonE2E_Timeout";
         public const string NonE2EControllers = "NonE2E_Controllers";

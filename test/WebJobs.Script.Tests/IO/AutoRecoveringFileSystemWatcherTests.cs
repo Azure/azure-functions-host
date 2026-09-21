@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -65,6 +65,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
         public async Task AutoRecovery_StopsWhenDisposed()
         {
             await RecoveryTest(4, true);
+        }
+
+        [Fact]
+        public void DisposedWatcher_DoesNotSendNotification()
+        {
+            using var directory = new TempDirectory();
+            using var watcher = new TestFileSystemWatcher(directory.Path);
+            watcher.Changed += (_, _) => throw new InvalidOperationException("A disposed watcher must not invoke callbacks.");
+
+            watcher.Dispose();
+            watcher.TriggerChange(new FileSystemEventArgs(WatcherChangeTypes.Changed, directory.Path, "file.txt"));
         }
 
         public async Task RecoveryTest(int expectedNumberOfAttempts, bool isFailureScenario)
@@ -213,6 +224,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.IO
             internal void TriggerHandleError(ErrorEventArgs args)
             {
                 OnFileWatcherError(args);
+            }
+
+            internal void TriggerChange(FileSystemEventArgs args)
+            {
+                OnFileChanged(this, args);
             }
         }
     }

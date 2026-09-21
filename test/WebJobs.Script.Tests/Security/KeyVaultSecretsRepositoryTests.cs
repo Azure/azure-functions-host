@@ -227,6 +227,96 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return mockClient;
         }
 
+        [Theory]
+        [InlineData("eventgrid-095extension", true)] // canonical: underscore encoded as -095
+        [InlineData("simplekey", true)] // no escapes at all
+        [InlineData("key-045name", true)] // canonical: hyphen encoded as -045
+        [InlineData("-069ventgrid-095extension", false)] // non-canonical: -069 is 'E' (letter, should not be escaped)
+        [InlineData("-048key", false)] // non-canonical: -048 is '0' (digit, should not be escaped)
+        [InlineData("-097bc", false)] // non-canonical: -097 is 'a' (letter, should not be escaped)
+        public void IsCanonicalToken_ValidatesRoundTrip(string token, bool expected)
+        {
+            Assert.Equal(expected, KeyVaultSecretsRepository.IsCanonicalToken(token));
+        }
+
+        [Fact]
+        public async Task ReadHostKeys_SkipsNonCanonicalSystemKey()
+        {
+            // Arrange: one canonical and one non-canonical system key
+            var keyVaultSecrets = new List<KeyVaultSecret>
+            {
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--masterKey--master"), "masterVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--systemKey--eventgrid-095extension"), "canonicalVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--systemKey---069ventgrid-095extension"), "forgedVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey--default"), "funcVal"),
+            };
+
+            using var secretSentinelDirectory = new TempDirectory();
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+
+            // Act
+            var secrets = await repository.ReadAsync(ScriptSecretsType.Host, string.Empty);
+            var hostSecrets = secrets as HostSecrets;
+
+            // Assert: canonical system key is present
+            Assert.Single(hostSecrets.SystemKeys);
+            Assert.Equal("eventgrid_extension", hostSecrets.SystemKeys[0].Name);
+            Assert.Equal("canonicalVal", hostSecrets.SystemKeys[0].Value);
+
+            // Assert: forged non-canonical key was skipped
+            Assert.DoesNotContain(hostSecrets.SystemKeys, k => string.Equals(k.Name, "Eventgrid_extension", StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task ReadHostKeys_SkipsNonCanonicalFunctionKey()
+        {
+            var keyVaultSecrets = new List<KeyVaultSecret>
+            {
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--masterKey--master"), "masterVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey--default"), "funcVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey---068efault"), "forgedFuncVal"),
+            };
+
+            using var secretSentinelDirectory = new TempDirectory();
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+
+            var secrets = await repository.ReadAsync(ScriptSecretsType.Host, string.Empty);
+            var hostSecrets = secrets as HostSecrets;
+
+            Assert.Single(hostSecrets.FunctionKeys);
+            Assert.Equal("default", hostSecrets.FunctionKeys[0].Name);
+            Assert.Equal("funcVal", hostSecrets.FunctionKeys[0].Value);
+        }
+
+        [Fact]
+        public async Task ReadFunctionKeys_SkipsNonCanonicalKey()
+        {
+            string functionName = "Function1";
+            string prefix = $"function--{functionName}--";
+
+            var keyVaultSecrets = new List<KeyVaultSecret>
+            {
+                SecretModelFactory.KeyVaultSecret(new SecretProperties($"{prefix}mykey"), "goodVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties($"{prefix}-077ykey"), "forgedVal"),
+            };
+
+            using var secretSentinelDirectory = new TempDirectory();
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+
+            var secrets = await repository.ReadAsync(ScriptSecretsType.Function, functionName);
+            var functionSecrets = secrets as FunctionSecrets;
+
+            Assert.Single(functionSecrets.Keys);
+            Assert.Equal("mykey", functionSecrets.Keys[0].Name);
+            Assert.Equal("goodVal", functionSecrets.Keys[0].Value);
+        }
+
         public class FindSecretsDataProvider
         {
             public static IEnumerable<object[]> TestCases

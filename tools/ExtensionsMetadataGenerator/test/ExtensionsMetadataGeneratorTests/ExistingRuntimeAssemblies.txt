@@ -1,3 +1,4 @@
+Azure.Functions.Rpc.Server.dll
 Microsoft.ApplicationInsights.dll
 Microsoft.AspNetCore.dll
 Microsoft.AspNetCore.Antiforgery.dll

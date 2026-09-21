@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <AssemblyName>Azure.Functions.WorkerProxy.Tests</AssemblyName>
+    <RootNamespace>Azure.Functions.WorkerProxy.Tests</RootNamespace>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption
+      Include="Microsoft.AspNetCore.Hosting.SuppressActivityOpenTelemetryData"
+      Value="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" VersionOverride="3.35.1" />
+    <PackageReference Include="Grpc.AspNetCore" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Core.Api" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Net.Client" VersionOverride="2.76.0" />
+    <PackageReference Include="Grpc.Tools" VersionOverride="2.76.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" VersionOverride="10.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <PackageReference Include="Yarp.ReverseProxy" VersionOverride="2.3.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Functions.WorkerProxy\Functions.WorkerProxy.csproj" />
+  </ItemGroup>
+
+</Project>

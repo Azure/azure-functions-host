@@ -376,6 +376,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Azure.Functions.Rpc.Server",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "Microsoft.Azure.WebJobs.Script",
       "resolutionPolicy": "minorMatchOrLower"
     },

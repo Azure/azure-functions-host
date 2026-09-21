@@ -3,6 +3,7 @@
 
 using System;
 using System.IO.Abstractions;
+using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +13,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
+using Microsoft.Azure.WebJobs.Script.Composition;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -20,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
+using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -80,6 +83,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static void AddWebJobsScriptHost(this IServiceCollection services, IConfiguration configuration)
         {
+            services.AddWebJobsScriptHost(configuration, ServerWorkerComposition.Instance);
+        }
+
+        /// <summary>
+        /// Adds the WebHost and ScriptHost services using the specified host composition.
+        /// </summary>
+        /// <param name="services">The service collection to update.</param>
+        /// <param name="configuration">The WebHost configuration.</param>
+        /// <param name="composition">The statically selected host composition.</param>
+        public static void AddWebJobsScriptHost(
+            this IServiceCollection services,
+            IConfiguration configuration,
+            IWorkerComposition composition)
+        {
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(composition);
+
+            if (services.Any(descriptor => descriptor.ServiceType == typeof(SelectedWorkerComposition)))
+            {
+                throw new InvalidOperationException("A Functions Host composition has already been selected.");
+            }
+
+            services.AddSingleton(new SelectedWorkerComposition(composition));
             services.AddHttpContextAccessor();
             services.AddResponseCompression(options =>
             {
@@ -89,13 +115,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
             services.AddWebJobsScriptHostRouting();
 
-            services.AddMvc(o =>
-            {
-                o.EnableEndpointRouting = false;
-                o.Filters.Add(new ArmExtensionResourceFilter());
-            })
-            .AddNewtonsoftJson()
-            .AddXmlDataContractSerializerFormatters();
+            IMvcBuilder mvcBuilder = services
+                .AddMvc(o =>
+                {
+                    o.EnableEndpointRouting = false;
+                    o.Filters.Add(new ArmExtensionResourceFilter());
+                })
+                .AddNewtonsoftJson()
+                .AddXmlDataContractSerializerFormatters();
 
             // Must stop last so the JobHost drains in-flight invocations before worker channels are
             // torn down (via HostedServiceManager -> RpcInitializationService). The Generic Host stops
@@ -195,20 +222,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
             services.AddSingleton<IFunctionDataCache, FunctionDataCache>();
 
-            // Grpc
-            services.AddScriptGrpc();
-
             // Register common services with the WebHost
-            // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);
-            services.AddCommonRpcServices();
 
             services.AddSingleton<IHostFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
 
             // Core script host services
             services.AddSingleton<WebJobsScriptHostService>();
-            services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
+
+            // The composition registers worker lifecycle services before ScriptHost activation so workers start first
+            // and stop only after the ScriptHost has drained in-flight invocations.
+            composition.ConfigureWebHostServices(services, mvcBuilder);
 
             // Performs function assembly analysis to generete log use of unoptimized assemblies.
             services.AddSingleton<IHostedService, AssemblyAnalyzer.AssemblyAnalysisService>();

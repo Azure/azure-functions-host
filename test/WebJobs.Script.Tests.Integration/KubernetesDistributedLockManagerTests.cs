@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
@@ -87,6 +88,95 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(lockId, lockHandle.LockId);
             Assert.Equal(instanceId, ((KubernetesLockHandle)lockHandle).Owner);
+        }
+
+        [Fact]
+        public async Task AcquireAndRenewLockRequest_PreservesLeaseDurationInSeconds()
+        {
+            const string lockId = "test-lock";
+            const string ownerId = "test-owner";
+            string expectedRequestUri =
+                $"{TestHttpLeaderEndpoint}/lock/acquire?name={lockId}&owner={ownerId}&duration=5&renewDeadline=10";
+            var environment = new Mock<IEnvironment>();
+            environment.Setup(p => p.GetEnvironmentVariable(HttpLeaderEndpoint)).Returns(TestHttpLeaderEndpoint);
+
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+            handlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(request =>
+                        request.Method == HttpMethod.Post
+                        && string.Equals(request.RequestUri.AbsoluteUri, expectedRequestUri, StringComparison.Ordinal)),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK
+                });
+
+            var lockClient = new KubernetesClient(environment.Object, new HttpClient(handlerMock.Object));
+            var lockManager = new KubernetesDistributedLockManager(lockClient, ScriptSettingsManager.Instance);
+
+            var lockHandle = await lockManager.TryLockAsync(
+                "", lockId, ownerId, "", TimeSpan.FromSeconds(5), CancellationToken.None);
+            bool renewed = await lockManager.RenewAsync(lockHandle, CancellationToken.None);
+
+            Assert.True(renewed);
+            handlerMock.Protected().Verify(
+                "SendAsync",
+                Times.Exactly(2),
+                ItExpr.Is<HttpRequestMessage>(request =>
+                    string.Equals(request.RequestUri.AbsoluteUri, expectedRequestUri, StringComparison.Ordinal)),
+                ItExpr.IsAny<CancellationToken>());
+        }
+
+        [Fact]
+        public async Task AcquireAndRenewLockRequest_UsesInvariantCultureForLeaseDuration()
+        {
+            const string lockId = "test-lock";
+            const string ownerId = "test-owner";
+            string expectedRequestUri =
+                $"{TestHttpLeaderEndpoint}/lock/acquire?name={lockId}&owner={ownerId}&duration=5.5&renewDeadline=10";
+            var originalCulture = CultureInfo.CurrentCulture;
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
+
+            try
+            {
+                var environment = new Mock<IEnvironment>();
+                environment.Setup(p => p.GetEnvironmentVariable(HttpLeaderEndpoint)).Returns(TestHttpLeaderEndpoint);
+
+                var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+                handlerMock.Protected()
+                    .Setup<Task<HttpResponseMessage>>(
+                        "SendAsync",
+                        ItExpr.Is<HttpRequestMessage>(request =>
+                            request.Method == HttpMethod.Post
+                            && string.Equals(request.RequestUri.AbsoluteUri, expectedRequestUri, StringComparison.Ordinal)),
+                        ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(new HttpResponseMessage
+                    {
+                        StatusCode = HttpStatusCode.OK
+                    });
+
+                var lockClient = new KubernetesClient(environment.Object, new HttpClient(handlerMock.Object));
+                var lockManager = new KubernetesDistributedLockManager(lockClient, ScriptSettingsManager.Instance);
+
+                var lockHandle = await lockManager.TryLockAsync(
+                    "", lockId, ownerId, "", TimeSpan.FromSeconds(5.5), CancellationToken.None);
+                bool renewed = await lockManager.RenewAsync(lockHandle, CancellationToken.None);
+
+                Assert.True(renewed);
+                Assert.Equal("5.5", ((KubernetesLockHandle)lockHandle).LockPeriod);
+                handlerMock.Protected().Verify(
+                    "SendAsync",
+                    Times.Exactly(2),
+                    ItExpr.Is<HttpRequestMessage>(request =>
+                        string.Equals(request.RequestUri.AbsoluteUri, expectedRequestUri, StringComparison.Ordinal)),
+                    ItExpr.IsAny<CancellationToken>());
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = originalCulture;
+            }
         }
 
         [Theory]
