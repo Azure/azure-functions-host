@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
@@ -31,13 +31,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var requestId = SetRequestId(context.Request);
 
             var sw = ValueStopwatch.StartNew();
-            string userAgent = context.Request.GetHeaderValueOrDefault("User-Agent");
-            _logger.ExecutingHttpRequest(requestId, context.Request.Method, userAgent, Sanitizer.Sanitize(context.Request.Path));
+            _logger.ExecutingHttpRequest(requestId, context.Request.Method);
 
             await _next.Invoke(context);
 
             string identities = GetIdentities(context);
-            _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)sw.GetElapsedTime().TotalMilliseconds);
+            _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)sw.GetElapsedTime().TotalMilliseconds, GetRouteTemplate(context));
+        }
+
+        /// <summary>
+        /// Gets the matched route template for the request, e.g. "api/products/{category}/{id}".
+        /// </summary>
+        /// <remarks>
+        /// Routing has not run yet when the request starts, so this is only meaningful once the rest of the
+        /// pipeline has completed. Requests that were never routed (404s, static files, requests rejected earlier
+        /// in the pipeline) have no matched route; those return <see cref="string.Empty"/> rather than falling back
+        /// to the raw path, which would reintroduce the caller supplied values this log deliberately omits.
+        /// </remarks>
+        internal static string GetRouteTemplate(HttpContext context)
+        {
+            var routingFeature = context.Features.Get<IRoutingFeature>();
+            if (routingFeature is null)
+            {
+                return string.Empty;
+            }
+
+            var route = routingFeature.RouteData?.Routers.FirstOrDefault(r => r is Route) as Route;
+
+            return route?.RouteTemplate ?? string.Empty;
         }
 
         internal static string SetRequestId(HttpRequest request)

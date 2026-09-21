@@ -128,15 +128,14 @@
   "requestId": "{mS_ActivityId}",
   "identities": "{identities}",
   "status": "{statusCode}",
-  "duration": "{duration}"
+  "duration": "{duration}",
+  "route": "{route}"
 }}</value>
   </data>
   <data name="ExecutingHttpRequest" xml:space="preserve">
     <value>Executing HTTP request: {{
   "requestId": "{mS_ActivityId}",
-  "method": "{httpMethod}",
-  "userAgent": "{userAgent}",
-  "uri": "{uri}"
+  "method": "{httpMethod}"
 }}</value>
   </data>
   <data name="FailedToReadBlobSecretRepositoryTierSetToArchive" xml:space="preserve">

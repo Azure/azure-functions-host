@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Logging
     internal static class Sanitizer
     {
         public const string SecretReplacement = "[Hidden Credential]";
+        public const string EmailReplacement = "[Hidden Email]";
         private static readonly char[] ValueTerminators = new char[] { '<', '"', '\'' };
 
         // List of keywords that should not be replaced with [Hidden Credential]
@@ -36,8 +37,22 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         private static readonly Regex Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
 
+        // Pattern of format : "<local-part>@<domain>.<tld>"
+        // Intentionally conservative (no quoted local parts, no IP literal hosts) to limit false positives on
+        // arbitrary log text. Credentials are redacted before this runs, so "user:password@host:port" style
+        // connection strings have already been replaced by then.
+        private static readonly string EmailPattern = @"
+                                                [a-zA-Z0-9._%+-]+        # Capture local part
+                                                @                        # '@'
+                                                [a-zA-Z0-9-]+            # Capture the first domain label
+                                                (?:\.[a-zA-Z0-9-]+)*     # Capture any additional domain labels
+                                                \.[a-zA-Z]{2,}           # Capture the top level domain
+                                            ";
+
+        private static readonly Regex EmailRegex = new Regex(EmailPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
+
         /// <summary>
-        /// Removes well-known credential strings from strings.
+        /// Removes well-known credential strings and email addresses from strings.
         /// </summary>
         /// <param name="input">The string to sanitize.</param>
         /// <returns>The sanitized string.</returns>
@@ -48,51 +63,64 @@ namespace Microsoft.Azure.WebJobs.Logging
                 return string.Empty;
             }
 
-            // Everything we *might* replace contains an equal, so if we don't have that short circuit out.
-            // This can be likely be more efficient with a Regex, but that's best done with a large test suite and this is
-            // a quick/simple win for the high traffic case.
-            if (!MayContainCredentials(input))
+            // Everything we *might* replace contains an equal, a colon or an '@', so if we don't have any of those
+            // short circuit out. This can be likely be more efficient with a Regex, but that's best done with a large
+            // test suite and this is a quick/simple win for the high traffic case.
+            bool mayContainCredentials = MayContainCredentials(input);
+            if (!mayContainCredentials && !MayContainEmail(input))
             {
                 return input;
             }
 
             string t = input;
-            string inputWithAllowedTokensHidden = input;
 
-            // Remove any known safe strings from the input before looking for Credentials
-            foreach (string allowedToken in AllowedTokens)
+            if (mayContainCredentials)
             {
-                if (inputWithAllowedTokensHidden.Contains(allowedToken))
-                {
-                    string hiddenString = new string('#', allowedToken.Length);
-                    inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Replace(allowedToken, hiddenString);
-                }
-            }
+                string inputWithAllowedTokensHidden = input;
 
-            foreach (var token in CredentialTokens)
-            {
-                int startIndex = 0;
-                while (true)
+                // Remove any known safe strings from the input before looking for Credentials
+                foreach (string allowedToken in AllowedTokens)
                 {
-                    // search for the next token instance
-                    startIndex = inputWithAllowedTokensHidden.IndexOf(token, startIndex, StringComparison.OrdinalIgnoreCase);
-                    if (startIndex == -1)
+                    if (inputWithAllowedTokensHidden.Contains(allowedToken))
                     {
-                        break;
+                        string hiddenString = new string('#', allowedToken.Length);
+                        inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Replace(allowedToken, hiddenString);
                     }
+                }
 
-                    // Find the end of the secret. It most likely ends with either a double quota " or tag opening <
-                    int credentialEnd = t.IndexOfAny(ValueTerminators, startIndex);
+                foreach (var token in CredentialTokens)
+                {
+                    int startIndex = 0;
+                    while (true)
+                    {
+                        // search for the next token instance
+                        startIndex = inputWithAllowedTokensHidden.IndexOf(token, startIndex, StringComparison.OrdinalIgnoreCase);
+                        if (startIndex == -1)
+                        {
+                            break;
+                        }
 
-                    t = t.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? t.Substring(credentialEnd) : string.Empty);
-                    inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? inputWithAllowedTokensHidden.Substring(credentialEnd) : string.Empty);
+                        // Find the end of the secret. It most likely ends with either a double quota " or tag opening <
+                        int credentialEnd = t.IndexOfAny(ValueTerminators, startIndex);
+
+                        t = t.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? t.Substring(credentialEnd) : string.Empty);
+                        inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? inputWithAllowedTokensHidden.Substring(credentialEnd) : string.Empty);
+                    }
+                }
+
+                // This check avoids unnecessary regex evaluation if the input does not contain any url
+                if (input.Contains(":"))
+                {
+                    t = Regex.Replace(t, SecretReplacement);
                 }
             }
 
-            // This check avoids unnecessary regex evaluation if the input does not contain any url
-            if (input.Contains(":"))
+            // Credential redaction runs first, so "<protocol>://<user>:<password>@<address>:<port>" has already been
+            // replaced wholesale by then. Re-check the (possibly rewritten) value so we don't pay for the regex when
+            // no '@' survived.
+            if (MayContainEmail(t))
             {
-                t = Regex.Replace(t, SecretReplacement);
+                t = EmailRegex.Replace(t, EmailReplacement);
             }
 
             return t;
@@ -176,5 +204,13 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// Useful for short-circuiting more expensive checks and replacements if it's known we wouldn't do anything.
         /// </summary>
         internal static bool MayContainCredentials(string input) => input.Contains("=") || input.Contains(":");
+
+        /// <summary>
+        /// Checks if a string even *possibly* contains an email address.
+        /// Useful for short-circuiting the more expensive email replacement if it's known we wouldn't do anything.
+        /// This is deliberately separate from <see cref="MayContainCredentials(string)"/>: a bare email address such as
+        /// "someone@contoso.com" contains neither '=' nor ':', and an email is not a credential.
+        /// </summary>
+        internal static bool MayContainEmail(string input) => input.IndexOf('@') >= 0;
     }
 }
