@@ -3,10 +3,11 @@
 
 using System;
 using System.Collections.Frozen;
+using System.IO;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
@@ -18,7 +19,11 @@ internal sealed partial class FunctionRpcRelay
     /// <summary>
     /// Owns the queues, forwarding tasks, and terminal state for one runtime/worker stream pair.
     /// </summary>
-    private sealed class FunctionRpcRelaySession(long id, ILogger logger, WorkerHttpCapabilityProvider capabilityProvider)
+    private sealed class FunctionRpcRelaySession(
+        long id,
+        ILogger logger,
+        IWorkerCapabilityFinalizer capabilityFinalizer,
+        WorkerPodStateManager stateManager)
     {
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel();
@@ -93,6 +98,12 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 SetAttachedLocked(side, value: true);
+                if (side == FunctionRpcRelaySide.Worker)
+                {
+                    // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
+                    stateManager.OnWorkerAttached(id);
+                }
+
                 return FunctionRpcRelayAttachResult.Attached;
             }
         }
@@ -169,6 +180,11 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 SetAttachedLocked(side, value: false);
+                if (side == FunctionRpcRelaySide.Worker)
+                {
+                    stateManager.OnSessionTerminated(id);
+                }
+
                 SignalReleasedIfCompleteLocked();
             }
         }
@@ -194,22 +210,49 @@ internal sealed partial class FunctionRpcRelay
         private async Task ReadInboundAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
             ChannelWriter<StreamingMessage> destination, CancellationToken cancellationToken)
         {
+            bool isFirstMessage = true;
             while (await requestStream.MoveNext(cancellationToken))
             {
-                StreamingMessage message = requestStream.Current;
-                if (side is FunctionRpcRelaySide.Worker
-                    && message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success })
+                StreamingMessage? message = ProcessInboundMessage(side, requestStream.Current, isFirstMessage);
+                if (message is null)
                 {
-                    if (FinalizeCapabilities(message) is not { } finalized)
-                    {
-                        return;
-                    }
-
-                    message = finalized;
+                    return;
                 }
 
+                isFirstMessage = false;
                 await destination.WriteAsync(message, cancellationToken);
             }
+        }
+
+        private StreamingMessage? ProcessInboundMessage(FunctionRpcRelaySide side, StreamingMessage message, bool isFirstMessage)
+        {
+            if (side != FunctionRpcRelaySide.Worker)
+            {
+                return message;
+            }
+
+            if (isFirstMessage)
+            {
+                lock (_stateLock)
+                {
+                    // A delayed read from a terminated session must not restore readiness.
+                    if (_terminalState is not null)
+                    {
+                        return null;
+                    }
+
+                    if (message.StartStream is not { } startStream || string.IsNullOrWhiteSpace(startStream.WorkerId))
+                    {
+                        throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
+                    }
+
+                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                }
+            }
+
+            return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
+                ? FinalizeCapabilities(message)
+                : message;
         }
 
         private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
@@ -229,7 +272,7 @@ internal sealed partial class FunctionRpcRelay
             StreamingMessage finalized = message.Clone();
             if (capabilities is null)
             {
-                Uri? destination = capabilityProvider.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
+                Uri? destination = capabilityFinalizer.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
@@ -306,6 +349,8 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 _terminalState = terminalState;
+                // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
+                stateManager.OnSessionTerminated(id);
                 _completion.SetResult(terminalState);
             }
 

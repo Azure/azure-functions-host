@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -33,6 +34,7 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope runtimeGrpcPort = new("WORKERPROXY__RUNTIMEGRPCPORT", "0");
         using EnvironmentVariableScope workerGrpcPort = new("WORKERPROXY__WORKERGRPCPORT", "0");
         using EnvironmentVariableScope httpPort = new("WORKERPROXY__HTTPPORT", "0");
+        using EnvironmentVariableScope podName = new("WORKERPROXY__PODNAME", "environment-worker-pod");
         using EnvironmentVariableScope urls = new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
         using EnvironmentVariableScope dotnetSetting = new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");
         await using WebApplication app = WorkerProxyApplication.Build([]);
@@ -44,6 +46,7 @@ public class WorkerProxyEnvironmentConfigurationTests
         Assert.Equal(managementPort, address.Port);
         Assert.NotEqual(ambientPort, address.Port);
         Assert.Equal("preserved", app.Configuration["DOTNET_WORKER_PROXY_TEST_SETTING"]);
+        Assert.Equal("environment-worker-pod", app.Services.GetRequiredService<WorkerPodStateManager>().State.PodName);
         using HttpClient client = new() { BaseAddress = address };
         using HttpResponseMessage response = await client.GetAsync("/admin/instance/ready", timeout.Token);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
