@@ -18,15 +18,6 @@ public sealed class WorkerLinkRequest
     public string? WorkerGrpcEndpoint { get; set; }
 
     /// <summary>
-    /// Gets or sets the optional HTTP or HTTPS authority that receives forwarded HTTP-triggered
-    /// invocations. When supplied, the value is validated, pinned for the lifetime of the link, and
-    /// used in place of any endpoint the worker advertises through its capabilities. When omitted,
-    /// the link still succeeds but HTTP-triggered invocations dispatched to the worker fail.
-    /// </summary>
-    [JsonProperty("workerHttpEndpoint")]
-    public string? WorkerHttpEndpoint { get; set; }
-
-    /// <summary>
     /// Gets or sets the reserved worker-pod container encryption key. It is not used to authenticate
     /// the outbound connection and must not be logged or returned to the caller.
     /// </summary>

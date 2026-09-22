@@ -85,4 +85,16 @@ public class WorkerLinkContractTests
         Assert.Equal("http://worker-pod-abc123:5001", request.WorkerGrpcEndpoint);
         Assert.Null(body.Property("workerPodName"));
     }
+
+    [Fact]
+    public void WorkerLinkRequest_Serialization_DoesNotIncludeRemovedHttpEndpoint()
+    {
+        WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonConvert.DeserializeObject<WorkerLinkRequest>(
+            """{"workerGrpcEndpoint":"http://worker-pod-abc123:5001","workerHttpEndpoint":"http://unused:28080"}"""));
+
+        JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
+
+        Assert.Equal(new[] { "workerContainerEncryptionKey", "workerGrpcEndpoint" },
+            body.Properties().Select(property => property.Name).Order(StringComparer.Ordinal));
+    }
 }

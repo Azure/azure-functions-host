@@ -182,11 +182,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal virtual int WorkerProcessId => -1;
 
-        /// <summary>
-        /// Gets a value indicating whether this channel supports HTTP-triggered invocations.
-        /// </summary>
-        protected virtual bool SupportsHttpInvocation => true;
-
         private bool IsHttpProxyingWorker => _httpProxyEndpoint is not null;
 
         /// <inheritdoc />
@@ -637,20 +632,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerCapabilities.UpdateCapabilities(fields, strategy);
         }
 
-        /// <summary>
-        /// Resolves the capabilities to apply for this worker topology.
-        /// </summary>
-        /// <param name="capabilities">The capabilities received from the worker.</param>
-        /// <returns>The effective capabilities, without modifying the received collection.</returns>
-        protected virtual IDictionary<string, string> GetEffectiveCapabilities(IDictionary<string, string> capabilities)
-            => capabilities;
-
         // Helper method that updates and applies capabilities
         // Used at worker initialization and environment reload (placeholder scenarios)
         // The default strategy for updating capabilities is merge
         internal void ApplyCapabilities(IDictionary<string, string> capabilities, GrpcCapabilitiesUpdateStrategy strategy = GrpcCapabilitiesUpdateStrategy.Merge)
         {
-            UpdateCapabilities(GetEffectiveCapabilities(capabilities), strategy);
+            UpdateCapabilities(capabilities, strategy);
 
             _isSharedMemoryDataTransferEnabled = ResolveSharedTransferEnablementState(_workerCapabilities, _environment, _workerChannelLogger);
             _isHandlesInvocationCancelMessageCapabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesInvocationCancelMessage));
@@ -990,11 +977,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         context.ResultSource.TrySetCanceled();
                         return;
                     }
-                }
-
-                if (!SupportsHttpInvocation && context.FunctionMetadata.IsHttpTriggerFunction())
-                {
-                    throw new InvalidOperationException("The worker link has no HTTP invocation endpoint. Supply workerHttpEndpoint when linking the worker.");
                 }
 
                 var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);

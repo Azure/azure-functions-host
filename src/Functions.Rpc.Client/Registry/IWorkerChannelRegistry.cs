@@ -26,18 +26,14 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// processes a successful <c>WorkerInitResponse</c>. Function metadata has not been requested, invocation buffers
     /// have not been created, and function load requests have not been sent, so the channel is not yet ready for
     /// invocations.
-    /// Matching worker IDs and both endpoint URIs share initialization. Endpoints are compared using ordinal
-    /// <see cref="Uri.AbsoluteUri"/> equality, including whether the HTTP endpoint is absent.
+    /// Matching worker IDs and gRPC endpoint URIs share initialization. Endpoints are compared using ordinal
+    /// <see cref="Uri.AbsoluteUri"/> equality. HTTP proxying is negotiated through worker capabilities.
     /// Different workers can link concurrently.
     /// Conflicting or terminal links are rejected. Failed attempts can retry after cleanup.
     /// A new attempt's deadline is shared with its waiters; a retry's deadline only ends its own wait.
     /// </remarks>
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
-    /// <param name="httpEndpoint">
-    /// The platform-provided HTTP invocation endpoint for a new link, or <see langword="null"/> to disable HTTP invocations.
-    /// An existing link retains the endpoint supplied when it was created; adding, removing, or changing it conflicts.
-    /// </param>
     /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
     /// <returns>
     /// The initialized and registered channel, and whether this caller started the successful attempt.
@@ -48,7 +44,6 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     Task<WorkerLinkResult> LinkAsync(
         string workerId,
         Uri grpcEndpoint,
-        Uri httpEndpoint = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

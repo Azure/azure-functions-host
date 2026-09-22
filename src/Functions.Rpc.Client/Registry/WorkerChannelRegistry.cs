@@ -65,16 +65,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     public Task<WorkerLinkResult> LinkAsync(
         string workerId,
         Uri grpcEndpoint,
-        Uri httpEndpoint = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
-        if (httpEndpoint is not null)
-        {
-            RpcClientFactory.ValidateEndpoint(httpEndpoint);
-        }
-
         cancellationToken.ThrowIfCancellationRequested();
 
         TaskCompletionSource start;
@@ -84,11 +78,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_linkAttempts.TryGetValue(workerId, out WorkerSlot existing))
             {
-                if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal) ||
-                    !string.Equals(existing.HttpEndpoint?.AbsoluteUri, httpEndpoint?.AbsoluteUri, StringComparison.Ordinal))
+                if (!string.Equals(existing.Endpoint.AbsoluteUri, grpcEndpoint.AbsoluteUri, StringComparison.Ordinal))
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
-                        "The worker is already associated with different gRPC or HTTP endpoint values.");
+                        "The worker is already associated with a different gRPC endpoint.");
                 }
 
                 if (existing.Terminal || existing.Channel?.Completion.IsCompleted == true)
@@ -101,10 +94,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             }
 
             start = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            WorkerSlot slot = new() { Endpoint = grpcEndpoint, HttpEndpoint = httpEndpoint };
+            WorkerSlot slot = new() { Endpoint = grpcEndpoint };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
-            link = LinkCoreAsync(workerId, grpcEndpoint, httpEndpoint, slot, start.Task, cancellationToken);
+            link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
             slot.LinkTask = link;
         }
 
@@ -120,7 +113,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private async Task<WorkerChannel> LinkCoreAsync(
         string workerId,
         Uri grpcEndpoint,
-        Uri httpEndpoint,
         WorkerSlot slot,
         Task start,
         CancellationToken cancellationToken)
@@ -143,7 +135,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token);
                 operationSource.Token.ThrowIfCancellationRequested();
 
-                candidate = _channelFactory.Create(workerId, ownedChannel, httpEndpoint)
+                candidate = _channelFactory.Create(workerId, ownedChannel)
                     ?? throw new InvalidOperationException("The client worker channel factory returned no channel.");
                 ownedChannel = null;
 
@@ -536,10 +528,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         // The initial link owns this gate before its slot is published.
         public SemaphoreSlim Gate { get; } = new(0, 1);
 
-        // The recorded endpoints, including HTTP absence, distinguish exact retries from conflicting requests.
+        // The recorded gRPC endpoint distinguishes exact retries from conflicting requests.
         public Uri Endpoint { get; init; }
-
-        public Uri HttpEndpoint { get; init; }
 
         // The link task shared by exact retries; cleared when the accepted channel is detached.
         public Task<WorkerChannel> LinkTask { get; set; }

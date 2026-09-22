@@ -30,25 +30,20 @@ namespace Azure.Functions.Rpc.Client.Tests;
 /// <summary>
 /// Tests client-backed worker channel registry lifecycle.
 /// </summary>
-public sealed class WorkerChannelRegistryTests
+public sealed partial class WorkerChannelRegistryTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("http://worker-proxy:28080")]
-    [InlineData("https://worker-proxy:28080")]
-    public async Task LinkAsync_PassesHttpEndpointToChannelFactory(string endpoint)
+    [Fact]
+    public async Task LinkAsync_PassesConnectedTransportToChannelFactory()
     {
         RegistryHarness harness = new();
         ChannelControl channel = new("worker");
         harness.Enqueue(channel);
         await using WorkerChannelRegistry registry = harness.Registry;
-        Uri httpEndpoint = endpoint is null ? null : new Uri(endpoint);
+        await registry.LinkAsync("worker", CreateEndpoint("worker")).WaitAsync(TestTimeout);
 
-        await registry.LinkAsync("worker", CreateEndpoint("worker"), httpEndpoint).WaitAsync(TestTimeout);
-
-        harness.ChannelFactory.Verify(factory => factory.Create("worker", channel.Transport, httpEndpoint), Times.Once);
+        harness.ChannelFactory.Verify(factory => factory.Create("worker", channel.Transport), Times.Once);
     }
 
     [Theory]
@@ -56,14 +51,14 @@ public sealed class WorkerChannelRegistryTests
     [InlineData("ftp://worker-proxy:28080")]
     [InlineData("http://worker-proxy:28080/path")]
     [InlineData("http://worker-proxy:28080?query=value")]
-    public async Task LinkAsync_InvalidHttpEndpointDoesNotConnect(string endpoint)
+    public async Task LinkAsync_InvalidGrpcEndpointDoesNotConnect(string endpoint)
     {
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
-        Uri httpEndpoint = new(endpoint, UriKind.RelativeOrAbsolute);
+        Uri grpcEndpoint = new(endpoint, UriKind.RelativeOrAbsolute);
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => registry.LinkAsync("worker", CreateEndpoint("worker"), httpEndpoint));
+            () => registry.LinkAsync("worker", grpcEndpoint));
 
         harness.DuplexFactory.VerifyNoOtherCalls();
         harness.ChannelFactory.VerifyNoOtherCalls();
@@ -100,7 +95,7 @@ public sealed class WorkerChannelRegistryTests
         => Assert.Throws<ArgumentOutOfRangeException>(() => new RegistryHarness(TimeSpan.FromMilliseconds(milliseconds)));
 
     [Theory]
-    [InlineData(null, null)]
+    [InlineData("http://worker:50053", "http://worker:50053")]
     [InlineData("http://worker-proxy:28080", "http://worker-proxy:28080/")]
     [InlineData("http://worker-proxy", "HTTP://WORKER-PROXY:80/")]
     [InlineData("https://worker-proxy", "HTTPS://WORKER-PROXY:443/")]
@@ -108,21 +103,21 @@ public sealed class WorkerChannelRegistryTests
     {
         RegistryHarness harness = new();
         ChannelControl channel = new("worker", blockStart: true);
-        harness.Enqueue(channel);
+        harness.Enqueue(new Uri(endpoint), channel);
         await using WorkerChannelRegistry registry = harness.Registry;
         IWorkerChannelRegistry linker = registry;
-        Uri httpEndpoint = endpoint is null ? null : new Uri(endpoint);
-        Uri retryHttpEndpoint = retryEndpoint is null ? null : new Uri(retryEndpoint);
+        Uri grpcEndpoint = new(endpoint);
+        Uri retryGrpcEndpoint = new(retryEndpoint);
 
-        Task<WorkerLinkResult> first = linker.LinkAsync("worker", CreateEndpoint("worker"), httpEndpoint);
+        Task<WorkerLinkResult> first = linker.LinkAsync("worker", grpcEndpoint);
         await channel.StartEntered.WaitAsync(TestTimeout);
-        Task<WorkerLinkResult> replay = linker.LinkAsync("worker", CreateEndpoint("worker"), retryHttpEndpoint);
+        Task<WorkerLinkResult> replay = linker.LinkAsync("worker", retryGrpcEndpoint);
         Assert.False(first.IsCompleted);
         Assert.False(replay.IsCompleted);
         channel.AllowStart();
         WorkerLinkResult linked = await first.WaitAsync(TestTimeout);
         WorkerLinkResult pendingReplay = await replay.WaitAsync(TestTimeout);
-        WorkerLinkResult completedReplay = await linker.LinkAsync("worker", CreateEndpoint("worker"), retryHttpEndpoint);
+        WorkerLinkResult completedReplay = await linker.LinkAsync("worker", retryGrpcEndpoint);
 
         Assert.True(linked.IsNewLink);
         Assert.False(pendingReplay.IsNewLink);
@@ -186,24 +181,22 @@ public sealed class WorkerChannelRegistryTests
     }
 
     [Theory]
-    [InlineData(null, "http://worker-proxy:28080")]
-    [InlineData("http://worker-proxy:28080", null)]
     [InlineData("http://worker-proxy:28080", "http://other-proxy:28080")]
     [InlineData("http://worker-proxy:28080", "https://worker-proxy:28080")]
     [InlineData("http://worker-proxy:28080", "http://worker-proxy:28081")]
-    public async Task LinkAsync_ConflictingHttpEndpointIsRejectedWhilePendingReadyAndTerminal(string endpoint, string retryEndpoint)
+    public async Task LinkAsync_ConflictingGrpcEndpointIsRejectedWhilePendingReadyAndTerminal(string endpoint, string retryEndpoint)
     {
         RegistryHarness harness = new();
         ChannelControl channel = new("worker", blockStart: true);
-        harness.Enqueue(channel);
+        harness.Enqueue(new Uri(endpoint), channel);
         await using WorkerChannelRegistry registry = harness.Registry;
-        Uri httpEndpoint = endpoint is null ? null : new Uri(endpoint);
-        Uri retryHttpEndpoint = retryEndpoint is null ? null : new Uri(retryEndpoint);
-        Task<WorkerLinkResult> first = registry.LinkAsync("worker", CreateEndpoint("worker"), httpEndpoint);
+        Uri grpcEndpoint = new(endpoint);
+        Uri retryGrpcEndpoint = new(retryEndpoint);
+        Task<WorkerLinkResult> first = registry.LinkAsync("worker", grpcEndpoint);
         await channel.StartEntered.WaitAsync(TestTimeout);
 
         WorkerLinkException pendingConflict = await Assert.ThrowsAsync<WorkerLinkException>(
-            () => registry.LinkAsync("worker", CreateEndpoint("worker"), retryHttpEndpoint));
+            () => registry.LinkAsync("worker", retryGrpcEndpoint));
         Assert.Equal(WorkerLinkFailureReason.Conflict, pendingConflict.Reason);
         Assert.False(first.IsCompleted);
         Assert.Equal(0, channel.DisposeCount);
@@ -211,9 +204,9 @@ public sealed class WorkerChannelRegistryTests
         channel.AllowStart();
         WorkerLinkResult linked = await first.WaitAsync(TestTimeout);
         WorkerLinkException readyConflict = await Assert.ThrowsAsync<WorkerLinkException>(
-            () => registry.LinkAsync("worker", CreateEndpoint("worker"), retryHttpEndpoint));
+            () => registry.LinkAsync("worker", retryGrpcEndpoint));
         Assert.Equal(WorkerLinkFailureReason.Conflict, readyConflict.Reason);
-        WorkerLinkResult replay = await registry.LinkAsync("worker", CreateEndpoint("worker"), httpEndpoint);
+        WorkerLinkResult replay = await registry.LinkAsync("worker", grpcEndpoint);
         Assert.False(replay.IsNewLink);
         Assert.Same(linked.Channel, replay.Channel);
         Assert.Equal(0, channel.DisposeCount);
@@ -222,36 +215,34 @@ public sealed class WorkerChannelRegistryTests
         await channel.DisposeStarted.WaitAsync(TestTimeout);
         await WaitUntilAsync(() => !registry.TryGetInitializedChannel("worker", out _));
         WorkerLinkException terminalConflict = await Assert.ThrowsAsync<WorkerLinkException>(
-            () => registry.LinkAsync("worker", CreateEndpoint("worker"), retryHttpEndpoint));
+            () => registry.LinkAsync("worker", retryGrpcEndpoint));
         Assert.Equal(WorkerLinkFailureReason.Conflict, terminalConflict.Reason);
         WorkerLinkException terminated = await Assert.ThrowsAsync<WorkerLinkException>(
-            () => registry.LinkAsync("worker", CreateEndpoint("worker"), httpEndpoint));
+            () => registry.LinkAsync("worker", grpcEndpoint));
         Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, terminated.Reason);
         Assert.Single(harness.Transports);
-        harness.DuplexFactory.Verify(factory => factory.ConnectAsync(CreateEndpoint("worker"), It.IsAny<CancellationToken>()), Times.Once);
+        harness.DuplexFactory.Verify(factory => factory.ConnectAsync(grpcEndpoint, It.IsAny<CancellationToken>()), Times.Once);
         harness.DuplexFactory.VerifyNoOtherCalls();
-        harness.ChannelFactory.Verify(factory => factory.Create("worker", channel.Transport, httpEndpoint), Times.Once);
+        harness.ChannelFactory.Verify(factory => factory.Create("worker", channel.Transport), Times.Once);
         harness.ChannelFactory.VerifyNoOtherCalls();
     }
 
     [Theory]
-    [InlineData(null, null)]
-    [InlineData(null, "http://worker-proxy:28080")]
-    [InlineData("http://worker-proxy:28080", null)]
+    [InlineData("http://worker-proxy:28080", "http://worker-proxy:28080")]
     [InlineData("http://worker-proxy:28080", "http://other-proxy:28080")]
     public async Task LinkAsync_FailedHandshakeCleansBeforeRetry(string endpoint, string retryEndpoint)
     {
         RegistryHarness harness = new();
         ChannelControl failed = new("worker", blockStart: true);
         ChannelControl replacement = new("worker");
-        harness.Enqueue(failed);
-        harness.Enqueue(replacement);
+        harness.Enqueue(new Uri(endpoint), failed);
+        harness.Enqueue(new Uri(retryEndpoint), replacement);
         await using WorkerChannelRegistry registry = harness.Registry;
         IWorkerChannelRegistry linker = registry;
         TimeoutException failure = new("WorkerInit timed out.");
-        Uri httpEndpoint = endpoint is null ? null : new Uri(endpoint);
-        Uri retryHttpEndpoint = retryEndpoint is null ? null : new Uri(retryEndpoint);
-        Task<WorkerLinkResult> link = linker.LinkAsync("worker", CreateEndpoint("worker"), httpEndpoint);
+        Uri grpcEndpoint = new(endpoint);
+        Uri retryGrpcEndpoint = new(retryEndpoint);
+        Task<WorkerLinkResult> link = linker.LinkAsync("worker", grpcEndpoint);
         await failed.StartEntered.WaitAsync(TestTimeout);
         failed.FailStart(failure);
 
@@ -259,11 +250,11 @@ public sealed class WorkerChannelRegistryTests
         Assert.Same(failure, actual);
         Assert.Empty(registry.GetInitializedChannels());
         Assert.Equal(1, failed.DisposeCount);
-        WorkerLinkResult linked = await linker.LinkAsync("worker", CreateEndpoint("worker"), retryHttpEndpoint).WaitAsync(TestTimeout);
+        WorkerLinkResult linked = await linker.LinkAsync("worker", retryGrpcEndpoint).WaitAsync(TestTimeout);
         Assert.True(linked.IsNewLink);
         Assert.Same(replacement.Channel, linked.Channel);
         Assert.Single(registry.GetInitializedChannels());
-        harness.ChannelFactory.Verify(factory => factory.Create("worker", replacement.Transport, retryHttpEndpoint), Times.Once);
+        harness.ChannelFactory.Verify(factory => factory.Create("worker", replacement.Transport), Times.Once);
     }
 
     [Fact]
@@ -600,7 +591,7 @@ public sealed class WorkerChannelRegistryTests
         await using WorkerChannelRegistry registry = harness.Registry;
         InvalidOperationException expected = new("factory failed");
         harness.ChannelFactory
-            .Setup(factory => factory.Create(It.IsAny<string>(), It.IsAny<DuplexChannel<StreamingMessage>>(), It.IsAny<Uri>()))
+            .Setup(factory => factory.Create(It.IsAny<string>(), It.IsAny<DuplexChannel<StreamingMessage>>()))
             .Throws(expected);
 
         InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -619,7 +610,7 @@ public sealed class WorkerChannelRegistryTests
         RegistryHarness harness = new();
         await using WorkerChannelRegistry registry = harness.Registry;
         harness.ChannelFactory
-            .Setup(factory => factory.Create(It.IsAny<string>(), It.IsAny<DuplexChannel<StreamingMessage>>(), It.IsAny<Uri>()))
+            .Setup(factory => factory.Create(It.IsAny<string>(), It.IsAny<DuplexChannel<StreamingMessage>>()))
             .Returns((RpcClientWorkerChannel)null);
 
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -997,15 +988,15 @@ public sealed class WorkerChannelRegistryTests
                     return Task.FromResult<DuplexChannel<StreamingMessage>>(transport);
                 });
             ChannelFactory
-                .Setup(factory => factory.Create(It.IsAny<string>(), It.IsAny<DuplexChannel<StreamingMessage>>(), It.IsAny<Uri>()))
-                .Returns((string workerId, DuplexChannel<StreamingMessage> ownedChannel, Uri httpEndpoint) =>
+                .Setup(factory => factory.Create(It.IsAny<string>(), It.IsAny<DuplexChannel<StreamingMessage>>()))
+                .Returns((string workerId, DuplexChannel<StreamingMessage> ownedChannel) =>
                 {
                     if (!_controls.TryGetValue(ownedChannel, out ChannelControl control))
                     {
                         throw new InvalidOperationException($"No test channel was configured for worker '{workerId}'.");
                     }
 
-                    RpcClientWorkerChannel channel = _realChannelFactory.Create(control.Id, ownedChannel, httpEndpoint);
+                    RpcClientWorkerChannel channel = _realChannelFactory.Create(control.Id, ownedChannel);
                     control.Attach(channel);
 
                     return channel;
@@ -1027,8 +1018,11 @@ public sealed class WorkerChannelRegistryTests
             => Enqueue(channel.Id, channel);
 
         internal void Enqueue(string workerId, ChannelControl channel)
+            => Enqueue(CreateEndpoint(workerId), channel);
+
+        internal void Enqueue(Uri endpoint, ChannelControl channel)
         {
-            ConcurrentQueue<ChannelControl> channels = _channels.GetOrAdd(CreateEndpoint(workerId), static _ => new());
+            ConcurrentQueue<ChannelControl> channels = _channels.GetOrAdd(endpoint, static _ => new());
             channels.Enqueue(channel);
         }
     }

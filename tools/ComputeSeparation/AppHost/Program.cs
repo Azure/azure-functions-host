@@ -26,7 +26,6 @@ string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, 
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
 EndpointReference hostEndpoint;
 ReferenceExpression workerGrpcEndpoint;
-ReferenceExpression workerHttpEndpoint;
 string[] dependencies;
 
 if (topology is not null)
@@ -66,7 +65,6 @@ if (topology is not null)
 
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:50053");
-    workerHttpEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:28080");
     dependencies = ["runtime", "worker-pod-1"];
 }
 else
@@ -120,7 +118,6 @@ else
 
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
-    workerHttpEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(HttpEndpointName)}");
     dependencies = ["functions-host", "worker-proxy", "isolated-worker"];
 }
 
@@ -129,7 +126,6 @@ if (builder.Configuration.GetValue("ComputeSeparation:AutoLink", true))
     builder.Services.AddHostedService(services => new HostLinkService(
         hostEndpoint,
         workerGrpcEndpoint,
-        workerHttpEndpoint,
         workerId,
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),

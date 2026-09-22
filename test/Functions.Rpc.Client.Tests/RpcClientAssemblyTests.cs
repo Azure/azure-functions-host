@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -62,6 +63,16 @@ public class RpcClientAssemblyTests
         Assert.False(typeof(WorkerChannelRegistry).IsPublic);
         Assert.False(typeof(RpcClientScriptHostStartupCoordinator).IsPublic);
         Assert.Contains(typeof(IWorkerChannelRegistry), typeof(WorkerChannelRegistry).GetInterfaces());
+    }
+
+    [Fact]
+    public void ClientInternalsAreNotExposedToHostTests()
+    {
+        var friends = typeof(IWorkerChannelRegistry).Assembly
+            .GetCustomAttributes(typeof(InternalsVisibleToAttribute), inherit: false)
+            .Cast<InternalsVisibleToAttribute>();
+
+        Assert.DoesNotContain(friends, friend => friend.AssemblyName == "Azure.Functions.Host.Tests");
     }
 
     [Fact]

@@ -26,73 +26,69 @@ public sealed class RpcClientHttpInvocationTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("")]
+    [InlineData("http://platform-proxy:28080")]
     [InlineData("http://worker-advertised:8080")]
-    [InlineData("not-an-absolute-uri")]
-    public async Task InvokeAsync_UsesLinkHttpEndpointInsteadOfWorkerCapability(string advertisedHttpUri)
+    public async Task InvokeAsync_UsesNegotiatedHttpCapability(string advertisedHttpUri)
     {
-        Mock<IHttpProxyService> proxy = CreateProxy();
+        Uri endpoint = new(advertisedHttpUri);
+        Mock<IHttpProxyService> proxy = CreateProxy(endpoint);
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
-            "worker", httpEndpoint: HttpEndpoint, advertisedHttpUri: advertisedHttpUri, httpProxyService: proxy.Object);
+            "worker", advertisedHttpUri: advertisedHttpUri, httpProxyService: proxy.Object);
         FunctionMetadata function = await LoadFunctionAsync(worker);
 
-        await InvokeHttpAsync(worker, function, proxy);
+        await InvokeHttpAsync(worker, function, proxy, endpoint);
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    [InlineData("http://worker-advertised:8080")]
-    [InlineData("not-an-absolute-uri")]
-    public async Task InvokeAsync_WithoutLinkHttpEndpointRejectsHttpInvocation(string advertisedHttpUri)
+    public async Task InvokeAsync_WithoutHttpCapabilitySendsHttpPayloadOverGrpc(string advertisedHttpUri)
     {
         Mock<IHttpProxyService> proxy = new(MockBehavior.Strict);
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
             "worker", advertisedHttpUri: advertisedHttpUri, httpProxyService: proxy.Object);
         FunctionMetadata function = await LoadFunctionAsync(worker);
 
-        await AssertHttpInvocationRejectedAsync(worker, function, proxy);
+        await InvokeHttpOverGrpcAsync(worker, function, proxy);
     }
 
     [Theory]
-    [InlineData(CapabilitiesUpdateStrategy.Merge, null)]
-    [InlineData(CapabilitiesUpdateStrategy.Merge, "not-an-absolute-uri")]
-    [InlineData(CapabilitiesUpdateStrategy.Replace, null)]
+    [InlineData(CapabilitiesUpdateStrategy.Merge, "http://replacement-advertised:8080")]
     [InlineData(CapabilitiesUpdateStrategy.Replace, "http://replacement-advertised:8080")]
-    public async Task InvokeAsync_CapabilityReloadCannotChangeLinkHttpEndpoint(CapabilitiesUpdateStrategy strategy, string advertisedHttpUri)
+    public async Task InvokeAsync_CapabilityReloadUpdatesHttpEndpoint(CapabilitiesUpdateStrategy strategy, string advertisedHttpUri)
     {
-        Mock<IHttpProxyService> proxy = CreateProxy();
+        Uri endpoint = new(advertisedHttpUri);
+        Mock<IHttpProxyService> proxy = CreateProxy(endpoint);
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
-            "worker", httpEndpoint: HttpEndpoint, advertisedHttpUri: "http://worker-advertised:8080", httpProxyService: proxy.Object);
+            "worker", advertisedHttpUri: HttpEndpoint.AbsoluteUri, httpProxyService: proxy.Object);
         await ReloadCapabilitiesAsync(worker, strategy, advertisedHttpUri);
         FunctionMetadata function = await LoadFunctionAsync(worker);
 
-        await InvokeHttpAsync(worker, function, proxy);
+        await InvokeHttpAsync(worker, function, proxy, endpoint);
     }
 
     [Theory]
     [InlineData(CapabilitiesUpdateStrategy.Merge)]
     [InlineData(CapabilitiesUpdateStrategy.Replace)]
-    public async Task InvokeAsync_CapabilityReloadCannotEnableHttpWithoutLinkEndpoint(CapabilitiesUpdateStrategy strategy)
+    public async Task InvokeAsync_CapabilityReloadCanEnableHttpProxying(CapabilitiesUpdateStrategy strategy)
     {
-        Mock<IHttpProxyService> proxy = new(MockBehavior.Strict);
+        Mock<IHttpProxyService> proxy = CreateProxy(HttpEndpoint);
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
             "worker", httpProxyService: proxy.Object);
-        await ReloadCapabilitiesAsync(worker, strategy, "http://worker-advertised:8080");
+        await ReloadCapabilitiesAsync(worker, strategy, HttpEndpoint.AbsoluteUri);
         FunctionMetadata function = await LoadFunctionAsync(worker);
 
-        await AssertHttpInvocationRejectedAsync(worker, function, proxy);
+        await InvokeHttpAsync(worker, function, proxy, HttpEndpoint);
     }
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task InvokeAsync_NonHttpInvocationDoesNotUseHttpProxy(bool hasHttpEndpoint)
+    public async Task InvokeAsync_NonHttpInvocationDoesNotUseHttpProxy(bool hasHttpCapability)
     {
         Mock<IHttpProxyService> proxy = new(MockBehavior.Strict);
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync(
-            "worker", httpEndpoint: hasHttpEndpoint ? HttpEndpoint : null, httpProxyService: proxy.Object);
+            "worker", advertisedHttpUri: hasHttpCapability ? HttpEndpoint.AbsoluteUri : null, httpProxyService: proxy.Object);
         FunctionMetadata function = await LoadFunctionAsync(worker, "timerTrigger");
         ScriptInvocationContext invocation = CreateInvocation(function);
 
@@ -104,17 +100,18 @@ public sealed class RpcClientHttpInvocationTests
         proxy.VerifyNoOtherCalls();
     }
 
-    private static Mock<IHttpProxyService> CreateProxy()
+    private static Mock<IHttpProxyService> CreateProxy(Uri endpoint)
     {
         Mock<IHttpProxyService> proxy = new(MockBehavior.Strict);
-        proxy.Setup(service => service.StartForwarding(It.IsAny<ScriptInvocationContext>(), HttpEndpoint));
+        proxy.Setup(service => service.StartForwarding(It.IsAny<ScriptInvocationContext>(), endpoint));
         proxy.Setup(service => service.EnsureSuccessfulForwardingAsync(It.IsAny<ScriptInvocationContext>()))
             .Returns(Task.CompletedTask);
 
         return proxy;
     }
 
-    private static async Task InvokeHttpAsync(ClientWorkerChannelTestHarness worker, FunctionMetadata function, Mock<IHttpProxyService> proxy)
+    private static async Task InvokeHttpAsync(
+        ClientWorkerChannelTestHarness worker, FunctionMetadata function, Mock<IHttpProxyService> proxy, Uri endpoint)
     {
         ScriptInvocationContext invocation = CreateInvocation(function);
         using MemoryStream body = new(Encoding.UTF8.GetBytes("HTTP body must not be serialized over gRPC"));
@@ -129,24 +126,37 @@ public sealed class RpcClientHttpInvocationTests
         StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
 
         Assert.Equal(new RpcHttp(), Assert.Single(request.InvocationRequest.InputData).Data.Http);
-        proxy.Verify(service => service.StartForwarding(invocation, HttpEndpoint), Times.Once);
+        proxy.Verify(service => service.StartForwarding(invocation, endpoint), Times.Once);
         await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId);
         Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
         proxy.Verify(service => service.EnsureSuccessfulForwardingAsync(invocation), Times.Once);
         proxy.VerifyNoOtherCalls();
     }
 
-    private static async Task AssertHttpInvocationRejectedAsync(
+    private static async Task InvokeHttpOverGrpcAsync(
         ClientWorkerChannelTestHarness worker, FunctionMetadata function, Mock<IHttpProxyService> proxy)
     {
         ScriptInvocationContext invocation = CreateInvocation(function);
+        const string content = "HTTP body serialized over gRPC";
+        using MemoryStream body = new(Encoding.UTF8.GetBytes(content));
+        HttpRequest httpRequest = new DefaultHttpContext().Request;
+        httpRequest.Method = "POST";
+        httpRequest.Host = new("incoming.example");
+        httpRequest.Path = "/api/test";
+        httpRequest.Body = body;
+        httpRequest.ContentType = "text/plain";
+        httpRequest.ContentLength = body.Length;
+        invocation.Inputs = [("req", DataType.String, httpRequest)];
 
         Assert.True(await worker.Channel.FunctionInputBuffers[function.GetFunctionId()].SendAsync(invocation));
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        StreamingMessage request = await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+        RpcHttp http = Assert.Single(request.InvocationRequest.InputData).Data.Http;
 
-        Assert.Contains("workerHttpEndpoint", exception.Message, StringComparison.Ordinal);
-        Assert.False(worker.Transport.Requests.TryRead(out _));
+        Assert.Equal("POST", http.Method);
+        Assert.Equal("http://incoming.example/api/test", http.Url);
+        Assert.Equal(content, http.Body.String);
+        await worker.SendInvocationResponseAsync(request.InvocationRequest.InvocationId);
+        Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
         proxy.VerifyNoOtherCalls();
     }
 

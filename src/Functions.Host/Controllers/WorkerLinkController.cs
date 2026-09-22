@@ -76,7 +76,7 @@ public sealed partial class WorkerLinkController : Controller
         CancellationToken cancellationToken = default)
     {
         long started = Stopwatch.GetTimestamp();
-        IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerPodName, request, out Uri? grpcEndpoint, out Uri? httpEndpoint);
+        IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerPodName, request, out Uri? grpcEndpoint);
         if (errors.Count > 0 || grpcEndpoint is null)
         {
             Log.LinkRejected(_logger, null, workerPodName, ValidationFailedReason,
@@ -85,14 +85,13 @@ public sealed partial class WorkerLinkController : Controller
             return BadRequest(new RequestValidationResponse(errors));
         }
 
-        return await LinkValidatedWorkerAsync(workerPodName, grpcEndpoint, httpEndpoint, started, cancellationToken);
+        return await LinkValidatedWorkerAsync(workerPodName, grpcEndpoint, started, cancellationToken);
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(string workerPodName, WorkerLinkRequest? request,
-        out Uri? grpcEndpoint, out Uri? httpEndpoint)
+        out Uri? grpcEndpoint)
     {
         grpcEndpoint = null;
-        httpEndpoint = null;
         List<RequestValidationError> errors = [];
         if (string.IsNullOrWhiteSpace(workerPodName))
         {
@@ -115,22 +114,17 @@ public sealed partial class WorkerLinkController : Controller
                 : new(ErrorCodes.InvalidEndpoint, "workerGrpcEndpoint"));
         }
 
-        if (!string.IsNullOrWhiteSpace(request.WorkerHttpEndpoint) && !TryParseEndpoint(request.WorkerHttpEndpoint, out httpEndpoint))
-        {
-            errors.Add(new(ErrorCodes.InvalidEndpoint, "workerHttpEndpoint"));
-        }
-
         return errors;
     }
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
-    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerPodName, Uri grpcEndpoint, Uri? httpEndpoint, long started,
+    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerPodName, Uri grpcEndpoint, long started,
         CancellationToken cancellationToken)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            WorkerLinkResult result = await _registry.LinkAsync(workerPodName, grpcEndpoint, httpEndpoint, cancellationToken);
+            WorkerLinkResult result = await _registry.LinkAsync(workerPodName, grpcEndpoint, cancellationToken);
             Log.LinkAccepted(_logger, workerPodName, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return StatusCode(result.IsNewLink ? StatusCodes.Status201Created : StatusCodes.Status200OK);
