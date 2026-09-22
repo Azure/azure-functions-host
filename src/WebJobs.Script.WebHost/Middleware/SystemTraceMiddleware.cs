@@ -47,16 +47,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         /// pipeline has completed. Requests that were never routed (404s, static files, requests rejected earlier
         /// in the pipeline) have no matched route; those return <see cref="string.Empty"/> rather than falling back
         /// to the raw path, which would reintroduce the caller supplied values this log deliberately omits.
+        /// <para>
+        /// This runs for every request, so every dereference is null safe on purpose. Throwing here would surface
+        /// after the response has already been written and would affect all traffic, not just the log entry.
+        /// <see cref="RouteData.Routers"/> is non-virtual and always initialized, so that guard is belt-and-braces
+        /// against future framework changes rather than a reachable case today.
+        /// </para>
         /// </remarks>
         internal static string GetRouteTemplate(HttpContext context)
         {
-            var routingFeature = context.Features.Get<IRoutingFeature>();
+            var routingFeature = context?.Features?.Get<IRoutingFeature>();
             if (routingFeature is null)
             {
                 return string.Empty;
             }
 
-            var route = routingFeature.RouteData?.Routers.FirstOrDefault(r => r is Route) as Route;
+            var route = routingFeature.RouteData?.Routers?.FirstOrDefault(r => r is Route) as Route;
 
             return route?.RouteTemplate ?? string.Empty;
         }

@@ -38,9 +38,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         private static readonly Regex Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
 
         // Pattern of format : "<local-part>@<domain>.<tld>"
-        // Intentionally conservative (no quoted local parts, no IP literal hosts) to limit false positives on
-        // arbitrary log text. Credentials are redacted before this runs, so "user:password@host:port" style
-        // connection strings have already been replaced by then.
         private static readonly string EmailPattern = @"
                                                 [a-zA-Z0-9._%+-]+        # Capture local part
                                                 @                        # '@'
@@ -66,58 +63,51 @@ namespace Microsoft.Azure.WebJobs.Logging
             // Everything we *might* replace contains an equal, a colon or an '@', so if we don't have any of those
             // short circuit out. This can be likely be more efficient with a Regex, but that's best done with a large
             // test suite and this is a quick/simple win for the high traffic case.
-            bool mayContainCredentials = MayContainCredentials(input);
-            if (!mayContainCredentials && !MayContainEmail(input))
+            if (!MayContainCredentials(input) && !MayContainEmail(input))
             {
                 return input;
             }
 
             string t = input;
+            string inputWithAllowedTokensHidden = input;
 
-            if (mayContainCredentials)
+            // Remove any known safe strings from the input before looking for Credentials
+            foreach (string allowedToken in AllowedTokens)
             {
-                string inputWithAllowedTokensHidden = input;
-
-                // Remove any known safe strings from the input before looking for Credentials
-                foreach (string allowedToken in AllowedTokens)
+                if (inputWithAllowedTokensHidden.Contains(allowedToken))
                 {
-                    if (inputWithAllowedTokensHidden.Contains(allowedToken))
-                    {
-                        string hiddenString = new string('#', allowedToken.Length);
-                        inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Replace(allowedToken, hiddenString);
-                    }
-                }
-
-                foreach (var token in CredentialTokens)
-                {
-                    int startIndex = 0;
-                    while (true)
-                    {
-                        // search for the next token instance
-                        startIndex = inputWithAllowedTokensHidden.IndexOf(token, startIndex, StringComparison.OrdinalIgnoreCase);
-                        if (startIndex == -1)
-                        {
-                            break;
-                        }
-
-                        // Find the end of the secret. It most likely ends with either a double quota " or tag opening <
-                        int credentialEnd = t.IndexOfAny(ValueTerminators, startIndex);
-
-                        t = t.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? t.Substring(credentialEnd) : string.Empty);
-                        inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? inputWithAllowedTokensHidden.Substring(credentialEnd) : string.Empty);
-                    }
-                }
-
-                // This check avoids unnecessary regex evaluation if the input does not contain any url
-                if (input.Contains(":"))
-                {
-                    t = Regex.Replace(t, SecretReplacement);
+                    string hiddenString = new string('#', allowedToken.Length);
+                    inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Replace(allowedToken, hiddenString);
                 }
             }
 
-            // Credential redaction runs first, so "<protocol>://<user>:<password>@<address>:<port>" has already been
-            // replaced wholesale by then. Re-check the (possibly rewritten) value so we don't pay for the regex when
-            // no '@' survived.
+            foreach (var token in CredentialTokens)
+            {
+                int startIndex = 0;
+                while (true)
+                {
+                    // search for the next token instance
+                    startIndex = inputWithAllowedTokensHidden.IndexOf(token, startIndex, StringComparison.OrdinalIgnoreCase);
+                    if (startIndex == -1)
+                    {
+                        break;
+                    }
+
+                    // Find the end of the secret. It most likely ends with either a double quota " or tag opening <
+                    int credentialEnd = t.IndexOfAny(ValueTerminators, startIndex);
+
+                    t = t.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? t.Substring(credentialEnd) : string.Empty);
+                    inputWithAllowedTokensHidden = inputWithAllowedTokensHidden.Substring(0, startIndex) + SecretReplacement + (credentialEnd != -1 ? inputWithAllowedTokensHidden.Substring(credentialEnd) : string.Empty);
+                }
+            }
+
+            // This check avoids unnecessary regex evaluation if the input does not contain any url
+            if (input.Contains(":"))
+            {
+                t = Regex.Replace(t, SecretReplacement);
+            }
+
+            // Credentials are redacted above, so "<protocol>://<user>:<password>@<host>:<port>" is already gone.
             if (MayContainEmail(t))
             {
                 t = EmailRegex.Replace(t, EmailReplacement);

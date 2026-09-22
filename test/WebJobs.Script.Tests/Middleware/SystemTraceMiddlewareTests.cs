@@ -126,6 +126,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
         }
 
         [Fact]
+        public void GetRouteTemplate_ReturnsEmpty_WhenContextIsNull()
+        {
+            Assert.Equal(string.Empty, SystemTraceMiddleware.GetRouteTemplate(null));
+        }
+
+        [Fact]
         public void GetRouteTemplate_ReturnsEmpty_WhenNoRouteWasMatched()
         {
             var context = new DefaultHttpContext();
