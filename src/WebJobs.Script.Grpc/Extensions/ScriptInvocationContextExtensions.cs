@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 FunctionId = context.FunctionMetadata.GetFunctionId(),
                 InvocationId = context.ExecutionContext.InvocationId.ToString(),
-                TraceContext = GetRpcTraceContext(context.Traceparent, context.Tracestate, context.Attributes, logger),
+                TraceContext = GetRpcTraceContext(context.Traceparent, context.Tracestate, context.Attributes),
             };
 
             SetRetryContext(context, invocationRequest);
@@ -222,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return false;
         }
 
-        internal static RpcTraceContext GetRpcTraceContext(string activityId, string traceStateString, IEnumerable<KeyValuePair<string, string>> tags, ILogger logger)
+        internal static RpcTraceContext GetRpcTraceContext(string activityId, string traceStateString, IEnumerable<KeyValuePair<string, string>> tags)
         {
             RpcTraceContext traceContext = new RpcTraceContext
             {
@@ -232,16 +232,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             foreach (KeyValuePair<string, string> tag in tags ?? Enumerable.Empty<KeyValuePair<string, string>>())
             {
-                if (string.IsNullOrEmpty(tag.Value))
+                if (!string.IsNullOrEmpty(tag.Value))
                 {
-                    logger?.LogDebug($"Excluding {tag.Key} from being added to TraceContext.Attributes since it's value is null/empty");
-                }
-                else
-                {
-                    if (traceContext.Attributes.ContainsKey(tag.Key))
-                    {
-                        logger?.LogWarning($"Overwriting '{tag.Key}' with existing value '{traceContext.Attributes[tag.Key]}' with '{tag.Value}'");
-                    }
                     traceContext.Attributes[tag.Key] = tag.Value;
                 }
             }

@@ -83,7 +83,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         ///  &quot;requestId&quot;: &quot;{mS_ActivityId}&quot;,
         ///  &quot;identities&quot;: &quot;{identities}&quot;,
         ///  &quot;status&quot;: &quot;{statusCode}&quot;,
-        ///  &quot;duration&quot;: &quot;{duration}&quot;
+        ///  &quot;duration&quot;: &quot;{duration}&quot;,
+        ///  &quot;route&quot;: &quot;{route}&quot;
         ///}}.
         /// </summary>
         internal static string ExecutedHttpRequest {
@@ -95,9 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         /// <summary>
         ///   Looks up a localized string similar to Executing HTTP request: {{
         ///  &quot;requestId&quot;: &quot;{mS_ActivityId}&quot;,
-        ///  &quot;method&quot;: &quot;{httpMethod}&quot;,
-        ///  &quot;userAgent&quot;: &quot;{userAgent}&quot;,
-        ///  &quot;uri&quot;: &quot;{uri}&quot;
+        ///  &quot;method&quot;: &quot;{httpMethod}&quot;
         ///}}.
         /// </summary>
         internal static string ExecutingHttpRequest {

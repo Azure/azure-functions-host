@@ -174,14 +174,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(526, nameof(ScriptHostServiceInitCanceledByRuntime)),
                 "Restart cancellation requested by runtime.");
 
-        private static readonly Action<ILogger, string, string, string, string, Exception> _executingHttpRequest =
-            LoggerMessage.Define<string, string, string, string>(
+        private static readonly Action<ILogger, string, string, Exception> _executingHttpRequest =
+            LoggerMessage.Define<string, string>(
                 LogLevel.Information,
                 new EventId(527, nameof(ExecutingHttpRequest)),
                 Properties.Resources.ExecutingHttpRequest);
 
-        private static readonly Action<ILogger, string, string, int, long, Exception> _executedHttpRequest =
-            LoggerMessage.Define<string, string, int, long>(
+        private static readonly Action<ILogger, string, string, int, long, string, Exception> _executedHttpRequest =
+            LoggerMessage.Define<string, string, int, long, string>(
                 LogLevel.Information,
                 new EventId(528, nameof(ExecutedHttpRequest)),
                 Properties.Resources.ExecutedHttpRequest);
@@ -211,14 +211,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             _hostStateChanged(logger, previousState, newState, null);
         }
 
-        public static void ExecutingHttpRequest(this ILogger logger, string mS_ActivityId, string httpMethod, string userAgent, string uri)
+        public static void ExecutingHttpRequest(this ILogger logger, string mS_ActivityId, string httpMethod)
         {
-            _executingHttpRequest(logger, mS_ActivityId, httpMethod, userAgent, uri, null);
+            _executingHttpRequest(logger, mS_ActivityId, httpMethod, null);
         }
 
-        public static void ExecutedHttpRequest(this ILogger logger, string mS_ActivityId, string identities, int statusCode, long duration)
+        public static void ExecutedHttpRequest(this ILogger logger, string mS_ActivityId, string identities, int statusCode, long duration, string route)
         {
-            _executedHttpRequest(logger, mS_ActivityId, identities, statusCode, duration, null);
+            _executedHttpRequest(logger, mS_ActivityId, identities, statusCode, duration, route, null);
         }
 
         public static void RequestAborted(this ILogger logger, string mS_ActivityId)
