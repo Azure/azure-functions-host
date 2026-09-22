@@ -97,7 +97,10 @@ jobs:
         functionInvocationUrl: http://localhost:5000/api/HelloAuth
     ${{ else }}:
       warmupApiUrl: http://localhost:5000/api/warmup?restart=1
-      functionInvocationUrl: http://localhost:5000/api/Hello?forcespecialization
+      ${{ if eq(parameters.os, 'Windows') }}:
+        functionInvocationUrl: http://localhost:5000/api/Hello?forcespecialization
+      ${{ if eq(parameters.os, 'Linux') }}:
+        functionInvocationUrl: http://localhost:5000/api/Hello
 
   ${{ if and(or(eq(parameters.collectPerfViewProfileOnWindows, true), eq(parameters.collectNetTrace, true)), eq(parameters.instanceId, '1')) }}:
     templateContext:
@@ -210,8 +213,6 @@ jobs:
       parameters:
         os: ${{ parameters.os }}
         displayName: Stop temporary host
-        ${{ if eq(parameters.os, 'Windows') }}:
-          postStopDelaySeconds: 2
 
   # ── Host Setup ────────────────────────────────────────────────────────────────
   # Windows: IIS/ANCM hosting (production parity). Linux: direct process launch.

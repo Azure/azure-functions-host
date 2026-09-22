@@ -21,8 +21,9 @@ steps:
             Write-Host "Host is ready. Status: $($response.StatusCode) $($response.StatusDescription)"
             exit 0
         } catch {
+            Write-Host "Attempt $attempt failed: $($_.Exception.Message)"
             if ($attempt -lt $maxAttempts) {
-                Write-Host "Attempt $attempt failed: $($_.Exception.Message). Retrying in 10 seconds..."
+                Write-Host "Retrying in 10 seconds..."
                 Start-Sleep -Seconds 10
             }
         }
