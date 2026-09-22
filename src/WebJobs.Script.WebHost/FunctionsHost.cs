@@ -104,7 +104,7 @@ public static class FunctionsHost
 
 #if PLACEHOLDER_SIMULATION
         SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-        SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "0");
+        SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, string.Empty);
 #endif
 
         return new HostBuilder()

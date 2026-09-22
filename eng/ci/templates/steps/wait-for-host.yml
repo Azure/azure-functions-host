@@ -1,0 +1,33 @@
+# Waits for host readiness and fails when retries are exhausted.
+
+parameters:
+- name: url
+  type: string
+- name: displayName
+  type: string
+- name: maxAttempts
+  type: number
+  default: 15
+
+steps:
+- pwsh: |
+    $url = "${{ parameters.url }}"
+    $maxAttempts = ${{ parameters.maxAttempts }}
+
+    Write-Host "Waiting for host at $url..."
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            $response = Invoke-WebRequest -Uri $url -TimeoutSec 30 -ErrorAction Stop
+            Write-Host "Host is ready. Status: $($response.StatusCode) $($response.StatusDescription)"
+            exit 0
+        } catch {
+            Write-Host "Attempt $attempt failed: $($_.Exception.Message)"
+            if ($attempt -lt $maxAttempts) {
+                Write-Host "Retrying in 10 seconds..."
+                Start-Sleep -Seconds 10
+            }
+        }
+    }
+
+    throw "Host at $url was not ready after $maxAttempts attempts."
+  displayName: ${{ parameters.displayName }}
