@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Moq;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -171,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             };
 
             AddSampleBindings(functionMetadata);
-            var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null, excludeTestData: false);
+            var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null);
 
             Assert.Null(result.ScriptRootPathHref);
             Assert.Null(result.ConfigHref);
@@ -181,10 +182,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             Assert.Equal("httpTrigger", binding[0]["type"].Value<string>());
         }
 
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task ToFunctionMetadataResponse_TestData_Exclusion(bool shouldExcludeTestDataFromApiResponse)
+        [Fact]
+        public async Task ToFunctionMetadataResponse_DoesNotEmitTestDataProperties()
         {
             var functionName = "TestFunction1";
             var functionMetadata = new FunctionMetadata
@@ -192,11 +191,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 Name = functionName
             };
             var testDataFileName = $"{functionName}.dat";
-            var testDataFilePath = Path.Combine(_testRootScriptPath, testDataFileName);
             var options = new ScriptJobHostOptions
             {
-                RootScriptPath = _testRootScriptPath,
-                TestDataPath = testDataFilePath
+                RootScriptPath = _testRootScriptPath
             };
 
             IFileSystem fileSystem = FileUtility.Instance;
@@ -214,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 {
                     Position = 0
                 };
-                // Mock the file system
+
                 var mockFileSystem = new Mock<IFileSystem>();
                 var mockFile = new Mock<FileBase>();
                 mockFileSystem.Setup(f => f.Directory.Exists(It.IsAny<string>())).Returns(true);
@@ -226,14 +223,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 FileUtility.Instance = mockFileSystem.Object;
 
                 AddSampleBindings(functionMetadata);
-                var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null, excludeTestData: shouldExcludeTestDataFromApiResponse);
+                var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null);
 
                 Assert.Equal(functionName, result.Name);
-                Assert.Equal(shouldExcludeTestDataFromApiResponse, result.TestData == null);
-                if (!shouldExcludeTestDataFromApiResponse)
-                {
-                    Assert.True(result.TestData.Trim().Length > 0);
-                }
+
+                // The test_data / test_data_href keys must not appear in the serialized payload,
+                // even though a .dat file exists on disk.
+                var serialized = JObject.Parse(JsonConvert.SerializeObject(result));
+                Assert.False(serialized.ContainsKey("test_data"));
+                Assert.False(serialized.ContainsKey("test_data_href"));
+
+                mockFile.Verify(f => f.Open(It.Is<string>(path => path.EndsWith(testDataFileName)), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>()), Times.Never());
             }
             finally
             {

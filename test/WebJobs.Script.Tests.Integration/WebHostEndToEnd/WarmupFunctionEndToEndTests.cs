@@ -119,11 +119,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     IsSelfHost = true,
                     ScriptPath = scriptRoot,
                     LogPath = Path.Combine(_testHome, "LogFiles", "Application", "Functions"),
-                    SecretsPath = Path.Combine(_testHome, "data", "Functions", "Secrets"),
-                    TestDataPath = Path.Combine(_testHome, "data", "Functions", "SampleData")
+                    SecretsPath = Path.Combine(_testHome, "data", "Functions", "Secrets")
                 };
-
-                FileUtility.EnsureDirectoryExists(HostOptions.TestDataPath);
 
                 var optionsMonitor = TestHelpers.CreateOptionsMonitor(HostOptions);
 

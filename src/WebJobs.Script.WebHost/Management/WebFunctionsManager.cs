@@ -8,7 +8,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -31,10 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IHostFunctionMetadataProvider _hostFunctionMetadataProvider;
         private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
-        private readonly IOptionsMonitor<FunctionsHostingConfigOptions> _hostingConfigOptions;
 
         public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILoggerFactory loggerFactory, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IHostFunctionMetadataProvider hostFunctionMetadataProvider,
-            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IOptionsMonitor<FunctionsHostingConfigOptions> hostingConfigOptions)
+            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
@@ -45,7 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _functionMetadataManager = functionMetadataManager;
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
             _languageWorkerOptions = languageWorkerOptions;
-            _hostingConfigOptions = hostingConfigOptions;
         }
 
         public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(bool includeProxies)
@@ -53,14 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = GetFunctionsMetadata(includeProxies, forceRefresh: false);
 
-            return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider, excludeTestData: _hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled);
+            return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider);
         }
 
-        internal static async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionMetadataResponse(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions, HostNameProvider hostNameProvider, bool excludeTestData)
+        internal static async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionMetadataResponse(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions, HostNameProvider hostNameProvider)
         {
             string baseUrl = GetBaseUrl(hostNameProvider);
             string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
-            var tasks = functionsMetadata.Select(p => p.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl, excludeTestData));
+            var tasks = functionsMetadata.Select(p => p.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl));
 
             return await tasks.WhenAll();
         }
@@ -85,8 +82,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         /// <summary>
         /// It handles creating a new function or updating an existing one.
-        /// It attempts to clean left over artifacts from a possible previous function with the same name
-        /// if config is changed, then `configChanged` is set to true so the caller can call SyncTriggers if needed.
+        /// It writes out any included files and the function config.
+        /// If config is changed, then `configChanged` is set to true so the caller can call SyncTriggers if needed.
         /// </summary>
         /// <param name="name">name of the function to be created.</param>
         /// <param name="functionMetadata">in case of update for function.json.</param>
@@ -101,14 +98,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // Make sure the function folder exists
             if (!FileUtility.DirectoryExists(functionDir))
             {
-                // Cleanup any leftover artifacts from a function with the same name before.
-                DeleteFunctionArtifacts(functionMetadata);
                 Directory.CreateDirectory(functionDir);
             }
 
             string newConfig = null;
             string configPath = Path.Combine(functionDir, ScriptConstants.FunctionMetadataFileName);
-            string dataFilePath = Extensions.FunctionMetadataExtensions.GetTestDataFilePath(name, hostOptions);
 
             // If files are included, write them out
             if (functionMetadata?.Files != null)
@@ -148,11 +142,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 configChanged = true;
             }
 
-            if (functionMetadata.TestData != null && !_hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled)
-            {
-                await FileUtility.WriteAsync(dataFilePath, functionMetadata.TestData);
-            }
-
             // Using HostFunctionMetadataProvider instead of IFunctionMetadataManager. More details logged here https://github.com/Azure/azure-functions-host/issues/10691
             var metadata = (await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(_languageWorkerOptions.CurrentValue.WorkerConfigs, true))
                 .FirstOrDefault(metadata => Utility.FunctionNamesMatch(metadata.Name, name));
@@ -161,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             FunctionMetadataResponse functionMetadataResult = null;
             if (metadata != null)
             {
-                functionMetadataResult = await GetFunctionMetadataResponseAsync(metadata, hostOptions, request, _hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled);
+                functionMetadataResult = await GetFunctionMetadataResponseAsync(metadata, hostOptions, request);
                 success = true;
             }
 
@@ -197,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (functionMetadata != null)
             {
-                var functionMetadataResponse = await GetFunctionMetadataResponseAsync(functionMetadata, hostOptions, request, _hostingConfigOptions.CurrentValue.IsTestDataSuppressionEnabled);
+                var functionMetadataResponse = await GetFunctionMetadataResponseAsync(functionMetadata, hostOptions, request);
                 return (true, functionMetadataResponse);
             }
             else
@@ -222,8 +211,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     FileUtility.DeleteDirectoryContentsSafe(functionPath);
                 }
 
-                DeleteFunctionArtifacts(function);
-
                 await _functionsSyncManager.TrySyncTriggersAsync();
 
                 return (true, string.Empty);
@@ -234,22 +221,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        private void DeleteFunctionArtifacts(FunctionMetadataResponse function)
-        {
-            var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var testDataPath = function.GetFunctionTestDataFilePath(hostOptions);
-
-            if (!string.IsNullOrEmpty(testDataPath))
-            {
-                FileUtility.DeleteFileSafe(testDataPath);
-            }
-        }
-
-        private async Task<FunctionMetadataResponse> GetFunctionMetadataResponseAsync(FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, HttpRequest request, bool excludeTestData)
+        private static async Task<FunctionMetadataResponse> GetFunctionMetadataResponseAsync(FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, HttpRequest request)
         {
             string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);
             var baseUrl = $"{request.Scheme}://{request.Host}";
-            return await functionMetadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl, excludeTestData);
+            return await functionMetadata.ToFunctionMetadataResponse(hostOptions, routePrefix, baseUrl);
         }
 
         // TODO : Due to lifetime scoping issues (this service lifetime is longer than the lifetime

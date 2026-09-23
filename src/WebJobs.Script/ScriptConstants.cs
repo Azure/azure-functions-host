@@ -146,7 +146,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableOrderedInvocationMessages = "DisableOrderedInvocationMessages";
         public const string FeatureFlagDisableReservedRouteEnforcement = "DisableReservedRouteEnforcement";
         public const string FeatureFlagEnableAzureMonitorTimeIsoFormat = "EnableAzureMonitorTimeIsoFormat";
-        public const string FeatureFlagEnableTestDataSuppression = "EnableTestDataSuppression";
         public const string HostingConfigDisableLinuxAppServiceDetailedExecutionEvents = "DisableLinuxExecutionDetails";
         public const string HostingConfigDisableLinuxAppServiceExecutionEventLogBackoff = "DisableLinuxLogBackoff";
         public const string FeatureFlagEnableLegacyDurableVersionCheck = "EnableLegacyDurableVersionCheck";
@@ -180,7 +179,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// for settriggers calls. If we raise that limit there, we should raise here as well.
         /// </summary>
         public const int MaxTriggersStringLength = 204800;
-        public const int MaxTestDataInlineStringLength = 4 * 1024;
 
         public const string ExtensionsProjectFileName = "extensions.csproj";
         public const string ItemGroupElementName = "ItemGroup";
