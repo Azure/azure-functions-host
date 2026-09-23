@@ -597,6 +597,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task Log_CustomMetric_LogsUsageMetricOncePerChannel()
+        {
+            await CreateDefaultWorkerChannel();
+            _metricsLogger.ClearCollections();
+
+            _workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.CustomMetric));
+            _workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.CustomMetric));
+            _workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.User));
+
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => string.Equals(e, MetricEventNames.WorkerCustomMetric, StringComparison.Ordinal)));
+        }
+
+        [Fact]
         public async Task SendInvocationRequest_PublishesOutboundEvent()
         {
             await CreateDefaultWorkerChannel();
@@ -2318,6 +2331,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             return GetTestFunctionsList(runtime, numberOfFunctions: 2, addWorkerProperties);
         }
+
+        private static StreamingMessage CreateRpcLogEvent(RpcLog.Types.RpcLogCategory logCategory)
+            => new() { RpcLog = new RpcLog() { LogCategory = logCategory, InvocationId = Guid.NewGuid().ToString() } };
 
         public static ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource,
              CancellationToken? token = null, ILogger logger = null, string scriptRootPath = null)

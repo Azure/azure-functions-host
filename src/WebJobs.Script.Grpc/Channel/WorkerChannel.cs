@@ -105,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private System.Timers.Timer _timer;
         private bool _functionMetadataRequestSent = false;
         private IOptions<ScriptJobHostOptions> _scriptHostOptions;
+        private int _customMetricUsageLogged;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WorkerChannel"/> class over an owned duplex channel.
@@ -1341,6 +1342,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void Log(StreamingMessage msg)
         {
             var rpcLog = msg.RpcLog;
+
+            // Record that this app uses worker custom metrics. Emitted once per channel, before the
+            // invocation lookup below, so metrics arriving outside an invocation are still counted.
+            if (rpcLog.LogCategory == RpcLogCategory.CustomMetric && Interlocked.Exchange(ref _customMetricUsageLogged, 1) == 0)
+            {
+                _metricsLogger.LogEvent(MetricEventNames.WorkerCustomMetric);
+            }
+
             if (_executingInvocations.TryGetValue(rpcLog.InvocationId, out var invocation))
             {
                 var context = invocation.Context;
