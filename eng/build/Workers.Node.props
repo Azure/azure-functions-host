@@ -1,7 +1,7 @@
 <Project>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" VersionOverride="3.16.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" VersionOverride="3.16.1" />
   </ItemGroup>
 
 </Project>
