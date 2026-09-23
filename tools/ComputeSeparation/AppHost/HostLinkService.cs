@@ -31,10 +31,9 @@ internal sealed partial class HostLinkService(
             string grpcEndpoint = await proxyEndpoint.GetValueAsync(startup.Token)
                 ?? throw new InvalidOperationException("The WorkerProxy runtime gRPC endpoint was not allocated.");
             using HttpClient client = new() { BaseAddress = new Uri(address), Timeout = Timeout.InfiniteTimeSpan };
-            using HttpResponseMessage response = await client.PutAsJsonAsync("/admin/workers", new
+            using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
             {
-                workerPodName = workerId,
-                workerGrpcEndpoint = grpcEndpoint
+                workerGrpcEndpoint = grpcEndpoint,
             }, startup.Token);
 
             if (!response.IsSuccessStatusCode)

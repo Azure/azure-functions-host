@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+#nullable enable
+
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -18,7 +20,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Azure.Functions.Host.Tests;
+namespace Azure.Functions.Rpc.Client.Tests;
 
 /// <summary>
 /// Simulates WorkerProxy's runtime-facing initialization protocol over a real gRPC listener.

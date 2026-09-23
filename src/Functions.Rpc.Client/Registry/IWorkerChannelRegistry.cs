@@ -26,15 +26,25 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// processes a successful <c>WorkerInitResponse</c>. Function metadata has not been requested, invocation buffers
     /// have not been created, and function load requests have not been sent, so the channel is not yet ready for
     /// invocations.
-    /// Matching worker IDs and endpoint URIs share initialization. Different workers can link concurrently.
+    /// Matching worker IDs and gRPC endpoint URIs share initialization. Endpoints are compared using ordinal
+    /// <see cref="Uri.AbsoluteUri"/> equality. HTTP proxying is negotiated through worker capabilities.
+    /// Different workers can link concurrently.
     /// Conflicting or terminal links are rejected. Failed attempts can retry after cleanup.
+    /// A new attempt's deadline is shared with its waiters; a retry's deadline only ends its own wait.
     /// </remarks>
     /// <param name="workerId">The worker identifier.</param>
     /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
     /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
-    /// <returns>The channel after its FunctionRpc initialization handshake completes.</returns>
+    /// <returns>
+    /// The initialized and registered channel, and whether this caller started the successful attempt.
+    /// Matching retries report an existing link, including retries that waited for initialization.
+    /// </returns>
     /// <exception cref="WorkerLinkException">The request conflicts with the registry's admission state.</exception>
-    Task<WorkerChannel> LinkAsync(string workerId, Uri grpcEndpoint, CancellationToken cancellationToken = default);
+    /// <exception cref="TimeoutException">The new link attempt or this caller's retry wait exceeded its deadline.</exception>
+    Task<WorkerLinkResult> LinkAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes and disposes a linked worker when present.
