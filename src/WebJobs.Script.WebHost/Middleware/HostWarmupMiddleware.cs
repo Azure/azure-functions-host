@@ -69,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             if (!_jitTraceHasRun)
             {
                 PreJitPrepare(WarmUpConstants.JitTraceFileName);
+                PreJitPrepare(WarmUpConstants.OpenTelemetryJitTraceFileName);
                 if (_environment.IsAnyLinuxConsumption())
                 {
                     PreJitPrepare(WarmUpConstants.LinuxJitTraceFileName);
