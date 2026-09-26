@@ -17,6 +17,8 @@ namespace Azure.Functions.WorkerProxy.Tests;
 
 public partial class FunctionRpcRelayTests
 {
+    private const string FunctionGroupNameCapability = "FunctionGroupName";
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -151,6 +153,101 @@ public partial class FunctionRpcRelayTests
         Assert.Null(relay.WorkerHttpDestination);
         Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
         Assert.Equal(4, manager.State.Revision);
+    }
+
+    [Theory]
+    [InlineData(null, "assigned-group", "assigned-group")]
+    [InlineData("worker-group", "assigned-group", "assigned-group")]
+    [InlineData(null, null, null)]
+    [InlineData("worker-group", null, null)]
+    public async Task Relay_Initialization_AdvertisesOnlyAssignedFunctionGroup(string? workerSuppliedGroup,
+        string? platformSuppliedGroup, string? expectedAdvertisedGroup)
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        if (platformSuppliedGroup is not null)
+        {
+            Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment(platformSuppliedGroup)));
+        }
+
+        StreamingMessage response = CreateInitResponse("init", null);
+        if (workerSuppliedGroup is not null)
+        {
+            response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = workerSuppliedGroup;
+        }
+
+        StreamingMessage expected = CreateInitResponse("init", null);
+        if (expectedAdvertisedGroup is not null)
+        {
+            expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = expectedAdvertisedGroup;
+        }
+
+        await worker.WriteAsync(response, timeout.Token);
+
+        Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
+    }
+
+    [Fact]
+    public async Task Relay_RepeatedInitialization_KeepsAssignedFunctionGroup()
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        WorkerAssignment assignment = CreateWorkerAssignment();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
+        await worker.WriteAsync(CreateInitResponse("init", null), timeout.Token);
+        await runtime.ReadAsync(timeout.Token);
+        StreamingMessage repeated = CreateInitResponse("repeated-init", null);
+        repeated.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "changed-group";
+        StreamingMessage expected = repeated.Clone();
+        expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = assignment.FunctionGroupName;
+
+        await worker.WriteAsync(repeated, timeout.Token);
+
+        Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
+    }
+
+    [Fact]
+    public async Task Relay_ReplacementSessionAfterFailedAssignment_DoesNotReuseFunctionGroup()
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        WorkerAssignment failedAssignment = await FailAssignedSessionAsync(factory, timeout.Token);
+        Assert.Equal(WorkerAssignmentState.Failed, manager.State.AssignmentState);
+        Assert.Equal(failedAssignment.FunctionGroupName, manager.State.FunctionGroupName);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "replacement", timeout.Token);
+        StreamingMessage response = CreateInitResponse("init", null);
+        StreamingMessage expected = response.Clone();
+
+        await worker.WriteAsync(response, timeout.Token);
+
+        Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
+    }
+
+    private static async Task<WorkerAssignment> FailAssignedSessionAsync(WorkerProxyWebApplicationFactory factory,
+        CancellationToken cancellationToken)
+    {
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, cancellationToken);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, cancellationToken);
+        await ExchangeAsync(runtime, worker, "assigned", cancellationToken);
+        WorkerAssignment assignment = CreateWorkerAssignment();
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
+        await worker.CompleteRequestAsync(cancellationToken);
+        await Task.WhenAll(runtime.WaitForTerminationAsync(cancellationToken), worker.WaitForTerminationAsync(cancellationToken));
+        await WaitForReleaseAsync(relay, cancellationToken);
+        return assignment;
     }
 
     private sealed class TestCapabilityFinalizer(Func<IDictionary<string, string>, Uri?> finalize) : IWorkerCapabilityFinalizer
