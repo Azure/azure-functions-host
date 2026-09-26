@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Frozen;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Channels;
@@ -25,6 +26,7 @@ internal sealed partial class FunctionRpcRelay
         IWorkerCapabilityFinalizer capabilityFinalizer,
         WorkerPodStateManager stateManager)
     {
+        private const string FunctionGroupNameCapability = "FunctionGroupName";
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel();
         private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
@@ -273,6 +275,7 @@ internal sealed partial class FunctionRpcRelay
             if (capabilities is null)
             {
                 Uri? destination = capabilityFinalizer.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
+                ApplyFunctionGroupCapability(finalized.WorkerInitResponse.Capabilities);
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
@@ -293,6 +296,27 @@ internal sealed partial class FunctionRpcRelay
             }
 
             return finalized;
+        }
+
+        /// <summary>
+        /// Advertises the function group assigned to this session's worker, replacing any worker-supplied value.
+        /// </summary>
+        /// <remarks>
+        /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
+        /// the capability is removed so the runtime never receives an unassigned, stale, or worker-supplied group.
+        /// </remarks>
+        private void ApplyFunctionGroupCapability(IDictionary<string, string> capabilities)
+        {
+            WorkerPodState state = stateManager.State;
+            if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
+                && state.SessionId == id)
+            {
+                capabilities[FunctionGroupNameCapability] = functionGroupName;
+                return;
+            }
+
+            capabilities.Remove(FunctionGroupNameCapability);
+            Log.FunctionGroupNotAdvertised(logger, id, state.AssignmentState);
         }
 
         private static async Task WriteOutboundAsync(ChannelReader<StreamingMessage> source,
@@ -457,5 +481,10 @@ internal sealed partial class FunctionRpcRelay
             "FunctionRpc relay session {SessionId} observed a secondary {OperationName} stream failure on the {Side} side.")]
         public static partial void SecondaryStreamFailure(ILogger logger, Exception exception, long sessionId, string operationName,
             FunctionRpcRelaySide side);
+
+        [LoggerMessage(3, LogLevel.Warning,
+            "FunctionRpc relay session {SessionId} initialized a worker without a live assignment ({AssignmentState}). " +
+            "The function group capability is not advertised.")]
+        public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
     }
 }
