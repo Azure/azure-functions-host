@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
@@ -32,12 +33,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var requestId = SetRequestId(context.Request);
 
             var sw = ValueStopwatch.StartNew();
-            _logger.ExecutingHttpRequest(requestId, context.Request.Method);
+            try
+            {
+                _logger.ExecutingHttpRequest(requestId, context.Request.Method);
+            }
+            catch (Exception exception) when (HttpRequestTraceDiagnostics.IsRecoverable(exception))
+            {
+                HttpRequestTraceDiagnostics.ReportFailure(nameof(ScriptHostServiceLoggerExtension.ExecutingHttpRequest), exception);
+            }
 
             await _next.Invoke(context);
 
-            string identities = GetIdentities(context);
-            _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)sw.GetElapsedTime().TotalMilliseconds, GetRouteTemplate(context));
+            try
+            {
+                string identities = GetIdentities(context);
+                _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)sw.GetElapsedTime().TotalMilliseconds, GetRouteTemplate(context));
+            }
+            catch (Exception exception) when (HttpRequestTraceDiagnostics.IsRecoverable(exception))
+            {
+                HttpRequestTraceDiagnostics.ReportFailure(nameof(ScriptHostServiceLoggerExtension.ExecutedHttpRequest), exception);
+            }
         }
 
         /// <summary>

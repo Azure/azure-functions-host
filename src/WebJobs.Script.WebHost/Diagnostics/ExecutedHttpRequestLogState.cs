@@ -6,7 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using System.Text.Json;
+using System.Text.Encodings.Web;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -47,11 +47,11 @@ internal readonly struct ExecutedHttpRequestLogState(
         return string.Format(
             CultureInfo.InvariantCulture,
             MessageFormat,
-            JsonEncodedText.Encode(mS_ActivityId ?? "(null)"),
-            JsonEncodedText.Encode(identities ?? "(null)"),
+            JavaScriptEncoder.Default.Encode(mS_ActivityId ?? "(null)"),
+            JavaScriptEncoder.Default.Encode(identities ?? "(null)"),
             statusCode,
             duration,
-            JsonEncodedText.Encode(route ?? "(null)"));
+            JavaScriptEncoder.Default.Encode(route ?? "(null)"));
     }
 
     /// <inheritdoc/>
