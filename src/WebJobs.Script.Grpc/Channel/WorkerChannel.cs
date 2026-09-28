@@ -1345,7 +1345,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             // Record that this app uses worker custom metrics. Emitted once per channel, before the
             // invocation lookup below, so metrics arriving outside an invocation are still counted.
-            if (rpcLog.LogCategory == RpcLogCategory.CustomMetric && Interlocked.Exchange(ref _customMetricUsageLogged, 1) == 0)
+            // The plain read short-circuits the interlocked write once the flag is already set.
+            if (rpcLog.LogCategory == RpcLogCategory.CustomMetric &&
+                _customMetricUsageLogged == 0 &&
+                Interlocked.Exchange(ref _customMetricUsageLogged, 1) == 0)
             {
                 _metricsLogger.LogEvent(MetricEventNames.WorkerCustomMetric);
             }
