@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Azure.Functions.Host.AppServer;
 using Azure.Functions.Host.Controllers;
 using Microsoft.Azure.WebJobs.Script.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -26,6 +27,8 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         ArgumentNullException.ThrowIfNull(mvcBuilder);
 
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
+        services.AddComputeRuntimeStateServices();
+        services.AddAppServerHostStatePublisher();
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
         mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
     }

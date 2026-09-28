@@ -19,6 +19,11 @@ namespace Azure.Functions.Rpc.Client;
 public interface IWorkerChannelRegistry : IAsyncDisposable
 {
     /// <summary>
+    /// Gets a value that increases each time a channel is added to or removed from the initialized-channel set.
+    /// </summary>
+    long ChannelSetVersion { get; }
+
+    /// <summary>
     /// Atomically admits one worker or reuses its matching pending or initialized link.
     /// </summary>
     /// <remarks>
@@ -75,4 +80,13 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <param name="cancellationToken">A token that cancels only this wait.</param>
     /// <returns>An initialized channel.</returns>
     Task<WorkerChannel> WaitForFirstInitializedAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Waits without polling until <see cref="ChannelSetVersion"/> exceeds <paramref name="lastKnownVersion"/>.
+    /// </summary>
+    /// <param name="lastKnownVersion">The last version observed by the caller.</param>
+    /// <param name="cancellationToken">A token that cancels only this wait.</param>
+    /// <returns>The current channel-set version, which is greater than <paramref name="lastKnownVersion"/>.</returns>
+    /// <exception cref="ObjectDisposedException">The registry was disposed before the version changed.</exception>
+    Task<long> WaitForChannelSetChangeAsync(long lastKnownVersion, CancellationToken cancellationToken = default);
 }

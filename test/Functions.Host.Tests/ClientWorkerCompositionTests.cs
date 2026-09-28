@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Azure.Functions.Host.AppServer;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Hosting;
@@ -80,6 +81,13 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Host.ClientWebHostWorkerManager");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider");
+        AssertSingleton(services, "Azure.Functions.Host.AppServer.IAppServerHostStateClient",
+            "Azure.Functions.Host.AppServer.AppServerHostStateClient");
+        ServiceDescriptor stateManager = Assert.Single(services, service => service.ServiceType == typeof(IComputeRuntimeStateManager));
+        Assert.Equal(ServiceLifetime.Singleton, stateManager.Lifetime);
+        Assert.NotNull(stateManager.ImplementationFactory);
+        Assert.Single(services, service =>
+            service.ServiceType == typeof(IHostedService) && service.ImplementationType == typeof(AppServerHostStatePublisher));
         ServiceDescriptor coordinator = Assert.Single(services.Where(service =>
             string.Equals(service.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal)));
         Assert.Equal(ServiceLifetime.Singleton, coordinator.Lifetime);
@@ -216,6 +224,14 @@ public class ClientWorkerCompositionTests
             Type coordinatorType = GetServiceType(services, StartupCoordinatorTypeName);
             Assert.Same(rootHost.Services.GetRequiredService(coordinatorType),
                 Assert.Single(hostedServices.Where(service => string.Equals(service.GetType().FullName, StartupCoordinatorTypeName, StringComparison.Ordinal))));
+            IComputeRuntimeStateManager stateManager = rootHost.Services.GetRequiredService<IComputeRuntimeStateManager>();
+            int stateManagerIndex = Array.IndexOf(hostedServices, stateManager);
+            int publisherIndex = Array.FindIndex(hostedServices, service => service is AppServerHostStatePublisher);
+            Assert.Single(hostedServices, service => ReferenceEquals(service, stateManager));
+            Assert.Single(hostedServices, service => service is AppServerHostStatePublisher);
+
+            // Hosted services stop in reverse order, so the publisher stops before the state manager it reads.
+            Assert.True(stateManagerIndex < publisherIndex);
             Assert.Same(rootHost.Services.GetRequiredService<WebJobsScriptHostService>(),
                 rootHost.Services.GetRequiredService<IScriptHostManager>());
             await workerManager.SpecializeAsync();
@@ -243,6 +259,8 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor => string.Equals(descriptor.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal));
         Assert.DoesNotContain(services, descriptor =>
             string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IComputeRuntimeStateManager));
+        Assert.DoesNotContain(services, descriptor => descriptor.ImplementationType == typeof(AppServerHostStatePublisher));
     }
 
     [Fact]

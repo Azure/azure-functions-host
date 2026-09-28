@@ -39,6 +39,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private Task _disposeTask;
     private bool _disposed;
     private TaskCompletionSource _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource _channelSetChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private long _channelSetVersion;
 
     public WorkerChannelRegistry(
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
@@ -60,6 +62,17 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
+    }
+
+    public long ChannelSetVersion
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _channelSetVersion;
+            }
+        }
     }
 
     public Task<WorkerLinkResult> LinkAsync(
@@ -306,6 +319,28 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
+    public async Task<long> WaitForChannelSetChangeAsync(long lastKnownVersion, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        while (true)
+        {
+            Task channelSetChanged;
+            lock (_stateLock)
+            {
+                if (_channelSetVersion > lastKnownVersion)
+                {
+                    return _channelSetVersion;
+                }
+
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                channelSetChanged = _channelSetChanged.Task;
+            }
+
+            await channelSetChanged.WaitAsync(cancellationToken);
+        }
+    }
+
     public ValueTask DisposeAsync()
     {
         lock (_disposeLock)
@@ -326,6 +361,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             slots = [.. _slots];
             monitorTasks = [.. _monitorTasks];
             _initializedChannelAvailable.TrySetResult();
+            _channelSetChanged.TrySetResult();
         }
 
         Exception disposalException = null;
@@ -376,7 +412,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             _initializedChannelAvailable = new(TaskCreationOptions.RunContinuationsAsynchronously);
         }
 
+        OnChannelSetChangedLocked();
         return channel;
+    }
+
+    private void OnChannelSetChangedLocked()
+    {
+        _channelSetVersion++;
+        TaskCompletionSource channelSetChanged = _channelSetChanged;
+        _channelSetChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        channelSetChanged.TrySetResult();
     }
 
     private void RemoveEmptySlot(string workerId, WorkerSlot slot)
@@ -485,6 +530,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
             // Signal initialized-channel availability without starting ScriptHost here.
             _initializedChannelAvailable.TrySetResult();
+            OnChannelSetChangedLocked();
         }
 
         _ = monitorTask.ContinueWith(static (task, state) => ((WorkerChannelRegistry)state).OnMonitorCompleted(task), this,

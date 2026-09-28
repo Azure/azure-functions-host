@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -30,6 +31,11 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
+    /// <summary>
+    /// The worker capability through which WorkerProxy advertises the worker's assigned function group.
+    /// </summary>
+    internal const string FunctionGroupNameCapability = "FunctionGroupName";
+
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private LifecycleState _lifecycleState;
@@ -78,6 +84,16 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     }
 
     internal Task Completion { get; }
+
+    /// <summary>
+    /// Gets the function group advertised in the successful WorkerInitResponse, or <see langword="null"/> when unknown.
+    /// </summary>
+    internal string FunctionGroupName { get; private set; }
+
+    /// <summary>
+    /// Gets a value indicating whether the worker advertised the HTTP function group.
+    /// </summary>
+    internal bool IsHttpFunctionGroup => string.Equals(FunctionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -144,6 +160,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
             }
 
+            // Capture once: capabilities are not safe to read concurrently with later capability updates.
+            FunctionGroupName = WorkerCapabilities.GetCapabilityState(FunctionGroupNameCapability);
             _startCompletion.TrySetResult();
         }
         catch (OperationCanceledException exception)

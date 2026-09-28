@@ -880,6 +880,92 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(typeof(WorkerChannelRegistry).FullName, newWaitException.ObjectName);
     }
 
+    [Fact]
+    public async Task WaitForChannelSetChangeAsync_CompletesWhenChannelsAreAddedOrRemoved()
+    {
+        RegistryHarness harness = new();
+        ChannelControl first = new("first");
+        ChannelControl second = new("second");
+        harness.Enqueue(first);
+        harness.Enqueue(second);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        long initialVersion = registry.ChannelSetVersion;
+
+        Task<long> linkWait = registry.WaitForChannelSetChangeAsync(initialVersion);
+        Assert.False(linkWait.IsCompleted);
+        await LinkAsync(registry, first.Id);
+        long linkedVersion = await linkWait.WaitAsync(TestTimeout);
+
+        Task<long> unlinkWait = registry.WaitForChannelSetChangeAsync(linkedVersion);
+        Assert.True(await registry.UnlinkAsync(first.Id));
+        long unlinkedVersion = await unlinkWait.WaitAsync(TestTimeout);
+
+        Task<long> completionWait = registry.WaitForChannelSetChangeAsync(unlinkedVersion);
+        await LinkAsync(registry, second.Id);
+        long secondLinkedVersion = await completionWait.WaitAsync(TestTimeout);
+        Task<long> secondCompletionWait = registry.WaitForChannelSetChangeAsync(secondLinkedVersion);
+        second.Complete();
+        long completedVersion = await secondCompletionWait.WaitAsync(TestTimeout);
+
+        Assert.True(linkedVersion > initialVersion);
+        Assert.True(unlinkedVersion > linkedVersion);
+        Assert.True(secondLinkedVersion > unlinkedVersion);
+        Assert.True(completedVersion > secondLinkedVersion);
+        Assert.Equal(completedVersion, registry.ChannelSetVersion);
+    }
+
+    [Fact]
+    public async Task WaitForChannelSetChangeAsync_ReturnsImmediatelyForOlderVersionAndSupportsCancellation()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker");
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        long initialVersion = registry.ChannelSetVersion;
+        await LinkAsync(registry, channel.Id);
+        using CancellationTokenSource cancellationSource = new();
+
+        Task<long> staleWait = registry.WaitForChannelSetChangeAsync(initialVersion);
+        Task<long> canceledWait = registry.WaitForChannelSetChangeAsync(registry.ChannelSetVersion, cancellationSource.Token);
+        cancellationSource.Cancel();
+
+        Assert.True(staleWait.IsCompletedSuccessfully);
+        Assert.Equal(registry.ChannelSetVersion, await staleWait);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => canceledWait.WaitAsync(TestTimeout));
+    }
+
+    [Fact]
+    public async Task WaitForChannelSetChangeAsync_FailedLinkDoesNotChangeChannelSet()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockStart: true);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        long initialVersion = registry.ChannelSetVersion;
+        Task<long> wait = registry.WaitForChannelSetChangeAsync(initialVersion);
+
+        Task<WorkerChannel> link = LinkAsync(registry, channel.Id);
+        await channel.StartEntered.WaitAsync(TestTimeout);
+        channel.FailStart(new InvalidOperationException("init failed"));
+        await Assert.ThrowsAnyAsync<Exception>(() => link.WaitAsync(TestTimeout));
+
+        Assert.False(wait.IsCompleted);
+        Assert.Equal(initialVersion, registry.ChannelSetVersion);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_ReleasesChannelSetChangeWaiters()
+    {
+        RegistryHarness harness = new();
+        WorkerChannelRegistry registry = harness.Registry;
+        Task<long> waiter = registry.WaitForChannelSetChangeAsync(registry.ChannelSetVersion);
+
+        await registry.DisposeAsync();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => waiter.WaitAsync(TestTimeout));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => registry.WaitForChannelSetChangeAsync(registry.ChannelSetVersion));
+    }
+
     private static async Task<WorkerChannel> LinkAsync(WorkerChannelRegistry registry, string workerId)
         => (await registry.LinkAsync(workerId, CreateEndpoint(workerId)).ConfigureAwait(false)).Channel;
 

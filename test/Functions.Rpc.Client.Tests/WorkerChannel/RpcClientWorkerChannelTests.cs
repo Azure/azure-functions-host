@@ -274,6 +274,22 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Equal(1, duplexChannel.DisposeCount);
     }
 
+    [Theory]
+    [InlineData("http", "http", true)]
+    [InlineData("HTTP", "HTTP", true)]
+    [InlineData("durable", "durable", false)]
+    [InlineData("", "", false)]
+    [InlineData(null, null, false)]
+    public async Task StartAsync_CapturesFunctionGroupNameAdvertisedByWorkerProxy(
+        string advertisedGroup, string expectedGroup, bool expectedIsHttpFunctionGroup)
+    {
+        await using ClientWorkerChannelTestHarness worker =
+            await ClientWorkerChannelTestHarness.CreateAsync(WorkerId, functionGroupName: advertisedGroup);
+
+        Assert.Equal(expectedGroup, worker.Channel.FunctionGroupName);
+        Assert.Equal(expectedIsHttpFunctionGroup, worker.Channel.IsHttpFunctionGroup);
+    }
+
     private RpcClientWorkerChannel CreateChannel(TestDuplexChannel<StreamingMessage> duplexChannel)
         => _factory.Create(WorkerId, duplexChannel);
 
