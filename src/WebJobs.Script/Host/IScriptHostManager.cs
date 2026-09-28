@@ -41,5 +41,26 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <returns>A <see cref="Task"/> that completes when the host is restarted.</returns>
         Task RestartHostAsync(string reason, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Waits until <see cref="State"/> differs from <paramref name="lastKnownState"/>, without polling.
+        /// </summary>
+        /// <param name="lastKnownState">The state the caller last observed.</param>
+        /// <param name="cancellationToken">The token that cancels the wait.</param>
+        /// <returns>The current state, which differs from <paramref name="lastKnownState"/>.</returns>
+        /// <remarks>
+        /// The wait completes immediately if the state already differs. A state that changes and then returns to
+        /// <paramref name="lastKnownState"/> before the waiter observes it does not complete the wait.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// ScriptHostState state = manager.State;
+        /// while (state != ScriptHostState.Running)
+        /// {
+        ///     state = await manager.WaitForStateChangeAsync(state, cancellationToken);
+        /// }
+        /// </code>
+        /// </example>
+        Task<ScriptHostState> WaitForStateChangeAsync(ScriptHostState lastKnownState, CancellationToken cancellationToken = default);
     }
 }

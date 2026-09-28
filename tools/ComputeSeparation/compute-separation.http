@@ -28,5 +28,9 @@ POST {{platform}}/simulate/host/assign
 ### 3. The platform links the worker to the Host. Expect 201, or 200 for a matching retry.
 POST {{platform}}/simulate/worker/link
 
+### Optional: the last linked worker state the Host published. Expect linkedWorkerCount and linkedHttpWorkerCount = 1
+### once the linked Host is running (0 before), or 204 if the Host has not published yet.
+GET {{platform}}/simulate/host/state
+
 ### 4. A client invokes the function through Host -> WorkerProxy -> worker.
 GET {{host}}/api/hello

@@ -73,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private IScriptEventManager _eventManager;
         private IHost _host;
         private ScriptHostState _state;
+        private TaskCompletionSource _stateChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
@@ -191,12 +192,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             private set
             {
-                if (_state != value)
+                if (_state == value)
                 {
-                    _logger.HostStateChanged(_state, value);
+                    return;
                 }
 
+                _logger.HostStateChanged(_state, value);
                 _state = value;
+
+                // Every state change passes through here. Swap in a fresh signal before completing the previous one, so a
+                // woken waiter that sees no change waits on the fresh signal.
+                Interlocked.Exchange(ref _stateChanged, new(TaskCreationOptions.RunContinuationsAsynchronously)).TrySetResult();
             }
         }
 
@@ -210,6 +216,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             get
             {
                 return _healthMonitorOptions.Value.Enabled && _environment.IsAppService() && !_scriptWebHostEnvironment.InStandbyMode;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<ScriptHostState> WaitForStateChangeAsync(ScriptHostState lastKnownState, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            while (true)
+            {
+                // Capture the signal before reading the state so a change between the two reads is not missed.
+                Task stateChanged = Volatile.Read(ref _stateChanged).Task;
+                ScriptHostState state = State;
+                if (state != lastKnownState)
+                {
+                    return state;
+                }
+
+                await stateChanged.WaitAsync(cancellationToken);
             }
         }
 

@@ -23,7 +23,7 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | `project-placeholder-manual` | Same as `project`, but the Host starts in placeholder mode, nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. See [Placeholder mode](#placeholder-mode). |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
-`project` and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
+`project` and `container` assign the worker pod to the `http` function group and then link the worker automatically. In `project`, AppHost makes both calls through the fake platform; in `container`, it calls the WorkerProxy and the Host directly. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
 
 The equivalent command-line launches are:
 
@@ -47,9 +47,9 @@ Hello from the BYOC .NET isolated worker.
 
 ## Fake platform
 
-In project mode, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host.
+In project mode, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host. It also stands in for AppServer: the Host's `FUNCTIONS_APPSERVER_URI` points at it, so it receives the Host's linked worker state.
 
-Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order. The fake is not wired in container mode.
+Open the `fake-platform` console logs in the dashboard to watch the assign and link calls and the Host state pushes in order. The fake is not wired in container mode.
 
 ## Endpoints
 
@@ -64,6 +64,8 @@ The happy path, in order:
 | 3 | Host | Platform | `PUT /admin/workers/{workerId}` | Links the worker through the WorkerProxy runtime gRPC endpoint. |
 | 4 | Host | Client | `GET /api/hello` | Invokes the function through Host -> WorkerProxy -> worker. |
 
+The Host also publishes its linked worker counts with `PUT /admin/infra/host/state` on AppServer (the fake platform here): `(0, 0)` once the Host is specialized (right at startup in `project`), then `(1, 1)` once step 3 links the HTTP worker and the ScriptHost is running.
+
 `GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The `project` profile sends steps 1 and 3 through the fake platform automatically; `project-placeholder-manual` leaves steps 1 to 3 to you.
 
 ### Test-only
@@ -75,6 +77,7 @@ Simulation routes live under `/simulate`, so they are never confused with the re
 | Fake platform | `POST /simulate/worker/assign` | Sends step 1 to the WorkerProxy and returns its response. |
 | Fake platform | `POST /simulate/host/assign` | Sends step 2 to the Host and returns its response; see [Placeholder mode](#placeholder-mode). |
 | Fake platform | `POST /simulate/worker/link` | Sends step 3 to the Host and returns its response. |
+| Fake platform | `GET /simulate/host/state` | Returns the last Host state it accepted, or `204` if none yet. |
 
 ## Send requests manually
 

@@ -184,6 +184,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task WaitForStateChangeAsync_CompletesWhenStateChanges()
+        {
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            _host.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>())).Returns(_host.Object);
+
+            _hostService = new WebJobsScriptHostService(
+                _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions, new TestMetricsLogger(),
+                new Mock<IHostApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager(), _hostMetrics,
+                _mockWorkerRuntimeResolver.Object, _functionsHostingConfigOptions,
+                _workerConfigCacheInvalidator, _mockAppCapabilitiesStore.Object);
+
+            Task<ScriptHostState> stateChanged = _hostService.WaitForStateChangeAsync(ScriptHostState.Default);
+            Assert.False(stateChanged.IsCompleted);
+
+            await _hostService.StartAsync(CancellationToken.None);
+
+            Assert.Equal(ScriptHostState.Running, await stateChanged.WaitAsync(TimeSpan.FromSeconds(10)));
+        }
+
+        [Fact]
+        public async Task WaitForStateChangeAsync_ReturnsImmediatelyWhenStateDiffersAndSupportsCancellation()
+        {
+            _hostService = new WebJobsScriptHostService(
+                _monitor, new Mock<IScriptHostBuilder>().Object, NullLoggerFactory.Instance,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions, new TestMetricsLogger(),
+                new Mock<IHostApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager(), _hostMetrics,
+                _mockWorkerRuntimeResolver.Object, _functionsHostingConfigOptions,
+                _workerConfigCacheInvalidator, _mockAppCapabilitiesStore.Object);
+            using var cancellationSource = new CancellationTokenSource();
+
+            Task<ScriptHostState> stateDiffers = _hostService.WaitForStateChangeAsync(ScriptHostState.Running);
+            Task<ScriptHostState> canceledWait = _hostService.WaitForStateChangeAsync(ScriptHostState.Default, cancellationSource.Token);
+            cancellationSource.Cancel();
+
+            Assert.True(stateDiffers.IsCompletedSuccessfully);
+            Assert.Equal(ScriptHostState.Default, await stateDiffers);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => canceledWait.WaitAsync(TimeSpan.FromSeconds(10)));
+        }
+
+        [Fact]
         public async Task HostRestart_Specialization_Succeeds()
         {
             var metricsLogger = new TestMetricsLogger();

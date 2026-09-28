@@ -3,6 +3,7 @@
 
 using System;
 using Azure.Functions.Host.Controllers;
+using Azure.Functions.Host.HostState;
 using Microsoft.Azure.WebJobs.Script.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,8 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         ArgumentNullException.ThrowIfNull(mvcBuilder);
 
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
+        services.AddComputeRuntimeStateServices();
+        services.AddAppServerHostStatePublisher();
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
 
         // Compute separation does not run a placeholder ScriptHost. The ScriptHost starts after the first worker

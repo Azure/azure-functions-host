@@ -732,6 +732,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 throw new NotImplementedException();
             }
+
+            Task<ScriptHostState> IScriptHostManager.WaitForStateChangeAsync(ScriptHostState lastKnownState, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }
