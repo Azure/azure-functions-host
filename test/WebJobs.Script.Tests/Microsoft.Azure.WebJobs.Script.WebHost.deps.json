@@ -15,7 +15,7 @@
           "Microsoft.AspNet.WebApi.Client": "5.2.9",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.0",
           "Microsoft.AspNetCore.Mvc.NewtonsoftJson": "10.0.0",
-          "Microsoft.Azure.AppService.Middleware.Functions": "1.5.11",
+          "Microsoft.Azure.AppService.Middleware.Functions": "1.5.12",
           "Microsoft.Azure.AppService.Proxy.Client": "2.3.20240307.67",
           "Microsoft.Azure.Functions.Platform.Metrics.LinuxConsumption": "1.0.5",
           "Microsoft.Azure.WebJobs.Script": "4.1055.100-dev",
@@ -393,54 +393,54 @@
           }
         }
       },
-      "Microsoft.Azure.AppService.Middleware/1.5.11": {
+      "Microsoft.Azure.AppService.Middleware/1.5.12": {
         "dependencies": {
           "Newtonsoft.Json": "13.0.3"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.AppService.Middleware.dll": {
-            "assemblyVersion": "1.5.11.0",
-            "fileVersion": "1.5.11.0"
+            "assemblyVersion": "1.5.12.0",
+            "fileVersion": "1.5.12.0"
           }
         }
       },
-      "Microsoft.Azure.AppService.Middleware.Functions/1.5.11": {
+      "Microsoft.Azure.AppService.Middleware.Functions/1.5.12": {
         "dependencies": {
-          "Microsoft.Azure.AppService.Middleware": "1.5.11",
-          "Microsoft.Azure.AppService.Middleware.Modules": "1.5.11",
-          "Microsoft.Azure.AppService.Middleware.NetCore": "1.5.11"
+          "Microsoft.Azure.AppService.Middleware": "1.5.12",
+          "Microsoft.Azure.AppService.Middleware.Modules": "1.5.12",
+          "Microsoft.Azure.AppService.Middleware.NetCore": "1.5.12"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.AppService.Middleware.Functions.dll": {
-            "assemblyVersion": "1.5.11.0",
-            "fileVersion": "1.5.11.0"
+            "assemblyVersion": "1.5.12.0",
+            "fileVersion": "1.5.12.0"
           }
         }
       },
-      "Microsoft.Azure.AppService.Middleware.Modules/1.5.11": {
+      "Microsoft.Azure.AppService.Middleware.Modules/1.5.12": {
         "dependencies": {
-          "Microsoft.Azure.AppService.Middleware": "1.5.11",
+          "Microsoft.Azure.AppService.Middleware": "1.5.12",
           "Microsoft.IdentityModel.Validators": "6.32.0",
           "Newtonsoft.Json": "13.0.3",
           "System.IdentityModel.Tokens.Jwt": "8.15.0"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.AppService.Middleware.Modules.dll": {
-            "assemblyVersion": "1.5.11.0",
-            "fileVersion": "1.5.11.0"
+            "assemblyVersion": "1.5.12.0",
+            "fileVersion": "1.5.12.0"
           }
         }
       },
-      "Microsoft.Azure.AppService.Middleware.NetCore/1.5.11": {
+      "Microsoft.Azure.AppService.Middleware.NetCore/1.5.12": {
         "dependencies": {
-          "Microsoft.Azure.AppService.Middleware": "1.5.11",
-          "Microsoft.Azure.AppService.Middleware.Modules": "1.5.11",
+          "Microsoft.Azure.AppService.Middleware": "1.5.12",
+          "Microsoft.Azure.AppService.Middleware.Modules": "1.5.12",
           "Newtonsoft.Json": "13.0.3"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.AppService.Middleware.NetCore.dll": {
-            "assemblyVersion": "1.5.11.0",
-            "fileVersion": "1.5.11.0"
+            "assemblyVersion": "1.5.12.0",
+            "fileVersion": "1.5.12.0"
           }
         }
       },
@@ -1891,33 +1891,33 @@
       "path": "microsoft.aspnetcore.razor.language/2.2.0",
       "hashPath": "microsoft.aspnetcore.razor.language.2.2.0.nupkg.sha512"
     },
-    "Microsoft.Azure.AppService.Middleware/1.5.11": {
+    "Microsoft.Azure.AppService.Middleware/1.5.12": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Qpwoquy42hdcetme32YX4WG/Ld8BC3gMW1oTK9Aqpet0UwfBrBoFbpAMoxix29okq1Bydy7kjhrnRE3DCNM1oA==",
-      "path": "microsoft.azure.appservice.middleware/1.5.11",
-      "hashPath": "microsoft.azure.appservice.middleware.1.5.11.nupkg.sha512"
+      "sha512": "sha512-LwgoL7nVWBOdH9elWs8CmJxsz2KFitgCMsT4AJCLkb0H3d7WRyANB8Ial4sW6Hu8elGMdMdf7WzblcHaQdTXtQ==",
+      "path": "microsoft.azure.appservice.middleware/1.5.12",
+      "hashPath": "microsoft.azure.appservice.middleware.1.5.12.nupkg.sha512"
     },
-    "Microsoft.Azure.AppService.Middleware.Functions/1.5.11": {
+    "Microsoft.Azure.AppService.Middleware.Functions/1.5.12": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-h8aUKefWIdQlclCl2GFyf/7c3ToCqx9KAapiyBXc2xNw+bz9rn49AH9mzDSwEdX7GaIY+h77Ia6AkchuXKZGGQ==",
-      "path": "microsoft.azure.appservice.middleware.functions/1.5.11",
-      "hashPath": "microsoft.azure.appservice.middleware.functions.1.5.11.nupkg.sha512"
+      "sha512": "sha512-5+xoHFp8BoibcpWwCizxxCcESH1ieTR9v6JW7G7KYp2G25GoXUTco+qwd3ynQLLW7vEfwR7laNFMqjX4yrnndg==",
+      "path": "microsoft.azure.appservice.middleware.functions/1.5.12",
+      "hashPath": "microsoft.azure.appservice.middleware.functions.1.5.12.nupkg.sha512"
     },
-    "Microsoft.Azure.AppService.Middleware.Modules/1.5.11": {
+    "Microsoft.Azure.AppService.Middleware.Modules/1.5.12": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-AeTkI+Evf/wG4YeLGOaVDQPrNZWuHNjU2rDCwKe1ecG7j7CYccuxYKvsr4CnFAq+9SktxN3o76yCPLCwYwPF8g==",
-      "path": "microsoft.azure.appservice.middleware.modules/1.5.11",
-      "hashPath": "microsoft.azure.appservice.middleware.modules.1.5.11.nupkg.sha512"
+      "sha512": "sha512-cpG9NN1KmVc9H/FS1vJspCZ/pzgPhE/eMh2xAjLIaABxkW0ReeTgbz79tYy0dcpoV/6ebvLMmozPAM9/9K+p5Q==",
+      "path": "microsoft.azure.appservice.middleware.modules/1.5.12",
+      "hashPath": "microsoft.azure.appservice.middleware.modules.1.5.12.nupkg.sha512"
     },
-    "Microsoft.Azure.AppService.Middleware.NetCore/1.5.11": {
+    "Microsoft.Azure.AppService.Middleware.NetCore/1.5.12": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Yombcf2oQZMirp99FTxWcXjJtRi4UqsmfynKMrO6ZMPlSUfyh4sToTy9JY7Y0mVvwhldgq4Jn4i3UF5s9L/qaw==",
-      "path": "microsoft.azure.appservice.middleware.netcore/1.5.11",
-      "hashPath": "microsoft.azure.appservice.middleware.netcore.1.5.11.nupkg.sha512"
+      "sha512": "sha512-CfnZy3L+LB5d6aBhiqNRIldhB/dkLJR5pX1U1HA9ZGuFp1YavuNxtiKi/dZ3pmoeEuNhVBPw6EIiay+hB4h6Iw==",
+      "path": "microsoft.azure.appservice.middleware.netcore/1.5.12",
+      "hashPath": "microsoft.azure.appservice.middleware.netcore.1.5.12.nupkg.sha512"
     },
     "Microsoft.Azure.AppService.Proxy.Client/2.3.20240307.67": {
       "type": "package",

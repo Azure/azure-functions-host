@@ -4,7 +4,7 @@
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
-/// Defines the WorkerProxy listener ports.
+/// Defines the WorkerProxy pod identity and listener settings.
 /// </summary>
 internal sealed class WorkerProxyOptions
 {
@@ -12,6 +12,11 @@ internal sealed class WorkerProxyOptions
     /// The configuration section containing WorkerProxy settings.
     /// </summary>
     public const string SectionName = "WorkerProxy";
+
+    /// <summary>
+    /// Gets or sets the required platform-provided pod name.
+    /// </summary>
+    public string PodName { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the HTTP/1 management listener port.

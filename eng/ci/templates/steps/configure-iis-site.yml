@@ -1,0 +1,115 @@
+# Configure IIS/ANCM with environment variables in applicationHost.config.
+# w3wp does not inherit task environment variables; storage credentials are configured separately.
+
+parameters:
+- name: createJitTrace
+  type: boolean
+  default: false
+- name: instanceId
+  type: string
+  default: '0'
+
+steps:
+- pwsh: |
+    $siteName = "FunctionsHost"
+    $appPoolName = "FunctionsHostPool"
+    $physicalPath = $env:HOST_OUTPUT_PATH -replace '/', '\'
+    $homePath = $env:IIS_HOME -replace '/', '\'
+    $port = 5000
+    $appcmd = "$env:SystemRoot\System32\inetsrv\appcmd.exe"
+
+    & $appcmd delete site $siteName 2>$null
+    & $appcmd delete apppool $appPoolName 2>$null
+
+    # Site deletion leaves location-scoped ANCM settings, including secrets, behind.
+    & $appcmd clear config $siteName /section:system.webServer/aspNetCore /commit:apphost 2>$null
+
+    # In-process ASP.NET Core requires a No Managed Code app pool.
+    & $appcmd add apppool /name:$appPoolName /managedRuntimeVersion:"" /startMode:OnDemand
+
+    # Bind both localhost address families without exposing the site remotely.
+    & $appcmd add site /name:$siteName /physicalPath:$physicalPath /bindings:"http/127.0.0.1:${port}:,http/[::1]:${port}:"
+    & $appcmd set site $siteName /applicationDefaults.applicationPool:$appPoolName
+
+    $envVars = @{
+        "WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED" = $env:IIS_WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED
+        "WEBSITE_INSTANCE_ID"                    = $env:IIS_WEBSITE_INSTANCE_ID
+        "HOME"                                   = $homePath
+        "WEBSITE_SKU"                            = $env:IIS_WEBSITE_SKU
+        "FUNCTIONS_WORKER_RUNTIME"               = $env:IIS_FUNCTIONS_WORKER_RUNTIME
+        "FUNCTIONS_WORKER_RUNTIME_VERSION"       = $env:IIS_FUNCTIONS_WORKER_RUNTIME_VERSION
+        "WEBSITE_RUN_FROM_PACKAGE"               = $env:IIS_WEBSITE_RUN_FROM_PACKAGE
+        "WEBSITE_SITE_NAME"                      = $env:IIS_WEBSITE_SITE_NAME
+        "APPLICATIONINSIGHTS_CONNECTION_STRING" = $env:IIS_APPLICATIONINSIGHTS_CONNECTION_STRING
+        "DOTNET_ReadyToRun"                      = if ($env:IIS_DOTNET_READYTORUN -eq "0") { "0" }
+        "DOTNET_JitNoInline"                     = if ($env:IIS_DOTNET_JITNOINLINE -eq "1") { "1" }
+        "PATH"                                  = $env:PATH
+    }
+
+    foreach ($kv in $envVars.GetEnumerator()) {
+        # Undefined ADO variables remain literal $(NAME) tokens.
+        if (-not $kv.Value -or $kv.Value -match '^\$\([A-Za-z_][A-Za-z0-9_.\-]*\)$')
+        {
+            continue
+        }
+
+        & $appcmd set config "$siteName" /section:system.webServer/aspNetCore /+"environmentVariables.[name='$($kv.Key)',value='$($kv.Value)']" /commit:apphost
+    }
+
+    # Enable ANCM stdout logging via web.config (takes precedence over applicationHost.config).
+    $logsDir = $env:IIS_LOGS_DIRECTORY -replace '/', '\'
+    $webConfigPath = Join-Path $physicalPath "web.config"
+    if (Test-Path $webConfigPath) {
+        $xml = [xml](Get-Content $webConfigPath)
+        $aspNetCore = $xml.configuration.'system.webServer'.aspNetCore
+        $aspNetCore.SetAttribute("stdoutLogEnabled", "true")
+        $aspNetCore.SetAttribute("stdoutLogFile", "$logsDir\stdout")
+        $xml.Save($webConfigPath)
+    } else {
+        Write-Host "##vso[task.logissue type=warning]web.config not found at $webConfigPath"
+    }
+
+    $appPoolIdentity = "IIS AppPool\$appPoolName"
+    # HOME's recursive grant includes site\wwwroot.
+    foreach ($dir in @($physicalPath, $logsDir, $homePath)) {
+        if ($dir -and (Test-Path $dir)) {
+            icacls $dir /grant "${appPoolIdentity}:(OI)(CI)F" /T /Q
+        }
+    }
+
+    & $appcmd start site $siteName
+  displayName: Configure and start IIS site
+  env:
+    IIS_WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED: $(WEBSITE_USE_PLACEHOLDER_DOTNETISOLATED)
+    IIS_WEBSITE_INSTANCE_ID: $(WEBSITE_INSTANCE_ID)
+    IIS_HOME: $(HOME)
+    IIS_WEBSITE_SKU: $(WEBSITE_SKU)
+    IIS_FUNCTIONS_WORKER_RUNTIME: $(FUNCTIONS_WORKER_RUNTIME)
+    IIS_FUNCTIONS_WORKER_RUNTIME_VERSION: $(FUNCTIONS_WORKER_RUNTIME_VERSION)
+    IIS_WEBSITE_RUN_FROM_PACKAGE: $(WEBSITE_RUN_FROM_PACKAGE)
+    IIS_WEBSITE_SITE_NAME: $(WEBSITE_SITE_NAME)
+    IIS_LOGS_DIRECTORY: $(logsDirectory)
+    HOST_OUTPUT_PATH: $(hostOutputPath)
+    ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+      IIS_APPLICATIONINSIGHTS_CONNECTION_STRING: 'InstrumentationKey=unused'
+      IIS_DOTNET_READYTORUN: '0'
+      IIS_DOTNET_JITNOINLINE: '1'
+
+- pwsh: |
+    # Configure AzureWebJobsStorage separately so the connection string is never logged.
+    $azureWebJobsStorage = $env:AZURE_WEBJOBS_STORAGE
+    if ($azureWebJobsStorage) {
+        $appcmd = "$env:SystemRoot\System32\inetsrv\appcmd.exe"
+        & $appcmd set config "FunctionsHost" /section:system.webServer/aspNetCore /+"environmentVariables.[name='AzureWebJobsStorage',value='$azureWebJobsStorage']" /commit:apphost
+        Write-Host "AzureWebJobsStorage configured on IIS site."
+
+        # Recycle the app pool to pick up the new env var
+        & $appcmd stop apppool "FunctionsHostPool"
+        & $appcmd start apppool "FunctionsHostPool"
+    } else {
+        Write-Host "AzureWebJobsStorage not set. Skipping."
+    }
+  displayName: Configure AzureWebJobsStorage for IIS (jittrace only)
+  ${{ if and(eq(parameters.createJitTrace, true), eq(parameters.instanceId, '1')) }}:
+    env:
+      AZURE_WEBJOBS_STORAGE: $(PGO-APP-AZURE-WEBJOBS-STORAGE)

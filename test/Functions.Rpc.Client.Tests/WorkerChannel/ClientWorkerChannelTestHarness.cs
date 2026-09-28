@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -35,10 +36,12 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
 
     internal TestDuplexChannel<StreamingMessage> Transport { get; }
 
-    internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId, IScriptEventManager eventManager = null)
+    internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId, IScriptEventManager eventManager = null,
+        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null)
     {
         TestDuplexChannel<StreamingMessage> transport = new();
-        RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager()).Create(workerId, transport);
+        RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService)
+            .Create(workerId, transport);
         Task start = channel.StartAsync(CancellationToken.None);
 
         await transport.SendResponseAsync(new()
@@ -52,13 +55,16 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             throw new InvalidOperationException($"Expected a worker init request, but received {initRequest.ContentCase}.");
         }
 
-        await transport.SendResponseAsync(new()
+        WorkerInitResponse initResponse = new()
         {
-            WorkerInitResponse = new()
-            {
-                Result = new() { Status = StatusResult.Types.Status.Success },
-            },
-        });
+            Result = new() { Status = StatusResult.Types.Status.Success },
+        };
+        if (advertisedHttpUri is not null)
+        {
+            initResponse.Capabilities.Add(RpcWorkerConstants.HttpUri, advertisedHttpUri);
+        }
+
+        await transport.SendResponseAsync(new() { WorkerInitResponse = initResponse });
         await start.WaitAsync(TestTimeout);
 
         return new(channel, transport);
@@ -119,7 +125,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
 
     public ValueTask DisposeAsync() => Channel.DisposeAsync();
 
-    private static RpcClientWorkerChannelFactory CreateFactory(IScriptEventManager eventManager)
+    private static RpcClientWorkerChannelFactory CreateFactory(IScriptEventManager eventManager, IHttpProxyService httpProxyService)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -142,7 +148,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             Options.Create(new WorkerConcurrencyOptions()),
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
+            httpProxyService ?? Mock.Of<IHttpProxyService>(),
             Mock.Of<IMetricsLogger>());
     }
 }

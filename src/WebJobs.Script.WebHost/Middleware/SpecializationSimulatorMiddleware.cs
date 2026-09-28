@@ -84,6 +84,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 return;
             }
 
+            // Enable buffering so the body can be read here and still be forwarded
+            // downstream (e.g., YARP proxy to the worker process).
+            request.EnableBuffering();
+
             Dictionary<string, string> environmentVariables;
             try
             {
@@ -93,6 +97,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 _logger.LogWarning(ex, "Failed to deserialize environment variables from request body. Skipping payload processing.");
                 return;
+            }
+            finally
+            {
+                // Reset the stream so downstream handlers can read the body again.
+                request.Body.Position = 0;
             }
 
             if (environmentVariables is null or { Count: 0 })

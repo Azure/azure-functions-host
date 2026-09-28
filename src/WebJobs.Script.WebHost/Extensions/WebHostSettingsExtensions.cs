@@ -12,8 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 RootScriptPath = settings.ScriptPath,
                 RootLogPath = settings.LogPath,
                 FileLoggingMode = FileLoggingMode.DebugOnly,
-                IsSelfHost = settings.IsSelfHost,
-                TestDataPath = settings.TestDataPath
+                IsSelfHost = settings.IsSelfHost
             };
 
             if (inStandbyMode)

@@ -19,4 +19,7 @@ public enum WorkerLinkFailureReason
 
     /// <summary>The transport or worker initialization handshake was unavailable.</summary>
     Unavailable,
+
+    /// <summary>The connection or worker initialization deadline expired.</summary>
+    Timeout,
 }

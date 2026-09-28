@@ -1,0 +1,209 @@
+# Windows POSTs specialization settings to the function; Linux POSTs an encrypted
+# assignment, then measures the function GET. Optional tracing uses a fixed duration.
+# Record owns the collector process and waits for its exit before publishing latency.
+
+parameters:
+- name: os
+  type: string
+  values: [Windows, Linux]
+- name: collectNetTrace
+  type: boolean
+  default: false
+- name: netTraceCollectArguments
+  type: string
+  default: ''
+
+steps:
+- pwsh: |
+    $ErrorActionPreference = 'Stop'
+
+    function ConvertTo-KeyBytes([string]$key) {
+        # Matches SecretsUtility.ToKeyBytes(): 64-char hex => 32 bytes; otherwise base64.
+        if ($key.Length -eq 64 -and $key -match '^[0-9a-fA-F]+$') {
+            return [Convert]::FromHexString($key)
+        }
+        return [Convert]::FromBase64String($key)
+    }
+
+    function New-EncryptedContext([string]$plainText, [byte[]]$keyBytes) {
+        $aes = [System.Security.Cryptography.Aes]::Create()
+        try {
+            $aes.Key = $keyBytes
+            $aes.GenerateIV()
+            $plainBytes = [System.Text.Encoding]::UTF8.GetBytes($plainText)
+            $cipherBytes = $aes.EncryptCbc($plainBytes, $aes.IV, [System.Security.Cryptography.PaddingMode]::PKCS7)
+            $keyHash = [System.Security.Cryptography.SHA256]::HashData($keyBytes)
+            # EncryptionHelper.Encrypt(): IV.ciphertext.SHA256(key), all base64 encoded.
+            return "{0}.{1}.{2}" -f [Convert]::ToBase64String($aes.IV), [Convert]::ToBase64String($cipherBytes), [Convert]::ToBase64String($keyHash)
+        } finally {
+            $aes.Dispose()
+        }
+    }
+
+    function Get-RequestOptions {
+        if (-not $collectTrace) { return @{} }
+
+        # Start the budget at collector launch, before its timer can start. Reserve five
+        # seconds so a successful workload cannot run up to (or beyond) the capture cutoff.
+        $remaining = $traceDuration.TotalSeconds - $traceClock.Elapsed.TotalSeconds - 5
+        if ($remaining -le 0 -or $traceProcess.HasExited) {
+            throw "The cold-start workload exceeded its trace window or the collector exited early."
+        }
+        return @{ TimeoutSec = [int][Math]::Max(1, [Math]::Floor($remaining)) }
+    }
+
+    $collectTrace = [bool]::Parse($env:COLLECT_NET_TRACE)
+    $useAssignFlow = "${{ parameters.os }}" -eq 'Linux'
+    $helloUrl = $env:FUNCTION_URL
+    $traceProcess = $null
+    $targetProcess = $null
+    $failed = $false
+
+    try {
+        if ($useAssignFlow) {
+            if (-not $env:ENCRYPTION_KEY) { throw "ENCRYPTION_KEY is required for instance assignment." }
+            $keyBytes = ConvertTo-KeyBytes $env:ENCRYPTION_KEY
+            $assignmentContext = @{
+                siteId           = 1
+                siteName         = $env:SITE_NAME
+                environment      = @{ AzureWebJobsScriptRoot = $env:FUNCTION_APP_PATH }
+                lastModifiedTime = (Get-Date).ToString("o")
+            } | ConvertTo-Json -Depth 10 -Compress
+            $encryptedContext = New-EncryptedContext -plainText $assignmentContext -keyBytes $keyBytes
+            $assignUrl = [uri]::new([uri]$helloUrl, '/admin/instance/assign')
+            $assignPayload = @{ encryptedContext = $encryptedContext } | ConvertTo-Json -Compress
+        } else {
+            $body = @{ AzureWebJobsScriptRoot = $env:FUNCTION_APP_PATH } | ConvertTo-Json
+        }
+
+        $invocationUrl = $helloUrl
+        if ($env:FUNCTION_KEY) {
+            $separator = if ($helloUrl.Contains('?')) { '&' } else { '?' }
+            $invocationUrl = "${helloUrl}${separator}code=$env:FUNCTION_KEY"
+        }
+
+        if ($collectTrace) {
+            $collectArguments = $env:NET_TRACE_ARGUMENTS
+            if ($collectArguments -match '(?i)(?<!\S)(?:--stopping-event-\S+|--(?:process-id|name|output|diagnostic-port|dsrouter|show-child-io)|-[pno])(?=\s|=|$)|(?<!\S)--(?=\s|$)') {
+                throw "Trace arguments must not override the target/output or use stopping events/child-process tracing."
+            }
+            $durations = [regex]::Matches($collectArguments, '(?<!\S)--duration(?:=|\s+)["'']?(?<value>\d{2}:\d{2}:\d{2}:\d{2})["'']?(?=\s|$)')
+            $durationOptions = [regex]::Matches($collectArguments, '(?i)(?<!\S)--duration(?=\s|=|:|$)')
+            if ($durations.Count -ne 1 -or $durationOptions.Count -ne 1) {
+                throw "Specify exactly one --duration in dd:hh:mm:ss format."
+            }
+            $traceDuration = [TimeSpan]::ParseExact($durations[0].Groups['value'].Value, 'dd\:hh\:mm\:ss', [Globalization.CultureInfo]::InvariantCulture)
+            if ($traceDuration.TotalSeconds -le 5 -or $traceDuration.TotalMilliseconds -gt ([int]::MaxValue - 150000)) {
+                throw "Trace duration must exceed the five-second guard and fit the collector wait timeout."
+            }
+
+            $hostProcessId = 0
+            $pidText = (Get-Content -LiteralPath $env:HOST_PID_FILE -Raw).Trim()
+            if (-not [int]::TryParse($pidText, [ref]$hostProcessId) -or $hostProcessId -le 0) {
+                throw "The recorded host PID is invalid."
+            }
+            $targetProcess = Get-Process -Id $hostProcessId
+            $tracePath = [IO.Path]::GetFullPath($env:NET_TRACE_FILE)
+            $partialPath = "$tracePath.partial"
+            if ((Test-Path -LiteralPath $tracePath) -or (Test-Path -LiteralPath $partialPath)) {
+                throw "Trace output already exists; refusing to use or overwrite a previous capture."
+            }
+            [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($tracePath)) | Out-Null
+            $stdoutPath = "$tracePath.collector.stdout.log"
+            $stderrPath = "$tracePath.collector.stderr.log"
+            $traceExecutable = (Get-Command dotnet-trace -CommandType Application).Source
+            $traceClock = [Diagnostics.Stopwatch]::StartNew()
+            $traceProcess = Start-Process -FilePath $traceExecutable `
+                -ArgumentList "collect $collectArguments --process-id $hostProcessId --output `"$partialPath`"" `
+                -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -NoNewWindow -PassThru
+            $null = $traceProcess.Handle
+
+            # The CLI prints this banner after starting its EventPipe session and duration
+            # timer, including when stdout is redirected. Missing/changed output fails closed.
+            $ready = $false
+            while ($traceClock.Elapsed.TotalSeconds -lt [Math]::Min(30, $traceDuration.TotalSeconds - 5)) {
+                if ($traceProcess.HasExited) { throw "dotnet-trace exited before collection started." }
+                if (Select-String -LiteralPath $stdoutPath -Pattern '^Trace Duration\s*:' -Quiet) {
+                    $ready = $true
+                    break
+                }
+                Start-Sleep -Milliseconds 100
+            }
+            if (-not $ready) { throw "Timed out waiting for dotnet-trace to start collection." }
+        }
+
+        if ($useAssignFlow) {
+            $requestOptions = Get-RequestOptions
+            Write-Host "Triggering specialization via $assignUrl"
+            $specializationDuration = Measure-Command {
+                $response = Invoke-WebRequest -Uri $assignUrl -Method Post -Body $assignPayload `
+                    -ContentType 'application/json' -Headers @{ 'x-functions-key' = 'test' } @requestOptions
+            }
+            Write-Host "Specialization response: $($response.StatusCode). Latency: $($specializationDuration.TotalMilliseconds) ms"
+        }
+
+        $requestOptions = Get-RequestOptions
+        if (-not $useAssignFlow) {
+            $requestOptions += @{ Method = 'Post'; Body = $body; ContentType = 'application/json' }
+        }
+        Write-Host "Calling $helloUrl"
+        $duration = Measure-Command {
+            $response = Invoke-WebRequest -Uri $invocationUrl @requestOptions
+        }
+
+        # Also reject overruns after body consumption; request timeout semantics can vary
+        # across PowerShell versions and must not turn a truncated workload into success.
+        $null = Get-RequestOptions
+        Write-Host "Response: $($response.StatusCode)"
+    } catch {
+        $failed = $true
+        Write-Host "##vso[task.logissue type=error]$($_.Exception.Message)"
+    } finally {
+        if ($null -ne $traceProcess) {
+            try {
+                # Allow startup (30s), the requested capture duration, and up to two
+                # additional minutes for rundown/draining. Do not stop the host first.
+                $waitMs = [int][Math]::Max(0, ($traceDuration.TotalSeconds + 150) * 1000 - $traceClock.Elapsed.TotalMilliseconds)
+                if (-not $traceProcess.WaitForExit($waitMs)) {
+                    Stop-Process -Id $traceProcess.Id -Force
+                    $null = $traceProcess.WaitForExit(5000)
+                    throw "dotnet-trace did not finish within the capture and finalization timeout."
+                }
+                $traceProcess.WaitForExit()
+                if ($traceProcess.ExitCode -ne 0) { throw "dotnet-trace failed with exit code $($traceProcess.ExitCode)." }
+                if ($targetProcess.HasExited -or $traceClock.Elapsed -lt $traceDuration) {
+                    throw "The host or collector exited before the fixed-duration capture completed."
+                }
+                if (-not (Test-Path -LiteralPath $partialPath) -or (Get-Item -LiteralPath $partialPath).Length -eq 0) {
+                    throw "dotnet-trace did not produce a nonempty trace."
+                }
+            } catch {
+                $failed = $true
+                Write-Host "##vso[task.logissue type=error]$($_.Exception.Message)"
+            } finally {
+                $traceProcess.Dispose()
+                foreach ($log in @($stdoutPath, $stderrPath)) {
+                    if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log | Write-Host }
+                }
+            }
+        }
+        if ($null -ne $targetProcess) { $targetProcess.Dispose() }
+    }
+
+    if ($failed) { throw "Cold-start invocation or trace collection failed. Any .partial trace is diagnostic only." }
+    if ($collectTrace) { [IO.File]::Move($partialPath, $tracePath) }
+    $milliseconds = $duration.TotalMilliseconds.ToString([Globalization.CultureInfo]::InvariantCulture)
+    Write-Host "Cold start latency: $milliseconds ms"
+    Write-Host "##vso[task.setvariable variable=coldStartLatency;isOutput=true]$milliseconds"
+  displayName: Record cold start latency
+  name: Record
+  env:
+    ENCRYPTION_KEY: $(PGO-APP-INSTANCE-ASSIGN-PAYLOAD-ENCRYPTION-KEY)
+    FUNCTION_KEY: $(functionKey)
+    FUNCTION_URL: $(functionInvocationUrl)
+    FUNCTION_APP_PATH: $(functionAppOutputPath)
+    SITE_NAME: $(WEBSITE_SITE_NAME)
+    COLLECT_NET_TRACE: ${{ parameters.collectNetTrace }}
+    NET_TRACE_ARGUMENTS: ${{ parameters.netTraceCollectArguments }}
+    HOST_PID_FILE: $(Build.ArtifactStagingDirectory)/hostProcessId.txt
+    NET_TRACE_FILE: $(netTraceFilePath)

@@ -109,14 +109,14 @@ public partial class FunctionRpcRelayTests
         }
     }
 
-    private sealed class BlockingLogger<T> : ILogger<T>, IDisposable
+    private sealed class BlockingLogger<T>(int? eventIdToBlock = null) : ILogger<T>, IDisposable
     {
         private readonly ManualResetEventSlim _release = new(initialState: false);
-        private readonly TaskCompletionSource<bool> _logEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<EventId> _logEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private int _logCount;
 
-        public Task LogEntered => _logEntered.Task;
+        public Task<EventId> LogEntered => _logEntered.Task;
 
         public IDisposable? BeginScope<TState>(TState state)
             where TState : notnull
@@ -131,9 +131,10 @@ public partial class FunctionRpcRelayTests
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
-            if (Interlocked.Increment(ref _logCount) == 1)
+            if ((eventIdToBlock is null || eventId.Id == eventIdToBlock)
+                && Interlocked.Increment(ref _logCount) == 1)
             {
-                _logEntered.TrySetResult(true);
+                _logEntered.TrySetResult(eventId);
                 _release.Wait();
             }
         }
