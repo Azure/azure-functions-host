@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.Logging;
 
@@ -48,14 +49,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         /// in the pipeline) have no matched route; those return <see cref="string.Empty"/> rather than falling back
         /// to the raw path, which would reintroduce the caller supplied values this log deliberately omits.
         /// <para>
-        /// This runs for every request, so every dereference is null safe on purpose. Throwing here would surface
-        /// after the response has already been written and would affect all traffic, not just the log entry.
-        /// <see cref="RouteData.Routers"/> is non-virtual and always initialized, so that guard is belt-and-braces
-        /// against future framework changes rather than a reachable case today.
+        /// MVC attribute routes are not instances of <see cref="Route"/>. Their selected templates are captured
+        /// by an authorization filter, including when another filter rejects the request.
         /// </para>
         /// </remarks>
         internal static string GetRouteTemplate(HttpContext context)
         {
+            if (context?.Features?.Get<HttpRouteTemplateFeature>() is { } feature)
+            {
+                return feature.Template;
+            }
+
             var routingFeature = context?.Features?.Get<IRoutingFeature>();
             if (routingFeature is null)
             {

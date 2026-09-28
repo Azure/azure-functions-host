@@ -119,6 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .AddMvc(o =>
                 {
                     o.EnableEndpointRouting = false;
+                    o.Filters.Add(new HttpRouteTemplateFilter());
                     o.Filters.Add(new ArmExtensionResourceFilter());
                 })
                 .AddNewtonsoftJson()

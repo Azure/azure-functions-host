@@ -180,11 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(527, nameof(ExecutingHttpRequest)),
                 Properties.Resources.ExecutingHttpRequest);
 
-        private static readonly Action<ILogger, string, string, int, long, string, Exception> _executedHttpRequest =
-            LoggerMessage.Define<string, string, int, long, string>(
-                LogLevel.Information,
-                new EventId(528, nameof(ExecutedHttpRequest)),
-                Properties.Resources.ExecutedHttpRequest);
+        private static readonly EventId _executedHttpRequestEventId = new(528, nameof(ExecutedHttpRequest));
 
         private static readonly Action<ILogger, string, string, Exception> _hostStateChanged =
             LoggerMessage.Define<string, string>(
@@ -216,9 +212,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             _executingHttpRequest(logger, mS_ActivityId, httpMethod, null);
         }
 
+        /// <summary>
+        /// Logs request completion with a JSON-encoded message and the original structured property values.
+        /// </summary>
+        /// <param name="logger">The request logger.</param>
+        /// <param name="mS_ActivityId">The request correlation identifier.</param>
+        /// <param name="identities">The authenticated identities.</param>
+        /// <param name="statusCode">The response status code.</param>
+        /// <param name="duration">The request duration in milliseconds.</param>
+        /// <param name="route">The matched route template.</param>
         public static void ExecutedHttpRequest(this ILogger logger, string mS_ActivityId, string identities, int statusCode, long duration, string route)
         {
-            _executedHttpRequest(logger, mS_ActivityId, identities, statusCode, duration, route, null);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.Log(
+                    LogLevel.Information,
+                    _executedHttpRequestEventId,
+                    new ExecutedHttpRequestLogState(mS_ActivityId, identities, statusCode, duration, route),
+                    null,
+                    static (state, _) => state.ToString());
+            }
         }
 
         public static void RequestAborted(this ILogger logger, string mS_ActivityId)

@@ -15,16 +15,41 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer;
 using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class WebHostServiceCollectionExtensionsTests
     {
+        /// <summary>
+        /// Verifies that MVC route capture runs before authorization filters can reject a request.
+        /// </summary>
+        [Fact]
+        public void AddWebJobsScriptHost_RegistersHttpRouteTemplateFilter()
+        {
+            var services = new ServiceCollection();
+            services.AddWebJobsScriptHost(new ConfigurationBuilder().Build());
+
+            var options = new MvcOptions();
+            foreach (var setup in services
+                .Where(descriptor => descriptor.ServiceType == typeof(IConfigureOptions<MvcOptions>))
+                .Select(descriptor => descriptor.ImplementationInstance)
+                .OfType<IConfigureOptions<MvcOptions>>())
+            {
+                setup.Configure(options);
+            }
+
+            var filter = Assert.Single(options.Filters.OfType<HttpRouteTemplateFilter>());
+
+            Assert.Equal(int.MinValue, filter.Order);
+        }
+
         [Fact]
         public void AddLinuxContainerServices_LinuxConsumptionOnAtlas_RegistersExpectedServices()
         {
