@@ -4,10 +4,6 @@
 - My change description (#PR)
 -->
 
-- Update PS 7.4 worker to [v4.0.5303](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5303) (#11905)
-- Update PS 7.6 worker to [v4.0.5302](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v4.0.5302) (#11905)
-- Ensure the gRPC server is available when an app transitions online after starting with app_offline.htm.
-- Add usage telemetry for worker custom metrics and Azure Monitor diagnostic logging (#12034)
 - Update Node.js Worker Version to [3.16.1](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.16.1) (#PR)
 - Fixed Linux language worker SIGTERM exits being reported as worker failures. (#11944)
 - Prevent extension system keys from being regenerated and overwritten when the startup context cache is stale, which previously could invalidate already-published extension webhook URLs (e.g. Event Grid, Durable Task). (#11936)
@@ -15,3 +11,4 @@
 - Update Microsoft.Azure.AppService.Middleware to 1.5.12. (#12013)
 - Preserve W3C trace context for session-enabled Service Bus triggers when OpenTelemetry is enabled. (#11946)
 - Removed the function test data feature entirely. This includes the `test_data` and `test_data_href` properties on the functions metadata API response, persistence of test data on function create/update, the `TestDataPath` host option and its configuration defaults, the `FUNCTIONS_TEST_DATA_PATH` environment variable, and `TestDataPath` on the `admin/host/restart` response. (#12031)
+- Add usage telemetry for worker custom metrics and Azure Monitor diagnostic logging (#12034)
