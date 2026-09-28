@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,12 +23,23 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private readonly List<WorkerChannel> _channels = [];
+    private readonly InitializedChannelsSignal _initializedChannelsSignal = new();
+    private readonly ConcurrentQueue<Task<long>> _initializedChannelsWaits = new();
     private readonly Mock<IWorkerChannelRegistry> _registry = new();
 
     public RpcClientFunctionInvocationDispatcherTests()
     {
         _registry.Setup(registry => registry.GetInitializedChannels())
             .Returns(() => [.. _channels]);
+        _registry.SetupGet(registry => registry.InitializedChannelsVersion)
+            .Returns(() => _initializedChannelsSignal.Version);
+        _registry.Setup(registry => registry.WaitForInitializedChannelsChangeAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .Returns((long lastKnownVersion, CancellationToken cancellationToken) =>
+            {
+                Task<long> wait = _initializedChannelsSignal.WaitForChangeAsync(lastKnownVersion, cancellationToken);
+                _initializedChannelsWaits.Enqueue(wait);
+                return wait;
+            });
         _registry.Setup(registry => registry.WaitForFirstInitializedAsync(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken cancellationToken) => WaitForChannelAsync(cancellationToken));
         _registry.Setup(registry => registry.UnlinkAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -51,6 +63,85 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         Assert.Equal(FunctionInvocationDispatcherState.Initialized, dispatcher.State);
         Assert.Equal(function.GetFunctionId(), request.FunctionLoadRequest.FunctionId);
         Assert.True(worker.Channel.FunctionInputBuffers.ContainsKey(function.GetFunctionId()));
+    }
+
+    [Fact]
+    public async Task InitializeAsync_SetsUpWorkerLinkedAfterInitializationOnce()
+    {
+        await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("a-worker");
+        await using ClientWorkerChannelTestHarness later = await ClientWorkerChannelTestHarness.CreateAsync("b-worker");
+        _channels.Add(first.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        FunctionMetadata function = CreateFunction();
+        await InitializeDispatcherAsync(dispatcher, function, first);
+
+        LinkChannel(later.Channel);
+        StreamingMessage request = await later.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+        await later.SendFunctionLoadResponseAsync(function.GetFunctionId());
+        await later.Channel.InvocationBuffersInitialization.WaitAsync(TestTimeout);
+
+        // Another initialized-channel change must not load functions again on either worker.
+        await using ClientWorkerChannelTestHarness third = await ClientWorkerChannelTestHarness.CreateAsync("c-worker");
+        LinkChannel(third.Channel);
+        await third.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+
+        Assert.Equal(function.GetFunctionId(), request.FunctionLoadRequest.FunctionId);
+        Assert.True(later.Channel.FunctionInputBuffers.ContainsKey(function.GetFunctionId()));
+        Assert.False(first.Transport.Requests.TryRead(out _));
+        Assert.False(later.Transport.Requests.TryRead(out _));
+    }
+
+    [Fact]
+    public async Task InitializeAsync_SetsUpWorkerLinkedWhileInitializing()
+    {
+        await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("a-worker");
+        await using ClientWorkerChannelTestHarness racing = await ClientWorkerChannelTestHarness.CreateAsync("b-worker");
+        _channels.Add(first.Channel);
+        bool racingWorkerLinked = false;
+        _registry.Setup(registry => registry.GetInitializedChannels())
+            .Returns(() =>
+            {
+                WorkerChannel[] snapshot = [.. _channels];
+                if (!racingWorkerLinked)
+                {
+                    // The worker links right after initialization takes its channel snapshot.
+                    racingWorkerLinked = true;
+                    LinkChannel(racing.Channel);
+                }
+
+                return snapshot;
+            });
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        FunctionMetadata function = CreateFunction();
+
+        await InitializeDispatcherAsync(dispatcher, function, first);
+        StreamingMessage request = await racing.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
+
+        Assert.Equal(function.GetFunctionId(), request.FunctionLoadRequest.FunctionId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PreShutdownOrDispose_StopsWaitingForLaterLinkedWorkers(bool dispose)
+    {
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        _channels.Add(worker.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        FunctionMetadata function = CreateFunction();
+        await InitializeDispatcherAsync(dispatcher, function, worker);
+        Task<long> laterLinkWait = Assert.Single(_initializedChannelsWaits);
+
+        if (dispose)
+        {
+            dispatcher.Dispose();
+        }
+        else
+        {
+            dispatcher.PreShutdown();
+        }
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => laterLinkWait.WaitAsync(TestTimeout));
     }
 
     [Fact]
@@ -354,6 +445,12 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         }
 
         return _channels[0];
+    }
+
+    private void LinkChannel(WorkerChannel channel)
+    {
+        _channels.Add(channel);
+        _initializedChannelsSignal.Signal();
     }
 
     private static async Task InitializeDispatcherAsync(

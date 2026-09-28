@@ -22,7 +22,7 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | `project` | The Host, WorkerProxy, and sample worker as .NET projects for managed C# debugging. No Docker required. |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
-Both profiles start an Aspire dashboard and link the worker automatically. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
+Both profiles start an Aspire dashboard, assign the worker pod to the `http` function group, and link the worker automatically. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
 
 The equivalent command-line launches are:
 

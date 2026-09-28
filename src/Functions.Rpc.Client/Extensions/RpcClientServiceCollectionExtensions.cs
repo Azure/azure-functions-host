@@ -67,6 +67,28 @@ public static class RpcClientServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Adds the root-owned manager that tracks versioned linked-worker counts.
+    /// </summary>
+    /// <param name="services">The root service collection to update.</param>
+    /// <returns>The supplied service collection.</returns>
+    /// <remarks>
+    /// Requires <see cref="AddRpcClientServices"/> and a root <see cref="IScriptHostManager"/>. The manager is also registered
+    /// as an <see cref="IHostedService"/> and does no work until the Host starts it.
+    /// </remarks>
+    public static IServiceCollection AddComputeRuntimeStateServices(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ThrowIfRegistered<IComputeRuntimeStateManager>(services, nameof(AddComputeRuntimeStateServices));
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<ComputeRuntimeStateManager>();
+        services.AddSingleton<IComputeRuntimeStateManager>(provider => provider.GetRequiredService<ComputeRuntimeStateManager>());
+        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<ComputeRuntimeStateManager>());
+
+        return services;
+    }
+
+    /// <summary>
     /// Adds Client services owned by one ScriptHost child container while borrowing the root-owned channel registry.
     /// </summary>
     /// <param name="services">The service collection to update.</param>

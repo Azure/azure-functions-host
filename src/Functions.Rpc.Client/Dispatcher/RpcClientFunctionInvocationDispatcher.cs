@@ -151,6 +151,8 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         State = FunctionInvocationDispatcherState.Initializing;
 
         // Metadata is available before this lifecycle callback, so eagerly load every worker linked during startup.
+        // Capture the version first so a link racing this snapshot is set up by the later-link loop.
+        long initializedChannelsVersion = _channelRegistry.InitializedChannelsVersion;
         IReadOnlyList<WorkerChannel> channels = _channelRegistry.GetInitializedChannels();
         List<Task> channelSetupTasks = [];
         foreach (WorkerChannel channel in channels)
@@ -179,6 +181,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         if (!_disposed && !_stopping)
         {
             State = FunctionInvocationDispatcherState.Initialized;
+            _ = SetupLaterLinkedChannelsAsync(initializedChannelsVersion, channels);
         }
     }
 
@@ -299,13 +302,61 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             throw new TimeoutException($"No client-backed worker channel became ready within {_channelWaitTimeout}.");
         }
 
-        // Linking publishes an initialized channel; the coordinator must finish SetupChannelAsync before it is selectable.
+        // Linking publishes an initialized channel; it is selectable only once SetupChannelAsync sets up its buffers.
         WorkerChannel channel = GetReadyChannel()
             ?? throw new InvalidOperationException("No client-backed worker channel is ready for invocations.");
         await DispatchInvocation(invocationContext, channel);
     }
 
     private static bool IsReadyForInvocations(WorkerChannel channel) => channel.IsChannelReadyForInvocations();
+
+    private async Task SetupLaterLinkedChannelsAsync(long initializedChannelsVersion, IReadOnlyList<WorkerChannel> initializedChannels)
+    {
+        CancellationToken cancellationToken = _dispatcherStoppedSource.Token;
+        HashSet<WorkerChannel> setupChannels = new(initializedChannels, ReferenceEqualityComparer.Instance);
+        try
+        {
+            while (true)
+            {
+                initializedChannelsVersion = await _channelRegistry.WaitForInitializedChannelsChangeAsync(initializedChannelsVersion, cancellationToken);
+                IReadOnlyList<WorkerChannel> channels = _channelRegistry.GetInitializedChannels();
+
+                // Forget removed channels so the tracking set does not retain them.
+                setupChannels.IntersectWith(channels);
+                foreach (WorkerChannel channel in channels)
+                {
+                    if (setupChannels.Add(channel))
+                    {
+                        _ = SetupLaterLinkedChannelAsync(channel);
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+            // The root registry was disposed during Host shutdown.
+        }
+        catch (Exception exception)
+        {
+            Log.LaterLinkSetupFailed(_logger, exception);
+        }
+    }
+
+    private async Task SetupLaterLinkedChannelAsync(WorkerChannel channel)
+    {
+        Log.SettingUpLaterLinkedChannel(_logger, channel.Id);
+        try
+        {
+            await SetupChannelAsync(channel);
+        }
+        catch (Exception exception)
+        {
+            Log.ChannelSetupFailed(_logger, exception, channel.Id);
+        }
+    }
 
     private void AddLogUserCategory(IEnumerable<FunctionMetadata> functions)
     {
@@ -329,5 +380,11 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
         [LoggerMessage(3, LogLevel.Warning, "Failed to configure client-backed worker {WorkerId} for invocations.")]
         public static partial void ChannelSetupFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(4, LogLevel.Information, "Configuring client-backed worker {WorkerId}, linked after dispatcher initialization, for invocations.")]
+        public static partial void SettingUpLaterLinkedChannel(ILogger logger, string workerId);
+
+        [LoggerMessage(5, LogLevel.Error, "Setup of client-backed workers linked after dispatcher initialization stopped unexpectedly. Workers linked later will not receive invocations until ScriptHost restarts.")]
+        public static partial void LaterLinkSetupFailed(ILogger logger, Exception exception);
     }
 }

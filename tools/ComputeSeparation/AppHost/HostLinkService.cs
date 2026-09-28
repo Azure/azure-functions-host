@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -8,16 +9,20 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Functions.ComputeSeparation.AppHost;
 
 /// <summary>
-/// Performs the platform's link request after the Host, Proxy, and selected worker have started.
+/// Performs the platform's assignment and link requests after the Host, Proxy, and selected worker have started.
 /// </summary>
 internal sealed partial class HostLinkService(
     EndpointReference hostEndpoint,
+    EndpointReference proxyManagementEndpoint,
     ReferenceExpression proxyEndpoint,
     string workerId,
     string[] dependencies,
     ResourceNotificationService notifications,
     ILogger<HostLinkService> logger) : BackgroundService
 {
+    // The harness hosts one HTTP-triggered sample app, so the worker joins the HTTP function group.
+    private const string FunctionGroupName = "http";
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using CancellationTokenSource startup = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
@@ -25,6 +30,9 @@ internal sealed partial class HostLinkService(
         try
         {
             await Task.WhenAll(dependencies.Select(name => notifications.WaitForResourceHealthyAsync(name, startup.Token)));
+
+            // WorkerProxy advertises the assigned function group when the Host initializes the worker, so assign before linking.
+            await AssignWorkerAsync(startup.Token);
 
             string address = await hostEndpoint.GetValueAsync(startup.Token)
                 ?? throw new InvalidOperationException("The Host HTTP endpoint was not allocated.");
@@ -57,6 +65,43 @@ internal sealed partial class HostLinkService(
         }
     }
 
+    /// <summary>
+    /// Assigns the pod to the sample app, retrying while WorkerProxy waits for the worker's StartStream.
+    /// </summary>
+    private async Task AssignWorkerAsync(CancellationToken cancellationToken)
+    {
+        string address = await proxyManagementEndpoint.GetValueAsync(cancellationToken)
+            ?? throw new InvalidOperationException("The WorkerProxy management endpoint was not allocated.");
+        using HttpClient client = new() { BaseAddress = new Uri(address) };
+        var assignment = new
+        {
+            startupMode = "Preconfigured",
+            functionAppName = "aspire-sample-app",
+            functionGroupName = FunctionGroupName,
+            isAlwaysReady = false,
+            environment = new Dictionary<string, string>(),
+            functionAppDirectory = string.Empty,
+        };
+
+        while (true)
+        {
+            using HttpResponseMessage response = await client.PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                Log.WorkerAssigned(logger, workerId, FunctionGroupName);
+                return;
+            }
+
+            if (response.StatusCode != HttpStatusCode.ServiceUnavailable)
+            {
+                string body = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new HttpRequestException($"WorkerProxy rejected the assignment for worker {workerId}: {(int)response.StatusCode} {body}");
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+        }
+    }
+
     private static partial class Log
     {
         [LoggerMessage(0, LogLevel.Information, "Host linked worker {WorkerId}. The function will be available at {FunctionEndpoint} after indexing.")]
@@ -67,5 +112,8 @@ internal sealed partial class HostLinkService(
 
         [LoggerMessage(2, LogLevel.Error, "Failed to link worker {WorkerId}. Resources remain running for diagnosis.")]
         public static partial void WorkerLinkFailed(ILogger logger, string workerId, Exception exception);
+
+        [LoggerMessage(3, LogLevel.Information, "WorkerProxy assigned worker {WorkerId} to function group {FunctionGroupName}.")]
+        public static partial void WorkerAssigned(ILogger logger, string workerId, string functionGroupName);
     }
 }
