@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
@@ -18,6 +19,7 @@ namespace Azure.Functions.WorkerProxy.Tests;
 public partial class FunctionRpcRelayTests
 {
     private const string FunctionGroupNameCapability = "FunctionGroupName";
+    private const string MaxConcurrencyCapability = "MaxConcurrency";
 
     [Theory]
     [InlineData(true)]
@@ -175,6 +177,7 @@ public partial class FunctionRpcRelayTests
         }
 
         StreamingMessage response = CreateInitResponse("init", null);
+        response.WorkerInitResponse.Capabilities[MaxConcurrencyCapability] = "worker-supplied-invalid-value";
         if (workerSuppliedGroup is not null)
         {
             response.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = workerSuppliedGroup;
@@ -184,6 +187,7 @@ public partial class FunctionRpcRelayTests
         if (expectedAdvertisedGroup is not null)
         {
             expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = expectedAdvertisedGroup;
+            expected.WorkerInitResponse.Capabilities[MaxConcurrencyCapability] = "16";
         }
 
         await worker.WriteAsync(response, timeout.Token);
@@ -200,18 +204,43 @@ public partial class FunctionRpcRelayTests
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "attach", timeout.Token);
-        WorkerAssignment assignment = CreateWorkerAssignment();
+        WorkerAssignment assignment = CreateWorkerAssignment(maxConcurrency: 32);
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
         await worker.WriteAsync(CreateInitResponse("init", null), timeout.Token);
         await runtime.ReadAsync(timeout.Token);
         StreamingMessage repeated = CreateInitResponse("repeated-init", null);
         repeated.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = "changed-group";
+        repeated.WorkerInitResponse.Capabilities[MaxConcurrencyCapability] = "999";
         StreamingMessage expected = repeated.Clone();
         expected.WorkerInitResponse.Capabilities[FunctionGroupNameCapability] = assignment.FunctionGroupName;
+        expected.WorkerInitResponse.Capabilities[MaxConcurrencyCapability] = "32";
 
         await worker.WriteAsync(repeated, timeout.Token);
 
         Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(7)]
+    [InlineData(int.MaxValue)]
+    public async Task Relay_Initialization_AdvertisesAssignedMaxConcurrency(int maxConcurrency)
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await ExchangeAsync(runtime, worker, "attach", timeout.Token);
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment(maxConcurrency: maxConcurrency)));
+        StreamingMessage response = CreateInitResponse("init", null);
+        response.WorkerInitResponse.Capabilities[MaxConcurrencyCapability] = "999";
+
+        await worker.WriteAsync(response, timeout.Token);
+        StreamingMessage forwarded = await runtime.ReadAsync(timeout.Token);
+
+        Assert.Equal(maxConcurrency.ToString(CultureInfo.InvariantCulture),
+            forwarded.WorkerInitResponse.Capabilities[MaxConcurrencyCapability]);
     }
 
     [Fact]
@@ -227,7 +256,9 @@ public partial class FunctionRpcRelayTests
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await ExchangeAsync(runtime, worker, "replacement", timeout.Token);
         StreamingMessage response = CreateInitResponse("init", null);
+        response.WorkerInitResponse.Capabilities[MaxConcurrencyCapability] = "128";
         StreamingMessage expected = response.Clone();
+        expected.WorkerInitResponse.Capabilities.Remove(MaxConcurrencyCapability);
 
         await worker.WriteAsync(response, timeout.Token);
 

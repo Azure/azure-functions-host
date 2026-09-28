@@ -9,8 +9,8 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// Describes assignment identity and the caller-selected startup mode.
 /// </summary>
 /// <remarks>
-/// All fields are required. The directory may be empty for Preconfigured but must be nonblank
-/// for SpecializationRequired. Configuration is currently retained for retry comparison only.
+/// All fields except <see cref="MaxConcurrency"/> are required. The directory may be empty for Preconfigured but must be
+/// nonblank for SpecializationRequired. Environment and directory are retained for retry comparison only.
 /// </remarks>
 internal sealed class WorkerAssignRequest
 {
@@ -28,6 +28,11 @@ internal sealed class WorkerAssignRequest
     public string? FunctionAppName { get; init; }
 
     public string? FunctionGroupName { get; init; }
+
+    /// <summary>
+    /// Gets the worker's maximum concurrency. Omission uses 16; an explicit value must be positive.
+    /// </summary>
+    public int? MaxConcurrency { get; init; }
 
     public bool? IsAlwaysReady { get; init; }
 

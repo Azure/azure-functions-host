@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 // Local stand-in for the platform in the compute harness. It sends the assign and link requests to the WorkerProxy and
-// Host.
+// Host, and receives the Host's HTTP capacity as AppServer would.
 
 using System.Buffers.Text;
 using System.Net.Http.Json;
@@ -13,15 +13,37 @@ using System.Text.Json;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 FakePlatformOptions options = builder.Configuration.GetSection("FakePlatform").Get<FakePlatformOptions>()
     ?? throw new InvalidOperationException("The FakePlatform configuration section is required.");
+ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.MaxConcurrency);
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpClient(HostClient, client => client.BaseAddress = options.HostUri);
 builder.Services.AddHttpClient(WorkerProxyClient, client => client.BaseAddress = options.WorkerProxyUri);
 
 WebApplication app = builder.Build();
 ILogger logger = app.Logger;
+Lock hostStateLock = new();
+HostState? acceptedHostState = null;
 
 // Called by the AppHost health check.
 app.MapHealthChecks("/health");
+
+// Called by the Host (FUNCTIONS_APPSERVER_URI) whenever its HTTP capacity changes. Keeps only the
+// newest snapshot and ignores one whose version is not newer than the last accepted.
+app.MapPut("/admin/infra/host/state", (HostState state) =>
+{
+    lock (hostStateLock)
+    {
+        bool stale = acceptedHostState is not null && state.SnapshotVersion <= acceptedHostState.SnapshotVersion;
+        if (!stale)
+        {
+            acceptedHostState = state;
+        }
+
+        logger.LogInformation("Host state {SnapshotVersion}: HTTP capacity {HttpCapacity}{Stale}",
+            state.SnapshotVersion, state.HttpCapacity, stale ? " (stale, ignored)" : string.Empty);
+    }
+
+    return Results.Ok();
+});
 
 // Simulation routes: harness-only, never called by the Host or WorkerProxy.
 RouteGroupBuilder simulate = app.MapGroup("/simulate");
@@ -29,7 +51,7 @@ RouteGroupBuilder simulate = app.MapGroup("/simulate");
 // Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
 simulate.MapPost("/worker/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
-    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty);
+    WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty, options.MaxConcurrency);
     using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 
@@ -65,6 +87,15 @@ simulate.MapPost("/worker/link", async (IHttpClientFactory clients, Cancellation
         .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(options.WorkerId)}", link, cancellationToken);
 
     return await ToResultAsync("worker link", response, cancellationToken);
+});
+
+// Called by a developer to read the last Host state accepted by PUT /admin/infra/host/state.
+simulate.MapGet("/host/state", () =>
+{
+    lock (hostStateLock)
+    {
+        return acceptedHostState is null ? Results.NoContent() : Results.Ok(acceptedHostState);
+    }
 });
 
 app.Run();
@@ -122,6 +153,8 @@ internal partial class Program
 
         public required string WorkerId { get; init; }
 
+        public int MaxConcurrency { get; init; } = 16;
+
         // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in `project-placeholder-manual`.
         public string? EncryptionKey { get; init; }
     }
@@ -131,7 +164,9 @@ internal partial class Program
     private sealed record HostAssignmentRequest(string EncryptedContext);
 
     private sealed record WorkerAssignment(string StartupMode, string FunctionAppName, string FunctionGroupName,
-        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory);
+        bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory, int MaxConcurrency);
 
     private sealed record WorkerLink(string WorkerGrpcEndpoint);
+
+    private sealed record HostState(long SnapshotVersion, long HttpCapacity);
 }

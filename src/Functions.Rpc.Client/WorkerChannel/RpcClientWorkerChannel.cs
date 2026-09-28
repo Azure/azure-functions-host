@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -30,6 +32,18 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
+    /// <summary>
+    /// The worker capability through which WorkerProxy advertises the worker's assigned function group.
+    /// </summary>
+    internal const string FunctionGroupNameCapability = "FunctionGroupName";
+
+    /// <summary>
+    /// The worker capability through which WorkerProxy advertises maximum concurrency.
+    /// </summary>
+    internal const string MaxConcurrencyCapability = "MaxConcurrency";
+
+    private const int DefaultMaxConcurrency = 16;
+
     private readonly Lock _lifecycleLock = new();
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private LifecycleState _lifecycleState;
@@ -78,6 +92,24 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     }
 
     internal Task Completion { get; }
+
+    /// <summary>
+    /// Gets the worker's assigned function group, or <see langword="null"/> if WorkerProxy did not advertise one.
+    /// </summary>
+    /// <remarks>
+    /// The value is set when <see cref="StartAsync"/> succeeds and does not change for the lifetime of the channel.
+    /// </remarks>
+    internal string FunctionGroupName { get; private set; }
+
+    /// <summary>
+    /// Gets the concurrency captured at initialization, defaulting to 16 only when the capability is absent.
+    /// </summary>
+    internal int MaxConcurrency { get; private set; } = DefaultMaxConcurrency;
+
+    /// <summary>
+    /// Gets a value indicating whether the worker is assigned to the HTTP function group.
+    /// </summary>
+    internal bool IsHttpFunctionGroup => string.Equals(FunctionGroupName, FunctionGroups.Http, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Starts inbound protocol processing and waits for the worker initialization handshake.
@@ -142,6 +174,21 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             if (!await WorkerInitialization.ConfigureAwait(false))
             {
                 throw new InvalidOperationException("The worker reported unsuccessful initialization.");
+            }
+
+            // Capture once: capabilities are not safe to read concurrently with later capability updates.
+            FunctionGroupName = WorkerCapabilities.GetCapabilityState(FunctionGroupNameCapability);
+            string concurrency = WorkerCapabilities.GetCapabilityState(MaxConcurrencyCapability);
+            if (concurrency is not null)
+            {
+                if (!int.TryParse(concurrency, NumberStyles.None, CultureInfo.InvariantCulture, out int maxConcurrency)
+                    || maxConcurrency <= 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Worker '{Id}' advertised an invalid {MaxConcurrencyCapability} capability. Expected a positive 32-bit integer.");
+                }
+
+                MaxConcurrency = maxConcurrency;
             }
 
             _startCompletion.TrySetResult();

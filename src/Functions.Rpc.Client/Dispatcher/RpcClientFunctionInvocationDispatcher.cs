@@ -37,6 +37,11 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private readonly ManagedDependencyOptions _managedDependencyOptions;
     private readonly TimeSpan _channelWaitTimeout;
     private readonly ScriptJobHostOptions _scriptHostOptions;
+
+    // Serializes channel setup with the stopping latch: once PreShutdown or Dispose returns, no setup is in progress or
+    // starts later.
+    private readonly Lock _lifecycleLock = new();
+
     private IReadOnlyList<FunctionMetadata> _functions = [];
     private int _nextChannelIndex = -1;
     private bool _disposed;
@@ -94,21 +99,32 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     public Task SetupChannelAsync(WorkerChannel channel)
     {
         ArgumentNullException.ThrowIfNull(channel);
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_stopping)
+        lock (_lifecycleLock)
         {
-            throw new InvalidOperationException("The invocation dispatcher is stopping.");
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_stopping)
+            {
+                throw new InvalidOperationException("The invocation dispatcher is stopping.");
+            }
+
+            if (State is FunctionInvocationDispatcherState.Default)
+            {
+                throw new InvalidOperationException("The invocation dispatcher has not been initialized.");
+            }
+
+            SetupChannel(channel);
         }
 
-        if (State is FunctionInvocationDispatcherState.Default)
-        {
-            throw new InvalidOperationException("The invocation dispatcher has not been initialized.");
-        }
+        return channel.InvocationBuffersInitialization;
+    }
 
+    // Callers hold _lifecycleLock. Setup replaces the channel's invocation buffers, and invocations queued in a replaced
+    // buffer are never processed, so a stopping dispatcher must not set up a channel the next ScriptHost's dispatcher uses.
+    private void SetupChannel(WorkerChannel channel)
+    {
         // Invocation buffers accept work while the worker completes its function-load responses.
         channel.SetupFunctionInvocationBuffers(_functions);
         channel.SendFunctionLoadRequests(_managedDependencyOptions, _scriptHostOptions.FunctionTimeout);
-        return channel.InvocationBuffersInitialization;
     }
 
     private Task DispatchInvocation(ScriptInvocationContext invocationContext, WorkerChannel channel)
@@ -141,16 +157,21 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             return;
         }
 
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_stopping)
+        lock (_lifecycleLock)
         {
-            throw new InvalidOperationException("The invocation dispatcher is stopping.");
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_stopping)
+            {
+                throw new InvalidOperationException("The invocation dispatcher is stopping.");
+            }
+
+            _functions = functionArray;
+            State = FunctionInvocationDispatcherState.Initializing;
         }
 
-        _functions = functionArray;
-        State = FunctionInvocationDispatcherState.Initializing;
-
         // Metadata is available before this lifecycle callback, so eagerly load every worker linked during startup.
+        // Capture the version first so a link racing this snapshot is set up by the later-link loop.
+        long initializedChannelsVersion = _channelRegistry.InitializedChannelsVersion;
         IReadOnlyList<WorkerChannel> channels = _channelRegistry.GetInitializedChannels();
         List<Task> channelSetupTasks = [];
         foreach (WorkerChannel channel in channels)
@@ -176,10 +197,19 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         }
 
         AddLogUserCategory(functionArray);
-        if (!_disposed && !_stopping)
+        lock (_lifecycleLock)
         {
+            // State must not move back from Disposing or Disposed if shutdown started during setup.
+            if (_disposed || _stopping)
+            {
+                return;
+            }
+
             State = FunctionInvocationDispatcherState.Initialized;
         }
+
+        // Start the loop outside the lock because it takes the lock to set up channels.
+        _ = SetupLaterLinkedChannelsAsync(initializedChannelsVersion, channels);
     }
 
     public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
@@ -223,27 +253,36 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     public void PreShutdown()
     {
-        if (_disposed || _stopping)
+        // Taking the lock waits for any channel setup in progress. For invocations the latch is best effort: a
+        // ready-channel invocation racing shutdown may still be accepted and drained.
+        lock (_lifecycleLock)
         {
-            return;
+            if (_disposed || _stopping)
+            {
+                return;
+            }
+
+            _stopping = true;
+            State = FunctionInvocationDispatcherState.Disposing;
         }
 
-        // This latch is best effort. A ready-channel invocation racing shutdown may still be accepted and drained.
-        _stopping = true;
-        State = FunctionInvocationDispatcherState.Disposing;
         _dispatcherStoppedSource.Cancel();
     }
 
     public void Dispose()
     {
-        if (_disposed)
+        lock (_lifecycleLock)
         {
-            return;
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            _stopping = true;
+            State = FunctionInvocationDispatcherState.Disposed;
         }
 
-        _disposed = true;
-        _stopping = true;
-        State = FunctionInvocationDispatcherState.Disposed;
         _dispatcherStoppedSource.Cancel();
     }
 
@@ -299,13 +338,70 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             throw new TimeoutException($"No client-backed worker channel became ready within {_channelWaitTimeout}.");
         }
 
-        // Linking publishes an initialized channel; the coordinator must finish SetupChannelAsync before it is selectable.
+        // Linking publishes an initialized channel; it is selectable only once SetupChannelAsync sets up its buffers.
         WorkerChannel channel = GetReadyChannel()
             ?? throw new InvalidOperationException("No client-backed worker channel is ready for invocations.");
         await DispatchInvocation(invocationContext, channel);
     }
 
     private static bool IsReadyForInvocations(WorkerChannel channel) => channel.IsChannelReadyForInvocations();
+
+    private async Task SetupLaterLinkedChannelsAsync(long initializedChannelsVersion, IReadOnlyList<WorkerChannel> initializedChannels)
+    {
+        CancellationToken cancellationToken = _dispatcherStoppedSource.Token;
+        HashSet<WorkerChannel> setupChannels = new(initializedChannels, ReferenceEqualityComparer.Instance);
+        try
+        {
+            while (true)
+            {
+                initializedChannelsVersion = await _channelRegistry.WaitForInitializedChannelsChangeAsync(initializedChannelsVersion, cancellationToken);
+                IReadOnlyList<WorkerChannel> channels = _channelRegistry.GetInitializedChannels();
+
+                // Forget removed channels so the tracking set does not retain them.
+                setupChannels.IntersectWith(channels);
+                foreach (WorkerChannel channel in channels)
+                {
+                    if (setupChannels.Add(channel))
+                    {
+                        SetupLaterLinkedChannel(channel);
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+            // The root registry was disposed during Host shutdown.
+        }
+        catch (Exception exception)
+        {
+            Log.LaterLinkSetupFailed(_logger, exception);
+        }
+    }
+
+    private void SetupLaterLinkedChannel(WorkerChannel channel)
+    {
+        try
+        {
+            lock (_lifecycleLock)
+            {
+                // Shutdown can start after the loop wakes. The next ScriptHost's dispatcher sets up the channel instead.
+                if (_stopping)
+                {
+                    return;
+                }
+
+                Log.SettingUpLaterLinkedChannel(_logger, channel.Id);
+                SetupChannel(channel);
+            }
+        }
+        catch (Exception exception)
+        {
+            Log.ChannelSetupFailed(_logger, exception, channel.Id);
+        }
+    }
 
     private void AddLogUserCategory(IEnumerable<FunctionMetadata> functions)
     {
@@ -329,5 +425,11 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
         [LoggerMessage(3, LogLevel.Warning, "Failed to configure client-backed worker {WorkerId} for invocations.")]
         public static partial void ChannelSetupFailed(ILogger logger, Exception exception, string workerId);
+
+        [LoggerMessage(4, LogLevel.Information, "Configuring client-backed worker {WorkerId}, linked after dispatcher initialization, for invocations.")]
+        public static partial void SettingUpLaterLinkedChannel(ILogger logger, string workerId);
+
+        [LoggerMessage(5, LogLevel.Error, "Setup of client-backed workers linked after dispatcher initialization stopped unexpectedly. Workers linked later will not receive invocations until ScriptHost restarts.")]
+        public static partial void LaterLinkSetupFailed(ILogger logger, Exception exception);
     }
 }

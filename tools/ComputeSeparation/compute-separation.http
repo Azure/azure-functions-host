@@ -7,6 +7,7 @@
 ### here and turns off automatic assign and link so you can send each step yourself, in order.
 ###
 ###   dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
+### Set ComputeSeparation__MaxConcurrency before launching AppHost to override the assignment's default of 16.
 
 @platform = http://localhost:7060
 @host = http://127.0.0.1:7071
@@ -18,15 +19,20 @@
 ### 503 WorkerNotReady means the sample worker has not connected yet; retry.
 POST {{platform}}/simulate/worker/assign
 
-### Optional: the WorkerProxy pod state is now ReadyForRequest.
+### Optional: the WorkerProxy pod state is now ReadyForRequest and reports the assigned maxConcurrency (16 by default).
 GET {{workerProxy}}/admin/worker/state
 
 ### 2. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if
-### repeated. The Host finishes specializing only after step 3 links the worker.
+### repeated. In compute separation, specialization applies configuration without waiting for a worker link.
 POST {{platform}}/simulate/host/assign
 
 ### 3. The platform links the worker to the Host. Expect 201, or 200 for a matching retry.
 POST {{platform}}/simulate/worker/link
+
+### Optional: the last HTTP capacity the Host published. Expect { snapshotVersion: N, httpCapacity: 16 }
+### once the linked Host is running (or the concurrency configured above), 0 before readiness,
+### or 204 if the Host has not published yet. Counts and available-slot/lease accounting are not in this payload.
+GET {{platform}}/simulate/host/state
 
 ### 4. A client invokes the function through Host -> WorkerProxy -> worker.
 GET {{host}}/api/hello

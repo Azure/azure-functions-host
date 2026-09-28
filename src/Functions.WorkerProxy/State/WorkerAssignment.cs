@@ -17,6 +17,11 @@ namespace Azure.Functions.WorkerProxy.State;
 internal sealed class WorkerAssignment
 {
     /// <summary>
+    /// The concurrency used when the platform omits it from the assignment.
+    /// </summary>
+    public const int DefaultMaxConcurrency = 16;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="WorkerAssignment"/> class.
     /// </summary>
     /// <remarks>
@@ -29,7 +34,8 @@ internal sealed class WorkerAssignment
         string functionGroupName,
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
-        string functionAppDirectory)
+        string functionAppDirectory,
+        int maxConcurrency = DefaultMaxConcurrency)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {
@@ -40,6 +46,7 @@ internal sealed class WorkerAssignment
         ArgumentException.ThrowIfNullOrWhiteSpace(functionGroupName);
         ArgumentNullException.ThrowIfNull(environment);
         ArgumentNullException.ThrowIfNull(functionAppDirectory);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxConcurrency);
         if (startupMode is WorkerStartupMode.SpecializationRequired)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(functionAppDirectory);
@@ -54,6 +61,7 @@ internal sealed class WorkerAssignment
         StartupMode = startupMode;
         FunctionAppName = functionAppName;
         FunctionGroupName = functionGroupName;
+        MaxConcurrency = maxConcurrency;
         IsAlwaysReady = isAlwaysReady;
         // Read-only input can still wrap a mutable dictionary. Freeze it so later caller edits cannot change retry identity.
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
@@ -68,6 +76,11 @@ internal sealed class WorkerAssignment
     public string FunctionAppName { get; }
 
     public string FunctionGroupName { get; }
+
+    /// <summary>
+    /// Gets the maximum concurrency fixed by the accepted assignment.
+    /// </summary>
+    public int MaxConcurrency { get; }
 
     public bool IsAlwaysReady { get; }
 
@@ -86,6 +99,7 @@ internal sealed class WorkerAssignment
             || !string.Equals(FunctionAppName, other.FunctionAppName, StringComparison.Ordinal)
             || !string.Equals(FunctionGroupName, other.FunctionGroupName, StringComparison.Ordinal)
             || IsAlwaysReady != other.IsAlwaysReady
+            || MaxConcurrency != other.MaxConcurrency
             || !string.Equals(FunctionAppDirectory, other.FunctionAppDirectory, StringComparison.Ordinal)
             || Environment.Count != other.Environment.Count)
         {

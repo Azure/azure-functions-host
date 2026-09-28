@@ -261,6 +261,7 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
+                MaxConcurrency = assignment.MaxConcurrency,
                 IsAlwaysReady = assignment.IsAlwaysReady
             };
 

@@ -13,4 +13,5 @@ internal sealed record WorkerPodStateResponse(
     [property: JsonConverter(typeof(JsonStringEnumConverter<WorkerPodStatus>))] WorkerPodStatus PodStatus,
     [property: JsonConverter(typeof(JsonStringEnumConverter<WorkerStartupMode>))] WorkerStartupMode? StartupMode,
     string? FunctionGroupName,
-    bool? IsAlwaysReady);
+    bool? IsAlwaysReady,
+    int? MaxConcurrency = null);

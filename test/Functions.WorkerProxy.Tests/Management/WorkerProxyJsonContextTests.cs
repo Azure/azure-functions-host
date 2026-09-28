@@ -22,6 +22,7 @@ public class WorkerProxyJsonContextTests
             StartupMode = startupMode,
             FunctionAppName = "app",
             FunctionGroupName = "group",
+            MaxConcurrency = 32,
             FunctionAppDirectory = "private-directory",
             IsAlwaysReady = false,
             Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" }
@@ -30,9 +31,10 @@ public class WorkerProxyJsonContextTests
         string json = JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest);
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
-        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "functionAppDirectory", "isAlwaysReady", "environment");
+        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "maxConcurrency", "functionAppDirectory", "isAlwaysReady", "environment");
         Assert.Equal(startupMode, root.GetProperty("startupMode").GetString());
         Assert.False(root.GetProperty("isAlwaysReady").GetBoolean());
+        Assert.Equal(32, root.GetProperty("maxConcurrency").GetInt32());
         Assert.Equal(string.Empty, root.GetProperty("environment").GetProperty("MixedCase_SETTING").GetString());
         Assert.Equal("private-value", root.GetProperty("environment").GetProperty("SECRET").GetString());
 
@@ -41,6 +43,7 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(request.StartupMode, copy.StartupMode);
         Assert.Equal(request.FunctionAppName, copy.FunctionAppName);
         Assert.Equal(request.FunctionGroupName, copy.FunctionGroupName);
+        Assert.Equal(request.MaxConcurrency, copy.MaxConcurrency);
         Assert.Equal(request.FunctionAppDirectory, copy.FunctionAppDirectory);
         Assert.False(copy.IsAlwaysReady);
         Assert.Equal(request.Environment.OrderBy(pair => pair.Key), copy.Environment!.OrderBy(pair => pair.Key));
@@ -81,6 +84,7 @@ public class WorkerProxyJsonContextTests
         Assert.Null(request.FunctionAppDirectory);
         Assert.Null(request.IsAlwaysReady);
         Assert.Null(request.Environment);
+        Assert.Null(request.MaxConcurrency);
         Assert.Equal("{}", JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest));
     }
 
@@ -103,6 +107,9 @@ public class WorkerProxyJsonContextTests
     [InlineData("""{"isAlwaysReady":0}""")]
     [InlineData("""{"functionAppName":123}""")]
     [InlineData("""{"functionGroupName":[]}""")]
+    [InlineData("""{"maxConcurrency":"16"}""")]
+    [InlineData("""{"maxConcurrency":1.5}""")]
+    [InlineData("""{"maxConcurrency":2147483648}""")]
     [InlineData("""{"functionAppDirectory":{}}""")]
     [InlineData("""{"environment":[]}""")]
     [InlineData("""{"environment":{"SETTING":123}}""")]
@@ -172,7 +179,8 @@ public class WorkerProxyJsonContextTests
             StartupMode: startupMode,
             FunctionAppName: "private-app",
             FunctionGroupName: "group",
-            IsAlwaysReady: isAlwaysReady);
+            IsAlwaysReady: isAlwaysReady,
+            MaxConcurrency: 32);
         WorkerInstanceState response = WorkerInstanceState.FromState(state);
 
         string json = JsonSerializer.Serialize(response, WorkerProxyJsonContext.Default.WorkerInstanceState);
@@ -185,10 +193,11 @@ public class WorkerProxyJsonContextTests
         Assert.Equal("FunctionsWorkerPod", root.GetProperty("functionsContainerType").GetString());
         Assert.Equal(JsonValueKind.Number, root.GetProperty("revisionId").ValueKind);
         Assert.Equal(long.MaxValue, root.GetProperty("revisionId").GetInt64());
-        AssertProperties(podState, "podStatus", "startupMode", "functionGroupName", "isAlwaysReady");
+        AssertProperties(podState, "podStatus", "startupMode", "functionGroupName", "isAlwaysReady", "maxConcurrency");
         Assert.Equal(startupMode.ToString(), podState.GetProperty("startupMode").GetString());
         Assert.Equal("ReadyForRequest", podState.GetProperty("podStatus").GetString());
         Assert.Equal("group", podState.GetProperty("functionGroupName").GetString());
+        Assert.Equal(32, podState.GetProperty("maxConcurrency").GetInt32());
         Assert.Equal(isAlwaysReady, podState.GetProperty("isAlwaysReady").GetBoolean());
         Assert.DoesNotContain("private-worker", json);
         Assert.DoesNotContain("private-app", json);

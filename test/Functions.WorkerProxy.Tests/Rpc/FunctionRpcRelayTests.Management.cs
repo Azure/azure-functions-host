@@ -22,7 +22,7 @@ public partial class FunctionRpcRelayTests
 {
     private const string ManagementAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot"}
+         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot","maxConcurrency":64}
         """;
 
     [Theory]
@@ -104,6 +104,7 @@ public partial class FunctionRpcRelayTests
                 Assert.Equal("ReadyForRequest", pod.GetProperty("podStatus").GetString());
                 Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
                 Assert.Equal("test-group", pod.GetProperty("functionGroupName").GetString());
+                Assert.Equal(64, pod.GetProperty("maxConcurrency").GetInt32());
                 Assert.False(pod.GetProperty("isAlwaysReady").GetBoolean());
                 Assert.DoesNotContain("private-value", body);
                 Assert.DoesNotContain("environment", body);
@@ -141,6 +142,7 @@ public partial class FunctionRpcRelayTests
             StreamingMessage expected = initialized.Clone();
             expected.WorkerInitResponse.Capabilities["HttpUri"] = proxyEndpoint;
             expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = "test-group";
+            expected.WorkerInitResponse.Capabilities["MaxConcurrency"] = "64";
             await worker.WriteAsync(initialized, timeout.Token);
             Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
             Assert.Equal(3, manager.State.Revision);

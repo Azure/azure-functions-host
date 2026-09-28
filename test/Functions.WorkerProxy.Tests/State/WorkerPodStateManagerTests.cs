@@ -30,6 +30,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(WorkerPodStatus.None, state.PodStatus);
         Assert.Null(state.FunctionAppName);
         Assert.Null(state.FunctionGroupName);
+        Assert.Null(state.MaxConcurrency);
         Assert.Null(state.IsAlwaysReady);
         Assert.Same(state, manager.State);
     }
@@ -57,6 +58,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(WorkerPodStatus.ReadyForRequest, assigned.PodStatus);
         Assert.Equal("app", assigned.FunctionAppName);
         Assert.Equal("http", assigned.FunctionGroupName);
+        Assert.Equal(16, assigned.MaxConcurrency);
         Assert.False(assigned.IsAlwaysReady);
         Assert.Equal("worker", assigned.WorkerId);
         Assert.Equal(1, assigned.SessionId);
@@ -69,6 +71,7 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(startupMode, failed.StartupMode);
         Assert.Equal(WorkerPodStatus.None, failed.PodStatus);
         Assert.Equal("app", failed.FunctionAppName);
+        Assert.Equal(16, failed.MaxConcurrency);
         Assert.Equal(new long[] { 0, 1, 2, 3, 4 },
             new[] { initial.Revision, attached.Revision, started.Revision, assigned.Revision, failed.Revision });
 
@@ -109,6 +112,16 @@ public partial class WorkerPodStateManagerTests
         Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateAssignment()));
         Assert.Equal(WorkerAssignmentResult.AssignmentConflict, manager.Assign(CreateAssignment("other")));
         Assert.Same(state, manager.State);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Assignment_InvalidConcurrencyIsRejected(int maxConcurrency)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new WorkerAssignment(WorkerStartupMode.Preconfigured, "app", "http", false,
+                new Dictionary<string, string>(), string.Empty, maxConcurrency));
     }
 
     [Fact]

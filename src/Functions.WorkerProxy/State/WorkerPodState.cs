@@ -16,7 +16,8 @@ internal sealed record WorkerPodState(
     WorkerStartupMode? StartupMode,
     string? FunctionAppName,
     string? FunctionGroupName,
-    bool? IsAlwaysReady)
+    bool? IsAlwaysReady,
+    int? MaxConcurrency = null)
 {
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
     public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;

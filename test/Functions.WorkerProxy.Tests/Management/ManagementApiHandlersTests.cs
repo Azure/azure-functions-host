@@ -177,6 +177,37 @@ public class ManagementApiHandlersTests
         Assert.Null(before.FunctionAppName);
     }
 
+    [Theory]
+    [InlineData(null, 16)]
+    [InlineData(1, 1)]
+    [InlineData(32, 32)]
+    [InlineData(int.MaxValue, int.MaxValue)]
+    public void AssignWorker_RecordsConcurrencyAndReplaysEffectiveValue(int? requested, int expected)
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(maxConcurrency: requested), manager));
+        WorkerPodState assigned = manager.State;
+
+        Assert.Equal(expected, assigned.MaxConcurrency);
+        Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(CreateRequest(maxConcurrency: expected), manager));
+        Assert.Same(assigned, manager.State);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void AssignWorker_InvalidConcurrencyDoesNotClaimIdentity(int maxConcurrency)
+    {
+        WorkerPodStateManager manager = CreateReadyManager();
+        WorkerPodState before = manager.State;
+
+        Assert.Equal(new("InvalidValue", "maxConcurrency"), Assert.Single(
+            AssertValidation(ManagementApiHandlers.AssignWorker(CreateRequest(maxConcurrency: maxConcurrency), manager))));
+        Assert.Same(before, manager.State);
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
+    }
+
     [Fact]
     public void AssignWorker_EmptyValuesAndNonemptyWhitespaceKeysAreAccepted()
     {
@@ -376,6 +407,7 @@ public class ManagementApiHandlersTests
     [InlineData("environmentKey")]
     [InlineData("environmentValue")]
     [InlineData("startupMode")]
+    [InlineData("maxConcurrency")]
     public void AssignWorker_DifferentIdentityConflictsBeforeAndAfterTermination(string field)
     {
         WorkerPodStateManager manager = CreateReadyManager();
@@ -385,6 +417,7 @@ public class ManagementApiHandlersTests
             "startupMode" => CreateRequest(startupMode: nameof(WorkerStartupMode.SpecializationRequired)),
             "app" => CreateRequest(functionAppName: "APP"),
             "group" => CreateRequest(functionGroupName: "GROUP"),
+            "maxConcurrency" => CreateRequest(maxConcurrency: 32),
             "directory" => CreateRequest(functionAppDirectory: "APP-DIRECTORY"),
             "alwaysReady" => CreateRequest(isAlwaysReady: true),
             "environmentKey" => CreateRequest(environment: new() { ["setting"] = "private-value" }),
@@ -636,12 +669,14 @@ public class ManagementApiHandlersTests
         bool? isAlwaysReady = false,
         string? functionAppDirectory = "app-directory",
         Dictionary<string, string?>? environment = null,
-        string? startupMode = nameof(WorkerStartupMode.Preconfigured)) =>
+        string? startupMode = nameof(WorkerStartupMode.Preconfigured),
+        int? maxConcurrency = null) =>
         new()
         {
             StartupMode = startupMode,
             FunctionAppName = functionAppName,
             FunctionGroupName = functionGroupName,
+            MaxConcurrency = maxConcurrency,
             IsAlwaysReady = isAlwaysReady,
             FunctionAppDirectory = functionAppDirectory,
             Environment = environment ?? new() { ["SETTING"] = "private-value" }

@@ -41,6 +41,11 @@ internal static class WorkerAssignRequestValidator
             errors.Add(new(WorkerApiErrorCodes.Required, "isAlwaysReady"));
         }
 
+        if (request.MaxConcurrency is <= 0)
+        {
+            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "maxConcurrency"));
+        }
+
         if (request.FunctionAppDirectory is null
             || (startupMode is WorkerStartupMode.SpecializationRequired && string.IsNullOrWhiteSpace(request.FunctionAppDirectory)))
         {
@@ -65,7 +70,8 @@ internal static class WorkerAssignRequestValidator
             functionGroupName,
             isAlwaysReady,
             environment,
-            functionAppDirectory);
+            functionAppDirectory,
+            request.MaxConcurrency ?? WorkerAssignment.DefaultMaxConcurrency);
 
         return true;
     }

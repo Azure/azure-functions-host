@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -85,6 +86,7 @@ public class RpcClientScriptHostStartupIntegrationTests
             Assert.True(testHost.Host.Services.GetRequiredService<ISecretManagerProvider>().SecretsEnabled);
 
             await registry.LinkAsync("later", laterWorker.Endpoint, cancellationToken: timeout.Token);
+            await laterWorker.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
 
             Assert.Same(scriptServices, manager.Services);
             Assert.Same(scriptHost, scriptServices.GetRequiredService<ScriptHost>());
@@ -102,6 +104,42 @@ public class RpcClientScriptHostStartupIntegrationTests
 
         await firstWorker.Service.Disconnected.Task.WaitAsync(timeout.Token);
         await laterWorker.Service.Disconnected.Task.WaitAsync(timeout.Token);
+    }
+
+    [Fact]
+    public async Task ComputeRuntimeState_SumsHttpWorkerConcurrency_AndDropsToZeroWhenHostStops()
+    {
+        await using TestWorker httpWorker = await TestWorker.StartAsync("http-worker", FunctionGroups.Http, 7);
+        await using TestWorker laterHttpWorker = await TestWorker.StartAsync("later-http-worker", FunctionGroups.Http, 32);
+        await using TestWorker durableWorker = await TestWorker.StartAsync("durable-worker", "durable");
+        using CancellationTokenSource timeout = new(TestTimeout);
+
+        await using ClientTestHost testHost = new(services => services.AddComputeRuntimeStateServices());
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+        IComputeRuntimeStateManager stateManager = testHost.Host.Services.GetRequiredService<IComputeRuntimeStateManager>();
+        ComputeRuntimeState initial = stateManager.Current;
+
+        await registry.LinkAsync("http-worker", httpWorker.Endpoint, cancellationToken: timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+        ComputeRuntimeState httpWorkerReady = await WaitForComputeStateAsync(stateManager, 7, timeout.Token);
+        await registry.LinkAsync("durable-worker", durableWorker.Endpoint, cancellationToken: timeout.Token);
+        await durableWorker.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
+        await registry.LinkAsync("later-http-worker", laterHttpWorker.Endpoint, cancellationToken: timeout.Token);
+        ComputeRuntimeState bothHttpWorkersReady = await WaitForComputeStateAsync(stateManager, 39, timeout.Token);
+        Assert.True(await registry.UnlinkAsync("http-worker", timeout.Token));
+        ComputeRuntimeState httpWorkerUnlinked = await WaitForComputeStateAsync(stateManager, 32, timeout.Token);
+
+        // Capacity is withdrawn once the application starts stopping, before the Host stops its services.
+        testHost.Host.Services.GetRequiredService<IHostApplicationLifetime>().StopApplication();
+        ComputeRuntimeState hostStopping = await WaitForComputeStateAsync(stateManager, 0, timeout.Token);
+
+        Assert.Equal(0, initial.HttpCapacity);
+        Assert.True(httpWorkerReady.SnapshotVersion > initial.SnapshotVersion);
+        Assert.True(bothHttpWorkersReady.SnapshotVersion > httpWorkerReady.SnapshotVersion);
+        Assert.True(httpWorkerUnlinked.SnapshotVersion > bothHttpWorkersReady.SnapshotVersion);
+        Assert.True(hostStopping.SnapshotVersion > httpWorkerUnlinked.SnapshotVersion);
     }
 
     [Theory]
@@ -178,6 +216,18 @@ public class RpcClientScriptHostStartupIntegrationTests
         {
             await Task.Delay(10, cancellationToken);
         }
+    }
+
+    private static async Task<ComputeRuntimeState> WaitForComputeStateAsync(
+        IComputeRuntimeStateManager stateManager, long httpCapacity, CancellationToken cancellationToken)
+    {
+        ComputeRuntimeState state = stateManager.Current;
+        while (state.HttpCapacity != httpCapacity)
+        {
+            state = await stateManager.WaitForChangeAsync(state.SnapshotVersion, cancellationToken);
+        }
+
+        return state;
     }
 
     private sealed class ClientTestHost : IAsyncDisposable
@@ -261,13 +311,13 @@ public class RpcClientScriptHostStartupIntegrationTests
 
         public TestWorkerService Service { get; } = service;
 
-        public static async Task<TestWorker> StartAsync(string workerId)
+        public static async Task<TestWorker> StartAsync(string workerId, string? functionGroupName = null, int? maxConcurrency = null)
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options =>
                 options.Listen(IPAddress.Loopback, 0, listener => listener.Protocols = HttpProtocols.Http2));
-            TestWorkerService service = new(workerId);
+            TestWorkerService service = new(workerId, functionGroupName, maxConcurrency);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();
             WebApplication application = builder.Build();
@@ -286,7 +336,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         }
     }
 
-    public sealed class TestWorkerService(string workerId) : FunctionRpc.FunctionRpcBase
+    public sealed class TestWorkerService(string workerId, string? functionGroupName = null, int? maxConcurrency = null) : FunctionRpc.FunctionRpcBase
     {
         private int _metadataRequests;
 
@@ -310,6 +360,17 @@ public class RpcClientScriptHostStartupIntegrationTests
                     {
                         case StreamingMessage.ContentOneofCase.WorkerInitRequest:
                             response.WorkerInitResponse = new() { Result = Success() };
+                            if (functionGroupName is not null)
+                            {
+                                response.WorkerInitResponse.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, functionGroupName);
+                            }
+
+                            if (maxConcurrency is { } concurrency)
+                            {
+                                response.WorkerInitResponse.Capabilities.Add(
+                                    RpcClientWorkerChannel.MaxConcurrencyCapability, concurrency.ToString(CultureInfo.InvariantCulture));
+                            }
+
                             break;
                         case StreamingMessage.ContentOneofCase.FunctionsMetadataRequest:
                             Interlocked.Increment(ref _metadataRequests);
