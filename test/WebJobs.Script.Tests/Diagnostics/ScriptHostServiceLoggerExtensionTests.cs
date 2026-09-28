@@ -4,6 +4,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -16,6 +18,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics;
 /// </summary>
 public sealed class ScriptHostServiceLoggerExtensionTests
 {
+    /// <summary>
+    /// Verifies that providers sharing a log entry observe the same cached message.
+    /// </summary>
+    [Fact]
+    public async Task ExecutedHttpRequest_ConcurrentFormatting_ReusesMessage()
+    {
+        var state = new ExecutedHttpRequestLogState("request", string.Empty, 200, 42, "api/orders/{id:regex(^[\\d\"]+$)}");
+
+        string[] messages = await Task.WhenAll(Enumerable.Range(0, 64).Select(_ => Task.Run(state.ToString)));
+
+        Assert.All(messages, message => Assert.Same(messages[0], message));
+        using var details = JsonDocument.Parse(messages[0][(messages[0].IndexOf(':') + 1)..]);
+        Assert.Equal("api/orders/{id:regex(^[\\d\"]+$)}", details.RootElement.GetProperty("route").GetString());
+    }
+
     /// <summary>
     /// Verifies JSON encoding while preserving the log schema and raw property values.
     /// </summary>

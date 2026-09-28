@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.Pools;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
@@ -46,8 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
             try
             {
-                string identities = GetIdentities(context);
-                _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)sw.GetElapsedTime().TotalMilliseconds, GetRouteTemplate(context));
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    string identities = GetIdentities(context);
+                    _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)sw.GetElapsedTime().TotalMilliseconds, GetRouteTemplate(context));
+                }
             }
             catch (Exception exception) when (HttpRequestTraceDiagnostics.IsRecoverable(exception))
             {
@@ -95,37 +99,39 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private static string GetIdentities(HttpContext context)
         {
-            var identities = context.User.Identities.Where(p => p.IsAuthenticated);
-            if (identities.Any())
+            StringBuilder identities = PoolFactory.SharedStringBuilderPool.Get();
+            try
             {
-                var sbIdentities = new StringBuilder();
-
-                foreach (var identity in identities)
+                foreach (var identity in context.User.Identities)
                 {
-                    if (sbIdentities.Length > 0)
+                    if (!identity.IsAuthenticated)
                     {
-                        sbIdentities.Append(", ");
+                        continue;
                     }
 
-                    var sbIdentity = new StringBuilder(identity.AuthenticationType);
-                    var claim = identity.Claims.FirstOrDefault(p => p.Type == SecurityConstants.AuthLevelClaimType);
-                    if (claim != null)
+                    if (identities.Length == 0)
                     {
-                        sbIdentity.Append(':');
-                        sbIdentity.Append(claim.Value);
+                        identities.Append('(');
+                    }
+                    else if (identities.Length > 1)
+                    {
+                        identities.Append(", ");
                     }
 
-                    sbIdentities.Append(sbIdentity);
+                    identities.Append(identity.AuthenticationType);
+                    var claim = identity.Claims.FirstOrDefault(static claim =>
+                        string.Equals(claim.Type, SecurityConstants.AuthLevelClaimType, StringComparison.Ordinal));
+                    if (claim is not null)
+                    {
+                        identities.Append(':').Append(claim.Value);
+                    }
                 }
 
-                sbIdentities.Insert(0, '(');
-                sbIdentities.Append(')');
-
-                return sbIdentities.ToString();
+                return identities.Length == 0 ? string.Empty : identities.Append(')').ToString();
             }
-            else
+            finally
             {
-                return string.Empty;
+                PoolFactory.SharedStringBuilderPool.Return(identities);
             }
         }
     }

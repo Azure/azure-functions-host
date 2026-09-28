@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -239,6 +240,79 @@ public sealed class SystemTraceMiddlewareSafetyTests
             ? nameof(ScriptHostServiceLoggerExtension.ExecutingHttpRequest)
             : nameof(ScriptHostServiceLoggerExtension.ExecutedHttpRequest);
         AssertFailureReported(listener, operation, typeof(IOException));
+    }
+
+    /// <summary>
+    /// Verifies disabled tracing does not enumerate identities or inspect routing features.
+    /// </summary>
+    [Fact]
+    public async Task Middleware_DisabledLogging_DoesNotReadDiagnosticMetadata()
+    {
+        using var listener = new TraceEventListener();
+        var principal = new Mock<ClaimsPrincipal>();
+        principal.SetupGet(value => value.Identities).Throws(new IOException("Identities unavailable"));
+        var routing = new Mock<IRoutingFeature>();
+        routing.SetupGet(value => value.RouteData).Throws(new IOException("Route data unavailable"));
+        var context = new DefaultHttpContext { User = principal.Object };
+        context.Features.Set(routing.Object);
+        var middleware = new SystemTraceMiddleware(_ => Task.CompletedTask, NullLogger<SystemTraceMiddleware>.Instance);
+
+        await middleware.Invoke(context);
+
+        Assert.Equal(200, context.Response.StatusCode);
+        principal.VerifyGet(value => value.Identities, Times.Never);
+        routing.VerifyGet(value => value.RouteData, Times.Never);
+        Assert.Empty(listener.Events);
+    }
+
+    /// <summary>
+    /// Verifies identity buffers are cleared after a failed extraction.
+    /// </summary>
+    [Fact]
+    public async Task Middleware_IdentityFailure_DoesNotLeakIntoNextRequest()
+    {
+        var identity = new Mock<ClaimsIdentity>();
+        identity.SetupGet(value => value.IsAuthenticated).Returns(true);
+        identity.SetupGet(value => value.AuthenticationType).Returns("FailedIdentity");
+        identity.SetupGet(value => value.Claims).Throws(new IOException("Claims unavailable"));
+        var logger = new TestLogger<SystemTraceMiddleware>();
+        var middleware = new SystemTraceMiddleware(_ => Task.CompletedTask, logger);
+
+        await middleware.Invoke(new DefaultHttpContext { User = new ClaimsPrincipal(identity.Object) });
+        await middleware.Invoke(new DefaultHttpContext());
+
+        var completed = Assert.Single(logger.GetLogMessages().Where(log => log.EventId.Id == 528));
+        using var details = JsonDocument.Parse(completed.FormattedMessage[(completed.FormattedMessage.IndexOf(':') + 1)..]);
+        Assert.Equal(string.Empty, details.RootElement.GetProperty("identities").GetString());
+    }
+
+    /// <summary>
+    /// Verifies mixed identities retain their ordering, separators and first matching auth-level claim.
+    /// </summary>
+    [Fact]
+    public async Task Middleware_MixedIdentities_PreservesFormatting()
+    {
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(
+            [
+                new ClaimsIdentity(),
+                new ClaimsIdentity([], "NoLevel"),
+                new ClaimsIdentity(
+                [
+                    new Claim(SecurityConstants.AuthLevelClaimType, "Function"),
+                    new Claim(SecurityConstants.AuthLevelClaimType, "Admin"),
+                ], "WithLevel"),
+            ])
+        };
+        var logger = new TestLogger<SystemTraceMiddleware>();
+        var middleware = new SystemTraceMiddleware(_ => Task.CompletedTask, logger);
+
+        await middleware.Invoke(context);
+
+        var completed = Assert.Single(logger.GetLogMessages().Where(log => log.EventId.Id == 528));
+        using var details = JsonDocument.Parse(completed.FormattedMessage[(completed.FormattedMessage.IndexOf(':') + 1)..]);
+        Assert.Equal("(NoLevel, WithLevel:Function)", details.RootElement.GetProperty("identities").GetString());
     }
 
     /// <summary>
