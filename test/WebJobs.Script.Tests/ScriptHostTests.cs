@@ -508,6 +508,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Theory]
+        [InlineData("FunctionAppLogs", true)]
+        [InlineData(null, false)]
+        public async Task Initialize_ReportsAzureMonitorUsage_OnlyWhenExplicitlySubscribed(string azureMonitorCategories, bool expectedLogged)
+        {
+            using (var tempDirectory = new TempDirectory())
+            {
+                string rootPath = Path.Combine(tempDirectory.Path, Guid.NewGuid().ToString());
+                Directory.CreateDirectory(rootPath);
+                var metricsLogger = new TestMetricsLogger();
+                var environment = new TestEnvironment();
+
+                if (azureMonitorCategories is not null)
+                {
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureMonitorCategories, azureMonitorCategories);
+                }
+
+                IHost host = new HostBuilder()
+                    .ConfigureServices(s => s.AddSingleton<IEnvironment>(environment))
+                    .ConfigureDefaultTestWebScriptHost(
+                        null,
+                        o => o.ScriptPath = rootPath,
+                        false,
+                        s =>
+                        {
+                            s.AddSingleton<IMetricsLogger>(metricsLogger);
+                            s.AddSingleton<IEnvironment>(environment);
+                        })
+                    .Build();
+
+                var scriptHost = host.GetScriptHost();
+                await scriptHost.InitializeAsync();
+
+                Assert.Equal(expectedLogged, metricsLogger.LoggedEvents.Contains(MetricEventNames.AzureMonitorEnabled));
+            }
+        }
+
         // TODO: Newer TODO - ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)
         // TODO: Move this test into a new WebJobsCoreScriptBindingProvider class since
         // the functionality moved. Also add tests for the ServiceBus config, etc.
