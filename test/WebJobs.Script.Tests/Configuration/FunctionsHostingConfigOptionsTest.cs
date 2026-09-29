@@ -76,8 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 yield return [nameof(FunctionsHostingConfigOptions.IgnoredWorkerVersions), "IGNORED_WORKER_VERSIONS=", string.Empty];
                 yield return [nameof(FunctionsHostingConfigOptions.IgnoredWorkerVersions), "IGNORED_WORKER_VERSIONS=:|:", ":|:"];
 
-                yield return [nameof(FunctionsHostingConfigOptions.IsTestDataSuppressionEnabled), "EnableTestDataSuppression=1", true];
-
                 yield return [nameof(FunctionsHostingConfigOptions.ArmWebhookOptInEnforcement), "ArmWebhookOptInEnforcement=|", "|"];
                 yield return [nameof(FunctionsHostingConfigOptions.ArmWebhookOptInEnforcement), "ArmWebhookOptInEnforcement=foo|bar", "foo|bar"];
                 yield return [nameof(FunctionsHostingConfigOptions.ArmWebhookOptInEnforcement), string.Empty, "workflow"]; // default when not configured

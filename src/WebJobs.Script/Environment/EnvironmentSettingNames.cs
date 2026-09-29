@@ -73,7 +73,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string CloudName = "WEBSITE_CLOUD_NAME";
         public const string RoleInstanceId = "RoleInstanceId";
         public const string HealthPingEnabled = "WEBSITE_FUNCTIONS_HEALTH_PING_ENABLED";
-        public const string TestDataCapEnabled = "WEBSITE_FUNCTIONS_TESTDATA_CAP_ENABLED";
         public const string AzureMonitorCategories = "WEBSITE_FUNCTIONS_AZUREMONITOR_CATEGORIES";
         public const string FunctionsRequestBodySizeLimit = "FUNCTIONS_REQUEST_BODY_SIZE_LIMIT";
         public const string FunctionsHostIdCheckLevel = "FUNCTIONS_HOSTID_CHECK_LEVEL";
@@ -137,7 +136,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string KubernetesServiceHttpsPort = "KUBERNETES_SERVICE_PORT_HTTPS";
         public const string FunctionsLogPath = "FUNCTIONS_LOG_PATH";
         public const string FunctionsSecretsPath = "FUNCTIONS_SECRETS_PATH";
-        public const string FunctionsTestDataPath = "FUNCTIONS_TEST_DATA_PATH";
         public const string MeshInitURI = "MESH_INIT_URI";
 
         // CORS settings

@@ -6,7 +6,6 @@ jobs:
     project: src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj
     configuration: release
     runtime: linux-x64
-    intermediate_path: $(Agent.TempDirectory)/linux_host
     drop_path: $(Build.ArtifactStagingDirectory)
     linux_drop_path: $(drop_path)/linux
     build_args: '-v m -c $(configuration) -r $(runtime)'
@@ -29,40 +28,31 @@ jobs:
   steps:
   - template: /eng/ci/templates/install-dotnet.yml@self
 
-  - task: DotNetCoreCLI@2
-    displayName: Restore
-    inputs:
-      command: custom
-      custom: restore
-      projects: $(project)
-      arguments: '-v m -r $(runtime) -p:PublishReadyToRun=true' # add PublishReadyToRun=true for https://github.com/dotnet/sdk/issues/20701
-
-  - task: DotNetCoreCLI@2
-    displayName: Build
-    inputs:
-      command: custom
-      custom: build
-      projects: $(project)
-      arguments: '$(build_args) --no-restore'
-
-  - task: DotNetCoreCLI@2
-    displayName: Publish
-    inputs:
-      command: custom
-      custom: publish
-      publishWebProjects: false # we use our own publish logic
-      zipAfterPublish: false # we use our own zip logic
-      modifyOutputPath: false
-      projects: $(project)
-      arguments: '$(build_args) --no-build -o $(intermediate_path)'
-
-  # Pipeline artifacts do not retain file metadata and lose file permission bits.
-  # As a workaround, we tar/gzip the files to retain the permission bits.
-  - task: ArchiveFiles@2
-    displayName: Archive Linux Artifacts
-    inputs:
-      rootFolderOrFile: $(intermediate_path)
-      includeRootFolder: false
-      archiveType: tar
-      tarCompression: gz
+  - template: /eng/ci/templates/steps/publish-linux-artifact.yml@self
+    parameters:
+      project: $(project)
+      publishDir: $(Agent.TempDirectory)/linux_host
       archiveFile: $(linux_drop_path)/host.linux-x64.tar.gz
+      restoreArguments: '-v m -r $(runtime) -p:PublishReadyToRun=true' # https://github.com/dotnet/sdk/issues/20701
+      buildArguments: '$(build_args) --no-restore'
+      publishArguments: '$(build_args) --no-build'
+
+  - template: /eng/ci/templates/steps/publish-linux-artifact.yml@self
+    parameters:
+      project: src/Functions.Host/Functions.Host.csproj
+      publishDir: $(Agent.TempDirectory)/functions-host/host
+      archiveFile: $(linux_drop_path)/functions-host.linux-x64.tar.gz
+      restoreArguments: '-v m -r $(runtime) -p:SelfContained=false -p:PublishReadyToRun=true'
+      buildArguments: '$(build_args) --self-contained false --no-restore'
+      publishArguments: '$(build_args) --self-contained false --no-build -p:PublishWorkers=false'
+      createWorkersDirectory: true
+
+  - script: sudo apt-get update && sudo apt-get install --yes clang zlib1g-dev
+    displayName: Install Native AOT prerequisites
+
+  - template: /eng/ci/templates/steps/publish-linux-artifact.yml@self
+    parameters:
+      project: src/Functions.WorkerProxy/Functions.WorkerProxy.csproj
+      publishDir: $(Agent.TempDirectory)/functions-host/worker-proxy
+      archiveFile: $(linux_drop_path)/worker-proxy.linux-x64.tar.gz
+      publishArguments: '$(build_args) --self-contained true -p:CopyOutputSymbolsToPublishDirectory=false -p:StaticWebAssetsEnabled=false'

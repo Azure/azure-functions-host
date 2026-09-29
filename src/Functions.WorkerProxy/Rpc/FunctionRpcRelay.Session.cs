@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.Frozen;
+using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
@@ -18,8 +20,13 @@ internal sealed partial class FunctionRpcRelay
     /// <summary>
     /// Owns the queues, forwarding tasks, and terminal state for one runtime/worker stream pair.
     /// </summary>
-    private sealed class FunctionRpcRelaySession(long id, ILogger logger, WorkerHttpCapabilityProvider capabilityProvider)
+    private sealed class FunctionRpcRelaySession(
+        long id,
+        ILogger logger,
+        IWorkerCapabilityFinalizer capabilityFinalizer,
+        WorkerPodStateManager stateManager)
     {
+        private const string FunctionGroupNameCapability = "FunctionGroupName";
         private readonly Lock _stateLock = new();
         private readonly Channel<StreamingMessage> _toRuntime = CreateChannel();
         private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
@@ -93,6 +100,12 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 SetAttachedLocked(side, value: true);
+                if (side == FunctionRpcRelaySide.Worker)
+                {
+                    // Observe admission without changing relay replacement policy; a failed assignment stays terminal.
+                    stateManager.OnWorkerAttached(id);
+                }
+
                 return FunctionRpcRelayAttachResult.Attached;
             }
         }
@@ -169,6 +182,11 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 SetAttachedLocked(side, value: false);
+                if (side == FunctionRpcRelaySide.Worker)
+                {
+                    stateManager.OnSessionTerminated(id);
+                }
+
                 SignalReleasedIfCompleteLocked();
             }
         }
@@ -194,22 +212,49 @@ internal sealed partial class FunctionRpcRelay
         private async Task ReadInboundAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
             ChannelWriter<StreamingMessage> destination, CancellationToken cancellationToken)
         {
+            bool isFirstMessage = true;
             while (await requestStream.MoveNext(cancellationToken))
             {
-                StreamingMessage message = requestStream.Current;
-                if (side is FunctionRpcRelaySide.Worker
-                    && message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success })
+                StreamingMessage? message = ProcessInboundMessage(side, requestStream.Current, isFirstMessage);
+                if (message is null)
                 {
-                    if (FinalizeCapabilities(message) is not { } finalized)
-                    {
-                        return;
-                    }
-
-                    message = finalized;
+                    return;
                 }
 
+                isFirstMessage = false;
                 await destination.WriteAsync(message, cancellationToken);
             }
+        }
+
+        private StreamingMessage? ProcessInboundMessage(FunctionRpcRelaySide side, StreamingMessage message, bool isFirstMessage)
+        {
+            if (side != FunctionRpcRelaySide.Worker)
+            {
+                return message;
+            }
+
+            if (isFirstMessage)
+            {
+                lock (_stateLock)
+                {
+                    // A delayed read from a terminated session must not restore readiness.
+                    if (_terminalState is not null)
+                    {
+                        return null;
+                    }
+
+                    if (message.StartStream is not { } startStream || string.IsNullOrWhiteSpace(startStream.WorkerId))
+                    {
+                        throw new InvalidDataException("The first worker message must be StartStream with a nonempty worker ID.");
+                    }
+
+                    stateManager.OnWorkerStartStream(id, startStream.WorkerId);
+                }
+            }
+
+            return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
+                ? FinalizeCapabilities(message)
+                : message;
         }
 
         private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
@@ -229,7 +274,8 @@ internal sealed partial class FunctionRpcRelay
             StreamingMessage finalized = message.Clone();
             if (capabilities is null)
             {
-                Uri? destination = capabilityProvider.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
+                Uri? destination = capabilityFinalizer.FinalizeCapabilities(finalized.WorkerInitResponse.Capabilities);
+                ApplyFunctionGroupCapability(finalized.WorkerInitResponse.Capabilities);
                 capabilities = finalized.WorkerInitResponse.Capabilities.ToFrozenDictionary(StringComparer.Ordinal);
                 lock (_stateLock)
                 {
@@ -250,6 +296,30 @@ internal sealed partial class FunctionRpcRelay
             }
 
             return finalized;
+        }
+
+        /// <summary>
+        /// Advertises the function group assigned to this session's worker, replacing any worker-supplied value.
+        /// </summary>
+        /// <remarks>
+        /// Only WorkerProxy sets this capability, so any worker-supplied value is always discarded.
+        /// The platform assigns the worker before the runtime initializes it. Without a live assignment for this session,
+        /// the capability is omitted so the runtime never receives an unassigned or stale group.
+        /// </remarks>
+        private void ApplyFunctionGroupCapability(IDictionary<string, string> capabilities)
+        {
+            // Only WorkerProxy sets this capability; discard any worker-supplied value.
+            capabilities.Remove(FunctionGroupNameCapability);
+
+            WorkerPodState state = stateManager.State;
+            if (state is { AssignmentState: WorkerAssignmentState.Ready, FunctionGroupName: { } functionGroupName }
+                && state.SessionId == id)
+            {
+                capabilities[FunctionGroupNameCapability] = functionGroupName;
+                return;
+            }
+
+            Log.FunctionGroupNotAdvertised(logger, id, state.AssignmentState);
         }
 
         private static async Task WriteOutboundAsync(ChannelReader<StreamingMessage> source,
@@ -306,6 +376,8 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 _terminalState = terminalState;
+                // Withdraw readiness before completing stream tasks or starting potentially slow teardown/logging.
+                stateManager.OnSessionTerminated(id);
                 _completion.SetResult(terminalState);
             }
 
@@ -412,5 +484,11 @@ internal sealed partial class FunctionRpcRelay
             "FunctionRpc relay session {SessionId} observed a secondary {OperationName} stream failure on the {Side} side.")]
         public static partial void SecondaryStreamFailure(ILogger logger, Exception exception, long sessionId, string operationName,
             FunctionRpcRelaySide side);
+
+        [LoggerMessage(3, LogLevel.Warning,
+            "FunctionRpc relay session {SessionId} received a WorkerInitResponse, but the session has no active worker " +
+            "assignment (assignment state: {AssignmentState}). The FunctionGroupName capability was omitted, " +
+            "so the Host will treat the worker's function group as unknown.")]
+        public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
     }
 }
