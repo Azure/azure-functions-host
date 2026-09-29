@@ -21,6 +21,7 @@ if (!useContainers && !string.Equals(mode, "project", StringComparison.OrdinalIg
 }
 
 string workerId = builder.Configuration["ComputeSeparation:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}";
+string podName = builder.Configuration["ComputeSeparation:PodName"] ?? "worker-pod-1";
 using HarnessRunDirectory? runDirectory = useContainers ? null : new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
@@ -78,6 +79,8 @@ else
 
     proxyProject.WithEnvironment(context =>
     {
+        // The platform normally injects the pod name. The Aspire harness has no platform, so supply a sample value.
+        context.EnvironmentVariables["WORKERPROXY__PODNAME"] = podName;
         context.EnvironmentVariables["WORKERPROXY__MANAGEMENTPORT"] =
             proxyProject.GetEndpoint(ManagementEndpointName).Property(EndpointProperty.TargetPort);
         context.EnvironmentVariables["WORKERPROXY__RUNTIMEGRPCPORT"] =
