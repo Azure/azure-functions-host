@@ -52,7 +52,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     specializeTask = _standbyManager.SpecializeHostAsync();
                 }
 
-                // Specialization can depend on a request, so holding that request here would deadlock.
+                // Specialization can depend on a request (for example, a worker link in compute mode), so holding that
+                // request here would deadlock.
                 if (!specializeTask.IsCompleted && _exemptions.Any(exemption => exemption.IsExempt(httpContext.Request)))
                 {
                     await _next(httpContext);
