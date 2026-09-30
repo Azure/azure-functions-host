@@ -14,23 +14,6 @@
         "ComputeSeparation__Mode": "project"
       }
     },
-    "project-manual": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": true,
-      "applicationUrl": "http://localhost:15060",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "DOTNET_ENVIRONMENT": "Development",
-        "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "http://localhost:16888",
-        "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true",
-        "ComputeSeparation__Mode": "project",
-        "ComputeSeparation__AutoLink": "false",
-        "ComputeSeparation__PlatformPort": "7060",
-        "ComputeSeparation__HostPort": "7071",
-        "ComputeSeparation__ManagementPort": "7081"
-      }
-    },
     "project-placeholder-manual": {
       "commandName": "Project",
       "dotnetRunMessages": true,
