@@ -50,7 +50,9 @@ public sealed partial class WorkerLinkController : Controller
     /// <param name="logger">The logger.</param>
     /// <param name="registry">The registry that owns worker channels and link admission.</param>
     /// <param name="specializationGate">Holds links until the runtime uses the specialized application configuration.</param>
-    public WorkerLinkController(ILogger<WorkerLinkController> logger, IWorkerChannelRegistry registry,
+    public WorkerLinkController(
+        ILogger<WorkerLinkController> logger,
+        IWorkerChannelRegistry registry,
         WorkerLinkSpecializationGate specializationGate)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
