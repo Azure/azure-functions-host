@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -81,6 +82,8 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Host.ClientWebHostWorkerManager");
         AssertSingleton(services, "Azure.Functions.Host.WorkerLink.WorkerLinkSpecializationGate",
             "Azure.Functions.Host.WorkerLink.WorkerLinkSpecializationGate");
+        AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.Middleware.IPlaceholderSpecializationBypass",
+            "Azure.Functions.Host.WorkerLink.WorkerLinkSpecializationBypass");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider");
         ServiceDescriptor coordinator = Assert.Single(services.Where(service =>
@@ -247,6 +250,7 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor =>
             string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(WorkerLinkSpecializationGate));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IPlaceholderSpecializationBypass));
     }
 
     [Fact]

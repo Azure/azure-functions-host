@@ -1,7 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -10,22 +11,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
     public class PlaceholderSpecializationMiddleware
     {
-        private static readonly PathString WorkerLinkPath = new("/admin/workers");
         private readonly RequestDelegate _next;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IStandbyManager _standbyManager;
         private readonly IEnvironment _environment;
+        private readonly IPlaceholderSpecializationBypass[] _bypasses;
         private RequestDelegate _invoke;
         private double _specialized = 0;
 
         public PlaceholderSpecializationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment,
-            IStandbyManager standbyManager, IEnvironment environment)
+            IStandbyManager standbyManager, IEnvironment environment, IEnumerable<IPlaceholderSpecializationBypass> bypasses)
         {
             _next = next;
             _invoke = InvokeSpecializationCheck;
             _webHostEnvironment = webHostEnvironment;
             _standbyManager = standbyManager;
             _environment = environment;
+            _bypasses = bypasses.ToArray();
         }
 
         public async Task Invoke(HttpContext httpContext)
@@ -46,9 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     specializeTask = _standbyManager.SpecializeHostAsync();
                 }
 
-                // A compute host starts only after a worker links, and specialization waits for that start,
-                // so holding a link request here would deadlock.
-                if (!specializeTask.IsCompleted && IsWorkerLinkRequest(httpContext.Request))
+                // Specialization can depend on a request, so holding that request here would deadlock.
+                if (!specializeTask.IsCompleted && ShouldBypass(httpContext.Request))
                 {
                     await _next(httpContext);
                     return;
@@ -65,10 +66,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             await _next(httpContext);
         }
 
-        // Matches PUT admin/workers/{workerPodName}; the route is defined in Functions.Host's WorkerLinkController.
-        internal static bool IsWorkerLinkRequest(HttpRequest request)
-            => HttpMethods.IsPut(request.Method) &&
-                request.Path.StartsWithSegments(WorkerLinkPath, StringComparison.OrdinalIgnoreCase, out PathString workerPath) &&
-                workerPath.Value is { Length: > 1 };
+        private bool ShouldBypass(HttpRequest request)
+        {
+            foreach (IPlaceholderSpecializationBypass bypass in _bypasses)
+            {
+                if (bypass.ShouldBypass(request))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

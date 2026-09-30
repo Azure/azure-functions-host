@@ -6,7 +6,9 @@ using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.WorkerLink;
 using Microsoft.Azure.WebJobs.Script.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Azure.Functions.Host;
 
@@ -29,6 +31,7 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
         services.AddSingleton<WorkerLinkSpecializationGate>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPlaceholderSpecializationBypass, WorkerLinkSpecializationBypass>());
         mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
     }
 

@@ -14,11 +14,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware;
 
 public class PlaceholderSpecializationMiddlewareTests
 {
-    private const string WorkerLinkPath = "/admin/workers/worker-pod-1";
+    private const string BypassedPath = "/admin/workers/worker-pod-1";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     private readonly Mock<IScriptWebHostEnvironment> _webHostEnvironment = new();
     private readonly Mock<IStandbyManager> _standbyManager = new(MockBehavior.Strict);
+    private readonly Mock<IPlaceholderSpecializationBypass> _bypass = new();
     private readonly TestEnvironment _environment = new();
     private readonly TaskCompletionSource _specialization = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _nextCalls;
@@ -65,11 +66,12 @@ public class PlaceholderSpecializationMiddlewareTests
     }
 
     [Fact]
-    public async Task Invoke_WorkerLinkDuringSpecialization_ContinuesWithoutWaiting()
+    public async Task Invoke_BypassedRequestDuringSpecialization_ContinuesWithoutWaiting()
     {
-        PlaceholderSpecializationMiddleware middleware = CreateMiddleware();
+        _bypass.Setup(bypass => bypass.ShouldBypass(It.Is<HttpRequest>(request => request.Path == BypassedPath))).Returns(true);
+        PlaceholderSpecializationMiddleware middleware = CreateMiddleware(_bypass.Object);
 
-        await middleware.Invoke(CreateContext(HttpMethods.Put, WorkerLinkPath)).WaitAsync(TestTimeout);
+        await middleware.Invoke(CreateContext(HttpMethods.Put, BypassedPath)).WaitAsync(TestTimeout);
         Task held = middleware.Invoke(CreateContext(HttpMethods.Get, "/api/function"));
 
         Assert.Equal(1, _nextCalls);
@@ -81,37 +83,32 @@ public class PlaceholderSpecializationMiddlewareTests
     }
 
     [Fact]
+    public async Task Invoke_NoBypassRegistered_HoldsRequestUntilSpecializationCompletes()
+    {
+        Task request = CreateMiddleware().Invoke(CreateContext(HttpMethods.Put, BypassedPath));
+
+        Assert.False(request.IsCompleted);
+        Assert.Equal(0, _nextCalls);
+        _specialization.SetResult();
+        await request.WaitAsync(TestTimeout);
+        Assert.Equal(1, _nextCalls);
+    }
+
+    [Fact]
     public async Task Invoke_AfterSpecialization_StopsCheckingSpecialization()
     {
         _specialization.SetResult();
-        PlaceholderSpecializationMiddleware middleware = CreateMiddleware();
+        PlaceholderSpecializationMiddleware middleware = CreateMiddleware(_bypass.Object);
 
         await middleware.Invoke(CreateContext(HttpMethods.Get, "/api/function"));
-        await middleware.Invoke(CreateContext(HttpMethods.Put, WorkerLinkPath));
+        await middleware.Invoke(CreateContext(HttpMethods.Put, BypassedPath));
 
         Assert.Equal(2, _nextCalls);
         _standbyManager.Verify(manager => manager.SpecializeHostAsync(), Times.Once);
+        _bypass.Verify(bypass => bypass.ShouldBypass(It.IsAny<HttpRequest>()), Times.Never);
     }
 
-    [Theory]
-    [InlineData("PUT", "/admin/workers/worker-pod-1", true)]
-    [InlineData("put", "/ADMIN/Workers/worker-pod-1", true)]
-    [InlineData("PUT", "/admin/workers/worker-pod-1/", true)]
-    [InlineData("POST", "/admin/workers/worker-pod-1", false)]
-    [InlineData("GET", "/admin/workers/worker-pod-1", false)]
-    [InlineData("DELETE", "/admin/workers/worker-pod-1", false)]
-    [InlineData("PUT", "/admin/workers", false)]
-    [InlineData("PUT", "/admin/workers/", false)]
-    [InlineData("PUT", "/admin/workersx/worker-pod-1", false)]
-    [InlineData("PUT", "/admin/instance/assign", false)]
-    [InlineData("PUT", "/api/admin/workers/worker-pod-1", false)]
-    [InlineData("PUT", "/", false)]
-    public void IsWorkerLinkRequest_MatchesOnlyWorkerLinkPut(string method, string path, bool expected)
-    {
-        Assert.Equal(expected, PlaceholderSpecializationMiddleware.IsWorkerLinkRequest(CreateContext(method, path).Request));
-    }
-
-    private PlaceholderSpecializationMiddleware CreateMiddleware()
+    private PlaceholderSpecializationMiddleware CreateMiddleware(params IPlaceholderSpecializationBypass[] bypasses)
         => new(
             _ =>
             {
@@ -120,7 +117,8 @@ public class PlaceholderSpecializationMiddlewareTests
             },
             _webHostEnvironment.Object,
             _standbyManager.Object,
-            _environment);
+            _environment,
+            bypasses);
 
     private static DefaultHttpContext CreateContext(string method, string path)
     {
