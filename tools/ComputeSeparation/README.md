@@ -20,7 +20,7 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | Profile | Runs locally |
 | --- | --- |
 | `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging. No Docker required. |
-| `project-manual` | Same as `project`, but nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. |
+| `project-placeholder-manual` | Same as `project`, but the Host starts in placeholder mode, nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. See [Placeholder mode](#placeholder-mode). |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
 `project` and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
@@ -29,7 +29,7 @@ The equivalent command-line launches are:
 
 ```powershell
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project
-dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-manual
+dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile container
 ```
 
@@ -65,11 +65,12 @@ The happy path, in order:
 | --- | --- | --- | --- | --- |
 | 1 | Platform | Host | `PUT /admin/infra/host/state` | Publishes counts `(0, 0)` after startup. |
 | 2 | WorkerProxy | Platform | `PUT /admin/worker/assignment` | Assigns the pod once its worker has connected. |
-| 3 | Host | Platform | `PUT /admin/workers/{workerId}` | Links the worker through the WorkerProxy runtime gRPC endpoint. |
-| 4 | Platform | Host | `PUT /admin/infra/host/state` | Publishes counts `(1, 1)` once the linked worker is running. |
-| 5 | Host | Client | `GET /api/hello` | Invokes the function through Host -> WorkerProxy -> worker. |
+| 3 | Host | Platform | `POST /admin/instance/assign` | Assigns the placeholder Host to the app, which then specializes. Not sent in `project`, whose Host starts already specialized. |
+| 4 | Host | Platform | `PUT /admin/workers/{workerId}` | Links the worker through the WorkerProxy runtime gRPC endpoint. |
+| 5 | Platform | Host | `PUT /admin/infra/host/state` | Publishes counts `(1, 1)` once the linked worker is running. |
+| 6 | Host | Client | `GET /api/hello` | Invokes the function through Host -> WorkerProxy -> worker. |
 
-`GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The `project` profile sends steps 2 and 3 through the fake platform automatically; `project-manual` leaves them to you. Steps 1 and 4 require a Host that publishes its state.
+`GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The `project` profile sends steps 2 and 4 through the fake platform automatically; `project-placeholder-manual` leaves steps 2 to 4 to you. Steps 1 and 5 require a Host that publishes its state.
 
 ### Test-only
 
@@ -78,16 +79,23 @@ Simulation and inspection routes live under `/simulate`, so they are never confu
 | Endpoint on | Request | Effect |
 | --- | --- | --- |
 | Fake platform | `POST /simulate/worker/assign` | Sends step 2 to the WorkerProxy and returns its response. |
-| Fake platform | `POST /simulate/worker/link` | Sends step 3 to the Host and returns its response. |
+| Fake platform | `POST /simulate/host/assign` | Sends step 3 to the Host and returns its response; see [Placeholder mode](#placeholder-mode). |
+| Fake platform | `POST /simulate/worker/link` | Sends step 4 to the Host and returns its response. |
 | Fake platform | `GET /simulate/host/state` | Returns the accepted state and every push received. |
 | Fake platform | `DELETE /simulate/host/state` | Clears the history and accepted state. |
 
 ## Send requests manually
 
-`compute-separation.http` walks through the expected flow one step at a time by calling the fake platform, which sends the assign and link calls. Run the `project-manual` profile, then open the file in Visual Studio or VS Code with the REST Client extension.
+`compute-separation.http` walks through the expected flow one step at a time by calling the fake platform, which sends the assign and link calls. Run the `project-placeholder-manual` profile, then open the file in Visual Studio or VS Code with the REST Client extension.
 
 > [!NOTE]
-> In `project-manual`, nothing is assigned or linked until you send the requests. Wait until every resource is **Running** in the dashboard, then send the numbered requests (1 to 5) in the order they appear in the file. If assign returns `503`, the sample worker has not connected yet; retry it before moving on. The requests marked *Optional* or *Test-only* can be sent at any time.
+> In `project-placeholder-manual`, nothing is assigned or linked until you send the requests. Wait until every resource is **Running** in the dashboard, then send the numbered requests (1 to 6) in the order they appear in the file. If assign returns `503`, the sample worker has not connected yet; retry it before moving on. The requests marked *Optional* or *Test-only* can be sent at any time.
+
+## Placeholder mode
+
+`project-placeholder-manual` runs the Host the way it starts before it is assigned to an app: in placeholder mode (`WEBSITE_PLACEHOLDER_MODE=1`), with placeholder content, until it is assigned. It exercises how the Host behaves when specialization and the worker link overlap.
+
+AppHost generates a random key for each run and gives it to both the Host and the fake platform. The fake platform uses it to authenticate and encrypt its `POST /admin/instance/assign` request, as the Host expects. The Host answers `202`, leaves placeholder mode, and specializes on its next request. Specialization completes only after the first worker links, so if the Host holds the link until specialization completes, step 4 never returns and the Host's health check stops responding.
 
 ## Container behavior
 

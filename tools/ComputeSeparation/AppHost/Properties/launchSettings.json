@@ -14,7 +14,7 @@
         "ComputeSeparation__Mode": "project"
       }
     },
-    "project-manual": {
+    "project-placeholder-manual": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
@@ -26,6 +26,7 @@
         "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true",
         "ComputeSeparation__Mode": "project",
         "ComputeSeparation__AutoLink": "false",
+        "ComputeSeparation__PlaceholderMode": "true",
         "ComputeSeparation__PlatformPort": "7060",
         "ComputeSeparation__HostPort": "7071",
         "ComputeSeparation__ManagementPort": "7081"

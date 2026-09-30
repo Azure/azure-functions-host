@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Globalization;
+using System.Security.Cryptography;
 using Azure.Functions.ComputeSeparation.AppHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -132,6 +133,18 @@ else
         .WithEnvironment("FakePlatform__WorkerProxyUri", proxyProject.GetEndpoint(ManagementEndpointName))
         .WithEnvironment("FakePlatform__WorkerGrpcEndpoint", proxyProject.GetEndpoint(RuntimeGrpcEndpointName))
         .WithEnvironment("FakePlatform__WorkerId", workerId);
+
+    if (builder.Configuration.GetValue("ComputeSeparation:PlaceholderMode", false))
+    {
+        // The Host starts in placeholder mode and waits for the fake platform to assign it to the sample app. Both share
+        // a random key: the fake uses it to authenticate and encrypt the assignment, and the Host to verify and decrypt it.
+        string encryptionKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        functionsHost
+            .WithEnvironment("WEBSITE_PLACEHOLDER_MODE", "1")
+            .WithEnvironment("WEBSITE_SITE_NAME", "aspire-sample-app")
+            .WithEnvironment("CONTAINER_ENCRYPTION_KEY", encryptionKey);
+        fakePlatform.WithEnvironment("FakePlatform__EncryptionKey", encryptionKey);
+    }
 
     platformEndpoint = fakePlatform.GetEndpoint(HttpEndpointName);
 
