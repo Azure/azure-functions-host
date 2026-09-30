@@ -82,7 +82,10 @@ The happy path, in order:
 
 ## Send requests manually
 
-`compute-separation.http` walks through the expected flow one step at a time by calling the fake platform, which sends the assign and link calls. Run the `project-manual` profile, then open the file in Visual Studio or VS Code with the REST Client extension and send its requests in order.
+`compute-separation.http` walks through the expected flow one step at a time by calling the fake platform, which sends the assign and link calls. Run the `project-manual` profile, then open the file in Visual Studio or VS Code with the REST Client extension.
+
+> [!NOTE]
+> In `project-manual`, nothing is assigned or linked until you send the requests. Wait until every resource is **Running** in the dashboard, then send the numbered requests (1 to 5) in the order they appear in the file. If assign returns `503`, the sample worker has not connected yet; retry it before moving on. The requests marked *Optional* or *Test-only* can be sent at any time.
 
 ## Container behavior
 
