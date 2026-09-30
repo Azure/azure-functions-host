@@ -77,9 +77,8 @@ The happy path, in order:
 | --- | --- | --- |
 | Fake platform | `POST /fake/worker/assign` | Sends step 2 to the WorkerProxy and returns its response. |
 | Fake platform | `POST /fake/worker/link` | Sends step 3 to the Host and returns its response. |
-| Fake platform | `GET /admin/infra/host/state` | Returns the accepted state, the current response status code, and every push received. |
-| Fake platform | `PUT /fake/response/{statusCode}` | Makes later pushes return `statusCode`, e.g. `503` to exercise the Host's retries. |
-| Fake platform | `DELETE /fake/history` | Clears the history and accepted state, and restores `200` responses. |
+| Fake platform | `GET /admin/infra/host/state` | Returns the accepted state and every push received. |
+| Fake platform | `DELETE /fake/history` | Clears the history and accepted state. |
 
 ## Send requests manually
 

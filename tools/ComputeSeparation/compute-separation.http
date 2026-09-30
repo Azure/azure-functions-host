@@ -31,11 +31,5 @@ GET {{platform}}/admin/infra/host/state
 ### 5. A client invokes the function through Host -> WorkerProxy -> worker.
 GET {{host}}/api/hello
 
-### Test-only: make later host-state pushes fail, e.g. to exercise the Host's retries.
-PUT {{platform}}/fake/response/503
-
-### Test-only: restore success responses.
-PUT {{platform}}/fake/response/200
-
 ### Test-only: clear history and accepted state.
 DELETE {{platform}}/fake/history

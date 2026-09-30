@@ -18,7 +18,6 @@ ILogger logger = app.Logger;
 Lock gate = new();
 List<ReceivedPush> history = [];
 HostState? accepted = null;
-int responseStatusCode = StatusCodes.Status200OK;
 
 // Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
 app.MapPost("/fake/worker/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
@@ -46,17 +45,17 @@ app.MapPut("/admin/infra/host/state", (HostState state) =>
     lock (gate)
     {
         bool stale = accepted is not null && state.SnapshotVersion <= accepted.SnapshotVersion;
-        if (!stale && responseStatusCode is >= 200 and < 300)
+        if (!stale)
         {
             accepted = state;
         }
 
-        history.Add(new(DateTimeOffset.UtcNow, state, responseStatusCode, stale));
+        history.Add(new(DateTimeOffset.UtcNow, state, stale));
         logger.LogInformation(
-            "Host state push: version={Version}, linkedWorkerCount={Linked}, linkedHttpWorkerCount={Http}, stale={Stale} -> {Status}",
-            state.SnapshotVersion, state.LinkedWorkerCount, state.LinkedHttpWorkerCount, stale, responseStatusCode);
+            "Host state push: version={Version}, linkedWorkerCount={Linked}, linkedHttpWorkerCount={Http}, stale={Stale}",
+            state.SnapshotVersion, state.LinkedWorkerCount, state.LinkedHttpWorkerCount, stale);
 
-        return Results.StatusCode(responseStatusCode);
+        return Results.Ok();
     }
 });
 
@@ -65,29 +64,17 @@ app.MapGet("/admin/infra/host/state", () =>
 {
     lock (gate)
     {
-        return Results.Ok(new { accepted, responseStatusCode, pushes = history.ToArray() });
+        return Results.Ok(new { accepted, pushes = history.ToArray() });
     }
 });
 
-// Called by a developer before triggering Host pushes, e.g. with 503 to exercise the Host's retries.
-app.MapPut("/fake/response/{statusCode:int:range(200,599)}", (int statusCode) =>
-{
-    lock (gate)
-    {
-        responseStatusCode = statusCode;
-    }
-
-    return Results.Ok(new { responseStatusCode = statusCode });
-});
-
-// Called by a developer between test scenarios to reset the recorded state and response code.
+// Called by a developer between test scenarios to reset the recorded state.
 app.MapDelete("/fake/history", () =>
 {
     lock (gate)
     {
         history.Clear();
         accepted = null;
-        responseStatusCode = StatusCodes.Status200OK;
     }
 
     return Results.NoContent();
@@ -128,5 +115,5 @@ internal partial class Program
 
     private sealed record HostState(long SnapshotVersion, int LinkedWorkerCount, int LinkedHttpWorkerCount);
 
-    private sealed record ReceivedPush(DateTimeOffset ReceivedAt, HostState State, int ResponseStatusCode, bool Stale);
+    private sealed record ReceivedPush(DateTimeOffset ReceivedAt, HostState State, bool Stale);
 }
