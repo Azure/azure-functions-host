@@ -47,7 +47,7 @@ Hello from the BYOC .NET isolated worker.
 
 ## Fake platform
 
-In project mode, the `fake-platform` resource is a local stand-in for the platform. It starts before the Host, sends the assign and link requests to the WorkerProxy and Host, and records the linked worker counts the Host publishes back. The Host receives its endpoint through `FUNCTIONS_APPSERVER_URI` and publishes with `PUT /admin/infra/host/state`:
+In project mode, the `fake-platform` resource is a local stand-in for the platform. It starts before the Host, sends the assign and link requests to the WorkerProxy and Host, and records the linked worker counts the Host publishes back. The Host receives its endpoint through `MESH_INIT_URI` and publishes with `PUT /admin/infra/host/state`:
 
 ```json
 { "snapshotVersion": 2, "linkedWorkerCount": 1, "linkedHttpWorkerCount": 1 }

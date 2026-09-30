@@ -110,7 +110,7 @@ else
     IResourceBuilder<ProjectResource> functionsHost = builder.AddProject<Projects.Functions_Host>("functions-host", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"), name: HttpEndpointName)
         .WaitFor(fakePlatform)
-        .WithEnvironment("FUNCTIONS_APPSERVER_URI", fakePlatform.GetEndpoint(HttpEndpointName))
+        .WithEnvironment("MESH_INIT_URI", fakePlatform.GetEndpoint(HttpEndpointName))
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
         .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
