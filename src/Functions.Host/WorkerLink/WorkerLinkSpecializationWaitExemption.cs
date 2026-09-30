@@ -11,14 +11,14 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 namespace Azure.Functions.Host.WorkerLink;
 
 /// <summary>
-/// Lets worker link requests through placeholder specialization.
+/// Exempts worker link requests from waiting for placeholder specialization.
 /// </summary>
 /// <remarks>
 /// The script host starts only after the first worker links, and specialization waits for that start, so holding a
 /// link request until specialization completes would deadlock. <see cref="WorkerLinkSpecializationGate"/> holds the
 /// link until the specialized configuration is in place.
 /// </remarks>
-internal sealed class WorkerLinkSpecializationBypass : IPlaceholderSpecializationBypass
+internal sealed class WorkerLinkSpecializationWaitExemption : ISpecializationWaitExemption
 {
     private static readonly TemplateMatcher WorkerLinkRoute =
         new(TemplateParser.Parse(WorkerLinkController.Route), new RouteValueDictionary());
@@ -28,7 +28,7 @@ internal sealed class WorkerLinkSpecializationBypass : IPlaceholderSpecializatio
     /// </summary>
     /// <param name="request">The incoming request.</param>
     /// <returns><see langword="true"/> for a worker link request.</returns>
-    public bool ShouldBypass(HttpRequest request)
+    public bool IsExempt(HttpRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 

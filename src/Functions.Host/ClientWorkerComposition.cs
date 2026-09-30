@@ -31,7 +31,7 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
         services.AddSingleton<WorkerLinkSpecializationGate>();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPlaceholderSpecializationBypass, WorkerLinkSpecializationBypass>());
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ISpecializationWaitExemption, WorkerLinkSpecializationWaitExemption>());
         mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
     }
 

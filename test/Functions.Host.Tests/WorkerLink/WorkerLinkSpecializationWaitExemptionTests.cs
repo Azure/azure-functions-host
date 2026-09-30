@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Azure.Functions.Host.Tests.WorkerLink;
 
-public sealed class WorkerLinkSpecializationBypassTests
+public sealed class WorkerLinkSpecializationWaitExemptionTests
 {
     [Theory]
     [InlineData("PUT", "/admin/workers/worker-pod-1", true)]
@@ -25,12 +25,12 @@ public sealed class WorkerLinkSpecializationBypassTests
     [InlineData("PUT", "/admin/instance/assign", false)]
     [InlineData("PUT", "/api/admin/workers/worker-pod-1", false)]
     [InlineData("PUT", "/", false)]
-    public void ShouldBypass_MatchesOnlyWorkerLinkPut(string method, string path, bool expected)
+    public void IsExempt_MatchesOnlyWorkerLinkPut(string method, string path, bool expected)
     {
         DefaultHttpContext context = new();
         context.Request.Method = method;
         context.Request.Path = path;
 
-        Assert.Equal(expected, new WorkerLinkSpecializationBypass().ShouldBypass(context.Request));
+        Assert.Equal(expected, new WorkerLinkSpecializationWaitExemption().IsExempt(context.Request));
     }
 }
