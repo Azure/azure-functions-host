@@ -47,7 +47,8 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
                 return Task.FromResult(new WorkerLinkResult(null!, IsNewLink: true));
             });
 
-        // No channel initializes, so the script host never starts and specialization stays in progress.
+        // No channel initializes, so the script host never starts and specialization stays in progress. This is the
+        // compute deadlock: specialization waits for a linked worker, so the link must not wait for specialization.
         registry.Setup(value => value.WaitForFirstInitializedAsync(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken token) => new TaskCompletionSource<WorkerChannel>().Task.WaitAsync(token));
         registry.Setup(value => value.GetInitializedChannels()).Returns(Array.Empty<WorkerChannel>());
