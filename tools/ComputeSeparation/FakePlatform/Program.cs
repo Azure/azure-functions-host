@@ -57,13 +57,13 @@ simulate.MapPost("/worker/assign", async (IHttpClientFactory clients, Cancellati
     return await ToResultAsync("worker assign", response, cancellationToken);
 });
 
-// Called by a developer in the `project-placeholder` profile, before the link, to assign the placeholder Host to the
-// sample app (POST /admin/instance/assign). The Host accepts with 202 and then leaves placeholder mode and specializes.
+// Called by a developer in the `project-placeholder-manual` profile, before the link, to assign the placeholder Host to
+// the sample app (POST /admin/instance/assign). The Host accepts with 202, then leaves placeholder mode and specializes.
 simulate.MapPost("/host/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
     if (options.EncryptionKey is null)
     {
-        return Results.Conflict("Host assignment requires the project-placeholder profile.");
+        return Results.Conflict("Host assignment requires the project-placeholder-manual profile.");
     }
 
     byte[] key = Convert.FromHexString(options.EncryptionKey);
@@ -149,7 +149,8 @@ static string CreateAdminToken(byte[] key)
 
 internal partial class Program
 {
-    // The Host's site name (WEBSITE_SITE_NAME) in the `project-placeholder` profile, and the app name used for assignments.
+    // The app name used for assignments, and the Host's site name (WEBSITE_SITE_NAME) in the
+    // `project-placeholder-manual` profile.
     private const string AppName = "aspire-sample-app";
     private const string HostClient = "host";
     private const string WorkerProxyClient = "worker-proxy";
@@ -164,7 +165,7 @@ internal partial class Program
 
         public required string WorkerId { get; init; }
 
-        // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in the `project-placeholder` profile.
+        // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in `project-placeholder-manual`.
         public string? EncryptionKey { get; init; }
     }
 
