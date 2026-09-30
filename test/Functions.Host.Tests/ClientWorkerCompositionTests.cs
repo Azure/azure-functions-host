@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Azure.Functions.Host.Controllers;
+using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -78,6 +79,8 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.IWebHostWorkerManager",
             "Azure.Functions.Host.ClientWebHostWorkerManager");
+        AssertSingleton(services, "Azure.Functions.Host.WorkerLink.WorkerLinkSpecializationGate",
+            "Azure.Functions.Host.WorkerLink.WorkerLinkSpecializationGate");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider");
         ServiceDescriptor coordinator = Assert.Single(services.Where(service =>
@@ -243,6 +246,7 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor => string.Equals(descriptor.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal));
         Assert.DoesNotContain(services, descriptor =>
             string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(WorkerLinkSpecializationGate));
     }
 
     [Fact]

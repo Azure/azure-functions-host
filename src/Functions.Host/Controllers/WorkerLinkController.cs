@@ -37,16 +37,20 @@ public sealed partial class WorkerLinkController : Controller
 
     private readonly ILogger<WorkerLinkController> _logger;
     private readonly IWorkerChannelRegistry _registry;
+    private readonly WorkerLinkSpecializationGate _specializationGate;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerLinkController"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="registry">The registry that owns worker channels and link admission.</param>
-    public WorkerLinkController(ILogger<WorkerLinkController> logger, IWorkerChannelRegistry registry)
+    /// <param name="specializationGate">Holds links until the runtime uses the specialized application configuration.</param>
+    public WorkerLinkController(ILogger<WorkerLinkController> logger, IWorkerChannelRegistry registry,
+        WorkerLinkSpecializationGate specializationGate)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _specializationGate = specializationGate ?? throw new ArgumentNullException(nameof(specializationGate));
     }
 
     /// <summary>
@@ -60,8 +64,8 @@ public sealed partial class WorkerLinkController : Controller
     /// <returns>
     /// <c>201</c> for a newly created link or <c>200</c> for a matching retry, after initialization and registration.
     /// Returns <c>400</c> with a validation errors envelope, <c>409</c> when the identity is already linked to a
-    /// different endpoint or its channel has terminated, or <c>503</c> when the runtime is stopping or the worker
-    /// connection or handshake is unavailable or times out.
+    /// different endpoint or its channel has terminated, or <c>503</c> when the runtime is stopping, has not been
+    /// specialized, or the worker connection or handshake is unavailable or times out.
     /// Link failures return an error envelope with a stable code. No Location header is returned.
     /// </returns>
     /// <remarks>
@@ -124,6 +128,12 @@ public sealed partial class WorkerLinkController : Controller
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!await _specializationGate.WaitForSpecializedConfigurationAsync(cancellationToken))
+            {
+                return CreateLinkFailureResponse(workerPodName, StatusCodes.Status503ServiceUnavailable,
+                    ErrorCodes.RuntimeNotSpecialized, "The runtime has not been specialized.", started, exception: null);
+            }
+
             WorkerLinkResult result = await _registry.LinkAsync(workerPodName, grpcEndpoint, cancellationToken);
             Log.LinkAccepted(_logger, workerPodName, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
@@ -172,6 +182,12 @@ public sealed partial class WorkerLinkController : Controller
             _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown worker link failure reason."),
         };
 
+        return CreateLinkFailureResponse(workerPodName, statusCode, code, detail, started, exception);
+    }
+
+    private ObjectResult CreateLinkFailureResponse(string workerPodName, int statusCode, string code, string detail,
+        long started, Exception? exception)
+    {
         Log.LinkRejected(_logger, exception, workerPodName, code, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
         return StatusCode(statusCode, new WorkerLinkErrorResponse(new WorkerLinkError(code, detail)));
@@ -196,6 +212,7 @@ public sealed partial class WorkerLinkController : Controller
         public const string LinkConflict = nameof(LinkConflict);
         public const string LinkTimeout = nameof(LinkTimeout);
         public const string Required = nameof(Required);
+        public const string RuntimeNotSpecialized = nameof(RuntimeNotSpecialized);
         public const string RuntimeStopping = nameof(RuntimeStopping);
         public const string WorkerTerminated = nameof(WorkerTerminated);
         public const string WorkerUnavailable = nameof(WorkerUnavailable);

@@ -31,6 +31,7 @@ public class WorkerLinkContractTests
         Assert.Same(compute, typeof(WorkerLinkErrorResponse).Assembly);
         Assert.Same(compute, typeof(RequestValidationError).Assembly);
         Assert.Same(compute, typeof(RequestValidationResponse).Assembly);
+        Assert.Same(compute, typeof(WorkerLinkSpecializationGate).Assembly);
     }
 
     [Fact]
@@ -46,6 +47,7 @@ public class WorkerLinkContractTests
         Assert.Null(standardWebHost.GetType("Azure.Functions.Host.WorkerLink.WorkerLinkErrorResponse"));
         Assert.Null(standardWebHost.GetType("Azure.Functions.Host.Models.RequestValidationError"));
         Assert.Null(standardWebHost.GetType("Azure.Functions.Host.Models.RequestValidationResponse"));
+        Assert.Null(standardWebHost.GetType("Azure.Functions.Host.WorkerLink.WorkerLinkSpecializationGate"));
     }
 
     [Fact]
