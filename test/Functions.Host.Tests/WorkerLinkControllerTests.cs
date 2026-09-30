@@ -354,6 +354,36 @@ public class WorkerLinkControllerTests
         VerifyOnlyLinkCall();
     }
 
+    [Fact]
+    public async Task LinkWorker_WaitedForSpecialization_LogsWaitAtDebug()
+    {
+        _currentHostOptions = TestScriptApplicationHostOptions.CreateStandby();
+        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
+        Mock<ILogger<WorkerLinkController>> logger = new();
+        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        List<(LogLevel Level, int EventId, Dictionary<string, object> State)> entries = [];
+        logger.Setup(value => value.Log(
+            It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
+            .Callback(new InvocationAction(call => entries.Add((
+                (LogLevel)call.Arguments[0],
+                ((EventId)call.Arguments[1]).Id,
+                Assert.IsAssignableFrom<IEnumerable<KeyValuePair<string, object>>>(call.Arguments[2])
+                    .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)))));
+        WorkerLinkController controller = new(logger.Object, _registry.Object, CreateSpecializationGate());
+
+        Task<IActionResult> link = controller.LinkWorker(WorkerId, ValidRequest());
+        Assert.False(link.IsCompleted);
+        Specialize();
+        await link.WaitAsync(TestTimeout);
+
+        (LogLevel level, _, Dictionary<string, object> state) = Assert.Single(entries, entry => entry.EventId == 3);
+        Assert.Equal(LogLevel.Debug, level);
+        Assert.Equal(WorkerId, state["workerId"]);
+        Assert.True(Assert.IsType<double>(state["elapsedMilliseconds"]) >= 0);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -135,10 +135,19 @@ public sealed partial class WorkerLinkController : Controller
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!await _specializationGate.WaitForSpecializedConfigurationAsync(cancellationToken))
+            long specializationWaitStarted = Stopwatch.GetTimestamp();
+            Task<bool> specialization = _specializationGate.WaitForSpecializedConfigurationAsync(cancellationToken);
+            bool waitedForSpecialization = !specialization.IsCompleted;
+            if (!await specialization)
             {
                 return CreateLinkFailureResponse(workerPodName, StatusCodes.Status503ServiceUnavailable,
                     ErrorCodes.RuntimeNotSpecialized, "The runtime has not been specialized.", started, exception: null);
+            }
+
+            if (waitedForSpecialization)
+            {
+                Log.SpecializationWaitCompleted(_logger, workerPodName,
+                    Stopwatch.GetElapsedTime(specializationWaitStarted).TotalMilliseconds);
             }
 
             WorkerLinkResult result = await _registry.LinkAsync(workerPodName, grpcEndpoint, cancellationToken);
@@ -235,5 +244,8 @@ public sealed partial class WorkerLinkController : Controller
 
         [LoggerMessage(2, LogLevel.Information, "Worker link canceled for {workerId} after {elapsedMilliseconds} ms.")]
         public static partial void LinkCanceled(ILogger logger, string workerId, double elapsedMilliseconds);
+
+        [LoggerMessage(3, LogLevel.Debug, "Worker link for {workerId} waited {elapsedMilliseconds} ms for the specialized configuration.")]
+        public static partial void SpecializationWaitCompleted(ILogger logger, string workerId, double elapsedMilliseconds);
     }
 }

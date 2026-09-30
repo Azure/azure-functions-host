@@ -67,9 +67,9 @@ public sealed class WorkerLinkSpecializationGate
         }
 
         TaskCompletionSource specialized = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        using IDisposable? registration = _options.OnChange(_ =>
+        using IDisposable? registration = _options.OnChange(options =>
         {
-            if (!IsStandbyConfiguration())
+            if (!options.IsStandbyConfiguration)
             {
                 specialized.TrySetResult();
             }
