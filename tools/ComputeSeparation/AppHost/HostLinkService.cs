@@ -80,12 +80,12 @@ internal sealed partial class HostLinkService(
         using HttpClient client = new() { BaseAddress = new Uri(platformAddress), Timeout = Timeout.InfiniteTimeSpan };
 
         // The WorkerProxy answers 503 until the sample worker has connected, which can trail the worker's start.
-        HttpResponseMessage assign = await client.PostAsync("/fake/worker/assign", null, cancellationToken);
+        HttpResponseMessage assign = await client.PostAsync("/simulate/worker/assign", null, cancellationToken);
         while (assign.StatusCode == HttpStatusCode.ServiceUnavailable)
         {
             assign.Dispose();
             await Task.Delay(AssignRetryDelay, cancellationToken);
-            assign = await client.PostAsync("/fake/worker/assign", null, cancellationToken);
+            assign = await client.PostAsync("/simulate/worker/assign", null, cancellationToken);
         }
 
         using (assign)
@@ -95,7 +95,7 @@ internal sealed partial class HostLinkService(
 
         Log.WorkerAssigned(logger, workerId);
 
-        using HttpResponseMessage link = await client.PostAsync("/fake/worker/link", null, cancellationToken);
+        using HttpResponseMessage link = await client.PostAsync("/simulate/worker/link", null, cancellationToken);
         await EnsureSuccessAsync("The Host rejected", link, cancellationToken);
     }
 

@@ -19,26 +19,7 @@ Lock gate = new();
 List<ReceivedPush> history = [];
 HostState? accepted = null;
 
-// Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
-app.MapPost("/fake/worker/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
-{
-    WorkerAssignment assignment = new("Preconfigured", "aspire-sample-app", "http", false, [], string.Empty);
-    using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient)
-        .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
-
-    return await ToResultAsync("assign", response, cancellationToken);
-});
-
-// Called by AppHost or a developer, after assignment, to link the worker to the Host (PUT /admin/workers/{workerId}).
-app.MapPost("/fake/worker/link", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
-{
-    WorkerLink link = new(options.WorkerGrpcEndpoint.ToString());
-    using HttpResponseMessage response = await clients.CreateClient(HostClient)
-        .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(options.WorkerId)}", link, cancellationToken);
-
-    return await ToResultAsync("link", response, cancellationToken);
-});
-
+// Real contract: the only route the Host calls. It mirrors the platform's host-state endpoint.
 // Called by the Functions Host whenever its linked worker counts change, including at startup and shutdown.
 app.MapPut("/admin/infra/host/state", (HostState state) =>
 {
@@ -59,8 +40,32 @@ app.MapPut("/admin/infra/host/state", (HostState state) =>
     }
 });
 
-// Called by a developer (browser, curl, .http file) at any time to inspect the accepted state and push history.
-app.MapGet("/admin/infra/host/state", () =>
+// Simulation and inspection routes: harness-only, never called by the Host or WorkerProxy.
+RouteGroupBuilder simulate = app.MapGroup("/simulate");
+
+// Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
+simulate.MapPost("/worker/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
+{
+    WorkerAssignment assignment = new("Preconfigured", "aspire-sample-app", "http", false, [], string.Empty);
+    using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient)
+        .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
+
+    return await ToResultAsync("assign", response, cancellationToken);
+});
+
+// Called by AppHost or a developer, after assignment, to link the worker to the Host (PUT /admin/workers/{workerId}).
+simulate.MapPost("/worker/link", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
+{
+    WorkerLink link = new(options.WorkerGrpcEndpoint.ToString());
+    using HttpResponseMessage response = await clients.CreateClient(HostClient)
+        .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(options.WorkerId)}", link, cancellationToken);
+
+    return await ToResultAsync("link", response, cancellationToken);
+});
+
+// Called by a developer (browser, curl, .http file) or the AppHost health check to inspect the accepted state and
+// push history.
+simulate.MapGet("/host/state", () =>
 {
     lock (gate)
     {
@@ -69,7 +74,7 @@ app.MapGet("/admin/infra/host/state", () =>
 });
 
 // Called by a developer between test scenarios to reset the recorded state.
-app.MapDelete("/fake/history", () =>
+simulate.MapDelete("/host/state", () =>
 {
     lock (gate)
     {

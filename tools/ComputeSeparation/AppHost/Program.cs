@@ -105,7 +105,7 @@ else
     // Start the fake platform before the Host so it receives the Host's first state push.
     IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
-        .WithHttpHealthCheck("/admin/infra/host/state", endpointName: HttpEndpointName);
+        .WithHttpHealthCheck("/simulate/host/state", endpointName: HttpEndpointName);
 
     IResourceBuilder<ProjectResource> functionsHost = builder.AddProject<Projects.Functions_Host>("functions-host", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"), name: HttpEndpointName)

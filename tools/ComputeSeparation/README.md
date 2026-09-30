@@ -73,12 +73,14 @@ The happy path, in order:
 
 ### Test-only
 
+Simulation and inspection routes live under `/simulate`, so they are never confused with the real contracts above. Only `PUT /admin/infra/host/state` on the fake platform is a real contract, because the Host calls it.
+
 | Endpoint on | Request | Effect |
 | --- | --- | --- |
-| Fake platform | `POST /fake/worker/assign` | Sends step 2 to the WorkerProxy and returns its response. |
-| Fake platform | `POST /fake/worker/link` | Sends step 3 to the Host and returns its response. |
-| Fake platform | `GET /admin/infra/host/state` | Returns the accepted state and every push received. |
-| Fake platform | `DELETE /fake/history` | Clears the history and accepted state. |
+| Fake platform | `POST /simulate/worker/assign` | Sends step 2 to the WorkerProxy and returns its response. |
+| Fake platform | `POST /simulate/worker/link` | Sends step 3 to the Host and returns its response. |
+| Fake platform | `GET /simulate/host/state` | Returns the accepted state and every push received. |
+| Fake platform | `DELETE /simulate/host/state` | Clears the history and accepted state. |
 
 ## Send requests manually
 
