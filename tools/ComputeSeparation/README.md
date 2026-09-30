@@ -19,19 +19,21 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 
 | Profile | Runs locally |
 | --- | --- |
-| `project` | The Host, WorkerProxy, and sample worker as .NET projects for managed C# debugging. No Docker required. |
+| `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging. No Docker required. |
+| `project-manual` | Same as `project`, but nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
-Both profiles start an Aspire dashboard and link the worker automatically. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
+`project` and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
 
 The equivalent command-line launches are:
 
 ```powershell
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project
+dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-manual
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile container
 ```
 
-Run one profile at a time. Neither mode requires `aspire deploy` or `aspire publish`.
+Run one profile at a time. No mode requires `aspire deploy` or `aspire publish`.
 
 ## Try the sample
 
@@ -42,6 +44,46 @@ Once the Host has started, GET or POST requests return:
 ```text
 Hello from the BYOC .NET isolated worker.
 ```
+
+## Fake platform
+
+In project mode, the `fake-platform` resource is a local stand-in for the platform. It starts before the Host, sends the assign and link requests to the WorkerProxy and Host, and records the linked worker counts the Host publishes back. The Host receives its endpoint through `FUNCTIONS_APPSERVER_URI` and publishes with `PUT /admin/infra/host/state`:
+
+```json
+{ "snapshotVersion": 2, "linkedWorkerCount": 1, "linkedHttpWorkerCount": 1 }
+```
+
+Open the `fake-platform` console logs in the dashboard to watch the assign and link calls and the Host's pushes in order. A push is marked `stale` and not accepted when its `snapshotVersion` is not greater than the accepted version. The fake is not wired in container mode.
+
+## Endpoints
+
+### Expected flow
+
+The happy path, in order:
+
+| Step | Endpoint on | Caller | Request | Purpose |
+| --- | --- | --- | --- | --- |
+| 1 | Platform | Host | `PUT /admin/infra/host/state` | Publishes counts `(0, 0)` after startup. |
+| 2 | WorkerProxy | Platform | `PUT /admin/worker/assignment` | Assigns the pod once its worker has connected. |
+| 3 | Host | Platform | `PUT /admin/workers/{workerId}` | Links the worker through the WorkerProxy runtime gRPC endpoint. |
+| 4 | Platform | Host | `PUT /admin/infra/host/state` | Publishes counts `(1, 1)` once the linked worker is running. |
+| 5 | Host | Client | `GET /api/hello` | Invokes the function through Host -> WorkerProxy -> worker. |
+
+`GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The `project` profile sends steps 2 and 3 through the fake platform automatically; `project-manual` leaves them to you. Steps 1 and 4 require a Host that publishes its state.
+
+### Test-only
+
+| Endpoint on | Request | Effect |
+| --- | --- | --- |
+| Fake platform | `POST /fake/worker/assign` | Sends step 2 to the WorkerProxy and returns its response. |
+| Fake platform | `POST /fake/worker/link` | Sends step 3 to the Host and returns its response. |
+| Fake platform | `GET /admin/infra/host/state` | Returns the accepted state, the current response status code, and every push received. |
+| Fake platform | `PUT /fake/response/{statusCode}` | Makes later pushes return `statusCode`, e.g. `503` to exercise the Host's retries. |
+| Fake platform | `DELETE /fake/history` | Clears the history and accepted state, and restores `200` responses. |
+
+## Send requests manually
+
+`compute-separation.http` walks through the expected flow one step at a time by calling the fake platform, which sends the assign and link calls. Run the `project-manual` profile, then open the file in Visual Studio or VS Code with the REST Client extension and send its requests in order.
 
 ## Container behavior
 

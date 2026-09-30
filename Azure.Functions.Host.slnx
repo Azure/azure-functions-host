@@ -20,6 +20,7 @@
   </Folder>
   <Folder Name="/tools/ComputeSeparation/">
     <Project Path="tools/ComputeSeparation/AppHost/ComputeSeparation.AppHost.csproj" />
+    <Project Path="tools/ComputeSeparation/FakePlatform/FakePlatform.csproj" />
     <Project Path="tools/ComputeSeparation/SampleIsolatedApp/SampleIsolatedApp.csproj" />
   </Folder>
 </Solution>

@@ -26,6 +26,7 @@ using HarnessRunDirectory? runDirectory = useContainers ? null : new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
 EndpointReference hostEndpoint;
+EndpointReference? platformEndpoint = null;
 ReferenceExpression workerGrpcEndpoint;
 string[] dependencies;
 
@@ -101,8 +102,15 @@ else
             "--functions-grpc-max-message-length", "134217728")
         .WaitFor(proxyProject);
 
+    // Start the fake platform before the Host so it receives the Host's first state push.
+    IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
+        .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
+        .WithHttpHealthCheck("/admin/infra/host/state", endpointName: HttpEndpointName);
+
     IResourceBuilder<ProjectResource> functionsHost = builder.AddProject<Projects.Functions_Host>("functions-host", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"), name: HttpEndpointName)
+        .WaitFor(fakePlatform)
+        .WithEnvironment("FUNCTIONS_APPSERVER_URI", fakePlatform.GetEndpoint(HttpEndpointName))
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
         .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", "Development")
         .WithEnvironment("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated")
@@ -119,9 +127,17 @@ else
     functionsHost.WithEnvironment("ASPNETCORE_URLS",
         ReferenceExpression.Create($"http://127.0.0.1:{functionsHost.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort)}"));
 
+    fakePlatform
+        .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName))
+        .WithEnvironment("FakePlatform__WorkerProxyUri", proxyProject.GetEndpoint(ManagementEndpointName))
+        .WithEnvironment("FakePlatform__WorkerGrpcEndpoint", proxyProject.GetEndpoint(RuntimeGrpcEndpointName))
+        .WithEnvironment("FakePlatform__WorkerId", workerId);
+
+    platformEndpoint = fakePlatform.GetEndpoint(HttpEndpointName);
+
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
-    dependencies = ["functions-host", "worker-proxy", "isolated-worker"];
+    dependencies = ["functions-host", "worker-proxy", "isolated-worker", "fake-platform"];
 }
 
 if (builder.Configuration.GetValue("ComputeSeparation:AutoLink", true))
@@ -129,6 +145,7 @@ if (builder.Configuration.GetValue("ComputeSeparation:AutoLink", true))
     builder.Services.AddHostedService(services => new HostLinkService(
         hostEndpoint,
         workerGrpcEndpoint,
+        platformEndpoint,
         workerId,
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),
