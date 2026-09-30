@@ -14,28 +14,19 @@
 
 ### Expected flow, in order.
 
-### 1. The Host has published its initial counts (0, 0).
-GET {{platform}}/simulate/host/state
-
-### 2. The platform assigns the pod on the WorkerProxy. Expect 201, or 204 if repeated.
+### 1. The platform assigns the pod on the WorkerProxy. Expect 201, or 204 if repeated.
 ### 503 WorkerNotReady means the sample worker has not connected yet; retry.
 POST {{platform}}/simulate/worker/assign
 
 ### Optional: the WorkerProxy pod state is now ReadyForRequest.
 GET {{workerProxy}}/admin/worker/state
 
-### 3. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if
-### repeated. The Host finishes specializing only after step 4 links the worker.
+### 2. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if
+### repeated. The Host finishes specializing only after step 3 links the worker.
 POST {{platform}}/simulate/host/assign
 
-### 4. The platform links the worker to the Host. Expect 201, or 200 for a matching retry.
+### 3. The platform links the worker to the Host. Expect 201, or 200 for a matching retry.
 POST {{platform}}/simulate/worker/link
 
-### 5. The Host has published new counts (1, 1).
-GET {{platform}}/simulate/host/state
-
-### 6. A client invokes the function through Host -> WorkerProxy -> worker.
+### 4. A client invokes the function through Host -> WorkerProxy -> worker.
 GET {{host}}/api/hello
-
-### Test-only: clear history and accepted state.
-DELETE {{platform}}/simulate/host/state
