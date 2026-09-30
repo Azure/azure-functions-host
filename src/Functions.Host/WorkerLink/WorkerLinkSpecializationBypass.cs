@@ -2,7 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Azure.Functions.Host.Controllers;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Template;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 
 namespace Azure.Functions.Host.WorkerLink;
@@ -17,10 +20,11 @@ namespace Azure.Functions.Host.WorkerLink;
 /// </remarks>
 internal sealed class WorkerLinkSpecializationBypass : IPlaceholderSpecializationBypass
 {
-    private static readonly PathString WorkersPath = new("/admin/workers");
+    private static readonly TemplateMatcher WorkerLinkRoute =
+        new(TemplateParser.Parse(WorkerLinkController.Route), new RouteValueDictionary());
 
     /// <summary>
-    /// Matches <c>PUT /admin/workers/{workerPodName}</c>, the route of the worker link controller.
+    /// Matches <c>PUT</c> requests to the <see cref="WorkerLinkController"/> route.
     /// </summary>
     /// <param name="request">The incoming request.</param>
     /// <returns><see langword="true"/> for a worker link request.</returns>
@@ -28,19 +32,7 @@ internal sealed class WorkerLinkSpecializationBypass : IPlaceholderSpecializatio
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!HttpMethods.IsPut(request.Method)
-            || !request.Path.StartsWithSegments(WorkersPath, StringComparison.OrdinalIgnoreCase, out PathString remainder)
-            || remainder.Value is not { Length: > 1 } value)
-        {
-            return false;
-        }
-
-        ReadOnlySpan<char> workerPodName = value.AsSpan(1);
-        if (workerPodName[^1] == '/')
-        {
-            workerPodName = workerPodName[..^1];
-        }
-
-        return !workerPodName.IsEmpty && !workerPodName.Contains('/');
+        return HttpMethods.IsPut(request.Method)
+            && WorkerLinkRoute.TryMatch(request.Path, new RouteValueDictionary());
     }
 }

@@ -19,8 +19,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private RequestDelegate _invoke;
         private double _specialized = 0;
 
-        public PlaceholderSpecializationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment,
-            IStandbyManager standbyManager, IEnvironment environment, IEnumerable<IPlaceholderSpecializationBypass> bypasses)
+        public PlaceholderSpecializationMiddleware(
+            RequestDelegate next,
+            IScriptWebHostEnvironment webHostEnvironment,
+            IStandbyManager standbyManager,
+            IEnvironment environment,
+            IEnumerable<IPlaceholderSpecializationBypass> bypasses)
         {
             _next = next;
             _invoke = InvokeSpecializationCheck;
@@ -49,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 }
 
                 // Specialization can depend on a request, so holding that request here would deadlock.
-                if (!specializeTask.IsCompleted && ShouldBypass(httpContext.Request))
+                if (!specializeTask.IsCompleted && _bypasses.Any(bypass => bypass.ShouldBypass(httpContext.Request)))
                 {
                     await _next(httpContext);
                     return;
@@ -64,19 +68,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
 
             await _next(httpContext);
-        }
-
-        private bool ShouldBypass(HttpRequest request)
-        {
-            foreach (IPlaceholderSpecializationBypass bypass in _bypasses)
-            {
-                if (bypass.ShouldBypass(request))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }

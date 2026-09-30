@@ -32,6 +32,11 @@ namespace Azure.Functions.Host.Controllers;
 /// </remarks>
 public sealed partial class WorkerLinkController : Controller
 {
+    /// <summary>
+    /// The route template of the worker link endpoint.
+    /// </summary>
+    internal const string Route = "admin/workers/{workerPodName}";
+
     // Log-only reason for the 400 path. The response carries per-error codes instead, so this is not a wire code.
     private const string ValidationFailedReason = "ValidationFailed";
 
@@ -74,7 +79,7 @@ public sealed partial class WorkerLinkController : Controller
     /// a breaking change.
     /// </remarks>
     [HttpPut]
-    [Route("admin/workers/{workerPodName}")]
+    [Route(Route)]
     // [Authorize(Policy = PolicyNames.AdminAuthLevel)]
     public async Task<IActionResult> LinkWorker([FromRoute] string workerPodName, [FromBody] WorkerLinkRequest? request,
         CancellationToken cancellationToken = default)
