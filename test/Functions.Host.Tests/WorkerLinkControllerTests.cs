@@ -38,6 +38,7 @@ public class WorkerLinkControllerTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
     private readonly Mock<IOptionsMonitor<ScriptApplicationHostOptions>> _hostOptions = new(MockBehavior.Strict);
+    private readonly Mock<IDisposable> _hostOptionsRegistration = new();
     private ScriptApplicationHostOptions _currentHostOptions = new();
     private Action<ScriptApplicationHostOptions, string?>? _hostOptionsChanged;
 
@@ -49,17 +50,19 @@ public class WorkerLinkControllerTests
             .Returns((Action<ScriptApplicationHostOptions, string?> listener) =>
             {
                 _hostOptionsChanged = listener;
-                return Mock.Of<IDisposable>();
+                return _hostOptionsRegistration.Object;
             });
     }
 
     [Fact]
-    public void Constructor_NullDependency_Throws()
+    public void Constructor_InvalidArguments_Throw()
     {
-        WorkerLinkSpecializationGate gate = CreateSpecializationGate();
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(null!, _registry.Object, gate));
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, null!, gate));
+        WorkerLinkConfigurationMonitor monitor = CreateConfigurationMonitor();
+        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(null!, _registry.Object, monitor));
+        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, null!, monitor));
         Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, _registry.Object, null!));
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateController(TimeSpan.Zero));
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateController(TimeSpan.FromSeconds(-1)));
     }
 
     [Fact]
@@ -86,15 +89,19 @@ public class WorkerLinkControllerTests
     }
 
     [Fact]
-    public async Task LinkWorker_RuntimeNotSpecialized_ReturnsUnavailableWithoutLinking()
+    public async Task LinkWorker_SpecializedConfigurationTimeout_ReturnsUnavailableWithoutLinking()
     {
         _currentHostOptions = TestScriptApplicationHostOptions.CreateStandby();
+        using CancellationTokenSource cancellation = new();
 
-        IActionResult result = await CreateController(TimeSpan.FromMilliseconds(1)).LinkWorker(WorkerId, ValidRequest())
+        IActionResult result = await CreateController(TimeSpan.FromMilliseconds(1))
+            .LinkWorker(WorkerId, ValidRequest(), cancellation.Token)
             .WaitAsync(TestTimeout);
 
         WorkerLinkError error = AssertLinkError(result, StatusCodes.Status503ServiceUnavailable, "RuntimeNotSpecialized");
         Assert.Equal("The runtime has not been specialized.", error.Detail);
+        Assert.False(cancellation.IsCancellationRequested);
+        _hostOptionsRegistration.Verify(registration => registration.Dispose(), Times.Once);
         _registry.VerifyNoOtherCalls();
     }
 
@@ -111,7 +118,7 @@ public class WorkerLinkControllerTests
     }
 
     [Fact]
-    public async Task LinkWorker_CanceledBeforeSpecialization_PropagatesCallerTokenWithoutLinking()
+    public async Task LinkWorker_CanceledWhileWaitingForSpecializedConfiguration_PropagatesCallerTokenWithoutLinking()
     {
         _currentHostOptions = TestScriptApplicationHostOptions.CreateStandby();
         using CancellationTokenSource cancellation = new();
@@ -123,6 +130,7 @@ public class WorkerLinkControllerTests
         OperationCanceledException actual = await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => link.WaitAsync(TestTimeout));
         Assert.Equal(cancellation.Token, actual.CancellationToken);
+        _hostOptionsRegistration.Verify(registration => registration.Dispose(), Times.Once);
         _registry.VerifyNoOtherCalls();
     }
 
@@ -355,7 +363,7 @@ public class WorkerLinkControllerTests
     }
 
     [Fact]
-    public async Task LinkWorker_WaitedForSpecialization_LogsWaitAtDebug()
+    public async Task LinkWorker_WaitingForSpecializedConfiguration_LogsAtDebug()
     {
         _currentHostOptions = TestScriptApplicationHostOptions.CreateStandby();
         _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
@@ -371,17 +379,18 @@ public class WorkerLinkControllerTests
                 ((EventId)call.Arguments[1]).Id,
                 Assert.IsAssignableFrom<IEnumerable<KeyValuePair<string, object>>>(call.Arguments[2])
                     .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)))));
-        WorkerLinkController controller = new(logger.Object, _registry.Object, CreateSpecializationGate());
+        WorkerLinkController controller = new(logger.Object, _registry.Object, CreateConfigurationMonitor(), TestTimeout);
 
         Task<IActionResult> link = controller.LinkWorker(WorkerId, ValidRequest());
+
         Assert.False(link.IsCompleted);
+        (LogLevel level, int eventId, Dictionary<string, object> state) = Assert.Single(entries);
+        Assert.Equal(LogLevel.Debug, level);
+        Assert.Equal(703, eventId);
+        Assert.Equal(WorkerId, state["workerId"]);
         Specialize();
         await link.WaitAsync(TestTimeout);
-
-        (LogLevel level, _, Dictionary<string, object> state) = Assert.Single(entries, entry => entry.EventId == 3);
-        Assert.Equal(LogLevel.Debug, level);
-        Assert.Equal(WorkerId, state["workerId"]);
-        Assert.True(Assert.IsType<double>(state["elapsedMilliseconds"]) >= 0);
+        Assert.Single(entries, entry => entry.EventId == 703);
     }
 
     [Theory]
@@ -411,12 +420,12 @@ public class WorkerLinkControllerTests
                 : Task.FromResult(new WorkerLinkResult(null!, IsNewLink: true)));
         WorkerLinkRequest request = ValidRequest();
         request.WorkerContainerEncryptionKey = "reserved-value-do-not-log";
-        WorkerLinkController controller = new(logger.Object, _registry.Object, CreateSpecializationGate());
+        WorkerLinkController controller = new(logger.Object, _registry.Object, CreateConfigurationMonitor(), TestTimeout);
 
         await controller.LinkWorker(WorkerId, request);
 
         Assert.Single(logger.Invocations.Where(call => string.Equals(call.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal)));
-        Assert.Equal(fail ? 1 : 0, eventId.Id);
+        Assert.Equal(fail ? 701 : 700, eventId.Id);
         Dictionary<string, object> loggedState = Assert.IsType<Dictionary<string, object>>(state);
         Assert.Equal(WorkerId, loggedState["workerId"]);
         Assert.True(Assert.IsType<double>(loggedState["elapsedMilliseconds"]) >= 0);
@@ -465,12 +474,12 @@ public class WorkerLinkControllerTests
     [InlineData("   ")]
     [InlineData("\t\r\n")]
     [InlineData("\u00a0\u2003")]
-    public async Task LinkWorker_InvalidRouteWorkerPodName_ReturnsBadRequestWithoutLinking(string? workerPodName)
+    public async Task LinkWorker_InvalidRouteWorkerId_ReturnsBadRequestWithoutLinking(string? workerId)
     {
-        IReadOnlyList<RequestValidationError> errors = AssertBadRequest(await CreateController().LinkWorker(workerPodName!, ValidRequest()));
+        IReadOnlyList<RequestValidationError> errors = AssertBadRequest(await CreateController().LinkWorker(workerId!, ValidRequest()));
         RequestValidationError error = Assert.Single(errors);
         Assert.Equal("Required", error.Code);
-        Assert.Equal("workerPodName", error.Target);
+        Assert.Equal("workerId", error.Target);
         _registry.VerifyNoOtherCalls();
     }
 
@@ -493,15 +502,15 @@ public class WorkerLinkControllerTests
     [InlineData("worker\u007fpod")]
     [InlineData("worker\u009fpod")]
     [InlineData("\0")]
-    public async Task LinkWorker_ValidOpaqueWorkerPodName_PreservesIdentity(string workerPodName)
+    public async Task LinkWorker_ValidOpaqueWorkerId_PreservesIdentity(string workerId)
     {
-        _registry.Setup(registry => registry.LinkAsync(workerPodName, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
+        _registry.Setup(registry => registry.LinkAsync(workerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
 
-        StatusCodeResult result = Assert.IsType<StatusCodeResult>(await CreateController().LinkWorker(workerPodName, ValidRequest()));
+        StatusCodeResult result = Assert.IsType<StatusCodeResult>(await CreateController().LinkWorker(workerId, ValidRequest()));
 
         Assert.Equal(StatusCodes.Status201Created, result.StatusCode);
-        _registry.Verify(registry => registry.LinkAsync(workerPodName, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()), Times.Once);
+        _registry.Verify(registry => registry.LinkAsync(workerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()), Times.Once);
         _registry.VerifyNoOtherCalls();
     }
 
@@ -510,8 +519,8 @@ public class WorkerLinkControllerTests
     [InlineData(253)]
     [InlineData(254)]
     [InlineData(1024)]
-    public Task LinkWorker_WorkerPodNameLength_DoesNotRestrictIdentity(int length)
-        => LinkWorker_ValidOpaqueWorkerPodName_PreservesIdentity(new string('a', length));
+    public Task LinkWorker_WorkerIdLength_DoesNotRestrictIdentity(int length)
+        => LinkWorker_ValidOpaqueWorkerId_PreservesIdentity(new string('a', length));
 
     [Theory]
     [InlineData(null)]
@@ -535,11 +544,11 @@ public class WorkerLinkControllerTests
         _registry.VerifyNoOtherCalls();
     }
 
-    private WorkerLinkController CreateController(TimeSpan? specializationTimeout = null)
-        => new(NullLogger<WorkerLinkController>.Instance, _registry.Object, CreateSpecializationGate(specializationTimeout));
+    private WorkerLinkController CreateController(TimeSpan? specializedConfigurationTimeout = null)
+        => new(NullLogger<WorkerLinkController>.Instance, _registry.Object, CreateConfigurationMonitor(),
+            specializedConfigurationTimeout ?? TestTimeout);
 
-    private WorkerLinkSpecializationGate CreateSpecializationGate(TimeSpan? timeout = null)
-        => new(_hostOptions.Object, timeout ?? TestTimeout);
+    private WorkerLinkConfigurationMonitor CreateConfigurationMonitor() => new(_hostOptions.Object);
 
     private void Specialize()
     {

@@ -15,24 +15,24 @@ namespace Azure.Functions.Host.WorkerLink;
 /// </summary>
 /// <remarks>
 /// The script host starts only after the first worker links, and specialization waits for that start, so holding a
-/// link request until specialization completes would deadlock. <see cref="WorkerLinkSpecializationGate"/> holds the
-/// link until the specialized configuration is in place.
+/// link request until specialization completes would deadlock. Instead, <see cref="WorkerLinkController"/> waits for
+/// the specialized configuration through <see cref="WorkerLinkConfigurationMonitor"/>.
 /// </remarks>
 internal sealed class WorkerLinkSpecializationWaitExemption : ISpecializationWaitExemption
 {
-    private static readonly TemplateMatcher WorkerLinkRoute =
-        new(TemplateParser.Parse(WorkerLinkController.Route), new RouteValueDictionary());
+    private static readonly TemplateMatcher LinkWorkerRoute =
+        new(TemplateParser.Parse(WorkerLinkController.LinkWorkerRoute), []);
 
     /// <summary>
-    /// Matches <c>PUT</c> requests to the <see cref="WorkerLinkController"/> route.
+    /// Matches <c>PUT</c> requests to the <see cref="WorkerLinkController.LinkWorker"/> route.
     /// </summary>
     /// <param name="request">The incoming request.</param>
     /// <returns><see langword="true"/> for a worker link request.</returns>
-    public bool IsExempt(HttpRequest request)
+    public bool IsMatch(HttpRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         return HttpMethods.IsPut(request.Method)
-            && WorkerLinkRoute.TryMatch(request.Path, new RouteValueDictionary());
+            && LinkWorkerRoute.TryMatch(request.Path, []);
     }
 }

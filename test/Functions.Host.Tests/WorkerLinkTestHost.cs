@@ -60,7 +60,7 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                         if (includeCompute)
                         {
                             services.AddSingleton(registry);
-                            services.AddSingleton<WorkerLinkSpecializationGate>();
+                            services.AddSingleton<WorkerLinkConfigurationMonitor>();
                             mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
                         }
 
@@ -89,9 +89,9 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
     }
 
     internal async Task<HttpResponseMessage> PutAsync(string? json, CancellationToken cancellationToken,
-        string workerPodName = "worker-pod-abc123")
+        string workerId = "worker-pod-abc123")
     {
-        using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{workerPodName}");
+        using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{workerId}");
         request.Content = new StringContent(json ?? string.Empty, Encoding.UTF8, "application/json");
 
         return await Client.SendAsync(request, cancellationToken);

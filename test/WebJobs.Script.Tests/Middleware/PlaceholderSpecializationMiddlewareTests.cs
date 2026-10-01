@@ -68,7 +68,7 @@ public class PlaceholderSpecializationMiddlewareTests
     [Fact]
     public async Task Invoke_ExemptRequestDuringSpecialization_ContinuesWithoutWaiting()
     {
-        _exemption.Setup(exemption => exemption.IsExempt(It.Is<HttpRequest>(request => request.Path == ExemptPath))).Returns(true);
+        _exemption.Setup(exemption => exemption.IsMatch(It.Is<HttpRequest>(request => request.Path == ExemptPath))).Returns(true);
         PlaceholderSpecializationMiddleware middleware = CreateMiddleware(_exemption.Object);
 
         await middleware.Invoke(CreateContext(HttpMethods.Put, ExemptPath)).WaitAsync(TestTimeout);
@@ -105,7 +105,7 @@ public class PlaceholderSpecializationMiddlewareTests
 
         Assert.Equal(2, _nextCalls);
         _standbyManager.Verify(manager => manager.SpecializeHostAsync(), Times.Once);
-        _exemption.Verify(exemption => exemption.IsExempt(It.IsAny<HttpRequest>()), Times.Never);
+        _exemption.Verify(exemption => exemption.IsMatch(It.IsAny<HttpRequest>()), Times.Never);
     }
 
     private PlaceholderSpecializationMiddleware CreateMiddleware(params ISpecializationWaitExemption[] exemptions)

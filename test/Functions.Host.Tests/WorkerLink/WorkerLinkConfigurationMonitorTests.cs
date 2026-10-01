@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Azure.Functions.Host.Tests.WorkerLink;
 
-public sealed class WorkerLinkSpecializationGateTests
+public sealed class WorkerLinkConfigurationMonitorTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
@@ -22,7 +22,7 @@ public sealed class WorkerLinkSpecializationGateTests
     private ScriptApplicationHostOptions _current = TestScriptApplicationHostOptions.CreateStandby();
     private Action<ScriptApplicationHostOptions, string?>? _changed;
 
-    public WorkerLinkSpecializationGateTests()
+    public WorkerLinkConfigurationMonitorTests()
     {
         _options.SetupGet(options => options.CurrentValue).Returns(() => Volatile.Read(ref _current));
         _options.Setup(options => options.OnChange(It.IsAny<Action<ScriptApplicationHostOptions, string?>>()))
@@ -35,62 +35,60 @@ public sealed class WorkerLinkSpecializationGateTests
     }
 
     [Fact]
-    public void Constructor_InvalidArguments_Throw()
+    public void Constructor_NullOptions_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkSpecializationGate(null!));
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkSpecializationGate(null!, TestTimeout));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new WorkerLinkSpecializationGate(_options.Object, TimeSpan.Zero));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new WorkerLinkSpecializationGate(_options.Object, TimeSpan.FromSeconds(-1)));
+        Assert.Throws<ArgumentNullException>(() => new WorkerLinkConfigurationMonitor(null!));
     }
 
     [Fact]
-    public async Task WaitForSpecializedConfiguration_AlreadySpecialized_ReturnsTrueWithoutSubscribing()
+    public async Task WaitForSpecializedConfiguration_AlreadySpecialized_CompletesWithoutSubscribing()
     {
         _current = new ScriptApplicationHostOptions();
 
-        Task<bool> wait = CreateGate(TestTimeout).WaitForSpecializedConfigurationAsync(CancellationToken.None);
+        Task wait = CreateMonitor().WaitForSpecializedConfigurationAsync(CancellationToken.None);
 
         Assert.True(wait.IsCompletedSuccessfully);
-        Assert.True(await wait);
+        await wait;
         _options.Verify(options => options.OnChange(It.IsAny<Action<ScriptApplicationHostOptions, string?>>()), Times.Never);
     }
 
     [Fact]
-    public async Task WaitForSpecializedConfiguration_Specializes_ReturnsTrueAndDisposesRegistration()
+    public async Task WaitForSpecializedConfiguration_Specializes_CompletesAndDisposesRegistration()
     {
-        Task<bool> wait = CreateGate(TestTimeout).WaitForSpecializedConfigurationAsync(CancellationToken.None);
+        Task wait = CreateMonitor().WaitForSpecializedConfigurationAsync(CancellationToken.None);
         await _subscribed.Task.WaitAsync(TestTimeout);
 
         Assert.False(wait.IsCompleted);
         Specialize();
 
-        Assert.True(await wait.WaitAsync(TestTimeout));
+        await wait.WaitAsync(TestTimeout);
         _registration.Verify(registration => registration.Dispose(), Times.Once);
     }
 
     [Fact]
-    public async Task WaitForSpecializedConfiguration_SpecializedBeforeListenerRegistered_ReturnsTrue()
+    public async Task WaitForSpecializedConfiguration_SpecializedBeforeListenerRegistered_Completes()
     {
         _options.SetupSequence(options => options.CurrentValue)
             .Returns(TestScriptApplicationHostOptions.CreateStandby())
             .Returns(new ScriptApplicationHostOptions());
 
-        bool specialized = await CreateGate(TestTimeout).WaitForSpecializedConfigurationAsync(CancellationToken.None)
-            .WaitAsync(TestTimeout);
+        await CreateMonitor().WaitForSpecializedConfigurationAsync(CancellationToken.None).WaitAsync(TestTimeout);
 
-        Assert.True(specialized);
         _registration.Verify(registration => registration.Dispose(), Times.Once);
     }
 
     [Fact]
-    public async Task WaitForSpecializedConfiguration_ChangeKeepsPlaceholderConfiguration_ReturnsFalseAfterTimeout()
+    public async Task WaitForSpecializedConfiguration_ChangeKeepsPlaceholderConfiguration_KeepsWaiting()
     {
-        Task<bool> wait = CreateGate(TimeSpan.FromMilliseconds(100)).WaitForSpecializedConfigurationAsync(CancellationToken.None);
+        using CancellationTokenSource cancellation = new();
+        Task wait = CreateMonitor().WaitForSpecializedConfigurationAsync(cancellation.Token);
         await _subscribed.Task.WaitAsync(TestTimeout);
 
         _changed!(_current, Options.DefaultName);
 
-        Assert.False(await wait.WaitAsync(TestTimeout));
+        await Assert.ThrowsAsync<TimeoutException>(() => wait.WaitAsync(TimeSpan.FromMilliseconds(100)));
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => wait.WaitAsync(TestTimeout));
         _registration.Verify(registration => registration.Dispose(), Times.Once);
     }
 
@@ -98,7 +96,7 @@ public sealed class WorkerLinkSpecializationGateTests
     public async Task WaitForSpecializedConfiguration_Canceled_ThrowsAndDisposesRegistration()
     {
         using CancellationTokenSource cancellation = new();
-        Task<bool> wait = CreateGate(TestTimeout).WaitForSpecializedConfigurationAsync(cancellation.Token);
+        Task wait = CreateMonitor().WaitForSpecializedConfigurationAsync(cancellation.Token);
         await _subscribed.Task.WaitAsync(TestTimeout);
 
         cancellation.Cancel();
@@ -109,7 +107,7 @@ public sealed class WorkerLinkSpecializationGateTests
         _registration.Verify(registration => registration.Dispose(), Times.Once);
     }
 
-    private WorkerLinkSpecializationGate CreateGate(TimeSpan timeout) => new(_options.Object, timeout);
+    private WorkerLinkConfigurationMonitor CreateMonitor() => new(_options.Object);
 
     private void Specialize()
     {

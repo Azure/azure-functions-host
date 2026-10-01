@@ -10,60 +10,49 @@ using Microsoft.Extensions.Options;
 namespace Azure.Functions.Host.WorkerLink;
 
 /// <summary>
-/// Holds worker links until the runtime uses the specialized application configuration.
+/// Observes when the specialized application configuration becomes available to worker links.
 /// </summary>
 /// <remarks>
 /// A linked worker initializes with the application paths from <see cref="ScriptApplicationHostOptions"/>. In
 /// placeholder mode those paths belong to the placeholder site, so a link waits until specialization replaces them
-/// with the application's paths.
+/// with the application's paths. This type only observes the configuration. It does not perform specialization or
+/// wait for the rest of it, such as the script host restart, to complete.
 /// </remarks>
-public sealed class WorkerLinkSpecializationGate
+public sealed class WorkerLinkConfigurationMonitor
 {
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
-
     private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
-    private readonly TimeSpan _timeout;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="WorkerLinkSpecializationGate"/> class.
+    /// Initializes a new instance of the <see cref="WorkerLinkConfigurationMonitor"/> class.
     /// </summary>
     /// <param name="options">The application host options, which change when the runtime specializes.</param>
-    public WorkerLinkSpecializationGate(IOptionsMonitor<ScriptApplicationHostOptions> options)
-        : this(options, DefaultTimeout)
-    {
-    }
-
-    internal WorkerLinkSpecializationGate(IOptionsMonitor<ScriptApplicationHostOptions> options, TimeSpan timeout)
+    public WorkerLinkConfigurationMonitor(IOptionsMonitor<ScriptApplicationHostOptions> options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(timeout, TimeSpan.Zero);
 
         _options = options;
-        _timeout = timeout;
     }
 
     /// <summary>
     /// Waits until the application host options no longer describe the placeholder site.
     /// </summary>
-    /// <param name="cancellationToken">Cancels the wait.</param>
-    /// <returns>
-    /// <see langword="true"/> when the options are specialized; <see langword="false"/> when they still describe the
-    /// placeholder site after the timeout.
-    /// </returns>
-    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> is canceled.</exception>
+    /// <param name="cancellationToken">Ends the wait. The caller owns any timeout.</param>
+    /// <returns>A task that completes when the specialized configuration is available.</returns>
+    /// <exception cref="OperationCanceledException">
+    /// <paramref name="cancellationToken"/> is canceled before the specialized configuration is available.
+    /// </exception>
     /// <example>
     /// <code>
-    /// if (!await gate.WaitForSpecializedConfigurationAsync(cancellationToken))
-    /// {
-    ///     return StatusCode(StatusCodes.Status503ServiceUnavailable);
-    /// }
+    /// using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+    /// timeout.CancelAfter(TimeSpan.FromSeconds(10));
+    /// await monitor.WaitForSpecializedConfigurationAsync(timeout.Token);
     /// </code>
     /// </example>
-    public async Task<bool> WaitForSpecializedConfigurationAsync(CancellationToken cancellationToken)
+    public async Task WaitForSpecializedConfigurationAsync(CancellationToken cancellationToken)
     {
         if (!IsStandbyConfiguration())
         {
-            return true;
+            return;
         }
 
         TaskCompletionSource specialized = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -78,18 +67,10 @@ public sealed class WorkerLinkSpecializationGate
         // Specialization can complete between the first check and the change registration.
         if (!IsStandbyConfiguration())
         {
-            return true;
+            return;
         }
 
-        try
-        {
-            await specialized.Task.WaitAsync(_timeout, cancellationToken);
-            return true;
-        }
-        catch (TimeoutException)
-        {
-            return false;
-        }
+        await specialized.Task.WaitAsync(cancellationToken);
     }
 
     private bool IsStandbyConfiguration() => _options.CurrentValue.IsStandbyConfiguration;

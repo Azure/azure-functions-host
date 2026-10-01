@@ -25,12 +25,12 @@ public sealed class WorkerLinkSpecializationWaitExemptionTests
     [InlineData("PUT", "/admin/instance/assign", false)]
     [InlineData("PUT", "/api/admin/workers/worker-pod-1", false)]
     [InlineData("PUT", "/", false)]
-    public void IsExempt_MatchesOnlyWorkerLinkPut(string method, string path, bool expected)
+    public void IsMatch_MatchesOnlyWorkerLinkPut(string method, string path, bool expected)
     {
         DefaultHttpContext context = new();
         context.Request.Method = method;
         context.Request.Path = path;
 
-        Assert.Equal(expected, new WorkerLinkSpecializationWaitExemption().IsExempt(context.Request));
+        Assert.Equal(expected, new WorkerLinkSpecializationWaitExemption().IsMatch(context.Request));
     }
 }

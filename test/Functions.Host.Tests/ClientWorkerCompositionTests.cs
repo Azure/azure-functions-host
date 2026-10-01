@@ -80,8 +80,8 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Rpc.Client.RpcClientWorkerFunctionMetadataProvider");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.IWebHostWorkerManager",
             "Azure.Functions.Host.ClientWebHostWorkerManager");
-        AssertSingleton(services, "Azure.Functions.Host.WorkerLink.WorkerLinkSpecializationGate",
-            "Azure.Functions.Host.WorkerLink.WorkerLinkSpecializationGate");
+        AssertSingleton(services, "Azure.Functions.Host.WorkerLink.WorkerLinkConfigurationMonitor",
+            "Azure.Functions.Host.WorkerLink.WorkerLinkConfigurationMonitor");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.Middleware.ISpecializationWaitExemption",
             "Azure.Functions.Host.WorkerLink.WorkerLinkSpecializationWaitExemption");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IFunctionMetadataProvider",
@@ -249,7 +249,7 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor => string.Equals(descriptor.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal));
         Assert.DoesNotContain(services, descriptor =>
             string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
-        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(WorkerLinkSpecializationGate));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(WorkerLinkConfigurationMonitor));
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(ISpecializationWaitExemption));
     }
 

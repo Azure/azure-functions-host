@@ -23,48 +23,64 @@ using WorkerRpcException = Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcExcepti
 namespace Azure.Functions.Host.Controllers;
 
 /// <summary>
-/// Compute-only admin endpoint that links a worker pod to this runtime.
+/// Compute-only admin endpoint that links a worker to this runtime.
 /// </summary>
 /// <remarks>
 /// This controller exists only in the compute product. It is discovered via an MVC application part
-/// registered from <c>ClientWorkerComposition</c>, so the <c>admin/workers/{workerPodName}</c> route is absent from the
+/// registered from <c>ClientWorkerComposition</c>, so the <c>admin/workers/{workerId}</c> route is absent from the
 /// standard host by construction.
 /// </remarks>
 public sealed partial class WorkerLinkController : Controller
 {
     /// <summary>
-    /// The route template of the worker link endpoint.
+    /// The route template of the <see cref="LinkWorker"/> action.
     /// </summary>
-    internal const string Route = "admin/workers/{workerPodName}";
+    internal const string LinkWorkerRoute = "admin/workers/{workerId}";
 
     // Log-only reason for the 400 path. The response carries per-error codes instead, so this is not a wire code.
     private const string ValidationFailedReason = "ValidationFailed";
 
+    // Bounds how long a link that arrives before specialization holds its request.
+    private static readonly TimeSpan DefaultSpecializedConfigurationTimeout = TimeSpan.FromSeconds(10);
+
     private readonly ILogger<WorkerLinkController> _logger;
     private readonly IWorkerChannelRegistry _registry;
-    private readonly WorkerLinkSpecializationGate _specializationGate;
+    private readonly WorkerLinkConfigurationMonitor _configurationMonitor;
+    private readonly TimeSpan _specializedConfigurationTimeout;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerLinkController"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="registry">The registry that owns worker channels and link admission.</param>
-    /// <param name="specializationGate">Holds links until the runtime uses the specialized application configuration.</param>
+    /// <param name="configurationMonitor">Observes when the specialized application configuration becomes available.</param>
     public WorkerLinkController(
         ILogger<WorkerLinkController> logger,
         IWorkerChannelRegistry registry,
-        WorkerLinkSpecializationGate specializationGate)
+        WorkerLinkConfigurationMonitor configurationMonitor)
+        : this(logger, registry, configurationMonitor, DefaultSpecializedConfigurationTimeout)
+    {
+    }
+
+    internal WorkerLinkController(
+        ILogger<WorkerLinkController> logger,
+        IWorkerChannelRegistry registry,
+        WorkerLinkConfigurationMonitor configurationMonitor,
+        TimeSpan specializedConfigurationTimeout)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-        _specializationGate = specializationGate ?? throw new ArgumentNullException(nameof(specializationGate));
+        _configurationMonitor = configurationMonitor ?? throw new ArgumentNullException(nameof(configurationMonitor));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(specializedConfigurationTimeout, TimeSpan.Zero);
+        _specializedConfigurationTimeout = specializedConfigurationTimeout;
     }
 
     /// <summary>
-    /// Links one worker pod to this runtime.
+    /// Links one worker to this runtime.
     /// </summary>
-    /// <param name="workerPodName">
-    /// The worker pod identity from the request path. Null, empty, or all-whitespace values are rejected.
+    /// <param name="workerId">
+    /// The worker ID from the request path. The runtime treats it as an opaque, case-sensitive identifier and rejects
+    /// null, empty, or all-whitespace values.
     /// </param>
     /// <param name="request">The worker link request body.</param>
     /// <param name="cancellationToken">Cancels this request and, for a new link, its initialization attempt.</param>
@@ -81,32 +97,33 @@ public sealed partial class WorkerLinkController : Controller
     /// a breaking change.
     /// </remarks>
     [HttpPut]
-    [Route(Route)]
+    [Route(LinkWorkerRoute)]
     // [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-    public async Task<IActionResult> LinkWorker([FromRoute] string workerPodName, [FromBody] WorkerLinkRequest? request,
+    public async Task<IActionResult> LinkWorker([FromRoute] string workerId, [FromBody] WorkerLinkRequest? request,
         CancellationToken cancellationToken = default)
     {
         long started = Stopwatch.GetTimestamp();
-        IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerPodName, request, out Uri? grpcEndpoint);
+        IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerId, request, out Uri? grpcEndpoint);
         if (errors.Count > 0 || grpcEndpoint is null)
         {
-            Log.LinkRejected(_logger, null, workerPodName, ValidationFailedReason,
+            Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
                 Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return BadRequest(new RequestValidationResponse(errors));
         }
 
-        return await LinkValidatedWorkerAsync(workerPodName, grpcEndpoint, started, cancellationToken);
+        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, started, cancellationToken);
     }
 
-    private IReadOnlyList<RequestValidationError> ValidateRequest(string workerPodName, WorkerLinkRequest? request,
+    private IReadOnlyList<RequestValidationError> ValidateRequest(string workerId, WorkerLinkRequest? request,
         out Uri? grpcEndpoint)
     {
         grpcEndpoint = null;
         List<RequestValidationError> errors = [];
-        if (string.IsNullOrWhiteSpace(workerPodName))
+
+        if (string.IsNullOrWhiteSpace(workerId))
         {
-            errors.Add(new(ErrorCodes.Required, "workerPodName"));
+            errors.Add(new(ErrorCodes.Required, "workerId"));
 
             return errors;
         }
@@ -129,58 +146,75 @@ public sealed partial class WorkerLinkController : Controller
     }
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
-    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerPodName, Uri grpcEndpoint, long started,
+    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerId, Uri grpcEndpoint, long started,
         CancellationToken cancellationToken)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            long specializationWaitStarted = Stopwatch.GetTimestamp();
-            Task<bool> specialization = _specializationGate.WaitForSpecializedConfigurationAsync(cancellationToken);
-            bool waitedForSpecialization = !specialization.IsCompleted;
-            if (!await specialization)
+
+            if (!await WaitForSpecializedConfigurationAsync(workerId, cancellationToken))
             {
-                return CreateLinkFailureResponse(workerPodName, StatusCodes.Status503ServiceUnavailable,
+                return CreateLinkFailureResponse(workerId, StatusCodes.Status503ServiceUnavailable,
                     ErrorCodes.RuntimeNotSpecialized, "The runtime has not been specialized.", started, exception: null);
             }
 
-            if (waitedForSpecialization)
-            {
-                Log.SpecializationWaitCompleted(_logger, workerPodName,
-                    Stopwatch.GetElapsedTime(specializationWaitStarted).TotalMilliseconds);
-            }
-
-            WorkerLinkResult result = await _registry.LinkAsync(workerPodName, grpcEndpoint, cancellationToken);
-            Log.LinkAccepted(_logger, workerPodName, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken);
+            Log.LinkAccepted(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return StatusCode(result.IsNewLink ? StatusCodes.Status201Created : StatusCodes.Status200OK);
         }
         catch (WorkerLinkException exception)
         {
-            return CreateLinkFailureResponse(workerPodName, exception.Reason, started, exception);
+            return CreateLinkFailureResponse(workerId, exception.Reason, started, exception);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            Log.LinkCanceled(_logger, workerPodName, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            Log.LinkCanceled(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             cancellationToken.ThrowIfCancellationRequested();
             throw;
         }
         catch (ObjectDisposedException exception)
         {
-            return CreateLinkFailureResponse(workerPodName, WorkerLinkFailureReason.RuntimeStopping, started, exception);
+            return CreateLinkFailureResponse(workerId, WorkerLinkFailureReason.RuntimeStopping, started, exception);
         }
         catch (Exception exception) when (exception is TimeoutException or GrpcException { StatusCode: Grpc.Core.StatusCode.DeadlineExceeded })
         {
-            return CreateLinkFailureResponse(workerPodName, WorkerLinkFailureReason.Timeout, started, exception);
+            return CreateLinkFailureResponse(workerId, WorkerLinkFailureReason.Timeout, started, exception);
         }
         catch (Exception exception) when (exception is GrpcException or WorkerRpcException or HttpRequestException or
             IOException or SocketException or ChannelClosedException or OperationCanceledException or UriFormatException)
         {
-            return CreateLinkFailureResponse(workerPodName, WorkerLinkFailureReason.Unavailable, started, exception);
+            return CreateLinkFailureResponse(workerId, WorkerLinkFailureReason.Unavailable, started, exception);
         }
     }
 
-    private ObjectResult CreateLinkFailureResponse(string workerPodName, WorkerLinkFailureReason reason,
+    // Returns false when this wait times out. Request cancellation propagates, so an aborted request is not a timeout.
+    private async Task<bool> WaitForSpecializedConfigurationAsync(string workerId, CancellationToken cancellationToken)
+    {
+        // Canceling the monitor's wait, rather than abandoning it, also removes its change registration.
+        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_specializedConfigurationTimeout);
+        Task wait = _configurationMonitor.WaitForSpecializedConfigurationAsync(timeout.Token);
+
+        if (!wait.IsCompleted)
+        {
+            Log.WaitingForSpecializedConfiguration(_logger, workerId);
+        }
+
+        try
+        {
+            await wait;
+
+            return true;
+        }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
+
+    private ObjectResult CreateLinkFailureResponse(string workerId, WorkerLinkFailureReason reason,
         long started, Exception exception)
     {
         (int statusCode, string code, string detail) = reason switch
@@ -198,13 +232,13 @@ public sealed partial class WorkerLinkController : Controller
             _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown worker link failure reason."),
         };
 
-        return CreateLinkFailureResponse(workerPodName, statusCode, code, detail, started, exception);
+        return CreateLinkFailureResponse(workerId, statusCode, code, detail, started, exception);
     }
 
-    private ObjectResult CreateLinkFailureResponse(string workerPodName, int statusCode, string code, string detail,
+    private ObjectResult CreateLinkFailureResponse(string workerId, int statusCode, string code, string detail,
         long started, Exception? exception)
     {
-        Log.LinkRejected(_logger, exception, workerPodName, code, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        Log.LinkRejected(_logger, exception, workerId, code, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
         return StatusCode(statusCode, new WorkerLinkErrorResponse(new WorkerLinkError(code, detail)));
     }
@@ -236,16 +270,18 @@ public sealed partial class WorkerLinkController : Controller
 
     private static partial class Log
     {
-        [LoggerMessage(0, LogLevel.Information, "Worker link accepted for {workerId} after {elapsedMilliseconds} ms.")]
+        // EventId range is 700-799
+
+        [LoggerMessage(700, LogLevel.Information, "Worker link accepted for {workerId} after {elapsedMilliseconds} ms.")]
         public static partial void LinkAccepted(ILogger logger, string workerId, double elapsedMilliseconds);
 
-        [LoggerMessage(1, LogLevel.Warning, "Worker link rejected for {workerId}: {reason}, after {elapsedMilliseconds} ms.")]
+        [LoggerMessage(701, LogLevel.Warning, "Worker link rejected for {workerId}: {reason}, after {elapsedMilliseconds} ms.")]
         public static partial void LinkRejected(ILogger logger, Exception? exception, string? workerId, string reason, double elapsedMilliseconds);
 
-        [LoggerMessage(2, LogLevel.Information, "Worker link canceled for {workerId} after {elapsedMilliseconds} ms.")]
+        [LoggerMessage(702, LogLevel.Information, "Worker link canceled for {workerId} after {elapsedMilliseconds} ms.")]
         public static partial void LinkCanceled(ILogger logger, string workerId, double elapsedMilliseconds);
 
-        [LoggerMessage(3, LogLevel.Debug, "Worker link for {workerId} waited {elapsedMilliseconds} ms for the specialized configuration.")]
-        public static partial void SpecializationWaitCompleted(ILogger logger, string workerId, double elapsedMilliseconds);
+        [LoggerMessage(703, LogLevel.Debug, "Worker link for {workerId} is waiting for the specialized configuration.")]
+        public static partial void WaitingForSpecializedConfiguration(ILogger logger, string workerId);
     }
 }

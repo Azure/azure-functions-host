@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _webHostEnvironment = webHostEnvironment;
             _standbyManager = standbyManager;
             _environment = environment;
-            _exemptions = exemptions.ToArray();
+            _exemptions = [.. exemptions];
         }
 
         public async Task Invoke(HttpContext httpContext)
@@ -52,9 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     specializeTask = _standbyManager.SpecializeHostAsync();
                 }
 
-                // Specialization can depend on a request (for example, a worker link in compute mode), so holding that
-                // request here would deadlock.
-                if (!specializeTask.IsCompleted && _exemptions.Any(exemption => exemption.IsExempt(httpContext.Request)))
+                // Specialization can depend on a request (for example, a worker link in compute separation mode), so
+                // holding that request here would deadlock.
+                if (!specializeTask.IsCompleted && _exemptions.Any(exemption => exemption.IsMatch(httpContext.Request)))
                 {
                     await _next(httpContext);
                     return;

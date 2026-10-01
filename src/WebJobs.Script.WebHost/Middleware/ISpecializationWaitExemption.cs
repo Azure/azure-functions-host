@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 /// <remarks>
 /// Register an implementation only for a request that specialization itself depends on, where holding the request
 /// would prevent specialization from completing. The handler for an exempt request runs before the host has
-/// specialized and must tolerate that state. The standard host registers none; the compute (worker-separated) host
+/// specialized and must tolerate that state. The standard host registers none. In compute separation mode, the host
 /// exempts worker link requests.
 /// </remarks>
 /// <example>
@@ -23,9 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 public interface ISpecializationWaitExemption
 {
     /// <summary>
-    /// Determines whether the request continues without waiting for specialization to complete.
+    /// Determines whether the request matches this exemption and continues without waiting for specialization to
+    /// complete.
     /// </summary>
     /// <param name="request">The incoming request.</param>
-    /// <returns><see langword="true"/> when the request is exempt from waiting for specialization.</returns>
-    bool IsExempt(HttpRequest request);
+    /// <returns><see langword="true"/> when the request matches this exemption.</returns>
+    bool IsMatch(HttpRequest request);
 }
