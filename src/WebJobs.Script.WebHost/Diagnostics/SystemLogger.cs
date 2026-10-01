@@ -16,11 +16,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class SystemLogger : ILogger
     {
+        // High-volume logs that are suppressed from system telemetry (FunctionsLogs) below Information.
+        // An empty event name list suppresses the whole category; otherwise only the listed EventNames
+        // are suppressed, so other diagnostics in that category are still reported.
+        // To suppress more logs, add a category here - no other changes are required.
+        private static readonly Dictionary<string, string[]> _suppressedLogs = new(StringComparer.Ordinal)
+        {
+            ["Host.Executor"] = [], // An empty list suppresses every event in the category.
+            ["Microsoft.Azure.WebJobs.EventHubs.EventHubProducerClientImpl"] = [],
+            ["Microsoft.Azure.WebJobs.Extensions.Storage.Common.Listeners.QueueListener"] = ["GetMessages", "BackoffDelay"],
+            ["Microsoft.Azure.WebJobs.Host.Queues.Listeners.QueueListener"] = ["GetMessages", "BackoffDelay"],
+            ["Microsoft.Azure.WebJobs.Extensions.Storage.Blobs.Listeners.BlobListener"] = ["PollBlobContainer", "BlobAlreadyProcessed", "BlobDoesNotMatchPattern"]
+        };
+
         private readonly string _categoryName;
         private readonly string _functionName;
         private readonly string _hostInstanceId;
         private readonly bool _isUserFunction;
         private readonly LogLevel _logLevel;
+
+        // Null when nothing is suppressed for this category. Resolved once so the per-log check stays cheap.
+        private readonly string[] _suppressedEventNames;
         private readonly IEnvironment _environment;
         private readonly IEventGenerator _eventGenerator;
         private readonly IDebugStateProvider _debugStateProvider;
@@ -35,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _eventGenerator = eventGenerator;
             _categoryName = categoryName ?? string.Empty;
             _logLevel = LogLevel.Debug;
+            _suppressedLogs.TryGetValue(_categoryName, out _suppressedEventNames);
             _functionName = LogCategories.IsFunctionCategory(_categoryName) ? _categoryName.Split('.')[1] : null;
             _isUserFunction = LogCategories.IsFunctionUserCategory(_categoryName);
             _hostInstanceId = hostInstanceId;
@@ -114,6 +131,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 _eventManager.Publish(new FunctionIndexingEvent(nameof(FunctionIndexingException), source, exception));
             }
 
+            string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
+            eventName = isDiagnosticEvent ? $"DiagnosticEvent-{diagnosticEventErrorCode}" : eventName;
+
+            if (_suppressedEventNames is not null && ShouldSuppress(eventName, logLevel))
+            {
+                return;
+            }
+
             // If we don't have a message, there's nothing to log.
             string formattedMessage = formatter?.Invoke(state, exception);
             if (string.IsNullOrEmpty(formattedMessage))
@@ -152,9 +177,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // Apply standard event properties.
             // Note: we must be sure to default any null values to empty string
             // otherwise the ETW event will fail to be persisted (silently).
-            string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
-            eventName = isDiagnosticEvent ? $"DiagnosticEvent-{diagnosticEventErrorCode}" : eventName;
-
             string activityId = stateActivityId ?? scopeActivityId ?? string.Empty;
             var options = _appServiceOptions;
             string subscriptionId = options.SubscriptionId ?? string.Empty;
@@ -177,6 +199,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, formattedMessage, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
+        }
+
+        // Only called when _suppressedEventNames is not null, so the category has suppression configured.
+        private bool ShouldSuppress(string eventName, LogLevel logLevel)
+        {
+            if (logLevel >= LogLevel.Information)
+            {
+                return false;
+            }
+
+            // An empty list suppresses the entire category.
+            if (_suppressedEventNames.Length > 0 && Array.IndexOf(_suppressedEventNames, eventName) < 0)
+            {
+                return false;
+            }
+
+            // Diagnostic mode logs everything.
+            return !_debugStateProvider.InDiagnosticMode;
         }
     }
 }

@@ -27,6 +27,10 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
 
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
+
+        // Compute separation does not run a placeholder ScriptHost. The ScriptHost starts after the first worker
+        // links, so specialization must not wait to restart it.
+        services.Configure<StandbyOptions>(static options => options.SupportsPlaceholderScriptHost = false);
         mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
     }
 

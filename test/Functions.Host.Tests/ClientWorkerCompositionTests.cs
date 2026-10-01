@@ -24,6 +24,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Azure.Functions.Host.Tests;
@@ -243,6 +244,26 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor => string.Equals(descriptor.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal));
         Assert.DoesNotContain(services, descriptor =>
             string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void StandardComposition_SupportsPlaceholderScriptHost()
+    {
+        var services = new ServiceCollection();
+        services.AddWebJobsScriptHost(new ConfigurationBuilder().Build());
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.True(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.SupportsPlaceholderScriptHost);
+    }
+
+    [Fact]
+    public void ConfigureWebHostServices_DisablesPlaceholderScriptHostSupport()
+    {
+        var services = new ServiceCollection();
+        services.AddWebJobsScriptHost(new ConfigurationBuilder().Build(), ClientWorkerComposition.Instance);
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.False(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.SupportsPlaceholderScriptHost);
     }
 
     [Fact]

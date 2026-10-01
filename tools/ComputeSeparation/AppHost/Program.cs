@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Globalization;
+using System.Security.Cryptography;
 using Azure.Functions.ComputeSeparation.AppHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,10 +22,12 @@ if (!useContainers && !string.Equals(mode, "project", StringComparison.OrdinalIg
 }
 
 string workerId = builder.Configuration["ComputeSeparation:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}";
+string podName = builder.Configuration["ComputeSeparation:PodName"] ?? "worker-pod-1";
 using HarnessRunDirectory? runDirectory = useContainers ? null : new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
 EndpointReference hostEndpoint;
+EndpointReference? platformEndpoint = null;
 ReferenceExpression workerGrpcEndpoint;
 string[] dependencies;
 
@@ -78,6 +81,8 @@ else
 
     proxyProject.WithEnvironment(context =>
     {
+        // The platform normally injects the pod name. The Aspire harness has no platform, so supply a sample value.
+        context.EnvironmentVariables["WORKERPROXY__PODNAME"] = podName;
         context.EnvironmentVariables["WORKERPROXY__MANAGEMENTPORT"] =
             proxyProject.GetEndpoint(ManagementEndpointName).Property(EndpointProperty.TargetPort);
         context.EnvironmentVariables["WORKERPROXY__RUNTIMEGRPCPORT"] =
@@ -98,6 +103,10 @@ else
             "--functions-grpc-max-message-length", "134217728")
         .WaitFor(proxyProject);
 
+    IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
+        .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:PlatformPort"), name: HttpEndpointName)
+        .WithHttpHealthCheck("/health", endpointName: HttpEndpointName);
+
     IResourceBuilder<ProjectResource> functionsHost = builder.AddProject<Projects.Functions_Host>("functions-host", launchProfileName: null)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HostPort"), name: HttpEndpointName)
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
@@ -116,9 +125,29 @@ else
     functionsHost.WithEnvironment("ASPNETCORE_URLS",
         ReferenceExpression.Create($"http://127.0.0.1:{functionsHost.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort)}"));
 
+    fakePlatform
+        .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName))
+        .WithEnvironment("FakePlatform__WorkerProxyUri", proxyProject.GetEndpoint(ManagementEndpointName))
+        .WithEnvironment("FakePlatform__WorkerGrpcEndpoint", proxyProject.GetEndpoint(RuntimeGrpcEndpointName))
+        .WithEnvironment("FakePlatform__WorkerId", workerId);
+
+    if (builder.Configuration.GetValue("ComputeSeparation:PlaceholderMode", false))
+    {
+        // The Host starts in placeholder mode and waits for the fake platform to assign it to the sample app. Both share
+        // a random key: the fake uses it to authenticate and encrypt the assignment, and the Host to verify and decrypt it.
+        string encryptionKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        functionsHost
+            .WithEnvironment("WEBSITE_PLACEHOLDER_MODE", "1")
+            .WithEnvironment("WEBSITE_SITE_NAME", "aspire-sample-app")
+            .WithEnvironment("CONTAINER_ENCRYPTION_KEY", encryptionKey);
+        fakePlatform.WithEnvironment("FakePlatform__EncryptionKey", encryptionKey);
+    }
+
+    platformEndpoint = fakePlatform.GetEndpoint(HttpEndpointName);
+
     hostEndpoint = functionsHost.GetEndpoint(HttpEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"{proxyProject.GetEndpoint(RuntimeGrpcEndpointName)}");
-    dependencies = ["functions-host", "worker-proxy", "isolated-worker"];
+    dependencies = ["functions-host", "worker-proxy", "isolated-worker", "fake-platform"];
 }
 
 if (builder.Configuration.GetValue("ComputeSeparation:AutoLink", true))
@@ -126,6 +155,7 @@ if (builder.Configuration.GetValue("ComputeSeparation:AutoLink", true))
     builder.Services.AddHostedService(services => new HostLinkService(
         hostEndpoint,
         workerGrpcEndpoint,
+        platformEndpoint,
         workerId,
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),

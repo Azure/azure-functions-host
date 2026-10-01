@@ -58,10 +58,10 @@ public class WorkerLinkContractTests
 
         Assert.NotNull(httpPut);
         Assert.NotNull(route);
-        Assert.Equal("admin/workers/{workerPodName}", route!.Template);
-        ParameterInfo workerPodName = Assert.Single(link.GetParameters().Where(parameter =>
-            string.Equals(parameter.Name, "workerPodName", StringComparison.Ordinal)));
-        Assert.NotNull(workerPodName.GetCustomAttribute<Microsoft.AspNetCore.Mvc.FromRouteAttribute>());
+        Assert.Equal("admin/workers/{workerId}", route!.Template);
+        ParameterInfo workerId = Assert.Single(link.GetParameters().Where(parameter =>
+            string.Equals(parameter.Name, "workerId", StringComparison.Ordinal)));
+        Assert.NotNull(workerId.GetCustomAttribute<Microsoft.AspNetCore.Mvc.FromRouteAttribute>());
     }
 
     [Fact]
@@ -74,16 +74,18 @@ public class WorkerLinkContractTests
         Assert.Equal("""{"error":{"code":"LinkConflict"}}""", json);
     }
 
-    [Fact]
-    public void WorkerLinkRequest_Serialization_DoesNotIncludeBodyIdentity()
+    [Theory]
+    [InlineData("workerId")]
+    [InlineData("workerPodName")]
+    public void WorkerLinkRequest_Serialization_DoesNotIncludeBodyIdentity(string propertyName)
     {
         WorkerLinkRequest request = Assert.IsType<WorkerLinkRequest>(JsonConvert.DeserializeObject<WorkerLinkRequest>(
-            """{"workerGrpcEndpoint":"http://worker-pod-abc123:5001","workerPodName":null}"""));
+            $$"""{"workerGrpcEndpoint":"http://worker-pod-abc123:5001","{{propertyName}}":null}"""));
 
         JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
 
         Assert.Equal("http://worker-pod-abc123:5001", request.WorkerGrpcEndpoint);
-        Assert.Null(body.Property("workerPodName"));
+        Assert.Null(body.Property(propertyName));
     }
 
     [Fact]
