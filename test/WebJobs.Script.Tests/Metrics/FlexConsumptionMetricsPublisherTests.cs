@@ -12,11 +12,13 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
@@ -101,13 +103,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 Assert.True(metrics.IsAlwaysReady);
                 ValidateTotalTime(metrics.TotalTimeMS, delay);
                 Assert.Equal(0, metrics.ExecutionCount);
+                Assert.Equal(0, metrics.FunctionExecutionSuccessCount);
                 Assert.Equal(0, metrics.ExecutionTimeMS);
+                await AssertSuccessCountSerializedAsync(metricsFile.FullName, 0);
 
                 metricsFile.Delete();
             }
 
             int executionDurationMS = 5700;
             publisher.FunctionExecutionCount = 123;
+            publisher.FunctionExecutionSuccessCount = 100;
             publisher.FunctionExecutionTimeMS = executionDurationMS;
 
             delay = (int)executionDurationMS + 100;
@@ -121,11 +126,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             metricsFile = files[0];
             metrics = await ReadMetricsAsync(metricsFile.FullName);
             Assert.Equal(123, metrics.ExecutionCount);
+            Assert.Equal(100, metrics.FunctionExecutionSuccessCount);
             Assert.Equal(5700, metrics.ExecutionTimeMS);
             ValidateTotalTime(metrics.TotalTimeMS, delay);
             Assert.Equal(isAlwaysReadyInstance, metrics.IsAlwaysReady);
+            await AssertSuccessCountSerializedAsync(metricsFile.FullName, 100);
 
             Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionSuccessCount);
             Assert.Equal(0, publisher.FunctionExecutionTimeMS);
         }
 
@@ -200,12 +208,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             Assert.Equal(0, publisher.ActiveFunctionCount);
             Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionSuccessCount);
             Assert.Equal(0, publisher.FunctionExecutionTimeMS);
 
             publisher.OnFunctionStarted("foo", "111");
 
             Assert.Equal(1, publisher.ActiveFunctionCount);
             Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionSuccessCount);
             Assert.Equal(0, publisher.FunctionExecutionTimeMS);
 
             publisher.OnFunctionStarted("bar", "222");
@@ -213,20 +223,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             Assert.Equal(3, publisher.ActiveFunctionCount);
             Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionSuccessCount);
             Assert.Equal(0, publisher.FunctionExecutionTimeMS);
 
-            publisher.OnFunctionCompleted("foo", "111");
-            publisher.OnFunctionCompleted("bar", "222");
+            CompleteFunction(publisher, "foo", "111");
+            CompleteFunction(publisher, "bar", "222", success: false);
 
             Assert.Equal(1, publisher.ActiveFunctionCount);
             Assert.Equal(2, publisher.FunctionExecutionCount);
+            Assert.Equal(1, publisher.FunctionExecutionSuccessCount);
             Assert.Equal(0, publisher.FunctionExecutionTimeMS);
 
-            publisher.OnFunctionCompleted("baz", "333");
+            CompleteFunction(publisher, "baz", "333");
 
             Assert.Equal(0, publisher.ActiveFunctionCount);
             Assert.Equal(3, publisher.FunctionExecutionCount);
+            Assert.Equal(2, publisher.FunctionExecutionSuccessCount);
             Assert.True(publisher.FunctionExecutionTimeMS > 0);
+        }
+
+        [Fact]
+        public void FunctionCompletions_CountEachAttempt()
+        {
+            using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+
+            AddFunctionExecutionActivity(publisher, "foo", "retry-1", ExecutionStage.InProgress, success: true);
+
+            Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionSuccessCount);
+
+            publisher.OnFunctionStarted("foo", "retry-1");
+            CompleteFunction(publisher, "foo", "retry-1", success: false);
+            publisher.OnFunctionStarted("foo", "retry-2");
+            CompleteFunction(publisher, "foo", "retry-2");
+            publisher.OnFunctionStarted("foo", "other");
+            CompleteFunction(publisher, "foo", "other");
+
+            Assert.Equal(3, publisher.FunctionExecutionCount);
+            Assert.Equal(2, publisher.FunctionExecutionSuccessCount);
         }
 
         [Fact]
@@ -528,11 +562,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             files = GetMetricsFilesSafe(_metricsFilePath);
             Assert.Equal(1, files.Length);
 
-            var metrics = await ReadMetricsAsync(files[0].FullName, deleteFile: true);
+            var metrics = await ReadMetricsAsync(files[0].FullName);
 
             // We expect all activity values to be zero as there has been no activity
             Assert.Equal(0, metrics.ExecutionCount);
+            Assert.Equal(0, metrics.FunctionExecutionSuccessCount);
             Assert.Equal(0, metrics.ExecutionTimeMS);
+            await AssertSuccessCountSerializedAsync(files[0].FullName, 0);
+            files[0].Delete();
         }
 
         [Fact]
@@ -549,10 +586,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             // send a function completion without a corresponding start event
             now += TimeSpan.FromMilliseconds(300);
+            AddFunctionExecutionActivity(publisher, "foo", "1", ExecutionStage.Finished, success: true);
             publisher.OnFunctionCompleted("foo", "1", now);
 
             Assert.Equal(0, publisher.ActiveFunctionCount);
             Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionSuccessCount);
             Assert.Equal(0, publisher.FunctionExecutionTimeMS);
         }
 
@@ -607,6 +646,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
 
             return JsonConvert.DeserializeObject<FlexConsumptionMetricsPublisher.Metrics>(content);
+        }
+
+        private static void CompleteFunction(FlexConsumptionMetricsPublisher publisher, string functionName, string invocationId, bool success = true)
+        {
+            AddFunctionExecutionActivity(publisher, functionName, invocationId, ExecutionStage.Finished, success);
+            publisher.OnFunctionCompleted(functionName, invocationId);
+        }
+
+        private static void AddFunctionExecutionActivity(
+            FlexConsumptionMetricsPublisher publisher,
+            string functionName,
+            string invocationId,
+            ExecutionStage executionStage,
+            bool success)
+        {
+            DateTime eventTime = DateTime.UtcNow;
+            publisher.AddFunctionExecutionActivity(
+                functionName,
+                invocationId,
+                1,
+                executionStage.ToString(),
+                success,
+                0,
+                "execution",
+                eventTime,
+                eventTime);
+        }
+
+        private static async Task AssertSuccessCountSerializedAsync(string metricsFilePath, long expected)
+        {
+            JObject metrics = JObject.Parse(await File.ReadAllTextAsync(metricsFilePath));
+            JToken successCount = metrics[nameof(FlexConsumptionMetricsPublisher.Metrics.FunctionExecutionSuccessCount)];
+
+            Assert.NotNull(successCount);
+            Assert.Equal(JTokenType.Integer, successCount.Type);
+            Assert.Equal(expected, successCount.Value<long>());
         }
 
         private static FileInfo[] GetMetricsFilesSafe(string path)
