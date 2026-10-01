@@ -253,7 +253,7 @@ public class ClientWorkerCompositionTests
         services.AddWebJobsScriptHost(new ConfigurationBuilder().Build());
         using ServiceProvider provider = services.BuildServiceProvider();
 
-        Assert.True(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.SupportPlaceholderScriptHost);
+        Assert.True(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.SupportsPlaceholderScriptHost);
     }
 
     [Fact]
@@ -263,7 +263,7 @@ public class ClientWorkerCompositionTests
         services.AddWebJobsScriptHost(new ConfigurationBuilder().Build(), ClientWorkerComposition.Instance);
         using ServiceProvider provider = services.BuildServiceProvider();
 
-        Assert.False(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.SupportPlaceholderScriptHost);
+        Assert.False(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.SupportsPlaceholderScriptHost);
     }
 
     [Fact]

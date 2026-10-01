@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // (ex: ScriptPath is updated)
             NotifyChange();
 
-            if (!_standbyOptions.CurrentValue.SupportPlaceholderScriptHost)
+            if (!_standbyOptions.CurrentValue.SupportsPlaceholderScriptHost)
             {
                 _logger.LogInformation("Skipping worker specialization and script host restart. The script host starts independently of specialization.");
                 return;

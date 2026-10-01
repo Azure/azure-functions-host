@@ -25,6 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// the first worker links. Specialization then applies the configuration without specializing workers,
         /// restarting the script host, or waiting for it to be ready.
         /// </remarks>
-        public bool SupportPlaceholderScriptHost { get; set; } = true;
+        public bool SupportsPlaceholderScriptHost { get; set; } = true;
     }
 }
