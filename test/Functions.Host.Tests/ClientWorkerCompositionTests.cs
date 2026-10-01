@@ -251,23 +251,23 @@ public class ClientWorkerCompositionTests
     }
 
     [Fact]
-    public void StandardComposition_RestartsScriptHostOnSpecialization()
+    public void StandardComposition_SupportsPlaceholderScriptHost()
     {
         var services = new ServiceCollection();
         services.AddWebJobsScriptHost(new ConfigurationBuilder().Build());
         using ServiceProvider provider = services.BuildServiceProvider();
 
-        Assert.True(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.RestartScriptHostOnSpecialization);
+        Assert.True(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.SupportPlaceholderScriptHost);
     }
 
     [Fact]
-    public void ConfigureWebHostServices_DisablesScriptHostRestartOnSpecialization()
+    public void ConfigureWebHostServices_DisablesPlaceholderScriptHostSupport()
     {
         var services = new ServiceCollection();
         services.AddWebJobsScriptHost(new ConfigurationBuilder().Build(), ClientWorkerComposition.Instance);
         using ServiceProvider provider = services.BuildServiceProvider();
 
-        Assert.False(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.RestartScriptHostOnSpecialization);
+        Assert.False(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.SupportPlaceholderScriptHost);
     }
 
     [Fact]

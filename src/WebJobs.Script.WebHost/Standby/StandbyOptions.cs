@@ -15,15 +15,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public bool InStandbyMode { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether specialization specializes the workers and restarts the script host
-        /// after it applies the specialized configuration. The default is <see langword="true"/>.
+        /// Gets or sets a value indicating whether the hosting model supports a script host running in placeholder mode.
+        /// The default is <see langword="true"/>.
         /// </summary>
         /// <remarks>
-        /// Set to <see langword="false"/> when the script host doesn't run in placeholder mode and starts later with the
-        /// specialized configuration. For example, in compute separation mode the script host starts after the first
-        /// worker links. Specialization then completes as soon as the specialized configuration is applied, rather than
-        /// waiting for a script host that hasn't started.
+        /// When <see langword="true"/>, specialization specializes the workers, restarts the script host, and waits for
+        /// it to be ready after applying the application configuration. Set to <see langword="false"/> when the script
+        /// host starts later with the specialized configuration, as in compute separation mode where it starts after
+        /// the first worker links. Specialization then applies the configuration without specializing workers,
+        /// restarting the script host, or waiting for it to be ready.
         /// </remarks>
-        public bool RestartScriptHostOnSpecialization { get; set; } = true;
+        public bool SupportPlaceholderScriptHost { get; set; } = true;
     }
 }

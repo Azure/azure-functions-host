@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task Specialize_RestartScriptHostOnSpecializationEnabled_SpecializesWorkersAndRestartsHost()
+        public async Task Specialize_SupportPlaceholderScriptHostEnabled_SpecializesWorkersAndRestartsHost()
         {
             TestMetricsLogger metricsLogger = new TestMetricsLogger();
             var hostNameProvider = new HostNameProvider(_testEnvironment);
@@ -85,9 +85,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task Specialize_RestartScriptHostOnSpecializationDisabled_AppliesConfigurationWithoutRestartingHost()
+        public async Task Specialize_SupportPlaceholderScriptHostDisabled_AppliesConfigurationWithoutRestartingHost()
         {
-            _standbyOptionsValue = new StandbyOptions { RestartScriptHostOnSpecialization = false };
+            _standbyOptionsValue = new StandbyOptions { SupportPlaceholderScriptHost = false };
             TestMetricsLogger metricsLogger = new TestMetricsLogger();
             var hostNameProvider = new HostNameProvider(_testEnvironment);
             var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, _standbyOptions, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);

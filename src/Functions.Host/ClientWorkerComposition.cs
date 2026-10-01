@@ -30,9 +30,9 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
         services.AddSingleton<WorkerLinkConfigurationMonitor>();
 
-        // The ScriptHost starts after the first worker links, so specialization must not wait to restart it. A link
-        // that arrives during specialization waits for specialization to finish.
-        services.Configure<StandbyOptions>(static options => options.RestartScriptHostOnSpecialization = false);
+        // Compute separation does not run a placeholder ScriptHost. The ScriptHost starts after the first worker
+        // links, so specialization must not wait to restart it.
+        services.Configure<StandbyOptions>(static options => options.SupportPlaceholderScriptHost = false);
         mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
     }
 
