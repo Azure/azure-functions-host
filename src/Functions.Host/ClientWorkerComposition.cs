@@ -6,9 +6,7 @@ using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.WorkerLink;
 using Microsoft.Azure.WebJobs.Script.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Azure.Functions.Host;
 
@@ -31,7 +29,10 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
         services.AddSingleton<WorkerLinkConfigurationMonitor>();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<ISpecializationWaitExemption, WorkerLinkSpecializationWaitExemption>());
+
+        // The ScriptHost starts after the first worker links, so specialization must not wait to restart it. A link
+        // that arrives during specialization waits for specialization to finish.
+        services.Configure<StandbyOptions>(static options => options.RestartScriptHostOnSpecialization = false);
         mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
     }
 

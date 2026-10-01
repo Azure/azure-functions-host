@@ -21,11 +21,11 @@ using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Composition;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
-using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Azure.Functions.Host.Tests;
@@ -82,8 +82,6 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Host.ClientWebHostWorkerManager");
         AssertSingleton(services, "Azure.Functions.Host.WorkerLink.WorkerLinkConfigurationMonitor",
             "Azure.Functions.Host.WorkerLink.WorkerLinkConfigurationMonitor");
-        AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.WebHost.Middleware.ISpecializationWaitExemption",
-            "Azure.Functions.Host.WorkerLink.WorkerLinkSpecializationWaitExemption");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider");
         ServiceDescriptor coordinator = Assert.Single(services.Where(service =>
@@ -250,7 +248,26 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor =>
             string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(WorkerLinkConfigurationMonitor));
-        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(ISpecializationWaitExemption));
+    }
+
+    [Fact]
+    public void StandardComposition_RestartsScriptHostOnSpecialization()
+    {
+        var services = new ServiceCollection();
+        services.AddWebJobsScriptHost(new ConfigurationBuilder().Build());
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.True(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.RestartScriptHostOnSpecialization);
+    }
+
+    [Fact]
+    public void ConfigureWebHostServices_DisablesScriptHostRestartOnSpecialization()
+    {
+        var services = new ServiceCollection();
+        services.AddWebJobsScriptHost(new ConfigurationBuilder().Build(), ClientWorkerComposition.Instance);
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.False(provider.GetRequiredService<IOptions<StandbyOptions>>().Value.RestartScriptHostOnSpecialization);
     }
 
     [Fact]

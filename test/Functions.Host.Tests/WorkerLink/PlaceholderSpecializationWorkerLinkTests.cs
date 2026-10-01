@@ -47,8 +47,8 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
                 return Task.FromResult(new WorkerLinkResult(null!, IsNewLink: true));
             });
 
-        // No channel initializes, so the script host never starts and specialization stays in progress. In compute
-        // separation mode, specialization waits for a linked worker, so the link must not wait for specialization.
+        // No channel initializes, so the script host never starts. In compute separation mode, specialization must not
+        // wait for the script host, because the script host waits for this link.
         registry.Setup(value => value.WaitForFirstInitializedAsync(It.IsAny<CancellationToken>()))
             .Returns((CancellationToken token) => new TaskCompletionSource<WorkerChannel>().Task.WaitAsync(token));
         registry.Setup(value => value.GetInitializedChannels()).Returns(Array.Empty<WorkerChannel>());

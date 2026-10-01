@@ -16,7 +16,7 @@ namespace Azure.Functions.Host.WorkerLink;
 /// A linked worker initializes with the application paths from <see cref="ScriptApplicationHostOptions"/>. In
 /// placeholder mode those paths belong to the placeholder site, so a link waits until specialization replaces them
 /// with the application's paths. This type only observes the configuration. It does not perform specialization or
-/// wait for the rest of it, such as the script host restart, to complete.
+/// wait for it to complete.
 /// </remarks>
 public sealed class WorkerLinkConfigurationMonitor
 {

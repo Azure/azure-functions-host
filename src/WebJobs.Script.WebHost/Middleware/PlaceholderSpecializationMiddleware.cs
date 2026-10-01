@@ -1,8 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -15,23 +13,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IStandbyManager _standbyManager;
         private readonly IEnvironment _environment;
-        private readonly ISpecializationWaitExemption[] _exemptions;
         private RequestDelegate _invoke;
         private double _specialized = 0;
 
-        public PlaceholderSpecializationMiddleware(
-            RequestDelegate next,
-            IScriptWebHostEnvironment webHostEnvironment,
-            IStandbyManager standbyManager,
-            IEnvironment environment,
-            IEnumerable<ISpecializationWaitExemption> exemptions)
+        public PlaceholderSpecializationMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment,
+            IStandbyManager standbyManager, IEnvironment environment)
         {
             _next = next;
             _invoke = InvokeSpecializationCheck;
             _webHostEnvironment = webHostEnvironment;
             _standbyManager = standbyManager;
             _environment = environment;
-            _exemptions = [.. exemptions];
         }
 
         public async Task Invoke(HttpContext httpContext)
@@ -51,15 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 {
                     specializeTask = _standbyManager.SpecializeHostAsync();
                 }
-
-                // Specialization can depend on a request (for example, a worker link in compute separation mode), so
-                // holding that request here would deadlock.
-                if (!specializeTask.IsCompleted && _exemptions.Any(exemption => exemption.IsMatch(httpContext.Request)))
-                {
-                    await _next(httpContext);
-                    return;
-                }
-
                 await specializeTask;
 
                 if (Interlocked.CompareExchange(ref _specialized, 1, 0) == 0)
