@@ -58,6 +58,7 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         try
         {
             hostOptions = host.Services.GetRequiredService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+            Assert.True(hostOptions.CurrentValue.IsStandbyConfiguration);
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
 

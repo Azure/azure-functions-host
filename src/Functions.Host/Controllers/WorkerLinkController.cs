@@ -35,39 +35,20 @@ public sealed partial class WorkerLinkController : Controller
     // Log-only reason for the 400 path. The response carries per-error codes instead, so this is not a wire code.
     private const string ValidationFailedReason = "ValidationFailed";
 
-    // Bounds how long a link that arrives before specialization holds its request.
-    private static readonly TimeSpan DefaultSpecializedConfigurationTimeout = TimeSpan.FromSeconds(10);
-
     private readonly ILogger<WorkerLinkController> _logger;
     private readonly IWorkerChannelRegistry _registry;
-    private readonly WorkerLinkConfigurationMonitor _configurationMonitor;
-    private readonly TimeSpan _specializedConfigurationTimeout;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerLinkController"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="registry">The registry that owns worker channels and link admission.</param>
-    /// <param name="configurationMonitor">Observes when the specialized application configuration becomes available.</param>
     public WorkerLinkController(
         ILogger<WorkerLinkController> logger,
-        IWorkerChannelRegistry registry,
-        WorkerLinkConfigurationMonitor configurationMonitor)
-        : this(logger, registry, configurationMonitor, DefaultSpecializedConfigurationTimeout)
-    {
-    }
-
-    internal WorkerLinkController(
-        ILogger<WorkerLinkController> logger,
-        IWorkerChannelRegistry registry,
-        WorkerLinkConfigurationMonitor configurationMonitor,
-        TimeSpan specializedConfigurationTimeout)
+        IWorkerChannelRegistry registry)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-        _configurationMonitor = configurationMonitor ?? throw new ArgumentNullException(nameof(configurationMonitor));
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(specializedConfigurationTimeout, TimeSpan.Zero);
-        _specializedConfigurationTimeout = specializedConfigurationTimeout;
     }
 
     /// <summary>
@@ -82,14 +63,15 @@ public sealed partial class WorkerLinkController : Controller
     /// <returns>
     /// <c>201</c> for a newly created link or <c>200</c> for a matching retry, after initialization and registration.
     /// Returns <c>400</c> with a validation errors envelope, <c>409</c> when the identity is already linked to a
-    /// different endpoint or its channel has terminated, or <c>503</c> when the runtime is stopping, has not been
-    /// specialized, or the worker connection or handshake is unavailable or times out.
+    /// different endpoint or its channel has terminated, or <c>503</c> when the runtime is stopping or the worker
+    /// connection or handshake is unavailable or times out.
     /// Link failures return an error envelope with a stable code. No Location header is returned.
     /// </returns>
     /// <remarks>
     /// Success carries no response body: the status code is the entire success contract, and the request URI already
     /// identifies the link. Clients must treat any success body as optional so that fields can be added later without
     /// a breaking change.
+    /// The platform is responsible for assignment/link ordering; this action does not guard against pre-assignment links.
     /// </remarks>
     [HttpPut]
     [Route("admin/workers/{workerId}")]
@@ -147,13 +129,6 @@ public sealed partial class WorkerLinkController : Controller
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            if (!await WaitForSpecializedConfigurationAsync(workerId, cancellationToken))
-            {
-                return CreateLinkFailureResponse(workerId, StatusCodes.Status503ServiceUnavailable,
-                    ErrorCodes.RuntimeNotSpecialized, "The runtime has not been specialized.", started, exception: null);
-            }
-
             WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken);
             Log.LinkAccepted(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
@@ -184,31 +159,6 @@ public sealed partial class WorkerLinkController : Controller
         }
     }
 
-    // Returns false when this wait times out. Request cancellation propagates, so an aborted request is not a timeout.
-    private async Task<bool> WaitForSpecializedConfigurationAsync(string workerId, CancellationToken cancellationToken)
-    {
-        // Canceling the monitor's wait, rather than abandoning it, also removes its change registration.
-        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(_specializedConfigurationTimeout);
-        Task wait = _configurationMonitor.WaitForSpecializedConfigurationAsync(timeout.Token);
-
-        if (!wait.IsCompleted)
-        {
-            Log.WaitingForSpecializedConfiguration(_logger, workerId);
-        }
-
-        try
-        {
-            await wait;
-
-            return true;
-        }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-        {
-            return false;
-        }
-    }
-
     private ObjectResult CreateLinkFailureResponse(string workerId, WorkerLinkFailureReason reason,
         long started, Exception exception)
     {
@@ -227,12 +177,6 @@ public sealed partial class WorkerLinkController : Controller
             _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown worker link failure reason."),
         };
 
-        return CreateLinkFailureResponse(workerId, statusCode, code, detail, started, exception);
-    }
-
-    private ObjectResult CreateLinkFailureResponse(string workerId, int statusCode, string code, string detail,
-        long started, Exception? exception)
-    {
         Log.LinkRejected(_logger, exception, workerId, code, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
         return StatusCode(statusCode, new WorkerLinkErrorResponse(new WorkerLinkError(code, detail)));
@@ -257,7 +201,6 @@ public sealed partial class WorkerLinkController : Controller
         public const string LinkConflict = nameof(LinkConflict);
         public const string LinkTimeout = nameof(LinkTimeout);
         public const string Required = nameof(Required);
-        public const string RuntimeNotSpecialized = nameof(RuntimeNotSpecialized);
         public const string RuntimeStopping = nameof(RuntimeStopping);
         public const string WorkerTerminated = nameof(WorkerTerminated);
         public const string WorkerUnavailable = nameof(WorkerUnavailable);
@@ -275,8 +218,5 @@ public sealed partial class WorkerLinkController : Controller
 
         [LoggerMessage(702, LogLevel.Information, "Worker link canceled for {workerId} after {elapsedMilliseconds} ms.")]
         public static partial void LinkCanceled(ILogger logger, string workerId, double elapsedMilliseconds);
-
-        [LoggerMessage(703, LogLevel.Debug, "Worker link for {workerId} is waiting for the specialized configuration.")]
-        public static partial void WaitingForSpecializedConfiguration(ILogger logger, string workerId);
     }
 }

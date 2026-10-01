@@ -12,17 +12,14 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.Host.Controllers;
 using Azure.Functions.Host.Models;
-using Azure.Functions.Host.Tests.WorkerLink;
 using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 using GrpcException = Grpc.Core.RpcException;
@@ -37,101 +34,12 @@ public class WorkerLinkControllerTests
     private const string PrivateDiagnostic = "private-worker-initialization-diagnostic";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
-    private readonly Mock<IOptionsMonitor<ScriptApplicationHostOptions>> _hostOptions = new(MockBehavior.Strict);
-    private readonly Mock<IDisposable> _hostOptionsRegistration = new();
-    private ScriptApplicationHostOptions _currentHostOptions = new();
-    private Action<ScriptApplicationHostOptions, string?>? _hostOptionsChanged;
-
-    public WorkerLinkControllerTests()
-    {
-        _hostOptions.SetupGet(options => options.CurrentValue)
-            .Returns(() => Volatile.Read(ref _currentHostOptions));
-        _hostOptions.Setup(options => options.OnChange(It.IsAny<Action<ScriptApplicationHostOptions, string?>>()))
-            .Returns((Action<ScriptApplicationHostOptions, string?> listener) =>
-            {
-                _hostOptionsChanged = listener;
-                return _hostOptionsRegistration.Object;
-            });
-    }
 
     [Fact]
-    public void Constructor_InvalidArguments_Throw()
+    public void Constructor_NullLoggerOrRegistry_Throws()
     {
-        WorkerLinkConfigurationMonitor monitor = CreateConfigurationMonitor();
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(null!, _registry.Object, monitor));
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, null!, monitor));
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, _registry.Object, null!));
-        Assert.Throws<ArgumentOutOfRangeException>(() => CreateController(TimeSpan.Zero));
-        Assert.Throws<ArgumentOutOfRangeException>(() => CreateController(TimeSpan.FromSeconds(-1)));
-    }
-
-    [Fact]
-    public async Task LinkWorker_Specializing_LinksAfterSpecializedConfiguration()
-    {
-        _currentHostOptions = TestScriptApplicationHostOptions.CreateStandby();
-        bool? linkedWithStandbyConfiguration = null;
-        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
-            .Returns(() =>
-            {
-                linkedWithStandbyConfiguration = _hostOptions.Object.CurrentValue.IsStandbyConfiguration;
-                return Task.FromResult(new WorkerLinkResult(null!, IsNewLink: true));
-            });
-
-        Task<IActionResult> link = CreateController().LinkWorker(WorkerId, ValidRequest());
-        Assert.False(link.IsCompleted);
-        _registry.VerifyNoOtherCalls();
-        Specialize();
-
-        StatusCodeResult result = Assert.IsType<StatusCodeResult>(await link.WaitAsync(TestTimeout));
-        Assert.Equal(StatusCodes.Status201Created, result.StatusCode);
-        Assert.False(linkedWithStandbyConfiguration);
-        VerifyOnlyLinkCall();
-    }
-
-    [Fact]
-    public async Task LinkWorker_SpecializedConfigurationTimeout_ReturnsUnavailableWithoutLinking()
-    {
-        _currentHostOptions = TestScriptApplicationHostOptions.CreateStandby();
-        using CancellationTokenSource cancellation = new();
-
-        IActionResult result = await CreateController(TimeSpan.FromMilliseconds(1))
-            .LinkWorker(WorkerId, ValidRequest(), cancellation.Token)
-            .WaitAsync(TestTimeout);
-
-        WorkerLinkError error = AssertLinkError(result, StatusCodes.Status503ServiceUnavailable, "RuntimeNotSpecialized");
-        Assert.Equal("The runtime has not been specialized.", error.Detail);
-        Assert.False(cancellation.IsCancellationRequested);
-        _hostOptionsRegistration.Verify(registration => registration.Dispose(), Times.Once);
-        _registry.VerifyNoOtherCalls();
-    }
-
-    [Fact]
-    public async Task LinkWorker_InvalidRequestBeforeSpecialization_ReturnsBadRequestWithoutWaiting()
-    {
-        _currentHostOptions = TestScriptApplicationHostOptions.CreateStandby();
-
-        Task<IActionResult> link = CreateController().LinkWorker(WorkerId, new WorkerLinkRequest());
-
-        Assert.True(link.IsCompletedSuccessfully);
-        AssertBadRequest(await link);
-        _registry.VerifyNoOtherCalls();
-    }
-
-    [Fact]
-    public async Task LinkWorker_CanceledWhileWaitingForSpecializedConfiguration_PropagatesCallerTokenWithoutLinking()
-    {
-        _currentHostOptions = TestScriptApplicationHostOptions.CreateStandby();
-        using CancellationTokenSource cancellation = new();
-
-        Task<IActionResult> link = CreateController().LinkWorker(WorkerId, ValidRequest(), cancellation.Token);
-        Assert.False(link.IsCompleted);
-        cancellation.Cancel();
-
-        OperationCanceledException actual = await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => link.WaitAsync(TestTimeout));
-        Assert.Equal(cancellation.Token, actual.CancellationToken);
-        _hostOptionsRegistration.Verify(registration => registration.Dispose(), Times.Once);
-        _registry.VerifyNoOtherCalls();
+        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(null!, _registry.Object));
+        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, null!));
     }
 
     [Theory]
@@ -362,37 +270,6 @@ public class WorkerLinkControllerTests
         VerifyOnlyLinkCall();
     }
 
-    [Fact]
-    public async Task LinkWorker_WaitingForSpecializedConfiguration_LogsAtDebug()
-    {
-        _currentHostOptions = TestScriptApplicationHostOptions.CreateStandby();
-        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
-        Mock<ILogger<WorkerLinkController>> logger = new();
-        logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-        List<(LogLevel Level, int EventId, Dictionary<string, object> State)> entries = [];
-        logger.Setup(value => value.Log(
-            It.IsAny<LogLevel>(), It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(),
-            It.IsAny<Func<It.IsAnyType, Exception?, string>>()))
-            .Callback(new InvocationAction(call => entries.Add((
-                (LogLevel)call.Arguments[0],
-                ((EventId)call.Arguments[1]).Id,
-                Assert.IsAssignableFrom<IEnumerable<KeyValuePair<string, object>>>(call.Arguments[2])
-                    .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)))));
-        WorkerLinkController controller = new(logger.Object, _registry.Object, CreateConfigurationMonitor(), TestTimeout);
-
-        Task<IActionResult> link = controller.LinkWorker(WorkerId, ValidRequest());
-
-        Assert.False(link.IsCompleted);
-        (LogLevel level, int eventId, Dictionary<string, object> state) = Assert.Single(entries);
-        Assert.Equal(LogLevel.Debug, level);
-        Assert.Equal(703, eventId);
-        Assert.Equal(WorkerId, state["workerId"]);
-        Specialize();
-        await link.WaitAsync(TestTimeout);
-        Assert.Single(entries, entry => entry.EventId == 703);
-    }
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -420,7 +297,7 @@ public class WorkerLinkControllerTests
                 : Task.FromResult(new WorkerLinkResult(null!, IsNewLink: true)));
         WorkerLinkRequest request = ValidRequest();
         request.WorkerContainerEncryptionKey = "reserved-value-do-not-log";
-        WorkerLinkController controller = new(logger.Object, _registry.Object, CreateConfigurationMonitor(), TestTimeout);
+        WorkerLinkController controller = new(logger.Object, _registry.Object);
 
         await controller.LinkWorker(WorkerId, request);
 
@@ -544,18 +421,8 @@ public class WorkerLinkControllerTests
         _registry.VerifyNoOtherCalls();
     }
 
-    private WorkerLinkController CreateController(TimeSpan? specializedConfigurationTimeout = null)
-        => new(NullLogger<WorkerLinkController>.Instance, _registry.Object, CreateConfigurationMonitor(),
-            specializedConfigurationTimeout ?? TestTimeout);
-
-    private WorkerLinkConfigurationMonitor CreateConfigurationMonitor() => new(_hostOptions.Object);
-
-    private void Specialize()
-    {
-        ScriptApplicationHostOptions specialized = new();
-        Volatile.Write(ref _currentHostOptions, specialized);
-        _hostOptionsChanged!(specialized, Options.DefaultName);
-    }
+    private WorkerLinkController CreateController()
+        => new(NullLogger<WorkerLinkController>.Instance, _registry.Object);
 
     private void VerifyOnlyLinkCall()
     {
