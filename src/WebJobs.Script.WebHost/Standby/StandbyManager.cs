@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
+        private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly Lazy<Task> _specializationTask;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
@@ -46,16 +47,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         public StandbyManager(IScriptHostManager scriptHostManager, IWebHostWorkerManager workerManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IHostApplicationLifetime applicationLifetime, IMetricsLogger metricsLogger)
-            : this(scriptHostManager, workerManager, configuration, webHostEnvironment, environment, options, logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(50), metricsLogger)
+            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IHostApplicationLifetime applicationLifetime, IMetricsLogger metricsLogger)
+            : this(scriptHostManager, workerManager, configuration, webHostEnvironment, environment, options, standbyOptions, logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(50), metricsLogger)
         {
         }
 
         public StandbyManager(IScriptHostManager scriptHostManager, IWebHostWorkerManager workerManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IHostApplicationLifetime applicationLifetime, TimeSpan specializationTimerInterval, IMetricsLogger metricsLogger)
+            IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, IOptionsMonitor<StandbyOptions> standbyOptions, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IHostApplicationLifetime applicationLifetime, TimeSpan specializationTimerInterval, IMetricsLogger metricsLogger)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
             _options = options ?? throw new ArgumentNullException(nameof(options));
+            _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _specializationTask = new Lazy<Task>(SpecializeHostCoreAsync, LazyThreadSafetyMode.ExecutionAndPublication);
@@ -124,6 +126,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Signals change of JobHost options from placeholder mode
             // (ex: ScriptPath is updated)
             NotifyChange();
+
+            if (!_standbyOptions.CurrentValue.SupportsPlaceholderScriptHost)
+            {
+                _logger.LogInformation("Skipping worker specialization and script host restart. The script host starts independently of specialization.");
+                return;
+            }
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize))
             {
