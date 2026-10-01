@@ -23,10 +23,10 @@ using WorkerRpcException = Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcExcepti
 namespace Azure.Functions.Host.Controllers;
 
 /// <summary>
-/// Compute-only admin endpoint that links a worker to this runtime.
+/// Admin endpoint that links a worker to this runtime in compute separation mode.
 /// </summary>
 /// <remarks>
-/// This controller exists only in the compute product. It is discovered via an MVC application part
+/// This controller exists only in compute separation mode. It is discovered via an MVC application part
 /// registered from <c>ClientWorkerComposition</c>, so the <c>admin/workers/{workerId}</c> route is absent from the
 /// standard host by construction.
 /// </remarks>
