@@ -599,14 +599,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task Log_CustomMetric_LogsUsageMetricOncePerChannel()
         {
-            await CreateDefaultWorkerChannel();
+            await CreateDefaultWorkerChannel(autoStart: false);
+            await using var workerChannel = _workerChannel;
             _metricsLogger.ClearCollections();
 
-            _workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.CustomMetric));
-            _workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.CustomMetric));
-            _workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.User));
+            workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.CustomMetric));
+            workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.CustomMetric));
+            workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.User));
 
             Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => string.Equals(e, MetricEventNames.WorkerCustomMetric, StringComparison.Ordinal)));
+            _mockRpcWorkerProcess.Verify(process => process.StartProcessAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]

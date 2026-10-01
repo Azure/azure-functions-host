@@ -515,6 +515,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var tempDirectory = new TempDirectory())
             {
+                using var logDirectory = new TempDirectory();
                 string rootPath = Path.Combine(tempDirectory.Path, Guid.NewGuid().ToString());
                 Directory.CreateDirectory(rootPath);
                 var metricsLogger = new TestMetricsLogger();
@@ -525,11 +526,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureMonitorCategories, azureMonitorCategories);
                 }
 
-                IHost host = new HostBuilder()
+                using IHost host = new HostBuilder()
                     .ConfigureServices(s => s.AddSingleton<IEnvironment>(environment))
                     .ConfigureDefaultTestWebScriptHost(
                         null,
-                        o => o.ScriptPath = rootPath,
+                        o =>
+                        {
+                            o.ScriptPath = rootPath;
+                            o.LogPath = logDirectory.Path;
+                        },
                         false,
                         s =>
                         {
