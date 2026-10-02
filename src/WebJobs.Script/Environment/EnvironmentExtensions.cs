@@ -74,6 +74,16 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Returns true only when a Functions AzureMonitor log category has been explicitly subscribed to.
+        /// Unlike <see cref="IsAzureMonitorEnabled"/>, an unset variable returns false rather than defaulting to true.
+        /// </summary>
+        public static bool IsAzureMonitorExplicitlyEnabled(this IEnvironment environment)
+        {
+            string categories = environment.GetEnvironmentVariable(AzureMonitorCategories);
+            return categories is not null && IsAzureMonitorLoggingEnabled(categories);
+        }
+
+        /// <summary>
         /// Gets if <a href="https://docs.microsoft.com/azure/azure-functions/functions-proxies">proxies.json support</a> is enabled.
         /// </summary>
         public static bool IsProxiesEnabled(this IEnvironment environment)

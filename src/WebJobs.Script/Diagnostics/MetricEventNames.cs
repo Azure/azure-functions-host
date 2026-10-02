@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string ApplicationInsightsDisabled = "host.applicationinsights.disabled";
         public const string OpenTelemetryAzMonEnabled = "host.otel.azmon.enabled";
         public const string OpenTelemetryOtlpEnabled = "host.otel.otlp.enabled";
+        public const string AzureMonitorEnabled = "host.azuremonitor.enabled";
         public const string HostStartupLatency = "host.startup.latency";
         public const string HostStartupReadFunctionMetadataLatency = "host.startup.readfunctionmetadata.latency";
         public const string HostStartupInitializeBindingProvidersLatency = "host.startup.initializebindingproviders.latency";
@@ -36,6 +37,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string WorkerInvoked = "{0}worker.invoke";
         public const string WorkerInvokeSucceeded = "{0}worker.invoke.succeeded";
         public const string WorkerInvokeFailed = "{0}worker.invoke.failed";
+
+        // Raised once per worker channel, the first time a worker sends a custom metric.
+        public const string WorkerCustomMetric = "host.worker.custommetric";
 
         // FunctionMetadataprovider events
         public const string ReadFunctionsMetadata = "functionmetadataprovider.readfunctionsmetadata";

@@ -85,6 +85,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData(null, false)]
+        [InlineData("", false)]
+        [InlineData("Foo,FunctionAppLogs,Bar", true)]
+        [InlineData("FunctionAppLogs", true)]
+        [InlineData("None", false)]
+        [InlineData("Foo,Bar", false)]
+        public void IsAzureMonitorExplicitlyEnabled_ReturnsExpectedResult(string value, bool expected)
+        {
+            TestEnvironment env = new();
+            if (value != null)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.AzureMonitorCategories, value);
+            }
+
+            Assert.Equal(expected, EnvironmentExtensions.IsAzureMonitorExplicitlyEnabled(env));
+        }
+
+        [Theory]
         [InlineData("RD281878FCB8E7", "RD281878FCB8E7")]
         [InlineData("", "")]
         [InlineData(null, "")]
