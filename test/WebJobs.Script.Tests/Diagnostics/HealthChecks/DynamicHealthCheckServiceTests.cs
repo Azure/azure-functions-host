@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AwesomeAssertions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -196,6 +197,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
                 .ReturnsAsync(report);
             _mockServices.Setup(s => s.GetService(typeof(HealthCheckService)))
                 .Returns(mockScriptHostHealthService.Object);
+        }
+
+        // Demonstrates the extension-owned connectivity model (Network Troubleshooter): an extension
+        // registers a connectivity IHealthCheck in the ScriptHost (JobHost) DI scope—exactly as its
+        // IWebJobsStartup.Configure would via services.AddHealthChecks().AddCheck(...)—and the check
+        // flows through the WebHost/ScriptHost merge and the /admin/health/connectivity tag filter,
+        // with no host dependency on the extension's SDK.
+        [Fact]
+        public async Task CheckHealthAsync_ExtensionRegistersConnectivityCheckInScriptHostScope_FlowsThroughConnectivityFilter()
+        {
+            // WebHost scope: a host-owned connectivity check plus a non-connectivity (liveness) check.
+            ServiceCollection webHostServices = new();
+            webHostServices.AddLogging();
+            webHostServices.AddHealthChecks()
+                .AddCheck<FakeHostConnectivityCheck>("host.dns.connectivity", tags: [HealthCheckTags.Connectivity])
+                .AddCheck<FakeLivenessCheck>("host.liveness", tags: [HealthCheckTags.Liveness]);
+            using ServiceProvider webHostProvider = webHostServices.BuildServiceProvider();
+            HealthCheckService webHostHealth = webHostProvider.GetRequiredService<HealthCheckService>();
+
+            // ScriptHost scope: an extension registers its own connectivity check.
+            ServiceCollection scriptHostServices = new();
+            scriptHostServices.AddLogging();
+            scriptHostServices.AddHealthChecks()
+                .AddCheck<FakeExtensionConnectivityCheck>("ext.eventhubs.connectivity", tags: [HealthCheckTags.Connectivity]);
+            using ServiceProvider scriptHostProvider = scriptHostServices.BuildServiceProvider();
+            _mockManager.Setup(m => m.Services).Returns(scriptHostProvider);
+
+            DynamicHealthCheckService service = new(webHostHealth, _mockManager.Object, _logger);
+
+            // Query with the same predicate the /admin/health/connectivity route uses.
+            HealthReport result = await service.CheckHealthAsync(r => r.Tags.Contains(HealthCheckTags.Connectivity));
+
+            // Both connectivity checks flow through the merge; the non-connectivity check is filtered out.
+            result.Entries.Should().ContainKey("host.dns.connectivity");
+            result.Entries.Should().ContainKey("ext.eventhubs.connectivity");
+            result.Entries.Should().NotContainKey("host.liveness");
+        }
+
+        private sealed class FakeHostConnectivityCheck : IHealthCheck
+        {
+            public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+                => Task.FromResult(HealthCheckResult.Healthy());
+        }
+
+        private sealed class FakeExtensionConnectivityCheck : IHealthCheck
+        {
+            public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+                => Task.FromResult(HealthCheckResult.Healthy());
+        }
+
+        private sealed class FakeLivenessCheck : IHealthCheck
+        {
+            public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+                => Task.FromResult(HealthCheckResult.Healthy());
         }
     }
 }
