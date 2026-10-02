@@ -81,6 +81,9 @@ public class ClientWorkerCompositionTests
             "Azure.Functions.Host.ClientWebHostWorkerManager");
         AssertSingleton(services, "Microsoft.Azure.WebJobs.Script.IFunctionMetadataProvider",
             "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider");
+        ServiceDescriptor stateManager = Assert.Single(services, service => service.ServiceType == typeof(IComputeRuntimeStateManager));
+        Assert.Equal(ServiceLifetime.Singleton, stateManager.Lifetime);
+        Assert.NotNull(stateManager.ImplementationFactory);
         ServiceDescriptor coordinator = Assert.Single(services.Where(service =>
             string.Equals(service.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal)));
         Assert.Equal(ServiceLifetime.Singleton, coordinator.Lifetime);
@@ -217,6 +220,8 @@ public class ClientWorkerCompositionTests
             Type coordinatorType = GetServiceType(services, StartupCoordinatorTypeName);
             Assert.Same(rootHost.Services.GetRequiredService(coordinatorType),
                 Assert.Single(hostedServices.Where(service => string.Equals(service.GetType().FullName, StartupCoordinatorTypeName, StringComparison.Ordinal))));
+            IComputeRuntimeStateManager stateManager = rootHost.Services.GetRequiredService<IComputeRuntimeStateManager>();
+            Assert.Single(hostedServices, service => ReferenceEquals(service, stateManager));
             Assert.Same(rootHost.Services.GetRequiredService<WebJobsScriptHostService>(),
                 rootHost.Services.GetRequiredService<IScriptHostManager>());
             await workerManager.SpecializeAsync();
@@ -244,6 +249,7 @@ public class ClientWorkerCompositionTests
         Assert.DoesNotContain(services, descriptor => string.Equals(descriptor.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal));
         Assert.DoesNotContain(services, descriptor =>
             string.Equals(descriptor.ImplementationType?.FullName, "Azure.Functions.Rpc.Client.RpcClientFunctionMetadataProvider", StringComparison.Ordinal));
+        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IComputeRuntimeStateManager));
     }
 
     [Fact]

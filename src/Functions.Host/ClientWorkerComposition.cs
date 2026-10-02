@@ -39,6 +39,7 @@ internal sealed class ClientWorkerComposition : IWorkerComposition
         });
 
         services.AddRpcClientWebHostServices(static provider => provider.GetRequiredService<WebJobsScriptHostService>());
+        services.AddComputeRuntimeStateServices();
         services.AddSingleton<IWebHostWorkerManager, ClientWebHostWorkerManager>();
 
         // Compute separation does not run a placeholder ScriptHost. The ScriptHost starts after the first worker

@@ -255,6 +255,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             public ScriptHostState State => throw new NotImplementedException();
 
+            public long StateVersion => throw new NotImplementedException();
+
             public Exception LastError => throw new NotImplementedException();
 
             public IServiceProvider Services => this;
@@ -270,6 +272,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             }
 
             public Task RestartHostAsync(string reason, CancellationToken cancellationToken = default)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task<long> WaitForStateChangeAsync(long lastKnownVersion, CancellationToken cancellationToken = default)
             {
                 throw new NotImplementedException();
             }

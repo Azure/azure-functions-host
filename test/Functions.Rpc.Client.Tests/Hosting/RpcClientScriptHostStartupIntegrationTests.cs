@@ -150,6 +150,53 @@ public class RpcClientScriptHostStartupIntegrationTests
         await thirdWorker.Service.Disconnected.Task.WaitAsync(timeout.Token);
     }
 
+    [Fact]
+    public async Task ComputeRuntimeState_SumsDefaultHttpWorkerConcurrency_AndDropsToZeroWhenHostStops()
+    {
+        await using TestWorker httpWorker = await TestWorker.StartAsync("http-worker", FunctionGroups.Http);
+        await using TestWorker laterHttpWorker = await TestWorker.StartAsync("later-http-worker", FunctionGroups.Http);
+        await using TestWorker durableWorker = await TestWorker.StartAsync("durable-worker", "durable");
+        using CancellationTokenSource timeout = new(TestTimeout);
+
+        await using ClientTestHost testHost = new(services => services.AddComputeRuntimeStateServices());
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+        IComputeRuntimeStateManager stateManager = testHost.Host.Services.GetRequiredService<IComputeRuntimeStateManager>();
+        ComputeRuntimeState initial = stateManager.Current;
+
+        await registry.LinkAsync("http-worker", httpWorker.Endpoint, cancellationToken: timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+        ComputeRuntimeState httpWorkerReady = await WaitForComputeStateAsync(stateManager, 16, timeout.Token);
+        await registry.LinkAsync("durable-worker", durableWorker.Endpoint, cancellationToken: timeout.Token);
+        await durableWorker.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
+        await registry.LinkAsync("later-http-worker", laterHttpWorker.Endpoint, cancellationToken: timeout.Token);
+        ComputeRuntimeState bothHttpWorkersReady = await WaitForComputeStateAsync(stateManager, 32, timeout.Token);
+        Assert.True(await registry.UnlinkAsync("http-worker", timeout.Token));
+        ComputeRuntimeState httpWorkerUnlinked = await WaitForComputeStateAsync(stateManager, 16, timeout.Token);
+
+        // Capacity is withdrawn once the application starts stopping, before the Host stops its services.
+        testHost.Host.Services.GetRequiredService<IHostApplicationLifetime>().StopApplication();
+        ComputeRuntimeState hostStopping = await WaitForComputeStateAsync(stateManager, 0, timeout.Token);
+
+        Assert.Equal(0, initial.HttpCapacity);
+        Assert.Equal(0, initial.WorkerCount);
+        Assert.Equal(0, initial.HttpWorkerCount);
+        Assert.Equal(1, httpWorkerReady.WorkerCount);
+        Assert.Equal(1, httpWorkerReady.HttpWorkerCount);
+        Assert.Equal(3, bothHttpWorkersReady.WorkerCount);
+        Assert.Equal(2, bothHttpWorkersReady.HttpWorkerCount);
+        Assert.Equal(2, httpWorkerUnlinked.WorkerCount);
+        Assert.Equal(1, httpWorkerUnlinked.HttpWorkerCount);
+        Assert.Equal(2, hostStopping.WorkerCount);
+        Assert.Equal(1, hostStopping.HttpWorkerCount);
+        Assert.NotSame(initial, httpWorkerReady);
+        Assert.NotSame(httpWorkerReady, bothHttpWorkersReady);
+        Assert.NotSame(bothHttpWorkersReady, httpWorkerUnlinked);
+        Assert.NotSame(httpWorkerUnlinked, hostStopping);
+        Assert.Equal(TimeSpan.Zero, hostStopping.CreatedTime.Offset);
+    }
+
     [Theory]
     [InlineData("host.json", "{invalid json", ScriptHostState.Error)]
     [InlineData("app_offline.htm", "offline", ScriptHostState.Offline)]
@@ -240,6 +287,18 @@ public class RpcClientScriptHostStartupIntegrationTests
         }
     }
 
+    private static async Task<ComputeRuntimeState> WaitForComputeStateAsync(
+        IComputeRuntimeStateManager stateManager, long httpCapacity, CancellationToken cancellationToken)
+    {
+        ComputeRuntimeState state = stateManager.Current;
+        while (state.HttpCapacity != httpCapacity)
+        {
+            state = await stateManager.WaitForChangeAsync(state, cancellationToken);
+        }
+
+        return state;
+    }
+
     private sealed class ClientTestHost : IAsyncDisposable
     {
         private readonly string _directory = Path.Combine(Path.GetTempPath(), $"ClientHost-{Guid.NewGuid():N}");
@@ -321,13 +380,13 @@ public class RpcClientScriptHostStartupIntegrationTests
 
         public TestWorkerService Service { get; } = service;
 
-        public static async Task<TestWorker> StartAsync(string workerId)
+        public static async Task<TestWorker> StartAsync(string workerId, string? functionGroupName = null)
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options =>
                 options.Listen(IPAddress.Loopback, 0, listener => listener.Protocols = HttpProtocols.Http2));
-            TestWorkerService service = new(workerId);
+            TestWorkerService service = new(workerId, functionGroupName);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();
             WebApplication application = builder.Build();
@@ -346,7 +405,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         }
     }
 
-    public sealed class TestWorkerService(string workerId) : FunctionRpc.FunctionRpcBase
+    public sealed class TestWorkerService(string workerId, string? functionGroupName = null) : FunctionRpc.FunctionRpcBase
     {
         private int _metadataRequests;
         private int _functionLoads;
@@ -376,6 +435,11 @@ public class RpcClientScriptHostStartupIntegrationTests
                     {
                         case StreamingMessage.ContentOneofCase.WorkerInitRequest:
                             response.WorkerInitResponse = new() { Result = Success() };
+                            if (functionGroupName is not null)
+                            {
+                                response.WorkerInitResponse.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, functionGroupName);
+                            }
+
                             break;
                         case StreamingMessage.ContentOneofCase.FunctionsMetadataRequest:
                             Interlocked.Increment(ref _metadataRequests);

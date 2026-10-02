@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
@@ -182,6 +183,129 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(ScriptHostState.Error, _hostService.State);
             Assert.IsType<HostInitializationException>(_hostService.LastError);
         }
+
+        [Fact]
+        public async Task WaitForStateChangeAsync_CompletesWhenStateChanges()
+        {
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            _host.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>())).Returns(_host.Object);
+
+            _hostService = new WebJobsScriptHostService(
+                _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions, new TestMetricsLogger(),
+                new Mock<IHostApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager(), _hostMetrics,
+                _mockWorkerRuntimeResolver.Object, _functionsHostingConfigOptions,
+                _workerConfigCacheInvalidator, _mockAppCapabilitiesStore.Object);
+
+            long version = _hostService.StateVersion;
+            Task<long> stateChanged = _hostService.WaitForStateChangeAsync(version);
+            Assert.False(stateChanged.IsCompleted);
+
+            await _hostService.StartAsync(CancellationToken.None);
+
+            Assert.True(await stateChanged.WaitAsync(TimeSpan.FromSeconds(10)) > version);
+            Assert.Equal(ScriptHostState.Running, _hostService.State);
+        }
+
+        [Fact]
+        public async Task WaitForStateChangeAsync_CancelingOneWaitDoesNotAffectOthers()
+        {
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            hostBuilder.Setup(builder => builder.BuildHost(It.IsAny<bool>(), It.IsAny<bool>())).Returns(_host.Object);
+            _host.Setup(host => host.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _hostService = new WebJobsScriptHostService(
+                _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions, new TestMetricsLogger(),
+                new Mock<IHostApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager(), _hostMetrics,
+                _mockWorkerRuntimeResolver.Object, _functionsHostingConfigOptions,
+                _workerConfigCacheInvalidator, _mockAppCapabilitiesStore.Object);
+            using var cancellationSource = new CancellationTokenSource();
+
+            long version = _hostService.StateVersion;
+            Task<long> firstWait = _hostService.WaitForStateChangeAsync(version);
+            Task<long> secondWait = _hostService.WaitForStateChangeAsync(version);
+            Task<long> canceledWait = _hostService.WaitForStateChangeAsync(version, cancellationSource.Token);
+            cancellationSource.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => canceledWait.WaitAsync(TimeSpan.FromSeconds(10)));
+            Assert.False(firstWait.IsCompleted);
+            Assert.False(secondWait.IsCompleted);
+            await _hostService.StartAsync(CancellationToken.None);
+            Assert.True(await firstWait.WaitAsync(TimeSpan.FromSeconds(10)) > version);
+            Assert.True(await secondWait.WaitAsync(TimeSpan.FromSeconds(10)) > version);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _hostService.WaitForStateChangeAsync(version, cancellationSource.Token));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task WaitForStateChangeAsync_RestartReturningToRunningIsNotMissed(bool registerBeforeRestart)
+        {
+            Mock<IHost> nextHost = CreateMockHost();
+            _host.Setup(host => host.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            nextHost.Setup(host => host.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            using WebJobsScriptHostService hostService = CreateStateTestHostService(new OrderedScriptHostBuilder(_host.Object, nextHost.Object));
+            await hostService.StartAsync(CancellationToken.None);
+            long version = hostService.StateVersion;
+            PausedStateWaitContext context = new();
+            Task<long> changed = registerBeforeRestart
+                ? context.Run(() => hostService.WaitForStateChangeAsync(version))
+                : null;
+
+            await hostService.RestartHostAsync("test", CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.Equal(ScriptHostState.Running, hostService.State);
+            if (registerBeforeRestart)
+            {
+                await context.ResumeAsync();
+            }
+            else
+            {
+                changed = hostService.WaitForStateChangeAsync(version);
+            }
+
+            Assert.True(changed.IsCompletedSuccessfully);
+            Assert.Equal(hostService.StateVersion, await changed);
+            Assert.True(hostService.StateVersion > version);
+            await hostService.StopAsync(CancellationToken.None);
+        }
+
+        [Fact]
+        public async Task WaitForStateChangeAsync_ActiveHostChangeSignalsWithoutStateChange()
+        {
+            TaskCompletionSource releaseStart = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _host.Setup(host => host.StartAsync(It.IsAny<CancellationToken>())).Returns(releaseStart.Task);
+            Mock<IScriptHostBuilder> hostBuilder = new();
+            hostBuilder.Setup(builder => builder.BuildHost(It.IsAny<bool>(), It.IsAny<bool>())).Returns(_host.Object);
+            using WebJobsScriptHostService hostService = CreateStateTestHostService(hostBuilder.Object);
+            long version = hostService.StateVersion;
+            Task<long> changed = hostService.WaitForStateChangeAsync(version);
+            Task start = hostService.StartAsync(CancellationToken.None);
+            try
+            {
+                Assert.True(await changed.WaitAsync(TimeSpan.FromSeconds(10)) > version);
+                Assert.Equal(ScriptHostState.Default, hostService.State);
+                Assert.Same(_host.Object.Services, hostService.Services);
+            }
+            finally
+            {
+                releaseStart.TrySetResult();
+                await start.WaitAsync(TimeSpan.FromSeconds(10));
+                await hostService.StopAsync(CancellationToken.None);
+            }
+        }
+
+        private WebJobsScriptHostService CreateStateTestHostService(IScriptHostBuilder hostBuilder)
+            => new(
+                _monitor, hostBuilder, NullLoggerFactory.Instance,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions, new TestMetricsLogger(),
+                new Mock<IHostApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager(), _hostMetrics,
+                _mockWorkerRuntimeResolver.Object, _functionsHostingConfigOptions,
+                _workerConfigCacheInvalidator, _mockAppCapabilitiesStore.Object);
 
         [Fact]
         public async Task HostRestart_Specialization_Succeeds()
@@ -698,6 +822,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private bool AreRequiredMetricsGenerated(TestMetricsLogger testMetricsLogger)
         {
             return testMetricsLogger.EventsBegan.Contains(MetricEventNames.ScriptHostManagerStartService) && testMetricsLogger.EventsEnded.Contains(MetricEventNames.ScriptHostManagerStartService);
+        }
+
+        private sealed class PausedStateWaitContext : SynchronizationContext
+        {
+            private readonly Channel<(SendOrPostCallback Callback, object State)> _callbacks =
+                Channel.CreateUnbounded<(SendOrPostCallback, object)>();
+
+            public override void Post(SendOrPostCallback callback, object state) => _callbacks.Writer.TryWrite((callback, state));
+
+            internal Task<long> Run(Func<Task<long>> action)
+            {
+                SynchronizationContext previous = Current;
+                SetSynchronizationContext(this);
+                try
+                {
+                    return action();
+                }
+                finally
+                {
+                    SetSynchronizationContext(previous);
+                }
+            }
+
+            internal async Task ResumeAsync()
+            {
+                var (callback, state) = await _callbacks.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
+                callback(state);
+            }
         }
 
         private class ThrowThenPauseScriptHostBuilder : IScriptHostBuilder
