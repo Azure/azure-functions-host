@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -23,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly object _lock = new();
         private readonly IFileSystem _fileSystem;
         private readonly LegionMetricsFileManager _metricsFileManager;
+        private readonly Dictionary<string, bool> _completedInvocationResults = [];
 
         private DateTime _currentActivityIntervalStart;
         private DateTime _activityIntervalHighWatermark = DateTime.MinValue;
@@ -54,6 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         // internal properties for testing
         internal long FunctionExecutionCount { get; set; }
+
+        internal long FunctionExecutionSuccessCount { get; set; }
 
         internal long FunctionExecutionTimeMS { get; set; }
 
@@ -130,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     {
                         TotalTimeMS = (long)stopwatch.GetElapsedTime().TotalMilliseconds,
                         ExecutionCount = FunctionExecutionCount,
+                        FunctionExecutionSuccessCount = FunctionExecutionSuccessCount,
                         ExecutionTimeMS = FunctionExecutionTimeMS,
                         IsAlwaysReady = IsAlwaysReady,
                         InstanceId = _metricsProvider.InstanceId,
@@ -144,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                         metrics.ActiveInvocationCount = scaleMetrics.TryGetValue(HostMetrics.ActiveInvocationCount, out long activeInvocationCount) ? activeInvocationCount : 0;
                     }
 
-                    FunctionExecutionTimeMS = FunctionExecutionCount = 0;
+                    FunctionExecutionTimeMS = FunctionExecutionCount = FunctionExecutionSuccessCount = 0;
                     _lastPublishTime = now;
                 }
 
@@ -203,6 +209,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             lock (_lock)
             {
+                bool completedSuccessfully = _completedInvocationResults.Remove(invocationId, out bool success) && success;
+
                 if (ActiveFunctionCount > 0)
                 {
                     ActiveFunctionCount--;
@@ -222,14 +230,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     MeterCurrentActiveInterval(now);
                 }
 
-                // for every completed invocation, increment our invocation count
                 FunctionExecutionCount++;
+
+                if (completedSuccessfully)
+                {
+                    FunctionExecutionSuccessCount++;
+                }
             }
         }
 
         public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, string executionId, DateTime eventTimeStamp, DateTime functionStartTime)
         {
-            // nothing to do here - we only care about Started/Completed events.
+            if (!IsStarted || !string.Equals(executionStage, nameof(ExecutionStage.Finished), StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            lock (_lock)
+            {
+                _completedInvocationResults[invocationId] = success;
+            }
         }
 
         private void MeterCurrentActiveInterval(DateTime now)
@@ -282,6 +302,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             /// completed during the interval.
             /// </summary>
             public long ExecutionCount { get; set; }
+
+            /// <summary>
+            /// Gets or sets the total number of function invocations that
+            /// completed successfully during the interval.
+            /// </summary>
+            public long FunctionExecutionSuccessCount { get; set; }
 
             /// <summary>
             /// Gets or sets a value indicating whether the instance is
