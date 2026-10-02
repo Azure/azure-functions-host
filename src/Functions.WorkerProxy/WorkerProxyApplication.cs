@@ -59,6 +59,8 @@ internal static class WorkerProxyApplication
         builder.Services.AddSingleton<FunctionRpcRelay>();
         builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
         builder.Services.AddSingleton<ExtensionRpcStreamCoordinator>();
+        builder.Services.AddSingleton<ExtensionRpcRelay>();
+        builder.Services.AddSingleton<ExtensionGrpcIngress>();
         ConfigureHttpForwarding(builder);
 
         WebApplication app = builder.Build();
@@ -83,6 +85,11 @@ internal static class WorkerProxyApplication
 
     private static void ConfigureGrpcPipeline(IApplicationBuilder app)
     {
+        app.Use((context, next) =>
+        {
+            ExtensionGrpcIngress ingress = context.RequestServices.GetRequiredService<ExtensionGrpcIngress>();
+            return ingress.CanHandle(context) ? ingress.HandleAsync(context) : next(context);
+        });
         app.UseRouting();
         app.UseEndpoints(static endpoints =>
         {
