@@ -24,10 +24,12 @@ namespace Azure.Functions.WorkerProxy;
 /// </summary>
 /// <param name="endpoints">The WorkerProxy listener configuration.</param>
 /// <param name="streamCoordinator">The extension RPC stream coordinator.</param>
+/// <param name="metrics">The extension gRPC metrics.</param>
 /// <param name="logger">The logger used for ingress diagnostics.</param>
 internal sealed partial class ExtensionGrpcIngress(
     WorkerProxyEndpointConfiguration endpoints,
     ExtensionRpcStreamCoordinator streamCoordinator,
+    ExtensionGrpcMetrics metrics,
     ILogger<ExtensionGrpcIngress> logger)
 {
     internal const string FunctionRpcEventStreamPath = "/AzureFunctionsRpcMessages.FunctionRpc/EventStream";
@@ -54,6 +56,8 @@ internal sealed partial class ExtensionGrpcIngress(
 
     private readonly ExtensionRpcStreamCoordinator _streamCoordinator = streamCoordinator
         ?? throw new ArgumentNullException(nameof(streamCoordinator));
+
+    private readonly ExtensionGrpcMetrics _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
 
     private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -153,6 +157,9 @@ internal sealed partial class ExtensionGrpcIngress(
 
         int activeCallCountAtOpen = call.ActiveCallCount;
         double openDurationMilliseconds = Stopwatch.GetElapsedTime(callStart).TotalMilliseconds;
+        ExtensionGrpcActivity.CallOpened(call.CallId, call.StreamId, activeCallCountAtOpen);
+        _metrics.CallOpenDuration.Record(openDurationMilliseconds);
+        _metrics.ActiveCalls.Increment();
 
         // Remove this per-call log when WorkerProxy metric exporting is wired up.
         Log.CallOpened(_logger, start.Method, call.CallId, activeCallCountAtOpen, openDurationMilliseconds);
@@ -207,6 +214,9 @@ internal sealed partial class ExtensionGrpcIngress(
             await StopRelayTasksAsync(cancellationTokenSource, requestTask, responseTask);
             int activeCallCountAtCompletion = call.ActiveCallCount;
             double callDurationMilliseconds = Stopwatch.GetElapsedTime(callStart).TotalMilliseconds;
+            ExtensionGrpcActivity.CallCompleted(activeCallCountAtCompletion);
+            _metrics.CallDuration.Record(callDurationMilliseconds);
+            _metrics.ActiveCalls.Decrement();
 
             // Remove this per-call log when WorkerProxy metric exporting is wired up.
             Log.CallCompleted(
