@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -18,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly FlexConsumptionMetricsPublisherOptions _options;
         private readonly IEnvironment _environment;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<FlexConsumptionMetricsPublisher> _logger;
         private readonly IHostMetricsProvider _metricsProvider;
         private readonly object _lock = new();
@@ -28,13 +30,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private DateTime _activityIntervalHighWatermark = DateTime.MinValue;
         private IDisposable _standbyOptionsOnChangeSubscription;
         private DateTime _lastPublishTime = DateTime.UtcNow;
+        private bool _firstExecutionObserved;
         private Lifecycle _lifecycle;
 
-        public FlexConsumptionMetricsPublisher(IEnvironment environment, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options,
+        public FlexConsumptionMetricsPublisher(IEnvironment environment, IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions, IOptions<FlexConsumptionMetricsPublisherOptions> options,
             ILogger<FlexConsumptionMetricsPublisher> logger, IFileSystem fileSystem, IHostMetricsProvider metricsProvider)
         {
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _fileSystem = fileSystem ?? new FileSystem();
@@ -61,6 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         internal bool IsAlwaysReady { get; set; }
 
+        internal bool IsPrescaled { get; set; }
+
         internal LegionMetricsFileManager MetricsFileManager => _metricsFileManager;
 
         private bool IsStarted => _lifecycle is not null;
@@ -82,9 +88,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 IsAlwaysReady = _environment
                     .GetEnvironmentVariable(EnvironmentSettingNames.FunctionsAlwaysReadyInstance) == "1";
 
+                IsPrescaled = string.Equals(
+                    _configuration[EnvironmentSettingNames.FunctionsPrescaledInstance],
+                    "1",
+                    StringComparison.Ordinal);
+
                 _logger.LogInformation(
                     $"Starting metrics publisher (AlwaysReady={IsAlwaysReady},"
                     + $" MetricsPath='{_metricsFileManager.MetricsFilePath}').");
+
+                if (IsPrescaled)
+                {
+                    _logger.LogInformation("Metrics publisher instance is prescaled; publishing AlwaysReady baseline until first execution.");
+                }
 
                 _lifecycle = new(
                     this,
@@ -103,6 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         {
             try
             {
+                bool shouldPublishAsAlwaysReady;
                 lock (_lock)
                 {
                     if (ActiveFunctionCount > 0)
@@ -110,14 +127,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                         // at the end of an interval, we'll meter any outstanding activity up to the end of the interval
                         MeterCurrentActiveInterval(now);
                     }
+
+                    shouldPublishAsAlwaysReady = IsAlwaysReady || (IsPrescaled && !_firstExecutionObserved);
                 }
 
                 bool hasActivity = FunctionExecutionCount > 0 || FunctionExecutionTimeMS > 0 || _metricsProvider.HasMetrics();
                 bool shouldForcePublish = (now - _lastPublishTime) >= TimeSpan.FromMilliseconds(_options.KeepAliveIntervalMS);
 
-                if (!hasActivity && !shouldForcePublish && !IsAlwaysReady)
+                if (!hasActivity && !shouldForcePublish && !shouldPublishAsAlwaysReady)
                 {
-                    // No activity and not time for keep-alive publish & not always ready
+                    // No activity and not time for keep-alive publish or AlwaysReady baseline
                     return;
                 }
 
@@ -126,12 +145,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 Metrics metrics = null;
                 lock (_lock)
                 {
+                    bool publishAsAlwaysReady = IsAlwaysReady || (IsPrescaled && !_firstExecutionObserved);
                     metrics = new Metrics
                     {
                         TotalTimeMS = (long)stopwatch.GetElapsedTime().TotalMilliseconds,
                         ExecutionCount = FunctionExecutionCount,
                         ExecutionTimeMS = FunctionExecutionTimeMS,
-                        IsAlwaysReady = IsAlwaysReady,
+                        IsAlwaysReady = publishAsAlwaysReady,
                         InstanceId = _metricsProvider.InstanceId,
                         FunctionGroup = _metricsProvider.FunctionGroup
                     };
@@ -179,6 +199,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             lock (_lock)
             {
+                _firstExecutionObserved = true;
+
                 if (ActiveFunctionCount == 0)
                 {
                     // we're transitioning from inactive to active
