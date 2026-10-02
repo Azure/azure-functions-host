@@ -292,28 +292,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HandlesWorkerTerminateMessage, "1" } });
 
-            StartStream startStream = new StartStream()
-            {
-                WorkerId = _workerId
-            };
-
-            StreamingMessage startStreamMessage = new StreamingMessage()
-            {
-                StartStream = startStream
-            };
-
-            // Send worker init request and enable the capabilities
-            _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.WorkerInitRequest);
-            _workerChannel.SendWorkerInitRequest(startStreamMessage);
-
             var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
 
             _workerChannel.Dispose();
+
+            // Reader completion follows consumption of the buffered termination message, not writer completion.
+            await Task.WhenAll(_channelLease.Reader.Completion, _serviceEndpoints.HostToWorkerReader.Completion)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+
             Assert.True(_channelLease.Reader.Completion.IsCompletedSuccessfully);
             Assert.True(_serviceEndpoints.HostToWorkerReader.Completion.IsCompletedSuccessfully);
             Assert.False(_channelRegistry.TryGetServiceEndpoints(_workerId, out _));
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg, StringComparison.Ordinal)));
         }
 
         [Fact]
