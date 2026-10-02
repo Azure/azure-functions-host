@@ -19,6 +19,12 @@ namespace Azure.Functions.Rpc.Client;
 public interface IWorkerChannelRegistry : IAsyncDisposable
 {
     /// <summary>
+    /// Gets a version that increases whenever an initialized channel is added or removed before disposal begins.
+    /// </summary>
+    /// <remarks>Disposal releases waiters without advancing the version.</remarks>
+    long InitializedChannelsVersion { get; }
+
+    /// <summary>
     /// Atomically admits one worker or reuses its matching pending or initialized link.
     /// </summary>
     /// <remarks>
@@ -75,4 +81,14 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <param name="cancellationToken">A token that cancels only this wait.</param>
     /// <returns>An initialized channel.</returns>
     Task<WorkerChannel> WaitForFirstInitializedAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Waits until <see cref="InitializedChannelsVersion"/> exceeds <paramref name="lastKnownVersion"/>.
+    /// Lets the dispatcher initialize later-linked workers and stop tracking removed channels.
+    /// </summary>
+    /// <param name="lastKnownVersion">The last version observed by the caller.</param>
+    /// <param name="cancellationToken">A token that cancels only this wait.</param>
+    /// <returns>The current initialized-channels version, greater than <paramref name="lastKnownVersion"/>.</returns>
+    /// <exception cref="ObjectDisposedException">The registry was disposed before the version changed.</exception>
+    Task<long> WaitForInitializedChannelsChangeAsync(long lastKnownVersion, CancellationToken cancellationToken = default);
 }

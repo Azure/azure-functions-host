@@ -880,6 +880,111 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(typeof(WorkerChannelRegistry).FullName, newWaitException.ObjectName);
     }
 
+    [Fact]
+    public async Task WaitForInitializedChannelsChangeAsync_CompletesWhenChannelsAreAddedOrRemoved()
+    {
+        RegistryHarness harness = new();
+        ChannelControl first = new("first");
+        ChannelControl second = new("second");
+        harness.Enqueue(first);
+        harness.Enqueue(second);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        long initialVersion = registry.InitializedChannelsVersion;
+
+        Task<long> linkWait = registry.WaitForInitializedChannelsChangeAsync(initialVersion);
+        Assert.False(linkWait.IsCompleted);
+        await LinkAsync(registry, first.Id);
+        long linkedVersion = await linkWait.WaitAsync(TestTimeout);
+        await LinkAsync(registry, first.Id);
+        Assert.Equal(linkedVersion, registry.InitializedChannelsVersion);
+
+        Task<long> unlinkWait = registry.WaitForInitializedChannelsChangeAsync(linkedVersion);
+        Assert.True(await registry.UnlinkAsync(first.Id));
+        long unlinkedVersion = await unlinkWait.WaitAsync(TestTimeout);
+
+        Task<long> secondLinkWait = registry.WaitForInitializedChannelsChangeAsync(unlinkedVersion);
+        await LinkAsync(registry, second.Id);
+        long secondLinkedVersion = await secondLinkWait.WaitAsync(TestTimeout);
+        Task<long> completionWait = registry.WaitForInitializedChannelsChangeAsync(secondLinkedVersion);
+        second.Complete();
+        long completedVersion = await completionWait.WaitAsync(TestTimeout);
+
+        Assert.True(linkedVersion > initialVersion);
+        Assert.True(unlinkedVersion > linkedVersion);
+        Assert.True(secondLinkedVersion > unlinkedVersion);
+        Assert.True(completedVersion > secondLinkedVersion);
+        Assert.Equal(completedVersion, registry.InitializedChannelsVersion);
+    }
+
+    [Fact]
+    public async Task WaitForInitializedChannelsChangeAsync_ReturnsImmediatelyForOlderVersionAndSupportsCancellation()
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker");
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        long initialVersion = registry.InitializedChannelsVersion;
+        await LinkAsync(registry, channel.Id);
+        using CancellationTokenSource cancellationSource = new();
+
+        Task<long> staleWait = registry.WaitForInitializedChannelsChangeAsync(initialVersion);
+        Task<long> canceledWait = registry.WaitForInitializedChannelsChangeAsync(registry.InitializedChannelsVersion, cancellationSource.Token);
+        Task<long> otherWait = registry.WaitForInitializedChannelsChangeAsync(registry.InitializedChannelsVersion);
+        cancellationSource.Cancel();
+
+        Assert.True(staleWait.IsCompletedSuccessfully);
+        Assert.Equal(registry.InitializedChannelsVersion, await staleWait);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => canceledWait.WaitAsync(TestTimeout));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => registry.WaitForInitializedChannelsChangeAsync(initialVersion, cancellationSource.Token));
+        Assert.False(otherWait.IsCompleted);
+        Assert.True(await registry.UnlinkAsync(channel.Id));
+        Assert.Equal(registry.InitializedChannelsVersion, await otherWait.WaitAsync(TestTimeout));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task DisposeAsync_ReleasesInitializedChannelsChangeWaitersWithoutAdvancingVersion(int channelCount)
+    {
+        RegistryHarness harness = new();
+        await using WorkerChannelRegistry registry = harness.Registry;
+        long initialVersion = registry.InitializedChannelsVersion;
+        for (int i = 0; i < channelCount; i++)
+        {
+            ChannelControl channel = new($"worker-{i}");
+            harness.Enqueue(channel);
+            await LinkAsync(registry, channel.Id);
+        }
+
+        long linkedVersion = registry.InitializedChannelsVersion;
+        QueuedSynchronizationContext context = new();
+        Task<long> wait = context.Run(() => registry.WaitForInitializedChannelsChangeAsync(linkedVersion));
+        Assert.False(wait.IsCompleted);
+
+        try
+        {
+            await registry.DisposeAsync().AsTask().WaitAsync(TestTimeout);
+        }
+        finally
+        {
+            // Resume the waiter only after disposal has detached every initialized channel.
+            context.RunContinuations();
+        }
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => wait.WaitAsync(TestTimeout));
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            () => registry.WaitForInitializedChannelsChangeAsync(linkedVersion));
+        Assert.Equal(linkedVersion, registry.InitializedChannelsVersion);
+        Assert.Empty(registry.GetInitializedChannels());
+
+        if (channelCount > 0)
+        {
+            // A membership change published before disposal remains observable to a stale caller.
+            Assert.Equal(linkedVersion, await registry.WaitForInitializedChannelsChangeAsync(initialVersion));
+        }
+    }
+
     private static async Task<WorkerChannel> LinkAsync(WorkerChannelRegistry registry, string workerId)
         => (await registry.LinkAsync(workerId, CreateEndpoint(workerId)).ConfigureAwait(false)).Channel;
 
