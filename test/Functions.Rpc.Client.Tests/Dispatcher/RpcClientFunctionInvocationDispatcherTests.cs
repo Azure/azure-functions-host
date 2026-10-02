@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -9,6 +10,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
@@ -141,15 +143,159 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task RemovedChannels_SnapshotsAreNotRetainedByLaterLinkWatcher(bool linkedDuringStartup)
+    public async Task InitializeAsync_SetupFailureExcludesWorkerWithoutRetrying(bool linkedDuringStartup)
+    {
+        InvalidOperationException failure = new("Injected failure after buffer initialization.");
+        Mock<IMetricsLogger> metrics = new();
+        metrics.Setup(value => value.BeginEvent(MetricEventNames.FunctionLoadRequestResponse, It.IsAny<string>(), It.IsAny<string>()))
+            .Throws(failure);
+        await using ClientWorkerChannelTestHarness healthy = await ClientWorkerChannelTestHarness.CreateAsync("healthy");
+        await using ClientWorkerChannelTestHarness failed = await ClientWorkerChannelTestHarness.CreateAsync("failed", metricsLogger: metrics.Object);
+        Mock<ILogger<RpcClientFunctionInvocationDispatcher>> logger = CreateLogger();
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(logger: logger.Object);
+        FunctionMetadata function = CreateFunction();
+        _channels.Add(healthy.Channel);
+        if (linkedDuringStartup)
+        {
+            _channels.Add(failed.Channel);
+        }
+
+        await InitializeDispatcherAsync(dispatcher, function, healthy);
+        if (!linkedDuringStartup)
+        {
+            LinkChannel(failed.Channel);
+        }
+
+        await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
+        var failedBuffer = failed.Channel.FunctionInputBuffers[function.GetFunctionId()];
+        Assert.True(failed.Channel.IsChannelReadyForInvocations());
+        Assert.Equal(FunctionInvocationDispatcherState.Initialized, dispatcher.State);
+        Assert.Same(failure, await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.SetupChannelAsync(failed.Channel)));
+
+        _initializedChannelsSignal.Signal();
+        await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
+        Assert.Same(failedBuffer, failed.Channel.FunctionInputBuffers[function.GetFunctionId()]);
+        metrics.Verify(value => value.BeginEvent(MetricEventNames.FunctionLoadRequestResponse, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        logger.Verify(value => value.Log(
+            LogLevel.Warning,
+            It.Is<EventId>(eventId => string.Equals(eventId.Name, "ChannelSetupFailed", StringComparison.Ordinal)),
+            It.IsAny<It.IsAnyType>(), failure, It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once);
+
+        for (int i = 0; i < 4; i++)
+        {
+            ScriptInvocationContext invocation = CreateInvocation(function);
+            await dispatcher.InvokeAsync(invocation);
+            StreamingMessage request = await healthy.ReadRequestAsync(StreamingMessage.ContentOneofCase.InvocationRequest);
+            await healthy.SendInvocationResponseAsync(request.InvocationRequest.InvocationId);
+            Assert.NotNull(await invocation.ResultSource.Task.WaitAsync(TestTimeout));
+        }
+
+        lock (_channels)
+        {
+            _channels.Remove(healthy.Channel);
+        }
+
+        _initializedChannelsSignal.Signal();
+        await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
+        InvalidOperationException invocationFailure = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => dispatcher.InvokeAsync(CreateInvocation(function)).WaitAsync(TestTimeout));
+        Assert.Same(failure, invocationFailure);
+        Assert.Equal(0, failedBuffer.Count);
+        Assert.False(failed.Transport.Requests.TryRead(out _));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_SetupCancellationIsNotReportedAsChannelTimeout()
+    {
+        OperationCanceledException failure = new("Setup was canceled.");
+        Mock<IMetricsLogger> metrics = new();
+        metrics.Setup(value => value.BeginEvent(MetricEventNames.FunctionLoadRequestResponse, It.IsAny<string>(), It.IsAny<string>()))
+            .Throws(failure);
+        await using ClientWorkerChannelTestHarness failed = await ClientWorkerChannelTestHarness.CreateAsync("failed", metricsLogger: metrics.Object);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        FunctionMetadata function = CreateFunction();
+        await dispatcher.InitializeAsync([function]);
+        LinkChannel(failed.Channel);
+        await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
+
+        OperationCanceledException invocationFailure = await Assert.ThrowsAsync<OperationCanceledException>(
+            () => dispatcher.InvokeAsync(CreateInvocation(function)).WaitAsync(TestTimeout));
+
+        Assert.Same(failure, invocationFailure);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_OnlyFailedSetupDoesNotCompleteInitialization()
+    {
+        InvalidOperationException failure = new("Injected failure after buffer initialization.");
+        Mock<IMetricsLogger> metrics = new();
+        metrics.Setup(value => value.BeginEvent(MetricEventNames.FunctionLoadRequestResponse, It.IsAny<string>(), It.IsAny<string>()))
+            .Throws(failure);
+        await using ClientWorkerChannelTestHarness failed = await ClientWorkerChannelTestHarness.CreateAsync("failed", metricsLogger: metrics.Object);
+        _channels.Add(failed.Channel);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+
+        Assert.Same(failure, await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.InitializeAsync([CreateFunction()])));
+
+        Assert.Equal(FunctionInvocationDispatcherState.Initializing, dispatcher.State);
+        _registry.Verify(registry => registry.WaitForInitializedChannelsChangeAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_RacingPartialSetupWaitsAndSurfacesFailureWithoutQueuing()
+    {
+        InvalidOperationException failure = new("Injected failure after buffer initialization.");
+        TaskCompletionSource setupStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using ManualResetEventSlim releaseSetup = new();
+        Mock<IMetricsLogger> metrics = new();
+        metrics.Setup(value => value.BeginEvent(MetricEventNames.FunctionLoadRequestResponse, It.IsAny<string>(), It.IsAny<string>()))
+            .Callback(() =>
+            {
+                setupStarted.TrySetResult();
+                if (!releaseSetup.Wait(TestTimeout))
+                {
+                    throw new TimeoutException("Channel setup was not released.");
+                }
+            })
+            .Throws(failure);
+        await using ClientWorkerChannelTestHarness failed = await ClientWorkerChannelTestHarness.CreateAsync("failed", metricsLogger: metrics.Object);
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        FunctionMetadata function = CreateFunction();
+        await dispatcher.InitializeAsync([function]);
+
+        try
+        {
+            LinkChannel(failed.Channel);
+            await setupStarted.Task.WaitAsync(TestTimeout);
+            Assert.True(failed.Channel.IsChannelReadyForInvocations());
+            Task invocation = dispatcher.InvokeAsync(CreateInvocation(function));
+            Assert.False(invocation.IsCompleted);
+            Assert.Equal(0, failed.Channel.FunctionInputBuffers[function.GetFunctionId()].Count);
+
+            releaseSetup.Set();
+            Assert.Same(failure, await Assert.ThrowsAsync<InvalidOperationException>(() => invocation.WaitAsync(TestTimeout)));
+            await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
+            Assert.Equal(0, failed.Channel.FunctionInputBuffers[function.GetFunctionId()].Count);
+            Assert.False(failed.Transport.Requests.TryRead(out _));
+        }
+        finally
+        {
+            releaseSetup.Set();
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RemovedChannels_AndSnapshotsAreNotRetainedByLaterLinkWatcher(bool linkedDuringStartup)
     {
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
-        WeakReference snapshot = await CreateAndRemoveChannelAsync(dispatcher, linkedDuringStartup);
+        (WeakReference snapshot, WeakReference channel) = await CreateAndRemoveChannelAsync(dispatcher, linkedDuringStartup);
         await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
         // Moq records snapshot return values as well as calls.
         _registry.Invocations.Clear();
 
-        for (int attempt = 0; attempt < 10 && snapshot.IsAlive; attempt++)
+        for (int attempt = 0; attempt < 100 && (IsAlive(snapshot) || IsAlive(channel)); attempt++)
         {
             GC.Collect();
             GC.WaitForPendingFinalizers();
@@ -158,11 +304,16 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         }
 
         Assert.False(snapshot.IsAlive);
+        Assert.False(channel.IsAlive);
         GC.KeepAlive(dispatcher);
     }
 
+    // Keep the target read out of the caller's stack frame while it forces a collection.
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private async Task<WeakReference> CreateAndRemoveChannelAsync(
+    private static bool IsAlive(WeakReference reference) => reference.IsAlive;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private async Task<(WeakReference Snapshot, WeakReference Channel)> CreateAndRemoveChannelAsync(
         RpcClientFunctionInvocationDispatcher dispatcher, bool linkedDuringStartup)
     {
         WeakReference snapshot = new(null);
@@ -179,21 +330,21 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
                 return channels;
             }
         });
-        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("removed");
+        // Isolate dispatcher ownership from the worker's background protocol processing.
+        await using ClientWorkerChannelTestHarness worker = ClientWorkerChannelTestHarness.CreateWithoutStarting("removed");
         FunctionMetadata function = CreateFunction();
         if (linkedDuringStartup)
         {
             _channels.Add(worker.Channel);
-            await InitializeDispatcherAsync(dispatcher, function, worker);
+            await dispatcher.InitializeAsync([function]);
         }
         else
         {
             await dispatcher.InitializeAsync([function]);
             LinkChannel(worker.Channel);
-            await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
-            await worker.SendFunctionLoadResponseAsync(function.GetFunctionId());
         }
 
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
         await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
         lock (_channels)
         {
@@ -201,7 +352,68 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         }
 
         _initializedChannelsSignal.Signal();
-        return snapshot;
+        return (snapshot, new(worker.Channel));
+    }
+
+    [Fact]
+    public async Task ShutdownAsync_WaitsForWatcherCancellationToFinishOutsideLifecycleLock()
+    {
+        TaskCompletionSource waitStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource cancellationObserved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource releaseCancellation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _registry.Setup(registry => registry.WaitForInitializedChannelsChangeAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .Returns(async (long _, CancellationToken token) =>
+            {
+                waitStarted.TrySetResult();
+                try
+                {
+                    await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    cancellationObserved.TrySetResult();
+                    await releaseCancellation.Task;
+                    throw;
+                }
+
+                return 0L;
+            });
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await dispatcher.InitializeAsync([CreateFunction()]);
+        await waitStarted.Task.WaitAsync(TestTimeout);
+        Task shutdown = dispatcher.ShutdownAsync();
+
+        try
+        {
+            await cancellationObserved.Task.WaitAsync(TestTimeout);
+            Assert.False(shutdown.IsCompleted);
+            await Task.Run(dispatcher.Dispose).WaitAsync(TestTimeout);
+            Assert.False(shutdown.IsCompleted);
+        }
+        finally
+        {
+            releaseCancellation.TrySetResult();
+            await shutdown.WaitAsync(TestTimeout);
+        }
+    }
+
+    [Fact]
+    public async Task ShutdownAsync_WaitsForWatcherPublishedBeforeItsFirstContinuation()
+    {
+        QueuedSynchronizationContext context = new();
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+        await context.Run(() => dispatcher.InitializeAsync([CreateFunction()]));
+        Task shutdown = dispatcher.ShutdownAsync();
+
+        try
+        {
+            Assert.False(shutdown.IsCompleted);
+        }
+        finally
+        {
+            context.RunContinuations();
+            await shutdown.WaitAsync(TestTimeout);
+        }
     }
 
     [Theory]
@@ -465,6 +677,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await InitializeDispatcherAsync(dispatcher, function, worker);
+        await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
         _registry.Invocations.Clear();
 
         await dispatcher.InvokeAsync(CreateInvocation(function));
@@ -568,6 +781,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await InitializeDispatcherAsync(dispatcher, function, worker);
+        await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
         _registry.Invocations.Clear();
 
         dispatcher.Dispose();
@@ -589,6 +803,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await InitializeDispatcherAsync(dispatcher, function, worker);
+        await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
         _registry.Invocations.Clear();
 
         dispatcher.PreShutdown();
@@ -608,6 +823,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await dispatcher.InitializeAsync([function]);
+        await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
         _registry.Invocations.Clear();
 
         dispatcher.PreShutdown();
@@ -708,4 +924,33 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
             AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
             Logger = NullLogger.Instance,
         };
+
+    private sealed class QueuedSynchronizationContext : SynchronizationContext
+    {
+        private readonly ConcurrentQueue<(SendOrPostCallback Callback, object State)> _callbacks = new();
+
+        public override void Post(SendOrPostCallback callback, object state) => _callbacks.Enqueue((callback, state));
+
+        internal Task Run(Func<Task> callback)
+        {
+            SynchronizationContext previous = Current;
+            SetSynchronizationContext(this);
+            try
+            {
+                return callback();
+            }
+            finally
+            {
+                SetSynchronizationContext(previous);
+            }
+        }
+
+        internal void RunContinuations()
+        {
+            while (_callbacks.TryDequeue(out var callback))
+            {
+                callback.Callback(callback.State);
+            }
+        }
+    }
 }

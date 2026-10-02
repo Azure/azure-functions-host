@@ -15,7 +15,11 @@ public interface IRpcClientFunctionInvocationDispatcher : IFunctionInvocationDis
     /// <summary>
     /// Sets up invocation buffers and sends function load requests to a newly linked channel.
     /// </summary>
+    /// <remarks>
+    /// Each channel is configured at most once per dispatcher. A synchronous setup failure is not retried and
+    /// prevents this dispatcher from selecting that channel for invocations. Function-load responses arrive separately.
+    /// </remarks>
     /// <param name="channel">The newly linked channel.</param>
-    /// <returns>A task that completes after invocation buffers are initialized.</returns>
+    /// <returns>A task that completes after buffers are initialized and function-load requests are sent.</returns>
     Task SetupChannelAsync(WorkerChannel channel);
 }

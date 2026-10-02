@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -38,10 +39,14 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private readonly TimeSpan _channelWaitTimeout;
     private readonly ScriptJobHostOptions _scriptHostOptions;
 
+    // Setup results belong to this dispatcher without keeping unlinked channels alive.
+    private readonly ConditionalWeakTable<WorkerChannel, TaskCompletionSource> _channelSetups = new();
+
     // Shutdown waits for active channel setup to finish and prevents new setup.
     private readonly Lock _lifecycleLock = new();
 
     private IReadOnlyList<FunctionMetadata> _functions = [];
+    private Task _laterLinkedChannelsSetup = Task.CompletedTask;
     private int _nextChannelIndex = -1;
     private bool _disposed;
     private bool _stopping;
@@ -111,19 +116,36 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                 throw new InvalidOperationException("The invocation dispatcher has not been initialized.");
             }
 
-            SetupChannel(channel);
+            return SetupChannelLocked(channel);
         }
-
-        return channel.InvocationBuffersInitialization;
     }
 
     // Requires _lifecycleLock: a stopping dispatcher must not overwrite the next ScriptHost's buffers.
-    private void SetupChannel(WorkerChannel channel)
+    private Task SetupChannelLocked(WorkerChannel channel)
     {
-        // Invocation buffers accept work while the worker completes its function-load responses.
-        channel.SetupFunctionInvocationBuffers(_functions);
-        channel.SendFunctionLoadRequests(_managedDependencyOptions, _scriptHostOptions.FunctionTimeout);
+        TaskCompletionSource setup = GetChannelSetup(channel);
+        if (!setup.Task.IsCompleted)
+        {
+            try
+            {
+                channel.SetupFunctionInvocationBuffers(_functions);
+                channel.SendFunctionLoadRequests(_managedDependencyOptions, _scriptHostOptions.FunctionTimeout);
+                setup.SetResult();
+            }
+            catch (Exception exception)
+            {
+                // A partial setup is terminal for this dispatcher. Retrying would replace invocation buffers.
+                setup.SetException(exception);
+            }
+        }
+
+        // Setup is synchronous. Observe and rethrow failures for the caller's existing diagnostics.
+        setup.Task.GetAwaiter().GetResult();
+        return setup.Task;
     }
+
+    private TaskCompletionSource GetChannelSetup(WorkerChannel channel)
+        => _channelSetups.GetValue(channel, static _ => new(TaskCreationOptions.RunContinuationsAsynchronously));
 
     private Task DispatchInvocation(ScriptInvocationContext invocationContext, WorkerChannel channel)
     {
@@ -204,11 +226,11 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
             }
 
             State = FunctionInvocationDispatcherState.Initialized;
-        }
 
-        // Pass only the mutable set so the long-lived watcher cannot retain the startup snapshot.
-        HashSet<WorkerChannel> setupChannels = new(channels, ReferenceEqualityComparer.Instance);
-        _ = SetupLaterLinkedChannelsAsync(initializedChannelsVersion, setupChannels);
+            // Publish ownership before shutdown can begin, without retaining the startup snapshot.
+            HashSet<WorkerChannel> attemptedChannels = new(channels, ReferenceEqualityComparer.Instance);
+            _laterLinkedChannelsSetup = SetupLaterLinkedChannelsAsync(initializedChannelsVersion, attemptedChannels);
+        }
     }
 
     public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
@@ -229,6 +251,14 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     public async Task ShutdownAsync()
     {
         PreShutdown();
+
+        Task laterLinkedChannelsSetup;
+        lock (_lifecycleLock)
+        {
+            laterLinkedChannelsSetup = _laterLinkedChannelsSetup;
+        }
+
+        await laterLinkedChannelsSetup;
 
         // The registry owns channel disposal; the dispatcher only gives accepted invocations time to drain.
         Task[] drainTasks = [.. _channelRegistry.GetInitializedChannels()
@@ -328,31 +358,37 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         {
             WorkerChannel initializedChannel = await _channelRegistry.WaitForFirstInitializedAsync(operationSource.Token)
                 .WaitAsync(operationSource.Token);
-            await initializedChannel.InvocationBuffersInitialization.WaitAsync(operationSource.Token);
+            await GetChannelSetup(initializedChannel).Task.WaitAsync(operationSource.Token);
         }
-        catch (OperationCanceledException) when (!invocationContext.CancellationToken.IsCancellationRequested &&
+        catch (OperationCanceledException) when (operationSource.IsCancellationRequested &&
+            !invocationContext.CancellationToken.IsCancellationRequested &&
             !_dispatcherStoppedSource.IsCancellationRequested)
         {
             throw new TimeoutException($"No client-backed worker channel became ready within {_channelWaitTimeout}.");
         }
 
-        // A linked channel is selectable only after its invocation buffers are set up.
+        // A linked channel is selectable only after its buffers and load requests are configured successfully.
         WorkerChannel channel = GetReadyChannel()
             ?? throw new InvalidOperationException("No client-backed worker channel is ready for invocations.");
         await DispatchInvocation(invocationContext, channel);
     }
 
-    private static bool IsReadyForInvocations(WorkerChannel channel) => channel.IsChannelReadyForInvocations();
+    private bool IsReadyForInvocations(WorkerChannel channel)
+        => _channelSetups.TryGetValue(channel, out TaskCompletionSource setup)
+            && setup.Task.IsCompletedSuccessfully
+            && channel.IsChannelReadyForInvocations();
 
-    private async Task SetupLaterLinkedChannelsAsync(long initializedChannelsVersion, HashSet<WorkerChannel> setupChannels)
+    private async Task SetupLaterLinkedChannelsAsync(long initializedChannelsVersion, HashSet<WorkerChannel> attemptedChannels)
     {
         CancellationToken cancellationToken = _dispatcherStoppedSource.Token;
         try
         {
+            // Let initialization publish the task under _lifecycleLock before the watcher can perform any work.
+            await Task.Yield();
             while (true)
             {
                 initializedChannelsVersion = await _channelRegistry.WaitForInitializedChannelsChangeAsync(initializedChannelsVersion, cancellationToken);
-                SetupNewChannels(setupChannels);
+                ReconcileInitializedChannels(attemptedChannels);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -366,16 +402,21 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
         {
             Log.LaterLinkSetupFailed(_logger, exception);
         }
+        finally
+        {
+            // A retained completed task must not retain channels through its state machine.
+            attemptedChannels.Clear();
+        }
     }
 
     // Keep snapshots out of the watcher's async state machine, including in Debug builds.
-    private void SetupNewChannels(HashSet<WorkerChannel> setupChannels)
+    private void ReconcileInitializedChannels(HashSet<WorkerChannel> attemptedChannels)
     {
         IReadOnlyList<WorkerChannel> channels = _channelRegistry.GetInitializedChannels();
-        setupChannels.IntersectWith(channels);
+        attemptedChannels.IntersectWith(channels);
         foreach (WorkerChannel channel in channels)
         {
-            if (!setupChannels.Add(channel))
+            if (!attemptedChannels.Add(channel))
             {
                 continue;
             }
@@ -391,7 +432,7 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
                     }
 
                     Log.SettingUpLaterLinkedChannel(_logger, channel.Id);
-                    SetupChannel(channel);
+                    SetupChannelLocked(channel);
                 }
             }
             catch (Exception exception)
