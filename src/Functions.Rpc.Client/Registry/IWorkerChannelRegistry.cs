@@ -19,8 +19,9 @@ namespace Azure.Functions.Rpc.Client;
 public interface IWorkerChannelRegistry : IAsyncDisposable
 {
     /// <summary>
-    /// Gets a version that increases whenever an initialized channel is added or removed.
+    /// Gets a version that increases whenever an initialized channel is added or removed before disposal begins.
     /// </summary>
+    /// <remarks>Disposal releases waiters without advancing the version.</remarks>
     long InitializedChannelsVersion { get; }
 
     /// <summary>

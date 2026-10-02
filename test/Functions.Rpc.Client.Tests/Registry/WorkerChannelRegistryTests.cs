@@ -941,18 +941,48 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Equal(registry.InitializedChannelsVersion, await otherWait.WaitAsync(TestTimeout));
     }
 
-    [Fact]
-    public async Task DisposeAsync_ReleasesInitializedChannelsChangeWaiters()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task DisposeAsync_ReleasesInitializedChannelsChangeWaitersWithoutAdvancingVersion(int channelCount)
     {
         RegistryHarness harness = new();
-        WorkerChannelRegistry registry = harness.Registry;
-        Task<long> wait = registry.WaitForInitializedChannelsChangeAsync(registry.InitializedChannelsVersion);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        long initialVersion = registry.InitializedChannelsVersion;
+        for (int i = 0; i < channelCount; i++)
+        {
+            ChannelControl channel = new($"worker-{i}");
+            harness.Enqueue(channel);
+            await LinkAsync(registry, channel.Id);
+        }
 
-        await registry.DisposeAsync();
+        long linkedVersion = registry.InitializedChannelsVersion;
+        QueuedSynchronizationContext context = new();
+        Task<long> wait = context.Run(() => registry.WaitForInitializedChannelsChangeAsync(linkedVersion));
+        Assert.False(wait.IsCompleted);
+
+        try
+        {
+            await registry.DisposeAsync().AsTask().WaitAsync(TestTimeout);
+        }
+        finally
+        {
+            // Resume the waiter only after disposal has detached every initialized channel.
+            context.RunContinuations();
+        }
 
         await Assert.ThrowsAsync<ObjectDisposedException>(() => wait.WaitAsync(TestTimeout));
         await Assert.ThrowsAsync<ObjectDisposedException>(
-            () => registry.WaitForInitializedChannelsChangeAsync(registry.InitializedChannelsVersion));
+            () => registry.WaitForInitializedChannelsChangeAsync(linkedVersion));
+        Assert.Equal(linkedVersion, registry.InitializedChannelsVersion);
+        Assert.Empty(registry.GetInitializedChannels());
+
+        if (channelCount > 0)
+        {
+            // A membership change published before disposal remains observable to a stale caller.
+            Assert.Equal(linkedVersion, await registry.WaitForInitializedChannelsChangeAsync(initialVersion));
+        }
     }
 
     private static async Task<WorkerChannel> LinkAsync(WorkerChannelRegistry registry, string workerId)

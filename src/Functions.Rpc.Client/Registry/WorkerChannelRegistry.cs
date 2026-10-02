@@ -416,6 +416,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
     private void NotifyInitializedChannelsChangedLocked()
     {
+        // Disposal already released waiters; terminal cleanup must not publish another change.
+        if (_disposed)
+        {
+            return;
+        }
+
         _initializedChannelsVersion++;
         TaskCompletionSource initializedChannelsChanged = _initializedChannelsChanged;
         _initializedChannelsChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
