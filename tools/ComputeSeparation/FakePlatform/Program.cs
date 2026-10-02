@@ -41,7 +41,7 @@ simulate.MapPost("/worker/assign", async (string? worker, IHttpClientFactory cli
 {
     if (!TrySelectWorker(worker, out WorkerOptions selected, out string proxyClient))
     {
-        return Results.BadRequest("Select worker=first (the default), or worker=second with ComputeSeparation:EnableSecondWorker enabled.");
+        return Results.BadRequest(InvalidWorkerMessage);
     }
 
     WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty);
@@ -77,7 +77,7 @@ simulate.MapPost("/worker/link", async (string? worker, IHttpClientFactory clien
 {
     if (!TrySelectWorker(worker, out WorkerOptions selected, out _))
     {
-        return Results.BadRequest("Select worker=first (the default), or worker=second with ComputeSeparation:EnableSecondWorker enabled.");
+        return Results.BadRequest(InvalidWorkerMessage);
     }
 
     WorkerLink link = new(selected.WorkerGrpcEndpoint.ToString());
@@ -151,6 +151,7 @@ internal partial class Program
     private const string HostClient = "host";
     private const string WorkerProxyClient = "worker-proxy";
     private const string SecondWorkerProxyClient = "worker-proxy-2";
+    private const string InvalidWorkerMessage = "Select worker=first (the default), or worker=second with ComputeSeparation:EnableSecondWorker enabled.";
 
     private sealed class FakePlatformOptions : WorkerOptions
     {

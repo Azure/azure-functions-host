@@ -34,13 +34,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     public RpcClientFunctionInvocationDispatcherTests()
     {
         _registry.Setup(registry => registry.GetInitializedChannels())
-            .Returns(() =>
-            {
-                lock (_channels)
-                {
-                    return [.. _channels];
-                }
-            });
+            .Returns(GetChannelsSnapshot);
         _registry.SetupGet(registry => registry.InitializedChannelsVersion)
             .Returns(() => _initializedChannelsSignal.Version);
         _registry.Setup(registry => registry.WaitForInitializedChannelsChangeAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
@@ -60,7 +54,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     public async Task InitializeAsync_ConfiguresInitializedChannels()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
-        _channels.Add(worker.Channel);
+        AddChannel(worker.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
 
@@ -81,7 +75,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("a-worker");
         await using ClientWorkerChannelTestHarness second = await ClientWorkerChannelTestHarness.CreateAsync("b-worker");
         await using ClientWorkerChannelTestHarness third = await ClientWorkerChannelTestHarness.CreateAsync("c-worker");
-        _channels.Add(first.Channel);
+        AddChannel(first.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await InitializeDispatcherAsync(dispatcher, function, first);
@@ -118,11 +112,11 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     {
         await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("a-worker");
         await using ClientWorkerChannelTestHarness racing = await ClientWorkerChannelTestHarness.CreateAsync("b-worker");
-        _channels.Add(first.Channel);
+        AddChannel(first.Channel);
         bool linked = false;
         _registry.Setup(registry => registry.GetInitializedChannels()).Returns(() =>
         {
-            WorkerChannel[] snapshot = [.. _channels];
+            WorkerChannel[] snapshot = GetChannelsSnapshot();
             if (!linked)
             {
                 linked = true;
@@ -154,10 +148,10 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         Mock<ILogger<RpcClientFunctionInvocationDispatcher>> logger = CreateLogger();
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(logger: logger.Object);
         FunctionMetadata function = CreateFunction();
-        _channels.Add(healthy.Channel);
+        AddChannel(healthy.Channel);
         if (linkedDuringStartup)
         {
-            _channels.Add(failed.Channel);
+            AddChannel(failed.Channel);
         }
 
         await InitializeDispatcherAsync(dispatcher, function, healthy);
@@ -232,7 +226,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         metrics.Setup(value => value.BeginEvent(MetricEventNames.FunctionLoadRequestResponse, It.IsAny<string>(), It.IsAny<string>()))
             .Throws(failure);
         await using ClientWorkerChannelTestHarness failed = await ClientWorkerChannelTestHarness.CreateAsync("failed", metricsLogger: metrics.Object);
-        _channels.Add(failed.Channel);
+        AddChannel(failed.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
 
         Assert.Same(failure, await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.InitializeAsync([CreateFunction()])));
@@ -319,23 +313,20 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         WeakReference snapshot = new(null);
         _registry.Setup(registry => registry.GetInitializedChannels()).Returns(() =>
         {
-            lock (_channels)
+            WorkerChannel[] channels = GetChannelsSnapshot();
+            if (channels.Length > 0)
             {
-                WorkerChannel[] channels = [.. _channels];
-                if (channels.Length > 0)
-                {
-                    snapshot.Target = channels;
-                }
-
-                return channels;
+                snapshot.Target = channels;
             }
+
+            return channels;
         });
         // Isolate dispatcher ownership from the worker's background protocol processing.
         await using ClientWorkerChannelTestHarness worker = ClientWorkerChannelTestHarness.CreateWithoutStarting("removed");
         FunctionMetadata function = CreateFunction();
         if (linkedDuringStartup)
         {
-            _channels.Add(worker.Channel);
+            AddChannel(worker.Channel);
             await dispatcher.InitializeAsync([function]);
         }
         else
@@ -346,11 +337,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
 
         await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
         await WaitForRegistryWaitAsync(_initializedChannelsSignal.Version);
-        lock (_channels)
-        {
-            _channels.Clear();
-        }
-
+        SetChannels();
         _initializedChannelsSignal.Signal();
         return (snapshot, new(worker.Channel));
     }
@@ -445,6 +432,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         await using ClientWorkerChannelTestHarness later = await ClientWorkerChannelTestHarness.CreateAsync("later");
         using ManualResetEventSlim releaseSetup = new();
         TaskCompletionSource setupStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource shutdownWaiting = new(TaskCreationOptions.RunContinuationsAsynchronously);
         Mock<ILogger<RpcClientFunctionInvocationDispatcher>> logger = CreateLogger();
         logger.Setup(value => value.Log(
                 LogLevel.Information,
@@ -458,13 +446,21 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
                     throw new TimeoutException("Channel setup was not released.");
                 }
             });
+        logger.Setup(value => value.Log(
+                LogLevel.Debug,
+                It.Is<EventId>(eventId => string.Equals(eventId.Name, "WaitingForLifecycleLock", StringComparison.Ordinal)),
+                It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception, string>>()))
+            .Callback(() => shutdownWaiting.TrySetResult());
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher(logger: logger.Object);
         FunctionMetadata function = CreateFunction();
         await dispatcher.InitializeAsync([function]);
-        TaskCompletionSource stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        Thread shutdownThread = new(() =>
+        Task shutdown = Task.CompletedTask;
+
+        try
         {
-            try
+            LinkChannel(later.Channel);
+            await setupStarted.Task.WaitAsync(TestTimeout);
+            shutdown = Task.Run(() =>
             {
                 if (dispose)
                 {
@@ -474,32 +470,15 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
                 {
                     dispatcher.PreShutdown();
                 }
-
-                stopped.TrySetResult();
-            }
-            catch (Exception exception)
-            {
-                stopped.TrySetException(exception);
-            }
-        }) { IsBackground = true };
-
-        try
-        {
-            LinkChannel(later.Channel);
-            await setupStarted.Task.WaitAsync(TestTimeout);
-            shutdownThread.Start();
-            Assert.True(SpinWait.SpinUntil(() => stopped.Task.IsCompleted ||
-                shutdownThread.ThreadState.HasFlag(ThreadState.WaitSleepJoin), TestTimeout));
-            Assert.False(stopped.Task.IsCompleted);
+            });
+            Task firstCompleted = await Task.WhenAny(shutdownWaiting.Task, shutdown).WaitAsync(TestTimeout);
+            Assert.Same(shutdownWaiting.Task, firstCompleted);
+            Assert.False(shutdown.IsCompleted);
         }
         finally
         {
             releaseSetup.Set();
-            if (!shutdownThread.ThreadState.HasFlag(ThreadState.Unstarted))
-            {
-                await stopped.Task.WaitAsync(TestTimeout);
-                Assert.True(shutdownThread.Join(TestTimeout));
-            }
+            await shutdown.WaitAsync(TestTimeout);
         }
 
         await later.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
@@ -530,7 +509,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         _registry.Setup(registry => registry.GetInitializedChannels()).Returns(() =>
         {
             dispatcher.PreShutdown();
-            return [.. _channels];
+            return GetChannelsSnapshot();
         });
 
         LinkChannel(later.Channel);
@@ -550,7 +529,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     public async Task InvokeAsync_CompletesSuccessfulInvocation()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
-        _channels.Add(worker.Channel);
+        AddChannel(worker.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         ScriptInvocationContext invocation = CreateInvocation(function);
@@ -568,7 +547,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     public async Task InvokeAsync_SurfacesFunctionLoadFailure()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
-        _channels.Add(worker.Channel);
+        AddChannel(worker.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         ScriptInvocationContext invocation = CreateInvocation(function);
@@ -587,7 +566,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     public async Task InvokeAsync_PropagatesInvocationCancellation()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
-        _channels.Add(worker.Channel);
+        AddChannel(worker.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         using CancellationTokenSource cancellationSource = new();
@@ -612,7 +591,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         Task invoke = dispatcher.InvokeAsync(invocation);
         Assert.False(invoke.IsCompleted);
 
-        _channels.Add(worker.Channel);
+        AddChannel(worker.Channel);
         Task setup = dispatcher.SetupChannelAsync(worker.Channel);
         await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
         Assert.True(setup.IsCompletedSuccessfully);
@@ -656,8 +635,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     {
         await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("a-worker");
         await using ClientWorkerChannelTestHarness second = await ClientWorkerChannelTestHarness.CreateAsync("b-worker");
-        _channels.Add(second.Channel);
-        _channels.Add(first.Channel);
+        SetChannels(second.Channel, first.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await InitializeDispatcherAsync(dispatcher, function, first, second);
@@ -673,7 +651,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     public async Task InvokeAsync_ReadyChannelUsesSingleRegistrySnapshot()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
-        _channels.Add(worker.Channel);
+        AddChannel(worker.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await InitializeDispatcherAsync(dispatcher, function, worker);
@@ -692,12 +670,12 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     {
         await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("a-worker");
         await using ClientWorkerChannelTestHarness second = await ClientWorkerChannelTestHarness.CreateAsync("b-worker");
-        _channels.Add(first.Channel);
+        AddChannel(first.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await InitializeDispatcherAsync(dispatcher, function, first);
 
-        _channels.Add(second.Channel);
+        AddChannel(second.Channel);
         Task setup = dispatcher.SetupChannelAsync(second.Channel);
         await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
         await setup.WaitAsync(TestTimeout);
@@ -728,7 +706,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     {
         await using ClientWorkerChannelTestHarness failed = await ClientWorkerChannelTestHarness.CreateAsync("a-worker");
         await using ClientWorkerChannelTestHarness healthy = await ClientWorkerChannelTestHarness.CreateAsync("b-worker");
-        _channels.Add(failed.Channel);
+        AddChannel(failed.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         ScriptInvocationContext failedInvocation = CreateInvocation(function);
@@ -738,8 +716,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
 
         failed.Transport.CompleteResponses(new InvalidOperationException("transport failed"));
         await Assert.ThrowsAnyAsync<Exception>(() => failedInvocation.ResultSource.Task.WaitAsync(TestTimeout));
-        _channels.Clear();
-        _channels.Add(healthy.Channel);
+        SetChannels(healthy.Channel);
         Task setup = dispatcher.SetupChannelAsync(healthy.Channel);
         await healthy.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionLoadRequest);
         await healthy.SendFunctionLoadResponseAsync(function.GetFunctionId());
@@ -777,7 +754,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     public async Task Dispose_RejectsNewInvocationsWithoutDisposingChannel()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
-        _channels.Add(worker.Channel);
+        AddChannel(worker.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await InitializeDispatcherAsync(dispatcher, function, worker);
@@ -799,7 +776,7 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
     public async Task PreShutdown_WithReadyChannelRejectsNewInvocations()
     {
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
-        _channels.Add(worker.Channel);
+        AddChannel(worker.Channel);
         using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
         FunctionMetadata function = CreateFunction();
         await InitializeDispatcherAsync(dispatcher, function, worker);
@@ -815,6 +792,21 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         Assert.Equal(FunctionInvocationDispatcherState.Disposing, dispatcher.State);
         Assert.Equal(0, worker.Transport.DisposeCount);
         _registry.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public void PreShutdownAndDispose_PreserveTerminalState()
+    {
+        using RpcClientFunctionInvocationDispatcher dispatcher = CreateDispatcher();
+
+        dispatcher.PreShutdown();
+        dispatcher.PreShutdown();
+        Assert.Equal(FunctionInvocationDispatcherState.Disposing, dispatcher.State);
+
+        dispatcher.Dispose();
+        dispatcher.PreShutdown();
+        dispatcher.Dispose();
+        Assert.Equal(FunctionInvocationDispatcherState.Disposed, dispatcher.State);
     }
 
     [Fact]
@@ -851,13 +843,34 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
         return logger;
     }
 
-    private void LinkChannel(WorkerChannel channel)
+    private WorkerChannel[] GetChannelsSnapshot()
+    {
+        lock (_channels)
+        {
+            return [.. _channels];
+        }
+    }
+
+    private void SetChannels(params WorkerChannel[] channels)
+    {
+        lock (_channels)
+        {
+            _channels.Clear();
+            _channels.AddRange(channels);
+        }
+    }
+
+    private void AddChannel(WorkerChannel channel)
     {
         lock (_channels)
         {
             _channels.Add(channel);
         }
+    }
 
+    private void LinkChannel(WorkerChannel channel)
+    {
+        AddChannel(channel);
         _initializedChannelsSignal.Signal();
     }
 
@@ -875,12 +888,19 @@ public sealed class RpcClientFunctionInvocationDispatcherTests
 
     private async Task<WorkerChannel> WaitForChannelAsync(CancellationToken cancellationToken)
     {
-        while (_channels.Count == 0)
+        while (true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            lock (_channels)
+            {
+                if (_channels.Count > 0)
+                {
+                    return _channels[0];
+                }
+            }
+
             await Task.Delay(TimeSpan.FromMilliseconds(10), cancellationToken);
         }
-
-        return _channels[0];
     }
 
     private static async Task InitializeDispatcherAsync(

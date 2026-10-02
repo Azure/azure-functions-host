@@ -22,7 +22,8 @@ public sealed class Hello(IConfiguration configuration)
     [Function(nameof(Hello))]
     public IActionResult Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "hello")] HttpRequest request)
     {
-        if (configuration["ComputeSeparation:WorkerId"] is { } workerId)
+        string? workerId = configuration["ComputeSeparation:WorkerId"];
+        if (!string.IsNullOrWhiteSpace(workerId))
         {
             request.HttpContext.Response.Headers["X-Compute-Worker-Id"] = workerId;
         }

@@ -280,35 +280,33 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
     public Task StartWorkerChannel() => Task.CompletedTask;
 
-    public void PreShutdown()
+    public void PreShutdown() => Stop(disposing: false);
+
+    public void Dispose() => Stop(disposing: true);
+
+    private void Stop(bool disposing)
     {
         // Ready-channel invocations already racing shutdown may still be accepted and drained.
-        lock (_lifecycleLock)
+        if (!_lifecycleLock.TryEnter())
         {
-            if (_disposed || _stopping)
-            {
-                return;
-            }
-
-            _stopping = true;
-            State = FunctionInvocationDispatcherState.Disposing;
+            Log.WaitingForLifecycleLock(_logger);
+            _lifecycleLock.Enter();
         }
 
-        _dispatcherStoppedSource.Cancel();
-    }
-
-    public void Dispose()
-    {
-        lock (_lifecycleLock)
+        try
         {
-            if (_disposed)
+            if (_disposed || (_stopping && !disposing))
             {
                 return;
             }
 
-            _disposed = true;
+            _disposed = disposing;
             _stopping = true;
-            State = FunctionInvocationDispatcherState.Disposed;
+            State = disposing ? FunctionInvocationDispatcherState.Disposed : FunctionInvocationDispatcherState.Disposing;
+        }
+        finally
+        {
+            _lifecycleLock.Exit();
         }
 
         _dispatcherStoppedSource.Cancel();
@@ -470,5 +468,8 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
 
         [LoggerMessage(5, LogLevel.Error, "Setup of client-backed workers linked after dispatcher initialization stopped unexpectedly. Workers linked later will not receive invocations until ScriptHost restarts.")]
         public static partial void LaterLinkSetupFailed(ILogger logger, Exception exception);
+
+        [LoggerMessage(6, LogLevel.Debug, "Waiting for the invocation dispatcher lifecycle lock during shutdown.")]
+        public static partial void WaitingForLifecycleLock(ILogger logger);
     }
 }
