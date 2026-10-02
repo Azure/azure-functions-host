@@ -4,13 +4,15 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Configuration;
 
 namespace SampleIsolatedApp;
 
 /// <summary>
 /// Provides a deterministic HTTP response from the isolated worker.
 /// </summary>
-public sealed class Hello
+/// <param name="configuration">Configuration containing the optional harness worker identity.</param>
+public sealed class Hello(IConfiguration configuration)
 {
     /// <summary>
     /// Handles an anonymous HTTP invocation.
@@ -20,6 +22,11 @@ public sealed class Hello
     [Function(nameof(Hello))]
     public IActionResult Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "hello")] HttpRequest request)
     {
+        if (configuration["ComputeSeparation:WorkerId"] is { } workerId)
+        {
+            request.HttpContext.Response.Headers["X-Compute-Worker-Id"] = workerId;
+        }
+
         return new ContentResult
         {
             StatusCode = StatusCodes.Status200OK,

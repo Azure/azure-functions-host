@@ -16,6 +16,16 @@ FakePlatformOptions options = builder.Configuration.GetSection("FakePlatform").G
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpClient(HostClient, client => client.BaseAddress = options.HostUri);
 builder.Services.AddHttpClient(WorkerProxyClient, client => client.BaseAddress = options.WorkerProxyUri);
+if (options.SecondWorker is { } secondWorker)
+{
+    if (string.Equals(options.WorkerId, secondWorker.WorkerId, StringComparison.Ordinal) ||
+        options.WorkerProxyUri == secondWorker.WorkerProxyUri || options.WorkerGrpcEndpoint == secondWorker.WorkerGrpcEndpoint)
+    {
+        throw new InvalidOperationException("The second worker must have a distinct ID and distinct proxy endpoints.");
+    }
+
+    builder.Services.AddHttpClient(SecondWorkerProxyClient, client => client.BaseAddress = secondWorker.WorkerProxyUri);
+}
 
 WebApplication app = builder.Build();
 ILogger logger = app.Logger;
@@ -27,13 +37,18 @@ app.MapHealthChecks("/health");
 RouteGroupBuilder simulate = app.MapGroup("/simulate");
 
 // Called by AppHost or a developer to assign the worker pod on the WorkerProxy (PUT /admin/worker/assignment).
-simulate.MapPost("/worker/assign", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
+simulate.MapPost("/worker/assign", async (string? worker, IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
+    if (!TrySelectWorker(worker, out WorkerOptions selected, out string proxyClient))
+    {
+        return Results.BadRequest("Select worker=first (the default), or worker=second with ComputeSeparation:EnableSecondWorker enabled.");
+    }
+
     WorkerAssignment assignment = new("Preconfigured", AppName, "http", false, [], string.Empty);
-    using HttpResponseMessage response = await clients.CreateClient(WorkerProxyClient)
+    using HttpResponseMessage response = await clients.CreateClient(proxyClient)
         .PutAsJsonAsync("/admin/worker/assignment", assignment, cancellationToken);
 
-    return await ToResultAsync("worker assign", response, cancellationToken);
+    return await ToResultAsync($"worker assign ({selected.WorkerId})", response, cancellationToken);
 });
 
 // Called by a developer in the `project-placeholder-manual` profile, before the link, to assign the placeholder Host to
@@ -58,16 +73,40 @@ simulate.MapPost("/host/assign", async (IHttpClientFactory clients, Cancellation
 });
 
 // Called by AppHost or a developer, after assignment, to link the worker to the Host (PUT /admin/workers/{workerId}).
-simulate.MapPost("/worker/link", async (IHttpClientFactory clients, CancellationToken cancellationToken) =>
+simulate.MapPost("/worker/link", async (string? worker, IHttpClientFactory clients, CancellationToken cancellationToken) =>
 {
-    WorkerLink link = new(options.WorkerGrpcEndpoint.ToString());
-    using HttpResponseMessage response = await clients.CreateClient(HostClient)
-        .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(options.WorkerId)}", link, cancellationToken);
+    if (!TrySelectWorker(worker, out WorkerOptions selected, out _))
+    {
+        return Results.BadRequest("Select worker=first (the default), or worker=second with ComputeSeparation:EnableSecondWorker enabled.");
+    }
 
-    return await ToResultAsync("worker link", response, cancellationToken);
+    WorkerLink link = new(selected.WorkerGrpcEndpoint.ToString());
+    using HttpResponseMessage response = await clients.CreateClient(HostClient)
+        .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(selected.WorkerId)}", link, cancellationToken);
+
+    return await ToResultAsync($"worker link ({selected.WorkerId})", response, cancellationToken);
 });
 
 app.Run();
+
+bool TrySelectWorker(string? worker, out WorkerOptions selected, out string proxyClient)
+{
+    selected = options;
+    proxyClient = WorkerProxyClient;
+    if (worker is null || string.Equals(worker, "first", StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    if (string.Equals(worker, "second", StringComparison.OrdinalIgnoreCase) && options.SecondWorker is { } second)
+    {
+        selected = second;
+        proxyClient = SecondWorkerProxyClient;
+        return true;
+    }
+
+    return false;
+}
 
 // Relays the downstream response so the caller sees exactly what the WorkerProxy or Host returned.
 async Task<IResult> ToResultAsync(string operation, HttpResponseMessage response, CancellationToken cancellationToken)
@@ -111,19 +150,25 @@ internal partial class Program
     private const string AppName = "aspire-sample-app";
     private const string HostClient = "host";
     private const string WorkerProxyClient = "worker-proxy";
+    private const string SecondWorkerProxyClient = "worker-proxy-2";
 
-    private sealed class FakePlatformOptions
+    private sealed class FakePlatformOptions : WorkerOptions
     {
         public required Uri HostUri { get; init; }
 
+        public WorkerOptions? SecondWorker { get; init; }
+
+        // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in `project-placeholder-manual`.
+        public string? EncryptionKey { get; init; }
+    }
+
+    private class WorkerOptions
+    {
         public required Uri WorkerProxyUri { get; init; }
 
         public required Uri WorkerGrpcEndpoint { get; init; }
 
         public required string WorkerId { get; init; }
-
-        // Hex key shared with the Host (CONTAINER_ENCRYPTION_KEY); only set in `project-placeholder-manual`.
-        public string? EncryptionKey { get; init; }
     }
 
     private sealed record HostAssignmentContext(int SiteId, string SiteName, Dictionary<string, string> Environment);

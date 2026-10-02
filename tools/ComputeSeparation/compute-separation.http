@@ -7,26 +7,66 @@
 ### here and turns off automatic assign and link so you can send each step yourself, in order.
 ###
 ###   dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
+###
+### Opt in to a second distinct proxy/worker on the SAME Host (the default remains one worker):
+###   dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual -- --ComputeSeparation:EnableSecondWorker=true --ComputeSeparation:SecondWorkerManagementPort=7082
+### Only worker1 is auto-linked in profiles with AutoLink=true. Worker2 always waits for the manual steps below.
+### For concurrent harness sessions, override all pinned profile/dashboard ports or use --no-launch-profile with
+### ComputeSeparation:AutoLink=false and dynamically allocated endpoints; copy Host/FakePlatform URLs from Aspire.
 
 @platform = http://localhost:7060
 @host = http://127.0.0.1:7071
 @workerProxy = http://localhost:7081
+@secondWorkerProxy = http://localhost:7082
+@firstWorker = first
+@secondWorker = second
 
 ### Expected flow, in order.
 
 ### 1. The platform assigns the pod on the WorkerProxy. Expect 201, or 204 if repeated.
 ### 503 WorkerNotReady means the sample worker has not connected yet; retry.
-POST {{platform}}/simulate/worker/assign
+# @name assignFirstWorker
+POST {{platform}}/simulate/worker/assign?worker={{firstWorker}}
 
 ### Optional: the WorkerProxy pod state is now ReadyForRequest.
 GET {{workerProxy}}/admin/worker/state
 
 ### 2. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if
 ### repeated. The Host finishes specializing only after step 3 links the worker.
+# @name assignHost
 POST {{platform}}/simulate/host/assign
 
 ### 3. The platform links the worker to the Host. Expect 201, or 200 for a matching retry.
-POST {{platform}}/simulate/worker/link
+# @name linkFirstWorker
+POST {{platform}}/simulate/worker/link?worker={{firstWorker}}
 
 ### 4. A client invokes the function through Host -> WorkerProxy -> worker.
+# @name invokeBeforeLaterLink
+GET {{host}}/api/hello
+
+### Continue only after step 4 returns 200. X-Compute-Worker-Id identifies worker1.
+### 5. Assign worker2 independently; retry 503 until its worker connects. Expect 201/204.
+# @name assignSecondWorker
+POST {{platform}}/simulate/worker/assign?worker={{secondWorker}}
+
+### Optional: inspect the second proxy, not worker1's proxy.
+GET {{secondWorkerProxy}}/admin/worker/state
+
+### 6. Link worker2 AFTER worker1 has served the running app. Expect 201, with no ScriptHost restart.
+# @name linkSecondWorker
+POST {{platform}}/simulate/worker/link?worker={{secondWorker}}
+
+### 7. Repeat the link. Expect 200, same channel; existing workers must not reload their functions.
+# @name repeatSecondLink
+POST {{platform}}/simulate/worker/link?worker={{secondWorker}}
+
+### 8. Send both requests, and repeat as needed after worker2 finishes function loading.
+### Expect 200 and two distinct X-Compute-Worker-Id values (worker2 has the "-2" suffix).
+### Host selects ready workers round-robin; the public invocation API does not support targeting a worker.
+### FakePlatform logs the selected worker ID for assignments/links; Aspire has separate proxy/worker logs.
+# @name invokeAfterLaterLinkA
+GET {{host}}/api/hello
+
+###
+# @name invokeAfterLaterLinkB
 GET {{host}}/api/hello
