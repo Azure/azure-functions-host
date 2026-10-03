@@ -47,7 +47,8 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
     }
 
     internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId, IScriptEventManager eventManager = null,
-        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null, IMetricsLogger metricsLogger = null)
+        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null, IMetricsLogger metricsLogger = null,
+        string functionGroupName = null)
     {
         ClientWorkerChannelTestHarness harness = CreateWithoutStarting(workerId, eventManager, httpProxyService, metricsLogger);
         RpcClientWorkerChannel channel = harness.Channel;
@@ -72,6 +73,11 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
         if (advertisedHttpUri is not null)
         {
             initResponse.Capabilities.Add(RpcWorkerConstants.HttpUri, advertisedHttpUri);
+        }
+
+        if (functionGroupName is not null)
+        {
+            initResponse.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, functionGroupName);
         }
 
         await transport.SendResponseAsync(new() { WorkerInitResponse = initResponse });

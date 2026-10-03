@@ -24,6 +24,7 @@ namespace Azure.Functions.Host.Tests;
 public class ClientWorkerLoggingTests
 {
     private const string ClientCategory = "Azure.Functions.Rpc.Client.RpcClientScriptHostStartupCoordinator";
+    private const string CapacityCategory = "Azure.Functions.Rpc.Client.ComputeRuntimeStateManager";
 
     [Theory]
     [InlineData(true, ClientCategory, LogLevel.Information, false, true)]
@@ -33,6 +34,12 @@ public class ClientWorkerLoggingTests
     [InlineData(true, ClientCategory, LogLevel.Warning, false, true)]
     [InlineData(true, ClientCategory, LogLevel.Error, false, true)]
     [InlineData(true, ClientCategory, LogLevel.Critical, false, true)]
+    [InlineData(true, CapacityCategory, LogLevel.Information, false, true)]
+    [InlineData(true, CapacityCategory, LogLevel.Debug, false, true)]
+    [InlineData(true, CapacityCategory, LogLevel.Error, false, true)]
+    [InlineData(true, CapacityCategory, LogLevel.Trace, false, false)]
+    [InlineData(true, CapacityCategory, LogLevel.Trace, true, true)]
+    [InlineData(false, CapacityCategory, LogLevel.Information, false, false)]
     [InlineData(true, "Azure.Functions.Host.Controllers.WorkerLinkController", LogLevel.Information, false, true)]
     [InlineData(true, "Azure.FunctionsOther.Client", LogLevel.Error, false, false)]
     [InlineData(true, "System.Net.Http", LogLevel.Error, true, false)]
@@ -57,9 +64,11 @@ public class ClientWorkerLoggingTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ClientComposition_PreservesCustomerLoggingFilters(bool configureCustomerLogging)
+    [InlineData(false, ClientCategory)]
+    [InlineData(true, ClientCategory)]
+    [InlineData(false, CapacityCategory)]
+    [InlineData(true, CapacityCategory)]
+    public async Task ClientComposition_PreservesCustomerLoggingFilters(bool configureCustomerLogging, string category)
     {
         IConfiguration? loggingConfiguration = configureCustomerLogging
             ? new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -73,12 +82,12 @@ public class ClientWorkerLoggingTests
         IHost rootHost = CreateRootHost(true, false, eventGenerator.Object, out IServiceCollection rootServices, loggingConfiguration);
         await using IAsyncDisposable rootLifetime = (IAsyncDisposable)rootHost;
 
-        AssertCustomerLogging(rootHost.Services, configureCustomerLogging);
-        AssertSystemLog(rootHost.Services, eventGenerator, ClientCategory, LogLevel.Information, expected: true);
+        AssertCustomerLogging(rootHost.Services, configureCustomerLogging, category);
+        AssertSystemLog(rootHost.Services, eventGenerator, category, LogLevel.Information, expected: true);
 
         await using ServiceProvider childProvider = CreateScriptHostProvider(rootHost.Services, rootServices, loggingConfiguration);
-        AssertCustomerLogging(childProvider, configureCustomerLogging);
-        AssertSystemLog(childProvider, eventGenerator, ClientCategory, LogLevel.Information, expected: true);
+        AssertCustomerLogging(childProvider, configureCustomerLogging, category);
+        AssertSystemLog(childProvider, eventGenerator, category, LogLevel.Information, expected: true);
     }
 
     private static void AssertSystemLog(
@@ -96,7 +105,7 @@ public class ClientWorkerLoggingTests
             It.IsAny<DateTime>()), expected ? Times.Once() : Times.Never());
     }
 
-    private static void AssertCustomerLogging(IServiceProvider services, bool configured)
+    private static void AssertCustomerLogging(IServiceProvider services, bool configured, string category)
     {
         Mock<ILogger> logger = new();
         logger.Setup(value => value.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
@@ -104,7 +113,7 @@ public class ClientWorkerLoggingTests
         provider.Setup(value => value.CreateLogger(It.IsAny<string>())).Returns(logger.Object);
 
         using LoggerFactory factory = new([provider.Object], services.GetRequiredService<IOptionsMonitor<LoggerFilterOptions>>());
-        ILogger clientLogger = factory.CreateLogger(ClientCategory);
+        ILogger clientLogger = factory.CreateLogger(category);
         Assert.False(clientLogger.IsEnabled(LogLevel.Information));
         Assert.False(clientLogger.IsEnabled(LogLevel.Warning));
         Assert.Equal(configured, clientLogger.IsEnabled(LogLevel.Error));
