@@ -60,11 +60,11 @@ public class AppServerHostStateClientTests
     [InlineData("http://appserver:7070/base", "http://appserver:7070/base/admin/infra/host/state")]
     [InlineData("http://appserver:7070/base/", "http://appserver:7070/base/admin/infra/host/state")]
     [InlineData(" ", "http://localhost:6060/admin/infra/host/state")]
-    public async Task PublishAsync_UsesConfiguredAppServerEndpoint(string endpoint, string expectedUri)
+    public async Task PublishAsync_UsesConfiguredMeshInitUri(string endpoint, string expectedUri)
     {
         AppServerHostStateClient client = CreateClient(new Dictionary<string, string?>
         {
-            [AppServerHostStateClient.EndpointConfigurationKey] = endpoint,
+            ["MESH_INIT_URI"] = endpoint,
         });
 
         await client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None);
@@ -87,14 +87,14 @@ public class AppServerHostStateClientTests
     }
 
     [Fact]
-    public async Task PublishAsync_ReadsEndpointReloadedAtSpecialization()
+    public async Task PublishAsync_ReadsMeshInitUriReloadedAtSpecialization()
     {
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
         AppServerHostStateClient client = CreateClient(configuration);
         await client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None);
         Uri? beforeSpecialization = _handler.RequestUri;
 
-        configuration[AppServerHostStateClient.EndpointConfigurationKey] = "http://appserver:7070";
+        configuration["MESH_INIT_URI"] = "http://appserver:7070";
         await client.PublishAsync(new(CreatedTime, 0, 1, 1), CancellationToken.None);
 
         Assert.Equal(new Uri("http://localhost:6060/admin/infra/host/state"), beforeSpecialization);

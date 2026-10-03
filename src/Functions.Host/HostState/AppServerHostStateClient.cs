@@ -9,6 +9,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Extensions.Configuration;
 
 namespace Azure.Functions.Host.HostState;
@@ -22,7 +23,6 @@ namespace Azure.Functions.Host.HostState;
 internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IAppServerHostStateClient
 {
     internal const string HttpClientName = "AppServerHostState";
-    internal const string EndpointConfigurationKey = "FUNCTIONS_APPSERVER_URI";
     internal const string HostStatePath = "admin/infra/host/state";
     internal const string DefaultEndpoint = "http://localhost:6060/";
 
@@ -44,7 +44,7 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
 
     private Uri GetHostStateUri()
     {
-        string? endpoint = _configuration[EndpointConfigurationKey];
+        string? endpoint = _configuration[EnvironmentSettingNames.MeshInitURI];
         if (string.IsNullOrWhiteSpace(endpoint))
         {
             endpoint = DefaultEndpoint;

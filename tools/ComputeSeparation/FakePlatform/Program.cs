@@ -35,7 +35,7 @@ HostState? acceptedHostState = null;
 // Called by the AppHost health check.
 app.MapHealthChecks("/health");
 
-// Called by the Host (FUNCTIONS_APPSERVER_URI). Best effort: ignore older timestamps, accept ties in arrival order.
+// Called by the Host (MESH_INIT_URI). Best effort: ignore older timestamps, accept ties in arrival order.
 // Ties cannot establish causal order, and clock rollback can leave a legitimate snapshot ignored.
 app.MapPut("/admin/infra/host/state", (HostState state) =>
 {

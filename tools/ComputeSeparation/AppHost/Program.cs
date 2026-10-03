@@ -135,7 +135,7 @@ else
         .WithEnvironment("AzureFunctionsWebHost__IsFileSystemReadOnly", "true")
         .WithEnvironment("AzureFunctionsJobHost__logging__logLevel__default", "Information")
         .WithEnvironment("AzureFunctionsJobHost__logging__console__isEnabled", "true")
-        .WithEnvironment("FUNCTIONS_APPSERVER_URI", fakePlatform.GetEndpoint(HttpEndpointName))
+        .WithEnvironment("MESH_INIT_URI", fakePlatform.GetEndpoint(HttpEndpointName))
         .WithHttpHealthCheck("/admin/instance/http-health", endpointName: HttpEndpointName);
 
     functionsHost.WithEnvironment("ASPNETCORE_URLS",
