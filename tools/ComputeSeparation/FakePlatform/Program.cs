@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 // Local stand-in for the platform in the compute harness. It sends the assign and link requests to the WorkerProxy and
-// Host.
+// Host, and receives the Host's HTTP capacity as AppServer would.
 
 using System.Buffers.Text;
 using System.Net.Http.Json;
@@ -29,9 +29,30 @@ if (options.SecondWorker is { } secondWorker)
 
 WebApplication app = builder.Build();
 ILogger logger = app.Logger;
+Lock hostStateLock = new();
+HostState? acceptedHostState = null;
 
 // Called by the AppHost health check.
 app.MapHealthChecks("/health");
+
+// Called by the Host (MESH_INIT_URI). Best effort: ignore older timestamps, accept ties in arrival order.
+// Ties cannot establish causal order, and clock rollback can leave a legitimate snapshot ignored.
+app.MapPut("/admin/infra/host/state", (HostState state) =>
+{
+    lock (hostStateLock)
+    {
+        bool stale = acceptedHostState is not null && state.CreatedTime < acceptedHostState.CreatedTime;
+        if (!stale)
+        {
+            acceptedHostState = state;
+        }
+
+        logger.LogInformation("Host state created at {CreatedTime}: HTTP capacity {HttpCapacity}{Stale}",
+            state.CreatedTime, state.HttpCapacity, stale ? " (stale, ignored)" : string.Empty);
+    }
+
+    return Results.Ok();
+});
 
 // Simulation routes: harness-only, never called by the Host or WorkerProxy.
 RouteGroupBuilder simulate = app.MapGroup("/simulate");
@@ -85,6 +106,15 @@ simulate.MapPost("/worker/link", async (string? worker, IHttpClientFactory clien
         .PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(selected.WorkerId)}", link, cancellationToken);
 
     return await ToResultAsync($"worker link ({selected.WorkerId})", response, cancellationToken);
+});
+
+// Called by a developer to read the last Host state accepted by PUT /admin/infra/host/state.
+simulate.MapGet("/host/state", () =>
+{
+    lock (hostStateLock)
+    {
+        return acceptedHostState is null ? Results.NoContent() : Results.Ok(acceptedHostState);
+    }
 });
 
 app.Run();
@@ -180,4 +210,6 @@ internal partial class Program
         bool IsAlwaysReady, Dictionary<string, string> Environment, string FunctionAppDirectory);
 
     private sealed record WorkerLink(string WorkerGrpcEndpoint);
+
+    private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity);
 }
