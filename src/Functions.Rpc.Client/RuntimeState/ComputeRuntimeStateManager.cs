@@ -391,29 +391,31 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
 
     private static partial class Log
     {
-        [LoggerMessage(0, LogLevel.Information,
+        // EventId range is 900-999
+
+        [LoggerMessage(900, LogLevel.Information,
             "Compute runtime state created at {CreatedTime}: HTTP capacity {HttpCapacity}. " +
             "Workers: {WorkerCount}. HTTP workers: {HttpWorkerCount}. " +
             "ScriptHost state: {ScriptHostState}. Host stopping: {Stopping}.")]
         public static partial void StateChanged(ILogger logger, DateTimeOffset createdTime, long httpCapacity, int workerCount, int httpWorkerCount,
             ScriptHostState scriptHostState, bool stopping);
 
-        [LoggerMessage(1, LogLevel.Error, "Failed to compute the compute runtime state. The previous snapshot remains current.")]
+        [LoggerMessage(901, LogLevel.Error, "Failed to compute the compute runtime state. The previous snapshot remains current.")]
         public static partial void RecomputeFailed(ILogger logger, Exception exception);
 
-        [LoggerMessage(2, LogLevel.Error,
+        [LoggerMessage(902, LogLevel.Error,
             "Compute runtime state tracking stopped unexpectedly. Withdrawing HTTP capacity.")]
         public static partial void TrackingFailed(ILogger logger, Exception exception);
 
-        [LoggerMessage(3, LogLevel.Debug, "ScriptHost services were disposed while computing HTTP capacity.")]
+        [LoggerMessage(903, LogLevel.Debug, "ScriptHost services were disposed while computing HTTP capacity.")]
         public static partial void ScriptHostDisposed(ILogger logger);
 
-        [LoggerMessage(4, LogLevel.Information,
+        [LoggerMessage(904, LogLevel.Information,
             "Compute runtime state created at {CreatedTime}: HTTP capacity withdrawn. " +
             "Workers: {WorkerCount}. HTTP workers: {HttpWorkerCount}. Host stopping: {Stopping}.")]
         public static partial void CapacityWithdrawn(ILogger logger, DateTimeOffset createdTime, int workerCount, int httpWorkerCount, bool stopping);
 
-        [LoggerMessage(5, LogLevel.Warning,
+        [LoggerMessage(905, LogLevel.Warning,
             "Failed to read the configured UTC clock while withdrawing HTTP capacity. The system UTC clock was used.")]
         public static partial void WithdrawalClockFailed(ILogger logger, Exception exception);
     }

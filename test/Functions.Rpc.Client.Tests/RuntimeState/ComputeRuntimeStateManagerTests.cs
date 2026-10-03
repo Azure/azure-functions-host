@@ -160,7 +160,7 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
 
         Assert.Equal(StartTime, initial.CreatedTime);
         logger.Verify(value => value.Log(
-            LogLevel.Information, It.Is<EventId>(eventId => eventId.Id == 0), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
+            LogLevel.Information, It.Is<EventId>(eventId => eventId.Id == 900), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
             It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once());
         Assert.Equal(1, manager.Current.WorkerCount);
         Assert.Equal(1, manager.Current.HttpWorkerCount);
@@ -252,7 +252,7 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
             Assert.NotSame(beforeSetup, manager.Current);
             Assert.Equal(0, manager.Current.HttpCapacity);
             logger.Verify(value => value.Log(
-                LogLevel.Information, It.Is<EventId>(eventId => eventId.Id == 0), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
+                LogLevel.Information, It.Is<EventId>(eventId => eventId.Id == 900), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once());
         }
         else
@@ -303,9 +303,10 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
     [InlineData(true)]
     public async Task Current_WithdrawsCapacityWhenScriptHostServicesAreUnavailable(bool disposed)
     {
+        Mock<ILogger<ComputeRuntimeStateManager>> logger = CreateLogger();
         await LinkWorkerAsync("worker", "http", ready: true);
         SetScriptHostState(ScriptHostState.Running);
-        using ComputeRuntimeStateManager manager = await StartManagerAsync();
+        using ComputeRuntimeStateManager manager = await StartManagerAsync(logger.Object);
         await WaitForStateAsync(manager, httpCapacity: 16);
 
         if (disposed)
@@ -321,6 +322,10 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
         _initializedChannelsSignal.Signal();
 
         await WaitForStateAsync(manager, httpCapacity: 0);
+        await manager.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+        logger.Verify(value => value.Log(
+            LogLevel.Debug, It.Is<EventId>(eventId => eventId.Id == 903), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception, string>>()), disposed ? Times.Once() : Times.Never());
     }
 
     [Theory]
@@ -569,7 +574,7 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
         await WaitForStateAsync(manager, httpCapacity: 16);
 
         logger.Verify(value => value.Log(
-            LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.Is<Exception>(exception => exception is InvalidOperationException),
+            LogLevel.Error, It.Is<EventId>(eventId => eventId.Id == 901), It.IsAny<It.IsAnyType>(), It.Is<Exception>(exception => exception is InvalidOperationException),
             It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once());
     }
 
@@ -750,7 +755,7 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
 
         _applicationLifetime.Verify(lifetime => lifetime.StopApplication(), Times.Never);
         logger.Verify(value => value.Log(
-            LogLevel.Error, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.Is<Exception>(exception => exception is InvalidOperationException),
+            LogLevel.Error, It.Is<EventId>(eventId => eventId.Id == 902), It.IsAny<It.IsAnyType>(), It.Is<Exception>(exception => exception is InvalidOperationException),
             It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once());
     }
 
@@ -796,7 +801,7 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
         Assert.NotSame(running, manager.Current);
         Assert.Equal(TimeSpan.Zero, manager.Current.CreatedTime.Offset);
         logger.Verify(value => value.Log(
-            LogLevel.Warning, It.Is<EventId>(eventId => eventId.Id == 5), It.IsAny<It.IsAnyType>(), clockFailure,
+            LogLevel.Warning, It.Is<EventId>(eventId => eventId.Id == 905), It.IsAny<It.IsAnyType>(), clockFailure,
             It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once());
     }
 
@@ -833,9 +838,10 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
     [Fact]
     public async Task CreatedTime_WithdrawalCapturesUtcOnceAndRetainsCounts()
     {
+        Mock<ILogger<ComputeRuntimeStateManager>> logger = CreateLogger();
         SetScriptHostState(ScriptHostState.Running);
         await LinkWorkerAsync("worker", "http", ready: true);
-        using ComputeRuntimeStateManager manager = await StartManagerAsync();
+        using ComputeRuntimeStateManager manager = await StartManagerAsync(logger.Object);
         ComputeRuntimeState running = await WaitForStateAsync(manager, httpCapacity: 16);
         DateTimeOffset stoppingTime = StartTime.AddMinutes(2);
         SetUtcTime(stoppingTime);
@@ -851,6 +857,9 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
         Assert.Equal(stoppingTime, stopped.CreatedTime);
         Assert.Equal(StartTime, running.CreatedTime);
         Assert.Same(stopped, manager.Current);
+        logger.Verify(value => value.Log(
+            LogLevel.Information, It.Is<EventId>(eventId => eventId.Id == 904), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception, string>>()), Times.Once());
     }
 
     [Theory]
