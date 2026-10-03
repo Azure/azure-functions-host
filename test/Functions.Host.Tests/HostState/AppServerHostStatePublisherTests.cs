@@ -289,7 +289,34 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
 
         logger.Verify(value => value.Log(
-            LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.Is<Exception?>(exception => exception is HttpRequestException),
+            LogLevel.Warning, It.Is<EventId>(eventId => eventId.Id == 1001), It.IsAny<It.IsAnyType>(), It.Is<Exception?>(exception => exception is HttpRequestException),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once());
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK, LogLevel.Information, 1000)]
+    [InlineData(HttpStatusCode.Unauthorized, LogLevel.Warning, 1002)]
+    [InlineData(HttpStatusCode.Conflict, LogLevel.Error, 1003)]
+    public async Task ExecuteAsync_PublishResponse_LogsAssignedEventId(HttpStatusCode statusCode, LogLevel level, int expectedEventId)
+    {
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactoryWithHostFilters(logger);
+        EnqueueStatusCodes(statusCode);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory: loggerFactory);
+        TakePublished();
+        if (statusCode is HttpStatusCode.OK)
+        {
+            WaitUntilPublisherWaitsForChange(_current);
+        }
+        else
+        {
+            TakeTimer();
+        }
+
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+
+        logger.Verify(value => value.Log(
+            level, It.Is<EventId>(eventId => eventId.Id == expectedEventId), It.IsAny<It.IsAnyType>(), null,
             It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once());
     }
 
@@ -440,7 +467,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
 
         // The only warning is the final-publish timeout.
         logger.Verify(value => value.Log(
-            LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), null,
+            LogLevel.Warning, It.Is<EventId>(eventId => eventId.Id == 1004), It.IsAny<It.IsAnyType>(), null,
             It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once());
     }
 
@@ -460,15 +487,21 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     [Fact]
     public async Task ExecuteAsync_UnexpectedFailure_DoesNotFaultHost()
     {
+        Mock<ILogger> logger = new();
+        using ILoggerFactory loggerFactory = CreateLoggerFactoryWithHostFilters(logger);
+        InvalidOperationException failure = new("state manager failed");
         _stateManager.Setup(manager => manager.WaitForChangeAsync(It.IsAny<ComputeRuntimeState>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("state manager failed"));
-        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+            .ThrowsAsync(failure);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync(loggerFactory: loggerFactory);
         TakePublished();
 
         await publisher.ExecuteTask!.WaitAsync(TestTimeout);
         await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
 
         Assert.True(publisher.ExecuteTask.IsCompletedSuccessfully);
+        logger.Verify(value => value.Log(
+            LogLevel.Error, It.Is<EventId>(eventId => eventId.Id == 1005), It.IsAny<It.IsAnyType>(), failure,
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.Once());
     }
 
     public void Dispose()

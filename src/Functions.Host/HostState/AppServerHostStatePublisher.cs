@@ -198,27 +198,28 @@ internal sealed partial class AppServerHostStatePublisher : BackgroundService
 
     private static partial class Log
     {
-        [LoggerMessage(0, LogLevel.Information,
+        // EventId range is 1000-1099
+        [LoggerMessage(1000, LogLevel.Information,
             "Published Host state to AppServer: created time {CreatedTime}, HTTP capacity {HttpCapacity}.")]
         public static partial void Published(ILogger logger, DateTimeOffset createdTime, long httpCapacity);
 
-        [LoggerMessage(1, LogLevel.Warning,
+        [LoggerMessage(1001, LogLevel.Warning,
             "Failed to publish Host state snapshot created at {CreatedTime} to AppServer. The latest snapshot will be retried.")]
         public static partial void PublishFailed(ILogger logger, Exception exception, DateTimeOffset createdTime);
 
-        [LoggerMessage(2, LogLevel.Warning,
+        [LoggerMessage(1002, LogLevel.Warning,
             "AppServer returned status code {StatusCode} for Host state snapshot created at {CreatedTime}. The latest snapshot will be retried.")]
         public static partial void PublishRejectedTransient(ILogger logger, DateTimeOffset createdTime, int statusCode);
 
-        [LoggerMessage(3, LogLevel.Error,
+        [LoggerMessage(1003, LogLevel.Error,
             "AppServer rejected Host state snapshot created at {CreatedTime} with status code {StatusCode}. The latest snapshot will be retried.")]
         public static partial void PublishRejected(ILogger logger, DateTimeOffset createdTime, int statusCode);
 
-        [LoggerMessage(4, LogLevel.Warning,
+        [LoggerMessage(1004, LogLevel.Warning,
             "Timed out publishing the final Host state snapshot created at {CreatedTime} to AppServer during shutdown.")]
         public static partial void FinalPublishTimedOut(ILogger logger, DateTimeOffset createdTime);
 
-        [LoggerMessage(5, LogLevel.Error, "Host state publication to AppServer stopped unexpectedly.")]
+        [LoggerMessage(1005, LogLevel.Error, "Host state publication to AppServer stopped unexpectedly.")]
         public static partial void PublisherFailed(ILogger logger, Exception exception);
     }
 }
