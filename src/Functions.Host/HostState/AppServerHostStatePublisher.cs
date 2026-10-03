@@ -128,6 +128,7 @@ internal sealed partial class AppServerHostStatePublisher : BackgroundService
         }
     }
 
+    // Own retries instead of using a Polly HTTP handler so new snapshots can interrupt backoff rather than replay stale requests.
     private async Task WaitForChangeOrDelayAsync(ComputeRuntimeState state, TimeSpan delay, CancellationToken cancellationToken)
     {
         using CancellationTokenSource delaySource = new(delay, _timeProvider);
