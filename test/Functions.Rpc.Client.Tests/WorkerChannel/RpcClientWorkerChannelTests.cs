@@ -274,6 +274,42 @@ public sealed class RpcClientWorkerChannelTests
         Assert.Equal(1, duplexChannel.DisposeCount);
     }
 
+    [Theory]
+    [InlineData("http", "http", true)]
+    [InlineData("HTTP", "HTTP", true)]
+    [InlineData("durable", "durable", false)]
+    [InlineData("", "", false)]
+    [InlineData(null, null, false)]
+    public async Task StartAsync_CapturesFunctionGroupNameAdvertisedByWorkerProxy(
+        string advertisedGroup, string expectedGroup, bool expectedIsHttpFunctionGroup)
+    {
+        await using ClientWorkerChannelTestHarness worker =
+            await ClientWorkerChannelTestHarness.CreateAsync(WorkerId, functionGroupName: advertisedGroup);
+
+        Assert.Equal(expectedGroup, worker.Channel.FunctionGroupName);
+        Assert.Equal(expectedIsHttpFunctionGroup, worker.Channel.IsHttpFunctionGroup);
+    }
+
+    [Theory]
+    [InlineData("32")]
+    [InlineData("0")]
+    [InlineData("garbage")]
+    public async Task StartAsync_IgnoresMaxConcurrencyCapability(string advertised)
+    {
+        TestDuplexChannel<StreamingMessage> duplexChannel = new();
+        await using RpcClientWorkerChannel channel = CreateChannel(duplexChannel);
+        Task start = channel.StartAsync(CancellationToken.None);
+        await SendStartStreamAndReadInitRequestAsync(duplexChannel);
+        WorkerInitResponse response = CreateSuccessfulInitResponse();
+        response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, "http");
+        response.Capabilities.Add("MaxConcurrency", advertised);
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = response });
+        await start.WaitAsync(TestTimeout);
+
+        Assert.True(start.IsCompletedSuccessfully);
+        Assert.True(channel.IsHttpFunctionGroup);
+    }
+
     private RpcClientWorkerChannel CreateChannel(TestDuplexChannel<StreamingMessage> duplexChannel)
         => _factory.Create(WorkerId, duplexChannel);
 

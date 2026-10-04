@@ -147,6 +147,14 @@ internal sealed partial class RpcClientFunctionInvocationDispatcher : IRpcClient
     private TaskCompletionSource GetChannelSetup(WorkerChannel channel)
         => _channelSetups.GetValue(channel, static _ => new(TaskCreationOptions.RunContinuationsAsynchronously));
 
+    /// <inheritdoc />
+    public Task GetChannelSetupTask(WorkerChannel channel)
+    {
+        ArgumentNullException.ThrowIfNull(channel);
+
+        return GetChannelSetup(channel).Task;
+    }
+
     private Task DispatchInvocation(ScriptInvocationContext invocationContext, WorkerChannel channel)
     {
         using FunctionInvoker.Scope scope = FunctionInvoker.BeginSystemScope();

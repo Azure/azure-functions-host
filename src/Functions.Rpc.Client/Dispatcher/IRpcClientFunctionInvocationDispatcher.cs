@@ -13,6 +13,18 @@ namespace Azure.Functions.Rpc.Client;
 public interface IRpcClientFunctionInvocationDispatcher : IFunctionInvocationDispatcher
 {
     /// <summary>
+    /// Gets this dispatcher's setup outcome for a channel without starting setup.
+    /// </summary>
+    /// <remarks>
+    /// The task remains pending until setup is attempted, including when observed before the channel is linked.
+    /// Success means buffers and function-load requests were configured; worker responses arrive separately.
+    /// A setup failure is terminal for this dispatcher.
+    /// </remarks>
+    /// <param name="channel">The channel whose setup to observe.</param>
+    /// <returns>The shared task for this dispatcher's synchronous channel setup.</returns>
+    Task GetChannelSetupTask(WorkerChannel channel);
+
+    /// <summary>
     /// Sets up invocation buffers and sends function load requests to a newly linked channel.
     /// </summary>
     /// <remarks>
