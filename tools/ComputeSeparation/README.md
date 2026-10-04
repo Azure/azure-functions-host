@@ -21,6 +21,7 @@ Open `Azure.Functions.Host.slnx`, set `ComputeSeparation.AppHost` as the startup
 | --- | --- |
 | `project` | The Host, WorkerProxy, sample worker, and a fake platform as .NET projects for managed C# debugging. No Docker required. |
 | `project-placeholder-manual` | Same as `project`, but the Host starts in placeholder mode, nothing is assigned or linked automatically, and ports are pinned for `compute-separation.http`. See [Placeholder mode](#placeholder-mode). |
+| `project-placeholder-manual-multi-worker` | Same manual placeholder flow, with two independent WorkerProxy/worker pairs sharing one Host. Use `compute-separation-multi-worker.http`. See [Multi-worker testing](#multi-worker-testing). |
 | `container` | Three Linux containers: a ReadyToRun Host, Native AOT WorkerProxy, and ReadyToRun sample worker. |
 
 `project` and `container` link the worker automatically. In `project`, AppHost asks the fake platform to assign the pod and then link the worker, in that order. Every profile starts an Aspire dashboard. Container images are built from the current worktree; the first build can take several minutes. Nothing is published or deployed remotely.
@@ -30,10 +31,11 @@ The equivalent command-line launches are:
 ```powershell
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
+dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual-multi-worker
 dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile container
 ```
 
-Run one profile at a time. No mode requires `aspire deploy` or `aspire publish`.
+Run one profile at a time; the manual profiles share fixed ports. Stop the current AppHost before switching profiles. No mode requires `aspire deploy` or `aspire publish`.
 
 ## Try the sample
 
@@ -83,6 +85,20 @@ Simulation routes live under `/simulate`, so they are never confused with the re
 > [!NOTE]
 > In `project-placeholder-manual`, nothing is assigned or linked until you send the requests. Wait until every resource is **Running** in the dashboard, then send the numbered requests (1 to 4) in the order they appear in the file. If assign returns `503`, the sample worker has not connected yet; retry it before moving on. The requests marked *Optional* can be sent at any time.
 
+### Multi-worker testing
+
+Select `project-placeholder-manual-multi-worker` and open [compute-separation-multi-worker.http](compute-separation-multi-worker.http). This file is self-contained; do not run the single-worker file first.
+
+Both worker processes start with Aspire, but neither is assigned or linked automatically. Confirm the dashboard shows `worker-proxy` / `isolated-worker` and `worker-proxy-2` / `isolated-worker-2`, then follow the numbered requests:
+
+1. Assign and link worker1, and confirm `/api/hello` returns `200`.
+2. Assign and link worker2 to the same running Host, without restarting it.
+3. Repeat worker2's link to check idempotency, then invoke repeatedly and compare the `X-Compute-Worker-Id` response headers. Once both workers are ready, requests alternate between their identities when no other traffic is running; worker2's ID has the `-2` suffix.
+
+The fake platform accepts `?worker=first` or `?worker=second` on its worker assign/link routes; omitting the selector uses worker1. A `400` for `worker=second` with worker-selection guidance usually means the single-worker profile is running. Switch profiles and restart AppHost rather than retrying that request.
+
+This project-mode scenario exercises **late linking**, not on-demand worker-process startup. The public invocation API does not support selecting a specific worker.
+
 ## Placeholder mode
 
 `project-placeholder-manual` runs the Host the way it starts before it is assigned to an app: in placeholder mode (`WEBSITE_PLACEHOLDER_MODE=1`), with placeholder content, until it is assigned. It exercises how the Host behaves when specialization and the worker link overlap.
@@ -100,7 +116,7 @@ The dashboard has two independent resources, each backed by its own Compose proj
 
 Stopping `worker-pod-1` removes only that pod's containers, leaving the same Host and network running. Stopping `runtime` stops the Host but keeps the network until AppHost shutdown. A small adapter runs these Compose groups because Aspire's native containers do not support the Proxy/worker shared-network arrangement.
 
-`worker-pod.compose.yaml` is reusable for additional pods: each needs its own Compose project, Proxy alias, worker/request identities, and management port, while joining the runtime's network. These values are visible in the resource environments. Dynamic add/remove controls and invocation readiness for later-linked workers are not implemented yet.
+`worker-pod.compose.yaml` is reusable for additional pods: each needs its own Compose project, Proxy alias, worker/request identities, and management port, while joining the runtime's network. These values are visible in the resource environments. Dynamic container add/remove controls are not implemented. The Host supports invocation setup for later-linked workers; the built-in two-worker Aspire scenario above is available only in project mode.
 
 Stop AppHost to stop the local run; normal shutdown removes worker pods before the runtime and its network. If AppHost is forcibly terminated, remove its `functions-aspire-...` groups in Docker Desktop. Relinking restarted workers is not automated; start a new AppHost session for another end-to-end run.
 

@@ -1,0 +1,71 @@
+@platform=http://localhost:7060
+@host=http://127.0.0.1:7071
+@firstWorkerProxy=http://localhost:7081
+@secondWorkerProxy=http://localhost:7082
+
+# Multi-worker scenario: worker1 serves -> link worker2 later -> both serve on the SAME Host.
+# In Visual Studio, select the AppHost profile `project-placeholder-manual-multi-worker` and press F5.
+# Or run from the repository root:
+# dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual-multi-worker
+#
+# Stop any previous AppHost before starting: these manual profiles share fixed ports.
+# Confirm Aspire shows worker-proxy / isolated-worker AND worker-proxy-2 / isolated-worker-2.
+# Both worker processes start with Aspire; assignment and linking are manual.
+# This file is self-contained: do not run the single-worker file first.
+# /simulate routes belong to FakePlatform; it calls the real Host and WorkerProxy contracts.
+
+# 1. Assign worker1
+# Expect 201 (204 if repeated). Retry 503 WorkerNotReady after the worker connects.
+# @name assignFirstWorker
+POST {{platform}}/simulate/worker/assign?worker=first
+
+### 2. Assign the placeholder Host to the app
+# Expect 202 (409 if repeated). Specialization finishes after worker1 links.
+# @name assignHost
+POST {{platform}}/simulate/host/assign
+
+### 3. Link worker1
+# Expect 201 (200 for a matching retry).
+# @name linkFirstWorker
+POST {{platform}}/simulate/worker/link?worker=first
+
+### 4. Confirm worker1 serves BEFORE linking worker2
+# Wait for 200 before continuing. Note X-Compute-Worker-Id in the response headers.
+# @name invokeBeforeLaterLink
+GET {{host}}/api/hello
+
+### 5. Assign worker2 independently
+# Expect 201 (204 if repeated). Retry 503 WorkerNotReady after the worker connects.
+# 400 with worker-selection guidance: check that the multi-worker profile is running.
+# The single-worker profile does not configure worker2; retrying alone cannot enable it.
+# @name assignSecondWorker
+POST {{platform}}/simulate/worker/assign?worker=second
+
+### 6. Link worker2 to the already-running Host
+# Expect 201. Do not restart the Host between steps 4 and 6.
+# @name linkSecondWorker
+POST {{platform}}/simulate/worker/link?worker=second
+
+### 7. Repeat worker2's link to check idempotency
+# Expect 200: same channel, no function reload on existing workers.
+# @name repeatSecondLink
+POST {{platform}}/simulate/worker/link?worker=second
+
+### 8. Invoke after the later link
+# Expect 200. Send steps 8 and 9 repeatedly after worker2 finishes loading.
+# X-Compute-Worker-Id should show both identities; worker2's ID has the "-2" suffix.
+# Selection is round-robin among ready workers, not targeted by the request.
+# @name invokeAfterLaterLinkA
+GET {{host}}/api/hello
+
+### 9. Invoke again and compare worker identity
+# Expect 200 and the other worker's X-Compute-Worker-Id when both are ready and no other traffic is running.
+# @name invokeAfterLaterLinkB
+GET {{host}}/api/hello
+
+### Optional diagnostics: worker1 pod state
+# Expect ReadyForRequest after assignment. Aspire provides separate logs for each proxy and worker.
+GET {{firstWorkerProxy}}/admin/worker/state
+
+### Optional diagnostics: worker2 pod state
+GET {{secondWorkerProxy}}/admin/worker/state

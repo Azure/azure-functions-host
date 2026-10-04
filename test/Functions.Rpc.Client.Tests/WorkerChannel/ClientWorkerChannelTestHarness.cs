@@ -36,12 +36,22 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
 
     internal TestDuplexChannel<StreamingMessage> Transport { get; }
 
-    internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId, IScriptEventManager eventManager = null,
-        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null)
+    internal static ClientWorkerChannelTestHarness CreateWithoutStarting(
+        string workerId, IScriptEventManager eventManager = null, IHttpProxyService httpProxyService = null, IMetricsLogger metricsLogger = null)
     {
         TestDuplexChannel<StreamingMessage> transport = new();
-        RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService)
+        RpcClientWorkerChannel channel = CreateFactory(eventManager ?? new ScriptEventManager(), httpProxyService, metricsLogger)
             .Create(workerId, transport);
+
+        return new(channel, transport);
+    }
+
+    internal static async Task<ClientWorkerChannelTestHarness> CreateAsync(string workerId, IScriptEventManager eventManager = null,
+        string advertisedHttpUri = null, IHttpProxyService httpProxyService = null, IMetricsLogger metricsLogger = null)
+    {
+        ClientWorkerChannelTestHarness harness = CreateWithoutStarting(workerId, eventManager, httpProxyService, metricsLogger);
+        RpcClientWorkerChannel channel = harness.Channel;
+        TestDuplexChannel<StreamingMessage> transport = harness.Transport;
         Task start = channel.StartAsync(CancellationToken.None);
 
         await transport.SendResponseAsync(new()
@@ -67,7 +77,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
         await transport.SendResponseAsync(new() { WorkerInitResponse = initResponse });
         await start.WaitAsync(TestTimeout);
 
-        return new(channel, transport);
+        return harness;
     }
 
     internal async Task<StreamingMessage> ReadRequestAsync(StreamingMessage.ContentOneofCase contentCase)
@@ -125,7 +135,8 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
 
     public ValueTask DisposeAsync() => Channel.DisposeAsync();
 
-    private static RpcClientWorkerChannelFactory CreateFactory(IScriptEventManager eventManager, IHttpProxyService httpProxyService)
+    private static RpcClientWorkerChannelFactory CreateFactory(
+        IScriptEventManager eventManager, IHttpProxyService httpProxyService, IMetricsLogger metricsLogger)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -149,6 +160,6 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             Options.Create(new FunctionsHostingConfigOptions()),
             appCapabilitiesStore.Object,
             httpProxyService ?? Mock.Of<IHttpProxyService>(),
-            Mock.Of<IMetricsLogger>());
+            metricsLogger ?? Mock.Of<IMetricsLogger>());
     }
 }
