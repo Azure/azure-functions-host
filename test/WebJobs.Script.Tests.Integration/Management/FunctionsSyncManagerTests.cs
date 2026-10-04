@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     { "TestFunctionKey1", "aaa" },
                     { "TestFunctionKey2", "bbb" }
                 };
-            _secretManagerMock.Setup(p => p.GetFunctionSecretsAsync("function1", false)).ReturnsAsync(functionSecretsResponse);
+            _secretManagerMock.Setup(p => p.GetFunctionSecretsAsync("function1")).ReturnsAsync(functionSecretsResponse);
             _secretManagerMock.Setup(p => p.ClearCache());
 
             var configuration = ScriptSettingsManager.BuildDefaultConfiguration();
