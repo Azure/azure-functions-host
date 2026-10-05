@@ -31,7 +31,7 @@ POST {{platform}}/simulate/host/assign
 POST {{platform}}/simulate/worker/link
 
 ### Optional: inspect the last published HTTP capacity
-# Expect { "createdTime": "<ISO8601 UTC timestamp>", "httpCapacity": 16, "workerCount": 1 } once ScriptHost and the HTTP worker are ready.
+# Expect { "createdTime": "<ISO8601 UTC timestamp>", "httpCapacity": 16, "linkedWorkerCount": 1 } once ScriptHost and the HTTP worker are ready.
 # Retries reuse the captured createdTime. Distinct snapshots can have equal or earlier timestamps.
 # FakePlatform ignores strictly older timestamps with 200 and accepts ties in arrival order, not causal order.
 # Clock rollback can leave a legitimate update ignored; this is not restart-safe ordering.

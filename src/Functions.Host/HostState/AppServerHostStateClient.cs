@@ -35,7 +35,7 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
 
         using HttpResponseMessage response = await _httpClientFactory.CreateClient(HttpClientName).PutAsJsonAsync(
             GetHostStateUri(),
-            new HostStateRequest(state.CreatedTime, state.HttpCapacity, state.WorkerCount),
+            new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
             AppServerJsonSerializerContext.Default.HostStateRequest,
             cancellationToken);
 
@@ -54,7 +54,7 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
         return new Uri(new Uri(endpoint.EndsWith('/') ? endpoint : endpoint + "/", UriKind.Absolute), HostStatePath);
     }
 
-    internal sealed record HostStateRequest(DateTimeOffset CreatedTime, long HttpCapacity, int WorkerCount);
+    internal sealed record HostStateRequest(DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount);
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

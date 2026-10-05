@@ -47,8 +47,8 @@ app.MapPut("/admin/infra/host/state", (HostState state) =>
             acceptedHostState = state;
         }
 
-        logger.LogInformation("Host state created at {CreatedTime}: HTTP capacity {HttpCapacity}, worker count {WorkerCount}{Stale}",
-            state.CreatedTime, state.HttpCapacity, state.WorkerCount, stale ? " (stale, ignored)" : string.Empty);
+        logger.LogInformation("Host state created at {CreatedTime}: HTTP capacity {HttpCapacity}, linked worker count {LinkedWorkerCount}{Stale}",
+            state.CreatedTime, state.HttpCapacity, state.LinkedWorkerCount, stale ? " (stale, ignored)" : string.Empty);
     }
 
     return Results.Ok();
@@ -211,5 +211,5 @@ internal partial class Program
 
     private sealed record WorkerLink(string WorkerGrpcEndpoint);
 
-    private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity, int WorkerCount);
+    private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount);
 }
