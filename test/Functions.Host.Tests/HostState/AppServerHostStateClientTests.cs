@@ -22,9 +22,9 @@ public class AppServerHostStateClientTests
     private readonly RecordingHandler _handler = new();
 
     [Theory]
-    [InlineData(16L, 2, 1, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":16}""")]
-    [InlineData(4294967296L, 268435457, 268435456, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":4294967296}""")]
-    public async Task PublishAsync_SendsOnlyCreatedTimeAndCapacityToDefaultAppServerEndpoint(
+    [InlineData(16L, 2, 1, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":16,"workerCount":2}""")]
+    [InlineData(4294967296L, 268435457, 268435456, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":4294967296,"workerCount":268435457}""")]
+    public async Task PublishAsync_SendsCreatedTimeCapacityAndWorkerCountButNotHttpWorkerCount(
         long httpCapacity, int workerCount, int httpWorkerCount, string expectedBody)
     {
         AppServerHostStateClient client = CreateClient();
@@ -50,7 +50,7 @@ public class AppServerHostStateClientTests
         _handler.StatusCode = HttpStatusCode.OK;
         Assert.Equal(HttpStatusCode.OK, await client.PublishAsync(state, CancellationToken.None));
 
-        Assert.Equal("""{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":16}""", firstBody);
+        Assert.Equal("""{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":16,"workerCount":2}""", firstBody);
         Assert.Equal(firstBody, _handler.Body);
     }
 

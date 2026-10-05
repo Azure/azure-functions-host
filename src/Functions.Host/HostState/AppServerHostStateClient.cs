@@ -15,7 +15,7 @@ using Microsoft.Extensions.Configuration;
 namespace Azure.Functions.Host.HostState;
 
 /// <summary>
-/// Sends Host HTTP capacity snapshots to AppServer's <c>PUT /admin/infra/host/state</c> endpoint.
+/// Sends Host HTTP capacity and linked worker count snapshots to AppServer's <c>PUT /admin/infra/host/state</c> endpoint.
 /// </summary>
 /// <remarks>
 /// Requests are not authenticated yet. Configuration is read per request because it is reloaded during specialization.
@@ -35,7 +35,7 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
 
         using HttpResponseMessage response = await _httpClientFactory.CreateClient(HttpClientName).PutAsJsonAsync(
             GetHostStateUri(),
-            new HostStateRequest(state.CreatedTime, state.HttpCapacity),
+            new HostStateRequest(state.CreatedTime, state.HttpCapacity, state.WorkerCount),
             AppServerJsonSerializerContext.Default.HostStateRequest,
             cancellationToken);
 
@@ -54,7 +54,7 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
         return new Uri(new Uri(endpoint.EndsWith('/') ? endpoint : endpoint + "/", UriKind.Absolute), HostStatePath);
     }
 
-    internal sealed record HostStateRequest(DateTimeOffset CreatedTime, long HttpCapacity);
+    internal sealed record HostStateRequest(DateTimeOffset CreatedTime, long HttpCapacity, int WorkerCount);
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 // Local stand-in for the platform in the compute harness. It sends the assign and link requests to the WorkerProxy and
-// Host, and receives the Host's HTTP capacity as AppServer would.
+// Host, and receives the Host's HTTP capacity and linked worker count as AppServer would.
 
 using System.Buffers.Text;
 using System.Net.Http.Json;
@@ -47,8 +47,8 @@ app.MapPut("/admin/infra/host/state", (HostState state) =>
             acceptedHostState = state;
         }
 
-        logger.LogInformation("Host state created at {CreatedTime}: HTTP capacity {HttpCapacity}{Stale}",
-            state.CreatedTime, state.HttpCapacity, stale ? " (stale, ignored)" : string.Empty);
+        logger.LogInformation("Host state created at {CreatedTime}: HTTP capacity {HttpCapacity}, worker count {WorkerCount}{Stale}",
+            state.CreatedTime, state.HttpCapacity, state.WorkerCount, stale ? " (stale, ignored)" : string.Empty);
     }
 
     return Results.Ok();
@@ -211,5 +211,5 @@ internal partial class Program
 
     private sealed record WorkerLink(string WorkerGrpcEndpoint);
 
-    private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity);
+    private sealed record HostState(DateTimeOffset CreatedTime, long HttpCapacity, int WorkerCount);
 }
