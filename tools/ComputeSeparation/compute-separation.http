@@ -21,7 +21,7 @@ POST {{platform}}/simulate/worker/assign
 GET {{workerProxy}}/admin/worker/state
 
 ### 2. Assign the placeholder Host to the app
-# Expect 202 (409 if repeated). Specialization finishes after step 3 links the worker.
+# Expect 202 (409 if repeated). Specialization applies configuration without waiting for a worker link.
 # @name assignHost
 POST {{platform}}/simulate/host/assign
 
@@ -29,6 +29,16 @@ POST {{platform}}/simulate/host/assign
 # Expect 201 (200 for a matching retry).
 # @name linkWorker
 POST {{platform}}/simulate/worker/link
+
+### Optional: inspect the last published HTTP capacity
+# Expect { "createdTime": "<ISO8601 UTC timestamp>", "httpCapacity": 16, "linkedWorkerCount": 1 } once ScriptHost and the HTTP worker are ready.
+# Retries reuse the captured createdTime. Distinct snapshots can have equal or earlier timestamps.
+# FakePlatform ignores strictly older timestamps with 200 and accepts ties in arrival order, not causal order.
+# Clock rollback can leave a legitimate update ignored; this is not restart-safe ordering.
+# Capacity is 0 before readiness; 204 means the Host has not published yet.
+# Each ready HTTP worker contributes a fixed 16; non-HTTP, unknown-group, and not-ready workers contribute 0.
+# WorkerProxy-supplied concurrency is deferred. No override, worker-side throttle, or slot leasing is introduced.
+GET {{platform}}/simulate/host/state
 
 ### 4. Invoke through Host -> WorkerProxy -> worker
 # Expect 200 and X-Compute-Worker-Id identifying the worker.

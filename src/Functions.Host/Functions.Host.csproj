@@ -51,6 +51,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Azure.Functions.Host.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
 
 </Project>

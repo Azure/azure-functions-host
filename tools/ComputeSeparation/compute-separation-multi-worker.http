@@ -20,7 +20,7 @@
 POST {{platform}}/simulate/worker/assign?worker=first
 
 ### 2. Assign the placeholder Host to the app
-# Expect 202 (409 if repeated). Specialization finishes after worker1 links.
+# Expect 202 (409 if repeated). Specialization applies configuration without waiting for a worker link.
 # @name assignHost
 POST {{platform}}/simulate/host/assign
 
@@ -34,6 +34,14 @@ POST {{platform}}/simulate/worker/link?worker=first
 # @name invokeBeforeLaterLink
 GET {{host}}/api/hello
 
+### Optional: confirm capacity after worker1 is ready
+# Expect { "createdTime": "<ISO8601 UTC timestamp>", "httpCapacity": 16, "linkedWorkerCount": 1 }. Each ready HTTP worker contributes a fixed 16.
+# Retry while capacity is 0; 204 means the Host has not published yet.
+# Retries reuse createdTime; distinct snapshots may have equal or earlier timestamps, not strictly increasing times.
+# FakePlatform ignores strictly older times with 200 and accepts ties in arrival order, not causal order.
+# Clock rollback can leave a legitimate update ignored; timestamps do not guarantee ordering across restarts.
+GET {{platform}}/simulate/host/state
+
 ### 5. Assign worker2 independently
 # Expect 201 (204 if repeated). Retry 503 WorkerNotReady after the worker connects.
 # 400 with worker-selection guidance: check that the multi-worker profile is running.
@@ -46,10 +54,19 @@ POST {{platform}}/simulate/worker/assign?worker=second
 # @name linkSecondWorker
 POST {{platform}}/simulate/worker/link?worker=second
 
+### Optional: confirm capacity after worker2 is ready
+# Expect httpCapacity: 32 and linkedWorkerCount: 2 once both workers finish loading. Record createdTime before the duplicate link.
+GET {{platform}}/simulate/host/state
+
 ### 7. Repeat worker2's link to check idempotency
 # Expect 200: same channel, no function reload on existing workers.
 # @name repeatSecondLink
 POST {{platform}}/simulate/worker/link?worker=second
+
+### Optional: confirm the duplicate link does not change capacity
+# Expect the same createdTime, httpCapacity: 32, and linkedWorkerCount: 2; duplicate links do not create snapshots.
+# Accepted snapshots are not periodically resent.
+GET {{platform}}/simulate/host/state
 
 ### 8. Invoke after the later link
 # Expect 200. Send steps 8 and 9 repeatedly after worker2 finishes loading.
