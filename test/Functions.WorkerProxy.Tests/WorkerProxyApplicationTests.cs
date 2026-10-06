@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,20 @@ public class WorkerProxyApplicationTests
 
         Assert.IsType<WorkerHttpCapabilityProvider>(finalizer);
         Assert.Same(finalizer, scope.ServiceProvider.GetRequiredService<IWorkerCapabilityFinalizer>());
+    }
+
+    [Fact]
+    public async Task WorkerSystemLogServices_ResolveAsSingletons()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerSystemLogFormatter formatter = factory.Services.GetRequiredService<WorkerSystemLogFormatter>();
+        IWorkerSystemLogWriter writer = factory.Services.GetRequiredService<IWorkerSystemLogWriter>();
+        IWorkerSystemLogSink sink = factory.Services.GetRequiredService<IWorkerSystemLogSink>();
+        using IServiceScope scope = factory.Services.CreateScope();
+
+        Assert.Same(formatter, scope.ServiceProvider.GetRequiredService<WorkerSystemLogFormatter>());
+        Assert.Same(writer, scope.ServiceProvider.GetRequiredService<IWorkerSystemLogWriter>());
+        Assert.Same(sink, scope.ServiceProvider.GetRequiredService<IWorkerSystemLogSink>());
     }
 
     [Fact]

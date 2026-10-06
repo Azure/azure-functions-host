@@ -22,6 +22,7 @@ public class WorkerProxyOptionsTests
         Assert.Equal(28080, options.HttpPort);
         Assert.Null(options.WorkerHttpEndpoint);
         Assert.Null(options.HttpProxyEndpoint);
+        Assert.Equal(WorkerSystemLogMode.Disabled, options.SystemLogMode);
     }
 
     [Fact]
@@ -34,7 +35,8 @@ public class WorkerProxyOptionsTests
             "--WorkerProxy:WorkerGrpcPort", "41002",
             "--WorkerProxy:HttpPort", "41003",
             "--WorkerProxy:WorkerHttpEndpoint", "http://localhost:41004",
-            "--WorkerProxy:HttpProxyEndpoint", "https://worker-pod.example:48801");
+            "--WorkerProxy:HttpProxyEndpoint", "https://worker-pod.example:48801",
+            "--WorkerProxy:SystemLogMode", nameof(WorkerSystemLogMode.Mirror));
 
         Assert.Equal("configured-worker-pod", options.PodName);
         Assert.Equal(41000, options.ManagementPort);
@@ -43,6 +45,7 @@ public class WorkerProxyOptionsTests
         Assert.Equal(41003, options.HttpPort);
         Assert.Equal("http://localhost:41004", options.WorkerHttpEndpoint);
         Assert.Equal("https://worker-pod.example:48801", options.HttpProxyEndpoint);
+        Assert.Equal(WorkerSystemLogMode.Mirror, options.SystemLogMode);
     }
 
     [Theory]
@@ -100,6 +103,12 @@ public class WorkerProxyOptionsTests
     public void Options_RejectNonNumericValues()
     {
         Assert.Throws<InvalidOperationException>(() => GetOptions("--WorkerProxy:WorkerGrpcPort", "not-a-number"));
+    }
+
+    [Fact]
+    public void Options_RejectUndefinedSystemLogMode()
+    {
+        Assert.Throws<OptionsValidationException>(() => GetOptions("--WorkerProxy:SystemLogMode", "99"));
     }
 
     [Fact]

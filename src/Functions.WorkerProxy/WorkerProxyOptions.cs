@@ -50,4 +50,9 @@ internal sealed class WorkerProxyOptions
     /// <see cref="HttpPort"/>, but its external port may differ because of platform port mapping.
     /// </summary>
     public string? HttpProxyEndpoint { get; set; }
+
+    /// <summary>
+    /// Gets or sets how Worker Proxy handles system logs received from a language worker.
+    /// </summary>
+    public WorkerSystemLogMode SystemLogMode { get; set; } = WorkerSystemLogMode.Disabled;
 }

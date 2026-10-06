@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Logging;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
@@ -12,6 +13,14 @@ namespace Azure.Functions.WorkerProxy.Tests;
 
 public partial class FunctionRpcRelayTests
 {
+    private sealed class NoOpWorkerSystemLogSink : IWorkerSystemLogSink
+    {
+        public ValueTask EmitAsync(RpcLog rpcLog, CancellationToken cancellationToken)
+        {
+            return ValueTask.CompletedTask;
+        }
+    }
+
     private sealed class GatedFaultingStreamReader : IAsyncStreamReader<StreamingMessage>
     {
         private readonly Task _releaseFault;

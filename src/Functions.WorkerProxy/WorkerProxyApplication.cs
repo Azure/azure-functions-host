@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
@@ -55,6 +56,9 @@ internal static class WorkerProxyApplication
             options.MaxReceiveMessageSize = int.MaxValue;
             options.MaxSendMessageSize = int.MaxValue;
         });
+        builder.Services.AddSingleton<WorkerSystemLogFormatter>();
+        builder.Services.AddSingleton<IWorkerSystemLogWriter, WorkerSystemLogWriter>();
+        builder.Services.AddSingleton<IWorkerSystemLogSink, WorkerSystemLogSink>();
         builder.Services.AddSingleton<FunctionRpcRelay>();
         builder.Services.AddHostedService(static services => services.GetRequiredService<FunctionRpcRelay>());
         ConfigureHttpForwarding(builder);
