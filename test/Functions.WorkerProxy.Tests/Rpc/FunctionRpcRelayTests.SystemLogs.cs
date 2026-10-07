@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Logging;
@@ -11,6 +12,7 @@ using Azure.Functions.WorkerProxy.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -32,7 +34,7 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(message, timeout.Token);
 
         Assert.Equal(message, await runtime.ReadAsync(timeout.Token));
-        sink.Verify(instance => instance.EmitAsync(It.IsAny<RpcLog>(), It.IsAny<CancellationToken>()), Times.Never());
+        sink.Verify(instance => instance.TryEmit(It.IsAny<RpcLog>()), Times.Never());
     }
 
     [Fact]
@@ -49,7 +51,7 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(message, timeout.Token);
 
         Assert.Equal(message, await runtime.ReadAsync(timeout.Token));
-        sink.Verify(instance => instance.EmitAsync(message.RpcLog, It.IsAny<CancellationToken>()), Times.Once());
+        sink.Verify(instance => instance.TryEmit(message.RpcLog), Times.Once());
     }
 
     [Fact]
@@ -68,27 +70,67 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(following, timeout.Token);
 
         Assert.Equal(following, await runtime.ReadAsync(timeout.Token));
-        sink.Verify(instance => instance.EmitAsync(consumed.RpcLog, It.IsAny<CancellationToken>()), Times.Once());
+        sink.Verify(instance => instance.TryEmit(consumed.RpcLog), Times.Once());
     }
 
     [Fact]
-    public async Task Relay_SystemLogEmissionFailureForwardsOriginalMessage()
+    public async Task Relay_SystemLogConsumeDoesNotBlockFollowingMessageWhenStdoutIsBlocked()
     {
+        BlockingTextWriter output = new();
+        WorkerProxyOptions writerOptions = new()
+        {
+            SystemLogQueueCapacity = 2,
+            SystemLogShutdownDrainTimeout = TimeSpan.FromSeconds(10)
+        };
+        using WorkerSystemLogWriter writer = new(
+            output,
+            writerOptions,
+            NullLogger<WorkerSystemLogWriter>.Instance);
+        Dictionary<string, string?> configuration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.SystemLogMode)}"] =
+                WorkerSystemLogMode.Consume.ToString()
+        };
+        await using WorkerProxyWebApplicationFactory factory = new(configuration, services =>
+            services.Replace(ServiceDescriptor.Singleton(writer)));
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await AttachWorkerAsync(runtime, worker, timeout.Token);
+        StreamingMessage consumed = CreateSystemLog("blocked-output");
+        StreamingMessage following = CreateMessage("following");
+
+        await worker.WriteAsync(consumed, timeout.Token);
+        await output.WriteStarted.Task.WaitAsync(timeout.Token);
+        await worker.WriteAsync(following, timeout.Token);
+
+        Assert.Equal(following, await runtime.ReadAsync(timeout.Token));
+        output.Release();
+    }
+
+    [Theory]
+    [InlineData((int)WorkerSystemLogEnqueueResult.QueueFull)]
+    [InlineData((int)WorkerSystemLogEnqueueResult.PipelineFaulted)]
+    [InlineData((int)WorkerSystemLogEnqueueResult.PipelineStopping)]
+    public async Task Relay_SystemLogEnqueueRejectionConsumesAndContinuesWithNextMessage(
+        int resultValue)
+    {
+        WorkerSystemLogEnqueueResult result = (WorkerSystemLogEnqueueResult)resultValue;
         Mock<IWorkerSystemLogSink> sink = CreateSystemLogSink();
-        sink.Setup(instance => instance.EmitAsync(It.IsAny<RpcLog>(), It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.FromException(new WorkerSystemLogEmissionException(
-                "Injected failure.",
-                new IOException("Injected output failure."))));
+        sink.Setup(instance => instance.TryEmit(It.IsAny<RpcLog>())).Returns(result);
         await using WorkerProxyWebApplicationFactory factory = CreateSystemLogFactory(WorkerSystemLogMode.Consume, sink);
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await AttachWorkerAsync(runtime, worker, timeout.Token);
-        StreamingMessage message = CreateSystemLog("failure");
+        StreamingMessage consumed = CreateSystemLog("rejected");
+        StreamingMessage following = CreateMessage("following");
 
-        await worker.WriteAsync(message, timeout.Token);
+        await worker.WriteAsync(consumed, timeout.Token);
+        await worker.WriteAsync(following, timeout.Token);
 
-        Assert.Equal(message, await runtime.ReadAsync(timeout.Token));
+        Assert.Equal(following, await runtime.ReadAsync(timeout.Token));
+        sink.Verify(instance => instance.TryEmit(consumed.RpcLog), Times.Once());
     }
 
     [Theory]
@@ -108,7 +150,7 @@ public partial class FunctionRpcRelayTests
         await worker.WriteAsync(message, timeout.Token);
 
         Assert.Equal(message, await runtime.ReadAsync(timeout.Token));
-        sink.Verify(instance => instance.EmitAsync(It.IsAny<RpcLog>(), It.IsAny<CancellationToken>()), Times.Never());
+        sink.Verify(instance => instance.TryEmit(It.IsAny<RpcLog>()), Times.Never());
     }
 
     [Fact]
@@ -125,14 +167,14 @@ public partial class FunctionRpcRelayTests
         await runtime.WriteAsync(message, timeout.Token);
 
         Assert.Equal(message, await worker.ReadAsync(timeout.Token));
-        sink.Verify(instance => instance.EmitAsync(It.IsAny<RpcLog>(), It.IsAny<CancellationToken>()), Times.Never());
+        sink.Verify(instance => instance.TryEmit(It.IsAny<RpcLog>()), Times.Never());
     }
 
     private static Mock<IWorkerSystemLogSink> CreateSystemLogSink()
     {
         Mock<IWorkerSystemLogSink> sink = new();
-        sink.Setup(instance => instance.EmitAsync(It.IsAny<RpcLog>(), It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
+        sink.Setup(instance => instance.TryEmit(It.IsAny<RpcLog>()))
+            .Returns(WorkerSystemLogEnqueueResult.Accepted);
 
         return sink;
     }
@@ -175,5 +217,25 @@ public partial class FunctionRpcRelayTests
                 Message = requestId
             }
         };
+    }
+
+    private sealed class BlockingTextWriter : TextWriter
+    {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override Encoding Encoding => Encoding.UTF8;
+
+        public TaskCompletionSource WriteStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void Release()
+        {
+            _release.TrySetResult();
+        }
+
+        public override async Task WriteLineAsync(string? value)
+        {
+            WriteStarted.TrySetResult();
+            await _release.Task;
+        }
     }
 }

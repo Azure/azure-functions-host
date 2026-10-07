@@ -289,30 +289,23 @@ internal sealed partial class FunctionRpcRelay
             if (message.ContentCase == StreamingMessage.ContentOneofCase.RpcLog
                 && message.RpcLog.LogCategory == RpcLog.Types.RpcLogCategory.System)
             {
-                return await ProcessSystemLogAsync(message, cancellationToken);
+                return ProcessSystemLog(message);
             }
 
             return (InboundMessageDisposition.Forward, message);
         }
 
-        private async ValueTask<(InboundMessageDisposition Disposition, StreamingMessage? Message)> ProcessSystemLogAsync(
-            StreamingMessage message,
-            CancellationToken cancellationToken)
+        private (InboundMessageDisposition Disposition, StreamingMessage? Message) ProcessSystemLog(StreamingMessage message)
         {
             if (systemLogMode == WorkerSystemLogMode.Disabled)
             {
                 return (InboundMessageDisposition.Forward, message);
             }
 
-            try
+            WorkerSystemLogEnqueueResult result = systemLogSink.TryEmit(message.RpcLog);
+            if (result != WorkerSystemLogEnqueueResult.Accepted)
             {
-                await systemLogSink.EmitAsync(message.RpcLog, cancellationToken);
-            }
-            catch (WorkerSystemLogEmissionException exception)
-            {
-                Log.WorkerSystemLogEmissionFailed(logger, exception, id);
-
-                return (InboundMessageDisposition.Forward, message);
+                Log.WorkerSystemLogEnqueueRejected(logger, id, result);
             }
 
             return systemLogMode switch
@@ -557,9 +550,12 @@ internal sealed partial class FunctionRpcRelay
             "so the Host will treat the worker's function group as unknown.")]
         public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
 
-        [LoggerMessage(4, LogLevel.Error,
-            "Worker system log emission failed for FunctionRpc relay session {SessionId}. " +
-            "The original RPC message will be forwarded to the Functions Host.")]
-        public static partial void WorkerSystemLogEmissionFailed(ILogger logger, Exception exception, long sessionId);
+        [LoggerMessage(4, LogLevel.Warning,
+            "Worker system log was not accepted by the output pipeline for FunctionRpc relay session {SessionId}. " +
+            "The RPC message was consumed with result {Result}.")]
+        public static partial void WorkerSystemLogEnqueueRejected(
+            ILogger logger,
+            long sessionId,
+            WorkerSystemLogEnqueueResult result);
     }
 }

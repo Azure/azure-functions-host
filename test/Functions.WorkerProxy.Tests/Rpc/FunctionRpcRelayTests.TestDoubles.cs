@@ -15,9 +15,9 @@ public partial class FunctionRpcRelayTests
 {
     private sealed class NoOpWorkerSystemLogSink : IWorkerSystemLogSink
     {
-        public ValueTask EmitAsync(RpcLog rpcLog, CancellationToken cancellationToken)
+        public WorkerSystemLogEnqueueResult TryEmit(RpcLog rpcLog)
         {
-            return ValueTask.CompletedTask;
+            return WorkerSystemLogEnqueueResult.Accepted;
         }
     }
 

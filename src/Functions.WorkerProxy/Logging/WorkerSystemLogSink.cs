@@ -2,14 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Azure.Functions.WorkerProxy.Logging;
 
 /// <summary>
-/// Coordinates worker system-log formatting and output.
+/// Coordinates worker system-log formatting and queue admission.
 /// </summary>
 internal sealed class WorkerSystemLogSink(
     TimeProvider timeProvider,
@@ -22,12 +20,12 @@ internal sealed class WorkerSystemLogSink(
     private readonly IWorkerSystemLogWriter _writer = writer ?? throw new ArgumentNullException(nameof(writer));
 
     /// <inheritdoc />
-    public ValueTask EmitAsync(RpcLog rpcLog, CancellationToken cancellationToken)
+    public WorkerSystemLogEnqueueResult TryEmit(RpcLog rpcLog)
     {
         ArgumentNullException.ThrowIfNull(rpcLog);
 
         string record = _formatter.Format(rpcLog, _timeProvider.GetUtcNow());
 
-        return _writer.WriteAsync(record, cancellationToken);
+        return _writer.TryEnqueue(record);
     }
 }
