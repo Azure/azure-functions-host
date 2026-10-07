@@ -30,6 +30,21 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         ValidatePort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), failures);
         ValidatePort(options.HttpPort, nameof(options.HttpPort), failures);
 
+        if (!Enum.IsDefined(options.SystemLogMode))
+        {
+            failures.Add($"{nameof(options.SystemLogMode)} specifies an unsupported value.");
+        }
+
+        if (options.SystemLogQueueCapacity <= 0)
+        {
+            failures.Add($"{nameof(options.SystemLogQueueCapacity)} must be greater than zero.");
+        }
+
+        if (options.SystemLogShutdownDrainTimeout <= TimeSpan.Zero)
+        {
+            failures.Add($"{nameof(options.SystemLogShutdownDrainTimeout)} must be greater than zero.");
+        }
+
         HashSet<int> configuredPorts = [];
         AddDistinctPort(options.ManagementPort, nameof(options.ManagementPort), configuredPorts, failures);
         AddDistinctPort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), configuredPorts, failures);

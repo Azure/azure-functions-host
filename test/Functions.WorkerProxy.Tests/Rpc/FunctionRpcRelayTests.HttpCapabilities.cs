@@ -116,7 +116,8 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_FinalizesCapabilitiesOnceOnAnOwnedCopy(string? firstHttpUri)
     {
         WorkerProxyOptions options = new() { HttpProxyEndpoint = "https://worker-pod.example:48801/" };
-        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(options), CreatePodStateManager());
+        await using FunctionRpcRelay relay =
+            CreateInProcessRelay(capabilityFinalizer: CreateCapabilityProvider(options), options: options);
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
         Channel<StreamingMessage> outbound = Channel.CreateUnbounded<StreamingMessage>();
@@ -218,7 +219,7 @@ public partial class FunctionRpcRelayTests
     {
         using BlockingLogger<WorkerHttpCapabilityProvider> logger = new();
         WorkerHttpCapabilityProvider provider = new(Options.Create(new WorkerProxyOptions()), logger);
-        await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, CreatePodStateManager());
+        await using FunctionRpcRelay relay = CreateInProcessRelay(capabilityFinalizer: provider);
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(

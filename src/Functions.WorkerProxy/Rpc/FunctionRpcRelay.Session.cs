@@ -8,6 +8,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -24,7 +25,9 @@ internal sealed partial class FunctionRpcRelay
         long id,
         ILogger logger,
         IWorkerCapabilityFinalizer capabilityFinalizer,
-        WorkerPodStateManager stateManager)
+        WorkerPodStateManager stateManager,
+        IWorkerSystemLogSink systemLogSink,
+        WorkerSystemLogMode systemLogMode)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
         private readonly Lock _stateLock = new();
@@ -41,6 +44,13 @@ internal sealed partial class FunctionRpcRelay
         private Uri? _workerHttpDestination;
         private bool _runtimeAttached;
         private bool _workerAttached;
+
+        private enum InboundMessageDisposition
+        {
+            Forward,
+            Consume,
+            Terminate
+        }
 
         /// <summary>
         /// Gets the terminal state recorded for this session, or <see langword="null"/> if the session has not terminated.
@@ -215,22 +225,37 @@ internal sealed partial class FunctionRpcRelay
             bool isFirstMessage = true;
             while (await requestStream.MoveNext(cancellationToken))
             {
-                StreamingMessage? message = ProcessInboundMessage(side, requestStream.Current, isFirstMessage);
-                if (message is null)
+                (InboundMessageDisposition disposition, StreamingMessage? message) =
+                    await ProcessInboundMessageAsync(side, requestStream.Current, isFirstMessage, cancellationToken);
+
+                switch (disposition)
                 {
-                    return;
+                    case InboundMessageDisposition.Forward:
+                        await destination.WriteAsync(
+                            message ?? throw new InvalidOperationException("A forwarded message cannot be null."),
+                            cancellationToken);
+                        break;
+                    case InboundMessageDisposition.Consume:
+                        break;
+                    case InboundMessageDisposition.Terminate:
+                        return;
+                    default:
+                        throw new InvalidOperationException($"Unexpected inbound message disposition '{disposition}'.");
                 }
 
                 isFirstMessage = false;
-                await destination.WriteAsync(message, cancellationToken);
             }
         }
 
-        private StreamingMessage? ProcessInboundMessage(FunctionRpcRelaySide side, StreamingMessage message, bool isFirstMessage)
+        private async ValueTask<(InboundMessageDisposition Disposition, StreamingMessage? Message)> ProcessInboundMessageAsync(
+            FunctionRpcRelaySide side,
+            StreamingMessage message,
+            bool isFirstMessage,
+            CancellationToken cancellationToken)
         {
             if (side != FunctionRpcRelaySide.Worker)
             {
-                return message;
+                return (InboundMessageDisposition.Forward, message);
             }
 
             if (isFirstMessage)
@@ -240,7 +265,7 @@ internal sealed partial class FunctionRpcRelay
                     // A delayed read from a terminated session must not restore readiness.
                     if (_terminalState is not null)
                     {
-                        return null;
+                        return (InboundMessageDisposition.Terminate, Message: null);
                     }
 
                     if (message.StartStream is not { } startStream || string.IsNullOrWhiteSpace(startStream.WorkerId))
@@ -252,9 +277,43 @@ internal sealed partial class FunctionRpcRelay
                 }
             }
 
-            return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
-                ? FinalizeCapabilities(message)
-                : message;
+            if (message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success })
+            {
+                StreamingMessage? finalizedMessage = FinalizeCapabilities(message);
+
+                return finalizedMessage is null
+                    ? (Disposition: InboundMessageDisposition.Terminate, Message: null)
+                    : (Disposition: InboundMessageDisposition.Forward, Message: finalizedMessage);
+            }
+
+            if (message.ContentCase == StreamingMessage.ContentOneofCase.RpcLog
+                && message.RpcLog.LogCategory == RpcLog.Types.RpcLogCategory.System)
+            {
+                return ProcessSystemLog(message);
+            }
+
+            return (InboundMessageDisposition.Forward, message);
+        }
+
+        private (InboundMessageDisposition Disposition, StreamingMessage? Message) ProcessSystemLog(StreamingMessage message)
+        {
+            if (systemLogMode == WorkerSystemLogMode.Disabled)
+            {
+                return (InboundMessageDisposition.Forward, message);
+            }
+
+            WorkerSystemLogEnqueueResult result = systemLogSink.TryEmit(message.RpcLog);
+            if (result != WorkerSystemLogEnqueueResult.Accepted)
+            {
+                Log.WorkerSystemLogEnqueueRejected(logger, id, result);
+            }
+
+            return systemLogMode switch
+            {
+                WorkerSystemLogMode.Mirror => (Disposition: InboundMessageDisposition.Forward, Message: message),
+                WorkerSystemLogMode.Consume => (Disposition: InboundMessageDisposition.Consume, Message: null),
+                _ => throw new InvalidOperationException($"Unexpected worker system log mode '{systemLogMode}'.")
+            };
         }
 
         private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
@@ -490,5 +549,13 @@ internal sealed partial class FunctionRpcRelay
             "assignment (assignment state: {AssignmentState}). The FunctionGroupName capability was omitted, " +
             "so the Host will treat the worker's function group as unknown.")]
         public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
+
+        [LoggerMessage(4, LogLevel.Warning,
+            "Worker system log was not accepted by the output pipeline for FunctionRpc relay session {SessionId}. " +
+            "The RPC message was consumed with result {Result}.")]
+        public static partial void WorkerSystemLogEnqueueRejected(
+            ILogger logger,
+            long sessionId,
+            WorkerSystemLogEnqueueResult result);
     }
 }

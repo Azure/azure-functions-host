@@ -22,6 +22,9 @@ public class WorkerProxyOptionsTests
         Assert.Equal(28080, options.HttpPort);
         Assert.Null(options.WorkerHttpEndpoint);
         Assert.Null(options.HttpProxyEndpoint);
+        Assert.Equal(WorkerSystemLogMode.Disabled, options.SystemLogMode);
+        Assert.Equal(16_000, options.SystemLogQueueCapacity);
+        Assert.Equal(TimeSpan.FromSeconds(5), options.SystemLogShutdownDrainTimeout);
     }
 
     [Fact]
@@ -34,7 +37,10 @@ public class WorkerProxyOptionsTests
             "--WorkerProxy:WorkerGrpcPort", "41002",
             "--WorkerProxy:HttpPort", "41003",
             "--WorkerProxy:WorkerHttpEndpoint", "http://localhost:41004",
-            "--WorkerProxy:HttpProxyEndpoint", "https://worker-pod.example:48801");
+            "--WorkerProxy:HttpProxyEndpoint", "https://worker-pod.example:48801",
+            "--WorkerProxy:SystemLogMode", nameof(WorkerSystemLogMode.Mirror),
+            "--WorkerProxy:SystemLogQueueCapacity", "32000",
+            "--WorkerProxy:SystemLogShutdownDrainTimeout", "00:00:10");
 
         Assert.Equal("configured-worker-pod", options.PodName);
         Assert.Equal(41000, options.ManagementPort);
@@ -43,6 +49,9 @@ public class WorkerProxyOptionsTests
         Assert.Equal(41003, options.HttpPort);
         Assert.Equal("http://localhost:41004", options.WorkerHttpEndpoint);
         Assert.Equal("https://worker-pod.example:48801", options.HttpProxyEndpoint);
+        Assert.Equal(WorkerSystemLogMode.Mirror, options.SystemLogMode);
+        Assert.Equal(32_000, options.SystemLogQueueCapacity);
+        Assert.Equal(TimeSpan.FromSeconds(10), options.SystemLogShutdownDrainTimeout);
     }
 
     [Theory]
@@ -100,6 +109,30 @@ public class WorkerProxyOptionsTests
     public void Options_RejectNonNumericValues()
     {
         Assert.Throws<InvalidOperationException>(() => GetOptions("--WorkerProxy:WorkerGrpcPort", "not-a-number"));
+    }
+
+    [Fact]
+    public void Options_RejectUndefinedSystemLogMode()
+    {
+        Assert.Throws<OptionsValidationException>(() => GetOptions("--WorkerProxy:SystemLogMode", "99"));
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    public void Options_RejectInvalidSystemLogQueueCapacity(string capacity)
+    {
+        Assert.Throws<OptionsValidationException>(
+            () => GetOptions("--WorkerProxy:SystemLogQueueCapacity", capacity));
+    }
+
+    [Theory]
+    [InlineData("00:00:00")]
+    [InlineData("-00:00:01")]
+    public void Options_RejectInvalidSystemLogShutdownDrainTimeout(string timeout)
+    {
+        Assert.Throws<OptionsValidationException>(
+            () => GetOptions("--WorkerProxy:SystemLogShutdownDrainTimeout", timeout));
     }
 
     [Fact]
