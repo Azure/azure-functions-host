@@ -14,11 +14,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public sealed class DefaultKeyValueConverterFactory : IKeyValueConverterFactory
     {
         private readonly bool _shouldEncrypt;
+
+        /// <summary>
+        /// Indicates whether the repository owner validated shared Azure key material.
+        /// </summary>
+        private readonly bool _useAzureKeyRepository;
         private static readonly PlaintextKeyValueConverter PlaintextValueConverter = new PlaintextKeyValueConverter(FileAccess.ReadWrite);
 
+        /// <summary>
+        /// Initializes a factory using the existing hosting-environment detection.
+        /// </summary>
+        /// <param name="repositorySupportsEncryption">Whether the repository provides its own encryption.</param>
         public DefaultKeyValueConverterFactory(bool repositorySupportsEncryption)
+            : this(repositorySupportsEncryption, useAzureKeyRepository: false)
         {
-            _shouldEncrypt = !repositorySupportsEncryption && IsEncryptionSupported();
+        }
+
+        /// <summary>
+        /// Initializes a factory for a repository with validated shared Azure key material.
+        /// </summary>
+        /// <param name="repositorySupportsEncryption">Whether the repository provides its own encryption.</param>
+        /// <param name="useAzureKeyRepository">Whether to explicitly activate the Azure key repository.</param>
+        internal DefaultKeyValueConverterFactory(bool repositorySupportsEncryption, bool useAzureKeyRepository)
+        {
+            _useAzureKeyRepository = useAzureKeyRepository;
+            _shouldEncrypt = !repositorySupportsEncryption && (useAzureKeyRepository || IsEncryptionSupported());
         }
 
         private static bool IsEncryptionSupported()
@@ -32,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (key.IsEncrypted)
             {
-                return new DataProtectionKeyValueConverter(FileAccess.Read);
+                return new DataProtectionKeyValueConverter(FileAccess.Read, useAzureKeyRepository: _useAzureKeyRepository);
             }
 
             return PlaintextValueConverter;
@@ -42,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (_shouldEncrypt)
             {
-                return new DataProtectionKeyValueConverter(FileAccess.Write);
+                return new DataProtectionKeyValueConverter(FileAccess.Write, useAzureKeyRepository: _useAzureKeyRepository);
             }
 
             return PlaintextValueConverter;

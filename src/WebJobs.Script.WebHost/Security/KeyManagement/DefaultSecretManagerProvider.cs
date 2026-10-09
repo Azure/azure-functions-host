@@ -7,8 +7,10 @@ using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -24,9 +26,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly HostNameProvider _hostNameProvider;
         private readonly StartupContextProvider _startupContextProvider;
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
+
+        /// <summary>
+        /// Provides the live process-environment encryption key configuration.
+        /// </summary>
+        private readonly IConfiguration _configuration;
         private Lazy<ISecretManager> _secretManagerLazy;
         private Lazy<bool> _secretsEnabledLazy;
 
+        /// <summary>
+        /// Initializes the provider using environment-backed key configuration.
+        /// </summary>
+        /// <param name="options">The host options.</param>
+        /// <param name="hostIdProvider">The host identifier provider.</param>
+        /// <param name="environment">The hosting environment.</param>
+        /// <param name="loggerFactory">The logger factory.</param>
+        /// <param name="metricsLogger">The metrics logger.</param>
+        /// <param name="hostNameProvider">The host name provider.</param>
+        /// <param name="startupContextProvider">The startup context provider.</param>
+        /// <param name="azureBlobStorageProvider">The blob storage provider.</param>
         public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider, IEnvironment environment,
             ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider,
             IAzureBlobStorageProvider azureBlobStorageProvider)
@@ -38,6 +56,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _startupContextProvider = startupContextProvider ?? throw new ArgumentNullException(nameof(startupContextProvider));
+            _configuration = new ConfigurationBuilder()
+                .Add(new ScriptEnvironmentVariablesConfigurationSource())
+                .Build();
 
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory.CreateLogger<DefaultSecretManagerProvider>();
@@ -74,7 +95,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogDebug(new EventId(1, "ResetSecretManager"), "Reset SecretManager.");
         }
 
-        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider, _startupContextProvider);
+        /// <summary>
+        /// Creates a secret manager with explicit key-repository activation only for managed Logic App files.
+        /// </summary>
+        private ISecretManager Create()
+        {
+            var repository = CreateSecretsRepository();
+            var useAzureKeyRepository = repository is FileSystemSecretsRepository &&
+                _environment.IsManagedAppEnvironment() && _environment.IsLogicApp();
+            var converterFactory = new DefaultKeyValueConverterFactory(
+                repositorySupportsEncryption: repository.IsEncryptionSupported,
+                useAzureKeyRepository: useAzureKeyRepository);
+            return new SecretManager(repository, converterFactory, _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider, _startupContextProvider);
+        }
 
         internal ISecretsRepository CreateSecretsRepository()
         {
@@ -84,6 +117,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (repositoryType == typeof(FileSystemSecretsRepository))
                 {
+                    if (_environment.IsManagedAppEnvironment() && _environment.IsLogicApp())
+                    {
+                        ValidateManagedFileEncryptionKey();
+                    }
+
                     repository = new FileSystemSecretsRepository(_options.CurrentValue.SecretsPath, _loggerFactory.CreateLogger<FileSystemSecretsRepository>(), _environment);
                 }
                 else if (repositoryType == typeof(KeyVaultSecretsRepository))
@@ -138,6 +176,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogInformation(new EventId(3, "CreatedSecretRespository"), "Resolved secret storage provider {provider}", repository.Name);
 
             return repository;
+        }
+
+        /// <summary>
+        /// Rejects unusable encryption material before managed Logic App file secrets can be persisted.
+        /// </summary>
+        private void ValidateManagedFileEncryptionKey()
+        {
+            var encryptionKey = _configuration[DataProtectionConstants.AzureWebsiteLocalEncryptionKey];
+            if (string.IsNullOrEmpty(encryptionKey) || encryptionKey.Length != 64)
+            {
+                throw new InvalidOperationException("Managed file secret storage requires a 256-bit hexadecimal 'AzureWebEncryptionKey'.");
+            }
+
+            foreach (var keyCharacter in encryptionKey)
+            {
+                if (!Uri.IsHexDigit(keyCharacter))
+                {
+                    throw new InvalidOperationException("Managed file secret storage requires a 256-bit hexadecimal 'AzureWebEncryptionKey'.");
+                }
+            }
         }
 
         /// <summary>

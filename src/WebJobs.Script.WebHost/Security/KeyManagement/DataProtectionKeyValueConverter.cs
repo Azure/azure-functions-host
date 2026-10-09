@@ -15,10 +15,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IDataProtector _dataProtector;
 
+        /// <summary>
+        /// Initializes a converter using the existing hosting-environment detection.
+        /// </summary>
+        /// <param name="access">The permitted key access.</param>
         public DataProtectionKeyValueConverter(FileAccess access)
+            : this(access, useAzureKeyRepository: false)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a converter with optional explicit Azure key-repository activation.
+        /// </summary>
+        /// <param name="access">The permitted key access.</param>
+        /// <param name="useAzureKeyRepository">Whether the caller validated shared Azure key material.</param>
+        internal DataProtectionKeyValueConverter(FileAccess access, bool useAzureKeyRepository)
             : base(access)
         {
-            var provider = Web.DataProtection.DataProtectionProvider.CreateAzureDataProtector();
+            var provider = Web.DataProtection.DataProtectionProvider.CreateAzureDataProtector(
+                configurationHandler: null,
+                skipEnvironmentValidation: useAzureKeyRepository);
             _dataProtector = provider.CreateProtector("function-secrets");
         }
 
