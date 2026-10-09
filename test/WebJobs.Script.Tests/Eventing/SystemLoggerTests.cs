@@ -315,8 +315,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void Log_RpcException()
         {
+            const string emailAddress = "ol-bi@blackbirdco.com.br";
             string secretString = "{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }";
-            var innerException = new RpcException("result", secretString, "stack", "type");
+            string stackTrace = $"Traceback: ms.get_email_id('{emailAddress}')";
+            var innerException = new RpcException("result", secretString, stackTrace, "type");
             var functionInvocationException = new FunctionInvocationException("Invocation failed", Guid.Empty, "Functions.TestFunction", innerException);
             var formattedMessage = "Test log";
             var hash = EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes(innerException.RemoteMessage));
@@ -325,8 +327,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionInvocationId = string.Empty;
             var activityId = string.Empty;
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, It.Is<string>(s => s.Contains(hash)),
-                formattedMessage, innerExceptionType, It.Is<string>(s => s.Contains(hash)), functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category,
+                It.Is<string>(s => s.Contains(hash, StringComparison.Ordinal)
+                    && s.Contains(Sanitizer.EmailReplacement, StringComparison.Ordinal)
+                    && !s.Contains(emailAddress, StringComparison.Ordinal)),
+                formattedMessage, innerExceptionType,
+                It.Is<string>(s => s.Contains(hash, StringComparison.Ordinal)
+                    && s.Contains(Sanitizer.EmailReplacement, StringComparison.Ordinal)
+                    && !s.Contains(emailAddress, StringComparison.Ordinal)),
+                functionInvocationId, _hostInstanceId, activityId, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
 
             _logger.LogError(functionInvocationException, formattedMessage);
 

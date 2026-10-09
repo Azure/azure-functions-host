@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Scale;
@@ -115,6 +116,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var result = (OkObjectResult)(await _hostController.GetHostStatus(_mockScriptHostManager.Object, mockHostIdProvider.Object, mockserviceProvider.Object));
             var status = (HostStatus)result.Value;
             Assert.Equal(status.FunctionAppContentEditingState, isFunctionAppContentEditable);
+        }
+
+        [Fact]
+        public async Task GetHostStatus_SanitizesLastError()
+        {
+            const string secret = "test-storage-account-key";
+            var lastError = new InvalidOperationException("Host startup failed.", new InvalidOperationException($"AccountKey={secret}"));
+            _mockScriptHostManager.SetupGet(p => p.LastError).Returns(lastError);
+
+            var mockHostIdProvider = new Mock<IHostIdProvider>(MockBehavior.Strict);
+            mockHostIdProvider.Setup(p => p.GetHostIdAsync(CancellationToken.None)).ReturnsAsync("test123");
+
+            var mockServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
+            mockServiceProvider.Setup(p => p.GetService(typeof(IExtensionBundleManager))).Returns(null);
+
+            var result = Assert.IsType<OkObjectResult>(
+                await _hostController.GetHostStatus(_mockScriptHostManager.Object, mockHostIdProvider.Object, mockServiceProvider.Object));
+            var status = Assert.IsType<HostStatus>(result.Value);
+            string error = Assert.Single(status.Errors);
+
+            Assert.Contains(Sanitizer.SecretReplacement, error);
+            Assert.DoesNotContain(secret, error);
         }
 
         [Theory]
