@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly object _lock = new();
         private readonly IFileSystem _fileSystem;
         private readonly LegionMetricsFileManager _metricsFileManager;
-        private readonly Dictionary<string, bool> _completedInvocationResults = [];
+        private readonly Dictionary<string, bool?> _activeInvocationResults = [];
 
         private DateTime _currentActivityIntervalStart;
         private DateTime _activityIntervalHighWatermark = DateTime.MinValue;
@@ -63,6 +63,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         internal long FunctionExecutionTimeMS { get; set; }
 
         internal long ActiveFunctionCount { get; set; }
+
+        internal int TrackedFunctionInvocationCount
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _activeInvocationResults.Count;
+                }
+            }
+        }
 
         internal bool IsAlwaysReady { get; set; }
 
@@ -192,6 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 }
 
                 ActiveFunctionCount++;
+                _activeInvocationResults[invocationId] = null;
             }
         }
 
@@ -209,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             lock (_lock)
             {
-                bool completedSuccessfully = _completedInvocationResults.Remove(invocationId, out bool success) && success;
+                bool completedSuccessfully = _activeInvocationResults.Remove(invocationId, out bool? success) && success is true;
 
                 if (ActiveFunctionCount > 0)
                 {
@@ -248,7 +260,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             lock (_lock)
             {
-                _completedInvocationResults[invocationId] = success;
+                if (_activeInvocationResults.ContainsKey(invocationId))
+                {
+                    _activeInvocationResults[invocationId] = success;
+                }
             }
         }
 

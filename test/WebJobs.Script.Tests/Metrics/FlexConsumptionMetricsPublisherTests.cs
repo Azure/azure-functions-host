@@ -264,6 +264,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         }
 
         [Fact]
+        public void AddFunctionExecutionActivity_LateFinishedEventIsIgnored()
+        {
+            using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+
+            publisher.OnFunctionStarted("foo", "1");
+            CompleteFunction(publisher, "foo", "1");
+
+            Assert.Equal(0, publisher.TrackedFunctionInvocationCount);
+
+            AddFunctionExecutionActivity(publisher, "foo", "1", ExecutionStage.Finished, success: true);
+
+            Assert.Equal(0, publisher.TrackedFunctionInvocationCount);
+            Assert.Equal(1, publisher.FunctionExecutionCount);
+            Assert.Equal(1, publisher.FunctionExecutionSuccessCount);
+        }
+
+        [Fact]
         public void FunctionsStartStop_MinimumActivityIntervals_Scenario1()
         {
             using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
