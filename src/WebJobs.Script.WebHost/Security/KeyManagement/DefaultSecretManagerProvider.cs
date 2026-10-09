@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
 
         /// <summary>
-        /// Provides the managed file-secret encryption key configuration.
+        /// Provides the live process-environment encryption key configuration.
         /// </summary>
         private readonly IConfiguration _configuration;
         private Lazy<ISecretManager> _secretManagerLazy;
@@ -48,26 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider, IEnvironment environment,
             ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider,
             IAzureBlobStorageProvider azureBlobStorageProvider)
-            : this(options, hostIdProvider, environment, loggerFactory, metricsLogger, hostNameProvider, startupContextProvider,
-                  azureBlobStorageProvider, new ConfigurationBuilder().AddEnvironmentVariables().Build())
-        {
-        }
-
-        /// <summary>
-        /// Initializes the provider with configuration for managed Logic App file encryption.
-        /// </summary>
-        /// <param name="options">The host options.</param>
-        /// <param name="hostIdProvider">The host identifier provider.</param>
-        /// <param name="environment">The hosting environment.</param>
-        /// <param name="loggerFactory">The logger factory.</param>
-        /// <param name="metricsLogger">The metrics logger.</param>
-        /// <param name="hostNameProvider">The host name provider.</param>
-        /// <param name="startupContextProvider">The startup context provider.</param>
-        /// <param name="azureBlobStorageProvider">The blob storage provider.</param>
-        /// <param name="configuration">The host configuration.</param>
-        public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider, IEnvironment environment,
-            ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider,
-            IAzureBlobStorageProvider azureBlobStorageProvider, IConfiguration configuration)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -76,7 +56,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _startupContextProvider = startupContextProvider ?? throw new ArgumentNullException(nameof(startupContextProvider));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _configuration = new ConfigurationBuilder()
+                .Add(new ScriptEnvironmentVariablesConfigurationSource())
+                .Build();
 
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory.CreateLogger<DefaultSecretManagerProvider>();

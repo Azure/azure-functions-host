@@ -13,6 +13,8 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -63,17 +65,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         /// <summary>
-        /// Managed Logic App file secrets use the shared Azure key without changing hosting identity.
+        /// Managed Logic App file secrets use the live environment key instead of injected configuration.
         /// </summary>
         [Fact]
         public async Task ManagedLogicAppFiles_WithoutContainerName_UsesAzureKeyRepository()
         {
-            using var variables = new TestScopedEnvironmentVariable(CreateManagedFileEnvironment(Convert.ToHexString(RandomNumberGenerator.GetBytes(32))));
+            using var variables = new TestScopedEnvironmentVariable(CreateManagedFileEnvironment(encryptionKey: null));
+            using var services = new ServiceCollection()
+                .AddSingleton<IConfiguration>(new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        [AzureWebsiteLocalEncryptionKey] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32))
+                    })
+                    .Build())
+                .BuildServiceProvider();
             var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
             try
             {
+                var provider = CreateFileSecretManagerProvider(directory, services);
+                Assert.Throws<InvalidOperationException>(() => provider.CreateSecretsRepository());
+                Assert.False(File.Exists(Path.Combine(directory, "host.json")));
+
+                _settingsManager.SetSetting(AzureWebsiteLocalEncryptionKey, Convert.ToHexString(RandomNumberGenerator.GetBytes(32)));
+
                 string originalMaster;
-                using (var manager = CreateFileSecretManager(directory))
+                using (var manager = (SecretManager)provider.Current)
                 {
                     originalMaster = (await manager.GetHostSecretsAsync()).MasterKey;
                 }
@@ -84,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var payload = WebEncoders.Base64UrlDecode(master.GetProperty("value").GetString());
                 Assert.Equal(Guid.Empty, new Guid(payload.AsSpan(4, 16)));
 
-                using var replacement = CreateFileSecretManager(directory);
+                using var replacement = (SecretManager)CreateFileSecretManagerProvider(directory, services).Current;
                 Assert.Equal(originalMaster, (await replacement.GetHostSecretsAsync()).MasterKey);
                 Assert.Empty(Directory.GetFiles(directory, "*.snapshot.*.json"));
             }
@@ -120,7 +136,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// Creates the real provider while isolating external storage and metrics dependencies.
         /// </summary>
         /// <param name="directory">The temporary secrets directory.</param>
-        private static SecretManager CreateFileSecretManager(string directory)
+        /// <param name="services">The services available for constructor injection.</param>
+        private static DefaultSecretManagerProvider CreateFileSecretManagerProvider(string directory, IServiceProvider services)
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType, "Files");
@@ -130,7 +147,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "managed-files");
             var options = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
             options.SetupGet(monitor => monitor.CurrentValue).Returns(new ScriptApplicationHostOptions { SecretsPath = directory });
-            var provider = new DefaultSecretManagerProvider(
+            return ActivatorUtilities.CreateInstance<DefaultSecretManagerProvider>(
+                services,
                 options.Object,
                 new Mock<IHostIdProvider>().Object,
                 environment,
@@ -139,7 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 new HostNameProvider(environment),
                 new StartupContextProvider(environment, NullLogger<StartupContextProvider>.Instance),
                 new Mock<IAzureBlobStorageProvider>(MockBehavior.Strict).Object);
-            return (SecretManager)provider.Current;
         }
     }
 }
