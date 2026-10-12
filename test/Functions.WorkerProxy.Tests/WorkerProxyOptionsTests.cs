@@ -28,6 +28,7 @@ public class WorkerProxyOptionsTests
     public void Options_BindFromStandardConfiguration()
     {
         WorkerProxyOptions options = GetOptions(
+            "--WorkerProxy:PodName", "configured-worker-pod",
             "--WorkerProxy:ManagementPort", "41000",
             "--WorkerProxy:RuntimeGrpcPort", "41001",
             "--WorkerProxy:WorkerGrpcPort", "41002",
@@ -35,6 +36,7 @@ public class WorkerProxyOptionsTests
             "--WorkerProxy:WorkerHttpEndpoint", "http://localhost:41004",
             "--WorkerProxy:HttpProxyEndpoint", "https://worker-pod.example:48801");
 
+        Assert.Equal("configured-worker-pod", options.PodName);
         Assert.Equal(41000, options.ManagementPort);
         Assert.Equal(41001, options.RuntimeGrpcPort);
         Assert.Equal(41002, options.WorkerGrpcPort);
@@ -125,7 +127,7 @@ public class WorkerProxyOptionsTests
 
     private static WorkerProxyOptions GetOptions(params string[] args)
     {
-        using WebApplication app = WorkerProxyApplication.Build(args);
+        using WebApplication app = WorkerProxyApplication.Build(["--WorkerProxy:PodName", "test-worker-pod", .. args]);
 
         return app.Services.GetRequiredService<IOptions<WorkerProxyOptions>>().Value;
     }

@@ -1,0 +1,32 @@
+### Manual requests for the ComputeSeparation Aspire harness.
+### The fake platform sends the platform requests: it assigns the pod on the WorkerProxy, assigns the placeholder Host
+### to the app, and links the worker to the Host.
+### Its /simulate routes are harness-only; the WorkerProxy and Host routes they call are the real contracts.
+###
+### Run AppHost with the `project-placeholder-manual` launch profile (F5, or the command below). It pins the ports used
+### here and turns off automatic assign and link so you can send each step yourself, in order.
+###
+###   dotnet run --project tools\ComputeSeparation\AppHost\ComputeSeparation.AppHost.csproj --launch-profile project-placeholder-manual
+
+@platform = http://localhost:7060
+@host = http://127.0.0.1:7071
+@workerProxy = http://localhost:7081
+
+### Expected flow, in order.
+
+### 1. The platform assigns the pod on the WorkerProxy. Expect 201, or 204 if repeated.
+### 503 WorkerNotReady means the sample worker has not connected yet; retry.
+POST {{platform}}/simulate/worker/assign
+
+### Optional: the WorkerProxy pod state is now ReadyForRequest.
+GET {{workerProxy}}/admin/worker/state
+
+### 2. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if
+### repeated. The Host finishes specializing only after step 3 links the worker.
+POST {{platform}}/simulate/host/assign
+
+### 3. The platform links the worker to the Host. Expect 201, or 200 for a matching retry.
+POST {{platform}}/simulate/worker/link
+
+### 4. A client invokes the function through Host -> WorkerProxy -> worker.
+GET {{host}}/api/hello

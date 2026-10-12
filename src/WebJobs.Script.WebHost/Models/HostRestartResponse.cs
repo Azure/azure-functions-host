@@ -19,8 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public string LogPath { get; set; }
 
-        public string TestDataPath { get; set; }
-
         public bool HasParentScope { get; set; }
 
         public bool IsStandbyConfiguration { get; set; }

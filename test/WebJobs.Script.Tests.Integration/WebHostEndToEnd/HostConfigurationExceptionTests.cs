@@ -39,8 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             await File.WriteAllTextAsync(hostJsonPath, hostConfig.ToString());
 
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
-            string testDataPath = Path.Combine(Path.GetTempPath(), @"FunctionsData");
-            _host = new TestFunctionHost(_hostPath, logPath, testDataPath, configureWebHostServices: _ => { });
+            _host = new TestFunctionHost(_hostPath, logPath, configureWebHostServices: _ => { });
 
             // Ping the status endpoint to ensure we see the exception
             HostStatus status = await _host.GetHostStatusAsync();

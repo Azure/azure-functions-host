@@ -34,9 +34,9 @@ parameters:
   type: boolean
   default: false
 - name: netTraceCollectArguments
-  displayName: DotNet trace profile collection arguments (Valid only if "Collect DotNet trace" is true)). Example `-n Microsoft.Azure.WebJobs.Script.WebHost --profile cpu-sampling --duration 00:00:00:10`
+  displayName: DotNet trace arguments (include --duration dd:hh:mm:ss; the pipeline selects the process and output)
   type: string
-  default: '-n Microsoft.Azure.WebJobs.Script.WebHost --providers Microsoft-Diagnostics-DiagnosticSource:0xfffffffffffff7ff:5,Microsoft-Windows-DotNETRuntime:0xC0001801F9:5,FunctionsSystemLogsEventSource:0xFFFFFFFFFFFFFFFF:5 --stopping-event-provider-name Microsoft-Diagnostics-DiagnosticSource --stopping-event-event-name Activity1/Stop'
+  default: '--providers Microsoft-Diagnostics-DiagnosticSource:0xfffffffffffff7ff:5,Microsoft-Windows-DotNETRuntime:0xC0001801F9:5,FunctionsSystemLogsEventSource:0xFFFFFFFFFFFFFFFF:5 --duration 00:00:01:00'
 - name: createJitTrace
   displayName: Create Jit trace (Ensure "Collect DotNet trace" is set to true)
   type: boolean

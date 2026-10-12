@@ -140,7 +140,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 script_root_path_href = "",
                 script_href = "",
                 config_href = "",
-                test_data_href = "",
                 secrets_file_href = "",
                 href = "https://localhost/admin/functions/HttpTrigger",
                 invoke_url_template = "https://localhost/api/httptrigger",
@@ -161,7 +160,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         }
                     }
                 },
-                test_data = "hello",
                 isDisabled = false,
                 isDirect = false,
                 isProxy = false

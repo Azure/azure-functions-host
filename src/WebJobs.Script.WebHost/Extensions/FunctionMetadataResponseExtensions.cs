@@ -14,8 +14,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
     {
         public static string GetFunctionPath(this FunctionMetadataResponse function, ScriptJobHostOptions config)
             => VirtualFileSystem.VfsUriToFilePath(function.ScriptRootPathHref, config);
-
-        public static string GetFunctionTestDataFilePath(this FunctionMetadataResponse function, ScriptJobHostOptions config)
-            => VirtualFileSystem.VfsUriToFilePath(function.TestDataHref, config);
     }
 }

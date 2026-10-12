@@ -20,8 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public string LogPath { get; set; }
 
-        public string TestDataPath { get; set; }
-
         /// <summary>
         /// Gets or sets a value indicating whether the ScriptHost is running inside of a WebHost. When true,
         /// a set of common services will not be registered as they are supplied from the parent WebHost.

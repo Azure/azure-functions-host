@@ -4,8 +4,6 @@
 - My change description (#PR)
 -->
 
-- Fixed Linux language worker SIGTERM exits being reported as worker failures. (#11944)
-- Prevent extension system keys from being regenerated and overwritten when the startup context cache is stale, which previously could invalidate already-published extension webhook URLs (e.g. Event Grid, Durable Task). (#11936)
-- Ensure hosted services are stopped when application shutdown cancels startup, preventing IIS/ANCM from remaining stuck serving HTTP 500.30 (#11953)
-- Preserve W3C trace context for session-enabled Service Bus triggers when OpenTelemetry is enabled. (#11946)
 - `Executing HTTP request` no longer logs the user agent or request URI, `Executed HTTP request` now logs JSON-escaped matched function and MVC route templates instead, malformed Unicode and non-fatal request tracing failures do not interrupt requests, `Sanitizer` redacts email addresses, and trace context attribute values are no longer logged. (#12039)
+- Add usage telemetry for worker custom metrics and Azure Monitor diagnostic logging (#12034)
+- Suppress Storage queue and blob listener polling noise from telemetry by event name, preserving listener lifecycle and diagnostic logs (#11947)

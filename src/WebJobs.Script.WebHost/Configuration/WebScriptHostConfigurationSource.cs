@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         {
             private const string KeyDelimiter = ":";
             private const string LogPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptApplicationHostOptions.LogPath);
-            private const string TestDataPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptApplicationHostOptions.TestDataPath);
             private const string SecretsPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptApplicationHostOptions.SecretsPath);
             private const string SelfHostProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptApplicationHostOptions.IsSelfHost);
             private const string WebHostScriptPathProperty = ConfigurationSectionNames.WebHost + KeyDelimiter + nameof(ScriptApplicationHostOptions.ScriptPath);
@@ -50,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                     Data[WebHostScriptPathProperty] = Path.Combine(home, "site", "wwwroot");
                     Data[LogPathProperty] = Path.Combine(home, "LogFiles", "Application", "Functions");
                     Data[SecretsPathProperty] = Path.Combine(home, "data", "Functions", "secrets");
-                    Data[TestDataPathProperty] = Path.Combine(home, "data", "Functions", "sampledata");
                 }
                 else
                 {
@@ -58,7 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                     Data[WebHostScriptPathProperty] = GetOrDefault(EnvironmentSettingNames.AzureWebJobsScriptRoot, Environment.CurrentDirectory);
                     Data[LogPathProperty] = GetOrDefault(EnvironmentSettingNames.FunctionsLogPath, Path.Combine(Path.GetTempPath(), "Functions"));
                     Data[SecretsPathProperty] = GetOrDefault(EnvironmentSettingNames.FunctionsSecretsPath, Path.Combine(AppContext.BaseDirectory, "Secrets"));
-                    Data[TestDataPathProperty] = GetOrDefault(EnvironmentSettingNames.FunctionsTestDataPath, Path.Combine(Path.GetTempPath(), "FunctionsData"));
                 }
 
                 string GetOrDefault(string variableName, string @default)

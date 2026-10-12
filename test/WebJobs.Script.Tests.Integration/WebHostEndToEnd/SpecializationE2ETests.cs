@@ -2103,9 +2103,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             public InfiniteTimerStandbyManager(IScriptHostManager scriptHostManager, IWebHostWorkerManager rpcWorkerChannelManager,
                 IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment,
-                IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IHostApplicationLifetime applicationLifetime)
+                IOptionsMonitor<ScriptApplicationHostOptions> options, IOptionsMonitor<StandbyOptions> standbyOptions,
+                ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IHostApplicationLifetime applicationLifetime)
                 : base(scriptHostManager, rpcWorkerChannelManager, configuration, webHostEnvironment, environment, options,
-                      logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(-1), new TestMetricsLogger())
+                      standbyOptions, logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(-1), new TestMetricsLogger())
             {
             }
         }

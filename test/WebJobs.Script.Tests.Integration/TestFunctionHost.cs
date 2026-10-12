@@ -73,12 +73,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Action<IServiceCollection> configureScriptHostServices = null,
             Action<IConfigurationBuilder> configureWebHostAppConfiguration = null,
             bool allowOffline = false)
-            : this(scriptPath, Path.Combine(Path.GetTempPath(), "Functions"), Path.Combine(Path.GetTempPath(), @"FunctionsData"), configureWebHostServices, configureScriptHostWebJobsBuilder,
+            : this(scriptPath, Path.Combine(Path.GetTempPath(), "Functions"), configureWebHostServices, configureScriptHostWebJobsBuilder,
                 configureScriptHostAppConfiguration, configureScriptHostLogging, configureScriptHostServices, configureWebHostAppConfiguration, allowOffline: allowOffline)
         {
         }
 
-        public TestFunctionHost(string scriptPath, string logPath, string testDataPath = "",
+        public TestFunctionHost(string scriptPath, string logPath,
             Action<IServiceCollection> configureWebHostServices = null,
             Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
             Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
@@ -100,7 +100,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 IsSelfHost = true,
                 ScriptPath = _appRoot,
-                TestDataPath = testDataPath,
                 LogPath = logPath,
                 SecretsPath = Environment.CurrentDirectory, // not used
                 HasParentScope = true

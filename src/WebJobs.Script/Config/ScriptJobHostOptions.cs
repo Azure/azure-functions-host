@@ -74,11 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public string RootLogPath { get; set; }
 
         /// <summary>
-        /// Gets or sets the root path for sample test data.
-        /// </summary>
-        public string TestDataPath { get; set; }
-
-        /// <summary>
         /// Gets or sets a value indicating whether the <see cref="ScriptHost"/> should
         /// monitor file for changes (default is true). When set to true, the host will
         /// automatically react to source/config file changes. When set to false no file

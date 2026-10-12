@@ -74,9 +74,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var appHostOptions = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
             appHostOptions.SetupGet(p => p.CurrentValue).Returns(new ScriptApplicationHostOptions { ScriptPath = "/dev/null" });
 
-            var hostingConfigOptions = new Mock<IOptions<FunctionsHostingConfigOptions>>();
-            hostingConfigOptions.SetupGet(p => p.Value).Returns(new FunctionsHostingConfigOptions());
-
             var httpClientFactory = new Mock<IHttpClientFactory>();
             httpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(new HttpClient());
 
@@ -91,7 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 new HostNameProvider(environmentMock.Object),
                 Mock.Of<IFunctionMetadataManager>(),
                 Mock.Of<IAzureBlobStorageProvider>(),
-                hostingConfigOptions.Object,
                 Mock.Of<IScriptHostManager>(),
                 meshServiceClient);
         }

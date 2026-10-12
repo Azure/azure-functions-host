@@ -59,7 +59,7 @@ public class RpcClientScriptHostStartupIntegrationTests
             Assert.Equal("host.json", Path.GetFileName(Assert.Single(Directory.GetFiles(testHost.ScriptPath))));
             Assert.DoesNotContain(testHost.Host.Services.GetServices<IHostedService>(), service => service is WebJobsScriptHostService);
 
-            WorkerChannel firstChannel = await registry.LinkAsync("first", firstWorker.Endpoint, timeout.Token);
+            WorkerChannel firstChannel = (await registry.LinkAsync("first", firstWorker.Endpoint, cancellationToken: timeout.Token)).Channel;
             await coordinator.ActivationTask!.WaitAsync(timeout.Token);
             await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
             await firstWorker.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
@@ -84,7 +84,7 @@ public class RpcClientScriptHostStartupIntegrationTests
             Assert.Equal("Files", testHost.Configuration[EnvironmentSettingNames.AzureWebJobsSecretStorageType]);
             Assert.True(testHost.Host.Services.GetRequiredService<ISecretManagerProvider>().SecretsEnabled);
 
-            await registry.LinkAsync("later", laterWorker.Endpoint, timeout.Token);
+            await registry.LinkAsync("later", laterWorker.Endpoint, cancellationToken: timeout.Token);
 
             Assert.Same(scriptServices, manager.Services);
             Assert.Same(scriptHost, scriptServices.GetRequiredService<ScriptHost>());
@@ -119,7 +119,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
-        WorkerChannel channel = await registry.LinkAsync("worker", worker.Endpoint, timeout.Token);
+        WorkerChannel channel = (await registry.LinkAsync("worker", worker.Endpoint, cancellationToken: timeout.Token)).Channel;
         await coordinator.ActivationTask!.WaitAsync(timeout.Token);
         await WaitForHostStateAsync(manager, expectedState, timeout.Token);
         Task activation = coordinator.ActivationTask!;
@@ -159,7 +159,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
         IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
 
-        await registry.LinkAsync("worker", worker.Endpoint, timeout.Token);
+        await registry.LinkAsync("worker", worker.Endpoint, cancellationToken: timeout.Token);
         await coordinator.ActivationTask!.WaitAsync(timeout.Token);
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
         Task activation = coordinator.ActivationTask!;

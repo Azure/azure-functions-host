@@ -1,0 +1,68 @@
+# Stops the perflab host, waits for exit, and clears Windows IIS/ANCM settings.
+
+parameters:
+- name: os
+  type: string
+  values: [Windows, Linux]
+- name: displayName
+  type: string
+- name: condition
+  type: string
+  default: succeeded()
+
+steps:
+- pwsh: |
+    # $IsWindows is a read-only automatic variable in PowerShell, so use a distinct name.
+    $isWindowsOS = "${{ parameters.os }}" -eq "Windows"
+    $hostProcesses = @()
+    if ($isWindowsOS) {
+        $appcmd = "$env:SystemRoot\System32\inetsrv\appcmd.exe"
+        try
+        {
+            # Capture workers before stopping the pool, while IIS still reports them.
+            $workerProcessIds = @(& $appcmd list wp /apppool.name:FunctionsHostPool /text:WP.NAME)
+            if ($LASTEXITCODE -ne 0)
+            {
+                throw "Could not resolve worker processes for FunctionsHostPool."
+            }
+            $hostProcesses = @($workerProcessIds | ForEach-Object { Get-Process -Id ([int]$_) -ErrorAction SilentlyContinue })
+        }
+        finally
+        {
+            & $appcmd stop site "FunctionsHost" 2>$null
+            & $appcmd stop apppool "FunctionsHostPool" 2>$null
+
+            # The ANCM environment variables live in applicationHost.config and include
+            # AzureWebJobsStorage, so clear them rather than leaving a secret on a persistent agent.
+            & $appcmd clear config "FunctionsHost" /section:system.webServer/aspNetCore /commit:apphost 2>$null
+        }
+    } else {
+        $processIdFile = "$(Build.ArtifactStagingDirectory)/hostProcessId.txt"
+        if (Test-Path $processIdFile) {
+            $hostProcessId = (Get-Content $processIdFile).Trim()
+            $proc = Get-Process -Id $hostProcessId -ErrorAction SilentlyContinue
+            if ($proc) {
+                $hostProcesses = @($proc)
+
+                Write-Host "Sending SIGTERM to host process PID: $hostProcessId"
+                & kill -s TERM $hostProcessId 2>/dev/null
+            } else {
+                Write-Host "Host process (PID: $hostProcessId) is not running."
+            }
+        } else {
+            Write-Host "Process ID file not found."
+        }
+    }
+
+    foreach ($proc in $hostProcesses)
+    {
+        Write-Host "Waiting for host process $($proc.Id) to exit..."
+        if (-not $proc.WaitForExit(30000))
+        {
+            throw "Host process $($proc.Id) did not exit within 30 seconds."
+        }
+    }
+
+    Write-Host "Host stopped."
+  displayName: ${{ parameters.displayName }}
+  condition: ${{ parameters.condition }}
