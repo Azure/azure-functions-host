@@ -9,8 +9,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
-using Microsoft.Azure.WebJobs.Script.Pools;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
@@ -34,29 +32,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var requestId = SetRequestId(context.Request);
 
             var sw = ValueStopwatch.StartNew();
-            try
-            {
-                _logger.ExecutingHttpRequest(requestId, context.Request.Method);
-            }
-            catch (Exception exception) when (HttpRequestTraceDiagnostics.IsRecoverable(exception))
-            {
-                HttpRequestTraceDiagnostics.ReportFailure(nameof(ScriptHostServiceLoggerExtension.ExecutingHttpRequest), exception);
-            }
+            _logger.ExecutingHttpRequest(requestId, context.Request.Method);
 
             await _next.Invoke(context);
 
-            try
-            {
-                if (_logger.IsEnabled(LogLevel.Information))
-                {
-                    string identities = GetIdentities(context);
-                    _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)sw.GetElapsedTime().TotalMilliseconds, GetRouteTemplate(context));
-                }
-            }
-            catch (Exception exception) when (HttpRequestTraceDiagnostics.IsRecoverable(exception))
-            {
-                HttpRequestTraceDiagnostics.ReportFailure(nameof(ScriptHostServiceLoggerExtension.ExecutedHttpRequest), exception);
-            }
+            string identities = GetIdentities(context);
+            _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)sw.GetElapsedTime().TotalMilliseconds, GetRouteTemplate(context));
         }
 
         /// <summary>
@@ -99,39 +80,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private static string GetIdentities(HttpContext context)
         {
-            StringBuilder identities = PoolFactory.SharedStringBuilderPool.Get();
-            try
+            var identities = context.User.Identities.Where(p => p.IsAuthenticated);
+            if (identities.Any())
             {
-                foreach (var identity in context.User.Identities)
+                var sbIdentities = new StringBuilder();
+
+                foreach (var identity in identities)
                 {
-                    if (!identity.IsAuthenticated)
+                    if (sbIdentities.Length > 0)
                     {
-                        continue;
+                        sbIdentities.Append(", ");
                     }
 
-                    if (identities.Length == 0)
+                    var sbIdentity = new StringBuilder(identity.AuthenticationType);
+                    var claim = identity.Claims.FirstOrDefault(p => p.Type == SecurityConstants.AuthLevelClaimType);
+                    if (claim != null)
                     {
-                        identities.Append('(');
-                    }
-                    else if (identities.Length > 1)
-                    {
-                        identities.Append(", ");
+                        sbIdentity.Append(':');
+                        sbIdentity.Append(claim.Value);
                     }
 
-                    identities.Append(identity.AuthenticationType);
-                    var claim = identity.Claims.FirstOrDefault(static claim =>
-                        string.Equals(claim.Type, SecurityConstants.AuthLevelClaimType, StringComparison.Ordinal));
-                    if (claim is not null)
-                    {
-                        identities.Append(':').Append(claim.Value);
-                    }
+                    sbIdentities.Append(sbIdentity);
                 }
 
-                return identities.Length == 0 ? string.Empty : identities.Append(')').ToString();
+                sbIdentities.Insert(0, '(');
+                sbIdentities.Append(')');
+
+                return sbIdentities.ToString();
             }
-            finally
+            else
             {
-                PoolFactory.SharedStringBuilderPool.Return(identities);
+                return string.Empty;
             }
         }
     }

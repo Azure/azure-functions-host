@@ -3,7 +3,6 @@
 
 using System;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters;
@@ -21,16 +20,9 @@ internal sealed class HttpRouteTemplateFilter : IAuthorizationFilter, IOrderedFi
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        try
+        if (context.ActionDescriptor.AttributeRouteInfo?.Template is string template)
         {
-            if (context.ActionDescriptor.AttributeRouteInfo?.Template is string template)
-            {
-                context.HttpContext.Features.Set(new HttpRouteTemplateFeature(template));
-            }
-        }
-        catch (Exception exception) when (HttpRequestTraceDiagnostics.IsRecoverable(exception))
-        {
-            HttpRequestTraceDiagnostics.ReportFailure(nameof(HttpRouteTemplateFilter), exception);
+            context.HttpContext.Features.Set(new HttpRouteTemplateFeature(template));
         }
     }
 }
