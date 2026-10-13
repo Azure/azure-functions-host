@@ -101,8 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private ISecretManager Create()
         {
             var repository = CreateSecretsRepository();
-            var useAzureKeyRepository = repository is FileSystemSecretsRepository &&
-                _environment.IsManagedAppEnvironment() && _environment.IsLogicApp();
+            var useAzureKeyRepository = IsManagedLogicAppFileStorage(repository.GetType());
             var converterFactory = new DefaultKeyValueConverterFactory(
                 repositorySupportsEncryption: repository.IsEncryptionSupported,
                 useAzureKeyRepository: useAzureKeyRepository);
@@ -117,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (repositoryType == typeof(FileSystemSecretsRepository))
                 {
-                    if (_environment.IsManagedAppEnvironment() && _environment.IsLogicApp())
+                    if (IsManagedLogicAppFileStorage(repositoryType))
                     {
                         ValidateManagedFileEncryptionKey();
                     }
@@ -176,6 +175,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogInformation(new EventId(3, "CreatedSecretRespository"), "Resolved secret storage provider {provider}", repository.Name);
 
             return repository;
+        }
+
+        /// <summary>
+        /// Determines whether file storage belongs to a managed Logic App.
+        /// </summary>
+        /// <param name="repositoryType">The resolved secret repository type.</param>
+        private bool IsManagedLogicAppFileStorage(Type repositoryType)
+        {
+            return repositoryType == typeof(FileSystemSecretsRepository) &&
+                _environment.IsManagedAppEnvironment() &&
+                _environment.IsLogicApp();
         }
 
         /// <summary>
