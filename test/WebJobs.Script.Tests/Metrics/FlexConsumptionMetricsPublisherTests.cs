@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 Assert.True(metrics.IsAlwaysReady);
                 ValidateTotalTime(metrics.TotalTimeMS, delay);
                 Assert.Equal(0, metrics.ExecutionCount);
-                Assert.Equal(0, metrics.FunctionExecutionSuccessCount);
+                Assert.Equal(0, metrics.ExecutionSuccessCount);
                 Assert.Equal(0, metrics.ExecutionTimeMS);
                 await AssertSuccessCountSerializedAsync(metricsFile.FullName, 0);
 
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             metricsFile = files[0];
             metrics = await ReadMetricsAsync(metricsFile.FullName);
             Assert.Equal(123, metrics.ExecutionCount);
-            Assert.Equal(100, metrics.FunctionExecutionSuccessCount);
+            Assert.Equal(100, metrics.ExecutionSuccessCount);
             Assert.Equal(5700, metrics.ExecutionTimeMS);
             ValidateTotalTime(metrics.TotalTimeMS, delay);
             Assert.Equal(isAlwaysReadyInstance, metrics.IsAlwaysReady);
@@ -590,7 +590,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             // We expect all activity values to be zero as there has been no activity
             Assert.Equal(0, metrics.ExecutionCount);
-            Assert.Equal(0, metrics.FunctionExecutionSuccessCount);
+            Assert.Equal(0, metrics.ExecutionSuccessCount);
             Assert.Equal(0, metrics.ExecutionTimeMS);
             await AssertSuccessCountSerializedAsync(files[0].FullName, 0);
             files[0].Delete();
@@ -699,11 +699,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         private static async Task AssertSuccessCountSerializedAsync(string metricsFilePath, long expected)
         {
             JObject metrics = JObject.Parse(await File.ReadAllTextAsync(metricsFilePath));
-            JToken successCount = metrics[nameof(FlexConsumptionMetricsPublisher.Metrics.FunctionExecutionSuccessCount)];
+            JToken successCount = metrics[nameof(FlexConsumptionMetricsPublisher.Metrics.ExecutionSuccessCount)];
 
             Assert.NotNull(successCount);
             Assert.Equal(JTokenType.Integer, successCount.Type);
             Assert.Equal(expected, successCount.Value<long>());
+            Assert.Null(metrics["FunctionExecutionSuccessCount"]);
         }
 
         private static FileInfo[] GetMetricsFilesSafe(string path)

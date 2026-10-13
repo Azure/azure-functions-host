@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     {
                         TotalTimeMS = (long)stopwatch.GetElapsedTime().TotalMilliseconds,
                         ExecutionCount = FunctionExecutionCount,
-                        FunctionExecutionSuccessCount = FunctionExecutionSuccessCount,
+                        ExecutionSuccessCount = FunctionExecutionSuccessCount,
                         ExecutionTimeMS = FunctionExecutionTimeMS,
                         IsAlwaysReady = IsAlwaysReady,
                         InstanceId = _metricsProvider.InstanceId,
@@ -299,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             /// Gets or sets the total number of function invocations that
             /// completed successfully during the interval.
             /// </summary>
-            public long FunctionExecutionSuccessCount { get; set; }
+            public long ExecutionSuccessCount { get; set; }
 
             /// <summary>
             /// Gets or sets a value indicating whether the instance is
