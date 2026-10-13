@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// Initializes a converter with optional explicit Azure key-repository activation.
         /// </summary>
         /// <param name="access">The permitted key access.</param>
-        /// <param name="useAzureKeyRepository">Whether the caller validated shared Azure key material.</param>
+        /// <param name="useAzureKeyRepository">Whether the caller requested the Azure key repository.</param>
         internal DataProtectionKeyValueConverter(FileAccess access, bool useAzureKeyRepository)
             : base(access)
         {

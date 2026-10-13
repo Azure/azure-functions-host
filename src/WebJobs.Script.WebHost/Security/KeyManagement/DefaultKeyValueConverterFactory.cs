@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly bool _shouldEncrypt;
 
         /// <summary>
-        /// Indicates whether the repository owner validated shared Azure key material.
+        /// Indicates whether the repository owner requested the Azure key repository.
         /// </summary>
         private readonly bool _useAzureKeyRepository;
         private static readonly PlaintextKeyValueConverter PlaintextValueConverter = new PlaintextKeyValueConverter(FileAccess.ReadWrite);
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         /// <summary>
-        /// Initializes a factory for a repository with validated shared Azure key material.
+        /// Initializes a factory with optional explicit Azure key-repository activation.
         /// </summary>
         /// <param name="repositorySupportsEncryption">Whether the repository provides its own encryption.</param>
         /// <param name="useAzureKeyRepository">Whether to explicitly activate the Azure key repository.</param>

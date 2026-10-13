@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 {
     public class SecretManagerProviderTests
     {
-        private const string InvalidManagedKeyMessage = "Managed file secret storage requires a 256-bit hexadecimal 'AzureWebEncryptionKey'.";
         private readonly ScriptApplicationHostOptions _options;
         private readonly TestChangeTokenSource<ScriptApplicationHostOptions> _tokenSource;
         private readonly DefaultSecretManagerProvider _provider;
@@ -98,10 +97,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             Assert.True(_provider.SecretsEnabled);
         }
 
-        [Fact]
-        public async Task Create_ManagedLogicAppFiles_UsesAzureKeyRepository()
+        [Theory]
+        [InlineData(32)]
+        [InlineData(31)]
+        public async Task Create_ManagedLogicAppFiles_UsesAzureKeyRepository(int keyByteCount)
         {
-            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(Convert.ToHexString(RandomNumberGenerator.GetBytes(32))));
+            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(Convert.ToHexString(RandomNumberGenerator.GetBytes(keyByteCount))));
             using var directory = new TempDirectory();
             using var manager = (SecretManager)CreateSecretManagerProvider(directory.Path).Current;
 
@@ -131,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void CreateSecretsRepository_ManagedLogicAppFiles_KeySetAfterConstructionSucceeds()
+        public async Task Create_ManagedLogicAppFiles_KeySetAfterConstructionUsesAzureKeyRepository()
         {
             using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(encryptionKey: null));
             using var directory = new TempDirectory();
@@ -139,41 +140,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             ScriptSettingsManager.Instance.SetSetting(AzureWebsiteLocalEncryptionKey, Convert.ToHexString(RandomNumberGenerator.GetBytes(32)));
 
-            using var repository = Assert.IsType<FileSystemSecretsRepository>(provider.CreateSecretsRepository());
+            using var manager = (SecretManager)provider.Current;
+            await manager.GetHostSecretsAsync();
+
+            using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory.Path, "host.json")));
+            var master = document.RootElement.GetProperty("masterKey");
+            Assert.True(master.GetProperty("encrypted").GetBoolean());
+            var payload = WebEncoders.Base64UrlDecode(master.GetProperty("value").GetString());
+            Assert.Equal(Guid.Empty, new Guid(payload.AsSpan(4, 16)));
         }
 
         [Fact]
-        public void CreateSecretsRepository_ManagedLogicAppFiles_MissingKeyThrows()
+        public async Task Create_ManagedLogicAppFiles_MalformedKeyFailsWithoutPersistingPlaintext()
         {
-            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(encryptionKey: null));
+            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(new string('G', 64)));
             using var directory = new TempDirectory();
-            var provider = CreateSecretManagerProvider(directory.Path);
+            using var manager = (SecretManager)CreateSecretManagerProvider(directory.Path).Current;
 
-            var error = Assert.Throws<InvalidOperationException>(() => provider.CreateSecretsRepository());
+            await Assert.ThrowsAsync<CryptographicException>(() => manager.GetHostSecretsAsync());
 
-            Assert.Equal(InvalidManagedKeyMessage, error.Message);
             Assert.False(File.Exists(Path.Combine(directory.Path, "host.json")));
         }
 
         [Theory]
-        [InlineData(64, 'G')]
-        [InlineData(62, 'A')]
-        public void CreateSecretsRepository_ManagedLogicAppFiles_InvalidKeyThrows(int keyLength, char keyCharacter)
+        [InlineData("workflowApp")]
+        [InlineData("functionapp")]
+        public async Task Create_ManagedFiles_WithoutKeyPreservesPlaintext(string appKind)
         {
-            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(new string(keyCharacter, keyLength)));
-            using var directory = new TempDirectory();
-            var provider = CreateSecretManagerProvider(directory.Path);
-
-            var error = Assert.Throws<InvalidOperationException>(() => provider.CreateSecretsRepository());
-
-            Assert.Equal(InvalidManagedKeyMessage, error.Message);
-            Assert.False(File.Exists(Path.Combine(directory.Path, "host.json")));
-        }
-
-        [Fact]
-        public async Task Create_ManagedNonLogicAppFiles_WithoutKeyPreservesPlaintext()
-        {
-            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(encryptionKey: null, appKind: "functionapp"));
+            using var variables = new TestScopedEnvironmentVariable(CreateManagedEnvironment(encryptionKey: null, appKind: appKind));
             using var directory = new TempDirectory();
             using var manager = (SecretManager)CreateSecretManagerProvider(directory.Path).Current;
 

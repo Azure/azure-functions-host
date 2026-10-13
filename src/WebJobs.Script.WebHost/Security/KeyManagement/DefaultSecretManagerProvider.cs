@@ -96,12 +96,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         /// <summary>
-        /// Creates a secret manager with explicit key-repository activation only for managed Logic App files.
+        /// Creates a secret manager with explicit Azure key-repository activation for configured managed Logic App files.
         /// </summary>
         private ISecretManager Create()
         {
             var repository = CreateSecretsRepository();
-            var useAzureKeyRepository = IsManagedLogicAppFileStorage(repository.GetType());
+            var useAzureKeyRepository = IsManagedLogicAppFileStorage(repository.GetType()) &&
+                _configuration[DataProtectionConstants.AzureWebsiteLocalEncryptionKey] is not null;
             var converterFactory = new DefaultKeyValueConverterFactory(
                 repositorySupportsEncryption: repository.IsEncryptionSupported,
                 useAzureKeyRepository: useAzureKeyRepository);
@@ -116,11 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (repositoryType == typeof(FileSystemSecretsRepository))
                 {
-                    if (IsManagedLogicAppFileStorage(repositoryType))
-                    {
-                        ValidateManagedFileEncryptionKey();
-                    }
-
                     repository = new FileSystemSecretsRepository(_options.CurrentValue.SecretsPath, _loggerFactory.CreateLogger<FileSystemSecretsRepository>(), _environment);
                 }
                 else if (repositoryType == typeof(KeyVaultSecretsRepository))
@@ -186,26 +182,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return repositoryType == typeof(FileSystemSecretsRepository) &&
                 _environment.IsManagedAppEnvironment() &&
                 _environment.IsLogicApp();
-        }
-
-        /// <summary>
-        /// Rejects unusable encryption material before managed Logic App file secrets can be persisted.
-        /// </summary>
-        private void ValidateManagedFileEncryptionKey()
-        {
-            var encryptionKey = _configuration[DataProtectionConstants.AzureWebsiteLocalEncryptionKey];
-            if (string.IsNullOrEmpty(encryptionKey) || encryptionKey.Length != 64)
-            {
-                throw new InvalidOperationException("Managed file secret storage requires a 256-bit hexadecimal 'AzureWebEncryptionKey'.");
-            }
-
-            foreach (var keyCharacter in encryptionKey)
-            {
-                if (!Uri.IsHexDigit(keyCharacter))
-                {
-                    throw new InvalidOperationException("Managed file secret storage requires a 256-bit hexadecimal 'AzureWebEncryptionKey'.");
-                }
-            }
         }
 
         /// <summary>
