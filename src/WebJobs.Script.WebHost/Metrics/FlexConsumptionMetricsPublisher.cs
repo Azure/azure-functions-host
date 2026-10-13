@@ -2,14 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
-using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -25,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         private readonly object _lock = new();
         private readonly IFileSystem _fileSystem;
         private readonly LegionMetricsFileManager _metricsFileManager;
-        private readonly Dictionary<string, bool?> _activeInvocationResults = [];
 
         private DateTime _currentActivityIntervalStart;
         private DateTime _activityIntervalHighWatermark = DateTime.MinValue;
@@ -63,17 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         internal long FunctionExecutionTimeMS { get; set; }
 
         internal long ActiveFunctionCount { get; set; }
-
-        internal int TrackedFunctionInvocationCount
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _activeInvocationResults.Count;
-                }
-            }
-        }
 
         internal bool IsAlwaysReady { get; set; }
 
@@ -203,16 +189,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 }
 
                 ActiveFunctionCount++;
-                _activeInvocationResults[invocationId] = null;
             }
         }
 
         public void OnFunctionCompleted(string functionName, string invocationId)
         {
-            OnFunctionCompleted(functionName, invocationId, DateTime.UtcNow);
+            OnFunctionCompleted(functionName, invocationId, DateTime.UtcNow, success: false);
         }
 
-        internal void OnFunctionCompleted(string functionName, string invocationId, DateTime now)
+        public void OnFunctionCompleted(string functionName, string invocationId, bool success)
+        {
+            OnFunctionCompleted(functionName, invocationId, DateTime.UtcNow, success);
+        }
+
+        internal void OnFunctionCompleted(string functionName, string invocationId, DateTime now, bool success = false)
         {
             if (!IsStarted)
             {
@@ -221,8 +211,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
             lock (_lock)
             {
-                bool completedSuccessfully = _activeInvocationResults.Remove(invocationId, out bool? success) && success is true;
-
                 if (ActiveFunctionCount > 0)
                 {
                     ActiveFunctionCount--;
@@ -244,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
                 FunctionExecutionCount++;
 
-                if (completedSuccessfully)
+                if (success)
                 {
                     FunctionExecutionSuccessCount++;
                 }
@@ -253,18 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, string executionId, DateTime eventTimeStamp, DateTime functionStartTime)
         {
-            if (!IsStarted || !string.Equals(executionStage, nameof(ExecutionStage.Finished), StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            lock (_lock)
-            {
-                if (_activeInvocationResults.ContainsKey(invocationId))
-                {
-                    _activeInvocationResults[invocationId] = success;
-                }
-            }
+            // Nothing to do. Flex metrics are aggregated when the invocation completes.
         }
 
         private void MeterCurrentActiveInterval(DateTime now)

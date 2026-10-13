@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -247,11 +246,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         {
             using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
 
-            AddFunctionExecutionActivity(publisher, "foo", "retry-1", ExecutionStage.InProgress, success: true);
-
-            Assert.Equal(0, publisher.FunctionExecutionCount);
-            Assert.Equal(0, publisher.FunctionExecutionSuccessCount);
-
             publisher.OnFunctionStarted("foo", "retry-1");
             CompleteFunction(publisher, "foo", "retry-1", success: false);
             publisher.OnFunctionStarted("foo", "retry-2");
@@ -264,20 +258,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
         }
 
         [Fact]
-        public void AddFunctionExecutionActivity_LateFinishedEventIsIgnored()
+        public void OnFunctionCompleted_DoesNotRequireFunctionExecutionActivity()
         {
             using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
 
-            publisher.OnFunctionStarted("foo", "1");
-            CompleteFunction(publisher, "foo", "1");
+            publisher.OnFunctionStarted("foo", "success");
+            publisher.OnFunctionCompleted("foo", "success", success: true);
+            publisher.OnFunctionStarted("foo", "failure");
+            publisher.OnFunctionCompleted("foo", "failure", success: false);
 
-            Assert.Equal(0, publisher.TrackedFunctionInvocationCount);
-
-            AddFunctionExecutionActivity(publisher, "foo", "1", ExecutionStage.Finished, success: true);
-
-            Assert.Equal(0, publisher.TrackedFunctionInvocationCount);
-            Assert.Equal(1, publisher.FunctionExecutionCount);
+            Assert.Equal(2, publisher.FunctionExecutionCount);
             Assert.Equal(1, publisher.FunctionExecutionSuccessCount);
+        }
+
+        [Theory]
+        [InlineData("Started")]
+        [InlineData("InProgress")]
+        [InlineData("Finished")]
+        [InlineData("Succeeded")]
+        [InlineData("Failed")]
+        public void AddFunctionExecutionActivity_DoesNotCountCompletion(string executionStage)
+        {
+            using var publisher = CreatePublisher(metricsPublishInterval: TimeSpan.FromHours(1), inStandbyMode: false);
+
+            AddFunctionExecutionActivity(publisher, "foo", "1", executionStage, success: true);
+
+            Assert.Equal(0, publisher.FunctionExecutionCount);
+            Assert.Equal(0, publisher.FunctionExecutionSuccessCount);
         }
 
         [Fact]
@@ -603,8 +610,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             // send a function completion without a corresponding start event
             now += TimeSpan.FromMilliseconds(300);
-            AddFunctionExecutionActivity(publisher, "foo", "1", ExecutionStage.Finished, success: true);
-            publisher.OnFunctionCompleted("foo", "1", now);
+            publisher.OnFunctionCompleted("foo", "1", now, success: true);
 
             Assert.Equal(0, publisher.ActiveFunctionCount);
             Assert.Equal(0, publisher.FunctionExecutionCount);
@@ -667,15 +673,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
         private static void CompleteFunction(FlexConsumptionMetricsPublisher publisher, string functionName, string invocationId, bool success = true)
         {
-            AddFunctionExecutionActivity(publisher, functionName, invocationId, ExecutionStage.Finished, success);
-            publisher.OnFunctionCompleted(functionName, invocationId);
+            publisher.OnFunctionCompleted(functionName, invocationId, success);
         }
 
         private static void AddFunctionExecutionActivity(
             FlexConsumptionMetricsPublisher publisher,
             string functionName,
             string invocationId,
-            ExecutionStage executionStage,
+            string executionStage,
             bool success)
         {
             DateTime eventTime = DateTime.UtcNow;
@@ -683,7 +688,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 functionName,
                 invocationId,
                 1,
-                executionStage.ToString(),
+                executionStage,
                 success,
                 0,
                 "execution",

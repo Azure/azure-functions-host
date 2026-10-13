@@ -12,5 +12,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         void OnFunctionStarted(string functionName, string invocationId);
 
         void OnFunctionCompleted(string functionName, string invocationId);
+
+        /// <summary>
+        /// Notifies the publisher that a function invocation completed.
+        /// </summary>
+        /// <param name="functionName">The function name.</param>
+        /// <param name="invocationId">The invocation identifier.</param>
+        /// <param name="success">Whether the invocation completed successfully.</param>
+        void OnFunctionCompleted(string functionName, string invocationId, bool success)
+        {
+            OnFunctionCompleted(functionName, invocationId);
+        }
     }
 }

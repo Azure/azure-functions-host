@@ -444,7 +444,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 RaiseFunctionMetricEvent(startedEvent, _activeFunctionCount, DateTime.UtcNow);
 
-                _metricsPublisher?.OnFunctionCompleted(startedEvent.FunctionName, startedEvent.InvocationId.ToString());
+                _metricsPublisher?.OnFunctionCompleted(startedEvent.FunctionName, startedEvent.InvocationId.ToString(), startedEvent.Success);
             }
 
             internal void StopTimerAndRaiseFinishedEvent()
