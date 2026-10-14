@@ -27,6 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(602, nameof(KeyVaultSecretRepoDeleteKey)),
                 "Deleting key '{key}' on the KeyVault Secret Repository.");
 
+        private static readonly Action<ILogger, string, Exception> _keyVaultSecretRepoSkipNonCanonical =
+            LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(603, nameof(KeyVaultSecretRepoSkipNonCanonical)),
+                "Skipping Key Vault secret '{secretName}' because it contains a non-canonical escape sequence.");
+
         private static readonly Action<ILogger, string, Exception> _keyVaultSecretRepoUnexpectedMasterKey =
             LoggerMessage.Define<string>(
                 LogLevel.Warning,
@@ -46,6 +52,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void KeyVaultSecretRepoDeleteKey(this ILogger logger, string key)
         {
             _keyVaultSecretRepoDeleteKey(logger, key, null);
+        }
+
+        public static void KeyVaultSecretRepoSkipNonCanonical(this ILogger logger, string secretName)
+        {
+            _keyVaultSecretRepoSkipNonCanonical(logger, secretName, null);
         }
 
         public static void KeyVaultSecretRepoUnexpectedMasterKey(this ILogger logger, string secretName)
