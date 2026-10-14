@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -40,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
         private HealthCheckResult _last;
         private HealthCheckContext _context;
         private BlobServiceClient _client;
-        private BlobContainerClient _containerClient;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WebJobsStorageHealthCheck"/> class.
@@ -106,47 +104,23 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.HealthChecks
 
             try
             {
-                if (_containerClient is not null)
-                {
-                    return await CheckContainerHealthAsync(_containerClient, cancellation).ConfigureAwait(false);
-                }
+                // Container properties use permissions covered by Blob Data roles without enumerating containers.
+                // Keep the AzureWebJobsStorage credentials, not the optional hosting-container SAS.
+                Response<bool> exists = await client
+                    .GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName)
+                    .ExistsAsync(cancellationToken: cancellation)
+                    .ConfigureAwait(false);
 
-                try
-                {
-                    // Preserve successful service probes, including account SAS credentials that cannot read container properties.
-                    // This checks blob connectivity, not all permissions required by the host and its extensions.
-                    await client.GetPropertiesAsync(cancellationToken: cancellation).ConfigureAwait(false);
-
-                    return HealthCheckResult.Healthy();
-                }
-                catch (RequestFailedException ex) when (ex.Status is 403 &&
-                    string.Equals(ex.ErrorCode, BlobErrorCode.AuthorizationPermissionMismatch.ToString(), StringComparison.Ordinal))
-                {
-                    // Blob Data roles allow container reads but not service-properties reads. Keep the same
-                    // AzureWebJobsStorage credentials rather than switching to the optional hosting-container SAS.
-                    BlobContainerClient containerClient = client.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);
-                    HealthCheckResult containerResult = await CheckContainerHealthAsync(containerClient, cancellation).ConfigureAwait(false);
-
-                    // Remember only a successful probe to avoid repeating the unauthorized service request.
-                    _containerClient = containerClient;
-                    return containerResult;
-                }
+                // ExistsAsync handles ContainerNotFound; absence is not a failure of this connectivity-only check.
+                return exists.Value
+                    ? HealthCheckResult.Healthy()
+                    : HealthCheckResult.Healthy("Storage is reachable. Host container does not exist.");
             }
             catch (Exception ex) when (!ex.IsFatal())
             {
                 HealthCheckData data = GetData(ex, HealthCheckData.Areas.Connectivity);
                 return HealthCheckResult.Unhealthy($"Unable to access {ConfigSection}", ex, data);
             }
-        }
-
-        private static async Task<HealthCheckResult> CheckContainerHealthAsync(BlobContainerClient client, CancellationToken cancellation)
-        {
-            Response<bool> exists = await client.ExistsAsync(cancellationToken: cancellation).ConfigureAwait(false);
-
-            // An absent container does not mean storage is unreachable; do not require or create it for this probe.
-            return exists.Value
-                ? HealthCheckResult.Healthy()
-                : HealthCheckResult.Healthy("Storage is reachable. Host container does not exist.");
         }
 
         private async Task RunInBackgroundAsync()
