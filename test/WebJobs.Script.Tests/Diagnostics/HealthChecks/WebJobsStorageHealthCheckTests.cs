@@ -18,9 +18,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
 {
     public class WebJobsStorageHealthCheckTests
     {
-        private readonly Mock<IAzureBlobStorageProvider> _provider = new();
+        private readonly Mock<IAzureBlobStorageProvider> _provider = new(MockBehavior.Strict);
         private readonly TestEnvironment _environment = new();
-        private readonly Mock<BlobServiceClient> _mockBlobServiceClient = new();
+        private readonly Mock<BlobServiceClient> _mockBlobServiceClient = new(MockBehavior.Strict);
+        private readonly Mock<BlobContainerClient> _mockContainerClient = new(MockBehavior.Strict);
         private readonly HealthCheckContext _healthCheckContext = new();
         private readonly Mock<IScriptHostManager> _scriptHostManager = new();
 
@@ -172,31 +173,271 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics.HealthChecks
             result.Data.Should().Contain("ConfigurationSection", "AzureWebJobsStorage");
         }
 
-        [Fact]
-        public async Task CheckHealthAsync_WithException_Unhealthy()
+        [Theory]
+        [InlineData(401, "SomeErrorCode")]
+        [InlineData(401, "AuthorizationPermissionMismatch")]
+        [InlineData(403, "AuthenticationFailed")]
+        [InlineData(403, "AuthorizationFailure")]
+        [InlineData(403, "AuthorizationResourceTypeMismatch")]
+        [InlineData(403, "authorizationpermissionmismatch")]
+        [InlineData(403, null)]
+        [InlineData(404, "ResourceNotFound")]
+        [InlineData(503, "ServerBusy")]
+        public async Task CheckHealthAsync_WithException_Unhealthy(int status, string errorCode)
         {
-            // Arrange
             RequestFailedException rfe = new(
-                401, "Some exception message", "SomeErrorCode", null);
+                status, "Some exception message", errorCode, null);
             SetupGetProperties(rfe);
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+
+            HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
+
+            VerifyGetPropertiesCalled(Times.Once());
+            _mockBlobServiceClient.VerifyNoOtherCalls();
+            VerifyConnectivityFailure(result, rfe);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task CheckHealthAsync_WithAuthorizationPermissionMismatch_FallsBackToContainer(bool exists)
+        {
+            SetupGetProperties(CreatePermissionMismatch());
+            SetupContainerProbe(exists);
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+
+            HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
+
+            result.Status.Should().Be(HealthStatus.Healthy);
+            result.Exception.Should().BeNull();
+            result.Description.Should().Be(exists ? null : "Storage is reachable. Host container does not exist.");
+            result.Data.Should().BeEmpty();
+            VerifyGetPropertiesCalled(Times.Once());
+            VerifyContainerProbeCalled(Times.Once());
+            _mockBlobServiceClient.Verify(c => c.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName), Times.Once);
+            _mockBlobServiceClient.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public async Task CheckHealthAsync_WithFallback_ReturnsCachedResult()
+        {
+            SetupGetProperties(CreatePermissionMismatch());
+            SetupContainerProbe(true);
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+            HealthCheckContext context = new()
+            {
+                Registration = new HealthCheckRegistration("test", healthCheck, null, null)
+                {
+                    Period = Timeout.InfiniteTimeSpan,
+                },
+            };
+
+            HealthCheckResult first = await healthCheck.CheckHealthAsync(context);
+            HealthCheckResult second = await healthCheck.CheckHealthAsync(context);
+
+            first.Status.Should().Be(HealthStatus.Healthy);
+            second.Status.Should().Be(HealthStatus.Healthy);
+            VerifyGetPropertiesCalled(Times.Once());
+            VerifyContainerProbeCalled(Times.Once());
+        }
+
+        [Fact]
+        public async Task CheckHealthCoreAsync_ServiceProbeSucceeds_DoesNotAccessContainer()
+        {
+            SetupGetProperties();
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+
+            HealthCheckResult first = await healthCheck.CheckHealthCoreAsync(default);
+            HealthCheckResult second = await healthCheck.CheckHealthCoreAsync(default);
+
+            first.Status.Should().Be(HealthStatus.Healthy);
+            second.Status.Should().Be(HealthStatus.Healthy);
+            VerifyGetPropertiesCalled(Times.Exactly(2));
+            _mockBlobServiceClient.VerifyNoOtherCalls();
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task CheckHealthCoreAsync_SuccessfulFallback_ReusesContainerProbe(bool exists)
+        {
+            SetupGetProperties(CreatePermissionMismatch());
+            SetupContainerProbe(exists);
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+
+            HealthCheckResult first = await healthCheck.CheckHealthCoreAsync(default);
+            HealthCheckResult second = await healthCheck.CheckHealthCoreAsync(default);
+
+            first.Status.Should().Be(HealthStatus.Healthy);
+            second.Status.Should().Be(HealthStatus.Healthy);
+            second.Description.Should().Be(exists ? null : "Storage is reachable. Host container does not exist.");
+            VerifyGetPropertiesCalled(Times.Once());
+            VerifyContainerProbeCalled(Times.Exactly(2));
+            _mockBlobServiceClient.Verify(c => c.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName), Times.Once);
+            _mockBlobServiceClient.VerifyNoOtherCalls();
+        }
+
+        [Theory]
+        [InlineData(403, "AuthorizationPermissionMismatch")]
+        [InlineData(403, "AuthenticationFailed")]
+        [InlineData(404, "ResourceNotFound")]
+        [InlineData(503, "ServerBusy")]
+        public async Task CheckHealthAsync_ContainerProbeFails_Unhealthy(int status, string errorCode)
+        {
+            RequestFailedException exception = new(status, "Container probe failed.", errorCode, null);
+            SetupGetProperties(CreatePermissionMismatch());
+            SetupContainerProbe(true);
+            _mockContainerClient.Setup(c => c.ExistsAsync(It.IsAny<CancellationToken>())).ThrowsAsync(exception);
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+
+            HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext);
+
+            VerifyConnectivityFailure(result, exception);
+            VerifyGetPropertiesCalled(Times.Once());
+            VerifyContainerProbeCalled(Times.Once());
+        }
+
+        [Fact]
+        public async Task CheckHealthCoreAsync_FailedFallback_DoesNotSelectContainerProbe()
+        {
+            RequestFailedException exception = new(503, "Container probe failed.", "ServerBusy", null);
+            _mockBlobServiceClient.SetupSequence(c => c.GetPropertiesAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(CreatePermissionMismatch())
+                .ReturnsAsync((Response<BlobServiceProperties>)null);
+            SetupContainerProbe(true);
+            _mockContainerClient.Setup(c => c.ExistsAsync(It.IsAny<CancellationToken>())).ThrowsAsync(exception);
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+
+            HealthCheckResult first = await healthCheck.CheckHealthCoreAsync(default);
+            HealthCheckResult second = await healthCheck.CheckHealthCoreAsync(default);
+
+            VerifyConnectivityFailure(first, exception);
+            second.Status.Should().Be(HealthStatus.Healthy);
+            second.Exception.Should().BeNull();
+            VerifyGetPropertiesCalled(Times.Exactly(2));
+            VerifyContainerProbeCalled(Times.Once());
+        }
+
+        [Fact]
+        public async Task CheckHealthCoreAsync_FailedFallback_RetriesUntilSuccessful()
+        {
+            RequestFailedException exception = new(503, "Container probe failed.", "ServerBusy", null);
+            SetupGetProperties(CreatePermissionMismatch());
+            SetupContainerProbe(true);
+            _mockContainerClient.SetupSequence(c => c.ExistsAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(exception)
+                .ReturnsAsync(Response.FromValue(true, Mock.Of<Response>()))
+                .ReturnsAsync(Response.FromValue(true, Mock.Of<Response>()));
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+
+            HealthCheckResult first = await healthCheck.CheckHealthCoreAsync(default);
+            HealthCheckResult second = await healthCheck.CheckHealthCoreAsync(default);
+            HealthCheckResult third = await healthCheck.CheckHealthCoreAsync(default);
+
+            VerifyConnectivityFailure(first, exception);
+            second.Status.Should().Be(HealthStatus.Healthy);
+            third.Status.Should().Be(HealthStatus.Healthy);
+            VerifyGetPropertiesCalled(Times.Exactly(2));
+            VerifyContainerProbeCalled(Times.Exactly(3));
+            _mockBlobServiceClient.Verify(c => c.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName), Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task CheckHealthCoreAsync_SelectedContainerProbeFails_ReportsFailureAndRecovers()
+        {
+            RequestFailedException exception = new(403, "Container access was revoked.", "AuthorizationPermissionMismatch", null);
+            SetupGetProperties(CreatePermissionMismatch());
+            SetupContainerProbe(true);
+            _mockContainerClient.SetupSequence(c => c.ExistsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Response.FromValue(true, Mock.Of<Response>()))
+                .ThrowsAsync(exception)
+                .ReturnsAsync(Response.FromValue(true, Mock.Of<Response>()));
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+
+            HealthCheckResult first = await healthCheck.CheckHealthCoreAsync(default);
+            HealthCheckResult second = await healthCheck.CheckHealthCoreAsync(default);
+            HealthCheckResult third = await healthCheck.CheckHealthCoreAsync(default);
+
+            first.Status.Should().Be(HealthStatus.Healthy);
+            VerifyConnectivityFailure(second, exception);
+            third.Status.Should().Be(HealthStatus.Healthy);
+            VerifyGetPropertiesCalled(Times.Once());
+            VerifyContainerProbeCalled(Times.Exactly(3));
+            _mockBlobServiceClient.Verify(c => c.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName), Times.Once);
+        }
+
+        [Fact]
+        public async Task CheckHealthCoreAsync_ContainerProbe_ForwardsCancellationTokenOnEveryRefresh()
+        {
+            SetupGetProperties(CreatePermissionMismatch());
+            SetupContainerProbe(true);
+            using CancellationTokenSource firstCancellation = new();
+            using CancellationTokenSource secondCancellation = new();
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+
+            await healthCheck.CheckHealthCoreAsync(firstCancellation.Token);
+            await healthCheck.CheckHealthCoreAsync(secondCancellation.Token);
+
+            _mockBlobServiceClient.Verify(c => c.GetPropertiesAsync(firstCancellation.Token), Times.Once);
+            _mockContainerClient.Verify(c => c.ExistsAsync(firstCancellation.Token), Times.Once);
+            _mockContainerClient.Verify(c => c.ExistsAsync(secondCancellation.Token), Times.Once);
+        }
+
+        [Fact]
+        public async Task CheckHealthCoreAsync_ContainerProbeCanceled_Unhealthy()
+        {
+            SetupGetProperties(CreatePermissionMismatch());
+            SetupContainerProbe(true);
+            using CancellationTokenSource cancellation = new();
+            OperationCanceledException exception = new(cancellation.Token);
+            _mockContainerClient.Setup(c => c.ExistsAsync(cancellation.Token)).ThrowsAsync(exception);
+            await using WebJobsStorageHealthCheck healthCheck = CreateHealthCheck();
+
+            HealthCheckResult result = await healthCheck.CheckHealthCoreAsync(cancellation.Token);
+
+            result.Status.Should().Be(HealthStatus.Unhealthy);
+            result.Exception.Should().BeSameAs(exception);
+            result.Data.Should().Contain(nameof(HealthCheckData.Area), HealthCheckData.Areas.Connectivity);
+            result.Data.Should().Contain(nameof(HealthCheckData.ErrorCode), "OperationCanceled");
+        }
+
+        private static RequestFailedException CreatePermissionMismatch()
+        {
+            return new RequestFailedException(
+                403, "Service properties are not authorized.", BlobErrorCode.AuthorizationPermissionMismatch.ToString(), null);
+        }
+
+        private static void VerifyConnectivityFailure(HealthCheckResult result, RequestFailedException exception)
+        {
+            result.Status.Should().Be(HealthStatus.Unhealthy);
+            result.Exception.Should().BeSameAs(exception);
+            result.Description.Should().Be("Unable to access AzureWebJobsStorage");
+            result.Data.Should().Contain(nameof(HealthCheckData.Area), HealthCheckData.Areas.Connectivity);
+            result.Data.Should().Contain(nameof(HealthCheckData.ConfigurationSection), "AzureWebJobsStorage");
+            result.Data.Should().Contain(nameof(HealthCheckData.StatusCode), exception.Status);
+            result.Data.Should().Contain(nameof(HealthCheckData.ErrorCode), exception.ErrorCode);
+        }
+
+        private WebJobsStorageHealthCheck CreateHealthCheck()
+        {
             BlobServiceClient client = _mockBlobServiceClient.Object;
             _provider.Setup(p => p.TryCreateBlobServiceClientFromConnection(
                 ConnectionStringNames.Storage, out client)).Returns(true);
 
-            WebJobsStorageHealthCheck healthCheck = new(_provider.Object, _environment, _scriptHostManager.Object);
+            return new WebJobsStorageHealthCheck(_provider.Object, _environment, _scriptHostManager.Object);
+        }
 
-            // Act
-            HealthCheckResult result = await healthCheck.CheckHealthAsync(_healthCheckContext, default);
+        private void SetupContainerProbe(bool exists)
+        {
+            _mockBlobServiceClient.Setup(c => c.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName))
+                .Returns(_mockContainerClient.Object);
+            _mockContainerClient.Setup(c => c.ExistsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Response.FromValue(exists, Mock.Of<Response>()));
+        }
 
-            // Assert
-            VerifyGetPropertiesCalled(Times.Once());
-            result.Status.Should().Be(HealthStatus.Unhealthy);
-            result.Exception.Should().Be(rfe);
-            result.Description.Should().Be("Unable to access AzureWebJobsStorage");
-            result.Data.Should().Contain("Area", "connectivity");
-            result.Data.Should().Contain("ConfigurationSection", "AzureWebJobsStorage");
-            result.Data.Should().Contain("StatusCode", 401);
-            result.Data.Should().Contain("ErrorCode", "SomeErrorCode");
+        private void VerifyContainerProbeCalled(Times times)
+        {
+            _mockContainerClient.Verify(c => c.ExistsAsync(It.IsAny<CancellationToken>()), times);
         }
 
         private void SetupGetProperties()
