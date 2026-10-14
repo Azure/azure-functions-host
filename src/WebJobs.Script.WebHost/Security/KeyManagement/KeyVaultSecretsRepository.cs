@@ -22,7 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const string HostPrefix = "host--";
         private const string FunctionPrefix = "function--";
         private const string NormalizedCharMark = "-";
-        private const string MasterKey = "host--masterKey--";
+        private const string MasterKeyPrefix = "host--masterKey--";
+        private const string MasterKeySecretName = MasterKeyPrefix + ScriptConstants.DefaultMasterKeyName;
         private const string FunctionKeyPrefix = "host--functionKey--";
         private const string SystemKeyPrefix = "host--systemKey--";
 
@@ -172,11 +173,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             AsyncPageable<SecretProperties> secretsPages = GetKeyVaultSecretsPagesAsync(_secretClient.Value);
             List<Task<Response<KeyVaultSecret>>> tasks = new List<Task<Response<KeyVaultSecret>>>();
 
-            // Add master key task
-            List<SecretProperties> masterItems = await FindSecrets(secretsPages, x => x.Name.StartsWith(MasterKey, StringComparison.OrdinalIgnoreCase));
-            if (masterItems.Count > 0)
+            // Scan for master-key-prefixed secrets and warn about any non-canonical names
+            List<SecretProperties> masterKeyPrefixedSecrets = await FindSecrets(
+                secretsPages,
+                x => x.Name.StartsWith(MasterKeyPrefix, StringComparison.OrdinalIgnoreCase));
+
+            SecretProperties canonicalMasterKey = masterKeyPrefixedSecrets
+                .FirstOrDefault(x => string.Equals(x.Name, MasterKeySecretName, StringComparison.OrdinalIgnoreCase));
+
+            foreach (SecretProperties unexpected in masterKeyPrefixedSecrets.Where(
+                x => !string.Equals(x.Name, MasterKeySecretName, StringComparison.OrdinalIgnoreCase)))
             {
-                tasks.Add(_secretClient.Value.GetSecretAsync(masterItems[0].Name));
+                Logger?.KeyVaultSecretRepoUnexpectedMasterKey(unexpected.Name);
+            }
+
+            // Add master key task (exact canonical name match only)
+            if (canonicalMasterKey is not null)
+            {
+                tasks.Add(_secretClient.Value.GetSecretAsync(canonicalMasterKey.Name));
             }
             else
             {
@@ -208,16 +222,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 KeyVaultSecret item = task.Result;
                 string secretName = item.Name;
 
-                if (secretName.StartsWith(MasterKey, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(secretName, MasterKeySecretName, StringComparison.OrdinalIgnoreCase))
                 {
-                    string token = secretName.Substring(MasterKey.Length);
-                    if (!IsCanonicalToken(token))
-                    {
-                        Logger?.KeyVaultSecretRepoSkipNonCanonical(secretName);
-                        continue;
-                    }
-
-                    hostSecrets.MasterKey = KeyVaultSecretToKey(item, MasterKey);
+                    hostSecrets.MasterKey = KeyVaultSecretToKey(item, MasterKeyPrefix);
                 }
                 else if (secretName.StartsWith(FunctionKeyPrefix, StringComparison.OrdinalIgnoreCase))
                 {
@@ -319,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (hostSecrets.MasterKey != null)
                 {
-                    dic.Add(MasterKey + "master", hostSecrets.MasterKey.Value);
+                    dic.Add(MasterKeySecretName, hostSecrets.MasterKey.Value);
                 }
 
                 if (hostSecrets.FunctionKeys != null)
