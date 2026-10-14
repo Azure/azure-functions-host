@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             var repository = CreateSecretsRepository();
             var useAzureKeyRepository = IsManagedLogicAppFileStorage(repository.GetType()) &&
-                _configuration[DataProtectionConstants.AzureWebsiteLocalEncryptionKey] is not null;
+                !string.IsNullOrEmpty(_configuration[DataProtectionConstants.AzureWebsiteLocalEncryptionKey]);
             var converterFactory = new DefaultKeyValueConverterFactory(
                 repositorySupportsEncryption: repository.IsEncryptionSupported,
                 useAzureKeyRepository: useAzureKeyRepository);
