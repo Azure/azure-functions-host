@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 expectedAttributes = new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>("key1", "value2") };
             }
 
-            RpcTraceContext traceContext = Grpc.ScriptInvocationContextExtensions.GetRpcTraceContext(traceparent, tracestate, attributes, NullLogger.Instance);
+            RpcTraceContext traceContext = Grpc.ScriptInvocationContextExtensions.GetRpcTraceContext(traceparent, tracestate, attributes);
 
             Assert.Equal(traceparent ?? string.Empty, traceContext.TraceParent);
             Assert.Equal(tracestate ?? string.Empty, traceContext.TraceState);
