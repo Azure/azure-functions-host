@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -129,6 +130,7 @@ public class WorkerHttpCapabilityProviderTests
 
     private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)
     {
-        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance);
+        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance,
+            new(Options.Create(new WorkerProxyOptions { PodName = "test-pod" }), TimeProvider.System));
     }
 }
