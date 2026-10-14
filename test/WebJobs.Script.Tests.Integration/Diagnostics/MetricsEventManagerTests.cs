@@ -525,6 +525,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void FunctionCompleted_PublishesSuccessResult()
+        {
+            var successfulInvocation = new FunctionStartedEvent(
+                Guid.NewGuid(),
+                new FunctionMetadata { Name = "SuccessfulFunction" });
+            var failedInvocation = new FunctionStartedEvent(
+                Guid.NewGuid(),
+                new FunctionMetadata { Name = "FailedFunction" })
+            {
+                Success = false
+            };
+
+            _metricsLogger.BeginEvent(successfulInvocation);
+            _metricsLogger.EndEvent(successfulInvocation);
+            _metricsLogger.BeginEvent(failedInvocation);
+            _metricsLogger.EndEvent(failedInvocation);
+
+            _mockEventPublisher.Verify(
+                publisher => publisher.OnFunctionCompleted(
+                    successfulInvocation.FunctionName,
+                    successfulInvocation.InvocationId.ToString(),
+                    true),
+                Times.Once);
+            _mockEventPublisher.Verify(
+                publisher => publisher.OnFunctionCompleted(
+                    failedInvocation.FunctionName,
+                    failedInvocation.InvocationId.ToString(),
+                    false),
+                Times.Once);
+            _mockEventPublisher.Verify(
+                publisher => publisher.OnFunctionCompleted(It.IsAny<string>(), It.IsAny<string>()),
+                Times.Never);
+        }
+
+        [Fact]
         public async Task ShortRunningFunction_Publishes_Function_EndEvent_To_MeshInitService()
         {
             _linuxFunctionExecutionActivityPublisher

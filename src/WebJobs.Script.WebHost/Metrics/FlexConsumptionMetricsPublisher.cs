@@ -55,6 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         // internal properties for testing
         internal long FunctionExecutionCount { get; set; }
 
+        internal long FunctionExecutionSuccessCount { get; set; }
+
         internal long FunctionExecutionTimeMS { get; set; }
 
         internal long ActiveFunctionCount { get; set; }
@@ -130,6 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     {
                         TotalTimeMS = (long)stopwatch.GetElapsedTime().TotalMilliseconds,
                         ExecutionCount = FunctionExecutionCount,
+                        ExecutionSuccessCount = FunctionExecutionSuccessCount,
                         ExecutionTimeMS = FunctionExecutionTimeMS,
                         IsAlwaysReady = IsAlwaysReady,
                         InstanceId = _metricsProvider.InstanceId,
@@ -144,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                         metrics.ActiveInvocationCount = scaleMetrics.TryGetValue(HostMetrics.ActiveInvocationCount, out long activeInvocationCount) ? activeInvocationCount : 0;
                     }
 
-                    FunctionExecutionTimeMS = FunctionExecutionCount = 0;
+                    FunctionExecutionTimeMS = FunctionExecutionCount = FunctionExecutionSuccessCount = 0;
                     _lastPublishTime = now;
                 }
 
@@ -191,10 +194,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         public void OnFunctionCompleted(string functionName, string invocationId)
         {
-            OnFunctionCompleted(functionName, invocationId, DateTime.UtcNow);
+            // The legacy overload has no completion outcome, so count it as unsuccessful.
+            OnFunctionCompleted(functionName, invocationId, DateTime.UtcNow, success: false);
         }
 
-        internal void OnFunctionCompleted(string functionName, string invocationId, DateTime now)
+        public void OnFunctionCompleted(string functionName, string invocationId, bool success)
+        {
+            OnFunctionCompleted(functionName, invocationId, DateTime.UtcNow, success);
+        }
+
+        internal void OnFunctionCompleted(string functionName, string invocationId, DateTime now, bool success = false)
         {
             if (!IsStarted)
             {
@@ -222,14 +231,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                     MeterCurrentActiveInterval(now);
                 }
 
-                // for every completed invocation, increment our invocation count
                 FunctionExecutionCount++;
+
+                if (success)
+                {
+                    FunctionExecutionSuccessCount++;
+                }
             }
         }
 
         public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, string executionId, DateTime eventTimeStamp, DateTime functionStartTime)
         {
-            // nothing to do here - we only care about Started/Completed events.
+            // Nothing to do. Flex metrics are aggregated when the invocation completes.
         }
 
         private void MeterCurrentActiveInterval(DateTime now)
@@ -282,6 +295,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
             /// completed during the interval.
             /// </summary>
             public long ExecutionCount { get; set; }
+
+            /// <summary>
+            /// Gets or sets the total number of function invocations that
+            /// completed successfully during the interval.
+            /// </summary>
+            public long ExecutionSuccessCount { get; set; }
 
             /// <summary>
             /// Gets or sets a value indicating whether the instance is
