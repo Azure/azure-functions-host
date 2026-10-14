@@ -194,6 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         public void OnFunctionCompleted(string functionName, string invocationId)
         {
+            // The legacy overload has no completion outcome, so count it as unsuccessful.
             OnFunctionCompleted(functionName, invocationId, DateTime.UtcNow, success: false);
         }
 

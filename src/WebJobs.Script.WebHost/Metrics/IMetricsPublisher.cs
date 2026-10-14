@@ -19,6 +19,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         /// <param name="functionName">The function name.</param>
         /// <param name="invocationId">The invocation identifier.</param>
         /// <param name="success">Whether the invocation completed successfully.</param>
+        /// <remarks>
+        /// The default implementation ignores <paramref name="success"/> and forwards to the two-argument overload.
+        /// Publishers that consume the completion outcome must override this method.
+        /// </remarks>
         void OnFunctionCompleted(string functionName, string invocationId, bool success)
         {
             OnFunctionCompleted(functionName, invocationId);
