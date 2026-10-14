@@ -27,6 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(602, nameof(KeyVaultSecretRepoDeleteKey)),
                 "Deleting key '{key}' on the KeyVault Secret Repository.");
 
+        private static readonly Action<ILogger, string, Exception> _keyVaultSecretRepoUnexpectedMasterKey =
+            LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(604, nameof(KeyVaultSecretRepoUnexpectedMasterKey)),
+                "Ignoring unexpected Key Vault secret '{secretName}' with master key prefix.");
+
         public static void BlobStorageSecretRepoError(this ILogger logger, string operation, Exception exception)
         {
             _blobStorageSecretRepoError(logger, operation, exception);
@@ -40,6 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
         public static void KeyVaultSecretRepoDeleteKey(this ILogger logger, string key)
         {
             _keyVaultSecretRepoDeleteKey(logger, key, null);
+        }
+
+        public static void KeyVaultSecretRepoUnexpectedMasterKey(this ILogger logger, string secretName)
+        {
+            _keyVaultSecretRepoUnexpectedMasterKey(logger, secretName, null);
         }
     }
 }
