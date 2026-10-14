@@ -32,9 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// Retrieves function secrets.
         /// </summary>
         /// <param name="functionName">The name of the function.</param>
-        /// <param name="merged">True if the results should include host level secrets (where function secrets would take priority); otherwise, false.</param>
         /// <returns>A <see cref="IDictionary{string, string}"/> containing the named function secrets.</returns>
-        Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName, bool merged = false);
+        Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName);
 
         /// <summary>
         /// Retrieves the host secrets.
