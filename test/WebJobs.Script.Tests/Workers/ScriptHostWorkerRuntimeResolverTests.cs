@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             var scriptJobHostOptions = CreateOptionsMonitor(profileWorkerRuntime);
             var resolver = new ScriptHostWorkerRuntimeResolver(configuration, scriptJobHostOptions);
 
-            var result = resolver.GetWorkerRuntime();
+            var result = resolver.GetWorkerRuntime("caller-language");
 
             Assert.Equal(expectedRuntime, result);
         }

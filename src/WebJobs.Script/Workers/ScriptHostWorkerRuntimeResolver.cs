@@ -9,10 +9,9 @@ using Microsoft.Extensions.Options;
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     /// <summary>
-    /// Resolves the worker runtime for the current script host instance.
-    /// At this scope, the functions worker runtime is expected to be present;
-    /// the hosting infrastructure only reaches this point after the runtime
-    /// has been configured (e.g., via environment variables or specialization).
+    /// Resolves the configured worker runtime for the current script host instance.
+    /// Configuration profiles take precedence over configuration entries. Caller defaults are not cached.
+    /// Linked BYOC workers report their own metadata language and do not require a configured runtime.
     /// </summary>
     internal sealed class ScriptHostWorkerRuntimeResolver : IWorkerRuntimeResolver
     {

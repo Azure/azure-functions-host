@@ -105,7 +105,9 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
                 "Client-backed workers must provide function metadata and cannot request host metadata indexing.");
         }
 
-        ImmutableArray<FunctionMetadata> functions = _validator.ValidateMetadata(rawFunctions);
+        // Linked BYOC workers own their runtime. Do not replace their per-function language with Host configuration
+        // or feed it into a Host-wide runtime cache.
+        ImmutableArray<FunctionMetadata> functions = _validator.ValidateMetadata(rawFunctions, preserveWorkerLanguage: true);
         Log.FunctionsReturned(_logger, functions.Length, MetadataProviderName);
         _cachedResult = new(useDefaultMetadataIndexing: false, functions);
         return _cachedResult;
