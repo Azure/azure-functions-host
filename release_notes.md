@@ -5,3 +5,4 @@
 -->
 
 - Use a structured composite key for the authorization cache to prevent cache key collisions.
+- Require exact canonical master key secret names in the Key Vault secrets repository (#12084).
