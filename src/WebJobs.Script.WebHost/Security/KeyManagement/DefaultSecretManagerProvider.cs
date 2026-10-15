@@ -7,7 +7,6 @@ using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
@@ -26,25 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly HostNameProvider _hostNameProvider;
         private readonly StartupContextProvider _startupContextProvider;
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
-
-        /// <summary>
-        /// Provides the live process-environment encryption key configuration.
-        /// </summary>
-        private readonly IConfiguration _configuration;
         private Lazy<ISecretManager> _secretManagerLazy;
         private Lazy<bool> _secretsEnabledLazy;
 
-        /// <summary>
-        /// Initializes the provider using environment-backed key configuration.
-        /// </summary>
-        /// <param name="options">The host options.</param>
-        /// <param name="hostIdProvider">The host identifier provider.</param>
-        /// <param name="environment">The hosting environment.</param>
-        /// <param name="loggerFactory">The logger factory.</param>
-        /// <param name="metricsLogger">The metrics logger.</param>
-        /// <param name="hostNameProvider">The host name provider.</param>
-        /// <param name="startupContextProvider">The startup context provider.</param>
-        /// <param name="azureBlobStorageProvider">The blob storage provider.</param>
         public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider, IEnvironment environment,
             ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider,
             IAzureBlobStorageProvider azureBlobStorageProvider)
@@ -56,9 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _startupContextProvider = startupContextProvider ?? throw new ArgumentNullException(nameof(startupContextProvider));
-            _configuration = new ConfigurationBuilder()
-                .Add(new ScriptEnvironmentVariablesConfigurationSource())
-                .Build();
 
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory.CreateLogger<DefaultSecretManagerProvider>();
@@ -95,17 +75,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _logger.LogDebug(new EventId(1, "ResetSecretManager"), "Reset SecretManager.");
         }
 
-        /// <summary>
-        /// Creates a secret manager with explicit Azure key-repository activation for configured managed Logic App files.
-        /// </summary>
         private ISecretManager Create()
         {
             var repository = CreateSecretsRepository();
-            var useAzureKeyRepository = IsManagedLogicAppFileStorage(repository.GetType()) &&
-                !string.IsNullOrEmpty(_configuration[DataProtectionConstants.AzureWebsiteLocalEncryptionKey]);
+            var forceAzureWebsitesDataProtection = IsManagedLogicAppFileStorage(repository.GetType()) &&
+                !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(DataProtectionConstants.AzureWebsiteLocalEncryptionKey));
             var converterFactory = new DefaultKeyValueConverterFactory(
                 repositorySupportsEncryption: repository.IsEncryptionSupported,
-                useAzureKeyRepository: useAzureKeyRepository);
+                forceAzureWebsitesDataProtection: forceAzureWebsitesDataProtection);
             return new SecretManager(repository, converterFactory, _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider, _startupContextProvider);
         }
 
@@ -173,10 +150,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return repository;
         }
 
-        /// <summary>
-        /// Determines whether file storage belongs to a managed Logic App.
-        /// </summary>
-        /// <param name="repositoryType">The resolved secret repository type.</param>
         private bool IsManagedLogicAppFileStorage(Type repositoryType)
         {
             return repositoryType == typeof(FileSystemSecretsRepository) &&

@@ -20,21 +20,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         /// <param name="access">The permitted key access.</param>
         public DataProtectionKeyValueConverter(FileAccess access)
-            : this(access, useAzureKeyRepository: false)
+            : this(access, forceAzureWebsitesDataProtection: false)
         {
         }
 
         /// <summary>
-        /// Initializes a converter with optional explicit Azure key-repository activation.
+        /// Initializes a converter with optional forced Azure Websites Data Protection configuration.
         /// </summary>
         /// <param name="access">The permitted key access.</param>
-        /// <param name="useAzureKeyRepository">Whether the caller requested the Azure key repository.</param>
-        internal DataProtectionKeyValueConverter(FileAccess access, bool useAzureKeyRepository)
+        /// <param name="forceAzureWebsitesDataProtection">Whether to force Azure Websites Data Protection configuration instead of hosting-environment detection.</param>
+        internal DataProtectionKeyValueConverter(FileAccess access, bool forceAzureWebsitesDataProtection)
             : base(access)
         {
             var provider = Web.DataProtection.DataProtectionProvider.CreateAzureDataProtector(
                 configurationHandler: null,
-                skipEnvironmentValidation: useAzureKeyRepository);
+                skipEnvironmentValidation: forceAzureWebsitesDataProtection);
             _dataProtector = provider.CreateProtector("function-secrets");
         }
 

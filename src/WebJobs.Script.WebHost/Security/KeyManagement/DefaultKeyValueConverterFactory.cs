@@ -16,9 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly bool _shouldEncrypt;
 
         /// <summary>
-        /// Indicates whether the repository owner requested the Azure key repository.
+        /// Forces Azure Websites Data Protection configuration; otherwise uses existing hosting-environment detection.
         /// </summary>
-        private readonly bool _useAzureKeyRepository;
+        private readonly bool _forceAzureWebsitesDataProtection;
         private static readonly PlaintextKeyValueConverter PlaintextValueConverter = new PlaintextKeyValueConverter(FileAccess.ReadWrite);
 
         /// <summary>
@@ -26,19 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         /// <param name="repositorySupportsEncryption">Whether the repository provides its own encryption.</param>
         public DefaultKeyValueConverterFactory(bool repositorySupportsEncryption)
-            : this(repositorySupportsEncryption, useAzureKeyRepository: false)
+            : this(repositorySupportsEncryption, forceAzureWebsitesDataProtection: false)
         {
         }
 
         /// <summary>
-        /// Initializes a factory with optional explicit Azure key-repository activation.
+        /// Initializes a factory with optional forced Azure Websites Data Protection configuration.
         /// </summary>
         /// <param name="repositorySupportsEncryption">Whether the repository provides its own encryption.</param>
-        /// <param name="useAzureKeyRepository">Whether to explicitly activate the Azure key repository.</param>
-        internal DefaultKeyValueConverterFactory(bool repositorySupportsEncryption, bool useAzureKeyRepository)
+        /// <param name="forceAzureWebsitesDataProtection">Whether to force Azure Websites Data Protection configuration instead of hosting-environment detection.</param>
+        internal DefaultKeyValueConverterFactory(bool repositorySupportsEncryption, bool forceAzureWebsitesDataProtection)
         {
-            _useAzureKeyRepository = useAzureKeyRepository;
-            _shouldEncrypt = !repositorySupportsEncryption && (useAzureKeyRepository || IsEncryptionSupported());
+            _forceAzureWebsitesDataProtection = forceAzureWebsitesDataProtection;
+            _shouldEncrypt = !repositorySupportsEncryption && IsEncryptionSupported();
         }
 
         private static bool IsEncryptionSupported()
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (key.IsEncrypted)
             {
-                return new DataProtectionKeyValueConverter(FileAccess.Read, useAzureKeyRepository: _useAzureKeyRepository);
+                return new DataProtectionKeyValueConverter(FileAccess.Read, forceAzureWebsitesDataProtection: _forceAzureWebsitesDataProtection);
             }
 
             return PlaintextValueConverter;
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (_shouldEncrypt)
             {
-                return new DataProtectionKeyValueConverter(FileAccess.Write, useAzureKeyRepository: _useAzureKeyRepository);
+                return new DataProtectionKeyValueConverter(FileAccess.Write, forceAzureWebsitesDataProtection: _forceAzureWebsitesDataProtection);
             }
 
             return PlaintextValueConverter;
