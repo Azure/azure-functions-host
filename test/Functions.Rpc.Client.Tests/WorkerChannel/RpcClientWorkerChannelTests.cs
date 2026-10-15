@@ -35,30 +35,45 @@ public sealed class RpcClientWorkerChannelTests
 
     public RpcClientWorkerChannelTests()
     {
-        Mock<IScriptHostManager> hostManager = new();
-        hostManager.As<IServiceProvider>()
-            .Setup(provider => provider.GetService(typeof(IOptions<ScriptJobHostOptions>)))
-            .Returns(Options.Create(new ScriptJobHostOptions { RootScriptPath = "c:\\test" }));
+        _factory = CreateFactory(managedIdentityTokenPocEnabled: false);
+    }
 
-        Mock<IOptionsMonitor<ScriptApplicationHostOptions>> applicationHostOptions = new();
-        applicationHostOptions.SetupGet(options => options.CurrentValue)
-            .Returns(new ScriptApplicationHostOptions { ScriptPath = "c:\\test" });
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ManagedIdentityTokenRequest_BeforeStartStream_RequiresPocGate(bool enabled)
+    {
+        TestDuplexChannel<StreamingMessage> duplexChannel = new();
+        RpcClientWorkerChannel channel = CreateFactory(enabled).Create(WorkerId, duplexChannel);
+        Task start = channel.StartAsync(CancellationToken.None);
+        ManagedIdentityTokenRequest tokenRequest = new()
+        {
+            Resource = "https://storage.azure.com/",
+            ClientId = "client-id",
+            ApiVersion = "2019-08-01"
+        };
 
-        _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
-            .Returns(true);
+        await duplexChannel.SendResponseAsync(new()
+        {
+            RequestId = "token-request",
+            ManagedIdentityTokenRequest = tokenRequest
+        });
 
-        _factory = new(
-            new ScriptEventManager(),
-            hostManager.Object,
-            Mock.Of<IEnvironment>(),
-            NullLoggerFactory.Instance,
-            applicationHostOptions.Object,
-            Mock.Of<ISharedMemoryManager>(),
-            Options.Create(new WorkerConcurrencyOptions()),
-            Options.Create(new FunctionsHostingConfigOptions()),
-            _appCapabilitiesStore.Object,
-            Mock.Of<IHttpProxyService>(),
-            _metricsLogger);
+        StreamingMessage response = await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        Assert.Equal("token-request", response.RequestId);
+        Assert.Equal(StreamingMessage.ContentOneofCase.ManagedIdentityTokenResponse, response.ContentCase);
+        Assert.Equal(tokenRequest.Resource, response.ManagedIdentityTokenResponse.Resource);
+        Assert.Equal(tokenRequest.ClientId, response.ManagedIdentityTokenResponse.ClientId);
+        Assert.Equal(
+            enabled ? StatusResult.Types.Status.Success : StatusResult.Types.Status.Failure,
+            response.ManagedIdentityTokenResponse.Result.Status);
+        Assert.Equal(enabled ? "byoc-managed-identity-poc-token" : string.Empty,
+            response.ManagedIdentityTokenResponse.AccessToken);
+
+        await SendStartStreamAndReadInitRequestAsync(duplexChannel);
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = CreateSuccessfulInitResponse() });
+        await start.WaitAsync(TestTimeout);
+        await channel.DisposeAsync();
     }
 
     [Fact]
@@ -276,6 +291,40 @@ public sealed class RpcClientWorkerChannelTests
 
     private RpcClientWorkerChannel CreateChannel(TestDuplexChannel<StreamingMessage> duplexChannel)
         => _factory.Create(WorkerId, duplexChannel);
+
+    private RpcClientWorkerChannelFactory CreateFactory(bool managedIdentityTokenPocEnabled)
+    {
+        Mock<IScriptHostManager> hostManager = new();
+        hostManager.As<IServiceProvider>()
+            .Setup(provider => provider.GetService(typeof(IOptions<ScriptJobHostOptions>)))
+            .Returns(Options.Create(new ScriptJobHostOptions { RootScriptPath = "c:\\test" }));
+
+        Mock<IOptionsMonitor<ScriptApplicationHostOptions>> applicationHostOptions = new();
+        applicationHostOptions.SetupGet(options => options.CurrentValue)
+            .Returns(new ScriptApplicationHostOptions { ScriptPath = "c:\\test" });
+
+        _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
+            .Returns(true);
+
+        FunctionsHostingConfigOptions hostingConfig = new();
+        if (managedIdentityTokenPocEnabled)
+        {
+            hostingConfig.Features["ManagedIdentityTokenPocEnabled"] = "1";
+        }
+
+        return new(
+            new ScriptEventManager(),
+            hostManager.Object,
+            Mock.Of<IEnvironment>(),
+            NullLoggerFactory.Instance,
+            applicationHostOptions.Object,
+            Mock.Of<ISharedMemoryManager>(),
+            Options.Create(new WorkerConcurrencyOptions()),
+            Options.Create(hostingConfig),
+            _appCapabilitiesStore.Object,
+            Mock.Of<IHttpProxyService>(),
+            _metricsLogger);
+    }
 
     private static WorkerInitResponse CreateSuccessfulInitResponse()
         => new()

@@ -8,6 +8,7 @@ services:
       AzureFunctionsWebHost__IsFileSystemReadOnly: "true"
       AzureFunctionsJobHost__logging__logLevel__default: Information
       AzureFunctionsJobHost__logging__console__isEnabled: "true"
+      FunctionsHostingConfig__ManagedIdentityTokenPocEnabled: "1"
     ports:
       - "127.0.0.1:${COMPUTE_HOST_PORT:?Aspire must allocate the Host port}:8080"
     tmpfs:

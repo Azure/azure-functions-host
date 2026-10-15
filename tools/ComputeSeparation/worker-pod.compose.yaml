@@ -18,6 +18,10 @@ services:
       context: ../..
       dockerfile: tools/ComputeSeparation/SampleIsolatedApp/Dockerfile
     network_mode: service:worker-proxy
+    environment:
+      COMPUTE_SEPARATION_MSI_POC: "1"
+      IDENTITY_ENDPOINT: http://127.0.0.1:8081/msi/token
+      IDENTITY_HEADER: ${IDENTITY_HEADER:?Aspire must supply the managed identity header}
     depends_on:
       - worker-proxy
     command:

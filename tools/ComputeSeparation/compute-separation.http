@@ -15,10 +15,9 @@
 ### Expected flow, in order.
 
 ### 1. The platform assigns the pod on the WorkerProxy. Expect 201, or 204 if repeated.
-### 503 WorkerNotReady means the sample worker has not connected yet; retry.
 POST {{platform}}/simulate/worker/assign
 
-### Optional: the WorkerProxy pod state is now ReadyForRequest.
+### Optional: the WorkerProxy pod state is Assigned; readiness still waits for the worker stream.
 GET {{workerProxy}}/admin/worker/state
 
 ### 2. The platform assigns the placeholder Host to the app (POST /admin/instance/assign). Expect 202, or 409 if

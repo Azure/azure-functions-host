@@ -27,7 +27,8 @@ internal sealed class ContainerTopology : IAsyncDisposable
             ["WORKER_PROXY_ALIAS"] = ProxyAlias,
             ["WORKER_PROXY_MANAGEMENT_PORT"] = "0",
             ["WORKER_ID"] = "cleanup",
-            ["WORKER_REQUEST_ID"] = "cleanup"
+            ["WORKER_REQUEST_ID"] = "cleanup",
+            ["IDENTITY_HEADER"] = "cleanup"
         }, removeOnStop: true);
     }
 

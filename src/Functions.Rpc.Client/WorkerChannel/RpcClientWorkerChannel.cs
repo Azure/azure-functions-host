@@ -30,7 +30,11 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
+    private const string ManagedIdentityTokenPocFeature = "ManagedIdentityTokenPocEnabled";
+    private const string PocAccessToken = "byoc-managed-identity-poc-token";
+    private const string PocExpiresOn = "4102444800";
     private readonly Lock _lifecycleLock = new();
+    private readonly bool _managedIdentityTokenPocEnabled;
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private LifecycleState _lifecycleState;
 
@@ -67,6 +71,10 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             appCapabilitiesStore,
             httpProxyService)
     {
+        string managedIdentityFeature = hostingConfigOptions.Value.GetFeature(ManagedIdentityTokenPocFeature);
+        _managedIdentityTokenPocEnabled =
+            string.Equals(managedIdentityFeature, "1", StringComparison.Ordinal)
+            || (bool.TryParse(managedIdentityFeature, out bool enabled) && enabled);
         Completion = ownedChannel.Reader.Completion;
     }
 
@@ -118,6 +126,36 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     protected override void OnMetadataRequestError(Exception exception) => FailPendingMetadataRequest(exception);
 
     protected override void OnChannelFailure(Exception exception) => FailPendingMetadataRequest(exception);
+
+    protected override void HandleManagedIdentityTokenRequest(StreamingMessage message)
+    {
+        ManagedIdentityTokenRequest request = message.ManagedIdentityTokenRequest;
+        ManagedIdentityTokenResponse response = new()
+        {
+            Resource = request.Resource,
+            ClientId = request.ClientId,
+            Result = new()
+        };
+
+        if (_managedIdentityTokenPocEnabled)
+        {
+            response.AccessToken = PocAccessToken;
+            response.TokenType = "Bearer";
+            response.ExpiresOn = PocExpiresOn;
+            response.Result.Status = StatusResult.Types.Status.Success;
+        }
+        else
+        {
+            response.Result.Status = StatusResult.Types.Status.Failure;
+            response.Result.Exception = new() { Message = "The managed identity token POC is disabled." };
+        }
+
+        SendStreamingMessage(new()
+        {
+            RequestId = message.RequestId,
+            ManagedIdentityTokenResponse = response
+        });
+    }
 
     protected override void Dispose(bool disposing)
     {

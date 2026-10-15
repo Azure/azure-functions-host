@@ -63,6 +63,33 @@ internal sealed partial class FunctionRpcRelay(
         }
     }
 
+    internal Task<ManagedIdentityTokenResponse> RequestManagedIdentityTokenAsync(
+        ManagedIdentityTokenRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        WorkerAssignmentState assignmentState = _stateManager.State.AssignmentState;
+        if (assignmentState is not (WorkerAssignmentState.Assigned or WorkerAssignmentState.Ready))
+        {
+            throw new ManagedIdentityTokenUnavailableException("The worker pod has no active assignment.");
+        }
+
+        FunctionRpcRelaySession session;
+        lock (_syncLock)
+        {
+            if (_stopping || _currentSession is null)
+            {
+                throw new ManagedIdentityTokenUnavailableException("The runtime FunctionRpc stream is not attached.");
+            }
+
+            session = _currentSession;
+        }
+
+        return session.RequestManagedIdentityTokenAsync(request, cancellationToken);
+    }
+
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
     {

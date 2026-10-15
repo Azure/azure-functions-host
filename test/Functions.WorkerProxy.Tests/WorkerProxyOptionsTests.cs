@@ -20,6 +20,7 @@ public class WorkerProxyOptionsTests
         Assert.Equal(50053, options.RuntimeGrpcPort);
         Assert.Equal(50054, options.WorkerGrpcPort);
         Assert.Equal(28080, options.HttpPort);
+        Assert.Equal(8081, options.ManagedIdentityPort);
         Assert.Null(options.WorkerHttpEndpoint);
         Assert.Null(options.HttpProxyEndpoint);
     }
@@ -33,7 +34,8 @@ public class WorkerProxyOptionsTests
             "--WorkerProxy:RuntimeGrpcPort", "41001",
             "--WorkerProxy:WorkerGrpcPort", "41002",
             "--WorkerProxy:HttpPort", "41003",
-            "--WorkerProxy:WorkerHttpEndpoint", "http://localhost:41004",
+            "--WorkerProxy:ManagedIdentityPort", "41004",
+            "--WorkerProxy:WorkerHttpEndpoint", "http://localhost:41005",
             "--WorkerProxy:HttpProxyEndpoint", "https://worker-pod.example:48801");
 
         Assert.Equal("configured-worker-pod", options.PodName);
@@ -41,7 +43,8 @@ public class WorkerProxyOptionsTests
         Assert.Equal(41001, options.RuntimeGrpcPort);
         Assert.Equal(41002, options.WorkerGrpcPort);
         Assert.Equal(41003, options.HttpPort);
-        Assert.Equal("http://localhost:41004", options.WorkerHttpEndpoint);
+        Assert.Equal(41004, options.ManagedIdentityPort);
+        Assert.Equal("http://localhost:41005", options.WorkerHttpEndpoint);
         Assert.Equal("https://worker-pod.example:48801", options.HttpProxyEndpoint);
     }
 
@@ -89,6 +92,7 @@ public class WorkerProxyOptionsTests
     [InlineData(nameof(WorkerProxyOptions.ManagementPort), "-1")]
     [InlineData(nameof(WorkerProxyOptions.RuntimeGrpcPort), "65536")]
     [InlineData(nameof(WorkerProxyOptions.HttpPort), "-1")]
+    [InlineData(nameof(WorkerProxyOptions.ManagedIdentityPort), "65536")]
     public void Options_RejectOutOfRangeValues(string propertyName, string value)
     {
         string key = $"--{WorkerProxyOptions.SectionName}:{propertyName}";
@@ -117,12 +121,14 @@ public class WorkerProxyOptionsTests
             "--WorkerProxy:ManagementPort", "0",
             "--WorkerProxy:RuntimeGrpcPort", "0",
             "--WorkerProxy:WorkerGrpcPort", "0",
-            "--WorkerProxy:HttpPort", "0");
+            "--WorkerProxy:HttpPort", "0",
+            "--WorkerProxy:ManagedIdentityPort", "0");
 
         Assert.Equal(0, options.ManagementPort);
         Assert.Equal(0, options.RuntimeGrpcPort);
         Assert.Equal(0, options.WorkerGrpcPort);
         Assert.Equal(0, options.HttpPort);
+        Assert.Equal(0, options.ManagedIdentityPort);
     }
 
     private static WorkerProxyOptions GetOptions(params string[] args)

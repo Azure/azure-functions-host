@@ -47,7 +47,7 @@ Hello from the BYOC .NET isolated worker.
 
 ## Fake platform
 
-In project mode, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host.
+In project mode, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host. Container mode sends the same assignment directly from AppHost.
 
 Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order. The fake is not wired in container mode.
 
@@ -59,12 +59,13 @@ The happy path, in order:
 
 | Step | Endpoint on | Caller | Request | Purpose |
 | --- | --- | --- | --- | --- |
-| 1 | WorkerProxy | Platform | `PUT /admin/worker/assignment` | Assigns the pod once its worker has connected. |
+| 1 | WorkerProxy | Platform | `PUT /admin/worker/assignment` | Records the pod assignment before the worker connects. |
 | 2 | Host | Platform | `POST /admin/instance/assign` | Assigns the placeholder Host to the app, which then specializes. Not sent in `project`, whose Host starts already specialized. |
 | 3 | Host | Platform | `PUT /admin/workers/{workerId}` | Links the worker through the WorkerProxy runtime gRPC endpoint. |
-| 4 | Host | Client | `GET /api/hello` | Invokes the function through Host -> WorkerProxy -> worker. |
+| 4 | WorkerProxy | Worker | `GET /msi/token` on `127.0.0.1:8081` | Relays the startup token request over the runtime FunctionRpc stream. |
+| 5 | Host | Client | `GET /api/hello` | Invokes the function through Host -> WorkerProxy -> worker. |
 
-`GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The `project` profile sends steps 1 and 3 through the fake platform automatically; `project-placeholder-manual` leaves steps 1 to 3 to you.
+`GET /admin/worker/state` on the WorkerProxy reports the pod state at any time. The sample requests the POC token before opening its FunctionRpc stream. The Host returns the fixed token only when `FunctionsHostingConfig__ManagedIdentityTokenPocEnabled=1`.
 
 ### Test-only
 
@@ -81,7 +82,7 @@ Simulation routes live under `/simulate`, so they are never confused with the re
 `compute-separation.http` walks through the expected flow one step at a time by calling the fake platform, which sends the assign and link calls. Run the `project-placeholder-manual` profile, then open the file in Visual Studio or VS Code with the REST Client extension.
 
 > [!NOTE]
-> In `project-placeholder-manual`, nothing is assigned or linked until you send the requests. Wait until every resource is **Running** in the dashboard, then send the numbered requests (1 to 4) in the order they appear in the file. If assign returns `503`, the sample worker has not connected yet; retry it before moving on. The requests marked *Optional* can be sent at any time.
+> In `project-placeholder-manual`, nothing is assigned or linked until you send the requests. Wait until every resource is **Running** in the dashboard, then send the numbered requests in order. The requests marked *Optional* can be sent at any time.
 
 ## Placeholder mode
 

@@ -14,7 +14,7 @@ namespace Azure.Functions.WorkerProxy.State;
 /// </summary>
 /// <remarks>
 /// Lifecycle notifications use the relay's monotonically increasing session IDs.
-/// Assignment is synchronous bookkeeping; it never initializes or specializes a worker.
+/// Assignment is synchronous bookkeeping and does not wait for the worker stream.
 /// Both startup modes are retained as identity; mode-specific preparation is not implemented.
 /// All state decisions and snapshot replacements share one lock, including assignment racing with termination.
 /// Readers can retain a snapshot after releasing the lock because subsequent transitions replace rather than mutate it.
@@ -29,7 +29,6 @@ internal sealed class WorkerPodStateManager
     private WorkerAssignment? _assignment;
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
     private long _lastSessionId;
-    private int _assignmentClaimed;
 
     public WorkerPodStateManager(
         IOptions<WorkerProxyOptions> options,
@@ -68,6 +67,23 @@ internal sealed class WorkerPodStateManager
                 return _waiters.Count;
             }
         }
+    }
+
+    internal bool TryGetAssignmentEnvironmentValue(string name, out string? value)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+
+        lock (_stateLock)
+        {
+            if (_assignment is not null && _assignment.Environment.TryGetValue(name, out string? assignmentValue))
+            {
+                value = assignmentValue;
+                return true;
+            }
+        }
+
+        value = null;
+        return false;
     }
 
     /// <summary>
@@ -184,7 +200,12 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            UpdateStateAndNotifyWaitersLocked(_state with { Revision = checked(_state.Revision + 1), WorkerId = workerId });
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                WorkerId = workerId,
+                AssignmentState = _assignment is null ? _state.AssignmentState : WorkerAssignmentState.Ready
+            });
             return true;
         }
     }
@@ -227,7 +248,7 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Records or replays assignment atomically with worker readiness and terminal state.
+    /// Records or replays assignment atomically with worker lifecycle state.
     /// </summary>
     public WorkerAssignmentResult Assign(WorkerAssignment assignment)
     {
@@ -248,27 +269,15 @@ internal sealed class WorkerPodStateManager
                     : WorkerAssignmentResult.AlreadyAssigned;
             }
 
-            if (!_state.IsWorkerReady)
-            {
-                return WorkerAssignmentResult.WorkerNotReady;
-            }
-
-            // No asynchronous specialization occurs: publish Ready directly, with a single revision increment.
             WorkerPodState assigned = _state with
             {
                 Revision = checked(_state.Revision + 1),
-                AssignmentState = WorkerAssignmentState.Ready,
+                AssignmentState = _state.IsWorkerReady ? WorkerAssignmentState.Ready : WorkerAssignmentState.Assigned,
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
                 IsAlwaysReady = assignment.IsAlwaysReady
             };
-
-            // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.
-            if (Interlocked.CompareExchange(ref _assignmentClaimed, 1, 0) != 0)
-            {
-                throw new InvalidOperationException("Assignment identity was claimed without a recorded assignment.");
-            }
 
             _assignment = assignment;
             UpdateStateAndNotifyWaitersLocked(assigned);

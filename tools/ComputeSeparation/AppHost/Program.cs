@@ -12,6 +12,8 @@ const string ManagementEndpointName = "management";
 const string RuntimeGrpcEndpointName = "runtime-grpc";
 const string WorkerGrpcEndpointName = "worker-grpc";
 const string HttpEndpointName = "http";
+const string ManagedIdentityEndpointName = "managed-identity";
+const int ManagedIdentityPort = 8081;
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 string mode = builder.Configuration["ComputeSeparation:Mode"] ?? "project";
@@ -23,11 +25,13 @@ if (!useContainers && !string.Equals(mode, "project", StringComparison.OrdinalIg
 
 string workerId = builder.Configuration["ComputeSeparation:WorkerId"] ?? $"aspire-{Guid.NewGuid():N}";
 string podName = builder.Configuration["ComputeSeparation:PodName"] ?? "worker-pod-1";
+string identityHeader = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 using HarnessRunDirectory? runDirectory = useContainers ? null : new();
 string repositoryRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 await using ContainerTopology? topology = useContainers ? new(repositoryRoot) : null;
 EndpointReference hostEndpoint;
 EndpointReference? platformEndpoint = null;
+EndpointReference? workerProxyManagementEndpoint = null;
 ReferenceExpression workerGrpcEndpoint;
 string[] dependencies;
 
@@ -49,7 +53,7 @@ if (topology is not null)
             stopped.ResourceEvent.Snapshot.EnvironmentVariables.FirstOrDefault(variable =>
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
-    builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
+    IResourceBuilder<ExecutableResource> workerPod = builder.AddExecutable("worker-pod-1", "docker", repositoryRoot,
             "compose", "--file", topology.WorkerPod.ComposeFile, "up", "--build", "--no-color")
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:ManagementPort"),
             name: ManagementEndpointName, env: "WORKER_PROXY_MANAGEMENT_PORT")
@@ -58,6 +62,7 @@ if (topology is not null)
         .WithEnvironment("WORKER_PROXY_ALIAS", topology.ProxyAlias)
         .WithEnvironment("WORKER_ID", workerId)
         .WithEnvironment("WORKER_REQUEST_ID", Guid.NewGuid().ToString())
+        .WithEnvironment("IDENTITY_HEADER", identityHeader)
         .WithEnvironment(ComposeSession.ProjectNameVariable, topology.WorkerPod.ProjectName)
         .WithEnvironment(context => context.EnvironmentVariables[ComposeSession.GenerationVariable] = topology.WorkerPod.Generation)
         .WaitFor(runtime)
@@ -67,6 +72,7 @@ if (topology is not null)
                 string.Equals(variable.Name, ComposeSession.GenerationVariable, StringComparison.Ordinal))?.Value));
 
     hostEndpoint = runtime.GetEndpoint(HttpEndpointName);
+    workerProxyManagementEndpoint = workerPod.GetEndpoint(ManagementEndpointName);
     workerGrpcEndpoint = ReferenceExpression.Create($"http://{topology.ProxyAlias}:50053");
     dependencies = ["runtime", "worker-pod-1"];
 }
@@ -77,6 +83,7 @@ else
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:RuntimeGrpcPort"), name: RuntimeGrpcEndpointName)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:WorkerGrpcPort"), name: WorkerGrpcEndpointName)
         .WithHttpEndpoint(targetPort: GetOptionalPort(builder.Configuration, "ComputeSeparation:HttpPort"), name: HttpEndpointName)
+        .WithHttpEndpoint(targetPort: ManagedIdentityPort, name: ManagedIdentityEndpointName)
         .WithHttpHealthCheck("/admin/instance/ready", endpointName: ManagementEndpointName);
 
     proxyProject.WithEnvironment(context =>
@@ -91,6 +98,8 @@ else
             proxyProject.GetEndpoint(WorkerGrpcEndpointName).Property(EndpointProperty.TargetPort);
         context.EnvironmentVariables["WORKERPROXY__HTTPPORT"] =
             proxyProject.GetEndpoint(HttpEndpointName).Property(EndpointProperty.TargetPort);
+        context.EnvironmentVariables["WORKERPROXY__MANAGEDIDENTITYPORT"] =
+            proxyProject.GetEndpoint(ManagedIdentityEndpointName).Property(EndpointProperty.TargetPort);
         context.EnvironmentVariables["WORKERPROXY__HTTPPROXYENDPOINT"] = proxyProject.GetEndpoint(HttpEndpointName);
         context.EnvironmentVariables["Logging__LogLevel__Azure.Functions.WorkerProxy.Http"] = "Debug";
     });
@@ -101,6 +110,10 @@ else
             "--functions-worker-id", workerId,
             "--functions-request-id", Guid.NewGuid().ToString(),
             "--functions-grpc-max-message-length", "134217728")
+        .WithEnvironment("COMPUTE_SEPARATION_MSI_POC", "1")
+        .WithEnvironment("IDENTITY_ENDPOINT",
+            "http://127.0.0.1:" + ManagedIdentityPort.ToString(CultureInfo.InvariantCulture) + "/msi/token")
+        .WithEnvironment("IDENTITY_HEADER", identityHeader)
         .WaitFor(proxyProject);
 
     IResourceBuilder<ProjectResource> fakePlatform = builder.AddProject<Projects.FakePlatform>("fake-platform", launchProfileName: null)
@@ -120,6 +133,7 @@ else
         .WithEnvironment("AzureFunctionsWebHost__IsFileSystemReadOnly", "true")
         .WithEnvironment("AzureFunctionsJobHost__logging__logLevel__default", "Information")
         .WithEnvironment("AzureFunctionsJobHost__logging__console__isEnabled", "true")
+        .WithEnvironment("FunctionsHostingConfig__ManagedIdentityTokenPocEnabled", "1")
         .WithHttpHealthCheck("/admin/instance/http-health", endpointName: HttpEndpointName);
 
     functionsHost.WithEnvironment("ASPNETCORE_URLS",
@@ -129,7 +143,8 @@ else
         .WithEnvironment("FakePlatform__HostUri", functionsHost.GetEndpoint(HttpEndpointName))
         .WithEnvironment("FakePlatform__WorkerProxyUri", proxyProject.GetEndpoint(ManagementEndpointName))
         .WithEnvironment("FakePlatform__WorkerGrpcEndpoint", proxyProject.GetEndpoint(RuntimeGrpcEndpointName))
-        .WithEnvironment("FakePlatform__WorkerId", workerId);
+        .WithEnvironment("FakePlatform__WorkerId", workerId)
+        .WithEnvironment("FakePlatform__IdentityHeader", identityHeader);
 
     if (builder.Configuration.GetValue("ComputeSeparation:PlaceholderMode", false))
     {
@@ -156,6 +171,8 @@ if (builder.Configuration.GetValue("ComputeSeparation:AutoLink", true))
         hostEndpoint,
         workerGrpcEndpoint,
         platformEndpoint,
+        workerProxyManagementEndpoint,
+        identityHeader,
         workerId,
         dependencies,
         services.GetRequiredService<ResourceNotificationService>(),

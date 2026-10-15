@@ -27,9 +27,14 @@ internal sealed partial class FunctionRpcRelay
         WorkerPodStateManager stateManager)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
+        private const int MaximumPendingManagedIdentityRequests = 16;
+        private static readonly TimeSpan ManagedIdentityRequestTimeout = TimeSpan.FromSeconds(10);
         private readonly Lock _stateLock = new();
-        private readonly Channel<StreamingMessage> _toRuntime = CreateChannel();
-        private readonly Channel<StreamingMessage> _toWorker = CreateChannel();
+        private readonly Dictionary<string, TaskCompletionSource<ManagedIdentityTokenResponse>> _managedIdentityRequests =
+            new(StringComparer.Ordinal);
+
+        private readonly Channel<StreamingMessage> _toRuntime = CreateChannel(singleWriter: false);
+        private readonly Channel<StreamingMessage> _toWorker = CreateChannel(singleWriter: true);
         // Linked call sources unregister when disposed, so cancellation can safely finish after this session is cleared.
         private readonly CancellationTokenSource _terminationSource = new();
         private readonly TaskCompletionSource<FunctionRpcRelayTerminalState> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -123,6 +128,64 @@ internal sealed partial class FunctionRpcRelay
             }
         }
 
+        public async Task<ManagedIdentityTokenResponse> RequestManagedIdentityTokenAsync(
+            ManagedIdentityTokenRequest request,
+            CancellationToken cancellationToken)
+        {
+            string requestId = Guid.NewGuid().ToString("N");
+            TaskCompletionSource<ManagedIdentityTokenResponse> completion =
+                new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            lock (_stateLock)
+            {
+                if (_terminalState is not null || !_runtimeAttached)
+                {
+                    throw new ManagedIdentityTokenUnavailableException("The runtime FunctionRpc stream is not attached.");
+                }
+
+                if (_managedIdentityRequests.Count >= MaximumPendingManagedIdentityRequests)
+                {
+                    throw new ManagedIdentityTokenUnavailableException("The managed identity request limit has been reached.");
+                }
+
+                _managedIdentityRequests.Add(requestId, completion);
+            }
+
+            try
+            {
+                await _toRuntime.Writer.WriteAsync(new()
+                {
+                    RequestId = requestId,
+                    ManagedIdentityTokenRequest = request.Clone()
+                }, cancellationToken);
+
+                using CancellationTokenSource linkedSource =
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _terminationSource.Token);
+                try
+                {
+                    return await completion.Task.WaitAsync(ManagedIdentityRequestTimeout, linkedSource.Token);
+                }
+                catch (OperationCanceledException exception)
+                    when (!cancellationToken.IsCancellationRequested && _terminationSource.IsCancellationRequested)
+                {
+                    throw new ManagedIdentityTokenUnavailableException(
+                        "The FunctionRpc relay ended before the managed identity request completed.", exception);
+                }
+            }
+            catch (ChannelClosedException exception)
+            {
+                throw new ManagedIdentityTokenUnavailableException(
+                    "The runtime FunctionRpc stream ended before the managed identity request was sent.", exception);
+            }
+            finally
+            {
+                lock (_stateLock)
+                {
+                    _managedIdentityRequests.Remove(requestId);
+                }
+            }
+        }
+
         /// <summary>
         /// Runs the inbound reader and sole outbound writer for an attached gRPC stream.
         /// </summary>
@@ -199,13 +262,13 @@ internal sealed partial class FunctionRpcRelay
             TryTerminate(new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
         }
 
-        private static Channel<StreamingMessage> CreateChannel()
+        private static Channel<StreamingMessage> CreateChannel(bool singleWriter)
         {
             return Channel.CreateUnbounded<StreamingMessage>(new UnboundedChannelOptions
             {
                 AllowSynchronousContinuations = false,
                 SingleReader = true,
-                SingleWriter = true
+                SingleWriter = singleWriter
             });
         }
 
@@ -215,6 +278,14 @@ internal sealed partial class FunctionRpcRelay
             bool isFirstMessage = true;
             while (await requestStream.MoveNext(cancellationToken))
             {
+                if (side == FunctionRpcRelaySide.Runtime
+                    && requestStream.Current.ContentCase == StreamingMessage.ContentOneofCase.ManagedIdentityTokenResponse)
+                {
+                    CompleteManagedIdentityTokenRequest(requestStream.Current);
+                    isFirstMessage = false;
+                    continue;
+                }
+
                 StreamingMessage? message = ProcessInboundMessage(side, requestStream.Current, isFirstMessage);
                 if (message is null)
                 {
@@ -255,6 +326,26 @@ internal sealed partial class FunctionRpcRelay
             return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
                 ? FinalizeCapabilities(message)
                 : message;
+        }
+
+        private void CompleteManagedIdentityTokenRequest(StreamingMessage message)
+        {
+            TaskCompletionSource<ManagedIdentityTokenResponse>? completion = null;
+            lock (_stateLock)
+            {
+                if (!string.IsNullOrWhiteSpace(message.RequestId))
+                {
+                    _managedIdentityRequests.Remove(message.RequestId, out completion);
+                }
+            }
+
+            if (completion is null)
+            {
+                Log.UnknownManagedIdentityTokenResponse(logger, id, message.RequestId);
+                return;
+            }
+
+            completion.TrySetResult(message.ManagedIdentityTokenResponse);
         }
 
         private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
@@ -490,5 +581,9 @@ internal sealed partial class FunctionRpcRelay
             "assignment (assignment state: {AssignmentState}). The FunctionGroupName capability was omitted, " +
             "so the Host will treat the worker's function group as unknown.")]
         public static partial void FunctionGroupNotAdvertised(ILogger logger, long sessionId, WorkerAssignmentState assignmentState);
+
+        [LoggerMessage(4, LogLevel.Debug,
+            "FunctionRpc relay session {SessionId} ignored a managed identity token response with unknown request ID {RequestId}.")]
+        public static partial void UnknownManagedIdentityTokenResponse(ILogger logger, long sessionId, string requestId);
     }
 }
