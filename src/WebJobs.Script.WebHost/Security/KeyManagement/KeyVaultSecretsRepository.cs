@@ -192,10 +192,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 tasks.Add(_secretClient.Value.GetSecretAsync(canonicalMasterKey.Name));
             }
-            else
-            {
-                return null;
-            }
 
             // Add functionKey tasks
             foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(FunctionKeyPrefix, StringComparison.OrdinalIgnoreCase)))
@@ -250,7 +246,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             }
 
-            return hostSecrets;
+            // A missing master must not hide valid keys and trigger replacement of the entire set.
+            return hostSecrets.MasterKey is not null || hostSecrets.FunctionKeys.Count > 0 || hostSecrets.SystemKeys.Count > 0
+                ? hostSecrets
+                : null;
         }
 
         private async Task<ScriptSecrets> ReadFunctionSecrets(string functionName)

@@ -4,6 +4,7 @@
 - My change description (#PR)
 -->
 
+- Preserve existing Key Vault host function and system keys when regenerating a missing canonical master key (#12093)
 - Fix false AzureWebJobsStorage health failures for identities with documented blob data permissions while retaining low-cost connectivity probes (#12086)
 - Require exact canonical master key secret names in the Key Vault secrets repository (#12083)
 - Add usage telemetry for worker custom metrics and Azure Monitor diagnostic logging (#12034)

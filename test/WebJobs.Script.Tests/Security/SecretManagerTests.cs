@@ -856,6 +856,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
+        public async Task GetHostSecretsAsync_MissingMasterKey_PreservesExistingEncryptedKeys()
+        {
+            var hostSecrets = new HostSecrets
+            {
+                FunctionKeys = new List<Key> { new("default", "encryptedFunctionValue") { IsEncrypted = true } },
+                SystemKeys = new List<Key> { new("system", "encryptedSystemValue") { IsEncrypted = true } }
+            };
+            var repository = new Mock<ISecretsRepository>();
+            repository.Setup(repo => repo.ReadAsync(ScriptSecretsType.Host, null)).ReturnsAsync(hostSecrets);
+            var converterFactory = GetConverterFactoryMock(true, false);
+            using var secretManager = new SecretManager(repository.Object, converterFactory.Object, _logger, new TestMetricsLogger(), _hostNameProvider, _startupContextProvider);
+
+            var result = await secretManager.GetHostSecretsAsync();
+
+            SecretGeneratorTests.ValidateSecret(NormalizeKey(result.MasterKey), SecretGenerator.MasterKeySeed);
+            Assert.True(hostSecrets.MasterKey.IsEncrypted);
+            Assert.Equal("encryptedFunctionValue", result.FunctionKeys["default"]);
+            Assert.Equal("encryptedSystemValue", result.SystemKeys["system"]);
+            Assert.True(Assert.Single(hostSecrets.FunctionKeys).IsEncrypted);
+            Assert.True(Assert.Single(hostSecrets.SystemKeys).IsEncrypted);
+            repository.Verify(repo => repo.WriteAsync(ScriptSecretsType.Host, null, hostSecrets), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetHostSecretsAsync_MissingMasterKey_PersistenceFailureDoesNotCacheIncompleteSecrets()
+        {
+            var repository = new Mock<ISecretsRepository>();
+            repository.Setup(repo => repo.ReadAsync(ScriptSecretsType.Host, null))
+                .ReturnsAsync(() => new HostSecrets
+                {
+                    FunctionKeys = new List<Key> { new("default", "functionValue") },
+                    SystemKeys = new List<Key> { new("system", "systemValue") }
+                });
+            var exception = new InvalidOperationException("Failed to persist the master key.");
+            repository.Setup(repo => repo.WriteAsync(ScriptSecretsType.Host, null, It.IsAny<ScriptSecrets>()))
+                .ThrowsAsync(exception);
+            var converterFactory = GetConverterFactoryMock(false, false);
+            using var secretManager = new SecretManager(repository.Object, converterFactory.Object, _logger, new TestMetricsLogger(), _hostNameProvider, _startupContextProvider);
+
+            Assert.Same(exception, await Assert.ThrowsAsync<InvalidOperationException>(() => secretManager.GetHostSecretsAsync()));
+            Assert.Same(exception, await Assert.ThrowsAsync<InvalidOperationException>(() => secretManager.GetHostSecretsAsync()));
+
+            repository.Verify(repo => repo.WriteAsync(ScriptSecretsType.Host, null, It.IsAny<ScriptSecrets>()), Times.Exactly(2));
+            repository.Verify(repo => repo.ReadAsync(ScriptSecretsType.Host, null), Times.Exactly(4));
+        }
+
+        [Fact]
         public async Task SecretsRepository_SimultaneousCreates_Throws_Conflict()
         {
             var mockValueConverterFactory = GetConverterFactoryMock(false, false);
