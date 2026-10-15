@@ -15,10 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IDataProtector _dataProtector;
 
-        /// <summary>
-        /// Initializes a converter using the existing hosting-environment detection.
-        /// </summary>
-        /// <param name="access">The permitted key access.</param>
         public DataProtectionKeyValueConverter(FileAccess access)
             : this(access, forceAzureWebsitesDataProtection: false)
         {

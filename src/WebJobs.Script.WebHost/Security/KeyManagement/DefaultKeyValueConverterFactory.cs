@@ -21,10 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly bool _forceAzureWebsitesDataProtection;
         private static readonly PlaintextKeyValueConverter PlaintextValueConverter = new PlaintextKeyValueConverter(FileAccess.ReadWrite);
 
-        /// <summary>
-        /// Initializes a factory using the existing hosting-environment detection.
-        /// </summary>
-        /// <param name="repositorySupportsEncryption">Whether the repository provides its own encryption.</param>
         public DefaultKeyValueConverterFactory(bool repositorySupportsEncryption)
             : this(repositorySupportsEncryption, forceAzureWebsitesDataProtection: false)
         {
