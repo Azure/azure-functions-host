@@ -18,6 +18,21 @@ namespace Azure.Functions.WorkerProxy.Tests;
 [Collection(nameof(EnvironmentVariableCollection))]
 public class WorkerProxyEnvironmentConfigurationTests
 {
+    [Theory]
+    [InlineData("explicit-pod", "legion-pod", "container-pod", "legion-pod")]
+    [InlineData("explicit-pod", null, "container-pod", "container-pod")]
+    [InlineData("explicit-pod", " \t", "container-pod", "container-pod")]
+    public async Task ProductionConfiguration_ResolvesPlatformPodIdentity(
+        string? explicitPodName, string? platformPodName, string? containerName, string expectedPodName)
+    {
+        using EnvironmentVariableScope explicitIdentity = new("WORKERPROXY__PODNAME", explicitPodName);
+        using EnvironmentVariableScope platformIdentity = new("WEBSITE_POD_NAME", platformPodName);
+        using EnvironmentVariableScope containerIdentity = new("CONTAINER_NAME", containerName);
+        await using WebApplication app = WorkerProxyApplication.Build([]);
+
+        Assert.Equal(expectedPodName, app.Services.GetRequiredService<WorkerPodStateManager>().State.PodName);
+    }
+
     [Fact]
     public async Task ProductionConfiguration_UsesWorkerProxyEndpointOptions()
     {
@@ -34,7 +49,7 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope runtimeGrpcPort = new("WORKERPROXY__RUNTIMEGRPCPORT", "0");
         using EnvironmentVariableScope workerGrpcPort = new("WORKERPROXY__WORKERGRPCPORT", "0");
         using EnvironmentVariableScope httpPort = new("WORKERPROXY__HTTPPORT", "0");
-        using EnvironmentVariableScope podName = new("WORKERPROXY__PODNAME", "environment-worker-pod");
+        using EnvironmentVariableScope podName = new("WEBSITE_POD_NAME", "environment-worker-pod");
         using EnvironmentVariableScope urls = new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
         using EnvironmentVariableScope dotnetSetting = new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");
         await using WebApplication app = WorkerProxyApplication.Build([]);
