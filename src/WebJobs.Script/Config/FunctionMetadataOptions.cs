@@ -16,4 +16,11 @@ public class FunctionMetadataOptions
     /// in the function metadata. Some workers (such as HTTP workers) do not require this validation.
     /// </summary>
     public bool SkipRuntimeValidation { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether worker metadata, rather than configured runtime or
+    /// profile settings, determines the ScriptHost runtime. Non-codeless functions must report one
+    /// non-empty language. An empty app does not require a runtime.
+    /// </summary>
+    public bool UseWorkerRuntimeFromMetadata { get; set; } = false;
 }

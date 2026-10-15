@@ -95,6 +95,7 @@ public static class RpcClientServiceCollectionExtensions
         services.AddSingleton<IFunctionInvocationDispatcherFactory, RpcClientFunctionInvocationDispatcherFactory>();
         services.AddSingleton<IScriptHostWorkerManager, RpcClientScriptHostWorkerManager>();
         services.AddRpcScriptHostCoreServices();
+        services.Configure<FunctionMetadataOptions>(options => options.UseWorkerRuntimeFromMetadata = true);
 
         return services;
     }
