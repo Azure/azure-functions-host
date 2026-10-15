@@ -34,10 +34,4 @@ internal sealed class WorkerAssignRequest
     public Dictionary<string, string?>? Environment { get; init; }
 
     public string? FunctionAppDirectory { get; init; }
-
-    /// <summary>
-    /// Gets the allocated external HTTP origin, overriding the configured local-development origin.
-    /// Optional for legacy configured-origin and non-HTTP workers.
-    /// </summary>
-    public string? HttpProxyEndpoint { get; init; }
 }

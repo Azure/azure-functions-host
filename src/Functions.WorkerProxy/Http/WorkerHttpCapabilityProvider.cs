@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Rpc;
-using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,15 +14,13 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// </summary>
 internal sealed partial class WorkerHttpCapabilityProvider(
     IOptions<WorkerProxyOptions> options,
-    ILogger<WorkerHttpCapabilityProvider> logger,
-    WorkerPodStateManager stateManager)
+    ILogger<WorkerHttpCapabilityProvider> logger)
     : IWorkerCapabilityFinalizer
 {
     private const string HttpUriCapability = "HttpUri";
 
     private readonly WorkerProxyOptions _options = (options ?? throw new ArgumentNullException(nameof(options))).Value;
     private readonly ILogger<WorkerHttpCapabilityProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
 
     /// <summary>
     /// Finalizes the HTTP capability on a relay-owned copy of the successful initialization response.
@@ -44,14 +41,14 @@ internal sealed partial class WorkerHttpCapabilityProvider(
         Uri destination = string.IsNullOrWhiteSpace(_options.WorkerHttpEndpoint)
             ? advertisedDestination
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
-        // Allocation is authoritative. An explicit configured origin remains supported for local/legacy
-        // deployments without dynamic assignment; never infer an external port from another listener.
+        // The platform supplies the allocated origin in the container startup configuration.
+        // Never infer an external port from another listener or an assignment payload.
         Uri? proxyEndpoint = WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(
-            _stateManager.HttpProxyEndpoint?.AbsoluteUri ?? _options.HttpProxyEndpoint);
+            _options.HttpProxyEndpoint);
         if (proxyEndpoint is null)
         {
             throw new InvalidOperationException($"{nameof(WorkerProxyOptions.HttpProxyEndpoint)} must specify a valid allocated "
-                + "or explicitly configured HTTP origin before HTTP worker initialization.");
+                + "HTTP origin at startup before HTTP worker initialization.");
         }
 
         if (Uri.Compare(destination, proxyEndpoint, UriComponents.SchemeAndServer, UriFormat.UriEscaped,

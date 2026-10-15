@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +36,7 @@ public class WorkerProxyEnvironmentConfigurationTests
         using EnvironmentVariableScope runtimeGrpcPort = new("WORKERPROXY__RUNTIMEGRPCPORT", "0");
         using EnvironmentVariableScope workerGrpcPort = new("WORKERPROXY__WORKERGRPCPORT", "0");
         using EnvironmentVariableScope httpPort = new("WORKERPROXY__HTTPPORT", "0");
+        using EnvironmentVariableScope httpOrigin = new("WORKERPROXY__HTTPPROXYENDPOINT", "http://allocated.example:49187/");
         using EnvironmentVariableScope podName = new("WORKERPROXY__PODNAME", "environment-worker-pod");
         using EnvironmentVariableScope urls = new("ASPNETCORE_URLS", $"http://127.0.0.1:{ambientPort}");
         using EnvironmentVariableScope dotnetSetting = new("DOTNET_WORKER_PROXY_TEST_SETTING", "preserved");
@@ -47,6 +50,10 @@ public class WorkerProxyEnvironmentConfigurationTests
         Assert.NotEqual(ambientPort, address.Port);
         Assert.Equal("preserved", app.Configuration["DOTNET_WORKER_PROXY_TEST_SETTING"]);
         Assert.Equal("environment-worker-pod", app.Services.GetRequiredService<WorkerPodStateManager>().State.PodName);
+        Dictionary<string, string> capabilities = new() { ["HttpUri"] = "http://localhost:1234/worker/" };
+        Assert.Equal(new Uri("http://localhost:1234/worker/"),
+            app.Services.GetRequiredService<IWorkerCapabilityFinalizer>().FinalizeCapabilities(capabilities));
+        Assert.Equal("http://allocated.example:49187/", capabilities["HttpUri"]);
         using HttpClient client = new() { BaseAddress = address };
         using HttpResponseMessage response = await client.GetAsync("/admin/instance/ready", timeout.Token);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

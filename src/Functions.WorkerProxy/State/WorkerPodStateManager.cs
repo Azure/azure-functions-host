@@ -59,17 +59,6 @@ internal sealed class WorkerPodStateManager
         }
     }
 
-    internal Uri? HttpProxyEndpoint
-    {
-        get
-        {
-            lock (_stateLock)
-            {
-                return _assignment?.HttpProxyEndpoint;
-            }
-        }
-    }
-
     internal int PendingWaiterCount
     {
         get

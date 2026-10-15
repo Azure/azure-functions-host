@@ -130,7 +130,6 @@ public class WorkerHttpCapabilityProviderTests
 
     private static WorkerHttpCapabilityProvider CreateProvider(WorkerProxyOptions options)
     {
-        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance,
-            new(Options.Create(new WorkerProxyOptions { PodName = "test-pod" }), TimeProvider.System));
+        return new(Options.Create(options), NullLogger<WorkerHttpCapabilityProvider>.Instance);
     }
 }

@@ -220,7 +220,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_BlockedCapabilityLogging_DoesNotBlockShutdown()
     {
         using BlockingLogger<WorkerHttpCapabilityProvider> logger = new();
-        WorkerHttpCapabilityProvider provider = new(Options.Create(new WorkerProxyOptions()), logger, CreatePodStateManager());
+        WorkerHttpCapabilityProvider provider = new(Options.Create(new WorkerProxyOptions()), logger);
         await using FunctionRpcRelay relay = new(NullLogger<FunctionRpcRelay>.Instance, provider, CreatePodStateManager());
         using CancellationTokenSource timeout = new(TestTimeout);
         Channel<StreamingMessage> inbound = Channel.CreateUnbounded<StreamingMessage>();
@@ -332,10 +332,19 @@ public partial class FunctionRpcRelayTests
             await context.Response.WriteAsync($"received:{body}", context.RequestAborted);
         });
         Uri destination = new(WorkerHttpForwardingTests.GetAddress(workerApp), "/worker/");
-        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        using System.Net.Sockets.TcpListener reservedListener = new(IPAddress.Loopback, 0);
+        reservedListener.Start();
+        int httpPort = ((IPEndPoint)reservedListener.LocalEndpoint).Port;
+        reservedListener.Stop();
+        string proxyEndpoint = $"http://127.0.0.1:{httpPort}/";
+        await using WorkerProxyWebApplicationFactory factory = new(new Dictionary<string, string?>
+        {
+            ["WorkerProxy:HttpPort"] = httpPort.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["WorkerProxy:HttpProxyEndpoint"] = proxyEndpoint
+        });
         using HttpClient proxyClient = factory.CreateHttpForwardingClient();
-        string proxyEndpoint = proxyClient.BaseAddress!.AbsoluteUri;
-        // The test deployment learns its externally reachable origin after the ephemeral listener binds.
+        Assert.Equal(proxyEndpoint, proxyClient.BaseAddress!.AbsoluteUri);
+        // Origin is configured before startup, not assigned after binding.
         Assert.NotEqual(factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime).Port + 1, new Uri(proxyEndpoint).Port);
         using CancellationTokenSource timeout = new(TestTimeout);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
@@ -349,8 +358,7 @@ public partial class FunctionRpcRelayTests
             FunctionGroupName = "http",
             IsAlwaysReady = false,
             Environment = [],
-            FunctionAppDirectory = string.Empty,
-            HttpProxyEndpoint = proxyEndpoint
+            FunctionAppDirectory = string.Empty
         }, WorkerProxyJsonContext.Default.WorkerAssignRequest, timeout.Token);
         Assert.Equal(HttpStatusCode.Created, assigned.StatusCode);
         await worker.WriteAsync(CreateInitResponse("init", destination.AbsoluteUri), timeout.Token);
