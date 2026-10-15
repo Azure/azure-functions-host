@@ -702,7 +702,8 @@ public sealed partial class WorkerChannelRegistryTests
         await using WorkerChannelRegistry registry = harness.Registry;
         await LinkAsync(registry, "worker");
         RpcClientWorkerFunctionMetadataProvider provider = new(
-            registry, NullLogger<RpcClientWorkerFunctionMetadataProvider>.Instance, Mock.Of<IWorkerRuntimeResolver>());
+            registry, NullLogger<RpcClientWorkerFunctionMetadataProvider>.Instance, Mock.Of<IWorkerRuntimeResolver>(),
+            Options.Create(new FunctionMetadataOptions { UseWorkerRuntimeFromMetadata = true }));
         Task<FunctionMetadataResult> metadata = provider.GetFunctionMetadataAsync([]);
 
         channel.Complete();

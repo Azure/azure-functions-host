@@ -34,6 +34,7 @@ public static class RpcClientServiceCollectionExtensions
         services.AddSingleton<IRpcClientWorkerChannelFactory, RpcClientWorkerChannelFactory>();
         services.AddSingleton<IWorkerChannelRegistry, WorkerChannelRegistry>();
         services.AddSingleton<IWorkerFunctionMetadataProvider, RpcClientWorkerFunctionMetadataProvider>();
+        services.Configure<FunctionMetadataOptions>(options => options.UseWorkerRuntimeFromMetadata = true);
 
         return services;
     }
