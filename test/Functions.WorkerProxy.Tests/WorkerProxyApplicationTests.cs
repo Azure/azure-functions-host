@@ -32,16 +32,16 @@ public class WorkerProxyApplicationTests
     }
 
     [Fact]
-    public async Task StateManager_ResolvesAsSingletonWithPlatformIdentity()
+    public async Task StateManager_ResolvesAsSingletonWithConfiguredIdentity()
     {
-        Dictionary<string, string?> configuration = new() { ["WEBSITE_POD_NAME"] = "platform-worker-pod" };
+        Dictionary<string, string?> configuration = new() { ["WEBSITE_POD_NAME"] = "configured-worker-pod" };
         await using WorkerProxyWebApplicationFactory factory = new(configuration);
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using IServiceScope scope = factory.Services.CreateScope();
 
         Assert.Same(TimeProvider.System, factory.Services.GetRequiredService<TimeProvider>());
         Assert.Same(manager, scope.ServiceProvider.GetRequiredService<WorkerPodStateManager>());
-        Assert.Equal("platform-worker-pod", manager.State.PodName);
+        Assert.Equal("configured-worker-pod", manager.State.PodName);
         Assert.Equal(0, manager.State.Revision);
     }
 
@@ -75,7 +75,7 @@ public class WorkerProxyApplicationTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public async Task Startup_RejectsMissingOrBlankPlatformIdentityDespiteExplicitPodName(string? podName)
+    public async Task Startup_RejectsMissingOrBlankPodName(string? podName)
     {
         Dictionary<string, string?> configuration = new()
         {

@@ -47,11 +47,8 @@ Hello from the BYOC .NET isolated worker.
 
 ## Fake platform
 
-WorkerProxy resolves its pod identity from nonblank `WEBSITE_POD_NAME`, falling back to
-nonblank `CONTAINER_NAME`. Startup fails if neither platform variable supplies an
-identity; `WorkerProxy:PodName` cannot override or replace the platform identity.
-For local project runs, AppHost supplies `WEBSITE_POD_NAME` from
-`ComputeSeparation:PodName` (default `worker-pod-1`) to simulate the platform.
+WorkerProxy uses `WEBSITE_POD_NAME`, falling back to `CONTAINER_NAME`, for pod identity.
+AppHost supplies `WEBSITE_POD_NAME` locally from `ComputeSeparation:PodName`.
 
 In project mode, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host.
 
