@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -44,14 +43,8 @@ internal static class WorkerProxyApplication
         builder.WebHost.UseSetting(WebHostDefaults.PreferHostingUrlsKey, bool.FalseString);
         builder.Services.AddOptions<WorkerProxyOptions>()
             .BindConfiguration(WorkerProxyOptions.SectionName)
-            .Configure<IConfiguration>((options, configuration) =>
-            {
-                string? platformPodName = configuration["WEBSITE_POD_NAME"];
-                options.PodName = string.IsNullOrWhiteSpace(platformPodName)
-                    ? configuration["CONTAINER_NAME"] ?? string.Empty
-                    : platformPodName;
-            })
             .ValidateOnStart();
+        builder.Services.ConfigureOptions<WorkerProxyOptionsSetup>();
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<WorkerPodStateManager>();
