@@ -10,7 +10,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     /// <summary>
     /// Resolves the configured worker runtime for the current script host instance.
-    /// Configuration profiles take precedence over configuration entries. Caller defaults are not cached.
     /// Linked BYOC workers report their own metadata language and do not require a configured runtime.
     /// </summary>
     internal sealed class ScriptHostWorkerRuntimeResolver : IWorkerRuntimeResolver

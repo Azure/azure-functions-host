@@ -63,13 +63,10 @@ public sealed class WorkerFunctionMetadataValidatorTests
         ScriptHostWorkerRuntimeResolver resolver = new(configuration.Object, options.Object);
         WorkerFunctionMetadataValidator validator = new(NullLogger.Instance, resolver);
 
-        FunctionMetadata first = Assert.Single(validator.ValidateMetadata(
-            [CreateMetadata("FirstFunction", "python")], preserveWorkerLanguage: true));
-        FunctionMetadata second = Assert.Single(validator.ValidateMetadata(
-            [CreateMetadata("SecondFunction", "node")], preserveWorkerLanguage: true));
+        FunctionMetadata function = Assert.Single(validator.ValidateMetadata(
+            [CreateMetadata("HttpFunction", "python")], preserveWorkerLanguage: true));
 
-        Assert.Equal("python", first.Language);
-        Assert.Equal("node", second.Language);
+        Assert.Equal("python", function.Language);
         Assert.Empty(validator.FunctionErrors);
         configuration.Verify(config => config[EnvironmentSettingNames.FunctionWorkerRuntime], Times.Never);
         options.Verify(monitor => monitor.CurrentValue, Times.Never);

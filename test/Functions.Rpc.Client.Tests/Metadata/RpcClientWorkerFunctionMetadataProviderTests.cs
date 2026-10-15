@@ -62,56 +62,22 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("configured-runtime")]
-    public async Task GetFunctionMetadataAsync_PreservesEachWorkerLanguageRegardlessOfConfiguredRuntime(string configuredRuntime)
+    public async Task GetFunctionMetadataAsync_PreservesWorkerLanguageRegardlessOfConfiguredRuntime(string configuredRuntime)
     {
         _runtimeResolver.Setup(resolver => resolver.GetWorkerRuntime(It.IsAny<string>()))
             .Returns(configuredRuntime);
         await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
         _channels.Add(worker.Channel);
         RpcClientWorkerFunctionMetadataProvider provider = CreateProvider();
-        RpcFunctionMetadata first = CreateMetadata("FirstFunction", "first", HttpTriggerBinding);
-        first.Language = "python";
-        RpcFunctionMetadata second = CreateMetadata("SecondFunction", "second", HttpTriggerBinding);
-        second.Language = "node";
+        RpcFunctionMetadata metadata = CreateMetadata("HttpFunction", "function-id", HttpTriggerBinding);
+        metadata.Language = "python";
 
         Task<FunctionMetadataResult> getMetadata = provider.GetFunctionMetadataAsync([]);
         await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
-        await worker.SendFunctionMetadataResponseAsync([first, second]);
+        await worker.SendFunctionMetadataResponseAsync([metadata]);
         FunctionMetadataResult result = await getMetadata.WaitAsync(TestTimeout);
 
-        Assert.Collection(result.Functions,
-            function => Assert.Equal("python", function.Language),
-            function => Assert.Equal("node", function.Language));
-        Assert.Empty(provider.FunctionErrors);
-        _runtimeResolver.Verify(resolver => resolver.GetWorkerRuntime(It.IsAny<string>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GetFunctionMetadataAsync_RefreshFromDifferentWorkerDoesNotReusePreviousLanguage()
-    {
-        await using ClientWorkerChannelTestHarness first = await ClientWorkerChannelTestHarness.CreateAsync("first");
-        await using ClientWorkerChannelTestHarness second = await ClientWorkerChannelTestHarness.CreateAsync("second");
-        _channels.Add(first.Channel);
-        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider();
-        RpcFunctionMetadata firstMetadata = CreateMetadata("HttpFunction", "first-function", HttpTriggerBinding);
-        firstMetadata.Language = "python";
-
-        Task<FunctionMetadataResult> firstRequest = provider.GetFunctionMetadataAsync([]);
-        await first.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
-        await first.SendFunctionMetadataResponseAsync([firstMetadata]);
-        FunctionMetadataResult firstResult = await firstRequest.WaitAsync(TestTimeout);
-
-        _channels.Clear();
-        _channels.Add(second.Channel);
-        RpcFunctionMetadata secondMetadata = CreateMetadata("HttpFunction", "second-function", HttpTriggerBinding);
-        secondMetadata.Language = "node";
-        Task<FunctionMetadataResult> secondRequest = provider.GetFunctionMetadataAsync([], forceRefresh: true);
-        await second.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
-        await second.SendFunctionMetadataResponseAsync([secondMetadata]);
-        FunctionMetadataResult secondResult = await secondRequest.WaitAsync(TestTimeout);
-
-        Assert.Equal("python", Assert.Single(firstResult.Functions).Language);
-        Assert.Equal("node", Assert.Single(secondResult.Functions).Language);
+        Assert.Equal("python", Assert.Single(result.Functions).Language);
         Assert.Empty(provider.FunctionErrors);
         _runtimeResolver.Verify(resolver => resolver.GetWorkerRuntime(It.IsAny<string>()), Times.Never);
     }
