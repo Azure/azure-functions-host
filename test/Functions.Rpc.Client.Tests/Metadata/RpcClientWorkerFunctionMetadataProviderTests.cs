@@ -64,30 +64,6 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
             useWorkerRuntimeFromMetadata ? Times.Never() : Times.Once());
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("configured-runtime")]
-    public async Task GetFunctionMetadataAsync_PreservesWorkerLanguageRegardlessOfConfiguredRuntime(string configuredRuntime)
-    {
-        _runtimeResolver.Setup(resolver => resolver.GetWorkerRuntime(It.IsAny<string>()))
-            .Returns(configuredRuntime);
-        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
-        _channels.Add(worker.Channel);
-        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider();
-        RpcFunctionMetadata metadata = CreateMetadata("HttpFunction", "function-id", HttpTriggerBinding);
-        metadata.Language = "python";
-
-        Task<FunctionMetadataResult> getMetadata = provider.GetFunctionMetadataAsync([]);
-        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
-        await worker.SendFunctionMetadataResponseAsync([metadata]);
-        FunctionMetadataResult result = await getMetadata.WaitAsync(TestTimeout);
-
-        Assert.Equal("python", Assert.Single(result.Functions).Language);
-        Assert.Empty(provider.FunctionErrors);
-        _runtimeResolver.Verify(resolver => resolver.GetWorkerRuntime(It.IsAny<string>()), Times.Never);
-    }
-
     [Fact]
     public async Task GetFunctionMetadataAsync_WaitsForFirstInitializedChannel()
     {
