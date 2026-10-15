@@ -4,11 +4,13 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.WorkerProxy.Rpc;
 
@@ -24,12 +26,18 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 internal sealed partial class FunctionRpcRelay(
     ILogger<FunctionRpcRelay> logger,
     IWorkerCapabilityFinalizer capabilityFinalizer,
-    WorkerPodStateManager stateManager)
+    WorkerPodStateManager stateManager,
+    IWorkerSystemLogSink systemLogSink,
+    IOptions<WorkerProxyOptions> options)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
     private readonly IWorkerCapabilityFinalizer _capabilityFinalizer = capabilityFinalizer ?? throw new ArgumentNullException(nameof(capabilityFinalizer));
     private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
+    private readonly IWorkerSystemLogSink _systemLogSink = systemLogSink ?? throw new ArgumentNullException(nameof(systemLogSink));
+    private readonly WorkerSystemLogMode _systemLogMode =
+        (options ?? throw new ArgumentNullException(nameof(options))).Value.SystemLogMode;
+
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
@@ -139,7 +147,7 @@ internal sealed partial class FunctionRpcRelay(
             }
 
             session = _currentSession ??= new FunctionRpcRelaySession(
-                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager);
+                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager, _systemLogSink, _systemLogMode);
 
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)

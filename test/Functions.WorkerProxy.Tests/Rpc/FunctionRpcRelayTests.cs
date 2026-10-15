@@ -9,6 +9,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.Logging;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Google.Protobuf;
@@ -284,7 +285,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_CanceledStopWaitDoesNotCancelSharedStop()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
-        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager());
+        FunctionRpcRelay relay = CreateInProcessRelay(logger: logger);
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource stopCancellation = new();
         BlockingServerStreamWriter blockingWriter = new();
@@ -394,7 +395,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_ShutdownAllowsSessionClearBeforeCancellation()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
-        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager());
+        FunctionRpcRelay relay = CreateInProcessRelay(logger: logger);
         using CancellationTokenSource timeout = new(TestTimeout);
         Task<FunctionRpcRelayTerminalState> runtimeTask =
             relay.AttachAsync(FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
@@ -455,9 +456,18 @@ public partial class FunctionRpcRelayTests
         return new WorkerProxyWebApplicationFactory();
     }
 
-    private static FunctionRpcRelay CreateInProcessRelay(WorkerPodStateManager? stateManager = null)
+    private static FunctionRpcRelay CreateInProcessRelay(
+        WorkerPodStateManager? stateManager = null,
+        ILogger<FunctionRpcRelay>? logger = null,
+        IWorkerCapabilityFinalizer? capabilityFinalizer = null,
+        WorkerProxyOptions? options = null)
     {
-        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(), stateManager ?? CreatePodStateManager());
+        return new FunctionRpcRelay(
+            logger ?? NullLogger<FunctionRpcRelay>.Instance,
+            capabilityFinalizer ?? CreateCapabilityProvider(options),
+            stateManager ?? CreatePodStateManager(),
+            new NoOpWorkerSystemLogSink(),
+            Options.Create(options ?? new WorkerProxyOptions()));
     }
 
     private static WorkerPodStateManager CreatePodStateManager()

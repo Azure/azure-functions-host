@@ -1,6 +1,8 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+
 namespace Azure.Functions.WorkerProxy;
 
 /// <summary>
@@ -8,6 +10,9 @@ namespace Azure.Functions.WorkerProxy;
 /// </summary>
 internal sealed class WorkerProxyOptions
 {
+    private const int DefaultSystemLogQueueCapacity = 16_000;
+    private static readonly TimeSpan DefaultSystemLogShutdownDrainTimeout = TimeSpan.FromSeconds(5);
+
     /// <summary>
     /// The configuration section containing WorkerProxy settings.
     /// </summary>
@@ -50,4 +55,19 @@ internal sealed class WorkerProxyOptions
     /// <see cref="HttpPort"/>, but its external port may differ because of platform port mapping.
     /// </summary>
     public string? HttpProxyEndpoint { get; set; }
+
+    /// <summary>
+    /// Gets or sets how Worker Proxy handles system logs received from a language worker.
+    /// </summary>
+    public WorkerSystemLogMode SystemLogMode { get; set; } = WorkerSystemLogMode.Disabled;
+
+    /// <summary>
+    /// Gets or sets the maximum number of worker system-log records buffered for stdout.
+    /// </summary>
+    public int SystemLogQueueCapacity { get; set; } = DefaultSystemLogQueueCapacity;
+
+    /// <summary>
+    /// Gets or sets how long shutdown waits for accepted worker system-log records to drain.
+    /// </summary>
+    public TimeSpan SystemLogShutdownDrainTimeout { get; set; } = DefaultSystemLogShutdownDrainTimeout;
 }
