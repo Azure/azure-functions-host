@@ -112,8 +112,8 @@ internal sealed partial class RpcClientWorkerFunctionMetadataProvider : IWorkerF
 
         // Linked BYOC workers own their runtime. Do not replace their per-function language with Host configuration
         // or feed it into a Host-wide runtime cache.
-        ImmutableArray<FunctionMetadata> functions = _validator.ValidateMetadata(
-            rawFunctions, preserveWorkerLanguage: _metadataOptions.Value.UseWorkerRuntimeFromMetadata);
+        bool preserveWorkerLanguage = _metadataOptions.Value.UseWorkerRuntimeFromMetadata;
+        ImmutableArray<FunctionMetadata> functions = _validator.ValidateMetadata(rawFunctions, preserveWorkerLanguage);
         Log.FunctionsReturned(_logger, functions.Length, MetadataProviderName);
         _cachedResult = new(useDefaultMetadataIndexing: false, functions);
         return _cachedResult;
