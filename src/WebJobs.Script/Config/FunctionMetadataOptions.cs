@@ -19,8 +19,8 @@ public class FunctionMetadataOptions
 
     /// <summary>
     /// Gets or sets a value indicating whether worker metadata, rather than configured runtime or
-    /// profile settings, determines the ScriptHost runtime. Non-codeless functions must report one
-    /// non-empty language. An empty app does not require a runtime.
+    /// profile settings, determines the ScriptHost runtime. Enabled for client-backed BYOC workers,
+    /// which report their own runtime through function metadata.
     /// </summary>
     public bool UseWorkerRuntimeFromMetadata { get; set; } = false;
 }

@@ -292,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string workerRuntime;
                 if (_metadataOptions.Value.UseWorkerRuntimeFromMetadata)
                 {
-                    workerRuntime = GetWorkerRuntimeFromMetadata(functionMetadataList);
+                    workerRuntime = Utility.GetWorkerRuntime(functionMetadataList);
                     _logger.ResolvedWorkerRuntimeFromMetadata(Sanitizer.Sanitize(workerRuntime));
                 }
                 else
@@ -494,32 +494,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             InitializeFileSystem();
-        }
-
-        private static string GetWorkerRuntimeFromMetadata(IEnumerable<FunctionMetadata> functions)
-        {
-            string workerRuntime = null;
-            foreach (FunctionMetadata function in functions)
-            {
-                if (function.IsCodeless())
-                {
-                    continue;
-                }
-
-                if (string.IsNullOrWhiteSpace(function.Language))
-                {
-                    throw new HostInitializationException($"Worker metadata for function '{function.Name}' must specify a language.");
-                }
-
-                if (workerRuntime is not null && !string.Equals(workerRuntime, function.Language, StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new HostInitializationException("Worker metadata must specify the same language for all functions in the app.");
-                }
-
-                workerRuntime = function.Language;
-            }
-
-            return workerRuntime;
         }
 
         internal static void ValidateFunctionsWorkerRuntime(IWorkerRuntimeResolver workerRuntimeResolver, IOptions<FunctionsHostingConfigOptions> hostingConfigOptions, ILogger logger)

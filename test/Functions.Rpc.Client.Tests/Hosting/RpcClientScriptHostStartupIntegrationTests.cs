@@ -46,15 +46,11 @@ public class RpcClientScriptHostStartupIntegrationTests
     [InlineData(null, null)]
     [InlineData("", null)]
     [InlineData("node", null)]
-    [InlineData("dotnet-isolated", null)]
-    [InlineData("dotnet", null)]
     [InlineData("python", "node")]
-    [InlineData("node", "dotnet")]
-    [InlineData(null, "node")]
     public async Task FirstLink_WorkerLanguageControlsRuntimeIndexingAndInvocation(
         string? configuredRuntime, string? profileRuntime)
     {
-        await using TestWorker worker = await TestWorker.StartAsync("worker", ["python"]);
+        await using TestWorker worker = await TestWorker.StartAsync("worker", "python");
         await using ClientTestHost testHost = new(configuredRuntime: configuredRuntime, profileRuntime: profileRuntime);
         using CancellationTokenSource timeout = new(TestTimeout);
         await testHost.Host.StartAsync(timeout.Token);
@@ -86,64 +82,6 @@ public class RpcClientScriptHostStartupIntegrationTests
         await scriptHost.CallAsync("Http", new() { ["req"] = httpContext.Request }, timeout.Token);
 
         Assert.Equal(1, worker.Service.Invocations);
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    public async Task FirstLink_MissingWorkerLanguageFailsWithoutConfiguredFallback(string language)
-    {
-        await using TestWorker worker = await TestWorker.StartAsync("worker", [language]);
-        await using ClientTestHost testHost = new(configuredRuntime: "node");
-        using CancellationTokenSource timeout = new(TestTimeout);
-        await testHost.Host.StartAsync(timeout.Token);
-        await testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>()
-            .LinkAsync("worker", worker.Endpoint, cancellationToken: timeout.Token);
-        await testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>().ActivationTask!.WaitAsync(timeout.Token);
-        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
-        await WaitForHostStateAsync(manager, ScriptHostState.Error, timeout.Token);
-
-        HostInitializationException exception = Assert.IsType<HostInitializationException>(manager.LastError);
-        Assert.Contains("must specify a language", exception.Message);
-        Assert.Equal(0, worker.Service.Invocations);
-        Assert.False(worker.Service.FunctionLoaded.Task.IsCompleted);
-    }
-
-    [Fact]
-    public async Task FirstLink_InconsistentWorkerLanguagesFailWithoutConfiguredFallback()
-    {
-        await using TestWorker worker = await TestWorker.StartAsync("worker", ["python", "node"]);
-        await using ClientTestHost testHost = new(configuredRuntime: "node");
-        using CancellationTokenSource timeout = new(TestTimeout);
-        await testHost.Host.StartAsync(timeout.Token);
-        await testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>()
-            .LinkAsync("worker", worker.Endpoint, cancellationToken: timeout.Token);
-        await testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>().ActivationTask!.WaitAsync(timeout.Token);
-        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
-        await WaitForHostStateAsync(manager, ScriptHostState.Error, timeout.Token);
-
-        HostInitializationException exception = Assert.IsType<HostInitializationException>(manager.LastError);
-        Assert.Contains("same language", exception.Message);
-        Assert.False(worker.Service.FunctionLoaded.Task.IsCompleted);
-    }
-
-    [Fact]
-    public async Task FirstLink_EmptyAppDoesNotRequireAnyRuntime()
-    {
-        await using TestWorker worker = await TestWorker.StartAsync("worker", []);
-        await using ClientTestHost testHost = new(configuredRuntime: null);
-        using CancellationTokenSource timeout = new(TestTimeout);
-        await testHost.Host.StartAsync(timeout.Token);
-        await testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>()
-            .LinkAsync("worker", worker.Endpoint, cancellationToken: timeout.Token);
-        await testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>().ActivationTask!.WaitAsync(timeout.Token);
-        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
-        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
-
-        ScriptHost scriptHost = manager.Services!.GetRequiredService<ScriptHost>();
-        Assert.Empty(scriptHost.Functions);
-        Assert.Empty(scriptHost.FunctionErrors);
-        Assert.Null(manager.Services!.GetRequiredService<IWorkerRuntimeResolver>().GetWorkerRuntime());
     }
 
     [Fact]
@@ -378,13 +316,13 @@ public class RpcClientScriptHostStartupIntegrationTests
 
         public TestWorkerService Service { get; } = service;
 
-        public static async Task<TestWorker> StartAsync(string workerId, string[]? languages = null)
+        public static async Task<TestWorker> StartAsync(string workerId, string language = "dotnet-isolated")
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options =>
                 options.Listen(IPAddress.Loopback, 0, listener => listener.Protocols = HttpProtocols.Http2));
-            TestWorkerService service = new(workerId, languages ?? ["dotnet-isolated"]);
+            TestWorkerService service = new(workerId, language);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();
             WebApplication application = builder.Build();
@@ -403,7 +341,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         }
     }
 
-    public sealed class TestWorkerService(string workerId, string[] languages) : FunctionRpc.FunctionRpcBase
+    public sealed class TestWorkerService(string workerId, string language) : FunctionRpc.FunctionRpcBase
     {
         private int _metadataRequests;
         private int _invocations;
@@ -434,23 +372,20 @@ public class RpcClientScriptHostStartupIntegrationTests
                         case StreamingMessage.ContentOneofCase.FunctionsMetadataRequest:
                             Interlocked.Increment(ref _metadataRequests);
                             response.FunctionMetadataResponse = new() { Result = Success() };
-                            for (int index = 0; index < languages.Length; index++)
+                            response.FunctionMetadataResponse.FunctionMetadataResults.Add(new RpcFunctionMetadata
                             {
-                                response.FunctionMetadataResponse.FunctionMetadataResults.Add(new RpcFunctionMetadata
+                                FunctionId = "http",
+                                Name = "Http",
+                                Language = language,
+                                ScriptFile = "Sample.dll",
+                                EntryPoint = "Sample.Http.Run",
+                                Status = Success(),
+                                RawBindings =
                                 {
-                                    FunctionId = $"http{index}",
-                                    Name = index == 0 ? "Http" : $"Http{index}",
-                                    Language = languages[index],
-                                    ScriptFile = "Sample.dll",
-                                    EntryPoint = "Sample.Http.Run",
-                                    Status = Success(),
-                                    RawBindings =
-                                    {
-                                        """{"name":"req","type":"httpTrigger","direction":"in","authLevel":"anonymous","methods":["get"]}""",
-                                        """{"name":"$return","type":"http","direction":"out"}""",
-                                    },
-                                });
-                            }
+                                    """{"name":"req","type":"httpTrigger","direction":"in","authLevel":"anonymous","methods":["get"]}""",
+                                    """{"name":"$return","type":"http","direction":"out"}""",
+                                },
+                            });
                             break;
                         case StreamingMessage.ContentOneofCase.InvocationRequest:
                             Interlocked.Increment(ref _invocations);

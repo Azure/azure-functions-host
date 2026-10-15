@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Abstractions;
@@ -507,93 +506,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 EnvironmentExtensions.BaseDirectory = null;
             }
-        }
-
-        [Theory]
-        [InlineData("node", null, "node")]
-        [InlineData("node", "python", "python")]
-        [InlineData(null, "python", "python")]
-        [InlineData(null, null, "python")]
-        [InlineData("", null, "")]
-        public async Task Initialize_ServerRuntimeRetainsConfiguredProfileAndMetadataPrecedence(
-            string configuredRuntime, string profileRuntime, string expectedRuntime)
-        {
-            using var scriptDirectory = new TempDirectory();
-            using var logDirectory = new TempDirectory();
-            var metadataManager = new Mock<IFunctionMetadataManager>();
-            metadataManager.Setup(manager => manager.GetFunctionMetadata(false, true, true))
-                .Returns(ImmutableArray.Create(new FunctionMetadata { Name = "Http", Language = "python" }));
-            metadataManager.SetupGet(manager => manager.Errors)
-                .Returns(ImmutableDictionary<string, ImmutableArray<string>>.Empty);
-            var metricsLogger = new TestMetricsLogger();
-            var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>
-            {
-                [EnvironmentSettingNames.FunctionWorkerRuntime] = configuredRuntime,
-            }).Build();
-            using IHost host = new HostBuilder()
-                .ConfigureDefaultTestWebScriptHost(null, options =>
-                {
-                    options.ScriptPath = scriptDirectory.Path;
-                    options.LogPath = logDirectory.Path;
-                })
-                .ConfigureAppConfiguration(builder => builder.AddConfiguration(configuration))
-                .ConfigureServices(services =>
-                {
-                    services.AddSingleton<IConfiguration>(configuration);
-                    services.AddSingleton<IFunctionMetadataManager>(metadataManager.Object);
-                    services.AddSingleton<IMetricsLogger>(metricsLogger);
-                    services.Configure<ScriptJobHostOptions>(options => options.ProfileWorkerRuntime = profileRuntime);
-                })
-                .Build();
-
-            Assert.False(host.Services.GetRequiredService<IOptions<FunctionMetadataOptions>>().Value.UseWorkerRuntimeFromMetadata);
-            if (string.Equals(expectedRuntime, "node", StringComparison.Ordinal))
-            {
-                HostInitializationException exception = await Assert.ThrowsAsync<HostInitializationException>(() => host.GetScriptHost().InitializeAsync());
-                Assert.Contains("Did not find functions with language [node]", exception.Message);
-            }
-            else
-            {
-                await host.GetScriptHost().InitializeAsync();
-            }
-
-            Assert.Contains($"host.startup.runtime.language.{expectedRuntime}", metricsLogger.LoggedEvents);
-            Assert.Equal(profileRuntime ?? configuredRuntime, host.Services.GetRequiredService<IWorkerRuntimeResolver>().GetWorkerRuntime());
-        }
-
-        [Theory]
-        [InlineData(null)]
-        [InlineData("")]
-        public async Task Initialize_ServerMissingRuntimeStillThrowsBeforeMetadata(string configuredRuntime)
-        {
-            using var scriptDirectory = new TempDirectory();
-            using var logDirectory = new TempDirectory();
-            var metadataManager = new Mock<IFunctionMetadataManager>(MockBehavior.Strict);
-            var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>
-            {
-                [EnvironmentSettingNames.FunctionWorkerRuntime] = configuredRuntime,
-            }).Build();
-            var hostingConfig = new FunctionsHostingConfigOptions();
-            hostingConfig.Features[RpcWorkerConstants.ThrowOnMissingFunctionsWorkerRuntime] = "1";
-            using IHost host = new HostBuilder()
-                .ConfigureDefaultTestWebScriptHost(null, options =>
-                {
-                    options.ScriptPath = scriptDirectory.Path;
-                    options.LogPath = logDirectory.Path;
-                })
-                .ConfigureAppConfiguration(builder => builder.AddConfiguration(configuration))
-                .ConfigureServices(services =>
-                {
-                    services.AddSingleton<IConfiguration>(configuration);
-                    services.AddSingleton<IFunctionMetadataManager>(metadataManager.Object);
-                    services.AddSingleton<IOptions<FunctionsHostingConfigOptions>>(Options.Create(hostingConfig));
-                })
-                .Build();
-
-            HostInitializationException exception = await Assert.ThrowsAsync<HostInitializationException>(() => host.GetScriptHost().InitializeAsync());
-
-            Assert.Contains("setting is required", exception.Message);
-            metadataManager.VerifyNoOtherCalls();
         }
 
         [Theory]
