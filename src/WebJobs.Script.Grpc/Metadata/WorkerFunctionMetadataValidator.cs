@@ -56,6 +56,18 @@ public sealed partial class WorkerFunctionMetadataValidator
     /// <param name="functions">The raw worker metadata.</param>
     /// <returns>The valid function metadata.</returns>
     public ImmutableArray<FunctionMetadata> ValidateMetadata(IEnumerable<RawFunctionMetadata> functions)
+        => ValidateMetadata(functions, preserveWorkerLanguage: false);
+
+    /// <summary>
+    /// Validates raw worker metadata with an explicit choice of language authority.
+    /// </summary>
+    /// <param name="functions">The raw worker metadata.</param>
+    /// <param name="preserveWorkerLanguage">
+    /// Whether to retain each function's Worker-reported language instead of resolving the configured runtime.
+    /// Client-backed workers own their runtime; server-backed workers retain configured/profile precedence.
+    /// </param>
+    /// <returns>The valid function metadata.</returns>
+    public ImmutableArray<FunctionMetadata> ValidateMetadata(IEnumerable<RawFunctionMetadata> functions, bool preserveWorkerLanguage)
     {
         Dictionary<string, ICollection<string>> functionErrors = [];
         if (functions is null || !functions.Any())
@@ -82,7 +94,10 @@ public sealed partial class WorkerFunctionMetadataValidator
                 }
 
                 Utility.ValidateName(function.Name);
-                function.Language = _workerRuntimeResolver.GetWorkerRuntime();
+                if (!preserveWorkerLanguage)
+                {
+                    function.Language = _workerRuntimeResolver.GetWorkerRuntime();
+                }
 
                 if (!string.IsNullOrEmpty(rawFunction.ConfigurationSource))
                 {
