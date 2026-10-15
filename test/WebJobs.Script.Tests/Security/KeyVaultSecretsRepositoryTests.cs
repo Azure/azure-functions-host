@@ -8,7 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Security.KeyVault.Secrets;
+using Microsoft.Azure.WebJobs.Script.Tests.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
 using Moq;
 using WebJobs.Script.Tests;
@@ -340,23 +342,200 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("realMasterVal", hostSecrets.MasterKey.Value);
         }
 
-        [Fact]
-        public async Task ReadHostKeys_ReturnsNull_WhenOnlyNonCanonicalMasterKeyExists()
+        [Theory]
+        [InlineData(false, true, true)]
+        [InlineData(true, true, true)]
+        [InlineData(false, true, false)]
+        [InlineData(true, true, false)]
+        [InlineData(false, false, true)]
+        [InlineData(true, false, true)]
+        public async Task ReadHostKeys_PreservesKeys_WhenCanonicalMasterKeyMissing(bool hasUnexpectedMaster, bool hasFunctionKey, bool hasSystemKey)
         {
             var keyVaultSecrets = new List<KeyVaultSecret>
             {
-                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--masterKey--evil"), "rogueMasterVal"),
-                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey--default"), "funcVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey---068efault"), "forgedFuncVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--systemKey---069ventgrid-095extension"), "forgedSystemVal"),
             };
+
+            if (hasFunctionKey)
+            {
+                keyVaultSecrets.Add(SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey--default"), "funcVal"));
+            }
+
+            if (hasSystemKey)
+            {
+                keyVaultSecrets.Add(SecretModelFactory.KeyVaultSecret(new SecretProperties("host--systemKey--eventgrid-095extension"), "systemVal"));
+            }
+
+            if (hasUnexpectedMaster)
+            {
+                keyVaultSecrets.Add(SecretModelFactory.KeyVaultSecret(new SecretProperties("host--masterKey--evil"), "rogueMasterVal"));
+            }
 
             using var secretSentinelDirectory = new TempDirectory();
             Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
-            var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
-            var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+            using var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            using var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
+
+            var secrets = await repository.ReadAsync(ScriptSecretsType.Host, string.Empty);
+
+            var hostSecrets = Assert.IsType<HostSecrets>(secrets);
+            Assert.Null(hostSecrets.MasterKey);
+            if (hasFunctionKey)
+            {
+                var functionKey = Assert.Single(hostSecrets.FunctionKeys);
+                Assert.Equal("default", functionKey.Name);
+                Assert.Equal("funcVal", functionKey.Value);
+            }
+            else
+            {
+                Assert.Empty(hostSecrets.FunctionKeys);
+            }
+
+            if (hasSystemKey)
+            {
+                var systemKey = Assert.Single(hostSecrets.SystemKeys);
+                Assert.Equal("eventgrid_extension", systemKey.Name);
+                Assert.Equal("systemVal", systemKey.Value);
+            }
+            else
+            {
+                Assert.Empty(hostSecrets.SystemKeys);
+            }
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("host--masterKey--evil")]
+        [InlineData("function--test--default")]
+        [InlineData("host--functionKey---068efault")]
+        [InlineData("host--systemKey---069ventgrid-095extension")]
+        public async Task ReadHostKeys_ReturnsNull_WhenNoValidHostKeysExist(string secretName)
+        {
+            var keyVaultSecrets = new List<KeyVaultSecret>();
+            if (secretName is not null)
+            {
+                keyVaultSecrets.Add(SecretModelFactory.KeyVaultSecret(new SecretProperties(secretName), "value"));
+            }
+
+            using var secretSentinelDirectory = new TempDirectory();
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            using var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            using var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), new TestEnvironment());
 
             var secrets = await repository.ReadAsync(ScriptSecretsType.Host, string.Empty);
 
             Assert.Null(secrets);
+        }
+
+        [Theory]
+        [InlineData(null, false, true)]
+        [InlineData(null, true, true)]
+        [InlineData("host--masterKey--evil", false, true)]
+        [InlineData("host--masterKey--evil", true, true)]
+        [InlineData("host--masterKey--master", false, true)]
+        [InlineData("host--masterKey--master", true, true)]
+        [InlineData(null, false, false)]
+        [InlineData("host--masterKey--evil", false, false)]
+        public async Task GetHostSecretsAsync_PreservesExistingKeyVaultKeys(string masterKeyName, bool hasDefaultFunctionKey, bool hasCustomFunctionKey)
+        {
+            var keyVaultSecrets = new List<KeyVaultSecret>
+            {
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("host--systemKey--eventgrid-095extension"), "systemVal"),
+                SecretModelFactory.KeyVaultSecret(new SecretProperties("function--test--default"), "functionSpecificVal"),
+            };
+
+            if (hasCustomFunctionKey)
+            {
+                keyVaultSecrets.Add(SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey--custom"), "customFuncVal"));
+            }
+
+            if (masterKeyName is not null)
+            {
+                keyVaultSecrets.Add(SecretModelFactory.KeyVaultSecret(new SecretProperties(masterKeyName), "masterVal"));
+            }
+
+            if (hasDefaultFunctionKey)
+            {
+                keyVaultSecrets.Add(SecretModelFactory.KeyVaultSecret(new SecretProperties("host--functionKey--default"), "defaultFuncVal"));
+            }
+
+            var storedSecrets = keyVaultSecrets.ToDictionary(secret => secret.Name, StringComparer.OrdinalIgnoreCase);
+            Mock<SecretClient> mockClient = ConfigureSecretClientMock(keyVaultSecrets);
+            mockClient.Setup(client => client.GetPropertiesOfSecretsAsync(It.IsAny<CancellationToken>()))
+                .Returns(() => GetPageableSecretProperties(storedSecrets.Values.Select(secret => secret.Properties).ToList()));
+            mockClient.Setup(client => client.GetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string name, string version, CancellationToken cancellationToken) =>
+                    Response.FromValue(storedSecrets[name], Mock.Of<Response>()));
+            mockClient.Setup(client => client.SetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string name, string value, CancellationToken cancellationToken) =>
+                {
+                    var secret = SecretModelFactory.KeyVaultSecret(new SecretProperties(name), value);
+                    storedSecrets[name] = secret;
+
+                    return Response.FromValue(secret, Mock.Of<Response>());
+                });
+            mockClient.Setup(client => client.StartDeleteSecretAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string name, CancellationToken cancellationToken) =>
+                {
+                    storedSecrets.Remove(name);
+
+                    return Mock.Of<DeleteSecretOperation>();
+                });
+
+            using var secretSentinelDirectory = new TempDirectory();
+            using var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+            var environment = new TestEnvironment();
+            using var repository = new KeyVaultSecretsRepository(mockClient.Object, secretSentinelDirectory.Path, loggerFactory.CreateLogger<KeyVaultSecretsRepository>(), environment);
+            var hostNameProvider = new HostNameProvider(environment);
+            var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
+            using var manager = new SecretManager(repository, loggerFactory.CreateLogger<SecretManager>(), new TestMetricsLogger(), hostNameProvider, startupContextProvider);
+
+            var hostSecrets = await manager.GetHostSecretsAsync();
+
+            bool hasCanonicalMaster = string.Equals(masterKeyName, "host--masterKey--master", StringComparison.Ordinal);
+            if (hasCanonicalMaster)
+            {
+                Assert.Equal("masterVal", hostSecrets.MasterKey);
+                mockClient.Verify(client => client.SetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            }
+            else
+            {
+                SecretGeneratorTests.ValidateSecret(hostSecrets.MasterKey, SecretGenerator.MasterKeySeed);
+                mockClient.Verify(client => client.SetSecretAsync("host--masterKey--master", hostSecrets.MasterKey, It.IsAny<CancellationToken>()), Times.Once);
+            }
+
+            Assert.Equal((hasDefaultFunctionKey ? 1 : 0) + (hasCustomFunctionKey ? 1 : 0), hostSecrets.FunctionKeys.Count);
+            if (hasCustomFunctionKey)
+            {
+                Assert.Equal("customFuncVal", hostSecrets.FunctionKeys["custom"]);
+            }
+
+            Assert.Single(hostSecrets.SystemKeys);
+            Assert.Equal("systemVal", hostSecrets.SystemKeys["eventgrid_extension"]);
+            if (hasDefaultFunctionKey)
+            {
+                Assert.Equal("defaultFuncVal", hostSecrets.FunctionKeys["default"]);
+            }
+
+            foreach (var secret in keyVaultSecrets.Where(secret => !string.Equals(secret.Name, "host--masterKey--evil", StringComparison.Ordinal)))
+            {
+                Assert.Equal(secret.Value, storedSecrets[secret.Name].Value);
+                mockClient.Verify(client => client.StartDeleteSecretAsync(secret.Name, It.IsAny<CancellationToken>()), Times.Never);
+            }
+
+            Assert.Equal(hostSecrets.MasterKey, storedSecrets["host--masterKey--master"].Value);
+            Assert.Equal(hasDefaultFunctionKey, storedSecrets.ContainsKey("host--functionKey--default"));
+            mockClient.Verify(client => client.SetSecretAsync("function--test--default", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            int writesAfterRecovery = mockClient.Invocations.Count(invocation => string.Equals(invocation.Method.Name, nameof(SecretClient.SetSecretAsync), StringComparison.Ordinal));
+
+            using var reloadedManager = new SecretManager(repository, loggerFactory.CreateLogger<SecretManager>(), new TestMetricsLogger(), hostNameProvider, startupContextProvider);
+            var reloadedSecrets = await reloadedManager.GetHostSecretsAsync();
+
+            Assert.Equal(hostSecrets.MasterKey, reloadedSecrets.MasterKey);
+            Assert.Equal(hostSecrets.FunctionKeys, reloadedSecrets.FunctionKeys);
+            Assert.Equal(hostSecrets.SystemKeys, reloadedSecrets.SystemKeys);
+            mockClient.Verify(client => client.SetSecretAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Exactly(writesAfterRecovery));
         }
 
         public class FindSecretsDataProvider
