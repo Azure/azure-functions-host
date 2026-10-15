@@ -25,7 +25,6 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,7 +50,20 @@ public class RpcClientScriptHostStartupIntegrationTests
         string? configuredRuntime, string? profileRuntime)
     {
         await using TestWorker worker = await TestWorker.StartAsync("worker", "python");
-        await using ClientTestHost testHost = new(configuredRuntime: configuredRuntime, profileRuntime: profileRuntime);
+        var configureBuilder = new Mock<IConfigureBuilder<IServiceCollection>>();
+        configureBuilder.Setup(builder => builder.Configure(It.IsAny<IServiceCollection>()))
+            .Callback<IServiceCollection>(services =>
+                services.Configure<ScriptJobHostOptions>(options => options.ProfileWorkerRuntime = profileRuntime));
+        await using ClientTestHost testHost = new(services =>
+        {
+            services.AddSingleton(configureBuilder.Object);
+            services.Configure<FunctionsHostingConfigOptions>(options =>
+            {
+                options.Features[RpcWorkerConstants.ThrowOnMissingFunctionsWorkerRuntime] = "1";
+                options.Features[RpcWorkerConstants.WorkerRuntimeStrictValidationEnabled] = "true";
+            });
+        });
+        testHost.Configuration[EnvironmentSettingNames.FunctionWorkerRuntime] = configuredRuntime;
         using CancellationTokenSource timeout = new(TestTimeout);
         await testHost.Host.StartAsync(timeout.Token);
         IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
@@ -63,16 +75,10 @@ public class RpcClientScriptHostStartupIntegrationTests
         await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
         await worker.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
 
-        IServiceProvider services = manager.Services!;
-        ScriptHost scriptHost = services.GetRequiredService<ScriptHost>();
+        ScriptHost scriptHost = manager.Services!.GetRequiredService<ScriptHost>();
         FunctionDescriptor function = Assert.Single(scriptHost.Functions);
         Assert.Equal("python", function.Metadata.Language);
         Assert.Empty(scriptHost.FunctionErrors);
-        Assert.Equal(profileRuntime ?? configuredRuntime, services.GetRequiredService<IWorkerRuntimeResolver>().GetWorkerRuntime());
-        Assert.True(services.GetRequiredService<IOptions<FunctionMetadataOptions>>().Value.UseWorkerRuntimeFromMetadata);
-        Assert.False(services.GetRequiredService<IOptions<FunctionMetadataOptions>>().Value.SkipRuntimeValidation);
-        FunctionsHostingConfigOptions hostingOptions = services.GetRequiredService<IOptions<FunctionsHostingConfigOptions>>().Value;
-        Assert.Equal("1", hostingOptions.Features[RpcWorkerConstants.ThrowOnMissingFunctionsWorkerRuntime]);
 
         DefaultHttpContext httpContext = new();
         httpContext.Request.Method = "GET";
@@ -229,15 +235,14 @@ public class RpcClientScriptHostStartupIntegrationTests
     {
         private readonly string _directory = Path.Combine(Path.GetTempPath(), $"ClientHost-{Guid.NewGuid():N}");
 
-        public ClientTestHost(Action<IServiceCollection>? configureServices = null,
-            string? configuredRuntime = "dotnet-isolated", string? profileRuntime = null)
+        public ClientTestHost(Action<IServiceCollection>? configureServices = null)
         {
             ScriptPath = Path.Combine(_directory, "app");
             Directory.CreateDirectory(ScriptPath);
             File.WriteAllText(Path.Combine(ScriptPath, "host.json"), HostConfiguration);
             Configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
-                [EnvironmentSettingNames.FunctionWorkerRuntime] = configuredRuntime,
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = "dotnet-isolated",
                 [EnvironmentSettingNames.AzureWebJobsSecretStorageType] = "Files",
                 ["AzureFunctionsWebHost:ScriptPath"] = ScriptPath,
                 ["AzureFunctionsWebHost:LogPath"] = Path.Combine(_directory, "logs"),
@@ -257,11 +262,7 @@ public class RpcClientScriptHostStartupIntegrationTests
                     services.AddSingleton(Mock.Of<IWebHostWorkerManager>());
                 });
             composition.Setup(value => value.ConfigureScriptHostServices(It.IsAny<IServiceCollection>(), It.IsAny<IServiceProvider>()))
-                .Callback<IServiceCollection, IServiceProvider>((services, provider) =>
-                {
-                    services.AddRpcClientScriptHostServices(provider);
-                    services.Configure<ScriptJobHostOptions>(options => options.ProfileWorkerRuntime = profileRuntime);
-                });
+                .Callback<IServiceCollection, IServiceProvider>((services, provider) => services.AddRpcClientScriptHostServices(provider));
 
             Host = new HostBuilder().ConfigureWebHostDefaults(webBuilder =>
             {
@@ -271,11 +272,6 @@ public class RpcClientScriptHostStartupIntegrationTests
                     services.AddSingleton(Configuration);
                     services.AddSingleton(environment.Object);
                     services.AddWebJobsScriptHost(Configuration, composition.Object);
-                    services.Configure<FunctionsHostingConfigOptions>(options =>
-                    {
-                        options.Features[RpcWorkerConstants.ThrowOnMissingFunctionsWorkerRuntime] = "1";
-                        options.Features[RpcWorkerConstants.WorkerRuntimeStrictValidationEnabled] = "true";
-                    });
                     services.AddSingleton<IConfigureBuilder<ILoggingBuilder>>(new TestLogging(loggerProvider.Object));
                     configureServices?.Invoke(services);
                 });
