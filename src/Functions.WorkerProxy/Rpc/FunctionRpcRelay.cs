@@ -64,7 +64,7 @@ internal sealed partial class FunctionRpcRelay(
         }
     }
 
-    internal async Task<ManagedIdentityTokenResponse> RequestManagedIdentityTokenAsync(
+    internal async Task<(long SessionId, ManagedIdentityTokenResponse Response)> RequestManagedIdentityTokenAsync(
         ManagedIdentityTokenRequest request,
         string? runtimeAccessKey,
         CancellationToken cancellationToken)
@@ -87,7 +87,7 @@ internal sealed partial class FunctionRpcRelay(
             session.RequestManagedIdentityTokenAsync(request, runtimeAccessKey);
         try
         {
-            return await requestTask.WaitAsync(cancellationToken);
+            return (session.Id, await requestTask.WaitAsync(cancellationToken));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -151,6 +151,23 @@ internal sealed partial class FunctionRpcRelay(
         {
             return _currentSession?.IsAttached(side) == true;
         }
+    }
+
+    internal bool TryGetActiveSessionId(FunctionRpcRelaySide side, out long sessionId)
+    {
+        lock (_syncLock)
+        {
+            if (!_stopping
+                && _currentSession is { } session
+                && session.IsActiveAndAttached(side))
+            {
+                sessionId = session.Id;
+                return true;
+            }
+        }
+
+        sessionId = default;
+        return false;
     }
 
     /// <summary>

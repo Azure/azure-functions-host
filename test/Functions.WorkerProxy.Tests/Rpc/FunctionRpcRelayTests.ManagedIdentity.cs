@@ -72,8 +72,11 @@ public partial class FunctionRpcRelayTests
         string clientIdQuery)
     {
         const string secret = "worker-local-secret";
-        const string tokenBody =
-            """{"access_token":"real-token","token_type":"Bearer","expires_on":"4102444800","resource":"https://storage.azure.com/","client_id":"client-id"}""";
+        string expiresOn = apiVersion == "2017-09-01"
+            ? "12/31/2099 23:59:59 +00:00"
+            : "4102444799";
+        string tokenBody =
+            $$"""{"access_token":"real-token","token_type":"Bearer","expires_on":"{{expiresOn}}","resource":"https://storage.azure.com/","client_id":"client-id"}""";
         string tokenRequestPath =
             $"{ManagedIdentityEndpoint.Path}?resource=https%3A%2F%2Fstorage.azure.com%2F&api-version={apiVersion}&{clientIdQuery}=client-id";
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
@@ -155,21 +158,36 @@ public partial class FunctionRpcRelayTests
         using JsonDocument body = JsonDocument.Parse(await token.Content.ReadAsStringAsync(timeout.Token));
         Assert.Equal("real-token", body.RootElement.GetProperty("access_token").GetString());
         Assert.Equal("Bearer", body.RootElement.GetProperty("token_type").GetString());
-        Assert.Equal("4102444800", body.RootElement.GetProperty("expires_on").GetString());
+        Assert.Equal(expiresOn, body.RootElement.GetProperty("expires_on").GetString());
         Assert.Equal("https://storage.azure.com/", body.RootElement.GetProperty("resource").GetString());
         Assert.Equal("client-id", body.RootElement.GetProperty("client_id").GetString());
         Assert.False(manager.State.IsWorkerReady);
         Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
 
-        const string errorBody =
-            """{"error":"invalid_request","error_description":"The requested identity is not assigned."}""";
-        Task<HttpResponseMessage> rejectedTask = SendTokenRequestAsync(
+        using (HttpResponseMessage cached = await SendTokenRequestAsync(
             managedIdentity,
             tokenRequestPath,
             headerName,
             secret,
+            timeout.Token))
+        {
+            Assert.Equal(HttpStatusCode.OK, cached.StatusCode);
+            Assert.Equal("application/json", cached.Content.Headers.ContentType?.MediaType);
+            Assert.Equal(tokenBody, await cached.Content.ReadAsStringAsync(timeout.Token));
+        }
+
+        const string errorBody =
+            """{"error":"invalid_request","error_description":"The requested identity is not assigned."}""";
+        string rejectedPath =
+            $"{ManagedIdentityEndpoint.Path}?resource=unassigned&api-version={apiVersion}&{clientIdQuery}=client-id";
+        Task<HttpResponseMessage> rejectedTask = SendTokenRequestAsync(
+            managedIdentity,
+            rejectedPath,
+            headerName,
+            secret,
             timeout.Token);
         StreamingMessage rejectedRequest = await runtime.ReadAsync(timeout.Token);
+        Assert.Equal("unassigned", rejectedRequest.ManagedIdentityTokenRequest.Resource);
         await WriteTokenResponseAsync(
             runtime,
             rejectedRequest,
@@ -180,6 +198,109 @@ public partial class FunctionRpcRelayTests
         using HttpResponseMessage rejected = await rejectedTask;
         Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
         Assert.Equal(errorBody, await rejected.Content.ReadAsStringAsync(timeout.Token));
+
+        Task<HttpResponseMessage> repeatedRejectedTask = SendTokenRequestAsync(
+            managedIdentity,
+            rejectedPath,
+            headerName,
+            secret,
+            timeout.Token);
+        StreamingMessage repeatedRejectedRequest = await runtime.ReadAsync(timeout.Token);
+        await WriteTokenResponseAsync(
+            runtime,
+            repeatedRejectedRequest,
+            HttpStatusCode.BadRequest,
+            errorBody,
+            timeout.Token);
+
+        using HttpResponseMessage repeatedRejected = await repeatedRejectedTask;
+        Assert.Equal(HttpStatusCode.BadRequest, repeatedRejected.StatusCode);
+        Assert.Equal(errorBody, await repeatedRejected.Content.ReadAsStringAsync(timeout.Token));
+    }
+
+    [Fact]
+    public async Task ManagedIdentityEndpoint_RuntimeReplacementDoesNotReuseCachedToken()
+    {
+        const string secret = "worker-local-secret";
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        using HttpClient managedIdentity = factory.CreateManagedIdentityClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await AssignAsync(
+            management,
+            new Dictionary<string, string> { ["MSI_SECRET"] = secret },
+            timeout.Token);
+
+        await using (RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token))
+        {
+            await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
+            Task<HttpResponseMessage> firstTask = SendTokenRequestAsync(
+                managedIdentity,
+                "Secret",
+                secret,
+                timeout.Token);
+            StreamingMessage firstRequest = await runtime.ReadAsync(timeout.Token);
+            await WriteTokenResponseAsync(
+                runtime,
+                firstRequest,
+                HttpStatusCode.OK,
+                CreateTokenBody("first-token", "https://storage.azure.com/"),
+                timeout.Token);
+
+            using HttpResponseMessage first = await firstTask;
+            Assert.Equal("first-token", await ReadAccessTokenAsync(first, timeout.Token));
+            await runtime.CompleteRequestAsync(timeout.Token);
+            await runtime.WaitForTerminationAsync(timeout.Token);
+        }
+
+        await WaitForReleaseAsync(relay, timeout.Token);
+        await using RelayClient replacementRuntime =
+            CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
+        Task<HttpResponseMessage> replacementTask = SendTokenRequestAsync(
+            managedIdentity,
+            "Secret",
+            secret,
+            timeout.Token);
+        StreamingMessage replacementRequest = await replacementRuntime.ReadAsync(timeout.Token);
+        await WriteTokenResponseAsync(
+            replacementRuntime,
+            replacementRequest,
+            HttpStatusCode.OK,
+            CreateTokenBody("replacement-token", "https://storage.azure.com/"),
+            timeout.Token);
+
+        using HttpResponseMessage replacement = await replacementTask;
+        Assert.Equal("replacement-token", await ReadAccessTokenAsync(replacement, timeout.Token));
+    }
+
+    [Fact]
+    public void ManagedIdentityTokenCache_OversizedSerializedResponseIsNotCached()
+    {
+        ManagedIdentityTokenRequest request = new()
+        {
+            Resource = "https://storage.azure.com/",
+            ClientId = "client-id",
+            ApiVersion = "2019-08-01"
+        };
+        ManagedIdentityTokenResponse response = new()
+        {
+            StatusCode = (int)HttpStatusCode.OK,
+            ContentType = "application/json",
+            Body = ByteString.CopyFromUtf8(CreateTokenBody("token", request.Resource)),
+            Result = new()
+            {
+                Status = StatusResult.Types.Status.Success,
+                Result = new string('x', 64 * 1024)
+            }
+        };
+        ManagedIdentityTokenCache cache = new(TimeProvider.System);
+
+        Assert.True(response.CalculateSize() > 64 * 1024);
+        cache.Store(1, request, response);
+
+        Assert.Null(cache.Get(1, request));
     }
 
     [Fact]

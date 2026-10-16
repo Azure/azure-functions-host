@@ -52,6 +52,8 @@ internal sealed partial class FunctionRpcRelay
         /// </summary>
         public FunctionRpcRelayTerminalState? TerminalState => _terminalState;
 
+        public long Id => id;
+
         /// <summary>
         /// Gets the initialized destination while this session remains live.
         /// </summary>
@@ -125,6 +127,14 @@ internal sealed partial class FunctionRpcRelay
             lock (_stateLock)
             {
                 return IsAttachedLocked(side);
+            }
+        }
+
+        public bool IsActiveAndAttached(FunctionRpcRelaySide side)
+        {
+            lock (_stateLock)
+            {
+                return _terminalState is null && IsAttachedLocked(side);
             }
         }
 

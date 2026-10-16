@@ -3,8 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -49,6 +51,7 @@ internal static class ManagedIdentityEndpoint
         HttpRequest request,
         WorkerPodStateManager stateManager,
         FunctionRpcRelay relay,
+        ManagedIdentityTokenCache tokenCache,
         IConfiguration configuration,
         CancellationToken cancellationToken)
     {
@@ -83,17 +86,30 @@ internal static class ManagedIdentityEndpoint
                 "The request must include one resource and api-version value, at most one clientid or client_id value, and no unsupported parameters.");
         }
 
+        ManagedIdentityTokenRequest tokenRequest = new()
+        {
+            Resource = resource,
+            ClientId = clientId ?? string.Empty,
+            ApiVersion = apiVersion
+        };
+        string? runtimeAccessKey =
+            configuration[ManagedIdentityTokenRequestAuthenticator.RuntimeAccessKeyEnvironmentVariable];
+        if (!string.IsNullOrWhiteSpace(runtimeAccessKey)
+            && relay.TryGetActiveSessionId(FunctionRpcRelaySide.Runtime, out long cachedSessionId)
+            && tokenCache.Get(cachedSessionId, tokenRequest) is ManagedIdentityTokenResponse cachedResponse
+            && relay.TryGetActiveSessionId(FunctionRpcRelaySide.Runtime, out long confirmedSessionId)
+            && confirmedSessionId == cachedSessionId)
+        {
+            return await WriteResponseAsync(request.HttpContext.Response, cachedResponse, cancellationToken);
+        }
+
+        long responseSessionId;
         ManagedIdentityTokenResponse response;
         try
         {
-            response = await relay.RequestManagedIdentityTokenAsync(
-                new ManagedIdentityTokenRequest
-                {
-                    Resource = resource,
-                    ClientId = clientId ?? string.Empty,
-                    ApiVersion = apiVersion
-                },
-                configuration[ManagedIdentityTokenRequestAuthenticator.RuntimeAccessKeyEnvironmentVariable],
+            (responseSessionId, response) = await relay.RequestManagedIdentityTokenAsync(
+                tokenRequest,
+                runtimeAccessKey,
                 cancellationToken);
         }
         catch (ManagedIdentityTokenUnavailableException exception)
@@ -114,7 +130,20 @@ internal static class ManagedIdentityEndpoint
             return RetryableFailure(request.HttpContext.Response, detail);
         }
 
-        HttpResponse httpResponse = request.HttpContext.Response;
+        if (relay.TryGetActiveSessionId(FunctionRpcRelaySide.Runtime, out long activeSessionId)
+            && activeSessionId == responseSessionId)
+        {
+            tokenCache.Store(responseSessionId, tokenRequest, response);
+        }
+
+        return await WriteResponseAsync(request.HttpContext.Response, response, cancellationToken);
+    }
+
+    private static async Task<IResult> WriteResponseAsync(
+        HttpResponse httpResponse,
+        ManagedIdentityTokenResponse response,
+        CancellationToken cancellationToken)
+    {
         httpResponse.StatusCode = response.StatusCode;
         if (!string.IsNullOrWhiteSpace(response.ContentType))
         {
@@ -209,6 +238,185 @@ internal static class ManagedIdentityEndpoint
             new ManagedIdentityErrorResponse(error, detail),
             ManagedIdentityJsonContext.Default.ManagedIdentityErrorResponse,
             statusCode: statusCode);
+}
+
+internal sealed class ManagedIdentityTokenCache(TimeProvider timeProvider)
+{
+    private const int MaximumCachedResponseSize = 64 * 1024;
+    private const int MaximumEntries = 32;
+    private static readonly TimeSpan MaximumCacheLifetime = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan RefreshBuffer = TimeSpan.FromMinutes(1);
+    private readonly Dictionary<CacheKey, CacheEntry> _entries = [];
+    private readonly Lock _lock = new();
+    private readonly TimeProvider _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private long _runtimeSessionId;
+
+    public ManagedIdentityTokenResponse? Get(
+        long runtimeSessionId,
+        ManagedIdentityTokenRequest request)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(runtimeSessionId);
+        ArgumentNullException.ThrowIfNull(request);
+
+        CacheKey key = new(request.Resource, request.ClientId, request.ApiVersion);
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        lock (_lock)
+        {
+            if (!SelectSessionLocked(runtimeSessionId))
+            {
+                return null;
+            }
+
+            if (_entries.TryGetValue(key, out CacheEntry? entry))
+            {
+                if (entry.CacheUntil > now)
+                {
+                    return entry.Response.Clone();
+                }
+
+                _entries.Remove(key);
+            }
+        }
+
+        return null;
+    }
+
+    public void Store(
+        long runtimeSessionId,
+        ManagedIdentityTokenRequest request,
+        ManagedIdentityTokenResponse response)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(runtimeSessionId);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(response);
+
+        if (response.StatusCode != StatusCodes.Status200OK
+            || response.Result?.Status != StatusResult.Types.Status.Success
+            || response.Body.IsEmpty
+            || response.CalculateSize() > MaximumCachedResponseSize
+            || !TryGetExpiration(response.Body.ToByteArray(), out DateTimeOffset tokenExpiration))
+        {
+            return;
+        }
+
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        if (tokenExpiration <= now + RefreshBuffer)
+        {
+            return;
+        }
+
+        DateTimeOffset cacheUntil = tokenExpiration - RefreshBuffer;
+        if (cacheUntil > now + MaximumCacheLifetime)
+        {
+            cacheUntil = now + MaximumCacheLifetime;
+        }
+
+        CacheKey key = new(request.Resource, request.ClientId, request.ApiVersion);
+        CacheEntry entry = new(response.Clone(), cacheUntil);
+        lock (_lock)
+        {
+            if (!SelectSessionLocked(runtimeSessionId))
+            {
+                return;
+            }
+
+            List<CacheKey>? expiredKeys = null;
+            foreach ((CacheKey expiredKey, CacheEntry expiredEntry) in _entries)
+            {
+                if (expiredEntry.CacheUntil <= now)
+                {
+                    (expiredKeys ??= []).Add(expiredKey);
+                }
+            }
+
+            if (expiredKeys is not null)
+            {
+                foreach (CacheKey expiredKey in expiredKeys)
+                {
+                    _entries.Remove(expiredKey);
+                }
+            }
+
+            if (_entries.ContainsKey(key) || _entries.Count < MaximumEntries)
+            {
+                _entries[key] = entry;
+            }
+        }
+    }
+
+    private bool SelectSessionLocked(long runtimeSessionId)
+    {
+        if (runtimeSessionId < _runtimeSessionId)
+        {
+            return false;
+        }
+
+        if (runtimeSessionId > _runtimeSessionId)
+        {
+            _entries.Clear();
+            _runtimeSessionId = runtimeSessionId;
+        }
+
+        return true;
+    }
+
+    private static bool TryGetExpiration(
+        ReadOnlyMemory<byte> responseBody,
+        out DateTimeOffset expiration)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(responseBody);
+            JsonElement root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object
+                || !root.TryGetProperty("access_token", out JsonElement accessToken)
+                || accessToken.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(accessToken.GetString())
+                || !root.TryGetProperty("expires_on", out JsonElement expiresOn))
+            {
+                expiration = default;
+                return false;
+            }
+
+            string? value = expiresOn.ValueKind switch
+            {
+                JsonValueKind.String => expiresOn.GetString(),
+                JsonValueKind.Number => expiresOn.GetRawText(),
+                _ => null
+            };
+            if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long unixTimeSeconds))
+            {
+                try
+                {
+                    expiration = DateTimeOffset.FromUnixTimeSeconds(unixTimeSeconds);
+                    return true;
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                }
+            }
+
+            return DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out expiration);
+        }
+        catch (JsonException)
+        {
+            expiration = default;
+            return false;
+        }
+    }
+
+    private readonly record struct CacheKey(
+        string Resource,
+        string ClientId,
+        string ApiVersion);
+
+    private sealed record CacheEntry(
+        ManagedIdentityTokenResponse Response,
+        DateTimeOffset CacheUntil);
 }
 
 internal sealed record ManagedIdentityErrorResponse(
