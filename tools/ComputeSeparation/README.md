@@ -47,6 +47,9 @@ Hello from the BYOC .NET isolated worker.
 
 ## Fake platform
 
+WorkerProxy uses `WEBSITE_POD_NAME`, falling back to `CONTAINER_NAME`, for pod identity.
+AppHost supplies `WEBSITE_POD_NAME` locally from `ComputeSeparation:PodName`.
+
 In project mode, the `fake-platform` resource is a local stand-in for the platform. It sends the assign and link requests to the WorkerProxy and Host.
 
 Open the `fake-platform` console logs in the dashboard to watch the assign and link calls in order. The fake is not wired in container mode.
