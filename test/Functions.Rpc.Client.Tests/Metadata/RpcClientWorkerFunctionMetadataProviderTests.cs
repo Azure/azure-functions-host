@@ -53,9 +53,33 @@ public sealed class RpcClientWorkerFunctionMetadataProviderTests
         FunctionMetadata function = Assert.Single(result.Functions);
         Assert.False(result.UseDefaultMetadataIndexing);
         Assert.Equal("HttpFunction", function.Name);
-        Assert.Equal("dotnet-isolated", function.Language);
+        Assert.Equal("worker-language", function.Language);
         Assert.Equal("httpTrigger", Assert.Single(function.Bindings).Type);
         Assert.Empty(provider.FunctionErrors);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("configured-runtime")]
+    public async Task GetFunctionMetadataAsync_PreservesWorkerLanguageRegardlessOfConfiguredRuntime(string configuredRuntime)
+    {
+        _runtimeResolver.Setup(resolver => resolver.GetWorkerRuntime(It.IsAny<string>()))
+            .Returns(configuredRuntime);
+        await using ClientWorkerChannelTestHarness worker = await ClientWorkerChannelTestHarness.CreateAsync("worker");
+        _channels.Add(worker.Channel);
+        RpcClientWorkerFunctionMetadataProvider provider = CreateProvider();
+        RpcFunctionMetadata metadata = CreateMetadata("HttpFunction", "function-id", HttpTriggerBinding);
+        metadata.Language = "python";
+
+        Task<FunctionMetadataResult> getMetadata = provider.GetFunctionMetadataAsync([]);
+        await worker.ReadRequestAsync(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest);
+        await worker.SendFunctionMetadataResponseAsync([metadata]);
+        FunctionMetadataResult result = await getMetadata.WaitAsync(TestTimeout);
+
+        Assert.Equal("python", Assert.Single(result.Functions).Language);
+        Assert.Empty(provider.FunctionErrors);
+        _runtimeResolver.Verify(resolver => resolver.GetWorkerRuntime(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]

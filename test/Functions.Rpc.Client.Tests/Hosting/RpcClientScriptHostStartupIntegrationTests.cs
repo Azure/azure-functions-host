@@ -26,6 +26,8 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -40,6 +42,48 @@ public class RpcClientScriptHostStartupIntegrationTests
 {
     private const string HostConfiguration = """{"version":"2.0","isDefaultHostConfig":true}""";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData("node", null)]
+    [InlineData("python", "node")]
+    public async Task FirstLink_WorkerLanguageControlsRuntimeIndexingAndInvocation(
+        string? configuredRuntime, string? profileRuntime)
+    {
+        await using TestWorker worker = await TestWorker.StartAsync("worker", language: "python");
+        await using ClientTestHost testHost = new(configuredRuntime: configuredRuntime, profileRuntime: profileRuntime);
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await testHost.Host.StartAsync(timeout.Token);
+        IWorkerChannelRegistry registry = testHost.Host.Services.GetRequiredService<IWorkerChannelRegistry>();
+        RpcClientScriptHostStartupCoordinator coordinator = testHost.Host.Services.GetRequiredService<RpcClientScriptHostStartupCoordinator>();
+        IScriptHostManager manager = testHost.Host.Services.GetRequiredService<IScriptHostManager>();
+
+        await registry.LinkAsync("worker", worker.Endpoint, cancellationToken: timeout.Token);
+        await coordinator.ActivationTask!.WaitAsync(timeout.Token);
+        await WaitForHostStateAsync(manager, ScriptHostState.Running, timeout.Token);
+        await worker.Service.FunctionLoaded.Task.WaitAsync(timeout.Token);
+
+        IServiceProvider services = manager.Services!;
+        ScriptHost scriptHost = services.GetRequiredService<ScriptHost>();
+        FunctionDescriptor function = Assert.Single(scriptHost.Functions);
+        Assert.Equal("python", function.Metadata.Language);
+        Assert.Empty(scriptHost.FunctionErrors);
+        Assert.Equal(profileRuntime ?? configuredRuntime, services.GetRequiredService<IWorkerRuntimeResolver>().GetWorkerRuntime());
+        Assert.True(services.GetRequiredService<IOptions<FunctionMetadataOptions>>().Value.UseWorkerRuntimeFromMetadata);
+        Assert.False(services.GetRequiredService<IOptions<FunctionMetadataOptions>>().Value.SkipRuntimeValidation);
+        FunctionsHostingConfigOptions hostingOptions = services.GetRequiredService<IOptions<FunctionsHostingConfigOptions>>().Value;
+        Assert.Equal("1", hostingOptions.Features[RpcWorkerConstants.ThrowOnMissingFunctionsWorkerRuntime]);
+
+        DefaultHttpContext httpContext = new();
+        httpContext.Request.Method = "GET";
+        httpContext.Request.Scheme = "http";
+        httpContext.Request.Host = new HostString("localhost");
+        httpContext.Request.Path = "/api/Http";
+        await scriptHost.CallAsync("Http", new() { ["req"] = httpContext.Request }, timeout.Token);
+
+        Assert.Equal(1, worker.Service.Invocations);
+    }
 
     [Fact]
     public async Task LaterLinks_ServeInvocationsOnTheSameRunningScriptHost_WithoutReloadingExistingWorkers()
@@ -303,14 +347,15 @@ public class RpcClientScriptHostStartupIntegrationTests
     {
         private readonly string _directory = Path.Combine(Path.GetTempPath(), $"ClientHost-{Guid.NewGuid():N}");
 
-        public ClientTestHost(Action<IServiceCollection>? configureServices = null)
+        public ClientTestHost(Action<IServiceCollection>? configureServices = null,
+            string? configuredRuntime = "dotnet-isolated", string? profileRuntime = null)
         {
             ScriptPath = Path.Combine(_directory, "app");
             Directory.CreateDirectory(ScriptPath);
             File.WriteAllText(Path.Combine(ScriptPath, "host.json"), HostConfiguration);
             Configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
-                [EnvironmentSettingNames.FunctionWorkerRuntime] = "dotnet-isolated",
+                [EnvironmentSettingNames.FunctionWorkerRuntime] = configuredRuntime,
                 [EnvironmentSettingNames.AzureWebJobsSecretStorageType] = "Files",
                 ["AzureFunctionsWebHost:ScriptPath"] = ScriptPath,
                 ["AzureFunctionsWebHost:LogPath"] = Path.Combine(_directory, "logs"),
@@ -330,7 +375,11 @@ public class RpcClientScriptHostStartupIntegrationTests
                     services.AddSingleton(Mock.Of<IWebHostWorkerManager>());
                 });
             composition.Setup(value => value.ConfigureScriptHostServices(It.IsAny<IServiceCollection>(), It.IsAny<IServiceProvider>()))
-                .Callback<IServiceCollection, IServiceProvider>((services, provider) => services.AddRpcClientScriptHostServices(provider));
+                .Callback<IServiceCollection, IServiceProvider>((services, provider) =>
+                {
+                    services.AddRpcClientScriptHostServices(provider);
+                    services.Configure<ScriptJobHostOptions>(options => options.ProfileWorkerRuntime = profileRuntime);
+                });
 
             Host = new HostBuilder().ConfigureWebHostDefaults(webBuilder =>
             {
@@ -340,6 +389,11 @@ public class RpcClientScriptHostStartupIntegrationTests
                     services.AddSingleton(Configuration);
                     services.AddSingleton(environment.Object);
                     services.AddWebJobsScriptHost(Configuration, composition.Object);
+                    services.Configure<FunctionsHostingConfigOptions>(options =>
+                    {
+                        options.Features[RpcWorkerConstants.ThrowOnMissingFunctionsWorkerRuntime] = "1";
+                        options.Features[RpcWorkerConstants.WorkerRuntimeStrictValidationEnabled] = "true";
+                    });
                     services.AddSingleton<IConfigureBuilder<ILoggingBuilder>>(new TestLogging(loggerProvider.Object));
                     configureServices?.Invoke(services);
                 });
@@ -380,13 +434,13 @@ public class RpcClientScriptHostStartupIntegrationTests
 
         public TestWorkerService Service { get; } = service;
 
-        public static async Task<TestWorker> StartAsync(string workerId, string? functionGroupName = null)
+        public static async Task<TestWorker> StartAsync(string workerId, string? functionGroupName = null, string language = "dotnet-isolated")
         {
             WebApplicationBuilder builder = WebApplication.CreateSlimBuilder();
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options =>
                 options.Listen(IPAddress.Loopback, 0, listener => listener.Protocols = HttpProtocols.Http2));
-            TestWorkerService service = new(workerId, functionGroupName);
+            TestWorkerService service = new(workerId, functionGroupName, language);
             builder.Services.AddSingleton(service);
             builder.Services.AddGrpc();
             WebApplication application = builder.Build();
@@ -405,7 +459,7 @@ public class RpcClientScriptHostStartupIntegrationTests
         }
     }
 
-    public sealed class TestWorkerService(string workerId, string? functionGroupName = null) : FunctionRpc.FunctionRpcBase
+    public sealed class TestWorkerService(string workerId, string? functionGroupName = null, string language = "dotnet-isolated") : FunctionRpc.FunctionRpcBase
     {
         private int _metadataRequests;
         private int _functionLoads;
@@ -448,7 +502,7 @@ public class RpcClientScriptHostStartupIntegrationTests
                             {
                                 FunctionId = "http",
                                 Name = "Http",
-                                Language = "dotnet-isolated",
+                                Language = language,
                                 ScriptFile = "Sample.dll",
                                 EntryPoint = "Sample.Http.Run",
                                 Status = Success(),

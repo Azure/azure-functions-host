@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Metrics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockApplicationLifetime = new Mock<IScriptApplicationLifetime>();
             var mockFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
 
-            string rootPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\Node");
+            string rootPath = Path.Combine(Environment.CurrentDirectory, "TestScripts", "Node");
 
             _host = new HostBuilder().ConfigureDefaultTestWebScriptHost(b =>
             {
@@ -70,6 +71,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             IEnumerable<FunctionBinding> bindings = new List<FunctionBinding>();
             bool result = _provider.BindingAttributeContainsExpression(bindings);
             Assert.False(result);
+        }
+
+        [Theory]
+        [InlineData(null, "python")]
+        [InlineData("", "node")]
+        [InlineData(null, "dotnet-isolated")]
+        public async Task TryCreate_ClientWorkerMetadataWithoutConfiguredRuntime_CreatesHttpDescriptor(string configuredRuntime, string language)
+        {
+            Mock<IWorkerRuntimeResolver> runtimeResolver = new(MockBehavior.Strict);
+            WorkerFunctionMetadataValidator validator = new(NullLogger.Instance, runtimeResolver.Object);
+            RawFunctionMetadata raw = new()
+            {
+                Metadata = new FunctionMetadata { Name = "WorkerHttpFunction", Language = language },
+                Bindings = ["""{"type":"httpTrigger","name":"req","direction":"in"}"""],
+            };
+            FunctionMetadata function = Assert.Single(validator.ValidateMetadata([raw], preserveWorkerLanguage: true));
+            RpcFunctionDescriptorProvider provider = new(
+                _host.GetScriptHost(),
+                configuredRuntime,
+                _host.Services.GetRequiredService<IOptions<ScriptJobHostOptions>>().Value,
+                _host.Services.GetRequiredService<IEnumerable<IScriptBindingProvider>>().ToArray(),
+                Mock.Of<IFunctionInvocationDispatcher>(),
+                NullLoggerFactory.Instance,
+                Mock.Of<IHostApplicationLifetime>(),
+                TimeSpan.FromSeconds(5));
+
+            var (created, descriptor) = await provider.TryCreate(function);
+            using IDisposable invoker = descriptor?.Invoker as IDisposable;
+
+            Assert.True(created);
+            Assert.NotNull(descriptor);
+            Assert.Equal(language, descriptor.Metadata.Language);
+            Assert.True(descriptor.TriggerParameter.IsTrigger);
+            Assert.Empty(validator.FunctionErrors);
+            runtimeResolver.Verify(resolver => resolver.GetWorkerRuntime(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
