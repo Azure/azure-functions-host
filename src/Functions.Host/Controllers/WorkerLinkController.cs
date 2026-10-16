@@ -11,11 +11,13 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Azure.Functions.Host.HostState;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using GrpcException = Grpc.Core.RpcException;
 using WorkerRpcException = Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException;
@@ -34,21 +36,34 @@ public sealed partial class WorkerLinkController : Controller
 {
     // Log-only reason for the 400 path. The response carries per-error codes instead, so this is not a wire code.
     private const string ValidationFailedReason = "ValidationFailed";
+    private static readonly TimeSpan LinkTimeout = TimeSpan.FromSeconds(30);
 
     private readonly ILogger<WorkerLinkController> _logger;
     private readonly IWorkerChannelRegistry _registry;
+    private readonly IAppServerHttpCapacityReadiness _httpReadiness;
+    private readonly IHostApplicationLifetime _applicationLifetime;
+    private readonly TimeProvider _timeProvider;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WorkerLinkController"/> class.
     /// </summary>
     /// <param name="logger">The logger.</param>
     /// <param name="registry">The registry that owns worker channels and link admission.</param>
+    /// <param name="httpReadiness">The hosted AppServer publisher's acknowledged-capacity readiness.</param>
+    /// <param name="applicationLifetime">The runtime application lifetime.</param>
+    /// <param name="timeProvider">The time source for the overall link deadline.</param>
     public WorkerLinkController(
         ILogger<WorkerLinkController> logger,
-        IWorkerChannelRegistry registry)
+        IWorkerChannelRegistry registry,
+        IAppServerHttpCapacityReadiness httpReadiness,
+        IHostApplicationLifetime applicationLifetime,
+        TimeProvider timeProvider)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        _httpReadiness = httpReadiness ?? throw new ArgumentNullException(nameof(httpReadiness));
+        _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     /// <summary>
@@ -62,9 +77,10 @@ public sealed partial class WorkerLinkController : Controller
     /// <param name="cancellationToken">Cancels this request and, for a new link, its initialization attempt.</param>
     /// <returns>
     /// <c>201</c> for a newly created link or <c>200</c> for a matching retry, after initialization and registration.
+    /// HTTP-group links also wait for AppServer to acknowledge the current positive HTTP capacity snapshot.
     /// Returns <c>400</c> with a validation errors envelope, <c>409</c> when the identity is already linked to a
     /// different endpoint or its channel has terminated, or <c>503</c> when the runtime is stopping or the worker
-    /// connection or handshake is unavailable or times out.
+    /// connection, handshake, or HTTP readiness is unavailable or times out.
     /// Link failures return an error envelope with a stable code. No Location header is returned.
     /// </returns>
     /// <remarks>
@@ -122,14 +138,26 @@ public sealed partial class WorkerLinkController : Controller
         return errors;
     }
 
-    // Wait for initialization and registration, then map the outcome to an HTTP response.
+    // Registration must precede readiness so ScriptHost can index metadata and set up invocation dispatch.
+    // Only the external HTTP link success boundary waits for acknowledged capacity.
     private async Task<IActionResult> LinkValidatedWorkerAsync(string workerId, Uri grpcEndpoint, long started,
         CancellationToken cancellationToken)
     {
+        using CancellationTokenSource deadline = new(LinkTimeout, _timeProvider);
+        using CancellationTokenSource operation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, _applicationLifetime.ApplicationStopping, deadline.Token);
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken);
+            operation.Token.ThrowIfCancellationRequested();
+            WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, operation.Token)
+                .WaitAsync(operation.Token).ConfigureAwait(false);
+            if (result.IsHttpFunctionGroup)
+            {
+                await WaitForHttpReadinessAsync(result, operation.Token).ConfigureAwait(false);
+            }
+
+            operation.Token.ThrowIfCancellationRequested();
             Log.LinkAccepted(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return StatusCode(result.IsNewLink ? StatusCodes.Status201Created : StatusCodes.Status200OK);
@@ -144,6 +172,14 @@ public sealed partial class WorkerLinkController : Controller
             cancellationToken.ThrowIfCancellationRequested();
             throw;
         }
+        catch (OperationCanceledException exception) when (_applicationLifetime.ApplicationStopping.IsCancellationRequested)
+        {
+            return CreateLinkFailureResponse(workerId, WorkerLinkFailureReason.RuntimeStopping, started, exception);
+        }
+        catch (OperationCanceledException exception) when (deadline.IsCancellationRequested)
+        {
+            return CreateLinkFailureResponse(workerId, WorkerLinkFailureReason.Timeout, started, exception);
+        }
         catch (ObjectDisposedException exception)
         {
             return CreateLinkFailureResponse(workerId, WorkerLinkFailureReason.RuntimeStopping, started, exception);
@@ -156,6 +192,37 @@ public sealed partial class WorkerLinkController : Controller
             IOException or SocketException or ChannelClosedException or OperationCanceledException or UriFormatException)
         {
             return CreateLinkFailureResponse(workerId, WorkerLinkFailureReason.Unavailable, started, exception);
+        }
+    }
+
+    private async Task WaitForHttpReadinessAsync(WorkerLinkResult result, CancellationToken cancellationToken)
+    {
+        using CancellationTokenSource wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task ready = _httpReadiness.WaitForAcknowledgedHttpCapacityAsync(wait.Token);
+        try
+        {
+            await Task.WhenAny(ready, result.WorkerCompletion).WaitAsync(cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            // WhenAny is only a wakeup. Its composite can still be pending after an original
+            // terminal task completes, so inspect the originals before handing off capacity.
+            if (result.WorkerTransportCompletion.IsCompleted || result.WorkerRemoval.IsCompleted)
+            {
+                throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable,
+                    "The HTTP worker terminated before the readiness handoff.", result.WorkerTransportCompletion.Exception);
+            }
+
+            await ready.ConfigureAwait(false);
+        }
+        finally
+        {
+            await wait.CancelAsync().ConfigureAwait(false);
+            try
+            {
+                await ready.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (wait.IsCancellationRequested)
+            {
+            }
         }
     }
 

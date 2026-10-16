@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Azure.Functions.Host.Controllers;
+using Azure.Functions.Host.HostState;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
@@ -18,6 +19,7 @@ using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -34,12 +36,199 @@ public class WorkerLinkControllerTests
     private const string PrivateDiagnostic = "private-worker-initialization-diagnostic";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
+    private readonly Mock<IAppServerHttpCapacityReadiness> _readiness = new(MockBehavior.Strict);
+    private readonly Mock<IHostApplicationLifetime> _lifetime = new();
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public async Task LinkWorker_OriginalTerminalSignalBeforeReadiness_RejectsWhileCompositeIsPending(bool isNew, bool transportTerminated)
+    {
+        TaskCompletionSource composite = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource transport = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource removed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource acknowledged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _registry.Setup(value => value.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, isNew)
+            {
+                IsHttpFunctionGroup = true,
+                WorkerCompletion = composite.Task,
+                WorkerTransportCompletion = transport.Task,
+                WorkerRemoval = removed.Task,
+            });
+        _readiness.Setup(value => value.WaitForAcknowledgedHttpCapacityAsync(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken token) => acknowledged.Task.WaitAsync(token));
+
+        Task<IActionResult> link = CreateController().LinkWorker(WorkerId, ValidRequest());
+        Assert.False(link.IsCompleted);
+        // Hold the composite pending explicitly: correctness must not depend on its continuation running.
+        (transportTerminated ? transport : removed).SetResult();
+        Assert.False(composite.Task.IsCompleted);
+        acknowledged.SetResult();
+
+        AssertLinkError(await link.WaitAsync(TestTimeout), StatusCodes.Status503ServiceUnavailable, "WorkerUnavailable");
+        Assert.False(composite.Task.IsCompleted);
+    }
+
+    [Theory]
+    [InlineData(true, StatusCodes.Status201Created)]
+    [InlineData(false, StatusCodes.Status200OK)]
+    public async Task LinkWorker_HttpGroup_WaitsForAcknowledgedCapacity(bool isNew, int status)
+    {
+        TaskCompletionSource acknowledged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource terminated = SetupHttpLink(isNew);
+        _readiness.Setup(value => value.WaitForAcknowledgedHttpCapacityAsync(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken token) => acknowledged.Task.WaitAsync(token));
+
+        Task<IActionResult> link = CreateController().LinkWorker(WorkerId, ValidRequest());
+        Assert.False(link.IsCompleted);
+        acknowledged.SetResult();
+
+        Assert.Equal(status, Assert.IsType<StatusCodeResult>(await link.WaitAsync(TestTimeout)).StatusCode);
+        Assert.False(terminated.Task.IsCompleted);
+        VerifyOnlyLinkCall();
+    }
+
+    [Fact]
+    public async Task LinkWorker_AlreadyReadyHttpDuplicate_ReturnsOk()
+    {
+        SetupHttpLink(isNew: false);
+        _readiness.Setup(value => value.WaitForAcknowledgedHttpCapacityAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        Task<IActionResult> link = CreateController().LinkWorker(WorkerId, ValidRequest());
+
+        Assert.True(link.IsCompletedSuccessfully);
+        Assert.Equal(StatusCodes.Status200OK, Assert.IsType<StatusCodeResult>(await link).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LinkWorker_HttpWorkerTerminates_Returns503AndCleansReadinessWait(bool fault)
+    {
+        TaskCompletionSource terminated = SetupHttpLink();
+        CancellationToken readinessToken = default;
+        TaskCompletionSource pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _readiness.Setup(value => value.WaitForAcknowledgedHttpCapacityAsync(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken token) =>
+            {
+                readinessToken = token;
+                return pending.Task.WaitAsync(token);
+            });
+        Task<IActionResult> link = CreateController().LinkWorker(WorkerId, ValidRequest());
+        if (fault)
+        {
+            terminated.SetException(new IOException("worker died"));
+        }
+        else
+        {
+            terminated.SetResult();
+        }
+
+        AssertLinkError(await link.WaitAsync(TestTimeout), StatusCodes.Status503ServiceUnavailable, "WorkerUnavailable");
+        Assert.True(readinessToken.IsCancellationRequested);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LinkWorker_HttpReadinessCancellationOrStopping_CleansWait(bool stopping)
+    {
+        SetupHttpLink();
+        using CancellationTokenSource cancellation = new();
+        using CancellationTokenSource applicationStopping = new();
+        _lifetime.SetupGet(value => value.ApplicationStopping).Returns(applicationStopping.Token);
+        CancellationToken readinessToken = default;
+        TaskCompletionSource pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _readiness.Setup(value => value.WaitForAcknowledgedHttpCapacityAsync(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken token) =>
+            {
+                readinessToken = token;
+                return pending.Task.WaitAsync(token);
+            });
+        Task<IActionResult> link = CreateController().LinkWorker(WorkerId, ValidRequest(), cancellation.Token);
+        if (stopping)
+        {
+            applicationStopping.Cancel();
+            AssertLinkError(await link.WaitAsync(TestTimeout), StatusCodes.Status503ServiceUnavailable, "RuntimeStopping");
+        }
+        else
+        {
+            cancellation.Cancel();
+            OperationCanceledException exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => link.WaitAsync(TestTimeout));
+            Assert.Equal(cancellation.Token, exception.CancellationToken);
+        }
+
+        Assert.True(readinessToken.IsCancellationRequested);
+    }
+
+    [Fact]
+    public async Task LinkWorker_HttpHandoff_SharesInitializationDeadline()
+    {
+        TaskCompletionSource<WorkerLinkResult> initialized = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _registry.Setup(value => value.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
+            .Returns(initialized.Task);
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _readiness.Setup(value => value.WaitForAcknowledgedHttpCapacityAsync(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken token) =>
+            {
+                entered.SetResult();
+                return pending.Task.WaitAsync(token);
+            });
+        Mock<TimeProvider> clock = new() { CallBase = true };
+        TimerCallback? expire = null;
+        object? timerState = null;
+        clock.Setup(value => value.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object?>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()))
+            .Returns((TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
+            {
+                Assert.Equal(TimeSpan.FromSeconds(30), dueTime);
+                expire = callback;
+                timerState = state;
+                return Mock.Of<ITimer>();
+            });
+        WorkerLinkController controller = new(NullLogger<WorkerLinkController>.Instance, _registry.Object,
+            _readiness.Object, _lifetime.Object, clock.Object);
+
+        Task<IActionResult> link = controller.LinkWorker(WorkerId, ValidRequest());
+        Assert.NotNull(expire);
+        initialized.SetResult(new(null!, true)
+        {
+            IsHttpFunctionGroup = true,
+            WorkerCompletion = new TaskCompletionSource().Task,
+            WorkerTransportCompletion = new TaskCompletionSource().Task,
+            WorkerRemoval = new TaskCompletionSource().Task,
+        });
+        await entered.Task.WaitAsync(TestTimeout);
+        expire!(timerState);
+
+        AssertLinkError(await link.WaitAsync(TestTimeout), StatusCodes.Status503ServiceUnavailable, "LinkTimeout");
+        clock.Verify(value => value.CreateTimer(It.IsAny<TimerCallback>(), It.IsAny<object?>(), It.IsAny<TimeSpan>(), It.IsAny<TimeSpan>()), Times.Once);
+    }
+
+    private TaskCompletionSource SetupHttpLink(bool isNew = true)
+    {
+        TaskCompletionSource terminated = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _registry.Setup(value => value.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WorkerLinkResult(null!, isNew)
+            {
+                IsHttpFunctionGroup = true,
+                WorkerCompletion = terminated.Task,
+                WorkerTransportCompletion = terminated.Task,
+                WorkerRemoval = new TaskCompletionSource().Task,
+            });
+
+        return terminated;
+    }
 
     [Fact]
     public void Constructor_NullLoggerOrRegistry_Throws()
     {
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(null!, _registry.Object));
-        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, null!));
+        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(null!, _registry.Object, _readiness.Object, _lifetime.Object, TimeProvider.System));
+        Assert.Throws<ArgumentNullException>(() => new WorkerLinkController(NullLogger<WorkerLinkController>.Instance, null!, _readiness.Object, _lifetime.Object, TimeProvider.System));
     }
 
     [Theory]
@@ -59,7 +248,7 @@ public class WorkerLinkControllerTests
 
         Task<IActionResult> link = CreateController().LinkWorker(WorkerId, request, cancellation.Token);
         Assert.True(registryToken.CanBeCanceled);
-        Assert.Equal(cancellation.Token, registryToken);
+        Assert.NotEqual(cancellation.Token, registryToken);
         Assert.False(registryToken.IsCancellationRequested);
         Assert.False(link.IsCompleted);
         completion.SetResult(new(null!, IsNewLink: true));
@@ -124,7 +313,7 @@ public class WorkerLinkControllerTests
     public async Task LinkWorker_RegistryDeadline_ReturnsLinkTimeoutWithoutCancelingRequest()
     {
         using CancellationTokenSource cancellation = new();
-        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), cancellation.Token))
+        _registry.Setup(registry => registry.LinkAsync(WorkerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new TimeoutException(PrivateDiagnostic));
 
         IActionResult result = await CreateController().LinkWorker(WorkerId, ValidRequest(), cancellation.Token).WaitAsync(TestTimeout);
@@ -297,7 +486,7 @@ public class WorkerLinkControllerTests
                 : Task.FromResult(new WorkerLinkResult(null!, IsNewLink: true)));
         WorkerLinkRequest request = ValidRequest();
         request.WorkerContainerEncryptionKey = "reserved-value-do-not-log";
-        WorkerLinkController controller = new(logger.Object, _registry.Object);
+        WorkerLinkController controller = new(logger.Object, _registry.Object, _readiness.Object, _lifetime.Object, TimeProvider.System);
 
         await controller.LinkWorker(WorkerId, request);
 
@@ -422,7 +611,7 @@ public class WorkerLinkControllerTests
     }
 
     private WorkerLinkController CreateController()
-        => new(NullLogger<WorkerLinkController>.Instance, _registry.Object);
+        => new(NullLogger<WorkerLinkController>.Instance, _registry.Object, _readiness.Object, _lifetime.Object, TimeProvider.System);
 
     private void VerifyOnlyLinkCall()
     {

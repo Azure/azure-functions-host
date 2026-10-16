@@ -88,6 +88,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         TaskCompletionSource start;
         Task<WorkerChannel> link;
+        WorkerSlot slot;
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -105,11 +106,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                         "The worker's initialized channel has terminated.");
                 }
 
-                return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, cancellationToken), isNewLink: false);
+                return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, cancellationToken), existing, isNewLink: false);
             }
 
             start = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            WorkerSlot slot = new() { Endpoint = grpcEndpoint };
+            slot = new() { Endpoint = grpcEndpoint };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
             link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
@@ -119,11 +120,22 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         // Publish the shared attempt before starting I/O so a retry cannot start a second connection.
         start.SetResult();
 
-        return CompleteLinkAsync(link, isNewLink: true);
+        return CompleteLinkAsync(link, slot, isNewLink: true);
     }
 
-    private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, bool isNewLink)
-        => new(await link.ConfigureAwait(false), isNewLink);
+    private static async Task<WorkerLinkResult> CompleteLinkAsync(Task<WorkerChannel> link, WorkerSlot slot, bool isNewLink)
+    {
+        WorkerChannel channel = await link.ConfigureAwait(false);
+        RpcClientWorkerChannel clientChannel = (RpcClientWorkerChannel)channel;
+
+        return new(channel, isNewLink)
+        {
+            IsHttpFunctionGroup = clientChannel.IsHttpFunctionGroup,
+            WorkerCompletion = slot.WorkerCompletion,
+            WorkerTransportCompletion = clientChannel.Completion,
+            WorkerRemoval = slot.Removed.Task,
+        };
+    }
 
     private async Task<WorkerChannel> LinkCoreAsync(
         string workerId,
@@ -363,6 +375,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         {
             _disposed = true;
             slots = [.. _slots];
+            foreach (KeyValuePair<string, WorkerSlot> slot in slots)
+            {
+                // Invalidate external readiness before any potentially blocking channel cleanup.
+                slot.Value.Removed.TrySetResult();
+            }
+
             monitorTasks = [.. _monitorTasks];
             _initializedChannelsChanged.TrySetResult();
         }
@@ -404,6 +422,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
 
         slot.Channel = null;
+        slot.Removed.TrySetResult();
         if (slot.LinkTask is not null)
         {
             slot.Terminal = true;
@@ -529,6 +548,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             slot.Channel = channel;
+            // Transport completion and logical removal both invalidate the link. The monitor owns observing
+            // and logging transport faults; readiness only needs the terminal signal, shared with retries.
+            slot.WorkerCompletion = Task.WhenAny(channel.Completion, slot.Removed.Task);
             monitorTask = MonitorChannelCompletionAsync(workerId, slot, channel);
             _monitorTasks.Add(monitorTask);
 
@@ -573,6 +595,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private sealed class WorkerSlot
     {
         public RpcClientWorkerChannel Channel { get; set; }
+
+        public TaskCompletionSource Removed { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task WorkerCompletion { get; set; }
 
         // The initial link owns this gate before its slot is published.
         public SemaphoreSlim Gate { get; } = new(0, 1);

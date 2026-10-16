@@ -28,7 +28,9 @@ internal static class AppServerServiceCollectionExtensions
         services.AddHttpClient(AppServerHostStateClient.HttpClientName, client => client.Timeout = RequestTimeout);
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<IAppServerHostStateClient, AppServerHostStateClient>();
-        services.AddSingleton<IHostedService, AppServerHostStatePublisher>();
+        services.AddSingleton<AppServerHostStatePublisher>();
+        services.AddSingleton<IAppServerHttpCapacityReadiness>(provider => provider.GetRequiredService<AppServerHostStatePublisher>());
+        services.AddSingleton<IHostedService>(provider => provider.GetRequiredService<AppServerHostStatePublisher>());
 
         return services;
     }

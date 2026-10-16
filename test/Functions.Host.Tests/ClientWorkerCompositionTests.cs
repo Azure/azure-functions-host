@@ -88,7 +88,10 @@ public class ClientWorkerCompositionTests
         Assert.Equal(ServiceLifetime.Singleton, stateManager.Lifetime);
         Assert.NotNull(stateManager.ImplementationFactory);
         Assert.Single(services, service =>
-            service.ServiceType == typeof(IHostedService) && service.ImplementationType == typeof(AppServerHostStatePublisher));
+            service.ServiceType == typeof(AppServerHostStatePublisher));
+        ServiceDescriptor readiness = Assert.Single(services, service => service.ServiceType == typeof(IAppServerHttpCapacityReadiness));
+        Assert.Equal(ServiceLifetime.Singleton, readiness.Lifetime);
+        Assert.NotNull(readiness.ImplementationFactory);
         ServiceDescriptor coordinator = Assert.Single(services.Where(service =>
             string.Equals(service.ServiceType.FullName, StartupCoordinatorTypeName, StringComparison.Ordinal)));
         Assert.Equal(ServiceLifetime.Singleton, coordinator.Lifetime);
@@ -230,6 +233,8 @@ public class ClientWorkerCompositionTests
             int publisherIndex = Array.FindIndex(hostedServices, service => service is AppServerHostStatePublisher);
             Assert.Single(hostedServices, service => ReferenceEquals(service, stateManager));
             Assert.Single(hostedServices, service => service is AppServerHostStatePublisher);
+            Assert.Same(hostedServices[publisherIndex], rootHost.Services.GetRequiredService<IAppServerHttpCapacityReadiness>());
+            Assert.Same(hostedServices[publisherIndex], rootHost.Services.GetRequiredService<AppServerHostStatePublisher>());
 
             // Hosted services stop in reverse order, so the publisher stops before the state manager it reads.
             Assert.True(stateManagerIndex < publisherIndex);

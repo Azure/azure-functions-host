@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Host.Controllers;
+using Azure.Functions.Host.HostState;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -17,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Moq;
 
 namespace Azure.Functions.Host.Tests;
 
@@ -59,6 +61,8 @@ internal sealed class WorkerLinkTestHost : IAsyncDisposable
                         if (includeCompute)
                         {
                             services.AddSingleton(registry);
+                            services.AddSingleton(TimeProvider.System);
+                            services.AddSingleton(Mock.Of<IAppServerHttpCapacityReadiness>(MockBehavior.Strict));
                             mvcBuilder.AddApplicationPart(typeof(WorkerLinkController).Assembly);
                         }
 

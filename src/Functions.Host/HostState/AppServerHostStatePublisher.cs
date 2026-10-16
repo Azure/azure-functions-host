@@ -28,7 +28,7 @@ namespace Azure.Functions.Host.HostState;
 /// Publication failures are logged and never stop the Host.
 /// </para>
 /// </remarks>
-internal sealed partial class AppServerHostStatePublisher : BackgroundService
+internal sealed partial class AppServerHostStatePublisher : BackgroundService, IAppServerHttpCapacityReadiness
 {
     // Keep the Host-prefixed category so existing provider and customer log filters continue to apply.
     internal const string LogCategory = "Host.AppServer.HostStatePublisher";
@@ -42,7 +42,11 @@ internal sealed partial class AppServerHostStatePublisher : BackgroundService
     private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger _logger;
+    private readonly Lock _publicationLock = new();
+    private TaskCompletionSource _publicationChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private ComputeRuntimeState? _lastPublishedSnapshot;
+    private bool _stopped;
+    private Exception? _failure;
 
     public AppServerHostStatePublisher(
         IComputeRuntimeStateManager stateManager,
@@ -58,7 +62,91 @@ internal sealed partial class AppServerHostStatePublisher : BackgroundService
         _logger = loggerFactory?.CreateLogger(LogCategory) ?? throw new ArgumentNullException(nameof(loggerFactory));
     }
 
+    /// <inheritdoc />
+    public async Task WaitForAcknowledgedHttpCapacityAsync(CancellationToken cancellationToken = default)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ComputeRuntimeState current;
+            Task published;
+            lock (_publicationLock)
+            {
+                if (_failure is not null)
+                {
+                    throw new WorkerLinkException(WorkerLinkFailureReason.Unavailable, "Host state publication has failed.", _failure);
+                }
+
+                ObjectDisposedException.ThrowIf(_stopped, this);
+                // Capture the ACK signal before reading Current. Identity, not value or timestamp equality,
+                // prevents an older positive ACK from satisfying a newer snapshot (including withdrawal).
+                published = _publicationChanged.Task;
+                current = _stateManager.Current;
+                if (current.HttpCapacity > 0 && ReferenceEquals(current, _lastPublishedSnapshot))
+                {
+                    return;
+                }
+            }
+
+            using CancellationTokenSource iteration = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            Task changed = _stateManager.WaitForChangeAsync(current, iteration.Token);
+            try
+            {
+                Task completed = await Task.WhenAny(changed, published).WaitAsync(cancellationToken).ConfigureAwait(false);
+                await completed.ConfigureAwait(false);
+            }
+            finally
+            {
+                // Do not leave state-manager waits/registrations behind after an ACK or caller cancellation.
+                await iteration.CancelAsync().ConfigureAwait(false);
+                try
+                {
+                    await changed.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (iteration.IsCancellationRequested)
+                {
+                }
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public override Task StopAsync(CancellationToken cancellationToken)
+    {
+        EndReadiness();
+        return base.StopAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override void Dispose()
+    {
+        EndReadiness();
+        base.Dispose();
+    }
+
+    private void EndReadiness(Exception? failure = null)
+    {
+        lock (_publicationLock)
+        {
+            _stopped = true;
+            _failure ??= failure;
+            _publicationChanged.TrySetResult();
+        }
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            await RunPublisherAsync(stoppingToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            EndReadiness();
+        }
+    }
+
+    private async Task RunPublisherAsync(CancellationToken stoppingToken)
     {
         bool specialized = false;
         try
@@ -74,6 +162,7 @@ internal sealed partial class AppServerHostStatePublisher : BackgroundService
         {
             // BackgroundService failures stop the Host by default; publication must never do that.
             Log.PublisherFailed(_logger, exception);
+            EndReadiness(exception);
             return;
         }
 
@@ -164,7 +253,13 @@ internal sealed partial class AppServerHostStatePublisher : BackgroundService
         {
             case >= 200 and < 300:
                 Log.Published(_logger, state.CreatedTime, state.HttpCapacity);
-                _lastPublishedSnapshot = state;
+                lock (_publicationLock)
+                {
+                    _lastPublishedSnapshot = state;
+                    TaskCompletionSource published = _publicationChanged;
+                    _publicationChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                    published.TrySetResult();
+                }
                 return true;
             case (int)HttpStatusCode.Unauthorized or (int)HttpStatusCode.Forbidden or >= 500:
                 Log.PublishRejectedTransient(_logger, state.CreatedTime, (int)statusCode);
@@ -178,9 +273,12 @@ internal sealed partial class AppServerHostStatePublisher : BackgroundService
     private async Task PublishFinalSnapshotAsync()
     {
         ComputeRuntimeState state = _stateManager.Current;
-        if (ReferenceEquals(_lastPublishedSnapshot, state))
+        lock (_publicationLock)
         {
-            return;
+            if (ReferenceEquals(_lastPublishedSnapshot, state))
+            {
+                return;
+            }
         }
 
         using CancellationTokenSource timeout = new(ShutdownPublishTimeout, _timeProvider);

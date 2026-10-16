@@ -34,6 +34,58 @@ public sealed partial class WorkerChannelRegistryTests
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LinkAsync_TerminationSignalsBeforeBlockedUnlinkOrRegistryDisposal(bool shutdown)
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", blockDisposal: true, functionGroup: "http");
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+        WorkerLinkResult linked = await registry.LinkAsync(channel.Id, CreateEndpoint(channel.Id)).WaitAsync(TestTimeout);
+
+        Task cleanup = shutdown ? registry.DisposeAsync().AsTask() : registry.UnlinkAsync(channel.Id);
+        try
+        {
+            await channel.DisposeStarted.WaitAsync(TestTimeout);
+            Assert.False(cleanup.IsCompleted);
+            Assert.True(linked.WorkerRemoval.IsCompletedSuccessfully);
+        }
+        finally
+        {
+            channel.AllowDispose();
+            await cleanup.WaitAsync(TestTimeout);
+        }
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("http", true)]
+    [InlineData("HTTP", true)]
+    [InlineData("function:queue", false)]
+    public async Task LinkAsync_ResultCarriesNegotiatedGroupAndSharedTermination(string functionGroup, bool isHttp)
+    {
+        RegistryHarness harness = new();
+        ChannelControl channel = new("worker", functionGroup: functionGroup);
+        harness.Enqueue(channel);
+        await using WorkerChannelRegistry registry = harness.Registry;
+
+        WorkerLinkResult first = await registry.LinkAsync(channel.Id, CreateEndpoint(channel.Id)).WaitAsync(TestTimeout);
+        WorkerLinkResult retry = await registry.LinkAsync(channel.Id, CreateEndpoint(channel.Id)).WaitAsync(TestTimeout);
+
+        Assert.Equal(isHttp, first.IsHttpFunctionGroup);
+        Assert.Equal(first.IsHttpFunctionGroup, retry.IsHttpFunctionGroup);
+        Assert.Same(first.WorkerCompletion, retry.WorkerCompletion);
+        Assert.Same(channel.Channel.Completion, first.WorkerTransportCompletion);
+        Assert.Same(first.WorkerTransportCompletion, retry.WorkerTransportCompletion);
+        Assert.Same(first.WorkerRemoval, retry.WorkerRemoval);
+        Assert.False(first.WorkerCompletion.IsCompleted);
+        Assert.False(first.WorkerRemoval.IsCompleted);
+        channel.Complete();
+        await first.WorkerTransportCompletion.WaitAsync(TestTimeout);
+    }
+
     [Fact]
     public async Task LinkAsync_PassesConnectedTransportToChannelFactory()
     {
@@ -1136,12 +1188,14 @@ public sealed partial class WorkerChannelRegistryTests
     {
         private readonly TaskCompletionSource _startEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _startRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly string _functionGroup;
         private Exception _startFailure;
         private RpcClientWorkerChannel _channel;
 
-        internal ChannelControl(string id, bool blockStart = false, bool blockDisposal = false)
+        internal ChannelControl(string id, bool blockStart = false, bool blockDisposal = false, string functionGroup = null)
         {
             Id = id;
+            _functionGroup = functionGroup;
             Transport = new(blockDisposal);
             if (!blockStart)
             {
@@ -1208,13 +1262,16 @@ public sealed partial class WorkerChannelRegistryTests
                     return;
                 }
 
-                await Transport.SendResponseAsync(new StreamingMessage
+                WorkerInitResponse response = new()
                 {
-                    WorkerInitResponse = new WorkerInitResponse
-                    {
-                        Result = new() { Status = StatusResult.Types.Status.Success },
-                    },
-                });
+                    Result = new() { Status = StatusResult.Types.Status.Success },
+                };
+                if (_functionGroup is not null)
+                {
+                    response.Capabilities.Add(RpcClientWorkerChannel.FunctionGroupNameCapability, _functionGroup);
+                }
+
+                await Transport.SendResponseAsync(new StreamingMessage { WorkerInitResponse = response });
             }
             catch (ChannelClosedException)
             {

@@ -38,6 +38,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     private TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private StandbyOptions _standby = new() { InStandbyMode = false };
     private Action<StandbyOptions, string?>? _standbyChanged;
+    private int _activeChangeWaits;
 
     public AppServerHostStatePublisherTests()
     {
@@ -78,6 +79,188 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
                 _timers.Add(timer);
                 return timer.Timer.Object;
             });
+    }
+
+    [Fact]
+    public async Task WaitForAcknowledgedHttpCapacityAsync_StateChangesBeforeSubscriptionAreNotMissed()
+    {
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        ComputeRuntimeState zero = TakePublished();
+        WaitUntilPublisherWaitsForChange(zero);
+        int changed = 0;
+        _stateManager.Setup(manager => manager.WaitForChangeAsync(It.IsAny<ComputeRuntimeState>(), It.IsAny<CancellationToken>()))
+            .Returns((ComputeRuntimeState state, CancellationToken token) =>
+            {
+                if (Interlocked.Exchange(ref changed, 1) == 0)
+                {
+                    SetState(new(CreatedTime, 16, 1, 1));
+                }
+
+                return WaitForChangeAsync(state, token);
+            });
+
+        Task ready = publisher.WaitForAcknowledgedHttpCapacityAsync();
+
+        TakePublished();
+        await ready.WaitAsync(TestTimeout);
+        Task alreadyReady = publisher.WaitForAcknowledgedHttpCapacityAsync();
+        Assert.True(alreadyReady.IsCompletedSuccessfully);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+    }
+
+    [Fact]
+    public async Task WaitForAcknowledgedHttpCapacityAsync_ZeroAndInFlightPositiveDoNotReleaseWaiters()
+    {
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        TakePublished();
+        WaitUntilPublisherWaitsForChange(_current);
+        Task ready = publisher.WaitForAcknowledgedHttpCapacityAsync();
+        Assert.False(ready.IsCompleted);
+
+        TaskCompletionSource<HttpStatusCode> response = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _responses.Enqueue(token => response.Task.WaitAsync(token));
+        SetState(new(CreatedTime, 16, 1, 1));
+        TakePublished();
+        Assert.False(ready.IsCompleted);
+
+        response.SetResult(HttpStatusCode.OK);
+        await ready.WaitAsync(TestTimeout);
+        await publisher.WaitForAcknowledgedHttpCapacityAsync().WaitAsync(TestTimeout);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(null)]
+    public async Task WaitForAcknowledgedHttpCapacityAsync_FailedPublicationDoesNotReleaseWaiters(HttpStatusCode? status)
+    {
+        _current = new(CreatedTime, 16, 1, 1);
+        _responses.Enqueue(_ => status.HasValue
+            ? Task.FromResult(status.Value)
+            : Task.FromException<HttpStatusCode>(new HttpRequestException("publication failed")));
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        TakePublished();
+        ScheduledTimer retry = TakeTimer();
+        Task ready = publisher.WaitForAcknowledgedHttpCapacityAsync();
+        Assert.False(ready.IsCompleted);
+
+        retry.Fire();
+        TakePublished();
+        await ready.WaitAsync(TestTimeout);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+    }
+
+    [Fact]
+    public async Task WaitForAcknowledgedHttpCapacityAsync_WithdrawnInFlightAckAndEqualValuedReplacementAreNotReady()
+    {
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        TakePublished();
+        WaitUntilPublisherWaitsForChange(_current);
+        TaskCompletionSource<HttpStatusCode> oldResponse = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _responses.Enqueue(token => oldResponse.Task.WaitAsync(token));
+        ComputeRuntimeState positive = new(CreatedTime, 16, 1, 1);
+        SetState(positive);
+        TakePublished();
+        SetState(new(CreatedTime, 0, 0, 0));
+        Task ready = publisher.WaitForAcknowledgedHttpCapacityAsync();
+        oldResponse.SetResult(HttpStatusCode.OK);
+        TakePublished();
+        WaitUntilPublisherWaitsForChange(_current);
+        Assert.False(ready.IsCompleted);
+
+        TaskCompletionSource<HttpStatusCode> newResponse = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _responses.Enqueue(token => newResponse.Task.WaitAsync(token));
+        SetState(positive with { });
+        TakePublished();
+        Assert.False(ready.IsCompleted);
+        newResponse.SetResult(HttpStatusCode.OK);
+        await ready.WaitAsync(TestTimeout);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+    }
+
+    [Fact]
+    public async Task WaitForAcknowledgedHttpCapacityAsync_PreviouslyAcknowledgedPositiveIsInvalidAfterWithdrawal()
+    {
+        _current = new(CreatedTime, 16, 1, 1);
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        TakePublished();
+        await publisher.WaitForAcknowledgedHttpCapacityAsync().WaitAsync(TestTimeout);
+
+        // The old positive snapshot remains the last ACK while withdrawal is in flight.
+        TaskCompletionSource<HttpStatusCode> response = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _responses.Enqueue(token => response.Task.WaitAsync(token));
+        SetState(new(CreatedTime, 0, 0, 0));
+        TakePublished();
+        using CancellationTokenSource cancellation = new();
+        Task ready = publisher.WaitForAcknowledgedHttpCapacityAsync(cancellation.Token);
+        Assert.False(ready.IsCompleted);
+        response.SetResult(HttpStatusCode.OK);
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ready.WaitAsync(TestTimeout));
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+    }
+
+    [Fact]
+    public async Task WaitForAcknowledgedHttpCapacityAsync_CancellationCleansStateWaitAndDoesNotAffectOtherWaiters()
+    {
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        TakePublished();
+        WaitUntilPublisherWaitsForChange(_current);
+        using CancellationTokenSource cancellation = new();
+        Task canceled = publisher.WaitForAcknowledgedHttpCapacityAsync(cancellation.Token);
+        Task other = publisher.WaitForAcknowledgedHttpCapacityAsync();
+        Assert.Equal(3, Volatile.Read(ref _activeChangeWaits));
+
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => canceled.WaitAsync(TestTimeout));
+        Assert.Equal(2, Volatile.Read(ref _activeChangeWaits));
+        Assert.False(other.IsCompleted);
+        SetState(new(CreatedTime, 16, 1, 1));
+        TakePublished();
+        await other.WaitAsync(TestTimeout);
+        await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+        Assert.Equal(0, Volatile.Read(ref _activeChangeWaits));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WaitForAcknowledgedHttpCapacityAsync_StopOrDisposeWakesWaiters(bool dispose)
+    {
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        TakePublished();
+        WaitUntilPublisherWaitsForChange(_current);
+        Task ready = publisher.WaitForAcknowledgedHttpCapacityAsync();
+
+        if (dispose)
+        {
+            publisher.Dispose();
+        }
+        else
+        {
+            await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
+        }
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => ready.WaitAsync(TestTimeout));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => publisher.WaitForAcknowledgedHttpCapacityAsync());
+        await publisher.ExecuteTask!.WaitAsync(TestTimeout);
+        Assert.Equal(0, Volatile.Read(ref _activeChangeWaits));
+    }
+
+    [Fact]
+    public async Task WaitForAcknowledgedHttpCapacityAsync_PublisherFailureRejectsEvenAcknowledgedPositive()
+    {
+        _current = new(CreatedTime, 16, 1, 1);
+        _stateManager.Setup(manager => manager.WaitForChangeAsync(It.IsAny<ComputeRuntimeState>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("tracking failed"));
+        using AppServerHostStatePublisher publisher = await StartPublisherAsync();
+        TakePublished();
+        await publisher.ExecuteTask!.WaitAsync(TestTimeout);
+
+        WorkerLinkException failure = await Assert.ThrowsAsync<WorkerLinkException>(
+            () => publisher.WaitForAcknowledgedHttpCapacityAsync());
+        Assert.Equal(WorkerLinkFailureReason.Unavailable, failure.Reason);
     }
 
     [Fact]
@@ -608,8 +791,16 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
                 changed = _changed.Task;
             }
 
-            _changeWaits.Add(lastKnownState);
-            await changed.WaitAsync(cancellationToken);
+            Interlocked.Increment(ref _activeChangeWaits);
+            try
+            {
+                _changeWaits.Add(lastKnownState);
+                await changed.WaitAsync(cancellationToken);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _activeChangeWaits);
+            }
         }
     }
 

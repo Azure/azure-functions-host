@@ -32,6 +32,8 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// processes a successful <c>WorkerInitResponse</c>. Function metadata has not been requested, invocation buffers
     /// have not been created, and function load requests have not been sent, so the channel is not yet ready for
     /// invocations.
+    /// The external HTTP link endpoint separately waits for acknowledged AppServer HTTP capacity after registration.
+    /// Registration must remain earlier so ScriptHost startup and metadata indexing can consume the channel.
     /// Matching worker IDs and gRPC endpoint URIs share initialization. Endpoints are compared using ordinal
     /// <see cref="Uri.AbsoluteUri"/> equality. HTTP proxying is negotiated through worker capabilities.
     /// Different workers can link concurrently.
@@ -42,7 +44,8 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
     /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
     /// <returns>
-    /// The initialized and registered channel, and whether this caller started the successful attempt.
+    /// The initialized and registered channel, its negotiated HTTP group and terminal signal,
+    /// and whether this caller started the successful attempt.
     /// Matching retries report an existing link, including retries that waited for initialization.
     /// </returns>
     /// <exception cref="WorkerLinkException">The request conflicts with the registry's admission state.</exception>
