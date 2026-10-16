@@ -657,17 +657,19 @@ public class ManagementApiEndpointTests
         using StringContent content = JsonBody(assignment.ToJsonString());
         using HttpResponseMessage created = await client.PutAsync(AssignPath, content, timeout.Token);
         await AssertAssignmentSuccessAsync(created, HttpStatusCode.Created, timeout.Token);
-        Assert.Equal(1, manager.State.Revision);
-        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
+        Assert.Equal(0, manager.State.Revision);
+        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
         Assert.Equal(WorkerPodStatus.None, manager.State.PodStatus);
-        Assert.Equal("other-app", manager.State.FunctionAppName);
-        Assert.Equal(WorkerStartupMode.Preconfigured, manager.State.StartupMode);
+        Assert.Null(manager.State.FunctionAppName);
+        Assert.Null(manager.State.StartupMode);
 
         Assert.True(manager.OnWorkerAttached(1));
         Assert.True(manager.OnWorkerStartStream(1, "worker"));
-        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(2, manager.State.Revision);
         Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
         Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
+        Assert.Equal("other-app", manager.State.FunctionAppName);
+        Assert.Equal(WorkerStartupMode.Preconfigured, manager.State.StartupMode);
     }
 
     [Theory]

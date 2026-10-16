@@ -30,7 +30,7 @@
 
   <ItemGroup>
     <Compile
-      Include="..\WebJobs.Script.Grpc\ManagedIdentityTokenRequestAuthenticator.cs"
+      Include="..\Functions.Rpc.Client\WorkerChannel\ManagedIdentityTokenRequestAuthenticator.cs"
       Link="Rpc\ManagedIdentityTokenRequestAuthenticator.cs" />
     <Protobuf
       Include="..\WebJobs.Script.Grpc\azure-functions-language-worker-protobuf\src\proto\**\*.proto"

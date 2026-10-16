@@ -58,7 +58,7 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
         string workerId,
         Uri grpcEndpoint,
         string runtimeAccessKey,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Removes and disposes a linked worker when present.

@@ -284,11 +284,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_CanceledStopWaitDoesNotCancelSharedStop()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
-        FunctionRpcRelay relay = new(
-            logger,
-            CreateCapabilityProvider(),
-            CreatePodStateManager(),
-            CreateConfiguration());
+        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager());
         using CancellationTokenSource timeout = new(TestTimeout);
         using CancellationTokenSource stopCancellation = new();
         BlockingServerStreamWriter blockingWriter = new();
@@ -398,11 +394,7 @@ public partial class FunctionRpcRelayTests
     public async Task Relay_ShutdownAllowsSessionClearBeforeCancellation()
     {
         using BlockingLogger<FunctionRpcRelay> logger = new(eventIdToBlock: SessionTerminatedEventId);
-        FunctionRpcRelay relay = new(
-            logger,
-            CreateCapabilityProvider(),
-            CreatePodStateManager(),
-            CreateConfiguration());
+        FunctionRpcRelay relay = new(logger, CreateCapabilityProvider(), CreatePodStateManager());
         using CancellationTokenSource timeout = new(TestTimeout);
         Task<FunctionRpcRelayTerminalState> runtimeTask =
             relay.AttachAsync(FunctionRpcRelaySide.Runtime, new BlockingStreamReader(), new TestServerStreamWriter(), timeout.Token);
@@ -465,20 +457,8 @@ public partial class FunctionRpcRelayTests
 
     private static FunctionRpcRelay CreateInProcessRelay(WorkerPodStateManager? stateManager = null)
     {
-        return new FunctionRpcRelay(
-            NullLogger<FunctionRpcRelay>.Instance,
-            CreateCapabilityProvider(),
-            stateManager ?? CreatePodStateManager(),
-            CreateConfiguration());
+        return new FunctionRpcRelay(NullLogger<FunctionRpcRelay>.Instance, CreateCapabilityProvider(), stateManager ?? CreatePodStateManager());
     }
-
-    private static IConfiguration CreateConfiguration() =>
-        new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                [ManagedIdentityTokenRequestAuthenticator.RuntimeAccessKeyEnvironmentVariable] = "runtime-access-key"
-            })
-            .Build();
 
     private static WorkerPodStateManager CreatePodStateManager()
         => new(Options.Create(new WorkerProxyOptions { PodName = "test-worker-pod" }), TimeProvider.System);

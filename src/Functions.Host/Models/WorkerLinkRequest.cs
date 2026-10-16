@@ -18,6 +18,13 @@ public sealed class WorkerLinkRequest
     public string? WorkerGrpcEndpoint { get; set; }
 
     /// <summary>
+    /// Gets or sets the reserved worker-pod container encryption key. It is not used to authenticate
+    /// the outbound connection and must not be logged or returned to the caller.
+    /// </summary>
+    [JsonProperty("workerContainerEncryptionKey")]
+    public string? WorkerContainerEncryptionKey { get; set; }
+
+    /// <summary>
     /// Gets or sets the optional key used to authenticate WorkerProxy-originated control messages.
     /// </summary>
     [JsonProperty("runtimeAccessKey")]

@@ -24,8 +24,7 @@ internal sealed partial class FunctionRpcRelay
         long id,
         ILogger logger,
         IWorkerCapabilityFinalizer capabilityFinalizer,
-        WorkerPodStateManager stateManager,
-        string? runtimeAccessKey)
+        WorkerPodStateManager stateManager)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
         private const int MaximumPendingManagedIdentityRequests = 16;
@@ -130,7 +129,8 @@ internal sealed partial class FunctionRpcRelay
         }
 
         public async Task<ManagedIdentityTokenResponse> RequestManagedIdentityTokenAsync(
-            ManagedIdentityTokenRequest request)
+            ManagedIdentityTokenRequest request,
+            string? runtimeAccessKey)
         {
             if (string.IsNullOrWhiteSpace(runtimeAccessKey))
             {

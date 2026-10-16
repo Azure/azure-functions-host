@@ -92,7 +92,7 @@ public partial class FunctionRpcRelayTests
 
         await AssignAsync(management, new Dictionary<string, string> { [environmentName] = secret }, timeout.Token);
 
-        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
         Assert.False(manager.State.IsWorkerReady);
 
         using (HttpResponseMessage forbidden = await SendTokenRequestAsync(
@@ -159,7 +159,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal("https://storage.azure.com/", body.RootElement.GetProperty("resource").GetString());
         Assert.Equal("client-id", body.RootElement.GetProperty("client_id").GetString());
         Assert.False(manager.State.IsWorkerReady);
-        Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
 
         const string errorBody =
             """{"error":"invalid_request","error_description":"The requested identity is not assigned."}""";

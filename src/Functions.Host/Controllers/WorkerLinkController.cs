@@ -82,11 +82,8 @@ public sealed partial class WorkerLinkController : Controller
         CancellationToken cancellationToken = default)
     {
         long started = Stopwatch.GetTimestamp();
-        IReadOnlyList<RequestValidationError> errors = ValidateRequest(
-            workerId,
-            request,
-            out Uri? grpcEndpoint,
-            out string? runtimeAccessKey);
+        string? runtimeAccessKey = request?.RuntimeAccessKey;
+        IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerId, request, out Uri? grpcEndpoint);
         if (errors.Count > 0 || grpcEndpoint is null)
         {
             Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
@@ -95,19 +92,13 @@ public sealed partial class WorkerLinkController : Controller
             return BadRequest(new RequestValidationResponse(errors));
         }
 
-        return await LinkValidatedWorkerAsync(
-            workerId,
-            grpcEndpoint,
-            runtimeAccessKey,
-            started,
-            cancellationToken);
+        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, runtimeAccessKey, started, cancellationToken);
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(string workerId, WorkerLinkRequest? request,
-        out Uri? grpcEndpoint, out string? runtimeAccessKey)
+        out Uri? grpcEndpoint)
     {
         grpcEndpoint = null;
-        runtimeAccessKey = null;
         List<RequestValidationError> errors = [];
 
         if (string.IsNullOrWhiteSpace(workerId))
@@ -135,20 +126,11 @@ public sealed partial class WorkerLinkController : Controller
         {
             errors.Add(new(ErrorCodes.Required, "runtimeAccessKey"));
         }
-        else if (request.RuntimeAccessKey is not null)
-        {
-            runtimeAccessKey = request.RuntimeAccessKey;
-        }
-
         return errors;
     }
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
-    private async Task<IActionResult> LinkValidatedWorkerAsync(
-        string workerId,
-        Uri grpcEndpoint,
-        string? runtimeAccessKey,
-        long started,
+    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerId, Uri grpcEndpoint, string? runtimeAccessKey, long started,
         CancellationToken cancellationToken)
     {
         try

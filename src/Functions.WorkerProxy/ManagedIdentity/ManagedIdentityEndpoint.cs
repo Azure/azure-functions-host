@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
@@ -12,10 +13,9 @@ using Azure.Functions.WorkerProxy.State;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
-using RpcTokenRequest = Microsoft.Azure.WebJobs.Script.Grpc.Messages.ManagedIdentityTokenRequest;
-using RpcTokenResponse = Microsoft.Azure.WebJobs.Script.Grpc.Messages.ManagedIdentityTokenResponse;
-using StatusResult = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StatusResult;
 
 namespace Azure.Functions.WorkerProxy.ManagedIdentity;
 
@@ -49,6 +49,7 @@ internal static class ManagedIdentityEndpoint
         HttpRequest request,
         WorkerPodStateManager stateManager,
         FunctionRpcRelay relay,
+        IConfiguration configuration,
         CancellationToken cancellationToken)
     {
         if (!stateManager.TryGetAssignmentEnvironmentValues(
@@ -82,15 +83,18 @@ internal static class ManagedIdentityEndpoint
                 "The request must include one resource and api-version value, at most one clientid or client_id value, and no unsupported parameters.");
         }
 
-        RpcTokenResponse response;
+        ManagedIdentityTokenResponse response;
         try
         {
-            response = await relay.RequestManagedIdentityTokenAsync(new RpcTokenRequest
-            {
-                Resource = resource,
-                ClientId = clientId ?? string.Empty,
-                ApiVersion = apiVersion
-            }, cancellationToken);
+            response = await relay.RequestManagedIdentityTokenAsync(
+                new ManagedIdentityTokenRequest
+                {
+                    Resource = resource,
+                    ClientId = clientId ?? string.Empty,
+                    ApiVersion = apiVersion
+                },
+                configuration[ManagedIdentityTokenRequestAuthenticator.RuntimeAccessKeyEnvironmentVariable],
+                cancellationToken);
         }
         catch (ManagedIdentityTokenUnavailableException exception)
         {
@@ -206,3 +210,11 @@ internal static class ManagedIdentityEndpoint
             ManagedIdentityJsonContext.Default.ManagedIdentityErrorResponse,
             statusCode: statusCode);
 }
+
+internal sealed record ManagedIdentityErrorResponse(
+    [property: JsonPropertyName("error")] string Error,
+    [property: JsonPropertyName("error_description")] string ErrorDescription);
+
+[JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(ManagedIdentityErrorResponse))]
+internal sealed partial class ManagedIdentityJsonContext : JsonSerializerContext;

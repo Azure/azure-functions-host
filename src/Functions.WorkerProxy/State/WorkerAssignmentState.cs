@@ -9,6 +9,7 @@ namespace Azure.Functions.WorkerProxy.State;
 internal enum WorkerAssignmentState
 {
     Unassigned,
+    // The manager publishes assignment and readiness atomically, without exposing this intermediate state.
     Assigned,
     Ready,
     Failed

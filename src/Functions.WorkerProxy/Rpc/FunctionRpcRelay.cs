@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -25,15 +24,11 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 internal sealed partial class FunctionRpcRelay(
     ILogger<FunctionRpcRelay> logger,
     IWorkerCapabilityFinalizer capabilityFinalizer,
-    WorkerPodStateManager stateManager,
-    IConfiguration configuration)
+    WorkerPodStateManager stateManager)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
     private readonly IWorkerCapabilityFinalizer _capabilityFinalizer = capabilityFinalizer ?? throw new ArgumentNullException(nameof(capabilityFinalizer));
-    private readonly string? _runtimeAccessKey = (configuration ?? throw new ArgumentNullException(nameof(configuration)))[
-        ManagedIdentityTokenRequestAuthenticator.RuntimeAccessKeyEnvironmentVariable];
-
     private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
 
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
@@ -71,16 +66,11 @@ internal sealed partial class FunctionRpcRelay(
 
     internal async Task<ManagedIdentityTokenResponse> RequestManagedIdentityTokenAsync(
         ManagedIdentityTokenRequest request,
+        string? runtimeAccessKey,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
-
-        WorkerAssignmentState assignmentState = _stateManager.State.AssignmentState;
-        if (assignmentState is not (WorkerAssignmentState.Assigned or WorkerAssignmentState.Ready))
-        {
-            throw new ManagedIdentityTokenUnavailableException("The worker pod has no active assignment.");
-        }
 
         FunctionRpcRelaySession session;
         lock (_syncLock)
@@ -93,7 +83,8 @@ internal sealed partial class FunctionRpcRelay(
             session = _currentSession;
         }
 
-        Task<ManagedIdentityTokenResponse> requestTask = session.RequestManagedIdentityTokenAsync(request);
+        Task<ManagedIdentityTokenResponse> requestTask =
+            session.RequestManagedIdentityTokenAsync(request, runtimeAccessKey);
         try
         {
             return await requestTask.WaitAsync(cancellationToken);
@@ -195,7 +186,7 @@ internal sealed partial class FunctionRpcRelay(
             }
 
             session = _currentSession ??= new FunctionRpcRelaySession(
-                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager, _runtimeAccessKey);
+                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager);
 
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)
@@ -301,3 +292,6 @@ internal sealed partial class FunctionRpcRelay(
         _currentSession = null;
     }
 }
+
+internal sealed class ManagedIdentityTokenUnavailableException(string message, Exception? innerException = null)
+    : Exception(message, innerException);

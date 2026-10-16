@@ -14,7 +14,7 @@ namespace Azure.Functions.WorkerProxy.State;
 /// </summary>
 /// <remarks>
 /// Lifecycle notifications use the relay's monotonically increasing session IDs.
-/// Assignment is synchronous bookkeeping and does not wait for the worker stream.
+/// Assignment is synchronous bookkeeping; it never initializes or specializes a worker.
 /// Both startup modes are retained as identity; mode-specific preparation is not implemented.
 /// All state decisions and snapshot replacements share one lock, including assignment racing with termination.
 /// Readers can retain a snapshot after releasing the lock because subsequent transitions replace rather than mutate it.
@@ -208,12 +208,13 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            UpdateStateAndNotifyWaitersLocked(_state with
+            WorkerPodState started = _state with
             {
                 Revision = checked(_state.Revision + 1),
-                WorkerId = workerId,
-                AssignmentState = _assignment is null ? _state.AssignmentState : WorkerAssignmentState.Ready
-            });
+                WorkerId = workerId
+            };
+            UpdateStateAndNotifyWaitersLocked(
+                _assignment is null ? started : ApplyAssignment(started, _assignment));
             return true;
         }
     }
@@ -256,7 +257,7 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Records or replays assignment atomically with worker lifecycle state.
+    /// Records or replays assignment atomically with worker readiness and terminal state.
     /// </summary>
     public WorkerAssignmentResult Assign(WorkerAssignment assignment)
     {
@@ -277,26 +278,32 @@ internal sealed class WorkerPodStateManager
                     : WorkerAssignmentResult.AlreadyAssigned;
             }
 
-            WorkerPodState assigned = _state with
-            {
-                Revision = checked(_state.Revision + 1),
-                AssignmentState = _state.IsWorkerReady ? WorkerAssignmentState.Ready : WorkerAssignmentState.Assigned,
-                StartupMode = assignment.StartupMode,
-                FunctionAppName = assignment.FunctionAppName,
-                FunctionGroupName = assignment.FunctionGroupName,
-                IsAlwaysReady = assignment.IsAlwaysReady
-            };
-
             if (Interlocked.CompareExchange(ref _assignmentClaimed, 1, 0) != 0)
             {
                 throw new InvalidOperationException("Assignment identity was claimed without a recorded assignment.");
             }
 
             _assignment = assignment;
-            UpdateStateAndNotifyWaitersLocked(assigned);
+            if (_state.IsWorkerReady)
+            {
+                UpdateStateAndNotifyWaitersLocked(ApplyAssignment(
+                    _state with { Revision = checked(_state.Revision + 1) },
+                    assignment));
+            }
+
             return WorkerAssignmentResult.Created;
         }
     }
+
+    private static WorkerPodState ApplyAssignment(WorkerPodState state, WorkerAssignment assignment) =>
+        state with
+        {
+            AssignmentState = WorkerAssignmentState.Ready,
+            StartupMode = assignment.StartupMode,
+            FunctionAppName = assignment.FunctionAppName,
+            FunctionGroupName = assignment.FunctionGroupName,
+            IsAlwaysReady = assignment.IsAlwaysReady
+        };
 
     /// <summary>
     /// Stores the new state and completes all pending polls with that snapshot, then clears the waiters.

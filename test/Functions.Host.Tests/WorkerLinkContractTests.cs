@@ -100,7 +100,7 @@ public class WorkerLinkContractTests
 
         JObject body = JObject.Parse(JsonConvert.SerializeObject(request));
 
-        Assert.Equal(new[] { "runtimeAccessKey", "workerGrpcEndpoint" },
+        Assert.Equal(new[] { "runtimeAccessKey", "workerContainerEncryptionKey", "workerGrpcEndpoint" },
             body.Properties().Select(property => property.Name).Order(StringComparer.Ordinal));
     }
 }

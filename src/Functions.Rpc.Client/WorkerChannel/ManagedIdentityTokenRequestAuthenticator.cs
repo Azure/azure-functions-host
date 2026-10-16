@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 /// <summary>
 /// Authenticates WorkerProxy-originated managed identity token requests.
 /// </summary>
-public static class ManagedIdentityTokenRequestAuthenticator
+internal static class ManagedIdentityTokenRequestAuthenticator
 {
     public const string RuntimeAccessKeyEnvironmentVariable = "FUNCTIONS_WORKER_RUNTIME_ACCESS_KEY";
 

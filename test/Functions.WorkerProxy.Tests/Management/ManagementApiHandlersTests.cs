@@ -334,8 +334,9 @@ public class ManagementApiHandlersTests
 
         Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         WorkerPodState assigned = manager.State;
-        Assert.Equal(WorkerAssignmentState.Assigned, assigned.AssignmentState);
+        Assert.Equal(WorkerAssignmentState.Unassigned, assigned.AssignmentState);
         Assert.Equal(WorkerPodStatus.None, assigned.PodStatus);
+        Assert.Null(assigned.FunctionAppName);
         Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
         AssertError(ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager), 409, "AssignmentConflict");
         Assert.Same(assigned, manager.State);

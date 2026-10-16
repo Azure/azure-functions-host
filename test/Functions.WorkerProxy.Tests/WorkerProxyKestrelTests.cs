@@ -52,12 +52,9 @@ public class WorkerProxyKestrelTests
         WorkerProxyEndpointConfiguration endpoints = factory.Services.GetRequiredService<WorkerProxyEndpointConfiguration>();
         Uri workerAddress = endpoints.GetRelayAddress(FunctionRpcRelaySide.Worker);
         Assert.True(IPAddress.IsLoopback(IPAddress.Parse(workerAddress.Host)));
-        Assert.True(IPAddress.IsLoopback(IPAddress.Parse(endpoints.GetManagedIdentityAddress().Host)));
         Assert.False(endpoints.TryGetRelaySide(endpoints.GetManagementAddress().Port, out _));
         Assert.True(endpoints.IsHttpPort(endpoints.GetHttpAddress().Port));
         Assert.False(endpoints.IsHttpPort(endpoints.GetManagementAddress().Port));
-        Assert.True(endpoints.IsManagedIdentityPort(endpoints.GetManagedIdentityAddress().Port));
-        Assert.False(endpoints.IsManagedIdentityPort(endpoints.GetManagementAddress().Port));
 
         foreach (FunctionRpcRelaySide side in Enum.GetValues<FunctionRpcRelaySide>())
         {

@@ -72,7 +72,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         string workerId,
         Uri grpcEndpoint,
         string runtimeAccessKey,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(runtimeAccessKey);
         return LinkAsyncCore(workerId, grpcEndpoint, runtimeAccessKey, cancellationToken);
