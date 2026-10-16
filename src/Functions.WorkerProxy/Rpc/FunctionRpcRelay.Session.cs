@@ -41,6 +41,7 @@ internal sealed partial class FunctionRpcRelay
 
         private readonly TaskCompletionSource<bool> _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        private int _outboundManagedIdentityRequestCount;
         private FunctionRpcRelayTerminalState? _terminalState;
         private FrozenDictionary<string, string>? _capabilities;
         private Uri? _workerHttpDestination;
@@ -160,12 +161,14 @@ internal sealed partial class FunctionRpcRelay
                     throw new ManagedIdentityTokenUnavailableException("The runtime FunctionRpc stream is not attached.");
                 }
 
-                if (_managedIdentityRequests.Count >= MaximumPendingManagedIdentityRequests)
+                if (_managedIdentityRequests.Count >= MaximumPendingManagedIdentityRequests
+                    || _outboundManagedIdentityRequestCount >= MaximumPendingManagedIdentityRequests)
                 {
                     throw new ManagedIdentityTokenUnavailableException("The managed identity request limit has been reached.");
                 }
 
                 _managedIdentityRequests.Add(requestId, completion);
+                _outboundManagedIdentityRequestCount++;
             }
 
             using CancellationTokenSource timeoutSource = new(ManagedIdentityRequestTimeout);
@@ -176,11 +179,19 @@ internal sealed partial class FunctionRpcRelay
 
             try
             {
-                await _toRuntime.Writer.WriteAsync(new()
+                try
                 {
-                    RequestId = requestId,
-                    ManagedIdentityTokenRequest = authenticatedRequest
-                }, linkedSource.Token);
+                    await _toRuntime.Writer.WriteAsync(new()
+                    {
+                        RequestId = requestId,
+                        ManagedIdentityTokenRequest = authenticatedRequest
+                    }, linkedSource.Token);
+                }
+                catch
+                {
+                    ReleaseOutboundManagedIdentityRequest();
+                    throw;
+                }
 
                 return await completion.Task.WaitAsync(linkedSource.Token);
             }
@@ -237,7 +248,7 @@ internal sealed partial class FunctionRpcRelay
             };
 
             Task readTask = ReadInboundAsync(side, requestStream, destination, linkedSource.Token);
-            Task writeTask = WriteOutboundAsync(source, responseStream, linkedSource.Token);
+            Task writeTask = WriteOutboundAsync(side, source, responseStream, linkedSource.Token);
             Task firstCompletedTask = await Task.WhenAny(readTask, writeTask);
 
             if (!_completion.Task.IsCompleted)
@@ -288,10 +299,9 @@ internal sealed partial class FunctionRpcRelay
 
         private static Channel<StreamingMessage> CreateRuntimeChannel()
         {
-            return Channel.CreateBounded<StreamingMessage>(new BoundedChannelOptions(MaximumPendingManagedIdentityRequests)
+            return Channel.CreateUnbounded<StreamingMessage>(new UnboundedChannelOptions
             {
                 AllowSynchronousContinuations = false,
-                FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = true,
                 SingleWriter = false
             });
@@ -456,7 +466,7 @@ internal sealed partial class FunctionRpcRelay
             Log.FunctionGroupNotAdvertised(logger, id, state.AssignmentState);
         }
 
-        private static async Task WriteOutboundAsync(ChannelReader<StreamingMessage> source,
+        private async Task WriteOutboundAsync(FunctionRpcRelaySide side, ChannelReader<StreamingMessage> source,
             IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
         {
             await foreach (StreamingMessage message in source.ReadAllAsync(cancellationToken))
@@ -464,6 +474,24 @@ internal sealed partial class FunctionRpcRelay
                 // This is the only task that writes this response stream. The linked token
                 // releases an in-flight gRPC write during teardown.
                 await responseStream.WriteAsync(message, cancellationToken);
+                if (side == FunctionRpcRelaySide.Runtime
+                    && message.ContentCase == StreamingMessage.ContentOneofCase.ManagedIdentityTokenRequest)
+                {
+                    ReleaseOutboundManagedIdentityRequest();
+                }
+            }
+        }
+
+        private void ReleaseOutboundManagedIdentityRequest()
+        {
+            lock (_stateLock)
+            {
+                if (_outboundManagedIdentityRequestCount <= 0)
+                {
+                    throw new InvalidOperationException("There is no outbound managed identity request to release.");
+                }
+
+                _outboundManagedIdentityRequestCount--;
             }
         }
 

@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -388,7 +389,7 @@ public sealed class RpcClientWorkerChannelTests
         => _factory.Create(WorkerId, duplexChannel);
 
     private RpcClientWorkerChannelFactory CreateFactory(
-        IReadOnlyDictionary<string, string> environmentValues = null,
+        IReadOnlyDictionary<string, string> configurationValues = null,
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> sendAsync = null)
     {
         Mock<IScriptHostManager> hostManager = new();
@@ -403,11 +404,9 @@ public sealed class RpcClientWorkerChannelTests
         _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
             .Returns(true);
 
-        Mock<IEnvironment> environment = new();
-        environment.Setup(value => value.GetEnvironmentVariable(It.IsAny<string>()))
-            .Returns((string name) => environmentValues is not null && environmentValues.TryGetValue(name, out string value)
-                ? value
-                : null);
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configurationValues)
+            .Build();
         Mock<IHttpClientFactory> httpClientFactory = new();
         HttpClient httpClient = new(new StubHttpMessageHandler(
             sendAsync ?? ((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)))));
@@ -416,7 +415,8 @@ public sealed class RpcClientWorkerChannelTests
         return new(
             new ScriptEventManager(),
             hostManager.Object,
-            environment.Object,
+            Mock.Of<IEnvironment>(),
+            configuration,
             httpClientFactory.Object,
             NullLoggerFactory.Instance,
             applicationHostOptions.Object,

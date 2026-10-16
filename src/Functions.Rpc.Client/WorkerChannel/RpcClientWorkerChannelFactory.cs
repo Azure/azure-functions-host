@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -26,6 +27,7 @@ internal sealed class RpcClientWorkerChannelFactory(
     IScriptEventManager eventManager,
     IScriptHostManager hostManager,
     IEnvironment environment,
+    IConfiguration configuration,
     IHttpClientFactory httpClientFactory,
     ILoggerFactory loggerFactory,
     IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
@@ -38,6 +40,7 @@ internal sealed class RpcClientWorkerChannelFactory(
 {
     private readonly IAppCapabilitiesStore _appCapabilitiesStore = appCapabilitiesStore ?? throw new ArgumentNullException(nameof(appCapabilitiesStore));
     private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
+    private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     private readonly IEnvironment _environment = environment ?? throw new ArgumentNullException(nameof(environment));
     private readonly IScriptEventManager _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
     private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions = hostingConfigOptions ?? throw new ArgumentNullException(nameof(hostingConfigOptions));
@@ -89,6 +92,7 @@ internal sealed class RpcClientWorkerChannelFactory(
             _metricsLogger,
             attemptCount: 0,
             _environment,
+            _configuration,
             _httpClientFactory,
             _applicationHostOptions,
             _sharedMemoryManager,

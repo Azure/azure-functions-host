@@ -64,6 +64,7 @@ public partial class FunctionRpcRelayTests
 
     [Theory]
     [InlineData("MSI_SECRET", "Secret", "2017-09-01", "clientid")]
+    [InlineData("MSI_SECRET", "Secret", "0.1", "clientid")]
     [InlineData("IDENTITY_HEADER", "X-IDENTITY-HEADER", "2019-08-01", "client_id")]
     public async Task ManagedIdentityEndpoint_UsesAssignedSecretAndExistingRuntimeStream(
         string environmentName,
@@ -71,8 +72,22 @@ public partial class FunctionRpcRelayTests
         string apiVersion,
         string clientIdQuery)
     {
-        const string secret = "worker-local-secret";
-        string expiresOn = apiVersion == "2017-09-01"
+        const string identityHeader = "worker-local-identity-header";
+        const string msiSecret = "worker-local-msi-secret";
+        string secret = string.Equals(environmentName, "MSI_SECRET", StringComparison.Ordinal)
+            ? msiSecret
+            : identityHeader;
+        string otherSecret = string.Equals(environmentName, "MSI_SECRET", StringComparison.Ordinal)
+            ? identityHeader
+            : msiSecret;
+        string otherHeaderName = string.Equals(headerName, "Secret", StringComparison.Ordinal)
+            ? "X-IDENTITY-HEADER"
+            : "Secret";
+        string otherClientIdQuery = string.Equals(clientIdQuery, "clientid", StringComparison.Ordinal)
+            ? "client_id"
+            : "clientid";
+        string expiresOn = string.Equals(apiVersion, "2017-09-01", StringComparison.Ordinal)
+            || string.Equals(apiVersion, "0.1", StringComparison.Ordinal)
             ? "12/31/2099 23:59:59 +00:00"
             : "4102444799";
         string tokenBody =
@@ -93,7 +108,14 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(TimeSpan.FromSeconds(1), unassigned.Headers.RetryAfter?.Delta);
         }
 
-        await AssignAsync(management, new Dictionary<string, string> { [environmentName] = secret }, timeout.Token);
+        await AssignAsync(
+            management,
+            new Dictionary<string, string>
+            {
+                ["MSI_SECRET"] = msiSecret,
+                ["IDENTITY_HEADER"] = identityHeader
+            },
+            timeout.Token);
 
         Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
         Assert.False(manager.State.IsWorkerReady);
@@ -102,6 +124,32 @@ public partial class FunctionRpcRelayTests
             managedIdentity, tokenRequestPath, headerName, "wrong-secret", timeout.Token))
         {
             Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        }
+
+        using (HttpResponseMessage crossedHeader = await SendTokenRequestAsync(
+            managedIdentity, tokenRequestPath, otherHeaderName, otherSecret, timeout.Token))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, crossedHeader.StatusCode);
+        }
+
+        using (HttpResponseMessage crossedClientId = await SendTokenRequestAsync(
+            managedIdentity,
+            $"{ManagedIdentityEndpoint.Path}?resource=resource&api-version={apiVersion}&{otherClientIdQuery}=identity",
+            headerName,
+            secret,
+            timeout.Token))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, crossedClientId.StatusCode);
+        }
+
+        using (HttpResponseMessage unsupportedVersion = await SendTokenRequestAsync(
+            managedIdentity,
+            $"{ManagedIdentityEndpoint.Path}?resource=resource&api-version=unsupported",
+            headerName,
+            secret,
+            timeout.Token))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, unsupportedVersion.StatusCode);
         }
 
         using (HttpResponseMessage noRuntime = await SendTokenRequestAsync(
@@ -115,7 +163,7 @@ public partial class FunctionRpcRelayTests
 
         using (HttpResponseMessage invalidSelector = await SendTokenRequestAsync(
             managedIdentity,
-            $"{ManagedIdentityEndpoint.Path}?resource=resource&api-version=2019-08-01&mi_res_id=identity",
+            $"{ManagedIdentityEndpoint.Path}?resource=resource&api-version={apiVersion}&mi_res_id=identity",
             headerName,
             secret,
             timeout.Token))
@@ -229,7 +277,7 @@ public partial class FunctionRpcRelayTests
         using CancellationTokenSource timeout = new(TestTimeout);
         await AssignAsync(
             management,
-            new Dictionary<string, string> { ["MSI_SECRET"] = secret },
+            new Dictionary<string, string> { ["IDENTITY_HEADER"] = secret },
             timeout.Token);
 
         await using (RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token))
@@ -237,7 +285,7 @@ public partial class FunctionRpcRelayTests
             await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
             Task<HttpResponseMessage> firstTask = SendTokenRequestAsync(
                 managedIdentity,
-                "Secret",
+                "X-IDENTITY-HEADER",
                 secret,
                 timeout.Token);
             StreamingMessage firstRequest = await runtime.ReadAsync(timeout.Token);
@@ -260,7 +308,7 @@ public partial class FunctionRpcRelayTests
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
         Task<HttpResponseMessage> replacementTask = SendTokenRequestAsync(
             managedIdentity,
-            "Secret",
+            "X-IDENTITY-HEADER",
             secret,
             timeout.Token);
         StreamingMessage replacementRequest = await replacementRuntime.ReadAsync(timeout.Token);
@@ -314,7 +362,7 @@ public partial class FunctionRpcRelayTests
         using CancellationTokenSource timeout = new(TestTimeout);
         await AssignAsync(
             management,
-            new Dictionary<string, string> { ["MSI_SECRET"] = secret },
+            new Dictionary<string, string> { ["IDENTITY_HEADER"] = secret },
             timeout.Token);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
         await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
@@ -324,7 +372,7 @@ public partial class FunctionRpcRelayTests
         Task<HttpResponseMessage> canceledTask = SendTokenRequestAsync(
             managedIdentity,
             $"{ManagedIdentityEndpoint.Path}?resource=canceled&api-version=2019-08-01",
-            "Secret",
+            "X-IDENTITY-HEADER",
             secret,
             canceledRequestSource.Token);
         StreamingMessage canceledRequest = await runtime.ReadAsync(timeout.Token);
@@ -339,7 +387,7 @@ public partial class FunctionRpcRelayTests
             responseTasks[i] = SendTokenRequestAsync(
                 managedIdentity,
                 $"{ManagedIdentityEndpoint.Path}?resource=resource-{i}&api-version=2019-08-01",
-                "Secret",
+                "X-IDENTITY-HEADER",
                 secret,
                 timeout.Token);
             requests[i] = await runtime.ReadAsync(timeout.Token);
@@ -351,7 +399,7 @@ public partial class FunctionRpcRelayTests
         using HttpResponseMessage overflow = await SendTokenRequestAsync(
             managedIdentity,
             $"{ManagedIdentityEndpoint.Path}?resource=overflow&api-version=2019-08-01",
-            "Secret",
+            "X-IDENTITY-HEADER",
             secret,
             overflowTimeout.Token);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, overflow.StatusCode);

@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -45,7 +46,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
     private static readonly TimeSpan ManagedIdentityTokenRequestTimeout = TimeSpan.FromSeconds(8);
     private readonly CancellationTokenSource _managedIdentityTokenRequestCancellationSource = new();
     private readonly CancellationToken _managedIdentityTokenRequestCancellationToken;
-    private readonly IEnvironment _environment;
+    private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly Lock _lifecycleLock = new();
     private readonly ILogger _logger;
@@ -63,6 +64,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         IMetricsLogger metricsLogger,
         int attemptCount,
         IEnvironment environment,
+        IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
         IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
         ISharedMemoryManager sharedMemoryManager,
@@ -88,7 +90,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             appCapabilitiesStore,
             httpProxyService)
     {
-        _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _runtimeAccessKey = runtimeAccessKey;
@@ -292,8 +294,8 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             throw new InvalidOperationException("The managed identity token request is invalid.");
         }
 
-        string endpointValue = _environment.GetEnvironmentVariable(EnvironmentSettingNames.MsiEndpoint);
-        string secret = _environment.GetEnvironmentVariable(EnvironmentSettingNames.MsiSecret);
+        string endpointValue = _configuration[EnvironmentSettingNames.MsiEndpoint];
+        string secret = _configuration[EnvironmentSettingNames.MsiSecret];
         if (!Uri.TryCreate(endpointValue, UriKind.Absolute, out Uri endpoint)
             || (endpoint.Scheme != Uri.UriSchemeHttp && endpoint.Scheme != Uri.UriSchemeHttps)
             || !string.IsNullOrEmpty(endpoint.UserInfo)

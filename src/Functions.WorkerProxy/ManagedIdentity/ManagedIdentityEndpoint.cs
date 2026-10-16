@@ -27,9 +27,12 @@ internal static class ManagedIdentityEndpoint
 
     private const string ApiVersionQuery = "api-version";
     private const string ClientIdQuery = "client_id";
+    private const string CurrentMsiApiVersion = "2019-08-01";
     private const string IdentityHeaderEnvironment = "IDENTITY_HEADER";
     private const string IdentityHeaderName = "X-IDENTITY-HEADER";
     private const string LegacyClientIdQuery = "clientid";
+    private const string LegacyMsiApiVersion = "2017-09-01";
+    private const string LegacyMsiApiVersionAlias = "0.1";
     private const string MsiSecretEnvironment = "MSI_SECRET";
     private const string MsiSecretHeaderName = "Secret";
     private const string ResourceQuery = "resource";
@@ -64,26 +67,33 @@ internal static class ManagedIdentityEndpoint
             return RetryableFailure(request.HttpContext.Response, "The worker pod assignment is not ready.");
         }
 
-        bool hasMsiSecret = !string.IsNullOrEmpty(msiSecret);
-        bool hasIdentityHeader = !string.IsNullOrEmpty(identityHeader);
-        if (!hasMsiSecret && !hasIdentityHeader)
+        if (!TryGetRequiredQueryValue(request.Query, ApiVersionQuery, out string? apiVersion)
+            || apiVersion is null
+            || !TryGetManagedIdentityContract(apiVersion, out bool usesLegacyContract))
         {
-            return RetryableFailure(request.HttpContext.Response, "The worker pod assignment has no managed identity credential.");
+            return Error(StatusCodes.Status400BadRequest, "invalid_request",
+                "The request must specify a supported api-version.");
         }
 
-        if ((!hasMsiSecret || !HeaderMatches(request.Headers, MsiSecretHeaderName, msiSecret!))
-            && (!hasIdentityHeader || !HeaderMatches(request.Headers, IdentityHeaderName, identityHeader!)))
+        string? expectedSecret = usesLegacyContract ? msiSecret : identityHeader;
+        string expectedHeaderName = usesLegacyContract ? MsiSecretHeaderName : IdentityHeaderName;
+        if (string.IsNullOrEmpty(expectedSecret))
+        {
+            return RetryableFailure(request.HttpContext.Response,
+                "The worker pod assignment has no credential for the requested managed identity API version.");
+        }
+
+        if (!HeaderMatches(request.Headers, expectedHeaderName, expectedSecret))
         {
             return Error(StatusCodes.Status403Forbidden, "access_denied", "The managed identity secret header is invalid.");
         }
 
         if (!HasOnlySupportedQueryParameters(request.Query)
             || !TryGetRequiredQueryValue(request.Query, ResourceQuery, out string? resource)
-            || !TryGetRequiredQueryValue(request.Query, ApiVersionQuery, out string? apiVersion)
-            || !TryGetClientId(request.Query, out string? clientId))
+            || !TryGetClientId(request.Query, usesLegacyContract, out string? clientId))
         {
             return Error(StatusCodes.Status400BadRequest, "invalid_request",
-                "The request must include one resource and api-version value, at most one clientid or client_id value, and no unsupported parameters.");
+                "The request must include one resource value, use the client ID selector for its api-version at most once, and include no unsupported parameters.");
         }
 
         ManagedIdentityTokenRequest tokenRequest = new()
@@ -211,20 +221,25 @@ internal static class ManagedIdentityEndpoint
         return false;
     }
 
-    private static bool TryGetClientId(IQueryCollection query, out string? value)
+    private static bool TryGetClientId(IQueryCollection query, bool usesLegacyContract, out string? value)
     {
-        bool hasClientId = query.ContainsKey(ClientIdQuery);
-        bool hasLegacyClientId = query.ContainsKey(LegacyClientIdQuery);
-        if (hasClientId && hasLegacyClientId)
+        string expectedName = usesLegacyContract ? LegacyClientIdQuery : ClientIdQuery;
+        string unsupportedName = usesLegacyContract ? ClientIdQuery : LegacyClientIdQuery;
+        if (query.ContainsKey(unsupportedName))
         {
             value = null;
             return false;
         }
 
-        return TryGetOptionalQueryValue(
-            query,
-            hasLegacyClientId ? LegacyClientIdQuery : ClientIdQuery,
-            out value);
+        return TryGetOptionalQueryValue(query, expectedName, out value);
+    }
+
+    private static bool TryGetManagedIdentityContract(string apiVersion, out bool usesLegacyContract)
+    {
+        usesLegacyContract = string.Equals(apiVersion, LegacyMsiApiVersion, StringComparison.Ordinal)
+            || string.Equals(apiVersion, LegacyMsiApiVersionAlias, StringComparison.Ordinal);
+        return usesLegacyContract
+            || string.Equals(apiVersion, CurrentMsiApiVersion, StringComparison.Ordinal);
     }
 
     private static IResult RetryableFailure(HttpResponse response, string detail)

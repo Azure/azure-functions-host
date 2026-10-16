@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -143,6 +144,7 @@ internal sealed class ClientWorkerChannelTestHarness : IAsyncDisposable
             eventManager,
             hostManager.Object,
             Mock.Of<IEnvironment>(),
+            Mock.Of<IConfiguration>(),
             Mock.Of<IHttpClientFactory>(),
             NullLoggerFactory.Instance,
             applicationHostOptions.Object,
