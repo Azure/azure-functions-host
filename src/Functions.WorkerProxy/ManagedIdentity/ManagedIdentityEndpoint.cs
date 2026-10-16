@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -26,9 +27,18 @@ internal static class ManagedIdentityEndpoint
     private const string ClientIdQuery = "client_id";
     private const string IdentityHeaderEnvironment = "IDENTITY_HEADER";
     private const string IdentityHeaderName = "X-IDENTITY-HEADER";
+    private const string LegacyClientIdQuery = "clientid";
     private const string MsiSecretEnvironment = "MSI_SECRET";
     private const string MsiSecretHeaderName = "Secret";
     private const string ResourceQuery = "resource";
+    private static readonly HashSet<string> SupportedQueryParameters =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ApiVersionQuery,
+            ClientIdQuery,
+            LegacyClientIdQuery,
+            ResourceQuery
+        };
 
     public static void Map(IEndpointRouteBuilder endpoints)
     {
@@ -63,12 +73,13 @@ internal static class ManagedIdentityEndpoint
             return Error(StatusCodes.Status403Forbidden, "access_denied", "The managed identity secret header is invalid.");
         }
 
-        if (!TryGetRequiredQueryValue(request.Query, ResourceQuery, out string? resource)
+        if (!HasOnlySupportedQueryParameters(request.Query)
+            || !TryGetRequiredQueryValue(request.Query, ResourceQuery, out string? resource)
             || !TryGetRequiredQueryValue(request.Query, ApiVersionQuery, out string? apiVersion)
-            || !TryGetOptionalQueryValue(request.Query, ClientIdQuery, out string? clientId))
+            || !TryGetClientId(request.Query, out string? clientId))
         {
             return Error(StatusCodes.Status400BadRequest, "invalid_request",
-                "The request must include one resource and api-version value and at most one client_id value.");
+                "The request must include one resource and api-version value, at most one clientid or client_id value, and no unsupported parameters.");
         }
 
         RpcTokenResponse response;
@@ -91,7 +102,7 @@ internal static class ManagedIdentityEndpoint
         }
 
         if (response.Result?.Status != StatusResult.Types.Status.Success
-            || string.IsNullOrWhiteSpace(response.AccessToken))
+            || response.StatusCode is < StatusCodes.Status100Continue or > 599)
         {
             string detail = response.Result?.Exception?.Message
                 ?? response.Result?.Result
@@ -99,14 +110,17 @@ internal static class ManagedIdentityEndpoint
             return RetryableFailure(request.HttpContext.Response, detail);
         }
 
-        return TypedResults.Json(
-            new ManagedIdentityTokenHttpResponse(
-                response.AccessToken,
-                response.TokenType,
-                response.ExpiresOn,
-                response.Resource,
-                response.ClientId),
-            ManagedIdentityJsonContext.Default.ManagedIdentityTokenHttpResponse);
+        HttpResponse httpResponse = request.HttpContext.Response;
+        httpResponse.StatusCode = response.StatusCode;
+        if (!string.IsNullOrWhiteSpace(response.ContentType))
+        {
+            httpResponse.ContentType = response.ContentType;
+        }
+
+        byte[] body = response.Body.ToByteArray();
+        httpResponse.ContentLength = body.Length;
+        await httpResponse.Body.WriteAsync(body, cancellationToken);
+        return Results.Empty;
     }
 
     private static bool HeaderMatches(IHeaderDictionary headers, string name, string expected)
@@ -119,6 +133,19 @@ internal static class ManagedIdentityEndpoint
         return CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(actual),
             Encoding.UTF8.GetBytes(expected));
+    }
+
+    private static bool HasOnlySupportedQueryParameters(IQueryCollection query)
+    {
+        foreach (string key in query.Keys)
+        {
+            if (!SupportedQueryParameters.Contains(key))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool TryGetRequiredQueryValue(IQueryCollection query, string name, out string? value)
@@ -149,6 +176,22 @@ internal static class ManagedIdentityEndpoint
 
         value = null;
         return false;
+    }
+
+    private static bool TryGetClientId(IQueryCollection query, out string? value)
+    {
+        bool hasClientId = query.ContainsKey(ClientIdQuery);
+        bool hasLegacyClientId = query.ContainsKey(LegacyClientIdQuery);
+        if (hasClientId && hasLegacyClientId)
+        {
+            value = null;
+            return false;
+        }
+
+        return TryGetOptionalQueryValue(
+            query,
+            hasLegacyClientId ? LegacyClientIdQuery : ClientIdQuery,
+            out value);
     }
 
     private static IResult RetryableFailure(HttpResponse response, string detail)

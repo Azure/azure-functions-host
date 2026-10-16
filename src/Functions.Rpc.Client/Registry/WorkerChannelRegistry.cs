@@ -66,6 +66,23 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         string workerId,
         Uri grpcEndpoint,
         CancellationToken cancellationToken = default)
+        => LinkAsyncCore(workerId, grpcEndpoint, runtimeAccessKey: null, cancellationToken);
+
+    public Task<WorkerLinkResult> LinkAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        string runtimeAccessKey,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeAccessKey);
+        return LinkAsyncCore(workerId, grpcEndpoint, runtimeAccessKey, cancellationToken);
+    }
+
+    private Task<WorkerLinkResult> LinkAsyncCore(
+        string workerId,
+        Uri grpcEndpoint,
+        string runtimeAccessKey,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
@@ -84,6 +101,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                         "The worker is already associated with a different gRPC endpoint.");
                 }
 
+                if (!string.Equals(existing.RuntimeAccessKey, runtimeAccessKey, StringComparison.Ordinal))
+                {
+                    throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
+                        "The worker is already associated with different authentication.");
+                }
+
                 if (existing.Terminal || existing.Channel?.Completion.IsCompleted == true)
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.WorkerTerminated,
@@ -94,10 +117,20 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             }
 
             start = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            WorkerSlot slot = new() { Endpoint = grpcEndpoint };
+            WorkerSlot slot = new()
+            {
+                Endpoint = grpcEndpoint,
+                RuntimeAccessKey = runtimeAccessKey
+            };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
-            link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
+            link = LinkCoreAsync(
+                workerId,
+                grpcEndpoint,
+                runtimeAccessKey,
+                slot,
+                start.Task,
+                cancellationToken);
             slot.LinkTask = link;
         }
 
@@ -113,6 +146,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private async Task<WorkerChannel> LinkCoreAsync(
         string workerId,
         Uri grpcEndpoint,
+        string runtimeAccessKey,
         WorkerSlot slot,
         Task start,
         CancellationToken cancellationToken)
@@ -135,7 +169,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token);
                 operationSource.Token.ThrowIfCancellationRequested();
 
-                candidate = _channelFactory.Create(workerId, ownedChannel)
+                candidate = runtimeAccessKey is null
+                    ? _channelFactory.Create(workerId, ownedChannel)
+                    : _channelFactory.Create(workerId, ownedChannel, runtimeAccessKey);
+                candidate = candidate
                     ?? throw new InvalidOperationException("The client worker channel factory returned no channel.");
                 ownedChannel = null;
 
@@ -530,6 +567,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         // The recorded gRPC endpoint distinguishes exact retries from conflicting requests.
         public Uri Endpoint { get; init; }
+
+        public string RuntimeAccessKey { get; init; }
 
         // The link task shared by exact retries; cleared when the accepted channel is detached.
         public Task<WorkerChannel> LinkTask { get; set; }

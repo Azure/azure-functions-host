@@ -14,8 +14,10 @@ using System.Threading.Tasks;
 using Azure.Functions.Host.Models;
 using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
 using GrpcException = Grpc.Core.RpcException;
 using WorkerRpcException = Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcException;
@@ -75,12 +77,16 @@ public sealed partial class WorkerLinkController : Controller
     /// </remarks>
     [HttpPut]
     [Route("admin/workers/{workerId}")]
-    // [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+    [Authorize(Policy = PolicyNames.AdminAuthLevel)]
     public async Task<IActionResult> LinkWorker([FromRoute] string workerId, [FromBody] WorkerLinkRequest? request,
         CancellationToken cancellationToken = default)
     {
         long started = Stopwatch.GetTimestamp();
-        IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerId, request, out Uri? grpcEndpoint);
+        IReadOnlyList<RequestValidationError> errors = ValidateRequest(
+            workerId,
+            request,
+            out Uri? grpcEndpoint,
+            out string? runtimeAccessKey);
         if (errors.Count > 0 || grpcEndpoint is null)
         {
             Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
@@ -89,13 +95,19 @@ public sealed partial class WorkerLinkController : Controller
             return BadRequest(new RequestValidationResponse(errors));
         }
 
-        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, started, cancellationToken);
+        return await LinkValidatedWorkerAsync(
+            workerId,
+            grpcEndpoint,
+            runtimeAccessKey,
+            started,
+            cancellationToken);
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(string workerId, WorkerLinkRequest? request,
-        out Uri? grpcEndpoint)
+        out Uri? grpcEndpoint, out string? runtimeAccessKey)
     {
         grpcEndpoint = null;
+        runtimeAccessKey = null;
         List<RequestValidationError> errors = [];
 
         if (string.IsNullOrWhiteSpace(workerId))
@@ -119,17 +131,32 @@ public sealed partial class WorkerLinkController : Controller
                 : new(ErrorCodes.InvalidEndpoint, "workerGrpcEndpoint"));
         }
 
+        if (request.RuntimeAccessKey is not null && string.IsNullOrWhiteSpace(request.RuntimeAccessKey))
+        {
+            errors.Add(new(ErrorCodes.Required, "runtimeAccessKey"));
+        }
+        else if (request.RuntimeAccessKey is not null)
+        {
+            runtimeAccessKey = request.RuntimeAccessKey;
+        }
+
         return errors;
     }
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
-    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerId, Uri grpcEndpoint, long started,
+    private async Task<IActionResult> LinkValidatedWorkerAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        string? runtimeAccessKey,
+        long started,
         CancellationToken cancellationToken)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken);
+            WorkerLinkResult result = runtimeAccessKey is null
+                ? await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken)
+                : await _registry.LinkAsync(workerId, grpcEndpoint, runtimeAccessKey, cancellationToken);
             Log.LinkAccepted(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return StatusCode(result.IsNewLink ? StatusCodes.Status201Created : StatusCodes.Status200OK);

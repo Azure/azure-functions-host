@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -30,6 +31,8 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
 {
     private const string WorkerId = "worker-pod-1";
     private const string GrpcEndpoint = "http://100.64.1.12:50053";
+    private const string RuntimeAccessKey = "runtime-access-key";
+    private const string AdminKey = "admin-key";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
 
     [Fact]
@@ -40,7 +43,11 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
         IOptionsMonitor<ScriptApplicationHostOptions>? hostOptions = null;
         bool? linkedWithStandbyConfiguration = null;
         Mock<IWorkerChannelRegistry> registry = new();
-        registry.Setup(value => value.LinkAsync(WorkerId, new Uri(GrpcEndpoint), It.IsAny<CancellationToken>()))
+        registry.Setup(value => value.LinkAsync(
+                WorkerId,
+                new Uri(GrpcEndpoint),
+                RuntimeAccessKey,
+                It.IsAny<CancellationToken>()))
             .Returns(() =>
             {
                 linkedWithStandbyConfiguration = hostOptions!.CurrentValue.IsStandbyConfiguration;
@@ -76,7 +83,15 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
     }
 
     private static IHost CreateHost(IWorkerChannelRegistry registry)
-        => new HostBuilder()
+    {
+        Mock<ISecretManager> secretManager = new();
+        secretManager.Setup(value => value.GetAuthorizationLevelOrNullAsync(AdminKey, null))
+            .ReturnsAsync(("master", AuthorizationLevel.Admin));
+        Mock<ISecretManagerProvider> secretManagerProvider = new();
+        secretManagerProvider.SetupGet(value => value.SecretsEnabled).Returns(true);
+        secretManagerProvider.SetupGet(value => value.Current).Returns(secretManager.Object);
+
+        return new HostBuilder()
             .ConfigureAppConfiguration(config => config.AddEnvironmentVariables())
             .ConfigureWebHost(webBuilder => webBuilder
                 .UseTestServer()
@@ -87,16 +102,22 @@ public sealed class PlaceholderSpecializationWorkerLinkTests
                     services.AddWebJobsScriptHostAuthorization();
                     services.AddWebJobsScriptHost(context.Configuration, ClientWorkerComposition.Instance);
                     services.Replace(ServiceDescriptor.Singleton(registry));
+                    services.Replace(ServiceDescriptor.Singleton(secretManagerProvider.Object));
                 })
                 .Configure(app => app.UseWebJobsScriptHost()))
             .Build();
+    }
 
     private static async Task<HttpResponseMessage> PutLinkAsync(HttpClient client, CancellationToken cancellationToken)
     {
         using HttpRequestMessage request = new(HttpMethod.Put, $"/admin/workers/{WorkerId}")
         {
-            Content = new StringContent($$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}"}""", Encoding.UTF8, "application/json"),
+            Content = new StringContent(
+                $$"""{"workerGrpcEndpoint":"{{GrpcEndpoint}}","runtimeAccessKey":"{{RuntimeAccessKey}}"}""",
+                Encoding.UTF8,
+                "application/json"),
         };
+        request.Headers.Add("x-functions-key", AdminKey);
 
         return await client.SendAsync(request, cancellationToken);
     }

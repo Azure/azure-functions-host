@@ -24,7 +24,8 @@ internal sealed partial class FunctionRpcRelay
         long id,
         ILogger logger,
         IWorkerCapabilityFinalizer capabilityFinalizer,
-        WorkerPodStateManager stateManager)
+        WorkerPodStateManager stateManager,
+        string? runtimeAccessKey)
     {
         private const string FunctionGroupNameCapability = "FunctionGroupName";
         private const int MaximumPendingManagedIdentityRequests = 16;
@@ -129,10 +130,16 @@ internal sealed partial class FunctionRpcRelay
         }
 
         public async Task<ManagedIdentityTokenResponse> RequestManagedIdentityTokenAsync(
-            ManagedIdentityTokenRequest request,
-            CancellationToken cancellationToken)
+            ManagedIdentityTokenRequest request)
         {
+            if (string.IsNullOrWhiteSpace(runtimeAccessKey))
+            {
+                throw new ManagedIdentityTokenUnavailableException("The runtime access key is not configured.");
+            }
+
             string requestId = Guid.NewGuid().ToString("N");
+            ManagedIdentityTokenRequest authenticatedRequest = request.Clone();
+            ManagedIdentityTokenRequestAuthenticator.Sign(runtimeAccessKey, requestId, authenticatedRequest);
             TaskCompletionSource<ManagedIdentityTokenResponse> completion =
                 new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -151,26 +158,33 @@ internal sealed partial class FunctionRpcRelay
                 _managedIdentityRequests.Add(requestId, completion);
             }
 
+            using CancellationTokenSource timeoutSource = new(ManagedIdentityRequestTimeout);
+            using CancellationTokenSource linkedSource =
+                CancellationTokenSource.CreateLinkedTokenSource(
+                    _terminationSource.Token,
+                    timeoutSource.Token);
+
             try
             {
                 await _toRuntime.Writer.WriteAsync(new()
                 {
                     RequestId = requestId,
-                    ManagedIdentityTokenRequest = request
-                }, cancellationToken);
+                    ManagedIdentityTokenRequest = authenticatedRequest
+                }, linkedSource.Token);
 
-                using CancellationTokenSource linkedSource =
-                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _terminationSource.Token);
-                try
-                {
-                    return await completion.Task.WaitAsync(ManagedIdentityRequestTimeout, linkedSource.Token);
-                }
-                catch (OperationCanceledException exception)
-                    when (!cancellationToken.IsCancellationRequested && _terminationSource.IsCancellationRequested)
-                {
-                    throw new ManagedIdentityTokenUnavailableException(
-                        "The FunctionRpc relay ended before the managed identity request completed.", exception);
-                }
+                return await completion.Task.WaitAsync(linkedSource.Token);
+            }
+            catch (OperationCanceledException exception)
+                when (_terminationSource.IsCancellationRequested)
+            {
+                throw new ManagedIdentityTokenUnavailableException(
+                    "The FunctionRpc relay ended before the managed identity request completed.", exception);
+            }
+            catch (OperationCanceledException exception)
+                when (!_terminationSource.IsCancellationRequested
+                    && timeoutSource.IsCancellationRequested)
+            {
+                throw new TimeoutException("The runtime token request timed out.", exception);
             }
             catch (ChannelClosedException exception)
             {
@@ -289,22 +303,30 @@ internal sealed partial class FunctionRpcRelay
             bool isFirstMessage = true;
             while (await requestStream.MoveNext(cancellationToken))
             {
+                StreamingMessage message = requestStream.Current;
                 if (side == FunctionRpcRelaySide.Runtime
-                    && requestStream.Current.ContentCase == StreamingMessage.ContentOneofCase.ManagedIdentityTokenResponse)
+                    && message.ContentCase == StreamingMessage.ContentOneofCase.ManagedIdentityTokenResponse)
                 {
-                    CompleteManagedIdentityTokenRequest(requestStream.Current);
+                    CompleteManagedIdentityTokenRequest(message);
                     isFirstMessage = false;
                     continue;
                 }
 
-                StreamingMessage? message = ProcessInboundMessage(side, requestStream.Current, isFirstMessage);
-                if (message is null)
+                if (message.ContentCase is StreamingMessage.ContentOneofCase.ManagedIdentityTokenRequest
+                    or StreamingMessage.ContentOneofCase.ManagedIdentityTokenResponse)
+                {
+                    throw new InvalidDataException(
+                        $"Managed identity token messages are not accepted from the {side} FunctionRpc stream.");
+                }
+
+                StreamingMessage? processedMessage = ProcessInboundMessage(side, message, isFirstMessage);
+                if (processedMessage is null)
                 {
                     return;
                 }
 
                 isFirstMessage = false;
-                await destination.WriteAsync(message, cancellationToken);
+                await destination.WriteAsync(processedMessage, cancellationToken);
             }
         }
 

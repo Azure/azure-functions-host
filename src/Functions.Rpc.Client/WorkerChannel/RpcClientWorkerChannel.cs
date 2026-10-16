@@ -2,8 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -30,11 +34,22 @@ namespace Azure.Functions.Rpc.Client;
 /// </remarks>
 internal sealed class RpcClientWorkerChannel : WorkerChannel
 {
-    private const string ManagedIdentityTokenPocFeature = "ManagedIdentityTokenPocEnabled";
-    private const string PocAccessToken = "byoc-managed-identity-poc-token";
-    private const string PocExpiresOn = "4102444800";
+    internal const string ManagedIdentityTokenHttpClientName = "ManagedIdentityTokenService";
+
+    private const string CurrentClientIdQuery = "client_id";
+    private const string LegacyClientIdQuery = "clientid";
+    private const string LegacyIdentityHeaderName = "Secret";
+    private const string LegacyMsiApiVersion = "2017-09-01";
+    private const string LegacyMsiApiVersionAlias = "0.1";
+    private const int MaximumManagedIdentityTokenResponseBytes = 1024 * 1024;
+    private static readonly TimeSpan ManagedIdentityTokenRequestTimeout = TimeSpan.FromSeconds(8);
+    private readonly CancellationTokenSource _managedIdentityTokenRequestCancellationSource = new();
+    private readonly CancellationToken _managedIdentityTokenRequestCancellationToken;
+    private readonly IEnvironment _environment;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly Lock _lifecycleLock = new();
-    private readonly bool _managedIdentityTokenPocEnabled;
+    private readonly ILogger _logger;
+    private readonly string _runtimeAccessKey;
     private readonly TaskCompletionSource _startCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private LifecycleState _lifecycleState;
 
@@ -48,12 +63,14 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         IMetricsLogger metricsLogger,
         int attemptCount,
         IEnvironment environment,
+        IHttpClientFactory httpClientFactory,
         IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
         ISharedMemoryManager sharedMemoryManager,
         IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
         IOptions<FunctionsHostingConfigOptions> hostingConfigOptions,
         IAppCapabilitiesStore appCapabilitiesStore,
-        IHttpProxyService httpProxyService)
+        IHttpProxyService httpProxyService,
+        string runtimeAccessKey)
         : base(
             workerId,
             ownedChannel,
@@ -71,10 +88,11 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             appCapabilitiesStore,
             httpProxyService)
     {
-        _managedIdentityTokenPocEnabled = string.Equals(
-            hostingConfigOptions.Value.GetFeature(ManagedIdentityTokenPocFeature),
-            "1",
-            StringComparison.Ordinal);
+        _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _runtimeAccessKey = runtimeAccessKey;
+        _managedIdentityTokenRequestCancellationToken = _managedIdentityTokenRequestCancellationSource.Token;
         Completion = ownedChannel.Reader.Completion;
     }
 
@@ -129,32 +147,7 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
     protected override void HandleManagedIdentityTokenRequest(StreamingMessage message)
     {
-        ManagedIdentityTokenRequest request = message.ManagedIdentityTokenRequest;
-        ManagedIdentityTokenResponse response = new()
-        {
-            Resource = request.Resource,
-            ClientId = request.ClientId,
-            Result = new()
-        };
-
-        if (_managedIdentityTokenPocEnabled)
-        {
-            response.AccessToken = PocAccessToken;
-            response.TokenType = "Bearer";
-            response.ExpiresOn = PocExpiresOn;
-            response.Result.Status = StatusResult.Types.Status.Success;
-        }
-        else
-        {
-            response.Result.Status = StatusResult.Types.Status.Failure;
-            response.Result.Exception = new() { Message = "The managed identity token POC is disabled." };
-        }
-
-        SendStreamingMessage(new()
-        {
-            RequestId = message.RequestId,
-            ManagedIdentityTokenResponse = response
-        });
+        _ = HandleManagedIdentityTokenRequestAsync(message);
     }
 
     protected override void Dispose(bool disposing)
@@ -166,11 +159,17 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
 
         if (disposing)
         {
+            _managedIdentityTokenRequestCancellationSource.Cancel();
             // Metadata callers did not request cancellation; fail so host startup can retry.
             FailPendingMetadataRequest(new ObjectDisposedException(GetType().FullName));
         }
 
         base.Dispose(disposing);
+
+        if (disposing)
+        {
+            _managedIdentityTokenRequestCancellationSource.Dispose();
+        }
     }
 
     private async Task CompleteStartAsync()
@@ -192,6 +191,154 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
         {
             _startCompletion.TrySetException(exception);
         }
+    }
+
+    private async Task HandleManagedIdentityTokenRequestAsync(StreamingMessage message)
+    {
+        ManagedIdentityTokenResponse response;
+        if (!ManagedIdentityTokenRequestAuthenticator.IsValid(
+            _runtimeAccessKey,
+            message.RequestId,
+            message.ManagedIdentityTokenRequest))
+        {
+            _logger.LogWarning("The runtime rejected an unauthenticated managed identity token request.");
+            response = CreateManagedIdentityFailure("The managed identity token request is not authenticated.");
+        }
+        else
+        {
+            try
+            {
+                response = await RequestManagedIdentityTokenAsync(
+                    message.ManagedIdentityTokenRequest,
+                    _managedIdentityTokenRequestCancellationToken);
+            }
+            catch (OperationCanceledException) when (_managedIdentityTokenRequestCancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (OperationCanceledException exception)
+            {
+                _logger.LogWarning(exception, "The runtime managed identity token request timed out.");
+                response = CreateManagedIdentityFailure("The runtime managed identity token request timed out.");
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(exception, "The runtime managed identity token request failed.");
+                response = CreateManagedIdentityFailure("The runtime managed identity token request failed.");
+            }
+        }
+
+        if (_managedIdentityTokenRequestCancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        try
+        {
+            await SendStreamingMessageAsync(new()
+            {
+                RequestId = message.RequestId,
+                ManagedIdentityTokenResponse = response
+            });
+        }
+        catch (Exception exception) when (_managedIdentityTokenRequestCancellationToken.IsCancellationRequested)
+        {
+            _logger.LogDebug(exception, "The managed identity token response was canceled during channel shutdown.");
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "The managed identity token response could not be sent.");
+        }
+    }
+
+    private async Task<ManagedIdentityTokenResponse> RequestManagedIdentityTokenAsync(
+        ManagedIdentityTokenRequest request,
+        CancellationToken cancellationToken)
+    {
+        long started = Stopwatch.GetTimestamp();
+        (Uri endpoint, string secret, string secretHeaderName) = CreateManagedIdentityTokenRequest(request);
+        using HttpRequestMessage httpRequest = new(HttpMethod.Get, endpoint);
+        httpRequest.Headers.Add(secretHeaderName, secret);
+        using CancellationTokenSource timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutSource.CancelAfter(ManagedIdentityTokenRequestTimeout);
+        HttpClient httpClient = _httpClientFactory.CreateClient(ManagedIdentityTokenHttpClientName);
+        using HttpResponseMessage httpResponse = await httpClient.SendAsync(
+            httpRequest,
+            HttpCompletionOption.ResponseHeadersRead,
+            timeoutSource.Token);
+        await httpResponse.Content.LoadIntoBufferAsync(
+            MaximumManagedIdentityTokenResponseBytes,
+            timeoutSource.Token);
+        byte[] body = await httpResponse.Content.ReadAsByteArrayAsync(timeoutSource.Token);
+        _logger.LogInformation(
+            "The runtime managed identity token request completed with status code {StatusCode} after {ElapsedMilliseconds} ms.",
+            (int)httpResponse.StatusCode,
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+
+        return new()
+        {
+            Result = new() { Status = StatusResult.Types.Status.Success },
+            StatusCode = (int)httpResponse.StatusCode,
+            ContentType = httpResponse.Content.Headers.ContentType?.ToString() ?? string.Empty,
+            Body = ByteString.CopyFrom(body)
+        };
+    }
+
+    private (Uri Endpoint, string Secret, string SecretHeaderName) CreateManagedIdentityTokenRequest(
+        ManagedIdentityTokenRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Resource) || string.IsNullOrWhiteSpace(request.ApiVersion))
+        {
+            throw new InvalidOperationException("The managed identity token request is invalid.");
+        }
+
+        string endpointValue = _environment.GetEnvironmentVariable(EnvironmentSettingNames.MsiEndpoint);
+        string secret = _environment.GetEnvironmentVariable(EnvironmentSettingNames.MsiSecret);
+        if (!Uri.TryCreate(endpointValue, UriKind.Absolute, out Uri endpoint)
+            || (endpoint.Scheme != Uri.UriSchemeHttp && endpoint.Scheme != Uri.UriSchemeHttps)
+            || !string.IsNullOrEmpty(endpoint.UserInfo)
+            || string.IsNullOrEmpty(secret))
+        {
+            throw new InvalidOperationException("The runtime managed identity endpoint is not configured.");
+        }
+
+        UriBuilder endpointBuilder = new(endpoint);
+        List<string> query = [];
+        if (!string.IsNullOrEmpty(endpointBuilder.Query))
+        {
+            query.Add(endpointBuilder.Query.TrimStart('?'));
+        }
+
+        query.Add($"resource={Uri.EscapeDataString(request.Resource)}");
+        query.Add($"api-version={Uri.EscapeDataString(request.ApiVersion)}");
+        bool usesLegacyContract = UsesLegacyManagedIdentityContract(request.ApiVersion);
+        if (!string.IsNullOrWhiteSpace(request.ClientId))
+        {
+            string clientIdQuery = usesLegacyContract ? LegacyClientIdQuery : CurrentClientIdQuery;
+            query.Add($"{clientIdQuery}={Uri.EscapeDataString(request.ClientId)}");
+        }
+
+        endpointBuilder.Query = string.Join('&', query);
+        return (
+            endpointBuilder.Uri,
+            secret,
+            usesLegacyContract ? LegacyIdentityHeaderName : ScriptConstants.XIdentityHeader);
+    }
+
+    private static bool UsesLegacyManagedIdentityContract(string apiVersion)
+        => string.Equals(apiVersion, LegacyMsiApiVersion, StringComparison.Ordinal)
+            || string.Equals(apiVersion, LegacyMsiApiVersionAlias, StringComparison.Ordinal);
+
+    private static ManagedIdentityTokenResponse CreateManagedIdentityFailure(string message)
+    {
+        return new()
+        {
+            Result = new()
+            {
+                Status = StatusResult.Types.Status.Failure,
+                Exception = new() { Message = message }
+            }
+        };
     }
 
     private static TimeSpan ValidateStartStreamTimeout(TimeSpan startStreamTimeout)

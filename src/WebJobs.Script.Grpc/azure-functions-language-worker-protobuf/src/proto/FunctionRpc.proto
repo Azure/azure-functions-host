@@ -475,15 +475,17 @@ message ManagedIdentityTokenRequest {
   string resource = 1;
   string client_id = 2;
   string api_version = 3;
+  // HMAC-SHA256 over the outer request ID and unsigned request using the runtime access key.
+  bytes runtime_access_key_signature = 4;
 }
 
 message ManagedIdentityTokenResponse {
+  // Broker transport result. Success includes non-2xx TokenService HTTP responses.
   StatusResult result = 1;
-  string access_token = 2;
-  string token_type = 3;
-  string expires_on = 4;
-  string resource = 5;
-  string client_id = 6;
+  // Raw TokenService HTTP response.
+  int32 status_code = 2;
+  string content_type = 3;
+  bytes body = 4;
 }
 
 // Used to encapsulate data which could be a variety of types

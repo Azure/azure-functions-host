@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -24,12 +25,17 @@ namespace Azure.Functions.WorkerProxy.Rpc;
 internal sealed partial class FunctionRpcRelay(
     ILogger<FunctionRpcRelay> logger,
     IWorkerCapabilityFinalizer capabilityFinalizer,
-    WorkerPodStateManager stateManager)
+    WorkerPodStateManager stateManager,
+    IConfiguration configuration)
     : IAsyncDisposable, IHostedLifecycleService
 {
     private readonly Lock _syncLock = new();
     private readonly IWorkerCapabilityFinalizer _capabilityFinalizer = capabilityFinalizer ?? throw new ArgumentNullException(nameof(capabilityFinalizer));
+    private readonly string? _runtimeAccessKey = (configuration ?? throw new ArgumentNullException(nameof(configuration)))[
+        ManagedIdentityTokenRequestAuthenticator.RuntimeAccessKeyEnvironmentVariable];
+
     private readonly WorkerPodStateManager _stateManager = stateManager ?? throw new ArgumentNullException(nameof(stateManager));
+
     // Teardown continues independently of each caller's wait token; every StopAsync and DisposeAsync joins this completion.
     private readonly TaskCompletionSource<bool> _stopCompletionSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private FunctionRpcRelaySession? _currentSession;
@@ -63,7 +69,7 @@ internal sealed partial class FunctionRpcRelay(
         }
     }
 
-    internal Task<ManagedIdentityTokenResponse> RequestManagedIdentityTokenAsync(
+    internal async Task<ManagedIdentityTokenResponse> RequestManagedIdentityTokenAsync(
         ManagedIdentityTokenRequest request,
         CancellationToken cancellationToken)
     {
@@ -87,7 +93,30 @@ internal sealed partial class FunctionRpcRelay(
             session = _currentSession;
         }
 
-        return session.RequestManagedIdentityTokenAsync(request, cancellationToken);
+        Task<ManagedIdentityTokenResponse> requestTask = session.RequestManagedIdentityTokenAsync(request);
+        try
+        {
+            return await requestTask.WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _ = ObserveManagedIdentityTokenRequestAsync(requestTask);
+            throw;
+        }
+    }
+
+    private async Task ObserveManagedIdentityTokenRequestAsync(Task<ManagedIdentityTokenResponse> requestTask)
+    {
+        try
+        {
+            await requestTask;
+        }
+        catch (Exception exception)
+        {
+            logger.LogDebug(
+                exception,
+                "The managed identity token request completed after the HTTP caller stopped waiting.");
+        }
     }
 
     /// <inheritdoc />
@@ -166,7 +195,7 @@ internal sealed partial class FunctionRpcRelay(
             }
 
             session = _currentSession ??= new FunctionRpcRelaySession(
-                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager);
+                Interlocked.Increment(ref _nextSessionId), logger, _capabilityFinalizer, _stateManager, _runtimeAccessKey);
 
             FunctionRpcRelayAttachResult attachResult = session.TryAttach(side);
             if (attachResult != FunctionRpcRelayAttachResult.Attached)

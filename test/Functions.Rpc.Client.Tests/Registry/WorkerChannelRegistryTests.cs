@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -912,6 +913,7 @@ public sealed partial class WorkerChannelRegistryTests
             new ScriptEventManager(),
             hostManager.Object,
             Mock.Of<IEnvironment>(),
+            Mock.Of<IHttpClientFactory>(),
             NullLoggerFactory.Instance,
             applicationHostOptions.Object,
             Mock.Of<ISharedMemoryManager>(),

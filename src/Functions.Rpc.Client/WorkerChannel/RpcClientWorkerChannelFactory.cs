@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Net.Http;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.AppCapabilities;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -25,6 +26,7 @@ internal sealed class RpcClientWorkerChannelFactory(
     IScriptEventManager eventManager,
     IScriptHostManager hostManager,
     IEnvironment environment,
+    IHttpClientFactory httpClientFactory,
     ILoggerFactory loggerFactory,
     IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
     ISharedMemoryManager sharedMemoryManager,
@@ -40,6 +42,7 @@ internal sealed class RpcClientWorkerChannelFactory(
     private readonly IScriptEventManager _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
     private readonly IOptions<FunctionsHostingConfigOptions> _hostingConfigOptions = hostingConfigOptions ?? throw new ArgumentNullException(nameof(hostingConfigOptions));
     private readonly IScriptHostManager _hostManager = hostManager ?? throw new ArgumentNullException(nameof(hostManager));
+    private readonly IHttpClientFactory _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
     private readonly IHttpProxyService _httpProxyService = httpProxyService ?? throw new ArgumentNullException(nameof(httpProxyService));
     private readonly ILoggerFactory _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly IMetricsLogger _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
@@ -47,6 +50,21 @@ internal sealed class RpcClientWorkerChannelFactory(
     private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions = workerConcurrencyOptions ?? throw new ArgumentNullException(nameof(workerConcurrencyOptions));
 
     public RpcClientWorkerChannel Create(string workerId, DuplexChannel<StreamingMessage> ownedChannel)
+        => CreateCore(workerId, ownedChannel, runtimeAccessKey: null);
+
+    public RpcClientWorkerChannel Create(
+        string workerId,
+        DuplexChannel<StreamingMessage> ownedChannel,
+        string runtimeAccessKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeAccessKey);
+        return CreateCore(workerId, ownedChannel, runtimeAccessKey);
+    }
+
+    private RpcClientWorkerChannel CreateCore(
+        string workerId,
+        DuplexChannel<StreamingMessage> ownedChannel,
+        string runtimeAccessKey)
     {
         ArgumentException.ThrowIfNullOrEmpty(workerId);
         ArgumentNullException.ThrowIfNull(ownedChannel);
@@ -71,11 +89,13 @@ internal sealed class RpcClientWorkerChannelFactory(
             _metricsLogger,
             attemptCount: 0,
             _environment,
+            _httpClientFactory,
             _applicationHostOptions,
             _sharedMemoryManager,
             _workerConcurrencyOptions,
             _hostingConfigOptions,
             _appCapabilitiesStore,
-            _httpProxyService);
+            _httpProxyService,
+            runtimeAccessKey);
     }
 }

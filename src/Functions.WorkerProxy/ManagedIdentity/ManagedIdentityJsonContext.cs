@@ -6,6 +6,5 @@ using System.Text.Json.Serialization;
 namespace Azure.Functions.WorkerProxy.ManagedIdentity;
 
 [JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
-[JsonSerializable(typeof(ManagedIdentityTokenHttpResponse))]
 [JsonSerializable(typeof(ManagedIdentityErrorResponse))]
 internal sealed partial class ManagedIdentityJsonContext : JsonSerializerContext;

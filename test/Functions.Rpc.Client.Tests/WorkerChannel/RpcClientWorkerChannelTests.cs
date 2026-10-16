@@ -4,6 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
@@ -27,6 +30,7 @@ namespace Azure.Functions.Rpc.Client.Tests;
 public sealed class RpcClientWorkerChannelTests
 {
     private const string WorkerId = "test-worker";
+    private const string RuntimeAccessKey = "runtime-access-key";
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
     private readonly Mock<IAppCapabilitiesStore> _appCapabilitiesStore = new();
@@ -35,23 +39,54 @@ public sealed class RpcClientWorkerChannelTests
 
     public RpcClientWorkerChannelTests()
     {
-        _factory = CreateFactory(managedIdentityTokenPocEnabled: false);
+        _factory = CreateFactory();
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ManagedIdentityTokenRequest_BeforeStartStream_RequiresPocGate(bool enabled)
+    [InlineData("2017-09-01", "clientid", "Secret")]
+    [InlineData("2019-08-01", "client_id", "X-IDENTITY-HEADER")]
+    public async Task ManagedIdentityTokenRequest_BeforeStartStream_ForwardsTokenServiceResponses(
+        string apiVersion,
+        string clientIdQuery,
+        string secretHeaderName)
     {
+        const string endpoint = "http://127.0.0.1:41741/msi/token?existing=value";
+        const string runtimeSecret = "runtime-secret";
+        const string tokenBody =
+            """{"access_token":"real-token","token_type":"Bearer","expires_on":"4102444800","resource":"https://storage.azure.com/","client_id":"client id"}""";
+        const string errorBody =
+            """{"error":"invalid_request","error_description":"The identity is not assigned."}""";
+        Uri requestUri = null;
+        string identityHeader = null;
         TestDuplexChannel<StreamingMessage> duplexChannel = new();
-        RpcClientWorkerChannel channel = CreateFactory(enabled).Create(WorkerId, duplexChannel);
+        RpcClientWorkerChannel channel = CreateFactory(
+            new Dictionary<string, string>
+            {
+                [EnvironmentSettingNames.MsiEndpoint] = endpoint,
+                [EnvironmentSettingNames.MsiSecret] = runtimeSecret
+            },
+            (request, _) =>
+            {
+                requestUri = request.RequestUri;
+                identityHeader = Assert.Single(request.Headers.GetValues(secretHeaderName));
+                bool rejectRequest = requestUri?.Query.Contains("resource=unassigned", StringComparison.Ordinal) is true;
+                return Task.FromResult(new HttpResponseMessage(
+                    rejectRequest ? HttpStatusCode.BadRequest : HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        rejectRequest ? errorBody : tokenBody,
+                        Encoding.UTF8,
+                        "application/json")
+                });
+            }).Create(WorkerId, duplexChannel, RuntimeAccessKey);
         Task start = channel.StartAsync(CancellationToken.None);
         ManagedIdentityTokenRequest tokenRequest = new()
         {
             Resource = "https://storage.azure.com/",
-            ClientId = "client-id",
-            ApiVersion = "2019-08-01"
+            ClientId = "client id",
+            ApiVersion = apiVersion
         };
+        ManagedIdentityTokenRequestAuthenticator.Sign(RuntimeAccessKey, "token-request", tokenRequest);
 
         await duplexChannel.SendResponseAsync(new()
         {
@@ -62,17 +97,75 @@ public sealed class RpcClientWorkerChannelTests
         StreamingMessage response = await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
         Assert.Equal("token-request", response.RequestId);
         Assert.Equal(StreamingMessage.ContentOneofCase.ManagedIdentityTokenResponse, response.ContentCase);
-        Assert.Equal(tokenRequest.Resource, response.ManagedIdentityTokenResponse.Resource);
-        Assert.Equal(tokenRequest.ClientId, response.ManagedIdentityTokenResponse.ClientId);
+        Assert.Equal(StatusResult.Types.Status.Success, response.ManagedIdentityTokenResponse.Result.Status);
+        Assert.Equal((int)HttpStatusCode.OK, response.ManagedIdentityTokenResponse.StatusCode);
+        Assert.Equal("application/json; charset=utf-8", response.ManagedIdentityTokenResponse.ContentType);
+        Assert.Equal(tokenBody, response.ManagedIdentityTokenResponse.Body.ToStringUtf8());
         Assert.Equal(
-            enabled ? StatusResult.Types.Status.Success : StatusResult.Types.Status.Failure,
-            response.ManagedIdentityTokenResponse.Result.Status);
-        Assert.Equal(enabled ? "byoc-managed-identity-poc-token" : string.Empty,
-            response.ManagedIdentityTokenResponse.AccessToken);
+            $"http://127.0.0.1:41741/msi/token?existing=value&resource=https%3A%2F%2Fstorage.azure.com%2F&api-version={apiVersion}&{clientIdQuery}=client%20id",
+            requestUri?.AbsoluteUri);
+        Assert.Equal(runtimeSecret, identityHeader);
         Assert.False(start.IsCompleted);
+
+        ManagedIdentityTokenRequest rejectedTokenRequest = new()
+        {
+            Resource = "unassigned",
+            ApiVersion = apiVersion
+        };
+        ManagedIdentityTokenRequestAuthenticator.Sign(
+            RuntimeAccessKey,
+            "rejected-token-request",
+            rejectedTokenRequest);
+
+        await duplexChannel.SendResponseAsync(new()
+        {
+            RequestId = "rejected-token-request",
+            ManagedIdentityTokenRequest = rejectedTokenRequest
+        });
+
+        StreamingMessage rejectedResponse = await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        Assert.Equal(StatusResult.Types.Status.Success, rejectedResponse.ManagedIdentityTokenResponse.Result.Status);
+        Assert.Equal((int)HttpStatusCode.BadRequest, rejectedResponse.ManagedIdentityTokenResponse.StatusCode);
+        Assert.Equal(errorBody, rejectedResponse.ManagedIdentityTokenResponse.Body.ToStringUtf8());
 
         await SendStartStreamAndReadInitRequestAsync(duplexChannel);
         Assert.False(start.IsCompleted);
+        await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = CreateSuccessfulInitResponse() });
+        await start.WaitAsync(TestTimeout);
+        await channel.DisposeAsync();
+    }
+
+    [Theory]
+    [InlineData(true, "The runtime managed identity token request failed.")]
+    [InlineData(false, "The managed identity token request is not authenticated.")]
+    public async Task ManagedIdentityTokenRequest_InvalidRuntimeConfigurationOrAuthentication_ReturnsFailure(
+        bool authenticate,
+        string expectedMessage)
+    {
+        TestDuplexChannel<StreamingMessage> duplexChannel = new();
+        RpcClientWorkerChannel channel = CreateFactory().Create(WorkerId, duplexChannel, RuntimeAccessKey);
+        Task start = channel.StartAsync(CancellationToken.None);
+        ManagedIdentityTokenRequest tokenRequest = new()
+        {
+            Resource = "https://storage.azure.com/",
+            ApiVersion = "2019-08-01"
+        };
+        if (authenticate)
+        {
+            ManagedIdentityTokenRequestAuthenticator.Sign(RuntimeAccessKey, "token-request", tokenRequest);
+        }
+
+        await duplexChannel.SendResponseAsync(new()
+        {
+            RequestId = "token-request",
+            ManagedIdentityTokenRequest = tokenRequest
+        });
+
+        StreamingMessage response = await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+        Assert.Equal(StatusResult.Types.Status.Failure, response.ManagedIdentityTokenResponse.Result.Status);
+        Assert.Equal(expectedMessage, response.ManagedIdentityTokenResponse.Result.Exception.Message);
+
+        await SendStartStreamAndReadInitRequestAsync(duplexChannel);
         await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = CreateSuccessfulInitResponse() });
         await start.WaitAsync(TestTimeout);
         await channel.DisposeAsync();
@@ -294,7 +387,9 @@ public sealed class RpcClientWorkerChannelTests
     private RpcClientWorkerChannel CreateChannel(TestDuplexChannel<StreamingMessage> duplexChannel)
         => _factory.Create(WorkerId, duplexChannel);
 
-    private RpcClientWorkerChannelFactory CreateFactory(bool managedIdentityTokenPocEnabled)
+    private RpcClientWorkerChannelFactory CreateFactory(
+        IReadOnlyDictionary<string, string> environmentValues = null,
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> sendAsync = null)
     {
         Mock<IScriptHostManager> hostManager = new();
         hostManager.As<IServiceProvider>()
@@ -308,21 +403,26 @@ public sealed class RpcClientWorkerChannelTests
         _appCapabilitiesStore.Setup(store => store.TrySetAll(It.IsAny<IEnumerable<KeyValuePair<string, string>>>()))
             .Returns(true);
 
-        FunctionsHostingConfigOptions hostingConfig = new();
-        if (managedIdentityTokenPocEnabled)
-        {
-            hostingConfig.Features["ManagedIdentityTokenPocEnabled"] = "1";
-        }
+        Mock<IEnvironment> environment = new();
+        environment.Setup(value => value.GetEnvironmentVariable(It.IsAny<string>()))
+            .Returns((string name) => environmentValues is not null && environmentValues.TryGetValue(name, out string value)
+                ? value
+                : null);
+        Mock<IHttpClientFactory> httpClientFactory = new();
+        HttpClient httpClient = new(new StubHttpMessageHandler(
+            sendAsync ?? ((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)))));
+        httpClientFactory.Setup(factory => factory.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
         return new(
             new ScriptEventManager(),
             hostManager.Object,
-            Mock.Of<IEnvironment>(),
+            environment.Object,
+            httpClientFactory.Object,
             NullLoggerFactory.Instance,
             applicationHostOptions.Object,
             Mock.Of<ISharedMemoryManager>(),
             Options.Create(new WorkerConcurrencyOptions()),
-            Options.Create(hostingConfig),
+            Options.Create(new FunctionsHostingConfigOptions()),
             _appCapabilitiesStore.Object,
             Mock.Of<IHttpProxyService>(),
             _metricsLogger);
@@ -342,5 +442,14 @@ public sealed class RpcClientWorkerChannelTests
         });
 
         return await duplexChannel.Requests.ReadAsync().AsTask().WaitAsync(TestTimeout);
+    }
+
+    private sealed class StubHttpMessageHandler(
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> sendAsync) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+            => sendAsync(request, cancellationToken);
     }
 }
