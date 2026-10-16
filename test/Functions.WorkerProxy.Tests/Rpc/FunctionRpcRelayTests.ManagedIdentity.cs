@@ -20,6 +20,9 @@ namespace Azure.Functions.WorkerProxy.Tests;
 
 public partial class FunctionRpcRelayTests
 {
+    private const string TokenRequestPath =
+        $"{ManagedIdentityEndpoint.Path}?resource=https%3A%2F%2Fstorage.azure.com%2F&api-version=2019-08-01&client_id=client-id";
+
     [Fact]
     public async Task ManagedIdentityRequests_AreBoundedAndCanceledWhenRelayEnds()
     {
@@ -77,20 +80,7 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(TimeSpan.FromSeconds(1), unassigned.Headers.RetryAfter?.Delta);
         }
 
-        string assignmentBody = JsonSerializer.Serialize(new
-        {
-            startupMode = "Preconfigured",
-            functionAppName = "test-app",
-            functionGroupName = "test-group",
-            isAlwaysReady = false,
-            environment = new Dictionary<string, string> { [environmentName] = secret },
-            functionAppDirectory = string.Empty
-        });
-        using (HttpResponseMessage assignment = await PutManagementJsonAsync(
-            management, "/admin/worker/assignment", assignmentBody, timeout.Token))
-        {
-            Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
-        }
+        await AssignAsync(management, new Dictionary<string, string> { [environmentName] = secret }, timeout.Token);
 
         Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
         Assert.False(manager.State.IsWorkerReady);
@@ -118,19 +108,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal("client-id", tokenRequest.ManagedIdentityTokenRequest.ClientId);
         Assert.Equal("2019-08-01", tokenRequest.ManagedIdentityTokenRequest.ApiVersion);
 
-        await runtime.WriteAsync(new()
-        {
-            RequestId = tokenRequest.RequestId,
-            ManagedIdentityTokenResponse = new()
-            {
-                AccessToken = "dummy-token",
-                TokenType = "Bearer",
-                ExpiresOn = "4102444800",
-                Resource = tokenRequest.ManagedIdentityTokenRequest.Resource,
-                ClientId = tokenRequest.ManagedIdentityTokenRequest.ClientId,
-                Result = new() { Status = StatusResult.Types.Status.Success }
-            }
-        }, timeout.Token);
+        await WriteTokenResponseAsync(runtime, tokenRequest, "dummy-token", timeout.Token);
 
         using HttpResponseMessage token = await tokenTask;
         Assert.Equal(HttpStatusCode.OK, token.StatusCode);
@@ -144,15 +122,144 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(WorkerAssignmentState.Assigned, manager.State.AssignmentState);
     }
 
-    private static async Task<HttpResponseMessage> SendTokenRequestAsync(
+    [Theory]
+    [InlineData("", "/msi/token?resource=resource&api-version=2019-08-01", HttpStatusCode.ServiceUnavailable)]
+    [InlineData("secret", "/msi/token?api-version=2019-08-01", HttpStatusCode.BadRequest)]
+    [InlineData("secret", "/msi/token?resource=one&resource=two&api-version=2019-08-01", HttpStatusCode.BadRequest)]
+    [InlineData("secret", "/msi/token?resource=resource&api-version=2019-08-01&client_id=one&client_id=two",
+        HttpStatusCode.BadRequest)]
+    public async Task ManagedIdentityEndpoint_RejectsInvalidConfigurationOrRequest(
+        string assignedSecret,
+        string requestPath,
+        HttpStatusCode expectedStatus)
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        using HttpClient managedIdentity = factory.CreateManagedIdentityClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await AssignAsync(
+            management,
+            new Dictionary<string, string> { ["MSI_SECRET"] = assignedSecret },
+            timeout.Token);
+
+        using HttpResponseMessage response = await SendTokenRequestAsync(
+            managedIdentity,
+            requestPath,
+            "Secret",
+            assignedSecret,
+            timeout.Token);
+
+        Assert.Equal(expectedStatus, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ManagedIdentityEndpoint_CorrelatesConcurrentResponses()
+    {
+        const string secret = "worker-local-secret";
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        FunctionRpcRelay relay = factory.Services.GetRequiredService<FunctionRpcRelay>();
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        using HttpClient managedIdentity = factory.CreateManagedIdentityClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await AssignAsync(
+            management,
+            new Dictionary<string, string> { ["MSI_SECRET"] = secret },
+            timeout.Token);
+        await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
+        await WaitForAttachmentAsync(relay, FunctionRpcRelaySide.Runtime, timeout.Token);
+
+        Task<HttpResponseMessage> firstTask = SendTokenRequestAsync(
+            managedIdentity,
+            $"{ManagedIdentityEndpoint.Path}?resource=first&api-version=2019-08-01",
+            "Secret",
+            secret,
+            timeout.Token);
+        StreamingMessage firstRequest = await runtime.ReadAsync(timeout.Token);
+        Task<HttpResponseMessage> secondTask = SendTokenRequestAsync(
+            managedIdentity,
+            $"{ManagedIdentityEndpoint.Path}?resource=second&api-version=2019-08-01",
+            "Secret",
+            secret,
+            timeout.Token);
+        StreamingMessage secondRequest = await runtime.ReadAsync(timeout.Token);
+
+        await WriteTokenResponseAsync(runtime, secondRequest, "second-token", timeout.Token);
+        await WriteTokenResponseAsync(runtime, firstRequest, "first-token", timeout.Token);
+
+        using HttpResponseMessage firstResponse = await firstTask;
+        using HttpResponseMessage secondResponse = await secondTask;
+        Assert.Equal("first-token", await ReadAccessTokenAsync(firstResponse, timeout.Token));
+        Assert.Equal("second-token", await ReadAccessTokenAsync(secondResponse, timeout.Token));
+    }
+
+    private static Task<HttpResponseMessage> SendTokenRequestAsync(
         HttpClient client,
         string headerName,
         string secret,
         CancellationToken cancellationToken)
+        => SendTokenRequestAsync(client, TokenRequestPath, headerName, secret, cancellationToken);
+
+    private static async Task<HttpResponseMessage> SendTokenRequestAsync(
+        HttpClient client,
+        string requestPath,
+        string headerName,
+        string secret,
+        CancellationToken cancellationToken)
     {
-        using HttpRequestMessage request = new(HttpMethod.Get,
-            $"{ManagedIdentityEndpoint.Path}?resource=https%3A%2F%2Fstorage.azure.com%2F&api-version=2019-08-01&client_id=client-id");
+        using HttpRequestMessage request = new(HttpMethod.Get, requestPath);
         request.Headers.TryAddWithoutValidation(headerName, secret);
         return await client.SendAsync(request, cancellationToken);
+    }
+
+    private static async Task AssignAsync(
+        HttpClient client,
+        IReadOnlyDictionary<string, string> environment,
+        CancellationToken cancellationToken)
+    {
+        string assignmentBody = JsonSerializer.Serialize(new
+        {
+            startupMode = "Preconfigured",
+            functionAppName = "test-app",
+            functionGroupName = "test-group",
+            isAlwaysReady = false,
+            environment,
+            functionAppDirectory = string.Empty
+        });
+        using HttpResponseMessage assignment = await PutManagementJsonAsync(
+            client,
+            "/admin/worker/assignment",
+            assignmentBody,
+            cancellationToken);
+        Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
+    }
+
+    private static async Task WriteTokenResponseAsync(
+        RelayClient runtime,
+        StreamingMessage request,
+        string accessToken,
+        CancellationToken cancellationToken)
+    {
+        await runtime.WriteAsync(new()
+        {
+            RequestId = request.RequestId,
+            ManagedIdentityTokenResponse = new()
+            {
+                AccessToken = accessToken,
+                TokenType = "Bearer",
+                ExpiresOn = "4102444800",
+                Resource = request.ManagedIdentityTokenRequest.Resource,
+                ClientId = request.ManagedIdentityTokenRequest.ClientId,
+                Result = new() { Status = StatusResult.Types.Status.Success }
+            }
+        }, cancellationToken);
+    }
+
+    private static async Task<string?> ReadAccessTokenAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+        return body.RootElement.GetProperty("access_token").GetString();
     }
 }

@@ -41,12 +41,20 @@ internal static class ManagedIdentityEndpoint
         FunctionRpcRelay relay,
         CancellationToken cancellationToken)
     {
-        bool hasMsiSecret = stateManager.TryGetAssignmentEnvironmentValue(MsiSecretEnvironment, out string? msiSecret);
-        bool hasIdentityHeader =
-            stateManager.TryGetAssignmentEnvironmentValue(IdentityHeaderEnvironment, out string? identityHeader);
-        if (!hasMsiSecret && !hasIdentityHeader)
+        if (!stateManager.TryGetAssignmentEnvironmentValues(
+            MsiSecretEnvironment,
+            IdentityHeaderEnvironment,
+            out string? msiSecret,
+            out string? identityHeader))
         {
             return RetryableFailure(request.HttpContext.Response, "The worker pod assignment is not ready.");
+        }
+
+        bool hasMsiSecret = !string.IsNullOrEmpty(msiSecret);
+        bool hasIdentityHeader = !string.IsNullOrEmpty(identityHeader);
+        if (!hasMsiSecret && !hasIdentityHeader)
+        {
+            return RetryableFailure(request.HttpContext.Response, "The worker pod assignment has no managed identity credential.");
         }
 
         if ((!hasMsiSecret || !HeaderMatches(request.Headers, MsiSecretHeaderName, msiSecret!))

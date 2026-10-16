@@ -29,6 +29,7 @@ internal sealed class WorkerPodStateManager
     private WorkerAssignment? _assignment;
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
     private long _lastSessionId;
+    private int _assignmentClaimed;
 
     public WorkerPodStateManager(
         IOptions<WorkerProxyOptions> options,
@@ -69,20 +70,27 @@ internal sealed class WorkerPodStateManager
         }
     }
 
-    internal bool TryGetAssignmentEnvironmentValue(string name, out string? value)
+    internal bool TryGetAssignmentEnvironmentValues(
+        string firstName,
+        string secondName,
+        out string? firstValue,
+        out string? secondValue)
     {
-        ArgumentException.ThrowIfNullOrEmpty(name);
+        ArgumentException.ThrowIfNullOrEmpty(firstName);
+        ArgumentException.ThrowIfNullOrEmpty(secondName);
 
         lock (_stateLock)
         {
-            if (_assignment is not null && _assignment.Environment.TryGetValue(name, out string? assignmentValue))
+            if (_assignment is not null)
             {
-                value = assignmentValue;
+                _assignment.Environment.TryGetValue(firstName, out firstValue);
+                _assignment.Environment.TryGetValue(secondName, out secondValue);
                 return true;
             }
         }
 
-        value = null;
+        firstValue = null;
+        secondValue = null;
         return false;
     }
 
@@ -278,6 +286,11 @@ internal sealed class WorkerPodStateManager
                 FunctionGroupName = assignment.FunctionGroupName,
                 IsAlwaysReady = assignment.IsAlwaysReady
             };
+
+            if (Interlocked.CompareExchange(ref _assignmentClaimed, 1, 0) != 0)
+            {
+                throw new InvalidOperationException("Assignment identity was claimed without a recorded assignment.");
+            }
 
             _assignment = assignment;
             UpdateStateAndNotifyWaitersLocked(assigned);

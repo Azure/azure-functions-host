@@ -69,8 +69,10 @@ public sealed class RpcClientWorkerChannelTests
             response.ManagedIdentityTokenResponse.Result.Status);
         Assert.Equal(enabled ? "byoc-managed-identity-poc-token" : string.Empty,
             response.ManagedIdentityTokenResponse.AccessToken);
+        Assert.False(start.IsCompleted);
 
         await SendStartStreamAndReadInitRequestAsync(duplexChannel);
+        Assert.False(start.IsCompleted);
         await duplexChannel.SendResponseAsync(new() { WorkerInitResponse = CreateSuccessfulInitResponse() });
         await start.WaitAsync(TestTimeout);
         await channel.DisposeAsync();

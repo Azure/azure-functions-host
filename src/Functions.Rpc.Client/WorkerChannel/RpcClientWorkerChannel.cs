@@ -71,10 +71,10 @@ internal sealed class RpcClientWorkerChannel : WorkerChannel
             appCapabilitiesStore,
             httpProxyService)
     {
-        string managedIdentityFeature = hostingConfigOptions.Value.GetFeature(ManagedIdentityTokenPocFeature);
-        _managedIdentityTokenPocEnabled =
-            string.Equals(managedIdentityFeature, "1", StringComparison.Ordinal)
-            || (bool.TryParse(managedIdentityFeature, out bool enabled) && enabled);
+        _managedIdentityTokenPocEnabled = string.Equals(
+            hostingConfigOptions.Value.GetFeature(ManagedIdentityTokenPocFeature),
+            "1",
+            StringComparison.Ordinal);
         Completion = ownedChannel.Reader.Completion;
     }
 

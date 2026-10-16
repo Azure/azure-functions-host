@@ -33,8 +33,8 @@ internal sealed partial class FunctionRpcRelay
         private readonly Dictionary<string, TaskCompletionSource<ManagedIdentityTokenResponse>> _managedIdentityRequests =
             new(StringComparer.Ordinal);
 
-        private readonly Channel<StreamingMessage> _toRuntime = CreateChannel(singleWriter: false);
-        private readonly Channel<StreamingMessage> _toWorker = CreateChannel(singleWriter: true);
+        private readonly Channel<StreamingMessage> _toRuntime = CreateRuntimeChannel();
+        private readonly Channel<StreamingMessage> _toWorker = CreateWorkerChannel();
         // Linked call sources unregister when disposed, so cancellation can safely finish after this session is cleared.
         private readonly CancellationTokenSource _terminationSource = new();
         private readonly TaskCompletionSource<FunctionRpcRelayTerminalState> _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -156,7 +156,7 @@ internal sealed partial class FunctionRpcRelay
                 await _toRuntime.Writer.WriteAsync(new()
                 {
                     RequestId = requestId,
-                    ManagedIdentityTokenRequest = request.Clone()
+                    ManagedIdentityTokenRequest = request
                 }, cancellationToken);
 
                 using CancellationTokenSource linkedSource =
@@ -262,13 +262,24 @@ internal sealed partial class FunctionRpcRelay
             TryTerminate(new FunctionRpcRelayTerminalState(id, FunctionRpcRelayTerminationReason.Shutdown, Side: null, Exception: null));
         }
 
-        private static Channel<StreamingMessage> CreateChannel(bool singleWriter)
+        private static Channel<StreamingMessage> CreateRuntimeChannel()
+        {
+            return Channel.CreateBounded<StreamingMessage>(new BoundedChannelOptions(MaximumPendingManagedIdentityRequests)
+            {
+                AllowSynchronousContinuations = false,
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = true,
+                SingleWriter = false
+            });
+        }
+
+        private static Channel<StreamingMessage> CreateWorkerChannel()
         {
             return Channel.CreateUnbounded<StreamingMessage>(new UnboundedChannelOptions
             {
                 AllowSynchronousContinuations = false,
                 SingleReader = true,
-                SingleWriter = singleWriter
+                SingleWriter = true
             });
         }
 
@@ -333,9 +344,11 @@ internal sealed partial class FunctionRpcRelay
             TaskCompletionSource<ManagedIdentityTokenResponse>? completion = null;
             lock (_stateLock)
             {
-                if (!string.IsNullOrWhiteSpace(message.RequestId))
+                if (_terminalState is null
+                    && !string.IsNullOrWhiteSpace(message.RequestId)
+                    && _managedIdentityRequests.Remove(message.RequestId, out completion))
                 {
-                    _managedIdentityRequests.Remove(message.RequestId, out completion);
+                    completion.TrySetResult(message.ManagedIdentityTokenResponse);
                 }
             }
 
@@ -344,8 +357,6 @@ internal sealed partial class FunctionRpcRelay
                 Log.UnknownManagedIdentityTokenResponse(logger, id, message.RequestId);
                 return;
             }
-
-            completion.TrySetResult(message.ManagedIdentityTokenResponse);
         }
 
         private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
