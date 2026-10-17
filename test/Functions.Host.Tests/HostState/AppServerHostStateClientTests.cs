@@ -22,14 +22,16 @@ public class AppServerHostStateClientTests
     private readonly RecordingHandler _handler = new();
 
     [Theory]
-    [InlineData(16L, 2, 1, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":16,"linkedWorkerCount":2}""")]
-    [InlineData(4294967296L, 268435457, 268435456, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":4294967296,"linkedWorkerCount":268435457}""")]
-    public async Task PublishAsync_SendsCreatedTimeCapacityAndWorkerCountButNotHttpWorkerCount(
-        long httpCapacity, int workerCount, int httpWorkerCount, string expectedBody)
+    [InlineData(16L, 2, 1, 3, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":16,"linkedWorkerCount":2,"availableWorkerLinks":3}""")]
+    [InlineData(4294967296L, 268435457, 268435456, 268435455, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":4294967296,"linkedWorkerCount":268435457,"availableWorkerLinks":268435455}""")]
+    public async Task PublishAsync_SendsCreatedTimeCapacityWorkerCountAndAvailableWorkerLinksButNotHttpWorkerCount(
+        long httpCapacity, int workerCount, int httpWorkerCount, int availableWorkerLinks, string expectedBody)
     {
         AppServerHostStateClient client = CreateClient();
 
-        HttpStatusCode statusCode = await client.PublishAsync(new(CreatedTime, httpCapacity, workerCount, httpWorkerCount), CancellationToken.None);
+        HttpStatusCode statusCode = await client.PublishAsync(
+            new(CreatedTime, httpCapacity, workerCount, httpWorkerCount, availableWorkerLinks),
+            CancellationToken.None);
 
         Assert.Equal(HttpStatusCode.OK, statusCode);
         Assert.Equal(HttpMethod.Put, _handler.Method);
@@ -42,7 +44,7 @@ public class AppServerHostStateClientTests
     public async Task PublishAsync_RetryPreservesCapturedCreatedTime()
     {
         AppServerHostStateClient client = CreateClient();
-        ComputeRuntimeState state = new(CreatedTime, 16, 2, 1);
+        ComputeRuntimeState state = new(CreatedTime, 16, 2, 1, AvailableWorkerLinks: 3);
         _handler.StatusCode = HttpStatusCode.InternalServerError;
         Assert.Equal(HttpStatusCode.InternalServerError, await client.PublishAsync(state, CancellationToken.None));
         string? firstBody = _handler.Body;
@@ -50,7 +52,9 @@ public class AppServerHostStateClientTests
         _handler.StatusCode = HttpStatusCode.OK;
         Assert.Equal(HttpStatusCode.OK, await client.PublishAsync(state, CancellationToken.None));
 
-        Assert.Equal("""{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":16,"linkedWorkerCount":2}""", firstBody);
+        Assert.Equal(
+            """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":16,"linkedWorkerCount":2,"availableWorkerLinks":3}""",
+            firstBody);
         Assert.Equal(firstBody, _handler.Body);
     }
 
@@ -67,7 +71,7 @@ public class AppServerHostStateClientTests
             ["MESH_INIT_URI"] = endpoint,
         });
 
-        await client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None);
+        await client.PublishAsync(new(CreatedTime, 0, 0, 0, AvailableWorkerLinks: 0), CancellationToken.None);
 
         Assert.Equal(new Uri(expectedUri), _handler.RequestUri);
     }
@@ -81,7 +85,9 @@ public class AppServerHostStateClientTests
         _handler.StatusCode = responseStatusCode;
         AppServerHostStateClient client = CreateClient();
 
-        HttpStatusCode statusCode = await client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None);
+        HttpStatusCode statusCode = await client.PublishAsync(
+            new(CreatedTime, 0, 0, 0, AvailableWorkerLinks: 0),
+            CancellationToken.None);
 
         Assert.Equal(responseStatusCode, statusCode);
     }
@@ -91,11 +97,11 @@ public class AppServerHostStateClientTests
     {
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
         AppServerHostStateClient client = CreateClient(configuration);
-        await client.PublishAsync(new(CreatedTime, 0, 0, 0), CancellationToken.None);
+        await client.PublishAsync(new(CreatedTime, 0, 0, 0, AvailableWorkerLinks: 0), CancellationToken.None);
         Uri? beforeSpecialization = _handler.RequestUri;
 
         configuration["MESH_INIT_URI"] = "http://appserver:7070";
-        await client.PublishAsync(new(CreatedTime, 0, 1, 1), CancellationToken.None);
+        await client.PublishAsync(new(CreatedTime, 0, 1, 1, AvailableWorkerLinks: 0), CancellationToken.None);
 
         Assert.Equal(new Uri("http://localhost:6060/admin/infra/host/state"), beforeSpecialization);
         Assert.Equal(new Uri("http://appserver:7070/admin/infra/host/state"), _handler.RequestUri);

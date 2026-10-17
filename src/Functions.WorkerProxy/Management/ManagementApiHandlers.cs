@@ -37,8 +37,7 @@ internal static class ManagementApiHandlers
             return ValidationError(errors);
         }
 
-        if (assignment.SplitLink is { State: SplitWorkerLinkState.Linked }
-            && string.IsNullOrWhiteSpace(workerContainerEncryptionKey))
+        if (assignment.SplitLink is not null && string.IsNullOrWhiteSpace(workerContainerEncryptionKey))
         {
             return Error(
                 StatusCodes.Status503ServiceUnavailable,

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -88,8 +89,28 @@ public class ManagementApiEndpointTests
     }
 
     [Fact]
-    public async Task SplitInstanceStateReturnsNestedWorkerStateAfterAssignment()
+    public async Task SplitInstanceStateRequiresAcknowledgementKeyAndReturnsNestedWorkerStateAfterAssignment()
     {
+        Dictionary<string, string?> missingKeyConfiguration = new()
+        {
+            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerContainerEncryptionKey)}"] = null,
+        };
+        await using WorkerProxyWebApplicationFactory missingKeyFactory = new(missingKeyConfiguration);
+        WorkerPodStateManager missingKeyManager = missingKeyFactory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(missingKeyManager.OnWorkerAttached(1));
+        Assert.True(missingKeyManager.OnWorkerStartStream(1, "worker"));
+        using HttpClient missingKeyClient = missingKeyFactory.CreateWorkerProxyClient();
+        using CancellationTokenSource missingKeyTimeout = new(TestTimeout);
+        using StringContent missingKeyContent = JsonBody(SplitAssignment);
+        using HttpResponseMessage missingKeyAssignment =
+            await missingKeyClient.PutAsync(AssignPath, missingKeyContent, missingKeyTimeout.Token);
+        await AssertAssignmentErrorAsync(
+            missingKeyAssignment,
+            HttpStatusCode.ServiceUnavailable,
+            "LinkAcknowledgementUnavailable",
+            missingKeyTimeout.Token);
+        Assert.Equal(2, missingKeyManager.State.Revision);
+
         await using WorkerProxyWebApplicationFactory factory = new();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         Assert.True(manager.OnWorkerAttached(1));
@@ -182,6 +203,24 @@ public class ManagementApiEndpointTests
         JsonElement terminalDynamicState = terminalDocument.RootElement.GetProperty("dynamicState");
         Assert.Equal(5, terminalDynamicState.GetProperty("revisionId").GetInt64());
         Assert.Equal("RemovalRequested", terminalDynamicState.GetProperty("status").GetString());
+
+        await using WorkerProxyWebApplicationFactory restoredFactory = new();
+        WorkerPodStateManager restoredManager = restoredFactory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(restoredManager.OnWorkerAttached(1));
+        Assert.True(restoredManager.OnWorkerStartStream(1, "worker"));
+        using HttpClient restoredClient = restoredFactory.CreateWorkerProxyClient();
+        using StringContent restoredContent = JsonBody(linkedAssignment.ToJsonString());
+        using HttpResponseMessage restored =
+            await restoredClient.PutAsync(AssignPath, restoredContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(restored, HttpStatusCode.Created, timeout.Token);
+
+        using HttpResponseMessage restoredState = await restoredClient.GetAsync(InfraStatePath, timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, restoredState.StatusCode);
+        using JsonDocument restoredDocument = JsonDocument.Parse(
+            await restoredState.Content.ReadAsStringAsync(timeout.Token));
+        JsonElement restoredDynamicState = restoredDocument.RootElement.GetProperty("dynamicState");
+        Assert.Equal("ReadyForWork", restoredDynamicState.GetProperty("status").GetString());
+        Assert.Equal("Linked", restoredDynamicState.GetProperty("link").GetProperty("state").GetString());
     }
 
     [Fact]

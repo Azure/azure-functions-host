@@ -270,6 +270,7 @@ internal sealed class WorkerPodStateManager
                 return WorkerAssignmentResult.WorkerNotReady;
             }
 
+            // Initial state is level-triggered so a signed Linked assignment can restore platform state after restart.
             // No asynchronous specialization occurs: publish Ready directly, with a single revision increment.
             WorkerPodState assigned = _state with
             {

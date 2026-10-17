@@ -473,8 +473,11 @@ public sealed class WorkerLinkEndpointIntegrationTests
     {
         private readonly Dictionary<string, TaskCompletionSource<WorkerLinkResult>> _links = new(StringComparer.Ordinal);
         private readonly Lock _lock = new();
+        private readonly TaskCompletionSource<long> _initializedChannelsChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource _linksChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private long _workerLinkCapacityVersion;
+
+        public long InitializedChannelsVersion => 0;
 
         public int AvailableWorkerLinks
         {
@@ -559,6 +562,11 @@ public sealed class WorkerLinkEndpointIntegrationTests
         }
 
         public IReadOnlyList<WorkerChannel> GetInitializedChannels() => [];
+
+        public Task<long> WaitForInitializedChannelsChangeAsync(
+            long lastKnownVersion,
+            CancellationToken cancellationToken = default) =>
+            _initializedChannelsChanged.Task.WaitAsync(cancellationToken);
 
         public Task<WorkerChannel> WaitForFirstInitializedAsync(CancellationToken cancellationToken = default) =>
             Task.FromException<WorkerChannel>(new NotSupportedException());

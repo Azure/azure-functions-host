@@ -15,8 +15,14 @@ namespace Azure.Functions.Rpc.Client;
 /// </param>
 /// <param name="WorkerCount">The number of initialized, linked workers, including workers not yet ready for invocations.</param>
 /// <param name="HttpWorkerCount">The number of initialized, linked HTTP-group workers, regardless of invocation readiness.</param>
+/// <param name="AvailableWorkerLinks">The remaining Host-admitted worker links after pending and accepted links.</param>
 /// <remarks>
 /// Capacity is zero unless ScriptHost is running and the Host is not stopping. Worker counts reflect registry membership,
 /// independently of ScriptHost state or invocation readiness.
 /// </remarks>
-public sealed record ComputeRuntimeState(DateTimeOffset CreatedTime, long HttpCapacity, int WorkerCount, int HttpWorkerCount);
+public sealed record ComputeRuntimeState(
+    DateTimeOffset CreatedTime,
+    long HttpCapacity,
+    int WorkerCount,
+    int HttpWorkerCount,
+    int AvailableWorkerLinks);
