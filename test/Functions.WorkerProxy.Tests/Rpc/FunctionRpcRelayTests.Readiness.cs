@@ -41,7 +41,9 @@ public partial class FunctionRpcRelayTests
 
         Assert.Equal(0, manager.State.Revision);
         Assert.False(manager.State.IsWorkerReady);
-        Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+        Assert.Equal(WorkerPodStatus.None, manager.State.PodStatus);
 
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
             CreateMessageReader(workerInbound.Reader), CreateMessageWriter(workerOutbound.Writer), timeout.Token);
@@ -58,11 +60,11 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(2, ready.Revision);
         Assert.True(ready.IsWorkerReady);
         Assert.Equal(start.StartStream.WorkerId, ready.WorkerId);
-        Assert.Equal(WorkerPodStatus.None, ready.PodStatus);
+        Assert.Equal(WorkerPodStatus.ReadyForRequest, ready.PodStatus);
 
-        Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
+        Assert.Equal(WorkerAssignmentResult.AlreadyAssigned, manager.Assign(CreateWorkerAssignment()));
         Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
-        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(2, manager.State.Revision);
         Assert.False(workerOutbound.Reader.TryRead(out _));
 
         runtimeTask ??= relay.AttachAsync(FunctionRpcRelaySide.Runtime,
@@ -77,7 +79,7 @@ public partial class FunctionRpcRelayTests
         await runtimeInbound.Writer.WriteAsync(init, timeout.Token);
         Assert.Same(init, await workerOutbound.Reader.ReadAsync(timeout.Token));
         Assert.False(workerOutbound.Reader.TryRead(out _));
-        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(2, manager.State.Revision);
 
         await relay.StopAsync(timeout.Token);
         await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);

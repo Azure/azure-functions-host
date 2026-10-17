@@ -23,4 +23,10 @@ public sealed class WorkerLinkRequest
     /// </summary>
     [JsonProperty("workerContainerEncryptionKey")]
     public string? WorkerContainerEncryptionKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional key used to authenticate WorkerProxy-originated control messages.
+    /// </summary>
+    [JsonProperty("runtimeAccessKey")]
+    public string? RuntimeAccessKey { get; set; }
 }

@@ -29,12 +29,14 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         ValidatePort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), failures);
         ValidatePort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), failures);
         ValidatePort(options.HttpPort, nameof(options.HttpPort), failures);
+        ValidatePort(options.ManagedIdentityPort, nameof(options.ManagedIdentityPort), failures);
 
         HashSet<int> configuredPorts = [];
         AddDistinctPort(options.ManagementPort, nameof(options.ManagementPort), configuredPorts, failures);
         AddDistinctPort(options.RuntimeGrpcPort, nameof(options.RuntimeGrpcPort), configuredPorts, failures);
         AddDistinctPort(options.WorkerGrpcPort, nameof(options.WorkerGrpcPort), configuredPorts, failures);
         AddDistinctPort(options.HttpPort, nameof(options.HttpPort), configuredPorts, failures);
+        AddDistinctPort(options.ManagedIdentityPort, nameof(options.ManagedIdentityPort), configuredPorts, failures);
 
         if (!string.IsNullOrWhiteSpace(options.HttpProxyEndpoint))
         {

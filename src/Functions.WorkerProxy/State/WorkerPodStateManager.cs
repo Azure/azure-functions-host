@@ -70,6 +70,30 @@ internal sealed class WorkerPodStateManager
         }
     }
 
+    internal bool TryGetAssignmentEnvironmentValues(
+        string firstName,
+        string secondName,
+        out string? firstValue,
+        out string? secondValue)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(firstName);
+        ArgumentException.ThrowIfNullOrEmpty(secondName);
+
+        lock (_stateLock)
+        {
+            if (_assignment is not null)
+            {
+                _assignment.Environment.TryGetValue(firstName, out firstValue);
+                _assignment.Environment.TryGetValue(secondName, out secondValue);
+                return true;
+            }
+        }
+
+        firstValue = null;
+        secondValue = null;
+        return false;
+    }
+
     /// <summary>
     /// Returns a newer snapshot immediately, or waits up to 60 seconds for a state change.
     /// </summary>
@@ -184,7 +208,13 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            UpdateStateAndNotifyWaitersLocked(_state with { Revision = checked(_state.Revision + 1), WorkerId = workerId });
+            WorkerPodState started = _state with
+            {
+                Revision = checked(_state.Revision + 1),
+                WorkerId = workerId
+            };
+            UpdateStateAndNotifyWaitersLocked(
+                _assignment is null ? started : ApplyAssignment(started, _assignment));
             return true;
         }
     }
@@ -248,33 +278,32 @@ internal sealed class WorkerPodStateManager
                     : WorkerAssignmentResult.AlreadyAssigned;
             }
 
-            if (!_state.IsWorkerReady)
-            {
-                return WorkerAssignmentResult.WorkerNotReady;
-            }
-
-            // No asynchronous specialization occurs: publish Ready directly, with a single revision increment.
-            WorkerPodState assigned = _state with
-            {
-                Revision = checked(_state.Revision + 1),
-                AssignmentState = WorkerAssignmentState.Ready,
-                StartupMode = assignment.StartupMode,
-                FunctionAppName = assignment.FunctionAppName,
-                FunctionGroupName = assignment.FunctionGroupName,
-                IsAlwaysReady = assignment.IsAlwaysReady
-            };
-
-            // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.
             if (Interlocked.CompareExchange(ref _assignmentClaimed, 1, 0) != 0)
             {
                 throw new InvalidOperationException("Assignment identity was claimed without a recorded assignment.");
             }
 
             _assignment = assignment;
-            UpdateStateAndNotifyWaitersLocked(assigned);
+            if (_state.IsWorkerReady)
+            {
+                UpdateStateAndNotifyWaitersLocked(ApplyAssignment(
+                    _state with { Revision = checked(_state.Revision + 1) },
+                    assignment));
+            }
+
             return WorkerAssignmentResult.Created;
         }
     }
+
+    private static WorkerPodState ApplyAssignment(WorkerPodState state, WorkerAssignment assignment) =>
+        state with
+        {
+            AssignmentState = WorkerAssignmentState.Ready,
+            StartupMode = assignment.StartupMode,
+            FunctionAppName = assignment.FunctionAppName,
+            FunctionGroupName = assignment.FunctionGroupName,
+            IsAlwaysReady = assignment.IsAlwaysReady
+        };
 
     /// <summary>
     /// Stores the new state and completes all pending polls with that snapshot, then clears the waiters.

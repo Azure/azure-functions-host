@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Http;
+using Azure.Functions.WorkerProxy.ManagedIdentity;
 using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
@@ -45,6 +46,7 @@ internal static class WorkerProxyApplication
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<WorkerPodStateManager>();
+        builder.Services.AddSingleton<ManagedIdentityTokenCache>();
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, WorkerProxyJsonContext.Default));
         builder.Services.AddSingleton<WorkerProxyEndpointConfiguration>();
@@ -64,6 +66,7 @@ internal static class WorkerProxyApplication
         app.MapWhen(context => endpoints.IsManagementPort(context.Connection.LocalPort), ConfigureManagementPipeline);
         app.MapWhen(context => endpoints.TryGetRelaySide(context.Connection.LocalPort, out _), ConfigureGrpcPipeline);
         app.MapWhen(context => endpoints.IsHttpPort(context.Connection.LocalPort), ConfigureHttpPipeline);
+        app.MapWhen(context => endpoints.IsManagedIdentityPort(context.Connection.LocalPort), ConfigureManagedIdentityPipeline);
         app.Run(static context => Results.NotFound().ExecuteAsync(context));
 
         return app;
@@ -113,6 +116,12 @@ internal static class WorkerProxyApplication
             endpoints.Map("/admin/{**path}", static () => Results.NotFound()).AllowAnonymous();
             endpoints.Map("/{**path}", ForwardAsync).AllowAnonymous();
         });
+    }
+
+    private static void ConfigureManagedIdentityPipeline(IApplicationBuilder app)
+    {
+        app.UseRouting();
+        app.UseEndpoints(ManagedIdentityEndpoint.Map);
     }
 
     private static void ConfigureHttpForwarding(WebApplicationBuilder builder)

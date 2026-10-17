@@ -18,13 +18,15 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
     private ListenOptions? _runtime;
     private ListenOptions? _worker;
     private ListenOptions? _http;
+    private ListenOptions? _managedIdentity;
 
     /// <inheritdoc />
     public void Configure(KestrelServerOptions options)
     {
         WorkerProxyOptions configuredOptions = workerProxyOptions.Value;
 
-        if (_management is not null || _runtime is not null || _worker is not null || _http is not null)
+        if (_management is not null || _runtime is not null || _worker is not null || _http is not null
+            || _managedIdentity is not null)
         {
             throw new InvalidOperationException("WorkerProxy Kestrel endpoints have already been configured.");
         }
@@ -49,6 +51,11 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
             listener.Protocols = HttpProtocols.Http1;
             _http = listener;
         });
+        options.Listen(IPAddress.Loopback, configuredOptions.ManagedIdentityPort, listener =>
+        {
+            listener.Protocols = HttpProtocols.Http1;
+            _managedIdentity = listener;
+        });
     }
 
     /// <summary>
@@ -69,6 +76,11 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
     public bool IsHttpPort(int localPort)
     {
         return GetPort(_http) == localPort;
+    }
+
+    public bool IsManagedIdentityPort(int localPort)
+    {
+        return GetPort(_managedIdentity) == localPort;
     }
 
     /// <summary>
@@ -103,6 +115,11 @@ internal sealed class WorkerProxyEndpointConfiguration(IOptions<WorkerProxyOptio
     internal Uri GetHttpAddress()
     {
         return GetAddress(_http, "HTTP forwarding");
+    }
+
+    internal Uri GetManagedIdentityAddress()
+    {
+        return GetAddress(_managedIdentity, "managed identity");
     }
 
     internal Uri GetRelayAddress(FunctionRpcRelaySide side)

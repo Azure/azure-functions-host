@@ -324,7 +324,7 @@ public class ManagementApiHandlersTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AssignWorker_NotReadyDoesNotReserveIdentity(bool attached)
+    public void AssignWorker_BeforeStartStreamRecordsIdentity(bool attached)
     {
         WorkerPodStateManager manager = CreateManager();
         if (attached)
@@ -332,9 +332,14 @@ public class ManagementApiHandlersTests
             manager.OnWorkerAttached(1);
         }
 
-        WorkerPodState before = manager.State;
-        AssertError(ManagementApiHandlers.AssignWorker(CreateRequest(), manager), 503, "WorkerNotReady");
-        Assert.Same(before, manager.State);
+        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
+        WorkerPodState assigned = manager.State;
+        Assert.Equal(WorkerAssignmentState.Unassigned, assigned.AssignmentState);
+        Assert.Equal(WorkerPodStatus.None, assigned.PodStatus);
+        Assert.Null(assigned.FunctionAppName);
+        Assert.IsType<NoContent>(ManagementApiHandlers.AssignWorker(CreateRequest(), manager));
+        AssertError(ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager), 409, "AssignmentConflict");
+        Assert.Same(assigned, manager.State);
 
         if (!attached)
         {
@@ -342,8 +347,9 @@ public class ManagementApiHandlersTests
         }
 
         manager.OnWorkerStartStream(1, "worker");
-        Assert.IsType<Created>(ManagementApiHandlers.AssignWorker(CreateRequest(functionAppName: "other-app"), manager));
-        Assert.Equal("other-app", manager.State.FunctionAppName);
+        Assert.Equal(WorkerAssignmentState.Ready, manager.State.AssignmentState);
+        Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
+        Assert.Equal("app", manager.State.FunctionAppName);
     }
 
     [Fact]

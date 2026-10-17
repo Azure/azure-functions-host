@@ -39,6 +39,11 @@ internal sealed class WorkerProxyOptions
     public int HttpPort { get; set; } = 28080;
 
     /// <summary>
+    /// Gets or sets the worker-local managed identity HTTP listener port.
+    /// </summary>
+    public int ManagedIdentityPort { get; set; } = 8081;
+
+    /// <summary>
     /// Gets or sets an optional explicit worker HTTP destination.
     /// </summary>
     public string? WorkerHttpEndpoint { get; set; }
