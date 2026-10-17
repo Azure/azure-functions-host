@@ -1,7 +1,9 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
+using Azure.Functions.WorkerProxy.State;
 
 namespace Azure.Functions.WorkerProxy.Management;
 
@@ -34,4 +36,60 @@ internal sealed class WorkerAssignRequest
     public Dictionary<string, string?>? Environment { get; init; }
 
     public string? FunctionAppDirectory { get; init; }
+
+    /// <summary>
+    /// Gets the optional Bala-compatible static worker state.
+    /// </summary>
+    public SplitWorkerStaticStateRequest? StaticState { get; init; }
+
+    /// <summary>
+    /// Gets the optional runtime link state. Exact replays may advance it without replacing assignment identity.
+    /// </summary>
+    public SplitWorkerLinkRequest? Link { get; init; }
+}
+
+internal sealed class SplitWorkerStaticStateRequest
+{
+    public SplitPodIdentityRequest? Self { get; init; }
+
+    public bool? IsDiscoveryPod { get; init; }
+
+    public bool? IsAlwaysReady { get; init; }
+
+    public string? FunctionGroup { get; init; }
+
+    public long? ConfigLastModifiedTime { get; init; }
+
+    public long? ContentLastModifiedTime { get; init; }
+}
+
+internal sealed class SplitWorkerLinkRequest
+{
+    public string? State { get; init; }
+
+    public SplitPodIdentityRequest? Runtime { get; init; }
+}
+
+internal sealed class SplitPodIdentityRequest
+{
+    public string? ResourceNamespace { get; init; }
+
+    public string? PodName { get; init; }
+
+    public Guid? PodGuid { get; init; }
+
+    public string? LegionStampName { get; init; }
+
+    public string? PodType { get; init; }
+
+    public SplitFunctionAppIdentityRequest? App { get; init; }
+}
+
+internal sealed class SplitFunctionAppIdentityRequest
+{
+    public string? FunctionAppName { get; init; }
+
+    public int? FunctionAppSiteId { get; init; }
+
+    public string? AntaresStampName { get; init; }
 }

@@ -15,7 +15,7 @@ using Microsoft.Extensions.Configuration;
 namespace Azure.Functions.Host.HostState;
 
 /// <summary>
-/// Sends Host HTTP capacity and linked worker count snapshots to AppServer's <c>PUT /admin/infra/host/state</c> endpoint.
+/// Sends Host HTTP capacity, linked worker count, and worker-link headroom snapshots to AppServer.
 /// </summary>
 /// <remarks>
 /// Requests are not authenticated yet. Configuration is read per request because it is reloaded during specialization.
@@ -35,7 +35,11 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
 
         using HttpResponseMessage response = await _httpClientFactory.CreateClient(HttpClientName).PutAsJsonAsync(
             GetHostStateUri(),
-            new HostStateRequest(state.CreatedTime, state.HttpCapacity, LinkedWorkerCount: state.WorkerCount),
+            new HostStateRequest(
+                state.CreatedTime,
+                state.HttpCapacity,
+                LinkedWorkerCount: state.WorkerCount,
+                AvailableWorkerLinks: state.AvailableWorkerLinks),
             AppServerJsonSerializerContext.Default.HostStateRequest,
             cancellationToken);
 
@@ -54,7 +58,11 @@ internal sealed class AppServerHostStateClient(IHttpClientFactory httpClientFact
         return new Uri(new Uri(endpoint.EndsWith('/') ? endpoint : endpoint + "/", UriKind.Absolute), HostStatePath);
     }
 
-    internal sealed record HostStateRequest(DateTimeOffset CreatedTime, long HttpCapacity, int LinkedWorkerCount);
+    internal sealed record HostStateRequest(
+        DateTimeOffset CreatedTime,
+        long HttpCapacity,
+        int LinkedWorkerCount,
+        int AvailableWorkerLinks);
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]

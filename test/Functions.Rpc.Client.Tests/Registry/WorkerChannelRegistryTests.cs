@@ -390,23 +390,29 @@ public sealed partial class WorkerChannelRegistryTests
     [InlineData("second", true)]
     public async Task LinkAsync_DifferentWorkersInitializeIndependently(string secondWorkerId, bool failFirst)
     {
-        RegistryHarness harness = new();
+        RegistryHarness harness = new(maxWorkerLinks: 2);
         ChannelControl first = new("first", blockStart: true);
         ChannelControl second = new(secondWorkerId, blockStart: true);
         harness.Enqueue(first);
         harness.Enqueue(second);
         await using WorkerChannelRegistry registry = harness.Registry;
 
+        int initialHeadroom = registry.AvailableWorkerLinks;
         Task<WorkerChannel> firstLink = LinkAsync(registry, "first");
+        Assert.Equal(initialHeadroom - 1, registry.AvailableWorkerLinks);
         await first.StartEntered.WaitAsync(TestTimeout);
         Task<WorkerChannel> secondLink = LinkAsync(registry, secondWorkerId);
+        Assert.Equal(initialHeadroom - 2, registry.AvailableWorkerLinks);
         await second.StartEntered.WaitAsync(TestTimeout);
 
+        WorkerLinkException exhausted = await Assert.ThrowsAsync<WorkerLinkException>(() => LinkAsync(registry, "third"));
+        Assert.Equal(WorkerLinkFailureReason.Conflict, exhausted.Reason);
         Assert.False(firstLink.IsCompleted);
         Assert.False(secondLink.IsCompleted);
         Assert.Equal(2, harness.Transports.Count);
         second.AllowStart();
         Assert.Same(second.Channel, await secondLink.WaitAsync(TestTimeout));
+        Assert.Equal(initialHeadroom - 2, registry.AvailableWorkerLinks);
         Assert.False(firstLink.IsCompleted);
         Assert.Same(second.Channel, Assert.Single(registry.GetInitializedChannels()));
 
@@ -416,6 +422,7 @@ public sealed partial class WorkerChannelRegistryTests
             first.FailStart(failure);
             IOException actual = await Assert.ThrowsAsync<IOException>(() => firstLink.WaitAsync(TestTimeout));
             Assert.Same(failure, actual);
+            Assert.Equal(initialHeadroom - 1, registry.AvailableWorkerLinks);
             Assert.Same(second.Channel, Assert.Single(registry.GetInitializedChannels()));
             Assert.Equal(1, first.DisposeCount);
             Assert.Equal(0, second.DisposeCount);
@@ -424,6 +431,7 @@ public sealed partial class WorkerChannelRegistryTests
         {
             first.AllowStart();
             Assert.Same(first.Channel, await firstLink.WaitAsync(TestTimeout));
+            Assert.Equal(initialHeadroom - 2, registry.AvailableWorkerLinks);
             Assert.Equal(2, registry.GetInitializedChannels().Count);
             Assert.True(registry.TryGetInitializedChannel("first", out WorkerChannel firstChannel));
             Assert.Same(first.Channel, firstChannel);
@@ -677,10 +685,12 @@ public sealed partial class WorkerChannelRegistryTests
 
         await LinkAsync(registry, "first");
         await LinkAsync(registry, "other");
+        int fullHeadroom = registry.AvailableWorkerLinks;
         first.Complete(new InvalidOperationException("transport failed"));
         await first.DisposeStarted.WaitAsync(TestTimeout);
         await WaitUntilAsync(() => !registry.TryGetInitializedChannel("first", out _));
 
+        Assert.Equal(fullHeadroom + 1, registry.AvailableWorkerLinks);
         Assert.False(registry.TryGetInitializedChannel("first", out _));
         WorkerLinkException terminal = await Assert.ThrowsAsync<WorkerLinkException>(() => LinkAsync(registry, "first"));
         Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, terminal.Reason);
@@ -690,6 +700,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Same(other.Channel, Assert.Single(registry.GetInitializedChannels()));
         WorkerChannel relinkedChannel = await LinkAsync(registry, "replacement");
         Assert.Same(replacement.Channel, relinkedChannel);
+        Assert.Equal(fullHeadroom, registry.AvailableWorkerLinks);
         Assert.Equal(2, registry.GetInitializedChannels().Count);
     }
 
@@ -1065,11 +1076,21 @@ public sealed partial class WorkerChannelRegistryTests
         private readonly ConcurrentQueue<TestDuplexChannel<StreamingMessage>> _transports = new();
 
         public RegistryHarness()
-            : this(null)
+            : this(linkTimeout: null, maxWorkerLinks: null)
         {
         }
 
         public RegistryHarness(TimeSpan? linkTimeout)
+            : this(linkTimeout, maxWorkerLinks: null)
+        {
+        }
+
+        public RegistryHarness(int maxWorkerLinks)
+            : this(linkTimeout: null, maxWorkerLinks)
+        {
+        }
+
+        private RegistryHarness(TimeSpan? linkTimeout, int? maxWorkerLinks)
         {
             DuplexFactory.Setup(factory => factory.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns((Uri endpoint, CancellationToken cancellationToken) =>
@@ -1106,9 +1127,24 @@ public sealed partial class WorkerChannelRegistryTests
 
                     return channel;
                 });
+            WorkerConcurrencyOptions options = new();
+            if (maxWorkerLinks is { } maximum)
+            {
+                options.MaxWorkerCount = maximum;
+            }
+
             Registry = linkTimeout.HasValue
-                ? new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance, linkTimeout.Value)
-                : new(DuplexFactory.Object, ChannelFactory.Object, NullLogger<WorkerChannelRegistry>.Instance);
+                ? new(
+                    DuplexFactory.Object,
+                    ChannelFactory.Object,
+                    NullLogger<WorkerChannelRegistry>.Instance,
+                    Options.Create(options),
+                    linkTimeout.Value)
+                : new(
+                    DuplexFactory.Object,
+                    ChannelFactory.Object,
+                    NullLogger<WorkerChannelRegistry>.Instance,
+                    Options.Create(options));
         }
 
         internal Mock<IRpcClientWorkerChannelFactory> ChannelFactory { get; } = new();

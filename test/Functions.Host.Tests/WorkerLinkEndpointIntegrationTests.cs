@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -65,6 +66,77 @@ public sealed class WorkerLinkEndpointIntegrationTests
         using HttpResponseMessage response = await request.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(response, status, timeout.Token);
         VerifyLink();
+    }
+
+    [Fact]
+    public async Task Put_HeadroomCountsPendingAndAcceptedWorkerLinks()
+    {
+        using var timeout = new CancellationTokenSource(TestTimeout);
+        Dictionary<string, TaskCompletionSource<WorkerLinkResult>> links = new(StringComparer.Ordinal);
+        Lock linksLock = new();
+        _registry.Setup(value => value.LinkAsync(It.IsAny<string>(), Endpoint, It.IsAny<CancellationToken>()))
+            .Returns((string workerId, Uri _, CancellationToken token) =>
+            {
+                lock (linksLock)
+                {
+                    if (!links.TryGetValue(workerId, out TaskCompletionSource<WorkerLinkResult>? link))
+                    {
+                        if (links.Count == 2)
+                        {
+                            return Task.FromException<WorkerLinkResult>(
+                                new WorkerLinkException(WorkerLinkFailureReason.Conflict, "No link headroom."));
+                        }
+
+                        link = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                        links.Add(workerId, link);
+                    }
+
+                    return link.Task.WaitAsync(token);
+                }
+            });
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
+
+        Task<HttpResponseMessage> first = host.PutAsync(LinkJson(), timeout.Token, "worker-one");
+        await WaitForLinkCountAsync(1);
+        CompleteLink("worker-one");
+        using (HttpResponseMessage accepted = await first.WaitAsync(timeout.Token))
+        {
+            await AssertLinkResponseAsync(accepted, HttpStatusCode.Created, timeout.Token);
+        }
+
+        Task<HttpResponseMessage> second = host.PutAsync(LinkJson(), timeout.Token, "worker-two");
+        await WaitForLinkCountAsync(2);
+
+        using HttpResponseMessage rejected = await host.PutAsync(LinkJson(), timeout.Token, "worker-three");
+        await AssertLinkErrorAsync(rejected, HttpStatusCode.Conflict, "LinkConflict", timeout.Token);
+
+        CompleteLink("worker-two");
+        using HttpResponseMessage secondAccepted = await second.WaitAsync(timeout.Token);
+        await AssertLinkResponseAsync(secondAccepted, HttpStatusCode.Created, timeout.Token);
+
+        void CompleteLink(string workerId)
+        {
+            lock (linksLock)
+            {
+                links[workerId].SetResult(new(null!, IsNewLink: true));
+            }
+        }
+
+        async Task WaitForLinkCountAsync(int count)
+        {
+            while (true)
+            {
+                lock (linksLock)
+                {
+                    if (links.Count == count)
+                    {
+                        return;
+                    }
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+            }
+        }
     }
 
     [Fact]

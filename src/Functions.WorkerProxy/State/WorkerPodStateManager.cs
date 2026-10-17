@@ -243,14 +243,36 @@ internal sealed class WorkerPodStateManager
                     return WorkerAssignmentResult.AssignmentConflict;
                 }
 
-                return _state.AssignmentState == WorkerAssignmentState.Failed
-                    ? WorkerAssignmentResult.WorkerTerminated
-                    : WorkerAssignmentResult.AlreadyAssigned;
+                if (!TryAdvanceSplitLinkLocked(assignment.SplitLink, out SplitWorkerLink? advancedLink))
+                {
+                    return WorkerAssignmentResult.AssignmentConflict;
+                }
+
+                if (_state.AssignmentState == WorkerAssignmentState.Failed)
+                {
+                    return WorkerAssignmentResult.WorkerTerminated;
+                }
+
+                if (advancedLink is not null)
+                {
+                    UpdateStateAndNotifyWaitersLocked(_state with
+                    {
+                        Revision = checked(_state.Revision + 1),
+                        SplitLink = advancedLink
+                    });
+                }
+
+                return WorkerAssignmentResult.AlreadyAssigned;
             }
 
             if (!_state.IsWorkerReady)
             {
                 return WorkerAssignmentResult.WorkerNotReady;
+            }
+
+            if (assignment.SplitLink?.State == SplitWorkerLinkState.Linked)
+            {
+                return WorkerAssignmentResult.AssignmentConflict;
             }
 
             // No asynchronous specialization occurs: publish Ready directly, with a single revision increment.
@@ -261,7 +283,9 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
-                IsAlwaysReady = assignment.IsAlwaysReady
+                IsAlwaysReady = assignment.IsAlwaysReady,
+                SplitStaticState = assignment.SplitStaticState,
+                SplitLink = assignment.SplitLink
             };
 
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.
@@ -274,6 +298,37 @@ internal sealed class WorkerPodStateManager
             UpdateStateAndNotifyWaitersLocked(assigned);
             return WorkerAssignmentResult.Created;
         }
+    }
+
+    private bool TryAdvanceSplitLinkLocked(SplitWorkerLink? requested, out SplitWorkerLink? advanced)
+    {
+        advanced = null;
+        SplitWorkerLink? current = _state.SplitLink;
+        if (current is null || requested is null)
+        {
+            return current is null && requested is null;
+        }
+
+        if (current.State == requested.State)
+        {
+            return current == requested;
+        }
+
+        if (current.Runtime is not null && !Equals(current.Runtime, requested.Runtime))
+        {
+            return false;
+        }
+
+        bool validTransition =
+            (current.State == SplitWorkerLinkState.Unlinked && requested.State == SplitWorkerLinkState.Pending)
+            || (current.State == SplitWorkerLinkState.Pending && requested.State == SplitWorkerLinkState.Linked);
+        if (!validTransition)
+        {
+            return false;
+        }
+
+        advanced = requested;
+        return true;
     }
 
     /// <summary>

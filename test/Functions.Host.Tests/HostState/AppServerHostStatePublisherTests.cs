@@ -34,7 +34,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     private readonly BlockingCollection<ComputeRuntimeState> _changeWaits = new();
     private readonly TaskCompletionSource _waitingForSpecialization = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly ConcurrentQueue<Func<CancellationToken, Task<HttpStatusCode>>> _responses = new();
-    private ComputeRuntimeState _current = new(CreatedTime, 0, 0, 0);
+    private ComputeRuntimeState _current = new(CreatedTime, 0, 0, 0, AvailableWorkerLinks: 0);
     private TaskCompletionSource _changed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private StandbyOptions _standby = new() { InStandbyMode = false };
     private Action<StandbyOptions, string?>? _standbyChanged;
@@ -100,14 +100,14 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         using AppServerHostStatePublisher publisher = await StartPublisherAsync();
         ComputeRuntimeState initial = TakePublished();
 
-        SetState(new(CreatedTime, 16, 1, 1));
+        SetState(new(CreatedTime, 16, 1, 1, AvailableWorkerLinks: 0));
         ComputeRuntimeState changed = TakePublished();
-        SetState(new(CreatedTime, 48, 3, 3));
+        SetState(new(CreatedTime, 48, 3, 3, AvailableWorkerLinks: 0));
         ComputeRuntimeState changedAgain = TakePublished();
 
-        Assert.Equal(new ComputeRuntimeState(CreatedTime, 0, 0, 0), initial);
-        Assert.Equal(new ComputeRuntimeState(CreatedTime, 16, 1, 1), changed);
-        Assert.Equal(new ComputeRuntimeState(CreatedTime, 48, 3, 3), changedAgain);
+        Assert.Equal(new ComputeRuntimeState(CreatedTime, 0, 0, 0, AvailableWorkerLinks: 0), initial);
+        Assert.Equal(new ComputeRuntimeState(CreatedTime, 16, 1, 1, AvailableWorkerLinks: 0), changed);
+        Assert.Equal(new ComputeRuntimeState(CreatedTime, 48, 3, 3, AvailableWorkerLinks: 0), changedAgain);
         await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
     }
 
@@ -116,13 +116,13 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     [InlineData(HttpStatusCode.InternalServerError)]
     public async Task ExecuteAsync_CountOnlySnapshots_PublishWithSameCreatedTime(HttpStatusCode initialStatus)
     {
-        _current = new(CreatedTime, 16, 1, 1);
+        _current = new(CreatedTime, 16, 1, 1, AvailableWorkerLinks: 0);
         EnqueueStatusCodes(initialStatus);
         using AppServerHostStatePublisher publisher = await StartPublisherAsync();
         Assert.Same(_current, TakePublished());
         WaitUntilPublisherWaitsForChange(_current);
 
-        SetState(new(CreatedTime, 16, 2, 1));
+        SetState(new(CreatedTime, 16, 2, 1, AvailableWorkerLinks: 0));
         Assert.Same(_current, TakePublished());
         if (initialStatus is HttpStatusCode.InternalServerError)
         {
@@ -130,7 +130,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         }
 
         WaitUntilPublisherWaitsForChange(_current);
-        SetState(new(CreatedTime, 16, 2, 2));
+        SetState(new(CreatedTime, 16, 2, 2, AvailableWorkerLinks: 0));
         Assert.Same(_current, TakePublished());
         WaitUntilPublisherWaitsForChange(_current);
 
@@ -161,7 +161,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         }
 
         WaitUntilPublisherWaitsForChange(replacement);
-        SetState(new(CreatedTime, 16, 1, 1));
+        SetState(new(CreatedTime, 16, 1, 1, AvailableWorkerLinks: 0));
         ComputeRuntimeState changed = TakePublished();
         WaitUntilPublisherWaitsForChange(changed);
         SetState(initial with { });
@@ -181,7 +181,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         _responses.Enqueue(_ =>
         {
             // A newer snapshot arrives while the rejected one is in flight.
-            SetState(new(CreatedTime, 16, 1, 1));
+            SetState(new(CreatedTime, 16, 1, 1, AvailableWorkerLinks: 0));
             return Task.FromResult(HttpStatusCode.InternalServerError);
         });
         _responses.Enqueue(_ => Task.FromResult(HttpStatusCode.Conflict));
@@ -211,7 +211,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         attempts[^1] = TakePublished();
         await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
 
-        Assert.Equal(new ComputeRuntimeState(CreatedTime, 0, 0, 0), attempts[0]);
+        Assert.Equal(new ComputeRuntimeState(CreatedTime, 0, 0, 0, AvailableWorkerLinks: 0), attempts[0]);
         Assert.All(attempts[1..], attempt =>
         {
             Assert.Same(_current, attempt);
@@ -243,7 +243,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
 
         TakePublished();
         WaitUntilPublisherWaitsForChange(_current);
-        SetState(new(CreatedTime, 16, 1, 1));
+        SetState(new(CreatedTime, 16, 1, 1, AvailableWorkerLinks: 0));
 
         TakePublished();
         ScheduledTimer resetRetry = TakeTimer();
@@ -265,7 +265,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         ScheduledTimer retry = TakeTimer();
         WaitUntilPublisherWaitsForChange(_current);
 
-        SetState(new(CreatedTime.AddSeconds(secondsOffset), 16, 1, 1));
+        SetState(new(CreatedTime.AddSeconds(secondsOffset), 16, 1, 1, AvailableWorkerLinks: 0));
 
         // The new snapshot wakes the publisher while the retry timer remains unexpired.
         Assert.Same(_current, TakePublished());
@@ -327,7 +327,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         TakePublished();
         WaitUntilPublisherWaitsForChange(_current);
 
-        SetState(new(CreatedTime, 16, 1, 1));
+        SetState(new(CreatedTime, 16, 1, 1, AvailableWorkerLinks: 0));
         ComputeRuntimeState next = TakePublished();
 
         // No delay was scheduled after the accepted publish, so only the newer snapshot could trigger the next one.
@@ -343,12 +343,12 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
     {
         using AppServerHostStatePublisher publisher = await StartPublisherAsync();
         TakePublished();
-        SetState(new(CreatedTime, 16, 1, 1));
+        SetState(new(CreatedTime, 16, 1, 1, AvailableWorkerLinks: 0));
         TakePublished();
         WaitUntilPublisherWaitsForChange(_current);
 
         // The state manager withdraws capacity when the application starts stopping.
-        SetState(new(CreatedTime.AddSeconds(secondsOffset), 0, 1, 1), notify: false);
+        SetState(new(CreatedTime.AddSeconds(secondsOffset), 0, 1, 1, AvailableWorkerLinks: 0), notify: false);
         await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
 
         Assert.Same(_current, TakePublished());
@@ -362,7 +362,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         Assert.Same(_current, TakePublished());
         WaitUntilPublisherWaitsForChange(_current);
 
-        SetState(new(CreatedTime, 0, 1, 1), notify: false);
+        SetState(new(CreatedTime, 0, 1, 1, AvailableWorkerLinks: 0), notify: false);
         await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
 
         Assert.Same(_current, TakePublished());
@@ -405,7 +405,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         TaskCompletionSource<CancellationToken> finalRequest = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource regularRequestCanceled = new(TaskCreationOptions.RunContinuationsAsynchronously);
         bool canceledBeforeFinalPublish = false;
-        _current = new(CreatedTime, 16, 1, 1);
+        _current = new(CreatedTime, 16, 1, 1, AvailableWorkerLinks: 0);
         _responses.Enqueue(async cancellationToken =>
         {
             regularRequest.SetResult(cancellationToken);
@@ -431,7 +431,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         Assert.Same(_current, TakePublished());
         CancellationToken regularToken = await regularRequest.Task.WaitAsync(TestTimeout);
 
-        SetState(new(CreatedTime, 0, 1, 1), notify: false);
+        SetState(new(CreatedTime, 0, 1, 1, AvailableWorkerLinks: 0), notify: false);
         await publisher.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
 
         Assert.True(regularToken.IsCancellationRequested);
@@ -453,7 +453,7 @@ public sealed class AppServerHostStatePublisherTests : IDisposable
         _responses.Enqueue(cancellationToken => Task.Delay(Timeout.Infinite, cancellationToken).ContinueWith(
             _ => HttpStatusCode.OK, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default));
 
-        SetState(new(CreatedTime, 0, 1, 1), notify: false);
+        SetState(new(CreatedTime, 0, 1, 1, AvailableWorkerLinks: 0), notify: false);
         Task stopping = publisher.StopAsync(CancellationToken.None);
         Assert.Same(_current, TakePublished());
         ScheduledTimer timeout = TakeTimer();

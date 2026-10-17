@@ -17,25 +17,26 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Functions.Rpc.Client;
 
 /// <summary>
-/// Computes timestamped worker counts and HTTP capacity from the worker registry and ScriptHost state.
+/// Computes timestamped worker counts, link headroom, and HTTP capacity from the worker registry and ScriptHost state.
 /// </summary>
 /// <remarks>
 /// <para>
 /// Capacity uses a fixed concurrency of 16 for each initialized HTTP-group worker that is ready for invocations.
 /// It is zero unless ScriptHost is running and the Host is not stopping. Active invocations do not reduce this total.
 /// Worker counts include initialized, linked workers regardless of invocation readiness or ScriptHost state.
+/// Available link headroom excludes slots consumed by pending and accepted worker links.
 /// </para>
 /// <para>
 /// A future improvement could propagate concurrency from the worker assignment payload through WorkerProxy to the Host,
 /// like <see cref="RpcClientWorkerChannel.FunctionGroupName"/>, allowing the platform to set different concurrency limits per worker.
 /// </para>
 /// <para>
-/// The manager recomputes the snapshot when linked channels change, the ScriptHost state changes, or a linked
-/// HTTP worker completes dispatcher setup and becomes ready. It only retries failed recomputes after a delay.
-/// Once the application starts stopping, the manager records zero capacity and never records positive capacity again.
+/// The manager recomputes the snapshot when linked channels or link headroom change, the ScriptHost state changes,
+/// or a linked HTTP worker completes dispatcher setup and becomes ready. It only retries failed recomputes after a delay.
+/// Once the application starts stopping, the manager records zero capacity and link headroom.
 /// </para>
 /// <para>
-/// An unexpected tracking failure withdraws capacity and preserves the last worker counts without stopping the Host.
+/// An unexpected tracking failure withdraws capacity and link headroom without stopping the Host.
 /// </para>
 /// </remarks>
 internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IComputeRuntimeStateManager
@@ -78,7 +79,12 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
         _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _current = new(_timeProvider.GetUtcNow(), HttpCapacity: 0, WorkerCount: 0, HttpWorkerCount: 0);
+        _current = new(
+            _timeProvider.GetUtcNow(),
+            HttpCapacity: 0,
+            WorkerCount: 0,
+            HttpWorkerCount: 0,
+            AvailableWorkerLinks: _channelRegistry.AvailableWorkerLinks);
     }
 
     /// <inheritdoc />
@@ -169,12 +175,15 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
     {
         // Keep pending waits across passes: cancelling them after every pass would throw inside their sources.
         Task<long>? initializedChannelsChanged = null;
+        Task<long>? workerLinkCapacityChanged = null;
         Task<long>? scriptHostStateChanged = null;
         List<Task> wakeups = [];
         while (!cancellationToken.IsCancellationRequested)
         {
             // Read the inputs first so a change during the recompute triggers another pass.
             long initializedChannelsVersion = _channelRegistry.InitializedChannelsVersion;
+            long workerLinkCapacityVersion = _channelRegistry.WorkerLinkCapacityVersion;
+            int availableWorkerLinks = _channelRegistry.AvailableWorkerLinks;
             long scriptHostStateVersion = _scriptHostManager.StateVersion;
             ScriptHostState scriptHostState = _scriptHostManager.State;
 
@@ -184,6 +193,12 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
                 initializedChannelsChanged = _channelRegistry.WaitForInitializedChannelsChangeAsync(initializedChannelsVersion, cancellationToken);
             }
 
+            if (workerLinkCapacityChanged is null || workerLinkCapacityChanged.IsCompleted)
+            {
+                workerLinkCapacityChanged =
+                    _channelRegistry.WaitForWorkerLinkCapacityChangeAsync(workerLinkCapacityVersion, cancellationToken);
+            }
+
             if (scriptHostStateChanged is null || scriptHostStateChanged.IsCompleted)
             {
                 scriptHostStateChanged = _scriptHostManager.WaitForStateChangeAsync(scriptHostStateVersion, cancellationToken);
@@ -191,10 +206,11 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
 
             wakeups.Clear();
             wakeups.Add(initializedChannelsChanged);
+            wakeups.Add(workerLinkCapacityChanged);
             wakeups.Add(scriptHostStateChanged);
             try
             {
-                Recompute(scriptHostState, scriptHostStateVersion, wakeups);
+                Recompute(scriptHostState, scriptHostStateVersion, availableWorkerLinks, wakeups);
             }
             catch (Exception exception)
             {
@@ -218,6 +234,16 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
                 await initializedChannelsChanged;
             }
 
+            if (workerLinkCapacityChanged.IsFaulted)
+            {
+                if (workerLinkCapacityChanged.Exception.InnerException is ObjectDisposedException)
+                {
+                    return;
+                }
+
+                await workerLinkCapacityChanged;
+            }
+
             if (scriptHostStateChanged.IsFaulted)
             {
                 // Surface the failure instead of retrying it in a tight loop.
@@ -231,8 +257,13 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
     /// </summary>
     /// <param name="scriptHostState">The ScriptHost state read before the recompute.</param>
     /// <param name="scriptHostStateVersion">The lifecycle version captured before reading the state.</param>
+    /// <param name="availableWorkerLinks">The remaining Host-admitted worker links.</param>
     /// <param name="wakeups">Receives pending setup and readiness tasks for linked HTTP workers.</param>
-    private void Recompute(ScriptHostState scriptHostState, long scriptHostStateVersion, List<Task> wakeups)
+    private void Recompute(
+        ScriptHostState scriptHostState,
+        long scriptHostStateVersion,
+        int availableWorkerLinks,
+        List<Task> wakeups)
     {
         long httpCapacity = 0;
         int httpWorkerCount = 0;
@@ -280,7 +311,13 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
             }
         }
 
-        UpdateSnapshot(httpCapacity, scriptHostState, scriptHostStateVersion, channels.Count, httpWorkerCount);
+        UpdateSnapshot(
+            httpCapacity,
+            scriptHostState,
+            scriptHostStateVersion,
+            channels.Count,
+            httpWorkerCount,
+            availableWorkerLinks);
     }
 
     private IRpcClientFunctionInvocationDispatcher? GetActiveDispatcher()
@@ -309,7 +346,7 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
         {
             _stopping |= stopping;
             stopping = _stopping;
-            if (_current.HttpCapacity == 0)
+            if (_current.HttpCapacity == 0 && _current.AvailableWorkerLinks == 0)
             {
                 return;
             }
@@ -325,7 +362,7 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
                 clockFailure = exception;
             }
 
-            snapshot = _current with { CreatedTime = createdTime, HttpCapacity = 0 };
+            snapshot = _current with { CreatedTime = createdTime, HttpCapacity = 0, AvailableWorkerLinks = 0 };
             changed = ReplaceSnapshotLocked(snapshot);
         }
 
@@ -349,8 +386,9 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
     /// <param name="scriptHostStateVersion">The lifecycle version used for this calculation.</param>
     /// <param name="workerCount">The initialized worker count.</param>
     /// <param name="httpWorkerCount">The initialized HTTP worker count.</param>
+    /// <param name="availableWorkerLinks">The remaining Host-admitted worker links.</param>
     private void UpdateSnapshot(long httpCapacity, ScriptHostState scriptHostState, long scriptHostStateVersion,
-        int workerCount, int httpWorkerCount)
+        int workerCount, int httpWorkerCount, int availableWorkerLinks)
     {
         ComputeRuntimeState snapshot;
         TaskCompletionSource changed;
@@ -364,12 +402,25 @@ internal sealed partial class ComputeRuntimeStateManager : BackgroundService, IC
                 httpCapacity = 0;
             }
 
-            if (_current.HttpCapacity == httpCapacity && _current.WorkerCount == workerCount && _current.HttpWorkerCount == httpWorkerCount)
+            if (stopping)
+            {
+                availableWorkerLinks = 0;
+            }
+
+            if (_current.HttpCapacity == httpCapacity
+                && _current.WorkerCount == workerCount
+                && _current.HttpWorkerCount == httpWorkerCount
+                && _current.AvailableWorkerLinks == availableWorkerLinks)
             {
                 return;
             }
 
-            snapshot = new(_timeProvider.GetUtcNow(), httpCapacity, workerCount, httpWorkerCount);
+            snapshot = new(
+                _timeProvider.GetUtcNow(),
+                httpCapacity,
+                workerCount,
+                httpWorkerCount,
+                availableWorkerLinks);
             changed = ReplaceSnapshotLocked(snapshot);
         }
 
