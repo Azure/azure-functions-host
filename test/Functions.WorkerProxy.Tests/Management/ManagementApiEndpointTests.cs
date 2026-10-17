@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -25,7 +24,6 @@ public class ManagementApiEndpointTests
 {
     private const string AssignPath = "/admin/worker/assignment";
     private const string InfraStatePath = "/admin/infra/instanceState";
-    private const string LinkAcknowledgement = "kf88qhaza5Utr1/ytURYhIP+EqlLJVUa877+zqQqmGE=";
     private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
@@ -89,28 +87,8 @@ public class ManagementApiEndpointTests
     }
 
     [Fact]
-    public async Task SplitInstanceStateRequiresAcknowledgementKeyAndReturnsNestedWorkerStateAfterAssignment()
+    public async Task SplitInstanceStateReturnsNestedWorkerStateAfterAssignment()
     {
-        Dictionary<string, string?> missingKeyConfiguration = new()
-        {
-            [$"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerContainerEncryptionKey)}"] = null,
-        };
-        await using WorkerProxyWebApplicationFactory missingKeyFactory = new(missingKeyConfiguration);
-        WorkerPodStateManager missingKeyManager = missingKeyFactory.Services.GetRequiredService<WorkerPodStateManager>();
-        Assert.True(missingKeyManager.OnWorkerAttached(1));
-        Assert.True(missingKeyManager.OnWorkerStartStream(1, "worker"));
-        using HttpClient missingKeyClient = missingKeyFactory.CreateWorkerProxyClient();
-        using CancellationTokenSource missingKeyTimeout = new(TestTimeout);
-        using StringContent missingKeyContent = JsonBody(SplitAssignment);
-        using HttpResponseMessage missingKeyAssignment =
-            await missingKeyClient.PutAsync(AssignPath, missingKeyContent, missingKeyTimeout.Token);
-        await AssertAssignmentErrorAsync(
-            missingKeyAssignment,
-            HttpStatusCode.ServiceUnavailable,
-            "LinkAcknowledgementUnavailable",
-            missingKeyTimeout.Token);
-        Assert.Equal(2, missingKeyManager.State.Revision);
-
         await using WorkerProxyWebApplicationFactory factory = new();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         Assert.True(manager.OnWorkerAttached(1));
@@ -156,6 +134,17 @@ public class ManagementApiEndpointTests
         Assert.True(manager.OnWorkerStartStream(1, "worker"));
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
+        JsonObject linkedAssignment = JsonNode.Parse(SplitAssignment)!.AsObject();
+        linkedAssignment["link"]!["state"] = "Linked";
+        using StringContent prematureLinkedContent = JsonBody(linkedAssignment.ToJsonString());
+        using HttpResponseMessage prematureLinked =
+            await client.PutAsync(AssignPath, prematureLinkedContent, timeout.Token);
+        await AssertAssignmentErrorAsync(
+            prematureLinked,
+            HttpStatusCode.Conflict,
+            "AssignmentConflict",
+            timeout.Token);
+
         using StringContent pendingContent = JsonBody(SplitAssignment);
         using HttpResponseMessage pending = await client.PutAsync(AssignPath, pendingContent, timeout.Token);
         await AssertAssignmentSuccessAsync(pending, HttpStatusCode.Created, timeout.Token);
@@ -166,19 +155,6 @@ public class ManagementApiEndpointTests
             await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
         }
 
-        JsonObject linkedAssignment = JsonNode.Parse(SplitAssignment)!.AsObject();
-        JsonObject linkRequest = linkedAssignment["link"]!.AsObject();
-        linkRequest["state"] = "Linked";
-        linkRequest["linkAcknowledgement"] = "invalid";
-        using StringContent invalidContent = JsonBody(linkedAssignment.ToJsonString());
-        using HttpResponseMessage invalid = await client.PutAsync(AssignPath, invalidContent, timeout.Token);
-        await AssertValidationAsync(
-            invalid,
-            timeout.Token,
-            ("InvalidValue", "link.linkAcknowledgement"));
-        Assert.False(poll.IsCompleted);
-
-        linkRequest["linkAcknowledgement"] = LinkAcknowledgement;
         using StringContent linkedContent = JsonBody(linkedAssignment.ToJsonString());
         using HttpResponseMessage linked = await client.PutAsync(AssignPath, linkedContent, timeout.Token);
         await AssertAssignmentSuccessAsync(linked, HttpStatusCode.NoContent, timeout.Token);
@@ -204,27 +180,30 @@ public class ManagementApiEndpointTests
         Assert.Equal(5, terminalDynamicState.GetProperty("revisionId").GetInt64());
         Assert.Equal("RemovalRequested", terminalDynamicState.GetProperty("status").GetString());
 
-        await using WorkerProxyWebApplicationFactory restoredFactory = new();
-        WorkerPodStateManager restoredManager = restoredFactory.Services.GetRequiredService<WorkerPodStateManager>();
-        Assert.True(restoredManager.OnWorkerAttached(1));
-        Assert.True(restoredManager.OnWorkerStartStream(1, "worker"));
-        using HttpClient restoredClient = restoredFactory.CreateWorkerProxyClient();
-        using StringContent restoredContent = JsonBody(linkedAssignment.ToJsonString());
-        using HttpResponseMessage restored =
-            await restoredClient.PutAsync(AssignPath, restoredContent, timeout.Token);
-        await AssertAssignmentSuccessAsync(restored, HttpStatusCode.Created, timeout.Token);
+        string terminalConflictJson = linkedAssignment.ToJsonString()
+            .Replace("test-runtime-pod", "other-runtime-pod", StringComparison.Ordinal)
+            .Replace("22222222-2222-2222-2222-222222222222", "33333333-3333-3333-3333-333333333333", StringComparison.Ordinal);
+        using StringContent terminalConflictContent = JsonBody(terminalConflictJson);
+        using HttpResponseMessage terminalConflict =
+            await client.PutAsync(AssignPath, terminalConflictContent, timeout.Token);
+        await AssertAssignmentErrorAsync(
+            terminalConflict,
+            HttpStatusCode.Conflict,
+            "AssignmentConflict",
+            timeout.Token);
 
-        using HttpResponseMessage restoredState = await restoredClient.GetAsync(InfraStatePath, timeout.Token);
-        Assert.Equal(HttpStatusCode.OK, restoredState.StatusCode);
-        using JsonDocument restoredDocument = JsonDocument.Parse(
-            await restoredState.Content.ReadAsStringAsync(timeout.Token));
-        JsonElement restoredDynamicState = restoredDocument.RootElement.GetProperty("dynamicState");
-        Assert.Equal("ReadyForWork", restoredDynamicState.GetProperty("status").GetString());
-        Assert.Equal("Linked", restoredDynamicState.GetProperty("link").GetProperty("state").GetString());
+        using StringContent terminatedReplayContent = JsonBody(linkedAssignment.ToJsonString());
+        using HttpResponseMessage terminatedReplay =
+            await client.PutAsync(AssignPath, terminatedReplayContent, timeout.Token);
+        await AssertAssignmentErrorAsync(
+            terminatedReplay,
+            HttpStatusCode.Conflict,
+            "WorkerTerminated",
+            timeout.Token);
     }
 
     [Fact]
-    public async Task SplitAssignmentRejectsSecondRuntimeAndPreservesLegacyStateContract()
+    public async Task SplitAssignmentRejectsRuntimeChangesAndPreservesLegacyStateContract()
     {
         await using WorkerProxyWebApplicationFactory factory = new();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -232,9 +211,28 @@ public class ManagementApiEndpointTests
         Assert.True(manager.OnWorkerStartStream(1, "worker"));
         using HttpClient client = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);
-        using StringContent initialContent = JsonBody(SplitAssignment);
+        JsonObject unlinkedAssignment = JsonNode.Parse(SplitAssignment)!.AsObject();
+        JsonObject unlinked = unlinkedAssignment["link"]!.AsObject();
+        unlinked["state"] = "Unlinked";
+        unlinked["runtime"] = null;
+        using StringContent initialContent = JsonBody(unlinkedAssignment.ToJsonString());
         using HttpResponseMessage initial = await client.PutAsync(AssignPath, initialContent, timeout.Token);
         await AssertAssignmentSuccessAsync(initial, HttpStatusCode.Created, timeout.Token);
+
+        JsonObject sameStateRuntime = JsonNode.Parse(SplitAssignment)!.AsObject();
+        sameStateRuntime["link"]!["state"] = "Unlinked";
+        using StringContent sameStateContent = JsonBody(sameStateRuntime.ToJsonString());
+        using HttpResponseMessage sameStateConflict =
+            await client.PutAsync(AssignPath, sameStateContent, timeout.Token);
+        await AssertAssignmentErrorAsync(
+            sameStateConflict,
+            HttpStatusCode.Conflict,
+            "AssignmentConflict",
+            timeout.Token);
+
+        using StringContent pendingContent = JsonBody(SplitAssignment);
+        using HttpResponseMessage pending = await client.PutAsync(AssignPath, pendingContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(pending, HttpStatusCode.NoContent, timeout.Token);
 
         string conflictingAssignment = SplitAssignment
             .Replace("test-runtime-pod", "other-runtime-pod", StringComparison.Ordinal)
@@ -248,14 +246,14 @@ public class ManagementApiEndpointTests
         using JsonDocument split = JsonDocument.Parse(await splitResponse.Content.ReadAsStringAsync(timeout.Token));
         JsonElement runtime = split.RootElement.GetProperty("dynamicState").GetProperty("link").GetProperty("runtime");
         Assert.Equal("test-runtime-pod", runtime.GetProperty("podName").GetString());
-        Assert.Equal(3, split.RootElement.GetProperty("dynamicState").GetProperty("revisionId").GetInt64());
+        Assert.Equal(4, split.RootElement.GetProperty("dynamicState").GetProperty("revisionId").GetInt64());
 
         using HttpResponseMessage legacyResponse = await client.GetAsync(StatePath, timeout.Token);
         Assert.Equal(HttpStatusCode.OK, legacyResponse.StatusCode);
         AssertNoStore(legacyResponse);
         using JsonDocument legacy = JsonDocument.Parse(await legacyResponse.Content.ReadAsStringAsync(timeout.Token));
         Assert.Equal("FunctionsWorkerPod", legacy.RootElement.GetProperty("functionsContainerType").GetString());
-        Assert.Equal(3, legacy.RootElement.GetProperty("revisionId").GetInt64());
+        Assert.Equal(4, legacy.RootElement.GetProperty("revisionId").GetInt64());
         Assert.True(legacy.RootElement.TryGetProperty("workerPodState", out _));
         Assert.False(legacy.RootElement.TryGetProperty("staticState", out _));
         Assert.False(legacy.RootElement.TryGetProperty("dynamicState", out _));

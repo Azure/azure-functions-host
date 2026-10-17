@@ -14,7 +14,6 @@ internal static class WorkerApiErrorCodes
     public const string InvalidValue = "InvalidValue";
     public const string InvalidRevision = "InvalidRevision";
     public const string WorkerNotReady = "WorkerNotReady";
-    public const string LinkAcknowledgementUnavailable = "LinkAcknowledgementUnavailable";
     public const string WorkerStateUnavailable = "WorkerStateUnavailable";
     public const string WorkerTerminated = "WorkerTerminated";
     public const string AssignmentConflict = "AssignmentConflict";

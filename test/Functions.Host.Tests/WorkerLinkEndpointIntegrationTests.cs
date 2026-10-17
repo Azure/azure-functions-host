@@ -11,7 +11,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.Rpc.Client;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 using Moq;
 using Xunit;
 
@@ -73,30 +72,71 @@ public sealed class WorkerLinkEndpointIntegrationTests
     public async Task Put_HeadroomCountsPendingAndAcceptedWorkerLinks()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
-        HeadroomRegistry registry = new(maxWorkerLinks: 2);
-        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, registry);
+        Dictionary<string, TaskCompletionSource<WorkerLinkResult>> links = new(StringComparer.Ordinal);
+        Lock linksLock = new();
+        _registry.Setup(value => value.LinkAsync(It.IsAny<string>(), Endpoint, It.IsAny<CancellationToken>()))
+            .Returns((string workerId, Uri _, CancellationToken token) =>
+            {
+                lock (linksLock)
+                {
+                    if (!links.TryGetValue(workerId, out TaskCompletionSource<WorkerLinkResult>? link))
+                    {
+                        if (links.Count == 2)
+                        {
+                            return Task.FromException<WorkerLinkResult>(
+                                new WorkerLinkException(WorkerLinkFailureReason.Conflict, "No link headroom."));
+                        }
+
+                        link = new(TaskCreationOptions.RunContinuationsAsynchronously);
+                        links.Add(workerId, link);
+                    }
+
+                    return link.Task.WaitAsync(token);
+                }
+            });
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
 
         Task<HttpResponseMessage> first = host.PutAsync(LinkJson(), timeout.Token, "worker-one");
-        await registry.WaitForLinkCountAsync(1, timeout.Token);
-        Assert.Equal(1, registry.AvailableWorkerLinks);
-        registry.Accept("worker-one");
+        await WaitForLinkCountAsync(1);
+        CompleteLink("worker-one");
         using (HttpResponseMessage accepted = await first.WaitAsync(timeout.Token))
         {
             await AssertLinkResponseAsync(accepted, HttpStatusCode.Created, timeout.Token);
         }
 
-        Assert.Equal(1, registry.AvailableWorkerLinks);
         Task<HttpResponseMessage> second = host.PutAsync(LinkJson(), timeout.Token, "worker-two");
-        await registry.WaitForLinkCountAsync(2, timeout.Token);
-        Assert.Equal(0, registry.AvailableWorkerLinks);
+        await WaitForLinkCountAsync(2);
 
         using HttpResponseMessage rejected = await host.PutAsync(LinkJson(), timeout.Token, "worker-three");
-        await AssertLinkErrorAsync(rejected, HttpStatusCode.Conflict, "LinkCapacityExhausted", timeout.Token);
+        await AssertLinkErrorAsync(rejected, HttpStatusCode.Conflict, "LinkConflict", timeout.Token);
 
-        registry.Accept("worker-two");
+        CompleteLink("worker-two");
         using HttpResponseMessage secondAccepted = await second.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(secondAccepted, HttpStatusCode.Created, timeout.Token);
-        Assert.Equal(0, registry.AvailableWorkerLinks);
+
+        void CompleteLink(string workerId)
+        {
+            lock (linksLock)
+            {
+                links[workerId].SetResult(new(null!, IsNewLink: true));
+            }
+        }
+
+        async Task WaitForLinkCountAsync(int count)
+        {
+            while (true)
+            {
+                lock (linksLock)
+                {
+                    if (links.Count == count)
+                    {
+                        return;
+                    }
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+            }
+        }
     }
 
     [Fact]
@@ -371,7 +411,6 @@ public sealed class WorkerLinkEndpointIntegrationTests
     [Theory]
     [InlineData(WorkerLinkFailureReason.Conflict, HttpStatusCode.Conflict, "LinkConflict")]
     [InlineData(WorkerLinkFailureReason.WorkerTerminated, HttpStatusCode.Conflict, "WorkerTerminated")]
-    [InlineData(WorkerLinkFailureReason.CapacityExhausted, HttpStatusCode.Conflict, "LinkCapacityExhausted")]
     [InlineData(WorkerLinkFailureReason.RuntimeStopping, HttpStatusCode.ServiceUnavailable, "RuntimeStopping")]
     [InlineData(WorkerLinkFailureReason.Unavailable, HttpStatusCode.ServiceUnavailable, "WorkerUnavailable")]
     [InlineData(WorkerLinkFailureReason.Timeout, HttpStatusCode.ServiceUnavailable, "LinkTimeout")]
@@ -467,161 +506,5 @@ public sealed class WorkerLinkEndpointIntegrationTests
         Assert.Equal(code, error.GetProperty("code").GetString());
         Assert.Equal(JsonValueKind.String, error.GetProperty("detail").ValueKind);
         Assert.False(string.IsNullOrWhiteSpace(error.GetProperty("detail").GetString()));
-    }
-
-    private sealed class HeadroomRegistry(int maxWorkerLinks) : IWorkerChannelRegistry
-    {
-        private readonly Dictionary<string, TaskCompletionSource<WorkerLinkResult>> _links = new(StringComparer.Ordinal);
-        private readonly Lock _lock = new();
-        private readonly TaskCompletionSource<long> _initializedChannelsChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private TaskCompletionSource _linksChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private long _workerLinkCapacityVersion;
-
-        public long InitializedChannelsVersion => 0;
-
-        public int AvailableWorkerLinks
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return Math.Max(0, maxWorkerLinks - _links.Count);
-                }
-            }
-        }
-
-        public long WorkerLinkCapacityVersion
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _workerLinkCapacityVersion;
-                }
-            }
-        }
-
-        public Task<WorkerLinkResult> LinkAsync(
-            string workerId,
-            Uri grpcEndpoint,
-            CancellationToken cancellationToken = default)
-        {
-            Task<WorkerLinkResult> link;
-            TaskCompletionSource? changed = null;
-            lock (_lock)
-            {
-                if (_links.TryGetValue(workerId, out TaskCompletionSource<WorkerLinkResult>? existing))
-                {
-                    link = existing.Task;
-                }
-                else if (_links.Count >= maxWorkerLinks)
-                {
-                    link = Task.FromException<WorkerLinkResult>(
-                        new WorkerLinkException(WorkerLinkFailureReason.CapacityExhausted, "No link headroom."));
-                }
-                else
-                {
-                    TaskCompletionSource<WorkerLinkResult> created =
-                        new(TaskCreationOptions.RunContinuationsAsynchronously);
-                    _links.Add(workerId, created);
-                    link = created.Task;
-                    changed = _linksChanged;
-                    _linksChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                    _workerLinkCapacityVersion++;
-                }
-            }
-
-            changed?.TrySetResult();
-            return link.WaitAsync(cancellationToken);
-        }
-
-        public Task<bool> UnlinkAsync(string workerId, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            TaskCompletionSource? changed = null;
-            bool removed;
-            lock (_lock)
-            {
-                removed = _links.Remove(workerId);
-                if (removed)
-                {
-                    changed = _linksChanged;
-                    _linksChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
-                    _workerLinkCapacityVersion++;
-                }
-            }
-
-            changed?.TrySetResult();
-            return Task.FromResult(removed);
-        }
-
-        public bool TryGetInitializedChannel(string workerId, out WorkerChannel channel)
-        {
-            channel = null!;
-            return false;
-        }
-
-        public IReadOnlyList<WorkerChannel> GetInitializedChannels() => [];
-
-        public Task<long> WaitForInitializedChannelsChangeAsync(
-            long lastKnownVersion,
-            CancellationToken cancellationToken = default) =>
-            _initializedChannelsChanged.Task.WaitAsync(cancellationToken);
-
-        public Task<WorkerChannel> WaitForFirstInitializedAsync(CancellationToken cancellationToken = default) =>
-            Task.FromException<WorkerChannel>(new NotSupportedException());
-
-        public async Task<long> WaitForWorkerLinkCapacityChangeAsync(
-            long lastKnownVersion,
-            CancellationToken cancellationToken = default)
-        {
-            while (true)
-            {
-                Task changed;
-                lock (_lock)
-                {
-                    if (_workerLinkCapacityVersion > lastKnownVersion)
-                    {
-                        return _workerLinkCapacityVersion;
-                    }
-
-                    changed = _linksChanged.Task;
-                }
-
-                await changed.WaitAsync(cancellationToken);
-            }
-        }
-
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-
-        internal void Accept(string workerId)
-        {
-            TaskCompletionSource<WorkerLinkResult> link;
-            lock (_lock)
-            {
-                link = _links[workerId];
-            }
-
-            link.TrySetResult(new(null!, IsNewLink: true));
-        }
-
-        internal async Task WaitForLinkCountAsync(int count, CancellationToken cancellationToken)
-        {
-            while (true)
-            {
-                Task changed;
-                lock (_lock)
-                {
-                    if (_links.Count == count)
-                    {
-                        return;
-                    }
-
-                    changed = _linksChanged.Task;
-                }
-
-                await changed.WaitAsync(cancellationToken);
-            }
-        }
     }
 }

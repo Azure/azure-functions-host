@@ -147,7 +147,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         TaskCompletionSource start;
         Task<WorkerChannel> link;
-        TaskCompletionSource capacityChanged;
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -171,7 +170,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             if (GetAvailableWorkerLinksLocked() == 0)
             {
                 throw new WorkerLinkException(
-                    WorkerLinkFailureReason.CapacityExhausted,
+                    WorkerLinkFailureReason.Conflict,
                     "The runtime has no remaining worker-link headroom.");
             }
 
@@ -181,10 +180,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             _linkAttempts.Add(workerId, slot);
             link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
             slot.LinkTask = link;
-            capacityChanged = AdvanceWorkerLinkCapacityVersionLocked();
+            NotifyWorkerLinkCapacityChangedLocked();
         }
 
-        capacityChanged.TrySetResult();
         // Publish the shared attempt before starting I/O so a retry cannot start a second connection.
         start.SetResult();
 
@@ -272,16 +270,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             RemoveEmptySlot(workerId, slot);
             if (!initialized)
             {
-                TaskCompletionSource capacityChanged = null;
                 lock (_stateLock)
                 {
                     if (_linkAttempts.Remove(workerId) && !_disposed)
                     {
-                        capacityChanged = AdvanceWorkerLinkCapacityVersionLocked();
+                        NotifyWorkerLinkCapacityChangedLocked();
                     }
                 }
-
-                capacityChanged?.TrySetResult();
             }
         }
     }
@@ -311,9 +306,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 using (gate)
                 {
                     operationSource.Token.ThrowIfCancellationRequested();
-
                     RpcClientWorkerChannel channel;
-                    TaskCompletionSource capacityChanged;
                     lock (_stateLock)
                     {
                         if (_disposed)
@@ -321,10 +314,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                             return false;
                         }
 
-                        channel = DetachChannelLocked(slot, expectedChannel: null, out capacityChanged);
+                        channel = DetachChannelLocked(slot, expectedChannel: null);
                     }
 
-                    capacityChanged?.TrySetResult();
                     if (channel is null)
                     {
                         return false;
@@ -426,7 +418,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         long lastKnownVersion,
         CancellationToken cancellationToken = default)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(lastKnownVersion);
         cancellationToken.ThrowIfCancellationRequested();
 
         while (true)
@@ -434,13 +425,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             Task changed;
             lock (_stateLock)
             {
-                ObjectDisposedException.ThrowIf(_disposed, this);
-                ArgumentOutOfRangeException.ThrowIfGreaterThan(lastKnownVersion, _workerLinkCapacityVersion);
                 if (_workerLinkCapacityVersion > lastKnownVersion)
                 {
                     return _workerLinkCapacityVersion;
                 }
 
+                ObjectDisposedException.ThrowIf(_disposed, this);
                 changed = _workerLinkCapacityChanged.Task;
             }
 
@@ -499,12 +489,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
-    private RpcClientWorkerChannel DetachChannelLocked(
-        WorkerSlot slot,
-        RpcClientWorkerChannel expectedChannel,
-        out TaskCompletionSource capacityChanged)
+    private RpcClientWorkerChannel DetachChannelLocked(WorkerSlot slot, RpcClientWorkerChannel expectedChannel)
     {
-        capacityChanged = null;
         RpcClientWorkerChannel channel = slot.Channel;
         if (channel is null || (expectedChannel is not null && !ReferenceEquals(channel, expectedChannel)))
         {
@@ -518,7 +504,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             slot.LinkTask = null;
             if (!_disposed)
             {
-                capacityChanged = AdvanceWorkerLinkCapacityVersionLocked();
+                NotifyWorkerLinkCapacityChangedLocked();
             }
         }
 
@@ -540,13 +526,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         initializedChannelsChanged.TrySetResult();
     }
 
-    private TaskCompletionSource AdvanceWorkerLinkCapacityVersionLocked()
+    private void NotifyWorkerLinkCapacityChangedLocked()
     {
         _workerLinkCapacityVersion++;
         TaskCompletionSource changed = _workerLinkCapacityChanged;
         _workerLinkCapacityChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        return changed;
+        changed.TrySetResult();
     }
 
     private int GetAvailableWorkerLinksLocked()
@@ -590,14 +575,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 // LinkAsync holds this gate until the monitor is tracked and publication completes. It also serializes this
                 // cleanup with unlink and shutdown.
                 RpcClientWorkerChannel removedChannel;
-                TaskCompletionSource capacityChanged;
                 lock (_stateLock)
                 {
                     // Only detach the channel associated with this completion signal.
-                    removedChannel = DetachChannelLocked(slot, channel, out capacityChanged);
+                    removedChannel = DetachChannelLocked(slot, channel);
                 }
 
-                capacityChanged?.TrySetResult();
                 if (removedChannel is null)
                 {
                     return;
@@ -678,13 +661,11 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             using (gate)
             {
                 RpcClientWorkerChannel channel;
-                TaskCompletionSource capacityChanged;
                 lock (_stateLock)
                 {
-                    channel = DetachChannelLocked(slot, expectedChannel: null, out capacityChanged);
+                    channel = DetachChannelLocked(slot, expectedChannel: null);
                 }
 
-                capacityChanged?.TrySetResult();
                 disposalException = await channel.DisposeAndCaptureExceptionAsync(disposalException);
             }
         }

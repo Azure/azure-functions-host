@@ -84,7 +84,7 @@ internal sealed class WorkerAssignment
     public SplitWorkerLink? SplitLink { get; }
 
     /// <summary>
-    /// Compares immutable assignment identity without depending on dictionary order or the caller's comparer.
+    /// Compares immutable assignment identity without including the mutable link state.
     /// </summary>
     public bool IsEquivalentTo(WorkerAssignment other)
     {

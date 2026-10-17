@@ -24,7 +24,7 @@ public class AppServerHostStateClientTests
     [Theory]
     [InlineData(16L, 2, 1, 3, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":16,"linkedWorkerCount":2,"availableWorkerLinks":3}""")]
     [InlineData(4294967296L, 268435457, 268435456, 268435455, """{"createdTime":"2026-10-02T12:34:56.123+00:00","httpCapacity":4294967296,"linkedWorkerCount":268435457,"availableWorkerLinks":268435455}""")]
-    public async Task PublishAsync_SendsCreatedTimeCapacityWorkerCountAndAvailableWorkerLinksButNotHttpWorkerCount(
+    public async Task PublishAsync_SendsCreatedTimeCapacityAndWorkerCountButNotHttpWorkerCount(
         long httpCapacity, int workerCount, int httpWorkerCount, int availableWorkerLinks, string expectedBody)
     {
         AppServerHostStateClient client = CreateClient();

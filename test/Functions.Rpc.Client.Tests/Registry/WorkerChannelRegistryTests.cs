@@ -397,41 +397,32 @@ public sealed partial class WorkerChannelRegistryTests
         harness.Enqueue(second);
         await using WorkerChannelRegistry registry = harness.Registry;
 
-        Assert.Equal(2, registry.AvailableWorkerLinks);
-        long capacityVersion = registry.WorkerLinkCapacityVersion;
-        Task<long> firstCapacityChange = registry.WaitForWorkerLinkCapacityChangeAsync(capacityVersion);
+        int initialHeadroom = registry.AvailableWorkerLinks;
         Task<WorkerChannel> firstLink = LinkAsync(registry, "first");
-        Assert.True(await firstCapacityChange.WaitAsync(TestTimeout) > capacityVersion);
-        Assert.Equal(1, registry.AvailableWorkerLinks);
+        Assert.Equal(initialHeadroom - 1, registry.AvailableWorkerLinks);
         await first.StartEntered.WaitAsync(TestTimeout);
-
-        capacityVersion = registry.WorkerLinkCapacityVersion;
-        Task<long> secondCapacityChange = registry.WaitForWorkerLinkCapacityChangeAsync(capacityVersion);
         Task<WorkerChannel> secondLink = LinkAsync(registry, secondWorkerId);
-        Assert.True(await secondCapacityChange.WaitAsync(TestTimeout) > capacityVersion);
-        Assert.Equal(0, registry.AvailableWorkerLinks);
+        Assert.Equal(initialHeadroom - 2, registry.AvailableWorkerLinks);
         await second.StartEntered.WaitAsync(TestTimeout);
 
         WorkerLinkException exhausted = await Assert.ThrowsAsync<WorkerLinkException>(() => LinkAsync(registry, "third"));
-        Assert.Equal(WorkerLinkFailureReason.CapacityExhausted, exhausted.Reason);
+        Assert.Equal(WorkerLinkFailureReason.Conflict, exhausted.Reason);
         Assert.False(firstLink.IsCompleted);
         Assert.False(secondLink.IsCompleted);
         Assert.Equal(2, harness.Transports.Count);
         second.AllowStart();
         Assert.Same(second.Channel, await secondLink.WaitAsync(TestTimeout));
+        Assert.Equal(initialHeadroom - 2, registry.AvailableWorkerLinks);
         Assert.False(firstLink.IsCompleted);
         Assert.Same(second.Channel, Assert.Single(registry.GetInitializedChannels()));
 
         if (failFirst)
         {
-            capacityVersion = registry.WorkerLinkCapacityVersion;
-            Task<long> releasedCapacity = registry.WaitForWorkerLinkCapacityChangeAsync(capacityVersion);
             IOException failure = new("First worker initialization failed.");
             first.FailStart(failure);
             IOException actual = await Assert.ThrowsAsync<IOException>(() => firstLink.WaitAsync(TestTimeout));
             Assert.Same(failure, actual);
-            Assert.True(await releasedCapacity.WaitAsync(TestTimeout) > capacityVersion);
-            Assert.Equal(1, registry.AvailableWorkerLinks);
+            Assert.Equal(initialHeadroom - 1, registry.AvailableWorkerLinks);
             Assert.Same(second.Channel, Assert.Single(registry.GetInitializedChannels()));
             Assert.Equal(1, first.DisposeCount);
             Assert.Equal(0, second.DisposeCount);
@@ -440,7 +431,7 @@ public sealed partial class WorkerChannelRegistryTests
         {
             first.AllowStart();
             Assert.Same(first.Channel, await firstLink.WaitAsync(TestTimeout));
-            Assert.Equal(0, registry.AvailableWorkerLinks);
+            Assert.Equal(initialHeadroom - 2, registry.AvailableWorkerLinks);
             Assert.Equal(2, registry.GetInitializedChannels().Count);
             Assert.True(registry.TryGetInitializedChannel("first", out WorkerChannel firstChannel));
             Assert.Same(first.Channel, firstChannel);
@@ -683,7 +674,7 @@ public sealed partial class WorkerChannelRegistryTests
     [Fact]
     public async Task Completion_RemovesOnlyTerminatedWorkerAndRetainsIdentity()
     {
-        RegistryHarness harness = new(maxWorkerLinks: 2);
+        RegistryHarness harness = new();
         ChannelControl first = new("first");
         ChannelControl other = new("other");
         ChannelControl replacement = new("replacement");
@@ -694,15 +685,12 @@ public sealed partial class WorkerChannelRegistryTests
 
         await LinkAsync(registry, "first");
         await LinkAsync(registry, "other");
-        Assert.Equal(0, registry.AvailableWorkerLinks);
-        long capacityVersion = registry.WorkerLinkCapacityVersion;
-        Task<long> capacityReleased = registry.WaitForWorkerLinkCapacityChangeAsync(capacityVersion);
+        int fullHeadroom = registry.AvailableWorkerLinks;
         first.Complete(new InvalidOperationException("transport failed"));
         await first.DisposeStarted.WaitAsync(TestTimeout);
         await WaitUntilAsync(() => !registry.TryGetInitializedChannel("first", out _));
 
-        Assert.True(await capacityReleased.WaitAsync(TestTimeout) > capacityVersion);
-        Assert.Equal(1, registry.AvailableWorkerLinks);
+        Assert.Equal(fullHeadroom + 1, registry.AvailableWorkerLinks);
         Assert.False(registry.TryGetInitializedChannel("first", out _));
         WorkerLinkException terminal = await Assert.ThrowsAsync<WorkerLinkException>(() => LinkAsync(registry, "first"));
         Assert.Equal(WorkerLinkFailureReason.WorkerTerminated, terminal.Reason);
@@ -712,7 +700,7 @@ public sealed partial class WorkerChannelRegistryTests
         Assert.Same(other.Channel, Assert.Single(registry.GetInitializedChannels()));
         WorkerChannel relinkedChannel = await LinkAsync(registry, "replacement");
         Assert.Same(replacement.Channel, relinkedChannel);
-        Assert.Equal(0, registry.AvailableWorkerLinks);
+        Assert.Equal(fullHeadroom, registry.AvailableWorkerLinks);
         Assert.Equal(2, registry.GetInitializedChannels().Count);
     }
 
@@ -892,25 +880,15 @@ public sealed partial class WorkerChannelRegistryTests
         RegistryHarness harness = new();
         WorkerChannelRegistry registry = harness.Registry;
         Task<WorkerChannel> waiter = registry.WaitForFirstInitializedAsync();
-        Task<long> capacityWaiter =
-            registry.WaitForWorkerLinkCapacityChangeAsync(registry.WorkerLinkCapacityVersion);
 
         await registry.DisposeAsync();
 
         ObjectDisposedException waiterException =
             await Assert.ThrowsAsync<ObjectDisposedException>(() => waiter.WaitAsync(TestTimeout));
-        ObjectDisposedException capacityException =
-            await Assert.ThrowsAsync<ObjectDisposedException>(() => capacityWaiter.WaitAsync(TestTimeout));
         ObjectDisposedException newWaitException =
             await Assert.ThrowsAsync<ObjectDisposedException>(() => registry.WaitForFirstInitializedAsync());
-        ObjectDisposedException newCapacityException =
-            await Assert.ThrowsAsync<ObjectDisposedException>(
-                () => registry.WaitForWorkerLinkCapacityChangeAsync(registry.WorkerLinkCapacityVersion));
-
         Assert.Equal(typeof(WorkerChannelRegistry).FullName, waiterException.ObjectName);
-        Assert.Equal(typeof(WorkerChannelRegistry).FullName, capacityException.ObjectName);
         Assert.Equal(typeof(WorkerChannelRegistry).FullName, newWaitException.ObjectName);
-        Assert.Equal(typeof(WorkerChannelRegistry).FullName, newCapacityException.ObjectName);
     }
 
     [Fact]

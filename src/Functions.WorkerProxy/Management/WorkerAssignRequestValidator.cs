@@ -4,8 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography;
-using System.Text;
 using Azure.Functions.WorkerProxy.State;
 
 namespace Azure.Functions.WorkerProxy.Management;
@@ -24,7 +22,6 @@ internal static class WorkerAssignRequestValidator
     public static bool TryCreateAssignment(
         WorkerAssignRequest request,
         string expectedPodName,
-        string? workerContainerEncryptionKey,
         [NotNullWhen(true)] out WorkerAssignment? assignment,
         out IReadOnlyList<RequestValidationError> validationErrors)
     {
@@ -60,7 +57,6 @@ internal static class WorkerAssignRequestValidator
         ValidateSplitState(
             request,
             expectedPodName,
-            workerContainerEncryptionKey,
             errors,
             out SplitWorkerStaticState? splitStaticState,
             out SplitWorkerLink? splitLink);
@@ -91,7 +87,6 @@ internal static class WorkerAssignRequestValidator
     private static void ValidateSplitState(
         WorkerAssignRequest request,
         string expectedPodName,
-        string? workerContainerEncryptionKey,
         List<RequestValidationError> errors,
         out SplitWorkerStaticState? staticState,
         out SplitWorkerLink? link)
@@ -115,51 +110,28 @@ internal static class WorkerAssignRequestValidator
             return;
         }
 
+        if (staticRequest.IsDiscoveryPod is not { } isDiscoveryPod
+            || staticRequest.IsAlwaysReady is not { } staticAlwaysReady
+            || string.IsNullOrWhiteSpace(staticRequest.FunctionGroup)
+            || staticRequest.ConfigLastModifiedTime is not { } configLastModifiedTime
+            || staticRequest.ContentLastModifiedTime is not { } contentLastModifiedTime)
+        {
+            errors.Add(new(WorkerApiErrorCodes.Required, "staticState"));
+            return;
+        }
+
+        int initialErrorCount = errors.Count;
         SplitPodIdentity? self = ValidatePodIdentity(
             staticRequest.Self, "staticState.self", WorkerPodType, errors);
         SplitWorkerLinkState? linkState = ValidateLinkState(linkRequest.State, errors);
         SplitPodIdentity? runtime = linkRequest.Runtime is null
             ? null
             : ValidatePodIdentity(linkRequest.Runtime, "link.runtime", RuntimePodType, errors);
-
-        if (staticRequest.IsDiscoveryPod is null)
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "staticState.isDiscoveryPod"));
-        }
-
-        if (staticRequest.IsAlwaysReady is null)
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "staticState.isAlwaysReady"));
-        }
-
-        if (string.IsNullOrWhiteSpace(staticRequest.FunctionGroup))
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "staticState.functionGroup"));
-        }
-
-        if (staticRequest.ConfigLastModifiedTime is null)
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "staticState.configLastModifiedTime"));
-        }
-
-        if (staticRequest.ContentLastModifiedTime is null)
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "staticState.contentLastModifiedTime"));
-        }
-
-        bool runtimeRequired = linkState == SplitWorkerLinkState.Pending || linkState == SplitWorkerLinkState.Linked;
-        if (runtimeRequired && runtime is null)
+        if (linkRequest.Runtime is null
+            && linkState is SplitWorkerLinkState.Pending or SplitWorkerLinkState.Linked)
         {
             errors.Add(new(WorkerApiErrorCodes.Required, "link.runtime"));
         }
-
-        ValidateLinkAcknowledgement(
-            linkRequest,
-            linkState,
-            self,
-            runtime,
-            workerContainerEncryptionKey,
-            errors);
 
         if (self is not null)
         {
@@ -196,14 +168,9 @@ internal static class WorkerAssignRequestValidator
             errors.Add(new(WorkerApiErrorCodes.InvalidValue, "link.runtime"));
         }
 
-        if (errors.Count > 0
+        if (errors.Count != initialErrorCount
             || self is null
-            || linkState is null
-            || staticRequest.IsDiscoveryPod is not { } isDiscoveryPod
-            || staticRequest.IsAlwaysReady is not { } staticAlwaysReady
-            || staticRequest.FunctionGroup is not { } staticFunctionGroup
-            || staticRequest.ConfigLastModifiedTime is not { } configLastModifiedTime
-            || staticRequest.ContentLastModifiedTime is not { } contentLastModifiedTime)
+            || linkState is null)
         {
             return;
         }
@@ -212,60 +179,10 @@ internal static class WorkerAssignRequestValidator
             self,
             isDiscoveryPod,
             staticAlwaysReady,
-            staticFunctionGroup,
+            staticRequest.FunctionGroup,
             configLastModifiedTime,
             contentLastModifiedTime);
         link = new(linkState.Value, runtime);
-    }
-
-    private static void ValidateLinkAcknowledgement(
-        SplitWorkerLinkRequest request,
-        SplitWorkerLinkState? linkState,
-        SplitPodIdentity? self,
-        SplitPodIdentity? runtime,
-        string? workerContainerEncryptionKey,
-        List<RequestValidationError> errors)
-    {
-        if (linkState != SplitWorkerLinkState.Linked)
-        {
-            if (request.LinkAcknowledgement is not null)
-            {
-                errors.Add(new(WorkerApiErrorCodes.InvalidValue, "link.linkAcknowledgement"));
-            }
-
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(request.LinkAcknowledgement))
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, "link.linkAcknowledgement"));
-            return;
-        }
-
-        if (self is null || runtime is null || string.IsNullOrWhiteSpace(workerContainerEncryptionKey))
-        {
-            return;
-        }
-
-        Span<byte> acknowledgement = stackalloc byte[HMACSHA256.HashSizeInBytes];
-        if (!Convert.TryFromBase64String(request.LinkAcknowledgement, acknowledgement, out int bytesWritten)
-            || bytesWritten != acknowledgement.Length)
-        {
-            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "link.linkAcknowledgement"));
-            return;
-        }
-
-        string payload = string.Concat(
-            self.PodGuid.ToString("D"),
-            "\n",
-            runtime.PodGuid.ToString("D"));
-        byte[] expected = HMACSHA256.HashData(
-            Encoding.UTF8.GetBytes(workerContainerEncryptionKey),
-            Encoding.UTF8.GetBytes(payload));
-        if (!CryptographicOperations.FixedTimeEquals(expected, acknowledgement))
-        {
-            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "link.linkAcknowledgement"));
-        }
     }
 
     private static SplitWorkerLinkState? ValidateLinkState(string? value, List<RequestValidationError> errors)
@@ -307,76 +224,34 @@ internal static class WorkerAssignRequestValidator
             return null;
         }
 
-        bool valid = true;
-        valid &= ValidateRequired(request.ResourceNamespace, $"{target}.resourceNamespace", errors);
-        valid &= ValidateRequired(request.PodName, $"{target}.podName", errors);
-        if (request.PodGuid is null || request.PodGuid == Guid.Empty)
-        {
-            errors.Add(new(WorkerApiErrorCodes.Required, $"{target}.podGuid"));
-            valid = false;
-        }
-
-        valid &= ValidateRequired(request.LegionStampName, $"{target}.legionStampName", errors);
-        if (!string.Equals(request.PodType, expectedPodType, StringComparison.Ordinal))
-        {
-            errors.Add(new(
-                string.IsNullOrWhiteSpace(request.PodType) ? WorkerApiErrorCodes.Required : WorkerApiErrorCodes.InvalidValue,
-                $"{target}.podType"));
-            valid = false;
-        }
-
-        SplitFunctionAppIdentity? app = ValidateFunctionAppIdentity(request.App, $"{target}.app", errors);
-        if (!valid || app is null
-            || request.ResourceNamespace is not { } resourceNamespace
-            || request.PodName is not { } podName
+        if (string.IsNullOrWhiteSpace(request.ResourceNamespace)
+            || string.IsNullOrWhiteSpace(request.PodName)
             || request.PodGuid is not { } podGuid
-            || request.LegionStampName is not { } legionStampName)
-        {
-            return null;
-        }
-
-        return new(resourceNamespace, podName, podGuid, legionStampName, expectedPodType, app);
-    }
-
-    private static SplitFunctionAppIdentity? ValidateFunctionAppIdentity(
-        SplitFunctionAppIdentityRequest? request,
-        string target,
-        List<RequestValidationError> errors)
-    {
-        if (request is null)
+            || podGuid == Guid.Empty
+            || string.IsNullOrWhiteSpace(request.LegionStampName)
+            || string.IsNullOrWhiteSpace(request.PodType)
+            || request.App is not { } app
+            || string.IsNullOrWhiteSpace(app.FunctionAppName)
+            || app.FunctionAppSiteId is not { } functionAppSiteId
+            || string.IsNullOrWhiteSpace(app.AntaresStampName))
         {
             errors.Add(new(WorkerApiErrorCodes.Required, target));
             return null;
         }
 
-        bool valid = ValidateRequired(request.FunctionAppName, $"{target}.functionAppName", errors);
-        if (request.FunctionAppSiteId is null)
+        if (!string.Equals(request.PodType, expectedPodType, StringComparison.Ordinal))
         {
-            errors.Add(new(WorkerApiErrorCodes.Required, $"{target}.functionAppSiteId"));
-            valid = false;
-        }
-
-        valid &= ValidateRequired(request.AntaresStampName, $"{target}.antaresStampName", errors);
-        if (!valid
-            || request.FunctionAppName is not { } functionAppName
-            || request.FunctionAppSiteId is not { } functionAppSiteId
-            || request.AntaresStampName is not { } antaresStampName)
-        {
+            errors.Add(new(WorkerApiErrorCodes.InvalidValue, $"{target}.podType"));
             return null;
         }
 
-        return new(functionAppName, functionAppSiteId, antaresStampName);
-    }
-
-    private static bool ValidateRequired(string? value, string target, List<RequestValidationError> errors)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            return true;
-        }
-
-        errors.Add(new(WorkerApiErrorCodes.Required, target));
-        return false;
+        return new(
+            request.ResourceNamespace,
+            request.PodName,
+            podGuid,
+            request.LegionStampName,
+            expectedPodType,
+            new(app.FunctionAppName, functionAppSiteId, app.AntaresStampName));
     }
 
     private static WorkerStartupMode? ValidateStartupMode(string? value, List<RequestValidationError> errors)

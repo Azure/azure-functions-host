@@ -71,7 +71,6 @@ public class WorkerLinkControllerTests
     [Theory]
     [InlineData(WorkerLinkFailureReason.Conflict, StatusCodes.Status409Conflict, "LinkConflict")]
     [InlineData(WorkerLinkFailureReason.WorkerTerminated, StatusCodes.Status409Conflict, "WorkerTerminated")]
-    [InlineData(WorkerLinkFailureReason.CapacityExhausted, StatusCodes.Status409Conflict, "LinkCapacityExhausted")]
     [InlineData(WorkerLinkFailureReason.RuntimeStopping, StatusCodes.Status503ServiceUnavailable, "RuntimeStopping")]
     [InlineData(WorkerLinkFailureReason.Unavailable, StatusCodes.Status503ServiceUnavailable, "WorkerUnavailable")]
     [InlineData(WorkerLinkFailureReason.Timeout, StatusCodes.Status503ServiceUnavailable, "LinkTimeout")]

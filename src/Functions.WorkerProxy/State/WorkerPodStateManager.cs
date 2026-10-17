@@ -243,14 +243,14 @@ internal sealed class WorkerPodStateManager
                     return WorkerAssignmentResult.AssignmentConflict;
                 }
 
-                if (_state.AssignmentState == WorkerAssignmentState.Failed)
-                {
-                    return WorkerAssignmentResult.WorkerTerminated;
-                }
-
                 if (!TryAdvanceSplitLinkLocked(assignment.SplitLink, out SplitWorkerLink? advancedLink))
                 {
                     return WorkerAssignmentResult.AssignmentConflict;
+                }
+
+                if (_state.AssignmentState == WorkerAssignmentState.Failed)
+                {
+                    return WorkerAssignmentResult.WorkerTerminated;
                 }
 
                 if (advancedLink is not null)
@@ -270,7 +270,11 @@ internal sealed class WorkerPodStateManager
                 return WorkerAssignmentResult.WorkerNotReady;
             }
 
-            // Initial state is level-triggered so a signed Linked assignment can restore platform state after restart.
+            if (assignment.SplitLink?.State == SplitWorkerLinkState.Linked)
+            {
+                return WorkerAssignmentResult.AssignmentConflict;
+            }
+
             // No asynchronous specialization occurs: publish Ready directly, with a single revision increment.
             WorkerPodState assigned = _state with
             {
@@ -305,33 +309,27 @@ internal sealed class WorkerPodStateManager
             return current is null && requested is null;
         }
 
+        if (current.State == requested.State)
+        {
+            return current == requested;
+        }
+
         if (current.Runtime is not null && !Equals(current.Runtime, requested.Runtime))
         {
             return false;
         }
 
-        if (!IsValidSplitLinkTransition(current.State, requested.State))
+        bool validTransition =
+            (current.State == SplitWorkerLinkState.Unlinked && requested.State == SplitWorkerLinkState.Pending)
+            || (current.State == SplitWorkerLinkState.Pending && requested.State == SplitWorkerLinkState.Linked);
+        if (!validTransition)
         {
             return false;
-        }
-
-        if (current == requested)
-        {
-            return true;
         }
 
         advanced = requested;
         return true;
     }
-
-    private static bool IsValidSplitLinkTransition(SplitWorkerLinkState current, SplitWorkerLinkState requested) =>
-        current switch
-        {
-            SplitWorkerLinkState.Unlinked => requested is SplitWorkerLinkState.Unlinked or SplitWorkerLinkState.Pending,
-            SplitWorkerLinkState.Pending => requested is SplitWorkerLinkState.Pending or SplitWorkerLinkState.Linked,
-            SplitWorkerLinkState.Linked => requested == SplitWorkerLinkState.Linked,
-            _ => false
-        };
 
     /// <summary>
     /// Stores the new state and completes all pending polls with that snapshot, then clears the waiters.

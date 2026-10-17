@@ -67,11 +67,6 @@ internal sealed class SplitWorkerLinkRequest
 {
     public string? State { get; init; }
 
-    /// <summary>
-    /// Gets the Base64 HMAC-SHA256 of <c>{workerPodGuid:D}\n{runtimePodGuid:D}</c>, keyed by the worker container key.
-    /// </summary>
-    public string? LinkAcknowledgement { get; init; }
-
     public SplitPodIdentityRequest? Runtime { get; init; }
 }
 

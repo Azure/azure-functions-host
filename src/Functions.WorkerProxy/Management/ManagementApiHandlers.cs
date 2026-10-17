@@ -20,29 +20,14 @@ internal static class ManagementApiHandlers
         manager.State.IsWorkerReady ? TypedResults.Ok() : TypedResults.StatusCode(StatusCodes.Status503ServiceUnavailable);
 
     public static IResult AssignWorker(WorkerAssignRequest request, WorkerPodStateManager manager)
-        => AssignWorker(request, manager, workerContainerEncryptionKey: null);
-
-    public static IResult AssignWorker(
-        WorkerAssignRequest request,
-        WorkerPodStateManager manager,
-        string? workerContainerEncryptionKey)
     {
         if (!WorkerAssignRequestValidator.TryCreateAssignment(
             request,
             manager.State.PodName,
-            workerContainerEncryptionKey,
             out WorkerAssignment? assignment,
             out IReadOnlyList<RequestValidationError> errors))
         {
             return ValidationError(errors);
-        }
-
-        if (assignment.SplitLink is not null && string.IsNullOrWhiteSpace(workerContainerEncryptionKey))
-        {
-            return Error(
-                StatusCodes.Status503ServiceUnavailable,
-                WorkerApiErrorCodes.LinkAcknowledgementUnavailable,
-                "The worker link acknowledgement key is unavailable.");
         }
 
         return manager.Assign(assignment) switch
