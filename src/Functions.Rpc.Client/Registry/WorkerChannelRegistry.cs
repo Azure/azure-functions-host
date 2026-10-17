@@ -8,10 +8,12 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.Rpc.Client;
 
@@ -32,6 +34,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private readonly ILogger<WorkerChannelRegistry> _logger;
     private readonly Dictionary<string, WorkerSlot> _linkAttempts = new(StringComparer.Ordinal);
     private readonly TimeSpan _linkTimeout;
+    private readonly int _maxWorkerLinks;
     private readonly HashSet<Task> _monitorTasks = [];
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
@@ -43,12 +46,15 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     // Disposal signals without advancing the version; asynchronous continuations keep waiters off the lock.
     private TaskCompletionSource _initializedChannelsChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private long _initializedChannelsVersion;
+    private TaskCompletionSource _workerLinkCapacityChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private long _workerLinkCapacityVersion;
 
     public WorkerChannelRegistry(
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
-        ILogger<WorkerChannelRegistry> logger)
-        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout)
+        ILogger<WorkerChannelRegistry> logger,
+        IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
+        : this(duplexChannelFactory, channelFactory, logger, workerConcurrencyOptions, DefaultLinkTimeout)
     {
     }
 
@@ -57,13 +63,66 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
         TimeSpan linkTimeout)
+        : this(
+            duplexChannelFactory,
+            channelFactory,
+            logger,
+            Options.Create(new WorkerConcurrencyOptions()),
+            linkTimeout)
+    {
+    }
+
+    internal WorkerChannelRegistry(
+        IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
+        IRpcClientWorkerChannelFactory channelFactory,
+        ILogger<WorkerChannelRegistry> logger)
+        : this(
+            duplexChannelFactory,
+            channelFactory,
+            logger,
+            Options.Create(new WorkerConcurrencyOptions()),
+            DefaultLinkTimeout)
+    {
+    }
+
+    internal WorkerChannelRegistry(
+        IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
+        IRpcClientWorkerChannelFactory channelFactory,
+        ILogger<WorkerChannelRegistry> logger,
+        IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
+        TimeSpan linkTimeout)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(workerConcurrencyOptions);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
+        _maxWorkerLinks = workerConcurrencyOptions.Value.MaxWorkerCount;
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(_maxWorkerLinks);
+    }
+
+    public int AvailableWorkerLinks
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return GetAvailableWorkerLinksLocked();
+            }
+        }
+    }
+
+    public long WorkerLinkCapacityVersion
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _workerLinkCapacityVersion;
+            }
+        }
     }
 
     public long InitializedChannelsVersion
@@ -88,6 +147,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         TaskCompletionSource start;
         Task<WorkerChannel> link;
+        TaskCompletionSource capacityChanged;
         lock (_stateLock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -108,14 +168,23 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, cancellationToken), isNewLink: false);
             }
 
+            if (GetAvailableWorkerLinksLocked() == 0)
+            {
+                throw new WorkerLinkException(
+                    WorkerLinkFailureReason.CapacityExhausted,
+                    "The runtime has no remaining worker-link headroom.");
+            }
+
             start = new(TaskCreationOptions.RunContinuationsAsynchronously);
             WorkerSlot slot = new() { Endpoint = grpcEndpoint };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
             link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
             slot.LinkTask = link;
+            capacityChanged = AdvanceWorkerLinkCapacityVersionLocked();
         }
 
+        capacityChanged.TrySetResult();
         // Publish the shared attempt before starting I/O so a retry cannot start a second connection.
         start.SetResult();
 
@@ -203,10 +272,16 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             RemoveEmptySlot(workerId, slot);
             if (!initialized)
             {
+                TaskCompletionSource capacityChanged = null;
                 lock (_stateLock)
                 {
-                    _linkAttempts.Remove(workerId);
+                    if (_linkAttempts.Remove(workerId) && !_disposed)
+                    {
+                        capacityChanged = AdvanceWorkerLinkCapacityVersionLocked();
+                    }
                 }
+
+                capacityChanged?.TrySetResult();
             }
         }
     }
@@ -238,6 +313,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                     operationSource.Token.ThrowIfCancellationRequested();
 
                     RpcClientWorkerChannel channel;
+                    TaskCompletionSource capacityChanged;
                     lock (_stateLock)
                     {
                         if (_disposed)
@@ -245,9 +321,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                             return false;
                         }
 
-                        channel = DetachChannelLocked(slot, expectedChannel: null);
+                        channel = DetachChannelLocked(slot, expectedChannel: null, out capacityChanged);
                     }
 
+                    capacityChanged?.TrySetResult();
                     if (channel is null)
                     {
                         return false;
@@ -345,6 +422,32 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
+    public async Task<long> WaitForWorkerLinkCapacityChangeAsync(
+        long lastKnownVersion,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(lastKnownVersion);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        while (true)
+        {
+            Task changed;
+            lock (_stateLock)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                ArgumentOutOfRangeException.ThrowIfGreaterThan(lastKnownVersion, _workerLinkCapacityVersion);
+                if (_workerLinkCapacityVersion > lastKnownVersion)
+                {
+                    return _workerLinkCapacityVersion;
+                }
+
+                changed = _workerLinkCapacityChanged.Task;
+            }
+
+            await changed.WaitAsync(cancellationToken);
+        }
+    }
+
     public ValueTask DisposeAsync()
     {
         lock (_disposeLock)
@@ -365,6 +468,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             slots = [.. _slots];
             monitorTasks = [.. _monitorTasks];
             _initializedChannelsChanged.TrySetResult();
+            _workerLinkCapacityChanged.TrySetResult();
         }
 
         Exception disposalException = null;
@@ -395,8 +499,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
-    private RpcClientWorkerChannel DetachChannelLocked(WorkerSlot slot, RpcClientWorkerChannel expectedChannel)
+    private RpcClientWorkerChannel DetachChannelLocked(
+        WorkerSlot slot,
+        RpcClientWorkerChannel expectedChannel,
+        out TaskCompletionSource capacityChanged)
     {
+        capacityChanged = null;
         RpcClientWorkerChannel channel = slot.Channel;
         if (channel is null || (expectedChannel is not null && !ReferenceEquals(channel, expectedChannel)))
         {
@@ -408,6 +516,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         {
             slot.Terminal = true;
             slot.LinkTask = null;
+            if (!_disposed)
+            {
+                capacityChanged = AdvanceWorkerLinkCapacityVersionLocked();
+            }
         }
 
         NotifyInitializedChannelsChangedLocked();
@@ -427,6 +539,20 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         _initializedChannelsChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
         initializedChannelsChanged.TrySetResult();
     }
+
+    private TaskCompletionSource AdvanceWorkerLinkCapacityVersionLocked()
+    {
+        _workerLinkCapacityVersion++;
+        TaskCompletionSource changed = _workerLinkCapacityChanged;
+        _workerLinkCapacityChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        return changed;
+    }
+
+    private int GetAvailableWorkerLinksLocked()
+        => _disposed
+            ? 0
+            : Math.Max(0, _maxWorkerLinks - _linkAttempts.Values.Count(slot => !slot.Terminal));
 
     private void RemoveEmptySlot(string workerId, WorkerSlot slot)
     {
@@ -464,12 +590,14 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 // LinkAsync holds this gate until the monitor is tracked and publication completes. It also serializes this
                 // cleanup with unlink and shutdown.
                 RpcClientWorkerChannel removedChannel;
+                TaskCompletionSource capacityChanged;
                 lock (_stateLock)
                 {
                     // Only detach the channel associated with this completion signal.
-                    removedChannel = DetachChannelLocked(slot, channel);
+                    removedChannel = DetachChannelLocked(slot, channel, out capacityChanged);
                 }
 
+                capacityChanged?.TrySetResult();
                 if (removedChannel is null)
                 {
                     return;
@@ -550,11 +678,13 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             using (gate)
             {
                 RpcClientWorkerChannel channel;
+                TaskCompletionSource capacityChanged;
                 lock (_stateLock)
                 {
-                    channel = DetachChannelLocked(slot, expectedChannel: null);
+                    channel = DetachChannelLocked(slot, expectedChannel: null, out capacityChanged);
                 }
 
+                capacityChanged?.TrySetResult();
                 disposalException = await channel.DisposeAndCaptureExceptionAsync(disposalException);
             }
         }

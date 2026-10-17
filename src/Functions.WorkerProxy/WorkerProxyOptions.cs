@@ -19,6 +19,11 @@ internal sealed class WorkerProxyOptions
     public string PodName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the worker-pod secret used to authenticate a split link promotion.
+    /// </summary>
+    public string? WorkerContainerEncryptionKey { get; set; }
+
+    /// <summary>
     /// Gets or sets the HTTP/1 management listener port.
     /// </summary>
     public int ManagementPort { get; set; } = 80;

@@ -243,9 +243,26 @@ internal sealed class WorkerPodStateManager
                     return WorkerAssignmentResult.AssignmentConflict;
                 }
 
-                return _state.AssignmentState == WorkerAssignmentState.Failed
-                    ? WorkerAssignmentResult.WorkerTerminated
-                    : WorkerAssignmentResult.AlreadyAssigned;
+                if (_state.AssignmentState == WorkerAssignmentState.Failed)
+                {
+                    return WorkerAssignmentResult.WorkerTerminated;
+                }
+
+                if (!TryAdvanceSplitLinkLocked(assignment.SplitLink, out SplitWorkerLink? advancedLink))
+                {
+                    return WorkerAssignmentResult.AssignmentConflict;
+                }
+
+                if (advancedLink is not null)
+                {
+                    UpdateStateAndNotifyWaitersLocked(_state with
+                    {
+                        Revision = checked(_state.Revision + 1),
+                        SplitLink = advancedLink
+                    });
+                }
+
+                return WorkerAssignmentResult.AlreadyAssigned;
             }
 
             if (!_state.IsWorkerReady)
@@ -261,7 +278,9 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
-                IsAlwaysReady = assignment.IsAlwaysReady
+                IsAlwaysReady = assignment.IsAlwaysReady,
+                SplitStaticState = assignment.SplitStaticState,
+                SplitLink = assignment.SplitLink
             };
 
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.
@@ -275,6 +294,43 @@ internal sealed class WorkerPodStateManager
             return WorkerAssignmentResult.Created;
         }
     }
+
+    private bool TryAdvanceSplitLinkLocked(SplitWorkerLink? requested, out SplitWorkerLink? advanced)
+    {
+        advanced = null;
+        SplitWorkerLink? current = _state.SplitLink;
+        if (current is null || requested is null)
+        {
+            return current is null && requested is null;
+        }
+
+        if (current.Runtime is not null && !Equals(current.Runtime, requested.Runtime))
+        {
+            return false;
+        }
+
+        if (!IsValidSplitLinkTransition(current.State, requested.State))
+        {
+            return false;
+        }
+
+        if (current == requested)
+        {
+            return true;
+        }
+
+        advanced = requested;
+        return true;
+    }
+
+    private static bool IsValidSplitLinkTransition(SplitWorkerLinkState current, SplitWorkerLinkState requested) =>
+        current switch
+        {
+            SplitWorkerLinkState.Unlinked => requested is SplitWorkerLinkState.Unlinked or SplitWorkerLinkState.Pending,
+            SplitWorkerLinkState.Pending => requested is SplitWorkerLinkState.Pending or SplitWorkerLinkState.Linked,
+            SplitWorkerLinkState.Linked => requested == SplitWorkerLinkState.Linked,
+            _ => false
+        };
 
     /// <summary>
     /// Stores the new state and completes all pending polls with that snapshot, then clears the waiters.

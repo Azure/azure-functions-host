@@ -63,8 +63,8 @@ public sealed partial class WorkerLinkController : Controller
     /// <returns>
     /// <c>201</c> for a newly created link or <c>200</c> for a matching retry, after initialization and registration.
     /// Returns <c>400</c> with a validation errors envelope, <c>409</c> when the identity is already linked to a
-    /// different endpoint or its channel has terminated, or <c>503</c> when the runtime is stopping or the worker
-    /// connection or handshake is unavailable or times out.
+    /// different endpoint, its channel has terminated, or link capacity is exhausted, or <c>503</c> when the runtime
+    /// is stopping or the worker connection or handshake is unavailable or times out.
     /// Link failures return an error envelope with a stable code. No Location header is returned.
     /// </returns>
     /// <remarks>
@@ -168,6 +168,8 @@ public sealed partial class WorkerLinkController : Controller
                 "The worker identity is already linked to another endpoint."),
             WorkerLinkFailureReason.WorkerTerminated => (StatusCodes.Status409Conflict, ErrorCodes.WorkerTerminated,
                 "The worker's initialized channel has terminated."),
+            WorkerLinkFailureReason.CapacityExhausted => (StatusCodes.Status409Conflict, ErrorCodes.LinkCapacityExhausted,
+                "The runtime has no available worker link capacity."),
             WorkerLinkFailureReason.RuntimeStopping => (StatusCodes.Status503ServiceUnavailable, ErrorCodes.RuntimeStopping,
                 "The runtime is stopping."),
             WorkerLinkFailureReason.Unavailable => (StatusCodes.Status503ServiceUnavailable, ErrorCodes.WorkerUnavailable,
@@ -198,6 +200,7 @@ public sealed partial class WorkerLinkController : Controller
     {
         public const string InvalidBody = nameof(InvalidBody);
         public const string InvalidEndpoint = nameof(InvalidEndpoint);
+        public const string LinkCapacityExhausted = nameof(LinkCapacityExhausted);
         public const string LinkConflict = nameof(LinkConflict);
         public const string LinkTimeout = nameof(LinkTimeout);
         public const string Required = nameof(Required);

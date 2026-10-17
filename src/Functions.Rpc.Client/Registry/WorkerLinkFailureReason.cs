@@ -14,6 +14,9 @@ public enum WorkerLinkFailureReason
     /// <summary>The worker's previously initialized channel has terminated.</summary>
     WorkerTerminated,
 
+    /// <summary>The runtime has no remaining worker-link headroom.</summary>
+    CapacityExhausted,
+
     /// <summary>The registry is shutting down.</summary>
     RuntimeStopping,
 

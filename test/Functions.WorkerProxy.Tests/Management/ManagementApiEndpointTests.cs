@@ -23,10 +23,49 @@ namespace Azure.Functions.WorkerProxy.Tests.Management;
 public class ManagementApiEndpointTests
 {
     private const string AssignPath = "/admin/worker/assignment";
+    private const string InfraStatePath = "/admin/infra/instanceState";
+    private const string LinkAcknowledgement = "kf88qhaza5Utr1/ytURYhIP+EqlLJVUa877+zqQqmGE=";
     private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
          "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot"}
+        """;
+
+    private const string SplitAssignment = """
+        {
+          "startupMode":"SpecializationRequired",
+          "functionAppName":"test-app",
+          "functionGroupName":"test-group",
+          "isAlwaysReady":false,
+          "environment":{"SETTING":"private-value"},
+          "functionAppDirectory":"/home/site/wwwroot",
+          "staticState":{
+            "self":{
+              "resourceNamespace":"test-namespace",
+              "podName":"test-worker-pod",
+              "podGuid":"11111111-1111-1111-1111-111111111111",
+              "legionStampName":"legion-test",
+              "podType":"FunctionsSplitWorkerPod",
+              "app":{"functionAppName":"test-app","functionAppSiteId":42,"antaresStampName":"antares-test"}
+            },
+            "isDiscoveryPod":false,
+            "isAlwaysReady":false,
+            "functionGroup":"test-group",
+            "configLastModifiedTime":100,
+            "contentLastModifiedTime":200
+          },
+          "link":{
+            "state":"Pending",
+            "runtime":{
+              "resourceNamespace":"test-namespace",
+              "podName":"test-runtime-pod",
+              "podGuid":"22222222-2222-2222-2222-222222222222",
+              "legionStampName":"legion-test",
+              "podType":"FunctionsSplitRuntimePod",
+              "app":{"functionAppName":"test-app","functionAppSiteId":42,"antaresStampName":"antares-test"}
+            }
+          }
+        }
         """;
 
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
@@ -46,6 +85,141 @@ public class ManagementApiEndpointTests
         Assert.Equal("None", state.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
         Assert.False(state.RootElement.GetProperty("workerPodState").TryGetProperty("startupMode", out _));
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().PendingWaiterCount);
+    }
+
+    [Fact]
+    public async Task SplitInstanceStateReturnsNestedWorkerStateAfterAssignment()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using StringContent content = JsonBody(SplitAssignment);
+        using HttpResponseMessage assignment = await client.PutAsync(AssignPath, content, timeout.Token);
+        await AssertAssignmentSuccessAsync(assignment, HttpStatusCode.Created, timeout.Token);
+
+        using HttpResponseMessage response = await client.GetAsync(InfraStatePath, timeout.Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        AssertNoStore(response);
+        using JsonDocument document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+        JsonElement root = document.RootElement;
+        Assert.Equal("FunctionsSplitWorkerProxy", root.GetProperty("functionsContainerType").GetString());
+        JsonElement staticState = root.GetProperty("staticState");
+        JsonElement self = staticState.GetProperty("self");
+        Assert.Equal("test-worker-pod", self.GetProperty("podName").GetString());
+        Assert.Equal("FunctionsSplitWorkerPod", self.GetProperty("podType").GetString());
+        Assert.Equal("test-app", self.GetProperty("app").GetProperty("functionAppName").GetString());
+        Assert.False(staticState.GetProperty("isDiscoveryPod").GetBoolean());
+        Assert.False(staticState.GetProperty("isAlwaysReady").GetBoolean());
+        Assert.Equal("test-group", staticState.GetProperty("functionGroup").GetString());
+        Assert.Equal(100, staticState.GetProperty("configLastModifiedTime").GetInt64());
+        Assert.Equal(200, staticState.GetProperty("contentLastModifiedTime").GetInt64());
+        JsonElement dynamicState = root.GetProperty("dynamicState");
+        Assert.Equal(3, dynamicState.GetProperty("revisionId").GetInt64());
+        Assert.Equal("Starting", dynamicState.GetProperty("status").GetString());
+        JsonElement link = dynamicState.GetProperty("link");
+        Assert.Equal("Pending", link.GetProperty("state").GetString());
+        Assert.Equal("test-runtime-pod", link.GetProperty("runtime").GetProperty("podName").GetString());
+        Assert.Equal("FunctionsSplitRuntimePod", link.GetProperty("runtime").GetProperty("podType").GetString());
+    }
+
+    [Fact]
+    public async Task SplitAssignmentReplayTransitionsPendingLinkToExactLinkedRuntime()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using StringContent pendingContent = JsonBody(SplitAssignment);
+        using HttpResponseMessage pending = await client.PutAsync(AssignPath, pendingContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(pending, HttpStatusCode.Created, timeout.Token);
+
+        Task<HttpResponseMessage> poll = client.GetAsync($"{InfraStatePath}?lastKnownRevision=3", timeout.Token);
+        while (manager.PendingWaiterCount == 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        JsonObject linkedAssignment = JsonNode.Parse(SplitAssignment)!.AsObject();
+        JsonObject linkRequest = linkedAssignment["link"]!.AsObject();
+        linkRequest["state"] = "Linked";
+        linkRequest["linkAcknowledgement"] = "invalid";
+        using StringContent invalidContent = JsonBody(linkedAssignment.ToJsonString());
+        using HttpResponseMessage invalid = await client.PutAsync(AssignPath, invalidContent, timeout.Token);
+        await AssertValidationAsync(
+            invalid,
+            timeout.Token,
+            ("InvalidValue", "link.linkAcknowledgement"));
+        Assert.False(poll.IsCompleted);
+
+        linkRequest["linkAcknowledgement"] = LinkAcknowledgement;
+        using StringContent linkedContent = JsonBody(linkedAssignment.ToJsonString());
+        using HttpResponseMessage linked = await client.PutAsync(AssignPath, linkedContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(linked, HttpStatusCode.NoContent, timeout.Token);
+
+        using HttpResponseMessage changed = await poll;
+        Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
+        AssertNoStore(changed);
+        using JsonDocument document = JsonDocument.Parse(await changed.Content.ReadAsStringAsync(timeout.Token));
+        JsonElement dynamicState = document.RootElement.GetProperty("dynamicState");
+        Assert.Equal(4, dynamicState.GetProperty("revisionId").GetInt64());
+        Assert.Equal("ReadyForWork", dynamicState.GetProperty("status").GetString());
+        JsonElement link = dynamicState.GetProperty("link");
+        Assert.Equal("Linked", link.GetProperty("state").GetString());
+        Assert.Equal("22222222-2222-2222-2222-222222222222",
+            link.GetProperty("runtime").GetProperty("podGuid").GetGuid().ToString());
+
+        Assert.True(manager.OnSessionTerminated(1));
+        using HttpResponseMessage terminal = await client.GetAsync(InfraStatePath, timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, terminal.StatusCode);
+        using JsonDocument terminalDocument = JsonDocument.Parse(
+            await terminal.Content.ReadAsStringAsync(timeout.Token));
+        JsonElement terminalDynamicState = terminalDocument.RootElement.GetProperty("dynamicState");
+        Assert.Equal(5, terminalDynamicState.GetProperty("revisionId").GetInt64());
+        Assert.Equal("RemovalRequested", terminalDynamicState.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task SplitAssignmentRejectsSecondRuntimeAndPreservesLegacyStateContract()
+    {
+        await using WorkerProxyWebApplicationFactory factory = new();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        Assert.True(manager.OnWorkerAttached(1));
+        Assert.True(manager.OnWorkerStartStream(1, "worker"));
+        using HttpClient client = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        using StringContent initialContent = JsonBody(SplitAssignment);
+        using HttpResponseMessage initial = await client.PutAsync(AssignPath, initialContent, timeout.Token);
+        await AssertAssignmentSuccessAsync(initial, HttpStatusCode.Created, timeout.Token);
+
+        string conflictingAssignment = SplitAssignment
+            .Replace("test-runtime-pod", "other-runtime-pod", StringComparison.Ordinal)
+            .Replace("22222222-2222-2222-2222-222222222222", "33333333-3333-3333-3333-333333333333", StringComparison.Ordinal);
+        using StringContent conflictContent = JsonBody(conflictingAssignment);
+        using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictContent, timeout.Token);
+        await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
+
+        using HttpResponseMessage splitResponse = await client.GetAsync(InfraStatePath, timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, splitResponse.StatusCode);
+        using JsonDocument split = JsonDocument.Parse(await splitResponse.Content.ReadAsStringAsync(timeout.Token));
+        JsonElement runtime = split.RootElement.GetProperty("dynamicState").GetProperty("link").GetProperty("runtime");
+        Assert.Equal("test-runtime-pod", runtime.GetProperty("podName").GetString());
+        Assert.Equal(3, split.RootElement.GetProperty("dynamicState").GetProperty("revisionId").GetInt64());
+
+        using HttpResponseMessage legacyResponse = await client.GetAsync(StatePath, timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, legacyResponse.StatusCode);
+        AssertNoStore(legacyResponse);
+        using JsonDocument legacy = JsonDocument.Parse(await legacyResponse.Content.ReadAsStringAsync(timeout.Token));
+        Assert.Equal("FunctionsWorkerPod", legacy.RootElement.GetProperty("functionsContainerType").GetString());
+        Assert.Equal(3, legacy.RootElement.GetProperty("revisionId").GetInt64());
+        Assert.True(legacy.RootElement.TryGetProperty("workerPodState", out _));
+        Assert.False(legacy.RootElement.TryGetProperty("staticState", out _));
+        Assert.False(legacy.RootElement.TryGetProperty("dynamicState", out _));
     }
 
     [Theory]
@@ -374,6 +548,7 @@ public class ManagementApiEndpointTests
     [InlineData("/admin/worker/ready", "GET")]
     [InlineData(AssignPath, "PUT")]
     [InlineData(StatePath, "GET")]
+    [InlineData(InfraStatePath, "GET")]
     public async Task WorkerManagementRoutesAreUnavailableOnOtherListeners(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -410,6 +585,9 @@ public class ManagementApiEndpointTests
     [InlineData(StatePath, "POST")]
     [InlineData(StatePath, "PUT")]
     [InlineData(StatePath, "DELETE")]
+    [InlineData(InfraStatePath, "POST")]
+    [InlineData(InfraStatePath, "PUT")]
+    [InlineData(InfraStatePath, "DELETE")]
     public async Task ManagementRoutesRejectUnsupportedMethods(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -488,8 +666,6 @@ public class ManagementApiEndpointTests
     [Theory]
     [InlineData("/admin/worker/assign", "POST")]
     [InlineData("/admin/worker/assign", "PUT")]
-    [InlineData("/admin/infra/instanceState", "POST")]
-    [InlineData("/admin/infra/instanceState", "GET")]
     public async Task ObsoleteManagementRoutesAreNotFound(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
