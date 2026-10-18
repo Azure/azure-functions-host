@@ -8,10 +8,12 @@ using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Azure.Functions.Rpc.Client;
 
@@ -32,6 +34,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private readonly ILogger<WorkerChannelRegistry> _logger;
     private readonly Dictionary<string, WorkerSlot> _linkAttempts = new(StringComparer.Ordinal);
     private readonly TimeSpan _linkTimeout;
+    private readonly int _maxWorkerLinks;
     private readonly HashSet<Task> _monitorTasks = [];
     private readonly CancellationTokenSource _shutdownSource = new();
     private readonly Dictionary<string, WorkerSlot> _slots = new(StringComparer.Ordinal);
@@ -43,12 +46,15 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     // Disposal signals without advancing the version; asynchronous continuations keep waiters off the lock.
     private TaskCompletionSource _initializedChannelsChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private long _initializedChannelsVersion;
+    private TaskCompletionSource _workerLinkCapacityChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private long _workerLinkCapacityVersion;
 
     public WorkerChannelRegistry(
         IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
         IRpcClientWorkerChannelFactory channelFactory,
-        ILogger<WorkerChannelRegistry> logger)
-        : this(duplexChannelFactory, channelFactory, logger, DefaultLinkTimeout)
+        ILogger<WorkerChannelRegistry> logger,
+        IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
+        : this(duplexChannelFactory, channelFactory, logger, workerConcurrencyOptions, DefaultLinkTimeout)
     {
     }
 
@@ -57,13 +63,66 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         IRpcClientWorkerChannelFactory channelFactory,
         ILogger<WorkerChannelRegistry> logger,
         TimeSpan linkTimeout)
+        : this(
+            duplexChannelFactory,
+            channelFactory,
+            logger,
+            Options.Create(new WorkerConcurrencyOptions()),
+            linkTimeout)
+    {
+    }
+
+    internal WorkerChannelRegistry(
+        IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
+        IRpcClientWorkerChannelFactory channelFactory,
+        ILogger<WorkerChannelRegistry> logger)
+        : this(
+            duplexChannelFactory,
+            channelFactory,
+            logger,
+            Options.Create(new WorkerConcurrencyOptions()),
+            DefaultLinkTimeout)
+    {
+    }
+
+    internal WorkerChannelRegistry(
+        IDuplexChannelFactory<StreamingMessage> duplexChannelFactory,
+        IRpcClientWorkerChannelFactory channelFactory,
+        ILogger<WorkerChannelRegistry> logger,
+        IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
+        TimeSpan linkTimeout)
     {
         _duplexChannelFactory = duplexChannelFactory ?? throw new ArgumentNullException(nameof(duplexChannelFactory));
         _channelFactory = channelFactory ?? throw new ArgumentNullException(nameof(channelFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(workerConcurrencyOptions);
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linkTimeout, TimeSpan.Zero);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(linkTimeout.TotalMilliseconds, uint.MaxValue - 1);
         _linkTimeout = linkTimeout;
+        _maxWorkerLinks = workerConcurrencyOptions.Value.MaxWorkerCount;
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(_maxWorkerLinks);
+    }
+
+    public int AvailableWorkerLinks
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return GetAvailableWorkerLinksLocked();
+            }
+        }
+    }
+
+    public long WorkerLinkCapacityVersion
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _workerLinkCapacityVersion;
+            }
+        }
     }
 
     public long InitializedChannelsVersion
@@ -81,6 +140,24 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         string workerId,
         Uri grpcEndpoint,
         CancellationToken cancellationToken = default)
+        => LinkAsyncCore(workerId, grpcEndpoint, runtimeIdentity: null, cancellationToken);
+
+    public Task<WorkerLinkResult> LinkAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        RuntimePodIdentity runtimeIdentity,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateRuntimeIdentity(runtimeIdentity);
+
+        return LinkAsyncCore(workerId, grpcEndpoint, runtimeIdentity, cancellationToken);
+    }
+
+    private Task<WorkerLinkResult> LinkAsyncCore(
+        string workerId,
+        Uri grpcEndpoint,
+        RuntimePodIdentity runtimeIdentity,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
@@ -99,6 +176,12 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                         "The worker is already associated with a different gRPC endpoint.");
                 }
 
+                if (!Equals(existing.RuntimeIdentity, runtimeIdentity))
+                {
+                    throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
+                        "The worker is already associated with a different runtime identity.");
+                }
+
                 if (existing.Terminal || existing.Channel?.Completion.IsCompleted == true)
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.WorkerTerminated,
@@ -108,12 +191,20 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 return CompleteLinkAsync(existing.LinkTask.WaitAsync(_linkTimeout, cancellationToken), isNewLink: false);
             }
 
+            if (GetAvailableWorkerLinksLocked() == 0)
+            {
+                throw new WorkerLinkException(
+                    WorkerLinkFailureReason.Conflict,
+                    "The runtime has no remaining worker-link headroom.");
+            }
+
             start = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            WorkerSlot slot = new() { Endpoint = grpcEndpoint };
+            WorkerSlot slot = new() { Endpoint = grpcEndpoint, RuntimeIdentity = runtimeIdentity };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
-            link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
+            link = LinkCoreAsync(workerId, grpcEndpoint, runtimeIdentity, slot, start.Task, cancellationToken);
             slot.LinkTask = link;
+            NotifyWorkerLinkCapacityChangedLocked();
         }
 
         // Publish the shared attempt before starting I/O so a retry cannot start a second connection.
@@ -128,6 +219,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private async Task<WorkerChannel> LinkCoreAsync(
         string workerId,
         Uri grpcEndpoint,
+        RuntimePodIdentity runtimeIdentity,
         WorkerSlot slot,
         Task start,
         CancellationToken cancellationToken)
@@ -147,7 +239,9 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             try
             {
                 operationSource.Token.ThrowIfCancellationRequested();
-                ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token);
+                ownedChannel = runtimeIdentity is null
+                    ? await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token)
+                    : await _duplexChannelFactory.ConnectAsync(grpcEndpoint, runtimeIdentity, operationSource.Token);
                 operationSource.Token.ThrowIfCancellationRequested();
 
                 candidate = _channelFactory.Create(workerId, ownedChannel)
@@ -205,10 +299,30 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             {
                 lock (_stateLock)
                 {
-                    _linkAttempts.Remove(workerId);
+                    if (_linkAttempts.Remove(workerId) && !_disposed)
+                    {
+                        NotifyWorkerLinkCapacityChangedLocked();
+                    }
                 }
             }
         }
+    }
+
+    private static void ValidateRuntimeIdentity(RuntimePodIdentity runtimeIdentity)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeIdentity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentity.ResourceNamespace);
+        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentity.PodName);
+        ArgumentOutOfRangeException.ThrowIfEqual(runtimeIdentity.PodGuid, Guid.Empty);
+        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentity.LegionStampName);
+        if (!string.Equals(runtimeIdentity.PodType, RuntimePodIdentity.RuntimePodType, StringComparison.Ordinal))
+        {
+            throw new ArgumentException("The runtime pod type is invalid.", nameof(runtimeIdentity));
+        }
+
+        ArgumentNullException.ThrowIfNull(runtimeIdentity.App);
+        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentity.App.FunctionAppName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentity.App.AntaresStampName);
     }
 
     public async Task<bool> UnlinkAsync(string workerId, CancellationToken cancellationToken = default)
@@ -236,7 +350,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 using (gate)
                 {
                     operationSource.Token.ThrowIfCancellationRequested();
-
                     RpcClientWorkerChannel channel;
                     lock (_stateLock)
                     {
@@ -345,6 +458,30 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         }
     }
 
+    public async Task<long> WaitForWorkerLinkCapacityChangeAsync(
+        long lastKnownVersion,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        while (true)
+        {
+            Task changed;
+            lock (_stateLock)
+            {
+                if (_workerLinkCapacityVersion > lastKnownVersion)
+                {
+                    return _workerLinkCapacityVersion;
+                }
+
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                changed = _workerLinkCapacityChanged.Task;
+            }
+
+            await changed.WaitAsync(cancellationToken);
+        }
+    }
+
     public ValueTask DisposeAsync()
     {
         lock (_disposeLock)
@@ -365,6 +502,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             slots = [.. _slots];
             monitorTasks = [.. _monitorTasks];
             _initializedChannelsChanged.TrySetResult();
+            _workerLinkCapacityChanged.TrySetResult();
         }
 
         Exception disposalException = null;
@@ -408,6 +546,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         {
             slot.Terminal = true;
             slot.LinkTask = null;
+            if (!_disposed)
+            {
+                NotifyWorkerLinkCapacityChangedLocked();
+            }
         }
 
         NotifyInitializedChannelsChangedLocked();
@@ -427,6 +569,19 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         _initializedChannelsChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
         initializedChannelsChanged.TrySetResult();
     }
+
+    private void NotifyWorkerLinkCapacityChangedLocked()
+    {
+        _workerLinkCapacityVersion++;
+        TaskCompletionSource changed = _workerLinkCapacityChanged;
+        _workerLinkCapacityChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        changed.TrySetResult();
+    }
+
+    private int GetAvailableWorkerLinksLocked()
+        => _disposed
+            ? 0
+            : Math.Max(0, _maxWorkerLinks - _linkAttempts.Values.Count(slot => !slot.Terminal));
 
     private void RemoveEmptySlot(string workerId, WorkerSlot slot)
     {
@@ -579,6 +734,8 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         // The recorded gRPC endpoint distinguishes exact retries from conflicting requests.
         public Uri Endpoint { get; init; }
+
+        public RuntimePodIdentity RuntimeIdentity { get; init; }
 
         // The link task shared by exact retries; cleared when the accepted channel is detached.
         public Task<WorkerChannel> LinkTask { get; set; }

@@ -25,6 +25,17 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     long InitializedChannelsVersion { get; }
 
     /// <summary>
+    /// Gets the remaining link headroom after pending and accepted worker links.
+    /// </summary>
+    int AvailableWorkerLinks { get; }
+
+    /// <summary>
+    /// Gets a version that increases whenever <see cref="AvailableWorkerLinks"/> changes before disposal begins.
+    /// </summary>
+    /// <remarks>Read this before the headroom value so a concurrent change makes the corresponding wait complete.</remarks>
+    long WorkerLinkCapacityVersion { get; }
+
+    /// <summary>
     /// Atomically admits one worker or reuses its matching pending or initialized link.
     /// </summary>
     /// <remarks>
@@ -50,6 +61,22 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     Task<WorkerLinkResult> LinkAsync(
         string workerId,
         Uri grpcEndpoint,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Atomically admits one worker with the exact runtime identity carried to WorkerProxy.
+    /// </summary>
+    /// <param name="workerId">The worker identifier.</param>
+    /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
+    /// <param name="runtimeIdentity">The runtime identity initiating the link.</param>
+    /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
+    /// <returns>The initialized and registered channel, and whether this caller started the successful attempt.</returns>
+    /// <exception cref="WorkerLinkException">The request conflicts with the registry's admission state.</exception>
+    /// <exception cref="TimeoutException">The new link attempt or this caller's retry wait exceeded its deadline.</exception>
+    Task<WorkerLinkResult> LinkAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        RuntimePodIdentity runtimeIdentity,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -91,4 +118,15 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
     /// <returns>The current initialized-channels version, greater than <paramref name="lastKnownVersion"/>.</returns>
     /// <exception cref="ObjectDisposedException">The registry was disposed before the version changed.</exception>
     Task<long> WaitForInitializedChannelsChangeAsync(long lastKnownVersion, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Waits until <see cref="WorkerLinkCapacityVersion"/> exceeds <paramref name="lastKnownVersion"/>.
+    /// </summary>
+    /// <param name="lastKnownVersion">The last version observed by the caller.</param>
+    /// <param name="cancellationToken">A token that cancels only this wait.</param>
+    /// <returns>The current link-capacity version, greater than <paramref name="lastKnownVersion"/>.</returns>
+    /// <exception cref="ObjectDisposedException">The registry was disposed before the version changed.</exception>
+    Task<long> WaitForWorkerLinkCapacityChangeAsync(
+        long lastKnownVersion,
+        CancellationToken cancellationToken = default);
 }

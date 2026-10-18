@@ -23,12 +23,15 @@ public sealed class TestFunctionRpcService : FunctionRpc.FunctionRpcBase
 
     internal Task Disconnected => _disconnected.Task;
 
+    internal Metadata RequestHeaders { get; private set; }
+
     internal ChannelReader<StreamingMessage> Requests => _requests.Reader;
 
     public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream,
         IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)
     {
         using CancellationTokenSource streamSource = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+        RequestHeaders = context.RequestHeaders;
         _connected.TrySetResult();
 
         Task readTask = ReadRequestsAsync(requestStream, streamSource.Token);

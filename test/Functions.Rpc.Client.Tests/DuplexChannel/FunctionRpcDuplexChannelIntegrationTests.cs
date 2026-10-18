@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
@@ -25,7 +26,15 @@ public class FunctionRpcDuplexChannelIntegrationTests
         await using TestFunctionRpcServer server = await TestFunctionRpcServer.StartAsync();
         await using RpcClientFactory clientFactory = CreateClientFactory();
         FunctionRpcDuplexChannelFactory channelFactory = CreateChannelFactory(clientFactory);
-        await using DuplexChannel<StreamingMessage> channel = await channelFactory.ConnectAsync(server.Endpoint);
+        RuntimePodIdentity runtimeIdentity = new(
+            "test-namespace",
+            "test-runtime-pod",
+            Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            "legion-test",
+            RuntimePodIdentity.RuntimePodType,
+            new("test-app", 42, "antares-test"));
+        await using DuplexChannel<StreamingMessage> channel =
+            await channelFactory.ConnectAsync(server.Endpoint, runtimeIdentity);
         await server.Service.Connected.WaitAsync(TestTimeout);
 
         StreamingMessage outbound = new() { RequestId = "outbound" };
@@ -39,6 +48,13 @@ public class FunctionRpcDuplexChannelIntegrationTests
         Assert.Equal("outbound", receivedRequest.RequestId);
         Assert.Equal(StreamingMessage.ContentOneofCase.None, receivedRequest.ContentCase);
         Assert.Equal("inbound", receivedResponse.RequestId);
+        Grpc.Core.Metadata.Entry header = Assert.Single(server.Service.RequestHeaders,
+            static entry => string.Equals(entry.Key, RuntimePodIdentity.MetadataName, StringComparison.Ordinal));
+        Assert.True(header.IsBinary);
+        using JsonDocument identity = JsonDocument.Parse(header.ValueBytes);
+        Assert.Equal("test-runtime-pod", identity.RootElement.GetProperty("podName").GetString());
+        Assert.Equal("FunctionsSplitRuntimePod", identity.RootElement.GetProperty("podType").GetString());
+        Assert.Equal("test-app", identity.RootElement.GetProperty("app").GetProperty("functionAppName").GetString());
     }
 
     [Fact]

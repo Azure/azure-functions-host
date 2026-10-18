@@ -27,4 +27,16 @@ internal interface IDuplexChannelFactory<T>
     /// <param name="cancellationToken">A token that bounds connection establishment.</param>
     /// <returns>The connected duplex channel.</returns>
     Task<DuplexChannel<T>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Connects to an endpoint with the identity of the runtime initiating the worker link.
+    /// </summary>
+    /// <param name="endpoint">The service endpoint.</param>
+    /// <param name="runtimeIdentity">The runtime identity to attach to the connection.</param>
+    /// <param name="cancellationToken">A token that bounds connection establishment.</param>
+    /// <returns>The connected duplex channel.</returns>
+    Task<DuplexChannel<T>> ConnectAsync(
+        Uri endpoint,
+        RuntimePodIdentity runtimeIdentity,
+        CancellationToken cancellationToken = default);
 }

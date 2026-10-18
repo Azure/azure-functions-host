@@ -2,8 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
@@ -32,11 +35,34 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
     /// <inheritdoc />
     public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(Uri endpoint, CancellationToken cancellationToken = default)
     {
+        return await ConnectCoreAsync(endpoint, runtimeIdentity: null, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<DuplexChannel<StreamingMessage>> ConnectAsync(
+        Uri endpoint,
+        RuntimePodIdentity runtimeIdentity,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeIdentity);
+
+        return await ConnectCoreAsync(endpoint, runtimeIdentity, cancellationToken);
+    }
+
+    private async Task<DuplexChannel<StreamingMessage>> ConnectCoreAsync(
+        Uri endpoint,
+        RuntimePodIdentity runtimeIdentity,
+        CancellationToken cancellationToken)
+    {
         FunctionRpc.FunctionRpcClient client = await _clientFactory.CreateAsync(endpoint, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
         // This token only bounds channel creation. Disposing the returned channel cancels the long-lived RPC call.
-        var call = client.EventStream();
+        Metadata headers = runtimeIdentity is null
+            ? null
+            : [new(RuntimePodIdentity.MetadataName, JsonSerializer.SerializeToUtf8Bytes(
+                runtimeIdentity, RuntimeIdentityJsonContext.Default.RuntimePodIdentity))];
+        var call = client.EventStream(headers);
         try
         {
             return call.AsChannel();
@@ -61,3 +87,7 @@ internal sealed class FunctionRpcDuplexChannelFactory : IDuplexChannelFactory<St
         }
     }
 }
+
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+[JsonSerializable(typeof(RuntimePodIdentity))]
+internal sealed partial class RuntimeIdentityJsonContext : JsonSerializerContext;

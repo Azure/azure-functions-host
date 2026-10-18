@@ -62,9 +62,9 @@ public sealed partial class WorkerLinkController : Controller
     /// <param name="cancellationToken">Cancels this request and, for a new link, its initialization attempt.</param>
     /// <returns>
     /// <c>201</c> for a newly created link or <c>200</c> for a matching retry, after initialization and registration.
-    /// Returns <c>400</c> with a validation errors envelope, <c>409</c> when the identity is already linked to a
-    /// different endpoint or its channel has terminated, or <c>503</c> when the runtime is stopping or the worker
-    /// connection or handshake is unavailable or times out.
+    /// Returns <c>400</c> with a validation errors envelope, <c>409</c> when the worker is associated with a
+    /// conflicting endpoint or runtime identity, or its channel has terminated. Returns <c>503</c> when the runtime
+    /// is stopping or the worker connection or handshake is unavailable or times out.
     /// Link failures return an error envelope with a stable code. No Location header is returned.
     /// </returns>
     /// <remarks>
@@ -80,7 +80,11 @@ public sealed partial class WorkerLinkController : Controller
         CancellationToken cancellationToken = default)
     {
         long started = Stopwatch.GetTimestamp();
-        IReadOnlyList<RequestValidationError> errors = ValidateRequest(workerId, request, out Uri? grpcEndpoint);
+        IReadOnlyList<RequestValidationError> errors = ValidateRequest(
+            workerId,
+            request,
+            out Uri? grpcEndpoint,
+            out RuntimePodIdentity? runtimeIdentity);
         if (errors.Count > 0 || grpcEndpoint is null)
         {
             Log.LinkRejected(_logger, null, workerId, ValidationFailedReason,
@@ -89,13 +93,14 @@ public sealed partial class WorkerLinkController : Controller
             return BadRequest(new RequestValidationResponse(errors));
         }
 
-        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, started, cancellationToken);
+        return await LinkValidatedWorkerAsync(workerId, grpcEndpoint, runtimeIdentity, started, cancellationToken);
     }
 
     private IReadOnlyList<RequestValidationError> ValidateRequest(string workerId, WorkerLinkRequest? request,
-        out Uri? grpcEndpoint)
+        out Uri? grpcEndpoint, out RuntimePodIdentity? runtimeIdentity)
     {
         grpcEndpoint = null;
+        runtimeIdentity = null;
         List<RequestValidationError> errors = [];
 
         if (string.IsNullOrWhiteSpace(workerId))
@@ -119,17 +124,25 @@ public sealed partial class WorkerLinkController : Controller
                 : new(ErrorCodes.InvalidEndpoint, "workerGrpcEndpoint"));
         }
 
+        runtimeIdentity = ValidateRuntimeIdentity(request.Runtime, errors);
+
         return errors;
     }
 
     // Wait for initialization and registration, then map the outcome to an HTTP response.
-    private async Task<IActionResult> LinkValidatedWorkerAsync(string workerId, Uri grpcEndpoint, long started,
+    private async Task<IActionResult> LinkValidatedWorkerAsync(
+        string workerId,
+        Uri grpcEndpoint,
+        RuntimePodIdentity? runtimeIdentity,
+        long started,
         CancellationToken cancellationToken)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            WorkerLinkResult result = await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken);
+            WorkerLinkResult result = runtimeIdentity is null
+                ? await _registry.LinkAsync(workerId, grpcEndpoint, cancellationToken)
+                : await _registry.LinkAsync(workerId, grpcEndpoint, runtimeIdentity, cancellationToken);
             Log.LinkAccepted(_logger, workerId, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             return StatusCode(result.IsNewLink ? StatusCodes.Status201Created : StatusCodes.Status200OK);
@@ -159,13 +172,44 @@ public sealed partial class WorkerLinkController : Controller
         }
     }
 
+    private static RuntimePodIdentity? ValidateRuntimeIdentity(
+        RuntimePodIdentity? request,
+        List<RequestValidationError> errors)
+    {
+        if (request is null)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ResourceNamespace)
+            || string.IsNullOrWhiteSpace(request.PodName)
+            || request.PodGuid == Guid.Empty
+            || string.IsNullOrWhiteSpace(request.LegionStampName)
+            || string.IsNullOrWhiteSpace(request.PodType)
+            || request.App is not { } app
+            || string.IsNullOrWhiteSpace(app.FunctionAppName)
+            || string.IsNullOrWhiteSpace(app.AntaresStampName))
+        {
+            errors.Add(new(ErrorCodes.Required, "runtime"));
+            return null;
+        }
+
+        if (!string.Equals(request.PodType, RuntimePodIdentity.RuntimePodType, StringComparison.Ordinal))
+        {
+            errors.Add(new(ErrorCodes.InvalidBody, "runtime.podType"));
+            return null;
+        }
+
+        return request;
+    }
+
     private ObjectResult CreateLinkFailureResponse(string workerId, WorkerLinkFailureReason reason,
         long started, Exception exception)
     {
         (int statusCode, string code, string detail) = reason switch
         {
             WorkerLinkFailureReason.Conflict => (StatusCodes.Status409Conflict, ErrorCodes.LinkConflict,
-                "The worker identity is already linked to another endpoint."),
+                "The worker identity is already linked by a conflicting request."),
             WorkerLinkFailureReason.WorkerTerminated => (StatusCodes.Status409Conflict, ErrorCodes.WorkerTerminated,
                 "The worker's initialized channel has terminated."),
             WorkerLinkFailureReason.RuntimeStopping => (StatusCodes.Status503ServiceUnavailable, ErrorCodes.RuntimeStopping,

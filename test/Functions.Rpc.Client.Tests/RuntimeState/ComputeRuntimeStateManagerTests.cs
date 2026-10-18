@@ -36,7 +36,9 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
     private readonly Mock<TimeProvider> _timeProvider = new() { CallBase = true };
     private readonly CancellationTokenSource _applicationStopping = new();
     private readonly InitializedChannelsSignal _initializedChannelsSignal = new();
+    private readonly InitializedChannelsSignal _workerLinkCapacitySignal = new();
     private readonly ScriptHostStateSignal _scriptHostStateSignal = new(ScriptHostState.Starting);
+    private int _availableWorkerLinks;
     private long _utcTicks = StartTime.UtcTicks;
 
     public ComputeRuntimeStateManagerTests()
@@ -48,6 +50,13 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
         _registry.Setup(registry => registry.WaitForInitializedChannelsChangeAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
             .Returns((long lastKnownVersion, CancellationToken cancellationToken) =>
                 _initializedChannelsSignal.WaitForChangeAsync(lastKnownVersion, cancellationToken));
+        _registry.SetupGet(registry => registry.AvailableWorkerLinks)
+            .Returns(() => Volatile.Read(ref _availableWorkerLinks));
+        _registry.SetupGet(registry => registry.WorkerLinkCapacityVersion)
+            .Returns(() => _workerLinkCapacitySignal.Version);
+        _registry.Setup(registry => registry.WaitForWorkerLinkCapacityChangeAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .Returns((long lastKnownVersion, CancellationToken cancellationToken) =>
+                _workerLinkCapacitySignal.WaitForChangeAsync(lastKnownVersion, cancellationToken));
         _scriptHostManager.SetupGet(manager => manager.State)
             .Returns(() => _scriptHostStateSignal.State);
         _scriptHostManager.SetupGet(manager => manager.StateVersion).Returns(() => _scriptHostStateSignal.Version);
@@ -74,7 +83,7 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
         SetScriptHostState(ScriptHostState.Running);
         ComputeRuntimeState running = await WaitForStateAsync(manager, httpCapacity: 16, workerCount: 1, httpWorkerCount: 1);
 
-        Assert.Equal(new ComputeRuntimeState(StartTime, 0, 1, 1), initial);
+        Assert.Equal(new ComputeRuntimeState(StartTime, 0, 1, 1, AvailableWorkerLinks: 0), initial);
         Assert.NotSame(initial, running);
         Assert.Equal(16, running.HttpCapacity);
     }
@@ -113,11 +122,47 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
         ComputeRuntimeState unknownUnlinked = await WaitForStateAsync(manager, 0, workerCount: 1, httpWorkerCount: 1);
         UnlinkWorker(http);
         ComputeRuntimeState empty = await WaitForStateAsync(manager, 0, workerCount: 0, httpWorkerCount: 0);
+        SetAvailableWorkerLinks(2);
+        ComputeRuntimeState headroomChanged =
+            await WaitForStateAsync(manager, 0, workerCount: 0, httpWorkerCount: 0, availableWorkerLinks: 2);
 
         Assert.NotSame(initial, unknownLinked);
         Assert.NotSame(unknownLinked, httpLinked);
         Assert.NotSame(httpLinked, unknownUnlinked);
         Assert.NotSame(unknownUnlinked, empty);
+        Assert.NotSame(empty, headroomChanged);
+
+        TaskCompletionSource staleHeadroomRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource releaseHeadroomRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int blockHeadroomRead = 1;
+        _registry.SetupGet(registry => registry.AvailableWorkerLinks).Returns(() =>
+        {
+            int value = Volatile.Read(ref _availableWorkerLinks);
+            if (Interlocked.Exchange(ref blockHeadroomRead, 0) == 1)
+            {
+                staleHeadroomRead.TrySetResult();
+                releaseHeadroomRead.Task.GetAwaiter().GetResult();
+            }
+
+            return value;
+        });
+
+        Task<ComputeRuntimeState> changed = manager.WaitForChangeAsync(headroomChanged);
+        _workerLinkCapacitySignal.Signal();
+        await staleHeadroomRead.Task.WaitAsync(TestTimeout);
+        try
+        {
+            await LinkWorkerAsync("coherent", "durable", ready: true);
+            SetAvailableWorkerLinks(1);
+        }
+        finally
+        {
+            releaseHeadroomRead.TrySetResult();
+        }
+
+        ComputeRuntimeState coherent = await changed.WaitAsync(TestTimeout);
+        Assert.Equal(1, coherent.WorkerCount);
+        Assert.Equal(1, coherent.AvailableWorkerLinks);
     }
 
     [Fact]
@@ -689,12 +734,14 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
     {
         SetScriptHostState(ScriptHostState.Running);
         await LinkWorkerAsync("worker", "http", ready: true);
+        SetAvailableWorkerLinks(2);
         using ComputeRuntimeStateManager manager = await StartManagerAsync();
-        await WaitForStateAsync(manager, httpCapacity: 16);
+        await WaitForStateAsync(manager, httpCapacity: 16, availableWorkerLinks: 2);
 
         await manager.StopAsync(CancellationToken.None).WaitAsync(TestTimeout);
 
         Assert.Equal(0, manager.Current.HttpCapacity);
+        Assert.Equal(0, manager.Current.AvailableWorkerLinks);
     }
 
     [Theory]
@@ -933,13 +980,18 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
     }
 
     private static async Task<ComputeRuntimeState> WaitForStateAsync(
-        ComputeRuntimeStateManager manager, long httpCapacity, int? workerCount = null, int? httpWorkerCount = null)
+        ComputeRuntimeStateManager manager,
+        long httpCapacity,
+        int? workerCount = null,
+        int? httpWorkerCount = null,
+        int? availableWorkerLinks = null)
     {
         using CancellationTokenSource timeoutSource = new(TestTimeout);
         ComputeRuntimeState state = manager.Current;
         while (state.HttpCapacity != httpCapacity ||
             (workerCount is { } total && state.WorkerCount != total) ||
-            (httpWorkerCount is { } http && state.HttpWorkerCount != http))
+            (httpWorkerCount is { } http && state.HttpWorkerCount != http) ||
+            (availableWorkerLinks is { } available && state.AvailableWorkerLinks != available))
         {
             state = await manager.WaitForChangeAsync(state, timeoutSource.Token);
         }
@@ -981,6 +1033,12 @@ public sealed class ComputeRuntimeStateManagerTests : IAsyncDisposable
     private void SetUtcTime(DateTimeOffset now) => Volatile.Write(ref _utcTicks, now.UtcTicks);
 
     private void SetScriptHostState(ScriptHostState state) => _scriptHostStateSignal.Set(state);
+
+    private void SetAvailableWorkerLinks(int availableWorkerLinks)
+    {
+        Volatile.Write(ref _availableWorkerLinks, availableWorkerLinks);
+        _workerLinkCapacitySignal.Signal();
+    }
 
     private WorkerChannel[] GetChannels()
     {
