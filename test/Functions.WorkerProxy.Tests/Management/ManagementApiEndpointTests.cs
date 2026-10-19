@@ -26,8 +26,29 @@ public class ManagementApiEndpointTests
     private const string InfraStatePath = "/admin/infra/instanceState";
     private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
-        {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"SETTING":"private-value"},"functionAppDirectory":"/home/site/wwwroot"}
+        {
+          "startupMode":"SpecializationRequired",
+          "functionAppName":"test-app",
+          "functionGroupName":"test-group",
+          "isAlwaysReady":false,
+          "environment":{"SETTING":"private-value"},
+          "functionAppDirectory":"/home/site/wwwroot",
+          "staticState":{
+            "self":{
+              "resourceNamespace":"test-namespace",
+              "podName":"test-worker-pod",
+              "podGuid":"11111111-1111-1111-1111-111111111111",
+              "legionStampName":"legion-test",
+              "podType":"FunctionsSplitWorkerPod",
+              "app":{"functionAppName":"test-app","functionAppSiteId":42,"antaresStampName":"antares-test"}
+            },
+            "isDiscoveryPod":false,
+            "isAlwaysReady":false,
+            "functionGroup":"test-group",
+            "configLastModifiedTime":100,
+            "contentLastModifiedTime":200
+          }
+        }
         """;
 
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
@@ -209,7 +230,8 @@ public class ManagementApiEndpointTests
             ("Required", "functionGroupName"),
             ("Required", "isAlwaysReady"),
             ("Required", "functionAppDirectory"),
-            (environmentError, "environment"));
+            (environmentError, "environment"),
+            ("Required", "staticState"));
         string json = await response.Content.ReadAsStringAsync(timeout.Token);
         Assert.DoesNotContain("PRIVATE_SETTING", json);
         Assert.Equal(0, factory.Services.GetRequiredService<WorkerPodStateManager>().State.Revision);
@@ -625,6 +647,19 @@ public class ManagementApiEndpointTests
         WorkerPodState assigned = manager.State;
         JsonObject different = JsonNode.Parse(ValidAssignment)!.AsObject();
         different[field] = JsonNode.Parse(value);
+        switch (field)
+        {
+            case "functionAppName":
+                different["staticState"]!["self"]!["app"]!["functionAppName"] = JsonNode.Parse(value);
+                break;
+            case "functionGroupName":
+                different["staticState"]!["functionGroup"] = JsonNode.Parse(value);
+                break;
+            case "isAlwaysReady":
+                different["staticState"]!["isAlwaysReady"] = JsonNode.Parse(value);
+                break;
+        }
+
         using StringContent conflictingContent = JsonBody(different.ToJsonString());
         using HttpResponseMessage conflict = await client.PutAsync(AssignPath, conflictingContent, timeout.Token);
         await AssertAssignmentErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
@@ -665,8 +700,8 @@ public class ManagementApiEndpointTests
 
         Assert.True(manager.OnWorkerAttached(1));
         Assert.True(manager.OnWorkerStartStream(1, "worker"));
-        JsonObject assignment = JsonNode.Parse(ValidAssignment)!.AsObject();
-        assignment["functionAppName"] = "other-app";
+        JsonObject assignment = JsonNode.Parse(
+            ValidAssignment.Replace("test-app", "other-app", StringComparison.Ordinal))!.AsObject();
         assignment["startupMode"] = "Preconfigured";
         assignment["environment"] = JsonNode.Parse(environment);
         using StringContent content = JsonBody(assignment.ToJsonString());

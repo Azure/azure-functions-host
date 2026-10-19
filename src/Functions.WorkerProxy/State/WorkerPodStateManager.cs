@@ -325,9 +325,7 @@ internal sealed class WorkerPodStateManager
                 FunctionGroupName = assignment.FunctionGroupName,
                 IsAlwaysReady = assignment.IsAlwaysReady,
                 SplitStaticState = assignment.SplitStaticState,
-                SplitLink = assignment.SplitStaticState is null
-                    ? null
-                    : new(SplitWorkerLinkState.Unlinked)
+                SplitLink = new(SplitWorkerLinkState.Unlinked)
             };
 
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.

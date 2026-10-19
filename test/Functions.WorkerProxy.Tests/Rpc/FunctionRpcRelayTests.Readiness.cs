@@ -77,7 +77,7 @@ public partial class FunctionRpcRelayTests
         await runtimeInbound.Writer.WriteAsync(init, timeout.Token);
         Assert.Same(init, await workerOutbound.Reader.ReadAsync(timeout.Token));
         Assert.False(workerOutbound.Reader.TryRead(out _));
-        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(runtimeFirst ? 3 : 4, manager.State.Revision);
 
         await relay.StopAsync(timeout.Token);
         await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
@@ -349,7 +349,20 @@ public partial class FunctionRpcRelayTests
 
     private static WorkerAssignment CreateWorkerAssignment(string functionGroupName = "test-group")
         => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady: false,
-            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot");
+            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot",
+            splitStaticState: new(
+                new(
+                    "test-namespace",
+                    "test-worker-pod",
+                    Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                    "test-stamp",
+                    "FunctionsSplitWorkerPod",
+                    new("test-app", 42, "test-antares-stamp")),
+                IsDiscoveryPod: false,
+                IsAlwaysReady: false,
+                functionGroupName,
+                ConfigLastModifiedTime: 100,
+                ContentLastModifiedTime: 200));
 
     private sealed class PumpingSynchronizationContext : SynchronizationContext
     {

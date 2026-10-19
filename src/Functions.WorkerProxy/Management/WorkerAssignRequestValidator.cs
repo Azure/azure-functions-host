@@ -64,7 +64,8 @@ internal static class WorkerAssignRequestValidator
             || request.FunctionAppName is not { } functionAppName
             || request.FunctionGroupName is not { } functionGroupName
             || request.FunctionAppDirectory is not { } functionAppDirectory
-            || request.IsAlwaysReady is not { } isAlwaysReady)
+            || request.IsAlwaysReady is not { } isAlwaysReady
+            || splitStaticState is not { } validatedStaticState)
         {
             return false;
         }
@@ -76,7 +77,7 @@ internal static class WorkerAssignRequestValidator
             isAlwaysReady,
             environment,
             functionAppDirectory,
-            splitStaticState);
+            validatedStaticState);
 
         return true;
     }
@@ -90,6 +91,7 @@ internal static class WorkerAssignRequestValidator
         staticState = null;
         if (request.StaticState is null)
         {
+            errors.Add(new(WorkerApiErrorCodes.Required, "staticState"));
             return;
         }
 
@@ -116,7 +118,8 @@ internal static class WorkerAssignRequestValidator
                 errors.Add(new(WorkerApiErrorCodes.InvalidValue, "staticState.self.podName"));
             }
 
-            if (!string.Equals(self.App.FunctionAppName, request.FunctionAppName, StringComparison.Ordinal))
+            if (!string.IsNullOrWhiteSpace(request.FunctionAppName)
+                && !string.Equals(self.App.FunctionAppName, request.FunctionAppName, StringComparison.Ordinal))
             {
                 errors.Add(new(WorkerApiErrorCodes.InvalidValue, "staticState.self.app.functionAppName"));
             }
@@ -131,6 +134,7 @@ internal static class WorkerAssignRequestValidator
 
         if (staticRequest.FunctionGroup is { } functionGroup
             && request.FunctionGroupName is { } functionGroupName
+            && !string.IsNullOrWhiteSpace(functionGroupName)
             && !string.Equals(functionGroup, functionGroupName, StringComparison.Ordinal))
         {
             errors.Add(new(WorkerApiErrorCodes.InvalidValue, "staticState.functionGroup"));

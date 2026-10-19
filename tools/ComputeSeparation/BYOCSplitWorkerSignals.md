@@ -15,7 +15,7 @@ scheduler headroom remain separate contracts.
 
 | Area | Current | Target |
 | --- | --- | --- |
-| Worker assignment | Assignment carries legacy app configuration only. | Assignment additively carries immutable split Worker static state; it does not declare runtime link state. |
+| Worker assignment | Assignment does not carry the complete split Worker identity. | Assignment requires immutable split Worker static state; it does not declare runtime link state. |
 | Runtime link | WorkerProxy relays FunctionRpc but does not publish the runtime-side connection lifecycle. | The existing Host link opens the runtime-facing FunctionRpc stream; WorkerProxy observes attachment and initialization directly. |
 | Worker link signal | WorkerProxy does not expose the runtime-originated connection lifecycle. | WorkerProxy publishes `Unlinked`, then `Pending` on runtime attachment, then `Linked` when the first initialization response following the forwarded runtime initialization request is successful. |
 | Legacy management | `/admin/worker/state` is the only Worker state contract. | Its JSON shape and status semantics are unchanged; `/admin/infra/instanceState` additively publishes the split Worker shape. Split-only transitions share the existing revision and can wake legacy long polls. |
@@ -62,8 +62,8 @@ flowchart TD
     Init --> Linked
 ```
 
-`PUT /admin/worker/assignment` owns immutable Worker static state. Its
-additive `staticState` contains:
+`PUT /admin/worker/assignment` owns immutable Worker static state. Its required
+`staticState` contains:
 
 - `self` with the exact Worker pod and app identity;
 - `isDiscoveryPod`;
@@ -258,10 +258,10 @@ gets an independent lifecycle or API owner.
 
 ## Compatibility/rollout
 
-- Legacy assignment bodies can omit `staticState`.
-- An accepted assignment without `staticState` cannot be upgraded in place
-  because assignment identity is immutable. Recycle that WorkerProxy and make
-  the first assignment include `staticState` before Legion polls or links it.
+- Every assignment body must include the complete `staticState`; omission
+  returns `400` with `Required` targeting `staticState`.
+- Accepted assignment identity is immutable, and exact replay remains
+  idempotent.
 - The existing Host link request body is unchanged.
 - `/admin/worker/state` keeps its existing JSON shape and status semantics;
   split link transitions can advance its shared revision.
@@ -298,4 +298,4 @@ environment before production rollout.
 | Worker static assignment | `WorkerAssignRequest.cs`, `WorkerAssignRequestValidator.cs`, `WorkerAssignment.cs` | Assignment owns immutable Worker static state only |
 | Worker link lifecycle | `FunctionRpcRelay.cs`, `FunctionRpcRelay.Session.cs`, `WorkerPodStateManager.cs` | Runtime listener attachment and `Unlinked -> Pending -> Linked` timing |
 | Public state | `ManagementApiEndpoints.cs`, `ManagementApiHandlers.cs`, `SplitWorkerLink.cs` | Additive split shape and preserved legacy JSON shape |
-| Behavioral tests | `FunctionRpcRelayTests.Management.cs` | Static state, connection lifecycle, duplicate rejection, terminal unlink, and legacy compatibility |
+| Behavioral tests | `FunctionRpcRelayTests.Management.cs` | Static state, connection lifecycle, duplicate rejection, terminal unlink, and existing management compatibility |

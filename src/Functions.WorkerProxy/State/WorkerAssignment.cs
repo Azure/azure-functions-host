@@ -30,7 +30,7 @@ internal sealed class WorkerAssignment
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
         string functionAppDirectory,
-        SplitWorkerStaticState? splitStaticState = null)
+        SplitWorkerStaticState splitStaticState)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {
@@ -41,6 +41,7 @@ internal sealed class WorkerAssignment
         ArgumentException.ThrowIfNullOrWhiteSpace(functionGroupName);
         ArgumentNullException.ThrowIfNull(environment);
         ArgumentNullException.ThrowIfNull(functionAppDirectory);
+        ArgumentNullException.ThrowIfNull(splitStaticState);
         if (startupMode is WorkerStartupMode.SpecializationRequired)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(functionAppDirectory);
@@ -77,7 +78,7 @@ internal sealed class WorkerAssignment
 
     public string FunctionAppDirectory { get; }
 
-    public SplitWorkerStaticState? SplitStaticState { get; }
+    public SplitWorkerStaticState SplitStaticState { get; }
 
     /// <summary>
     /// Compares immutable assignment identity.
