@@ -64,22 +64,6 @@ public interface IWorkerChannelRegistry : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Atomically admits one worker with the exact runtime identity carried to WorkerProxy.
-    /// </summary>
-    /// <param name="workerId">The worker identifier.</param>
-    /// <param name="grpcEndpoint">The absolute FunctionRpc endpoint.</param>
-    /// <param name="runtimeIdentity">The runtime identity initiating the link.</param>
-    /// <param name="cancellationToken">Cancels a new link attempt, or only the caller's wait for an existing attempt.</param>
-    /// <returns>The initialized and registered channel, and whether this caller started the successful attempt.</returns>
-    /// <exception cref="WorkerLinkException">The request conflicts with the registry's admission state.</exception>
-    /// <exception cref="TimeoutException">The new link attempt or this caller's retry wait exceeded its deadline.</exception>
-    Task<WorkerLinkResult> LinkAsync(
-        string workerId,
-        Uri grpcEndpoint,
-        RuntimePodIdentity runtimeIdentity,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Removes and disposes a linked worker when present.
     /// </summary>
     /// <remarks>The accepted worker ID remains terminal and cannot be linked again in this registry.</remarks>

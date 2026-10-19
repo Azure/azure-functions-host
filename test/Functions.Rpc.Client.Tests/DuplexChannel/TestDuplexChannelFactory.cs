@@ -33,15 +33,4 @@ internal sealed class TestDuplexChannelFactory<T> : IDuplexChannelFactory<T>
         InvocationCount++;
         return Task.FromResult(_channelFactory());
     }
-
-    /// <inheritdoc />
-    public Task<DuplexChannel<T>> ConnectAsync(
-        Uri endpoint,
-        RuntimePodIdentity runtimeIdentity,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(runtimeIdentity);
-
-        return ConnectAsync(endpoint, cancellationToken);
-    }
 }

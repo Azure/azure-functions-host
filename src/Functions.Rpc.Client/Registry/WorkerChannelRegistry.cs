@@ -140,24 +140,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
         string workerId,
         Uri grpcEndpoint,
         CancellationToken cancellationToken = default)
-        => LinkAsyncCore(workerId, grpcEndpoint, runtimeIdentity: null, cancellationToken);
-
-    public Task<WorkerLinkResult> LinkAsync(
-        string workerId,
-        Uri grpcEndpoint,
-        RuntimePodIdentity runtimeIdentity,
-        CancellationToken cancellationToken = default)
-    {
-        ValidateRuntimeIdentity(runtimeIdentity);
-
-        return LinkAsyncCore(workerId, grpcEndpoint, runtimeIdentity, cancellationToken);
-    }
-
-    private Task<WorkerLinkResult> LinkAsyncCore(
-        string workerId,
-        Uri grpcEndpoint,
-        RuntimePodIdentity runtimeIdentity,
-        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
         RpcClientFactory.ValidateEndpoint(grpcEndpoint);
@@ -174,12 +156,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 {
                     throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
                         "The worker is already associated with a different gRPC endpoint.");
-                }
-
-                if (!Equals(existing.RuntimeIdentity, runtimeIdentity))
-                {
-                    throw new WorkerLinkException(WorkerLinkFailureReason.Conflict,
-                        "The worker is already associated with a different runtime identity.");
                 }
 
                 if (existing.Terminal || existing.Channel?.Completion.IsCompleted == true)
@@ -199,10 +175,10 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             }
 
             start = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            WorkerSlot slot = new() { Endpoint = grpcEndpoint, RuntimeIdentity = runtimeIdentity };
+            WorkerSlot slot = new() { Endpoint = grpcEndpoint };
             _slots.Add(workerId, slot);
             _linkAttempts.Add(workerId, slot);
-            link = LinkCoreAsync(workerId, grpcEndpoint, runtimeIdentity, slot, start.Task, cancellationToken);
+            link = LinkCoreAsync(workerId, grpcEndpoint, slot, start.Task, cancellationToken);
             slot.LinkTask = link;
             NotifyWorkerLinkCapacityChangedLocked();
         }
@@ -219,7 +195,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
     private async Task<WorkerChannel> LinkCoreAsync(
         string workerId,
         Uri grpcEndpoint,
-        RuntimePodIdentity runtimeIdentity,
         WorkerSlot slot,
         Task start,
         CancellationToken cancellationToken)
@@ -239,9 +214,7 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
             try
             {
                 operationSource.Token.ThrowIfCancellationRequested();
-                ownedChannel = runtimeIdentity is null
-                    ? await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token)
-                    : await _duplexChannelFactory.ConnectAsync(grpcEndpoint, runtimeIdentity, operationSource.Token);
+                ownedChannel = await _duplexChannelFactory.ConnectAsync(grpcEndpoint, operationSource.Token);
                 operationSource.Token.ThrowIfCancellationRequested();
 
                 candidate = _channelFactory.Create(workerId, ownedChannel)
@@ -306,23 +279,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
                 }
             }
         }
-    }
-
-    private static void ValidateRuntimeIdentity(RuntimePodIdentity runtimeIdentity)
-    {
-        ArgumentNullException.ThrowIfNull(runtimeIdentity);
-        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentity.ResourceNamespace);
-        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentity.PodName);
-        ArgumentOutOfRangeException.ThrowIfEqual(runtimeIdentity.PodGuid, Guid.Empty);
-        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentity.LegionStampName);
-        if (!string.Equals(runtimeIdentity.PodType, RuntimePodIdentity.RuntimePodType, StringComparison.Ordinal))
-        {
-            throw new ArgumentException("The runtime pod type is invalid.", nameof(runtimeIdentity));
-        }
-
-        ArgumentNullException.ThrowIfNull(runtimeIdentity.App);
-        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentity.App.FunctionAppName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentity.App.AntaresStampName);
     }
 
     public async Task<bool> UnlinkAsync(string workerId, CancellationToken cancellationToken = default)
@@ -734,8 +690,6 @@ internal sealed partial class WorkerChannelRegistry : IWorkerChannelRegistry
 
         // The recorded gRPC endpoint distinguishes exact retries from conflicting requests.
         public Uri Endpoint { get; init; }
-
-        public RuntimePodIdentity RuntimeIdentity { get; init; }
 
         // The link task shared by exact retries; cleared when the accepted channel is detached.
         public Task<WorkerChannel> LinkTask { get; set; }

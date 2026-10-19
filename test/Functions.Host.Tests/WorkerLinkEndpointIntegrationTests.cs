@@ -24,14 +24,6 @@ public sealed class WorkerLinkEndpointIntegrationTests
 {
     private const string WorkerId = "worker-pod-abc123";
     private static readonly Uri Endpoint = new("http://worker-proxy:50053");
-    private static readonly RuntimePodIdentity RuntimeIdentity = new(
-        "test-namespace",
-        "test-runtime-pod",
-        Guid.Parse("22222222-2222-2222-2222-222222222222"),
-        "legion-test",
-        RuntimePodIdentity.RuntimePodType,
-        new("test-app", 42, "antares-test"));
-
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
     private readonly Mock<IWorkerChannelRegistry> _registry = new(MockBehavior.Strict);
 
@@ -83,8 +75,8 @@ public sealed class WorkerLinkEndpointIntegrationTests
         Dictionary<string, TaskCompletionSource<WorkerLinkResult>> links = new(StringComparer.Ordinal);
         Lock linksLock = new();
         _registry.Setup(value => value.LinkAsync(
-                It.IsAny<string>(), Endpoint, RuntimeIdentity, It.IsAny<CancellationToken>()))
-            .Returns((string workerId, Uri _, RuntimePodIdentity _, CancellationToken token) =>
+                It.IsAny<string>(), Endpoint, It.IsAny<CancellationToken>()))
+            .Returns((string workerId, Uri _, CancellationToken token) =>
             {
                 lock (linksLock)
                 {
@@ -105,7 +97,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
             });
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
 
-        Task<HttpResponseMessage> first = host.PutAsync(LinkJson(RuntimeIdentity), timeout.Token, "worker-one");
+        Task<HttpResponseMessage> first = host.PutAsync(LinkJson(), timeout.Token, "worker-one");
         await WaitForLinkCountAsync(1);
         CompleteLink("worker-one");
         using (HttpResponseMessage accepted = await first.WaitAsync(timeout.Token))
@@ -113,17 +105,17 @@ public sealed class WorkerLinkEndpointIntegrationTests
             await AssertLinkResponseAsync(accepted, HttpStatusCode.Created, timeout.Token);
         }
 
-        Task<HttpResponseMessage> second = host.PutAsync(LinkJson(RuntimeIdentity), timeout.Token, "worker-two");
+        Task<HttpResponseMessage> second = host.PutAsync(LinkJson(), timeout.Token, "worker-two");
         await WaitForLinkCountAsync(2);
 
-        using HttpResponseMessage rejected = await host.PutAsync(LinkJson(RuntimeIdentity), timeout.Token, "worker-three");
+        using HttpResponseMessage rejected = await host.PutAsync(LinkJson(), timeout.Token, "worker-three");
         await AssertLinkErrorAsync(rejected, HttpStatusCode.Conflict, "LinkConflict", timeout.Token);
 
         CompleteLink("worker-two");
         using HttpResponseMessage secondAccepted = await second.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(secondAccepted, HttpStatusCode.Created, timeout.Token);
         _registry.Verify(value => value.LinkAsync(
-            It.IsAny<string>(), Endpoint, RuntimeIdentity, It.IsAny<CancellationToken>()), Times.Exactly(3));
+            It.IsAny<string>(), Endpoint, It.IsAny<CancellationToken>()), Times.Exactly(3));
         _registry.VerifyNoOtherCalls();
 
         void CompleteLink(string workerId)
@@ -204,9 +196,6 @@ public sealed class WorkerLinkEndpointIntegrationTests
     [InlineData("""{"workerHttpEndpoint":"{endpoint}"}""")]
     [InlineData("""{"workerGrpcEndpoint":"relative/path"}""")]
     [InlineData("""{"workerGrpcEndpoint":"ftp://127.0.0.1:5000"}""")]
-    [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtime":{}}""")]
-    [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtime":{"podType":"Worker"}}""")]
-    [InlineData("""{"workerGrpcEndpoint":"{endpoint}","runtime":{"resourceNamespace":"namespace","podName":"runtime","podGuid":"cccccccc-cccc-cccc-cccc-cccccccccccc","legionStampName":"legion","podType":"FunctionsSplitRuntimePod","app":{"functionAppName":"app","antaresStampName":"antares"}}}""")]
     public async Task Put_InvalidRequest_ReturnsBadRequestWithoutCallingRegistry(string? json)
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
@@ -466,26 +455,6 @@ public sealed class WorkerLinkEndpointIntegrationTests
     private static string LinkJson()
         => JsonSerializer.Serialize(new { workerGrpcEndpoint = Endpoint.AbsoluteUri });
 
-    private static string LinkJson(RuntimePodIdentity runtimeIdentity)
-        => JsonSerializer.Serialize(new
-        {
-            workerGrpcEndpoint = Endpoint.AbsoluteUri,
-            runtime = new
-            {
-                resourceNamespace = runtimeIdentity.ResourceNamespace,
-                podName = runtimeIdentity.PodName,
-                podGuid = runtimeIdentity.PodGuid,
-                legionStampName = runtimeIdentity.LegionStampName,
-                podType = runtimeIdentity.PodType,
-                app = new
-                {
-                    functionAppName = runtimeIdentity.App.FunctionAppName,
-                    functionAppSiteId = runtimeIdentity.App.FunctionAppSiteId,
-                    antaresStampName = runtimeIdentity.App.AntaresStampName
-                }
-            }
-        });
-
     private void SetupLink(string workerId = WorkerId, bool isNewLink = true)
         => _registry.Setup(value => value.LinkAsync(workerId, Endpoint, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new WorkerLinkResult(null!, isNewLink));
@@ -514,8 +483,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
             Assert.Equal(new[] { "code", "target" },
                 error.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
             Assert.Contains(error.GetProperty("code").GetString(), new[] { "Required", "InvalidEndpoint", "InvalidBody" });
-            Assert.Contains(error.GetProperty("target").GetString(),
-                new[] { "request", "runtime", "runtime.podType", "workerId", "workerGrpcEndpoint" });
+            Assert.Contains(error.GetProperty("target").GetString(), new[] { "request", "workerId", "workerGrpcEndpoint" });
         });
         return errors;
     }
