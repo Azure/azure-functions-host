@@ -92,14 +92,7 @@ internal static class ManagementApiHandlers
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        SplitWorkerOriginState? current = SplitWorkerOriginState.FromState(manager.State);
-        if (current is null)
-        {
-            return Error(
-                StatusCodes.Status503ServiceUnavailable,
-                WorkerApiErrorCodes.WorkerStateUnavailable,
-                "The worker has not received split worker static state.");
-        }
+        SplitWorkerOriginState current = SplitWorkerOriginState.FromState(manager.State);
 
         if (previousState is null || previousState != current)
         {
@@ -148,10 +141,7 @@ internal static class ManagementApiHandlers
 
     private static IResult SplitStateResponse(WorkerPodState state)
     {
-        SplitWorkerOriginState splitState = SplitWorkerOriginState.FromState(state)
-            ?? throw new InvalidOperationException("Split worker static state was removed after assignment.");
-
-        return SplitStateResponse(splitState);
+        return SplitStateResponse(SplitWorkerOriginState.FromState(state));
     }
 
     private static IResult SplitStateResponse(SplitWorkerOriginState state)

@@ -21,6 +21,7 @@
     <PackageReference Include="Grpc.Core.Api" VersionOverride="2.76.0" />
     <PackageReference Include="Grpc.Net.Client" VersionOverride="2.76.0" />
     <PackageReference Include="Grpc.Tools" VersionOverride="2.76.0" PrivateAssets="all" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <PackageReference Include="Yarp.ReverseProxy" VersionOverride="2.3.0" />
   </ItemGroup>
 
@@ -38,6 +39,7 @@
       AdditionalImportDirs="..\WebJobs.Script.Grpc\azure-functions-language-worker-protobuf\src\proto"
       GrpcServices="server"
       ProtoRoot="..\WebJobs.Script.Grpc\Protos" />
+    <Protobuf Include="Protos\WorkerLinkControl.proto" GrpcServices="Both" />
   </ItemGroup>
 
 </Project>

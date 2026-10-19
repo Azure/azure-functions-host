@@ -9,6 +9,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.Host.WorkerLink;
 using Azure.Functions.Rpc.Client;
 using Moq;
 using Xunit;
@@ -49,22 +50,38 @@ public sealed class WorkerLinkEndpointIntegrationTests
         using var timeout = new CancellationTokenSource(TestTimeout);
         TaskCompletionSource invoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<WorkerLinkResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource acknowledgementInvoked = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource acknowledgement = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Mock<IWorkerLinkAcknowledgementClient> acknowledgementClient = new(MockBehavior.Strict);
+        acknowledgementClient.Setup(client => client.AcknowledgeAsync(
+                Endpoint,
+                It.Is<FunctionsSplitPodIdentity>(identity => MatchesRuntimeIdentity(identity)),
+                It.IsAny<CancellationToken>()))
+            .Callback(() => acknowledgementInvoked.TrySetResult())
+            .Returns(acknowledgement.Task);
         _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, It.IsAny<CancellationToken>()))
             .Returns((string _, Uri _, CancellationToken token) =>
             {
                 invoked.TrySetResult();
                 return completion.Task.WaitAsync(token);
             });
-        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(
+            timeout.Token,
+            _registry.Object,
+            acknowledgementClient: acknowledgementClient.Object);
 
         Task<HttpResponseMessage> request = host.PutAsync(LinkJson(), timeout.Token);
         await invoked.Task.WaitAsync(timeout.Token);
         Assert.False(request.IsCompleted);
 
         completion.SetResult(new WorkerLinkResult(null!, isNewLink));
+        await acknowledgementInvoked.Task.WaitAsync(timeout.Token);
+        Assert.False(request.IsCompleted);
+        acknowledgement.SetResult();
         using HttpResponseMessage response = await request.WaitAsync(timeout.Token);
         await AssertLinkResponseAsync(response, status, timeout.Token);
         VerifyLink();
+        acknowledgementClient.VerifyAll();
     }
 
     [Fact]
@@ -104,7 +121,12 @@ public sealed class WorkerLinkEndpointIntegrationTests
         using var timeout = new CancellationTokenSource(TestTimeout);
         SetupLink();
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
-        string json = JsonSerializer.Serialize(new { workerGrpcEndpoint = Endpoint.AbsoluteUri, workerHttpEndpoint = httpEndpoint });
+        string json = JsonSerializer.Serialize(new
+        {
+            workerGrpcEndpoint = Endpoint.AbsoluteUri,
+            workerHttpEndpoint = httpEndpoint,
+            runtime = RuntimeRequest()
+        });
 
         using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
 
@@ -133,16 +155,19 @@ public sealed class WorkerLinkEndpointIntegrationTests
     }
 
     [Fact]
-    public async Task Put_EmptyObject_ReturnsRequiredGrpcEndpointError()
+    public async Task Put_EmptyObject_ReturnsRequiredLinkInputs()
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
 
         using HttpResponseMessage response = await host.PutAsync("{}", timeout.Token);
-        JsonElement error = Assert.Single(await ReadValidationErrorsAsync(response, timeout.Token));
+        JsonElement[] errors = await ReadValidationErrorsAsync(response, timeout.Token);
 
-        Assert.Equal("Required", error.GetProperty("code").GetString());
-        Assert.Equal("workerGrpcEndpoint", error.GetProperty("target").GetString());
+        Assert.Equal(
+            [("runtime", "Required"), ("workerGrpcEndpoint", "Required")],
+            errors
+                .Select(error => (error.GetProperty("target").GetString(), error.GetProperty("code").GetString()))
+                .OrderBy(error => error.Item1, StringComparer.Ordinal));
         _registry.VerifyNoOtherCalls();
     }
 
@@ -151,9 +176,12 @@ public sealed class WorkerLinkEndpointIntegrationTests
     {
         using var timeout = new CancellationTokenSource(TestTimeout);
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
-        const string json = """
-            {"workerGrpcEndpoint":"relative/grpc","workerHttpEndpoint":"relative/http"}
-            """;
+        string json = JsonSerializer.Serialize(new
+        {
+            workerGrpcEndpoint = "relative/grpc",
+            workerHttpEndpoint = "relative/http",
+            runtime = RuntimeRequest()
+        });
 
         using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
         JsonElement[] errors = await ReadValidationErrorsAsync(response, timeout.Token);
@@ -205,7 +233,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         SetupLink();
         await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
         string json = $$"""
-            {"workerGrpcEndpoint":"{{Endpoint.AbsoluteUri}}","{{propertyName}}":{{identityJson}}}
+            {"workerGrpcEndpoint":"{{Endpoint.AbsoluteUri}}","runtime":{{RuntimeJson()}},"{{propertyName}}":{{identityJson}}}
             """;
 
         using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
@@ -225,6 +253,7 @@ public sealed class WorkerLinkEndpointIntegrationTests
         {
             workerId = "another-worker",
             workerGrpcEndpoint = Endpoint.AbsoluteUri,
+            runtime = RuntimeRequest(),
         });
 
         using HttpResponseMessage response = await host.PutAsync(json, timeout.Token);
@@ -358,26 +387,87 @@ public sealed class WorkerLinkEndpointIntegrationTests
     }
 
     [Fact]
-    public async Task Put_RegistryTimeout_ReturnsLinkTimeoutWithoutCancelingRequest()
+    public async Task Put_AcknowledgementTimeout_PreventsLinkSuccessWithoutCancelingRequest()
     {
         const string privateDiagnostic = "private-timeout-detail-do-not-return";
         using var timeout = new CancellationTokenSource(TestTimeout);
-        CancellationToken registryToken = default;
-        _registry.Setup(value => value.LinkAsync(WorkerId, Endpoint, It.IsAny<CancellationToken>()))
-            .Callback<string, Uri, CancellationToken>((_, _, token) => registryToken = token)
+        SetupLink();
+        CancellationToken acknowledgementToken = default;
+        Mock<IWorkerLinkAcknowledgementClient> acknowledgementClient = new(MockBehavior.Strict);
+        acknowledgementClient.Setup(client => client.AcknowledgeAsync(
+                Endpoint,
+                It.IsAny<FunctionsSplitPodIdentity>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<Uri, FunctionsSplitPodIdentity, CancellationToken>((_, _, token) => acknowledgementToken = token)
             .ThrowsAsync(new TimeoutException(privateDiagnostic));
-        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(timeout.Token, _registry.Object);
+        await using WorkerLinkTestHost host = await WorkerLinkTestHost.StartAsync(
+            timeout.Token,
+            _registry.Object,
+            acknowledgementClient: acknowledgementClient.Object);
 
         using HttpResponseMessage response = await host.PutAsync(LinkJson(), timeout.Token);
 
         await AssertLinkErrorAsync(response, HttpStatusCode.ServiceUnavailable, "LinkTimeout", timeout.Token);
         Assert.DoesNotContain(privateDiagnostic, await response.Content.ReadAsStringAsync(timeout.Token), StringComparison.Ordinal);
-        Assert.False(registryToken.IsCancellationRequested);
+        Assert.False(acknowledgementToken.IsCancellationRequested);
         VerifyLink();
+        acknowledgementClient.VerifyAll();
     }
 
     private static string LinkJson()
-        => JsonSerializer.Serialize(new { workerGrpcEndpoint = Endpoint.AbsoluteUri });
+        => JsonSerializer.Serialize(new
+        {
+            workerGrpcEndpoint = Endpoint.AbsoluteUri,
+            runtime = RuntimeRequest()
+        });
+
+    private static string RuntimeJson() => """
+        {
+          "resourceNamespace":"runtime-namespace",
+          "podName":"runtime-pod",
+          "podGuid":"22222222-2222-2222-2222-222222222222",
+          "legionStampName":"legion-runtime",
+          "podType":"FunctionsSplitRuntimePod",
+          "app":{
+            "functionAppName":"test-app",
+            "functionAppSiteId":42,
+            "antaresStampName":"antares-test"
+          }
+        }
+        """;
+
+    private static JsonElement RuntimeRequest() => JsonSerializer.Deserialize<JsonElement>(RuntimeJson());
+
+    private static FunctionsSplitPodIdentity RuntimeIdentity() =>
+        new()
+        {
+            ResourceNamespace = "runtime-namespace",
+            PodName = "runtime-pod",
+            PodGuid = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            LegionStampName = "legion-runtime",
+            PodType = "FunctionsSplitRuntimePod",
+            App = new()
+            {
+                FunctionAppName = "test-app",
+                FunctionAppSiteId = 42,
+                AntaresStampName = "antares-test"
+            }
+        };
+
+    private static bool MatchesRuntimeIdentity(FunctionsSplitPodIdentity identity)
+    {
+        FunctionsSplitFunctionAppIdentity? app = identity.App;
+
+        return string.Equals(identity.ResourceNamespace, "runtime-namespace", StringComparison.Ordinal)
+            && string.Equals(identity.PodName, "runtime-pod", StringComparison.Ordinal)
+            && identity.PodGuid == Guid.Parse("22222222-2222-2222-2222-222222222222")
+            && string.Equals(identity.LegionStampName, "legion-runtime", StringComparison.Ordinal)
+            && string.Equals(identity.PodType, "FunctionsSplitRuntimePod", StringComparison.Ordinal)
+            && app is not null
+            && string.Equals(app.FunctionAppName, "test-app", StringComparison.Ordinal)
+            && app.FunctionAppSiteId == 42
+            && string.Equals(app.AntaresStampName, "antares-test", StringComparison.Ordinal);
+    }
 
     private void SetupLink(string workerId = WorkerId, bool isNewLink = true)
         => _registry.Setup(value => value.LinkAsync(workerId, Endpoint, It.IsAny<CancellationToken>()))
@@ -406,8 +496,27 @@ public sealed class WorkerLinkEndpointIntegrationTests
             Assert.Equal(JsonValueKind.Object, error.ValueKind);
             Assert.Equal(new[] { "code", "target" },
                 error.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
-            Assert.Contains(error.GetProperty("code").GetString(), new[] { "Required", "InvalidEndpoint", "InvalidBody" });
-            Assert.Contains(error.GetProperty("target").GetString(), new[] { "request", "workerId", "workerGrpcEndpoint" });
+            Assert.Contains(
+                error.GetProperty("code").GetString(),
+                new[] { "Required", "InvalidEndpoint", "InvalidBody", "InvalidValue" });
+            Assert.Contains(
+                error.GetProperty("target").GetString(),
+                new[]
+                {
+                    "request",
+                    "workerId",
+                    "workerGrpcEndpoint",
+                    "runtime",
+                    "runtime.resourceNamespace",
+                    "runtime.podName",
+                    "runtime.podGuid",
+                    "runtime.legionStampName",
+                    "runtime.podType",
+                    "runtime.app",
+                    "runtime.app.functionAppName",
+                    "runtime.app.functionAppSiteId",
+                    "runtime.app.antaresStampName"
+                });
         });
         return errors;
     }

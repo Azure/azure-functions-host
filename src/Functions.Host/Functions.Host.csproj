@@ -19,6 +19,13 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Core.Api" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="all" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishReadyToRunUseCrossgen2>true</PublishReadyToRunUseCrossgen2>
@@ -52,6 +59,13 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Azure.Functions.Host.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf
+      Include="..\Functions.WorkerProxy\Protos\WorkerLinkControl.proto"
+      GrpcServices="client"
+      Link="Protos\WorkerLinkControl.proto" />
   </ItemGroup>
 
 </Project>

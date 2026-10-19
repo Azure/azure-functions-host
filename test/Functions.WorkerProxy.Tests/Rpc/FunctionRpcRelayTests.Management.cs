@@ -10,9 +10,12 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Functions.WorkerProxy.Control;
+using Azure.Functions.WorkerProxy.Management;
 using Azure.Functions.WorkerProxy.Rpc;
 using Azure.Functions.WorkerProxy.State;
 using Grpc.Core;
+using Grpc.Net.Client;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -96,15 +99,17 @@ public partial class FunctionRpcRelayTests
             }
 
             await AssertReadinessAsync(management, "/admin/worker/ready", HttpStatusCode.OK, timeout.Token);
+            long unassignedRevision = runtimeFirst ? 3 : 2;
             using (JsonDocument unassigned = await ReadManagementStateAsync(management, null, timeout.Token))
             {
-                Assert.Equal(2, unassigned.RootElement.GetProperty("revisionId").GetInt64());
+                Assert.Equal(unassignedRevision, unassigned.RootElement.GetProperty("revisionId").GetInt64());
                 Assert.Equal("None", unassigned.RootElement.GetProperty("workerPodState").GetProperty("podStatus").GetString());
                 Assert.False(unassigned.RootElement.GetProperty("workerPodState").TryGetProperty("startupMode", out _));
             }
 
             Task<HttpResponseMessage> assignmentPoll = management.GetAsync(
-                "/admin/worker/state?lastKnownRevision=2", timeout.Token);
+                $"/admin/worker/state?lastKnownRevision={unassignedRevision.ToString(CultureInfo.InvariantCulture)}",
+                timeout.Token);
             await WaitForManagementPollAsync(manager, timeout.Token);
             using (HttpResponseMessage assignment = await PutManagementJsonAsync(
                 management, "/admin/worker/assignment", assignmentBody, timeout.Token))
@@ -122,7 +127,7 @@ public partial class FunctionRpcRelayTests
                 using JsonDocument state = JsonDocument.Parse(body);
                 Assert.Equal("FunctionsWorkerPod", state.RootElement.GetProperty("functionsContainerType").GetString());
                 Assert.Equal("test-worker-pod", state.RootElement.GetProperty("podName").GetString());
-                Assert.Equal(3, state.RootElement.GetProperty("revisionId").GetInt64());
+                Assert.Equal(unassignedRevision + 1, state.RootElement.GetProperty("revisionId").GetInt64());
                 JsonElement pod = state.RootElement.GetProperty("workerPodState");
                 Assert.Equal("ReadyForRequest", pod.GetProperty("podStatus").GetString());
                 Assert.Equal(startupMode, pod.GetProperty("startupMode").GetString());
@@ -149,7 +154,7 @@ public partial class FunctionRpcRelayTests
                 await AssertManagementErrorAsync(conflict, HttpStatusCode.Conflict, "AssignmentConflict", timeout.Token);
             }
 
-            Assert.Equal(3, manager.State.Revision);
+            Assert.Equal(unassignedRevision + 1, manager.State.Revision);
             if (runtime is null)
             {
                 runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
@@ -166,7 +171,7 @@ public partial class FunctionRpcRelayTests
             expected.WorkerInitResponse.Capabilities["FunctionGroupName"] = "test-group";
             await worker.WriteAsync(initialized, timeout.Token);
             Assert.Equal(expected, await runtime.ReadAsync(timeout.Token));
-            long activeRevision = runtimeFirst ? 3 : 5;
+            const long activeRevision = 4;
             while (manager.State.Revision < activeRevision)
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
@@ -232,7 +237,7 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task SplitAssignmentRequiresStaticStateWithoutReservingIdentity()
+    public async Task SplitAssignmentRequiresStaticStateWithoutReplacingPlaceholder()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
@@ -262,7 +267,7 @@ public partial class FunctionRpcRelayTests
         }
 
         Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
-        Assert.Null(manager.State.SplitStaticState);
+        Assert.Equal("unassigned", manager.State.SplitStaticState?.Self.ResourceNamespace);
         using (HttpResponseMessage assignment = await PutManagementJsonAsync(
             management, "/admin/worker/assignment", ManagementAssignment, timeout.Token))
         {
@@ -276,12 +281,74 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task SplitInstanceStateReturnsUnlinkedWorkerAfterStaticAssignment()
+    public async Task SplitInstanceStateAuthenticatesPlaceholderAndAssignmentState()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient management = factory.CreateWorkerProxyClient();
+        using HttpClient unauthenticated = factory.CreateWorkerProxyClient(includeSiteToken: false);
         using CancellationTokenSource timeout = new(TestTimeout);
+
+        string?[] invalidTokens =
+        [
+            null,
+            "not-a-token",
+            WorkerProxyWebApplicationFactory.CreateSiteToken(expires: DateTime.UtcNow.AddMinutes(-1)),
+            WorkerProxyWebApplicationFactory.CreateSiteToken(issuer: "https://invalid.example"),
+            WorkerProxyWebApplicationFactory.CreateSiteToken(audience: "another-worker-pod"),
+            WorkerProxyWebApplicationFactory.CreateSiteToken(signingKey: "fedcba9876543210fedcba9876543210"),
+            WorkerProxyWebApplicationFactory.CreateSiteToken(
+                signingKey: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                algorithm: Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha384)
+        ];
+        foreach (string? token in invalidTokens)
+        {
+            using HttpResponseMessage rejected = await SendSplitManagementRequestAsync(
+                unauthenticated,
+                token,
+                previousState: null,
+                timeout.Token);
+            Assert.Equal(HttpStatusCode.Unauthorized, rejected.StatusCode);
+        }
+
+        using (HttpResponseMessage legacy = await unauthenticated.GetAsync("/admin/worker/state", timeout.Token))
+        {
+            Assert.Equal(HttpStatusCode.OK, legacy.StatusCode);
+        }
+
+        using JsonDocument placeholder = await ReadSplitManagementStateAsync(management, timeout.Token);
+        JsonElement placeholderRoot = placeholder.RootElement;
+        Assert.Equal("FunctionsSplitWorkerProxy", placeholderRoot.GetProperty("functionsContainerType").GetString());
+        JsonElement placeholderStatic = placeholderRoot.GetProperty("staticState");
+        JsonElement placeholderSelf = placeholderStatic.GetProperty("self");
+        Assert.Equal("unassigned", placeholderSelf.GetProperty("resourceNamespace").GetString());
+        Assert.Equal("test-worker-pod", placeholderSelf.GetProperty("podName").GetString());
+        Assert.Equal(Guid.Empty, placeholderSelf.GetProperty("podGuid").GetGuid());
+        Assert.Equal("unassigned", placeholderSelf.GetProperty("legionStampName").GetString());
+        Assert.Equal("FunctionsSplitWorkerPod", placeholderSelf.GetProperty("podType").GetString());
+        JsonElement placeholderApp = placeholderSelf.GetProperty("app");
+        Assert.Equal("unassigned", placeholderApp.GetProperty("functionAppName").GetString());
+        Assert.Equal(0, placeholderApp.GetProperty("functionAppSiteId").GetInt32());
+        Assert.Equal("unassigned", placeholderApp.GetProperty("antaresStampName").GetString());
+        Assert.False(placeholderStatic.GetProperty("isDiscoveryPod").GetBoolean());
+        Assert.False(placeholderStatic.GetProperty("isAlwaysReady").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, placeholderStatic.GetProperty("functionGroup").ValueKind);
+        Assert.Equal(0, placeholderStatic.GetProperty("configLastModifiedTime").GetInt64());
+        Assert.Equal(0, placeholderStatic.GetProperty("contentLastModifiedTime").GetInt64());
+        JsonElement placeholderDynamic = placeholderRoot.GetProperty("dynamicState");
+        Assert.Equal(0, placeholderDynamic.GetProperty("revisionId").GetInt64());
+        Assert.Equal("Starting", placeholderDynamic.GetProperty("status").GetString());
+        Assert.Equal("Unlinked", placeholderDynamic.GetProperty("link").GetProperty("state").GetString());
+
+        using (HttpResponseMessage legion = await SendSplitManagementRequestAsync(
+            unauthenticated,
+            WorkerProxyWebApplicationFactory.CreateSiteToken(issuer: "https://legion.core.azurewebsites.net"),
+            previousState: null,
+            timeout.Token))
+        {
+            Assert.Equal(HttpStatusCode.OK, legion.StatusCode);
+        }
+
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await worker.WriteAsync(CreateStartStream(), timeout.Token);
         while (!manager.State.IsWorkerReady)
@@ -403,16 +470,52 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(init, await worker.ReadAsync(timeout.Token));
         await worker.WriteAsync(CreateInitResponse(string.Empty, httpUri: null), timeout.Token);
         Assert.NotNull((await runtime.ReadAsync(timeout.Token)).WorkerInitResponse);
+        Assert.False(linkedPoll.IsCompleted);
 
+        using GrpcChannel controlChannel = GrpcChannel.ForAddress(
+            factory.GetFunctionRpcAddress(FunctionRpcRelaySide.Runtime));
+        WorkerLinkControl.WorkerLinkControlClient control = new(controlChannel);
+        AcknowledgeLinkRequest acknowledgement = CreateRuntimeAcknowledgement();
+        await control.AcknowledgeLinkAsync(acknowledgement, cancellationToken: timeout.Token);
         using HttpResponseMessage linkedResponse = await linkedPoll;
         Assert.Equal(HttpStatusCode.OK, linkedResponse.StatusCode);
-        using JsonDocument linked = JsonDocument.Parse(await linkedResponse.Content.ReadAsStringAsync(timeout.Token));
+        string linkedStateJson = await linkedResponse.Content.ReadAsStringAsync(timeout.Token);
+        using JsonDocument linked = JsonDocument.Parse(linkedStateJson);
         JsonElement linkedDynamicState = linked.RootElement.GetProperty("dynamicState");
         Assert.Equal(5, linkedDynamicState.GetProperty("revisionId").GetInt64());
         Assert.Equal("ReadyForWork", linkedDynamicState.GetProperty("status").GetString());
         JsonElement linkedState = linkedDynamicState.GetProperty("link");
         Assert.Equal("Linked", linkedState.GetProperty("state").GetString());
-        Assert.False(linkedState.TryGetProperty("runtime", out _));
+        AssertRuntimeIdentity(linkedState.GetProperty("runtime"), "runtime-pod");
+
+        await control.AcknowledgeLinkAsync(acknowledgement, cancellationToken: timeout.Token);
+        Assert.Equal(5, manager.State.Revision);
+
+        AcknowledgeLinkRequest conflicting = CreateRuntimeAcknowledgement("other-runtime-pod");
+        Grpc.Core.RpcException conflict = await Assert.ThrowsAsync<Grpc.Core.RpcException>(
+            () => control.AcknowledgeLinkAsync(conflicting, cancellationToken: timeout.Token).ResponseAsync);
+        Assert.Equal(StatusCode.AlreadyExists, conflict.StatusCode);
+        Assert.Equal(5, manager.State.Revision);
+
+        Task<HttpResponseMessage> terminationPoll = PollSplitManagementStateAsync(
+            management,
+            linkedStateJson,
+            timeout.Token);
+        await WaitForManagementPollAsync(manager, timeout.Token);
+        await worker.CompleteRequestAsync(timeout.Token);
+        Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
+        Assert.Equal(StatusCode.Unavailable, await worker.WaitForTerminationAsync(timeout.Token));
+
+        using HttpResponseMessage terminatedResponse = await terminationPoll;
+        Assert.Equal(HttpStatusCode.OK, terminatedResponse.StatusCode);
+        using JsonDocument terminated = JsonDocument.Parse(
+            await terminatedResponse.Content.ReadAsStringAsync(timeout.Token));
+        JsonElement terminatedDynamic = terminated.RootElement.GetProperty("dynamicState");
+        Assert.Equal(6, terminatedDynamic.GetProperty("revisionId").GetInt64());
+        Assert.Equal("Starting", terminatedDynamic.GetProperty("status").GetString());
+        JsonElement retainedLink = terminatedDynamic.GetProperty("link");
+        Assert.Equal("Linked", retainedLink.GetProperty("state").GetString());
+        AssertRuntimeIdentity(retainedLink.GetProperty("runtime"), "runtime-pod");
     }
 
     [Fact]
@@ -477,8 +580,60 @@ public partial class FunctionRpcRelayTests
             await terminatedResponse.Content.ReadAsStringAsync(timeout.Token));
         JsonElement terminatedDynamicState = terminated.RootElement.GetProperty("dynamicState");
         Assert.Equal(5, terminatedDynamicState.GetProperty("revisionId").GetInt64());
-        Assert.Equal("RemovalRequested", terminatedDynamicState.GetProperty("status").GetString());
+        Assert.Equal("Starting", terminatedDynamicState.GetProperty("status").GetString());
         Assert.Equal("Unlinked", terminatedDynamicState.GetProperty("link").GetProperty("state").GetString());
+    }
+
+    private static async Task<HttpResponseMessage> SendSplitManagementRequestAsync(
+        HttpClient client,
+        string? siteToken,
+        string? previousState,
+        CancellationToken cancellationToken)
+    {
+        using HttpRequestMessage request = new(HttpMethod.Post, InfraStatePath);
+        if (siteToken is not null)
+        {
+            request.Headers.Add(SiteTokenValidator.HeaderName, siteToken);
+        }
+
+        if (previousState is not null)
+        {
+            request.Content = new StringContent(previousState, Encoding.UTF8, "application/json");
+        }
+
+        return await client.SendAsync(request, cancellationToken);
+    }
+
+    private static AcknowledgeLinkRequest CreateRuntimeAcknowledgement(string podName = "runtime-pod") =>
+        new()
+        {
+            Runtime = new Azure.Functions.WorkerProxy.Control.SplitPodIdentity
+            {
+                ResourceNamespace = "runtime-namespace",
+                PodName = podName,
+                PodGuid = "22222222-2222-2222-2222-222222222222",
+                LegionStampName = "legion-runtime",
+                PodType = "FunctionsSplitRuntimePod",
+                App = new()
+                {
+                    FunctionAppName = "test-app",
+                    FunctionAppSiteId = 42,
+                    AntaresStampName = "antares-test"
+                }
+            }
+        };
+
+    private static void AssertRuntimeIdentity(JsonElement runtime, string podName)
+    {
+        Assert.Equal("runtime-namespace", runtime.GetProperty("resourceNamespace").GetString());
+        Assert.Equal(podName, runtime.GetProperty("podName").GetString());
+        Assert.Equal(Guid.Parse("22222222-2222-2222-2222-222222222222"), runtime.GetProperty("podGuid").GetGuid());
+        Assert.Equal("legion-runtime", runtime.GetProperty("legionStampName").GetString());
+        Assert.Equal("FunctionsSplitRuntimePod", runtime.GetProperty("podType").GetString());
+        JsonElement app = runtime.GetProperty("app");
+        Assert.Equal("test-app", app.GetProperty("functionAppName").GetString());
+        Assert.Equal(42, app.GetProperty("functionAppSiteId").GetInt32());
+        Assert.Equal("antares-test", app.GetProperty("antaresStampName").GetString());
     }
 
     private static async Task<HttpResponseMessage> PutManagementJsonAsync(

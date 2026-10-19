@@ -209,24 +209,29 @@ internal sealed class WorkerPodStateManager
                 throw new InvalidOperationException("A different worker session is still attached.");
             }
 
-            bool hasRuntimeLink = _runtimeLinkSessionId == sessionId;
-            if (hasRuntimeLink)
+            bool ownsRuntimeLink = _runtimeLinkSessionId == sessionId;
+            if (ownsRuntimeLink)
             {
                 _runtimeLinkSessionId = null;
             }
 
-            // A runtime-only session can terminate before any worker attaches. Fence off its late notifications.
             _lastSessionId = sessionId;
-            if (!_state.IsWorkerAttached && !hasRuntimeLink)
+            if (!_state.IsWorkerAttached && !ownsRuntimeLink)
             {
                 return false;
+            }
+
+            SplitWorkerLink? link = _state.SplitLink;
+            if (ownsRuntimeLink && link?.State != SplitWorkerLinkState.Linked)
+            {
+                link = new(SplitWorkerLinkState.Unlinked);
             }
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
-                SplitLink = hasRuntimeLink ? new(SplitWorkerLinkState.Unlinked) : _state.SplitLink,
+                SplitLink = link,
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
             });
@@ -243,10 +248,7 @@ internal sealed class WorkerPodStateManager
 
         lock (_stateLock)
         {
-            if (_state.SplitStaticState is null
-                || _state.AssignmentState != WorkerAssignmentState.Ready
-                || _state.SessionId != sessionId
-                || !_state.IsWorkerReady
+            if (_state.AssignmentState == WorkerAssignmentState.Failed
                 || _runtimeLinkSessionId is not null
                 || _state.SplitLink?.State != SplitWorkerLinkState.Unlinked)
             {
@@ -263,25 +265,33 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
-    /// Records successful worker initialization after the response reaches the runtime stream.
+    /// Records the Runtime Host's successful link acknowledgement.
     /// </summary>
-    public void OnRuntimeInitialized(long sessionId)
+    public RuntimeLinkAcknowledgementResult AcknowledgeRuntimeLink(SplitPodIdentity runtime)
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+        ArgumentNullException.ThrowIfNull(runtime);
 
         lock (_stateLock)
         {
-            if (_runtimeLinkSessionId != sessionId
+            if (_state.SplitLink is { State: SplitWorkerLinkState.Linked, Runtime: { } acknowledged })
+            {
+                return acknowledged == runtime
+                    ? RuntimeLinkAcknowledgementResult.AlreadyAcknowledged
+                    : RuntimeLinkAcknowledgementResult.Conflict;
+            }
+
+            if (_runtimeLinkSessionId is null
                 || _state.SplitLink?.State != SplitWorkerLinkState.Pending)
             {
-                return;
+                return RuntimeLinkAcknowledgementResult.NotPending;
             }
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
-                SplitLink = new(SplitWorkerLinkState.Linked)
+                SplitLink = new(SplitWorkerLinkState.Linked, runtime)
             });
+            return RuntimeLinkAcknowledgementResult.Acknowledged;
         }
     }
 
@@ -325,7 +335,7 @@ internal sealed class WorkerPodStateManager
                 FunctionGroupName = assignment.FunctionGroupName,
                 IsAlwaysReady = assignment.IsAlwaysReady,
                 SplitStaticState = assignment.SplitStaticState,
-                SplitLink = new(SplitWorkerLinkState.Unlinked)
+                SplitLink = _state.SplitLink
             };
 
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.

@@ -39,8 +39,6 @@ internal sealed partial class FunctionRpcRelay
         private FunctionRpcRelayTerminalState? _terminalState;
         private FrozenDictionary<string, string>? _capabilities;
         private Uri? _workerHttpDestination;
-        private bool _workerInitResponseExpected;
-        private StreamingMessage? _workerInitResponseCompletingLink;
         private bool _runtimeAttached;
         private bool _workerAttached;
 
@@ -157,7 +155,7 @@ internal sealed partial class FunctionRpcRelay
             };
 
             Task readTask = ReadInboundAsync(side, requestStream, destination, linkedSource.Token);
-            Task writeTask = WriteOutboundAsync(side, source, responseStream, linkedSource.Token);
+            Task writeTask = WriteOutboundAsync(source, responseStream, linkedSource.Token);
             Task firstCompletedTask = await Task.WhenAny(readTask, writeTask);
 
             if (!_completion.Task.IsCompleted)
@@ -189,10 +187,7 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 SetAttachedLocked(side, value: false);
-                if (side == FunctionRpcRelaySide.Worker)
-                {
-                    stateManager.OnSessionTerminated(id);
-                }
+                stateManager.OnSessionTerminated(id);
 
                 SignalReleasedIfCompleteLocked();
             }
@@ -237,21 +232,10 @@ internal sealed partial class FunctionRpcRelay
         {
             if (side == FunctionRpcRelaySide.Runtime)
             {
-                if (message.WorkerInitRequest is not null)
-                {
-                    lock (_stateLock)
-                    {
-                        if (_terminalState is null && _workerInitResponseCompletingLink is null)
-                        {
-                            _workerInitResponseExpected = true;
-                        }
-                    }
-                }
-
                 return message;
             }
 
-            if (isFirstMessage)
+            if (side == FunctionRpcRelaySide.Worker && isFirstMessage)
             {
                 lock (_stateLock)
                 {
@@ -270,15 +254,9 @@ internal sealed partial class FunctionRpcRelay
                 }
             }
 
-            StreamingMessage? processed = message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
+            return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
                 ? FinalizeCapabilities(message)
                 : message;
-            if (processed is not null)
-            {
-                TrackWorkerInitResponse(processed);
-            }
-
-            return processed;
         }
 
         private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
@@ -346,7 +324,7 @@ internal sealed partial class FunctionRpcRelay
             Log.FunctionGroupNotAdvertised(logger, id, state.AssignmentState);
         }
 
-        private async Task WriteOutboundAsync(FunctionRpcRelaySide side, ChannelReader<StreamingMessage> source,
+        private static async Task WriteOutboundAsync(ChannelReader<StreamingMessage> source,
             IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
         {
             await foreach (StreamingMessage message in source.ReadAllAsync(cancellationToken))
@@ -354,46 +332,6 @@ internal sealed partial class FunctionRpcRelay
                 // This is the only task that writes this response stream. The linked token
                 // releases an in-flight gRPC write during teardown.
                 await responseStream.WriteAsync(message, cancellationToken);
-                if (side == FunctionRpcRelaySide.Runtime && TryCompleteRuntimeInitialization(message))
-                {
-                    stateManager.OnRuntimeInitialized(id);
-                }
-            }
-        }
-
-        private void TrackWorkerInitResponse(StreamingMessage message)
-        {
-            if (message.WorkerInitResponse is not { } response)
-            {
-                return;
-            }
-
-            lock (_stateLock)
-            {
-                if (_terminalState is not null || !_workerInitResponseExpected)
-                {
-                    return;
-                }
-
-                _workerInitResponseExpected = false;
-                if (response.Result?.Status == StatusResult.Types.Status.Success)
-                {
-                    _workerInitResponseCompletingLink = message;
-                }
-            }
-        }
-
-        private bool TryCompleteRuntimeInitialization(StreamingMessage message)
-        {
-            lock (_stateLock)
-            {
-                if (!ReferenceEquals(_workerInitResponseCompletingLink, message))
-                {
-                    return false;
-                }
-
-                _workerInitResponseCompletingLink = null;
-                return _terminalState is null;
             }
         }
 

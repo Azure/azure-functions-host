@@ -13,8 +13,6 @@ namespace Azure.Functions.WorkerProxy.Management;
 /// </summary>
 internal static class WorkerAssignRequestValidator
 {
-    private const string WorkerPodType = "FunctionsSplitWorkerPod";
-
     /// <summary>
     /// Creates an assignment from a valid request, or collects ordered field errors without exposing environment entries.
     /// </summary>
@@ -99,7 +97,6 @@ internal static class WorkerAssignRequestValidator
 
         if (staticRequest.IsDiscoveryPod is not { } isDiscoveryPod
             || staticRequest.IsAlwaysReady is not { } staticAlwaysReady
-            || string.IsNullOrWhiteSpace(staticRequest.FunctionGroup)
             || staticRequest.ConfigLastModifiedTime is not { } configLastModifiedTime
             || staticRequest.ContentLastModifiedTime is not { } contentLastModifiedTime)
         {
@@ -109,7 +106,13 @@ internal static class WorkerAssignRequestValidator
 
         int initialErrorCount = errors.Count;
         SplitPodIdentity? self = ValidatePodIdentity(
-            staticRequest.Self, "staticState.self", WorkerPodType, errors);
+            staticRequest.Self, "staticState.self", SplitPodTypes.Worker, errors);
+
+        if (staticRequest.FunctionGroup is { } splitFunctionGroup
+            && string.IsNullOrWhiteSpace(splitFunctionGroup))
+        {
+            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "staticState.functionGroup"));
+        }
 
         if (self is not null)
         {
@@ -134,6 +137,7 @@ internal static class WorkerAssignRequestValidator
 
         if (staticRequest.FunctionGroup is { } functionGroup
             && request.FunctionGroupName is { } functionGroupName
+            && !string.IsNullOrWhiteSpace(functionGroup)
             && !string.IsNullOrWhiteSpace(functionGroupName)
             && !string.Equals(functionGroup, functionGroupName, StringComparison.Ordinal))
         {

@@ -23,7 +23,9 @@ internal enum SplitWorkerStatus
     RemovalRequested
 }
 
-internal sealed record SplitWorkerLink(SplitWorkerLinkState State);
+internal sealed record SplitWorkerLink(
+    SplitWorkerLinkState State,
+    SplitPodIdentity? Runtime = null);
 
 internal sealed record SplitFunctionAppIdentity(
     string FunctionAppName,
@@ -42,9 +44,27 @@ internal sealed record SplitWorkerStaticState(
     SplitPodIdentity Self,
     bool IsDiscoveryPod,
     bool IsAlwaysReady,
-    string FunctionGroup,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FunctionGroup,
     long ConfigLastModifiedTime,
-    long ContentLastModifiedTime);
+    long ContentLastModifiedTime)
+{
+    private const string PlaceholderIdentity = "unassigned";
+
+    public static SplitWorkerStaticState CreatePlaceholder(string podName) =>
+        new(
+            new(
+                PlaceholderIdentity,
+                podName,
+                Guid.Empty,
+                PlaceholderIdentity,
+                SplitPodTypes.Worker,
+                new(PlaceholderIdentity, 0, PlaceholderIdentity)),
+            IsDiscoveryPod: false,
+            IsAlwaysReady: false,
+            FunctionGroup: null,
+            ConfigLastModifiedTime: 0,
+            ContentLastModifiedTime: 0);
+}
 
 internal sealed record SplitWorkerDynamicState(
     long RevisionId,
@@ -58,20 +78,19 @@ internal sealed record SplitWorkerOriginState(
 {
     private const string ContainerType = "FunctionsSplitWorkerProxy";
 
-    public static SplitWorkerOriginState? FromState(WorkerPodState state)
+    public static SplitWorkerOriginState FromState(WorkerPodState state)
     {
         if (state.SplitStaticState is not { } staticState || state.SplitLink is not { } link)
         {
-            return null;
+            throw new InvalidOperationException("WorkerProxy state must always contain split Worker signal state.");
         }
 
-        SplitWorkerStatus status = state.AssignmentState switch
-        {
-            WorkerAssignmentState.Failed => SplitWorkerStatus.RemovalRequested,
-            WorkerAssignmentState.Ready when state.IsWorkerReady && link.State == SplitWorkerLinkState.Linked
-                => SplitWorkerStatus.ReadyForWork,
-            _ => SplitWorkerStatus.Starting
-        };
+        SplitWorkerStatus status =
+            state.AssignmentState == WorkerAssignmentState.Ready
+            && state.IsWorkerReady
+            && link.State == SplitWorkerLinkState.Linked
+                ? SplitWorkerStatus.ReadyForWork
+                : SplitWorkerStatus.Starting;
 
         return new(ContainerType, staticState, new(state.Revision, status, link));
     }

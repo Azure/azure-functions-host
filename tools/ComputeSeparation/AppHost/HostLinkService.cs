@@ -21,12 +21,23 @@ internal sealed partial class HostLinkService(
     ReferenceExpression proxyEndpoint,
     EndpointReference? platformEndpoint,
     string workerId,
+    string workerPodName,
+    Guid workerPodGuid,
+    Guid runtimePodGuid,
     string[] dependencies,
     ResourceNotificationService notifications,
     ILogger<HostLinkService> logger) : BackgroundService
 {
     // The harness hosts one HTTP-triggered sample app, so the worker joins the HTTP function group.
     private const string FunctionGroupName = "http";
+    private const string FunctionAppName = "aspire-sample-app";
+    private const string ResourceNamespace = "aspire-local";
+    private const string LegionStampName = "aspire-local";
+    private const string AntaresStampName = "aspire-local";
+    private const string WorkerPodType = "FunctionsSplitWorkerPod";
+    private const string RuntimePodType = "FunctionsSplitRuntimePod";
+    private const string RuntimePodName = "runtime-pod";
+    private const int FunctionAppSiteId = 1;
 
     private static readonly TimeSpan AssignRetryDelay = TimeSpan.FromSeconds(1);
 
@@ -75,6 +86,7 @@ internal sealed partial class HostLinkService(
         using HttpResponseMessage response = await client.PutAsJsonAsync($"/admin/workers/{Uri.EscapeDataString(workerId)}", new
         {
             workerGrpcEndpoint = grpcEndpoint,
+            runtime = CreateRuntimeIdentity(),
         }, cancellationToken);
 
         await EnsureSuccessAsync("The Host rejected", response, cancellationToken);
@@ -114,11 +126,12 @@ internal sealed partial class HostLinkService(
         var assignment = new
         {
             startupMode = "Preconfigured",
-            functionAppName = "aspire-sample-app",
+            functionAppName = FunctionAppName,
             functionGroupName = FunctionGroupName,
             isAlwaysReady = false,
             environment = new Dictionary<string, string>(),
             functionAppDirectory = string.Empty,
+            staticState = CreateWorkerStaticState(),
         };
 
         // The WorkerProxy answers 503 until the sample worker has connected, which can trail the worker's start.
@@ -137,6 +150,46 @@ internal sealed partial class HostLinkService(
 
         Log.WorkerAssigned(logger, workerId, FunctionGroupName);
     }
+
+    private object CreateWorkerStaticState() =>
+        new
+        {
+            self = new
+            {
+                resourceNamespace = ResourceNamespace,
+                podName = workerPodName,
+                podGuid = workerPodGuid,
+                legionStampName = LegionStampName,
+                podType = WorkerPodType,
+                app = new
+                {
+                    functionAppName = FunctionAppName,
+                    functionAppSiteId = FunctionAppSiteId,
+                    antaresStampName = AntaresStampName,
+                },
+            },
+            isDiscoveryPod = false,
+            isAlwaysReady = false,
+            functionGroup = FunctionGroupName,
+            configLastModifiedTime = 0,
+            contentLastModifiedTime = 0,
+        };
+
+    private object CreateRuntimeIdentity() =>
+        new
+        {
+            resourceNamespace = ResourceNamespace,
+            podName = RuntimePodName,
+            podGuid = runtimePodGuid,
+            legionStampName = LegionStampName,
+            podType = RuntimePodType,
+            app = new
+            {
+                functionAppName = FunctionAppName,
+                functionAppSiteId = FunctionAppSiteId,
+                antaresStampName = AntaresStampName,
+            },
+        };
 
     private async Task EnsureSuccessAsync(string failure, HttpResponseMessage response, CancellationToken cancellationToken)
     {

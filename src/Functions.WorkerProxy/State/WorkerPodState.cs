@@ -43,6 +43,6 @@ internal sealed record WorkerPodState(
             FunctionAppName: null,
             FunctionGroupName: null,
             IsAlwaysReady: null,
-            SplitStaticState: null,
-            SplitLink: null);
+            SplitStaticState: SplitWorkerStaticState.CreatePlaceholder(podName),
+            SplitLink: new(SplitWorkerLinkState.Unlinked));
 }
