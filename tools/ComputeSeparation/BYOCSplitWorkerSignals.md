@@ -276,16 +276,17 @@ gets an independent lifecycle or API owner.
 
 ## Validation
 
-The change adds exactly three behavioral HTTP/gRPC API test methods and zero
+The change adds exactly four behavioral HTTP/gRPC API test methods and zero
 new unit-test method declarations:
 
-1. `SplitInstanceStateReturnsUnlinkedWorkerAfterStaticAssignment`
-2. `SplitRuntimeLinkTransitionsPendingToLinkedState`
-3. `SplitRuntimeLinkRejectsSecondConnectionAndPreservesLegacyState`
+1. `SplitAssignmentRequiresStaticStateWithoutReservingIdentity`
+2. `SplitInstanceStateReturnsUnlinkedWorkerAfterStaticAssignment`
+3. `SplitRuntimeLinkTransitionsPendingToLinkedState`
+4. `SplitRuntimeLinkRejectsSecondConnectionAndPreservesLegacyState`
 
 | Command | Result |
 | --- | --- |
-| `dotnet test test\Functions.WorkerProxy.Tests\Functions.WorkerProxy.Tests.csproj --configuration Release --nologo --logger 'console;verbosity=minimal'` | 502 passed |
+| `dotnet test test\Functions.WorkerProxy.Tests\Functions.WorkerProxy.Tests.csproj --configuration Release --nologo --logger 'console;verbosity=minimal'` | 503 passed |
 | `git diff --check 9dd49fc1b915d5e500145ea32fdc40afa56373b4..HEAD --` | Passed |
 
 Validate WorkerProxy, Host, and control-plane convergence in the target

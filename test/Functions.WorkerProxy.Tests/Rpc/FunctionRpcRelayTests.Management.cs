@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Functions.WorkerProxy.Rpc;
@@ -228,6 +229,50 @@ public partial class FunctionRpcRelayTests
         using HttpResponseMessage assignment = await PutManagementJsonAsync(
             management, "/admin/worker/assignment", ManagementAssignment, timeout.Token);
         await AssertManagementErrorAsync(assignment, HttpStatusCode.ServiceUnavailable, "WorkerNotReady", timeout.Token);
+    }
+
+    [Fact]
+    public async Task SplitAssignmentRequiresStaticStateWithoutReservingIdentity()
+    {
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
+        WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
+        using HttpClient management = factory.CreateWorkerProxyClient();
+        using CancellationTokenSource timeout = new(TestTimeout);
+        await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
+        await worker.WriteAsync(CreateStartStream(), timeout.Token);
+        while (!manager.State.IsWorkerReady)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        JsonObject incompleteAssignment = JsonNode.Parse(ManagementAssignment)!.AsObject();
+        Assert.True(incompleteAssignment.Remove("staticState"));
+        using (HttpResponseMessage rejected = await PutManagementJsonAsync(
+            management,
+            "/admin/worker/assignment",
+            incompleteAssignment.ToJsonString(),
+            timeout.Token))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+            using JsonDocument error = JsonDocument.Parse(await rejected.Content.ReadAsStringAsync(timeout.Token));
+            Assert.Contains(
+                error.RootElement.GetProperty("errors").EnumerateArray(),
+                item => string.Equals(item.GetProperty("code").GetString(), "Required", StringComparison.Ordinal)
+                    && string.Equals(item.GetProperty("target").GetString(), "staticState", StringComparison.Ordinal));
+        }
+
+        Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
+        Assert.Null(manager.State.SplitStaticState);
+        using (HttpResponseMessage assignment = await PutManagementJsonAsync(
+            management, "/admin/worker/assignment", ManagementAssignment, timeout.Token))
+        {
+            Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
+        }
+
+        using JsonDocument state = await ReadSplitManagementStateAsync(management, timeout.Token);
+        Assert.Equal(
+            "Unlinked",
+            state.RootElement.GetProperty("dynamicState").GetProperty("link").GetProperty("state").GetString());
     }
 
     [Fact]
