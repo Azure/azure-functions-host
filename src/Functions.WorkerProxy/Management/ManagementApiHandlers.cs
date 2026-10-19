@@ -22,7 +22,10 @@ internal static class ManagementApiHandlers
     public static IResult AssignWorker(WorkerAssignRequest request, WorkerPodStateManager manager)
     {
         if (!WorkerAssignRequestValidator.TryCreateAssignment(
-            request, out WorkerAssignment? assignment, out IReadOnlyList<RequestValidationError> errors))
+            request,
+            manager.State.PodName,
+            out WorkerAssignment? assignment,
+            out IReadOnlyList<RequestValidationError> errors))
         {
             return ValidationError(errors);
         }
@@ -54,6 +57,16 @@ internal static class ManagementApiHandlers
         return await GetInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
     }
 
+    public static async Task<IResult> GetInfraInstanceStateAsync(HttpRequest request, WorkerPodStateManager manager)
+    {
+        if (!TryGetLastKnownRevision(request.Query, out long? lastKnownRevision))
+        {
+            return InvalidRevision();
+        }
+
+        return await GetSplitInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
+    }
+
     public static async Task<IResult> GetInstanceStateAsync(
         long? revision,
         WorkerPodStateManager manager,
@@ -73,6 +86,36 @@ internal static class ManagementApiHandlers
 
         WorkerStatePollResult result = await manager.WaitForChangeAsync(lastKnownRevision, cancellationToken);
         return result.State is { } state ? StateResponse(state) : TypedResults.NoContent();
+    }
+
+    internal static async Task<IResult> GetSplitInstanceStateAsync(
+        long? revision,
+        WorkerPodStateManager manager,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        WorkerPodState current = manager.State;
+        if (revision is { } lastKnownRevision
+            && (lastKnownRevision < 0 || lastKnownRevision > current.Revision))
+        {
+            return InvalidRevision();
+        }
+
+        if (SplitWorkerOriginState.FromState(current) is null)
+        {
+            return Error(
+                StatusCodes.Status503ServiceUnavailable,
+                WorkerApiErrorCodes.WorkerStateUnavailable,
+                "The worker has not received split signal identity.");
+        }
+
+        if (revision is not { } revisionToWait)
+        {
+            return SplitStateResponse(current);
+        }
+
+        WorkerStatePollResult result = await manager.WaitForChangeAsync(revisionToWait, cancellationToken);
+        return result.State is { } state ? SplitStateResponse(state) : TypedResults.NoContent();
     }
 
     internal static IResult InvalidRevision() =>
@@ -110,4 +153,12 @@ internal static class ManagementApiHandlers
 
     private static IResult StateResponse(WorkerPodState state) =>
         TypedResults.Json(WorkerInstanceState.FromState(state), WorkerProxyJsonContext.Default.WorkerInstanceState);
+
+    private static IResult SplitStateResponse(WorkerPodState state)
+    {
+        SplitWorkerOriginState splitState = SplitWorkerOriginState.FromState(state)
+            ?? throw new InvalidOperationException("Split worker state identity was removed after assignment.");
+
+        return TypedResults.Json(splitState, WorkerProxyJsonContext.Default.SplitWorkerOriginState);
+    }
 }

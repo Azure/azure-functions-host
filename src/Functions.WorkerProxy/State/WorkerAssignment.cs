@@ -29,7 +29,8 @@ internal sealed class WorkerAssignment
         string functionGroupName,
         bool isAlwaysReady,
         IReadOnlyDictionary<string, string> environment,
-        string functionAppDirectory)
+        string functionAppDirectory,
+        SplitWorkerStaticState? splitStaticState = null)
     {
         if (startupMode is not (WorkerStartupMode.Preconfigured or WorkerStartupMode.SpecializationRequired))
         {
@@ -58,6 +59,7 @@ internal sealed class WorkerAssignment
         // Read-only input can still wrap a mutable dictionary. Freeze it so later caller edits cannot change retry identity.
         Environment = environment.ToFrozenDictionary(StringComparer.Ordinal);
         FunctionAppDirectory = functionAppDirectory;
+        SplitStaticState = splitStaticState;
     }
 
     /// <summary>
@@ -75,8 +77,10 @@ internal sealed class WorkerAssignment
 
     public string FunctionAppDirectory { get; }
 
+    public SplitWorkerStaticState? SplitStaticState { get; }
+
     /// <summary>
-    /// Compares all assignment fields without depending on dictionary order or the caller's comparer.
+    /// Compares immutable assignment identity.
     /// </summary>
     public bool IsEquivalentTo(WorkerAssignment other)
     {
@@ -87,6 +91,7 @@ internal sealed class WorkerAssignment
             || !string.Equals(FunctionGroupName, other.FunctionGroupName, StringComparison.Ordinal)
             || IsAlwaysReady != other.IsAlwaysReady
             || !string.Equals(FunctionAppDirectory, other.FunctionAppDirectory, StringComparison.Ordinal)
+            || !Equals(SplitStaticState, other.SplitStaticState)
             || Environment.Count != other.Environment.Count)
         {
             return false;

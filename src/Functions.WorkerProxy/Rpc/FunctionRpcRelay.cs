@@ -117,8 +117,11 @@ internal sealed partial class FunctionRpcRelay(
     /// <exception cref="FunctionRpcRelayAttachmentException">
     /// The side is already attached, the previous session is still tearing down, or shutdown has started.
     /// </exception>
-    public Task<FunctionRpcRelayTerminalState> AttachAsync(FunctionRpcRelaySide side, IAsyncStreamReader<StreamingMessage> requestStream,
-        IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
+    public Task<FunctionRpcRelayTerminalState> AttachAsync(
+        FunctionRpcRelaySide side,
+        IAsyncStreamReader<StreamingMessage> requestStream,
+        IServerStreamWriter<StreamingMessage> responseStream,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(requestStream);
         ArgumentNullException.ThrowIfNull(responseStream);

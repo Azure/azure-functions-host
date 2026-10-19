@@ -473,11 +473,7 @@ public partial class FunctionRpcRelayTests
 
     private static RelayClient CreateClient(WorkerProxyWebApplicationFactory factory, FunctionRpcRelaySide side, CancellationToken cancellationToken)
     {
-        return CreateClient(factory.GetFunctionRpcAddress(side), cancellationToken);
-    }
-
-    private static RelayClient CreateClient(Uri address, CancellationToken cancellationToken)
-    {
+        Uri address = factory.GetFunctionRpcAddress(side);
         UriBuilder normalizedAddress = new(address);
         if (IPAddress.TryParse(address.Host.Trim('[', ']'), out IPAddress? ipAddress)
             && (ipAddress.Equals(IPAddress.Any) || ipAddress.Equals(IPAddress.IPv6Any)))

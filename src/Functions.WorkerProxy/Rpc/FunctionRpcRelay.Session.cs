@@ -99,6 +99,11 @@ internal sealed partial class FunctionRpcRelay
                     return FunctionRpcRelayAttachResult.Duplicate;
                 }
 
+                if (side == FunctionRpcRelaySide.Runtime)
+                {
+                    stateManager.OnRuntimeAttached(id);
+                }
+
                 SetAttachedLocked(side, value: true);
                 if (side == FunctionRpcRelaySide.Worker)
                 {
@@ -150,7 +155,7 @@ internal sealed partial class FunctionRpcRelay
             };
 
             Task readTask = ReadInboundAsync(side, requestStream, destination, linkedSource.Token);
-            Task writeTask = WriteOutboundAsync(source, responseStream, linkedSource.Token);
+            Task writeTask = WriteOutboundAsync(side, source, responseStream, linkedSource.Token);
             Task firstCompletedTask = await Task.WhenAny(readTask, writeTask);
 
             if (!_completion.Task.IsCompleted)
@@ -322,7 +327,7 @@ internal sealed partial class FunctionRpcRelay
             Log.FunctionGroupNotAdvertised(logger, id, state.AssignmentState);
         }
 
-        private static async Task WriteOutboundAsync(ChannelReader<StreamingMessage> source,
+        private async Task WriteOutboundAsync(FunctionRpcRelaySide side, ChannelReader<StreamingMessage> source,
             IServerStreamWriter<StreamingMessage> responseStream, CancellationToken cancellationToken)
         {
             await foreach (StreamingMessage message in source.ReadAllAsync(cancellationToken))
@@ -330,6 +335,11 @@ internal sealed partial class FunctionRpcRelay
                 // This is the only task that writes this response stream. The linked token
                 // releases an in-flight gRPC write during teardown.
                 await responseStream.WriteAsync(message, cancellationToken);
+                if (side == FunctionRpcRelaySide.Runtime
+                    && message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success })
+                {
+                    stateManager.OnRuntimeInitialized(id);
+                }
             }
         }
 

@@ -23,6 +23,7 @@ namespace Azure.Functions.WorkerProxy.Tests.Management;
 public class ManagementApiEndpointTests
 {
     private const string AssignPath = "/admin/worker/assignment";
+    private const string InfraStatePath = "/admin/infra/instanceState";
     private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
@@ -374,6 +375,7 @@ public class ManagementApiEndpointTests
     [InlineData("/admin/worker/ready", "GET")]
     [InlineData(AssignPath, "PUT")]
     [InlineData(StatePath, "GET")]
+    [InlineData(InfraStatePath, "GET")]
     public async Task WorkerManagementRoutesAreUnavailableOnOtherListeners(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -410,6 +412,9 @@ public class ManagementApiEndpointTests
     [InlineData(StatePath, "POST")]
     [InlineData(StatePath, "PUT")]
     [InlineData(StatePath, "DELETE")]
+    [InlineData(InfraStatePath, "POST")]
+    [InlineData(InfraStatePath, "PUT")]
+    [InlineData(InfraStatePath, "DELETE")]
     public async Task ManagementRoutesRejectUnsupportedMethods(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -488,8 +493,6 @@ public class ManagementApiEndpointTests
     [Theory]
     [InlineData("/admin/worker/assign", "POST")]
     [InlineData("/admin/worker/assign", "PUT")]
-    [InlineData("/admin/infra/instanceState", "POST")]
-    [InlineData("/admin/infra/instanceState", "GET")]
     public async Task ObsoleteManagementRoutesAreNotFound(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
