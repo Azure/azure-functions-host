@@ -375,7 +375,7 @@ public class ManagementApiEndpointTests
     [InlineData("/admin/worker/ready", "GET")]
     [InlineData(AssignPath, "PUT")]
     [InlineData(StatePath, "GET")]
-    [InlineData(InfraStatePath, "GET")]
+    [InlineData(InfraStatePath, "POST")]
     public async Task WorkerManagementRoutesAreUnavailableOnOtherListeners(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -387,7 +387,7 @@ public class ManagementApiEndpointTests
             {
                 Version = HttpVersion.Version20,
                 VersionPolicy = HttpVersionPolicy.RequestVersionExact,
-                Content = string.Equals(method, "PUT", StringComparison.Ordinal) ? JsonBody("{}") : null
+                Content = method is "PUT" or "POST" ? JsonBody("{}") : null
             };
             using HttpResponseMessage response = await rpcClient.SendAsync(request, timeout.Token);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -396,7 +396,7 @@ public class ManagementApiEndpointTests
         using HttpClient forwardingClient = factory.CreateHttpForwardingClient();
         using HttpRequestMessage forwardingRequest = new(new HttpMethod(method), path)
         {
-            Content = string.Equals(method, "PUT", StringComparison.Ordinal) ? JsonBody("{}") : null
+            Content = method is "PUT" or "POST" ? JsonBody("{}") : null
         };
         using HttpResponseMessage forwardingResponse = await forwardingClient.SendAsync(forwardingRequest, timeout.Token);
         Assert.Equal(HttpStatusCode.NotFound, forwardingResponse.StatusCode);
@@ -412,7 +412,7 @@ public class ManagementApiEndpointTests
     [InlineData(StatePath, "POST")]
     [InlineData(StatePath, "PUT")]
     [InlineData(StatePath, "DELETE")]
-    [InlineData(InfraStatePath, "POST")]
+    [InlineData(InfraStatePath, "GET")]
     [InlineData(InfraStatePath, "PUT")]
     [InlineData(InfraStatePath, "DELETE")]
     public async Task ManagementRoutesRejectUnsupportedMethods(string path, string method)

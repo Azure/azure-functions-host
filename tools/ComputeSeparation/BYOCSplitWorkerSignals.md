@@ -28,7 +28,7 @@ ownership and scaling semantics are defined.
 | --- | --- | --- |
 | Worker assignment | Assignment carries legacy app configuration only. | Assignment additively carries immutable split Worker static state; it does not declare runtime link state. |
 | Runtime link | WorkerProxy relays FunctionRpc but does not publish the runtime-side connection lifecycle. | The existing Host link opens the runtime-facing FunctionRpc stream; WorkerProxy observes attachment and initialization directly. |
-| Worker link signal | WorkerProxy does not expose the runtime-originated connection lifecycle. | WorkerProxy publishes `Unlinked`, then `Pending` on runtime attachment, then `Linked` after successful initialization reaches the runtime stream. |
+| Worker link signal | WorkerProxy does not expose the runtime-originated connection lifecycle. | WorkerProxy publishes `Unlinked`, then `Pending` on runtime attachment, then `Linked` when the first initialization response following the forwarded runtime initialization request is successful. |
 | Legacy management | `/admin/worker/state` is the only Worker state contract. | Its JSON shape and status semantics are unchanged; `/admin/infra/instanceState` additively publishes the Bala split shape. Split-only transitions share the existing revision and can wake legacy long polls. |
 
 ## Detailed PR changes
@@ -45,7 +45,7 @@ flowchart LR
     Assignment["WorkerProxy management<br/>PUT /admin/worker/assignment"]
     LinkApi["Host management<br/>PUT /admin/workers/{workerId}"]
     FunctionRpc["runtime-facing FunctionRpc<br/>connection"]
-    SplitState["WorkerProxy split state<br/>GET /admin/infra/instanceState"]
+    SplitState["WorkerProxy split state<br/>POST /admin/infra/instanceState"]
 
     Legion -->|"Worker static state"| Assignment
     Legion -->|"Worker endpoint"| LinkApi
@@ -61,7 +61,7 @@ flowchart TD
     Static["Worker assignment<br/>staticState"]
     HostLink["Existing Host link request"]
     Attach["Runtime FunctionRpc attaches"]
-    Init["Successful WorkerInitResponse<br/>written to runtime stream"]
+    Init["First WorkerInitResponse is successful<br/>after forwarded request"]
     Unlinked["link.state = Unlinked"]
     Pending["link.state = Pending"]
     Linked["link.state = Linked"]
@@ -121,12 +121,19 @@ sequenceDiagram
     RuntimeStream->>Proxy: Runtime side attaches
     Proxy->>Proxy: Publish Pending
     RuntimeStream->>WorkerStream: WorkerInitRequest
-    WorkerStream-->>RuntimeStream: successful WorkerInitResponse
+    WorkerStream-->>RuntimeStream: first successful WorkerInitResponse
     Proxy->>Proxy: Write response, then publish Linked
     Host-->>Legion: Existing link result
-    Legion->>Proxy: GET /admin/infra/instanceState
+    Legion->>Proxy: POST /admin/infra/instanceState<br/>previous full Worker state
     Proxy-->>Legion: Linked
 ```
+
+WorkerProxy expects a `WorkerInitResponse` only after forwarding a runtime
+`WorkerInitRequest`. The first response written back consumes that expectation
+and publishes `Linked` only when it is successful. A response arriving before
+the initialization request is still relayed for legacy compatibility but does
+not change the split link signal. This follows the Host's message-type
+correlation and does not introduce a new request-ID contract.
 
 `FunctionsSplitWorkerDynamicState.Link` is WorkerProxy's authoritative
 process-local acknowledgement of the runtime-originated connection lifecycle.
@@ -135,7 +142,42 @@ scale-out, admission, and link-budget ownership are outside this PR.
 
 ### Published Worker state
 
-`GET /admin/infra/instanceState` returns:
+`POST /admin/infra/instanceState` follows the existing AppServer polling
+protocol. The caller posts its previous full Worker origin state:
+
+```json
+{
+  "functionsContainerType": "FunctionsSplitWorkerProxy",
+  "staticState": {
+    "self": {
+      "resourceNamespace": "worker-namespace",
+      "podName": "worker-pod",
+      "podGuid": "11111111-1111-1111-1111-111111111111",
+      "legionStampName": "legion-stamp",
+      "podType": "FunctionsSplitWorkerPod",
+      "app": {
+        "functionAppName": "example-app",
+        "functionAppSiteId": 42,
+        "antaresStampName": "antares-stamp"
+      }
+    },
+    "isDiscoveryPod": false,
+    "isAlwaysReady": false,
+    "functionGroup": "group-0",
+    "configLastModifiedTime": 100,
+    "contentLastModifiedTime": 200
+  },
+  "dynamicState": {
+    "revisionId": 4,
+    "status": "Starting",
+    "link": {
+      "state": "Pending"
+    }
+  }
+}
+```
+
+WorkerProxy returns:
 
 - `functionsContainerType: "FunctionsSplitWorkerProxy"`;
 - the assigned `staticState`;
@@ -143,9 +185,44 @@ scale-out, admission, and link-budget ownership are outside this PR.
 - status `Starting`, `ReadyForWork`, or `RemovalRequested`; and
 - `dynamicState.link.state` as `Unlinked`, `Pending`, or `Linked`.
 
+An empty request body or a body different from the current full state returns
+the current state immediately. An equal body waits for the next revision and
+returns `204 No Content` if the existing long-poll timeout expires.
+
+```mermaid
+sequenceDiagram
+    participant Legion
+    participant Proxy as WorkerProxy
+
+    Legion->>Proxy: POST instanceState<br/>empty body
+    Proxy-->>Legion: 200 Unlinked state
+    Legion->>Proxy: POST instanceState<br/>previous Unlinked state
+    Note over Proxy: Runtime stream attaches
+    Proxy-->>Legion: 200 Pending state
+    Legion->>Proxy: POST instanceState<br/>previous Pending state
+    Note over Proxy: Worker initialization reaches runtime
+    Proxy-->>Legion: 200 Linked state
+```
+
 `ReadyForWork` requires local Worker readiness and a `Linked` runtime stream.
 `Draining` remains in the Bala-compatible enum but is not emitted in this
 change.
+
+### Why WorkerProxy owns this endpoint
+
+The runtime image needs a Go AppServer because it independently owns Host
+assignment proxying, nginx specialization, persisted restart fencing,
+request-slot admission, drain, Host monitoring, and several platform APIs.
+The Worker signal does not need those responsibilities.
+
+WorkerProxy already owns the management listener, immutable Worker assignment,
+both FunctionRpc streams, and the exact transitions that produce `Pending`,
+`Linked`, and terminal `Unlinked`. A Go process beside WorkerProxy could not
+derive those transitions on its own; it would require a new cross-process event
+contract, ordering and recovery semantics, image supervision, and a separate
+Docker-repository change. Keeping the compatible endpoint in WorkerProxy is the
+smaller end-to-end implementation. Revisit a sidecar only if the Worker later
+gets an independent lifecycle or API owner.
 
 ## Assumptions
 
@@ -200,7 +277,8 @@ change.
 - The existing Host link request body is unchanged.
 - `/admin/worker/state` keeps its existing JSON shape and status semantics;
   split link transitions can advance its shared revision.
-- `/admin/infra/instanceState` is additive.
+- `POST /admin/infra/instanceState` is additive and uses the existing
+  full-origin-state polling protocol.
 - Deploy compatible WorkerProxy and Host builds before Legion awaits split
   Worker state.
 - Define and validate the separate Host dynamic scale-out and link-budget

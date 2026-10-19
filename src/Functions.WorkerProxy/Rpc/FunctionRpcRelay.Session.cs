@@ -39,6 +39,8 @@ internal sealed partial class FunctionRpcRelay
         private FunctionRpcRelayTerminalState? _terminalState;
         private FrozenDictionary<string, string>? _capabilities;
         private Uri? _workerHttpDestination;
+        private bool _workerInitResponseExpected;
+        private StreamingMessage? _workerInitResponseCompletingLink;
         private bool _runtimeAttached;
         private bool _workerAttached;
 
@@ -233,8 +235,19 @@ internal sealed partial class FunctionRpcRelay
 
         private StreamingMessage? ProcessInboundMessage(FunctionRpcRelaySide side, StreamingMessage message, bool isFirstMessage)
         {
-            if (side != FunctionRpcRelaySide.Worker)
+            if (side == FunctionRpcRelaySide.Runtime)
             {
+                if (message.WorkerInitRequest is not null)
+                {
+                    lock (_stateLock)
+                    {
+                        if (_terminalState is null && _workerInitResponseCompletingLink is null)
+                        {
+                            _workerInitResponseExpected = true;
+                        }
+                    }
+                }
+
                 return message;
             }
 
@@ -257,9 +270,15 @@ internal sealed partial class FunctionRpcRelay
                 }
             }
 
-            return message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
+            StreamingMessage? processed = message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success }
                 ? FinalizeCapabilities(message)
                 : message;
+            if (processed is not null)
+            {
+                TrackWorkerInitResponse(processed);
+            }
+
+            return processed;
         }
 
         private StreamingMessage? FinalizeCapabilities(StreamingMessage message)
@@ -335,11 +354,46 @@ internal sealed partial class FunctionRpcRelay
                 // This is the only task that writes this response stream. The linked token
                 // releases an in-flight gRPC write during teardown.
                 await responseStream.WriteAsync(message, cancellationToken);
-                if (side == FunctionRpcRelaySide.Runtime
-                    && message.WorkerInitResponse is { Result.Status: StatusResult.Types.Status.Success })
+                if (side == FunctionRpcRelaySide.Runtime && TryCompleteRuntimeInitialization(message))
                 {
                     stateManager.OnRuntimeInitialized(id);
                 }
+            }
+        }
+
+        private void TrackWorkerInitResponse(StreamingMessage message)
+        {
+            if (message.WorkerInitResponse is not { } response)
+            {
+                return;
+            }
+
+            lock (_stateLock)
+            {
+                if (_terminalState is not null || !_workerInitResponseExpected)
+                {
+                    return;
+                }
+
+                _workerInitResponseExpected = false;
+                if (response.Result?.Status == StatusResult.Types.Status.Success)
+                {
+                    _workerInitResponseCompletingLink = message;
+                }
+            }
+        }
+
+        private bool TryCompleteRuntimeInitialization(StreamingMessage message)
+        {
+            lock (_stateLock)
+            {
+                if (!ReferenceEquals(_workerInitResponseCompletingLink, message))
+                {
+                    return false;
+                }
+
+                _workerInitResponseCompletingLink = null;
+                return _terminalState is null;
             }
         }
 

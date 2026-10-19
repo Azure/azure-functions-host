@@ -273,6 +273,21 @@ public partial class FunctionRpcRelayTests
         JsonElement link = dynamicState.GetProperty("link");
         Assert.Equal("Unlinked", link.GetProperty("state").GetString());
         Assert.False(link.TryGetProperty("runtime", out _));
+
+        string differentContainerType = state.RootElement.GetRawText().Replace(
+            "FunctionsSplitWorkerProxy",
+            "FunctionsSplitRuntime",
+            StringComparison.Ordinal);
+        using HttpResponseMessage differentStateResponse = await PollSplitManagementStateAsync(
+            management,
+            differentContainerType,
+            timeout.Token);
+        Assert.Equal(HttpStatusCode.OK, differentStateResponse.StatusCode);
+        using JsonDocument currentState = JsonDocument.Parse(
+            await differentStateResponse.Content.ReadAsStringAsync(timeout.Token));
+        Assert.Equal("FunctionsSplitWorkerProxy",
+            currentState.RootElement.GetProperty("functionsContainerType").GetString());
+        Assert.Equal(3, currentState.RootElement.GetProperty("dynamicState").GetProperty("revisionId").GetInt64());
     }
 
     [Fact]
@@ -295,23 +310,21 @@ public partial class FunctionRpcRelayTests
             Assert.Equal(HttpStatusCode.Created, assignment.StatusCode);
         }
 
-        Task<HttpResponseMessage> pendingPoll = management.GetAsync($"{InfraStatePath}?lastKnownRevision=3", timeout.Token);
+        using JsonDocument unlinked = await ReadSplitManagementStateAsync(management, timeout.Token);
+        Task<HttpResponseMessage> pendingPoll = PollSplitManagementStateAsync(
+            management,
+            unlinked.RootElement.GetRawText(),
+            timeout.Token);
         await WaitForManagementPollAsync(manager, timeout.Token);
         await using RelayClient runtime = CreateClient(factory, FunctionRpcRelaySide.Runtime, timeout.Token);
-        StreamingMessage init = new()
-        {
-            RequestId = "runtime-init",
-            WorkerInitRequest = new() { HostVersion = "test-host" }
-        };
-        await runtime.WriteAsync(init, timeout.Token);
-        Assert.Equal(init, await worker.ReadAsync(timeout.Token));
         Assert.Equal("test-worker", (await runtime.ReadAsync(timeout.Token)).StartStream.WorkerId);
 
+        string pendingState;
         using (HttpResponseMessage pendingResponse = await pendingPoll)
         {
             Assert.Equal(HttpStatusCode.OK, pendingResponse.StatusCode);
-            using JsonDocument pending = JsonDocument.Parse(
-                await pendingResponse.Content.ReadAsStringAsync(timeout.Token));
+            pendingState = await pendingResponse.Content.ReadAsStringAsync(timeout.Token);
+            using JsonDocument pending = JsonDocument.Parse(pendingState);
             JsonElement dynamicState = pending.RootElement.GetProperty("dynamicState");
             Assert.Equal(4, dynamicState.GetProperty("revisionId").GetInt64());
             Assert.Equal("Starting", dynamicState.GetProperty("status").GetString());
@@ -320,9 +333,28 @@ public partial class FunctionRpcRelayTests
             Assert.False(link.TryGetProperty("runtime", out _));
         }
 
-        Task<HttpResponseMessage> linkedPoll = management.GetAsync($"{InfraStatePath}?lastKnownRevision=4", timeout.Token);
+        Task<HttpResponseMessage> linkedPoll = PollSplitManagementStateAsync(
+            management,
+            pendingState,
+            timeout.Token);
         await WaitForManagementPollAsync(manager, timeout.Token);
-        await worker.WriteAsync(CreateInitResponse(init.RequestId, httpUri: null), timeout.Token);
+        await worker.WriteAsync(CreateInitResponse(string.Empty, httpUri: null), timeout.Token);
+        Assert.NotNull((await runtime.ReadAsync(timeout.Token)).WorkerInitResponse);
+        Assert.False(linkedPoll.IsCompleted);
+        using (JsonDocument stillPending = await ReadSplitManagementStateAsync(management, timeout.Token))
+        {
+            JsonElement stillPendingDynamicState = stillPending.RootElement.GetProperty("dynamicState");
+            Assert.Equal(4, stillPendingDynamicState.GetProperty("revisionId").GetInt64());
+            Assert.Equal("Pending", stillPendingDynamicState.GetProperty("link").GetProperty("state").GetString());
+        }
+
+        StreamingMessage init = new()
+        {
+            WorkerInitRequest = new() { HostVersion = "test-host" }
+        };
+        await runtime.WriteAsync(init, timeout.Token);
+        Assert.Equal(init, await worker.ReadAsync(timeout.Token));
+        await worker.WriteAsync(CreateInitResponse(string.Empty, httpUri: null), timeout.Token);
         Assert.NotNull((await runtime.ReadAsync(timeout.Token)).WorkerInitResponse);
 
         using HttpResponseMessage linkedResponse = await linkedPoll;
@@ -372,6 +404,7 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(StatusCode.AlreadyExists, exception.StatusCode);
 
         using JsonDocument split = await ReadSplitManagementStateAsync(management, timeout.Token);
+        string pendingState = split.RootElement.GetRawText();
         JsonElement dynamicState = split.RootElement.GetProperty("dynamicState");
         Assert.Equal(4, dynamicState.GetProperty("revisionId").GetInt64());
         JsonElement link = dynamicState.GetProperty("link");
@@ -386,7 +419,7 @@ public partial class FunctionRpcRelayTests
         Assert.False(legacy.RootElement.TryGetProperty("dynamicState", out _));
 
         Task<HttpResponseMessage> terminationPoll =
-            management.GetAsync($"{InfraStatePath}?lastKnownRevision=4", timeout.Token);
+            PollSplitManagementStateAsync(management, pendingState, timeout.Token);
         await WaitForManagementPollAsync(manager, timeout.Token);
         await worker.CompleteRequestAsync(timeout.Token);
         Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
@@ -424,10 +457,24 @@ public partial class FunctionRpcRelayTests
         HttpClient client,
         CancellationToken cancellationToken)
     {
-        using HttpResponseMessage response = await client.GetAsync(InfraStatePath, cancellationToken);
+        using HttpResponseMessage response = await PollSplitManagementStateAsync(
+            client,
+            previousState: null,
+            cancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(response.Headers.CacheControl?.NoStore);
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+    }
+
+    private static async Task<HttpResponseMessage> PollSplitManagementStateAsync(
+        HttpClient client,
+        string? previousState,
+        CancellationToken cancellationToken)
+    {
+        using HttpContent? content = previousState is null
+            ? null
+            : new StringContent(previousState, Encoding.UTF8, "application/json");
+        return await client.PostAsync(InfraStatePath, content, cancellationToken);
     }
 
     private static async Task AssertReadinessAsync(

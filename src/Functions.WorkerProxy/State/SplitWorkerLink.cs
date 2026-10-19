@@ -52,10 +52,11 @@ internal sealed record SplitWorkerDynamicState(
     SplitWorkerLink Link);
 
 internal sealed record SplitWorkerOriginState(
+    string FunctionsContainerType,
     SplitWorkerStaticState StaticState,
     SplitWorkerDynamicState DynamicState)
 {
-    public string FunctionsContainerType => "FunctionsSplitWorkerProxy";
+    private const string ContainerType = "FunctionsSplitWorkerProxy";
 
     public static SplitWorkerOriginState? FromState(WorkerPodState state)
     {
@@ -72,6 +73,6 @@ internal sealed record SplitWorkerOriginState(
             _ => SplitWorkerStatus.Starting
         };
 
-        return new(staticState, new(state.Revision, status, link));
+        return new(ContainerType, staticState, new(state.Revision, status, link));
     }
 }

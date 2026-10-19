@@ -57,14 +57,12 @@ internal static class ManagementApiHandlers
         return await GetInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
     }
 
-    public static async Task<IResult> GetInfraInstanceStateAsync(HttpRequest request, WorkerPodStateManager manager)
+    public static async Task<IResult> PostInfraInstanceStateAsync(
+        SplitWorkerOriginState? previousState,
+        HttpRequest request,
+        WorkerPodStateManager manager)
     {
-        if (!TryGetLastKnownRevision(request.Query, out long? lastKnownRevision))
-        {
-            return InvalidRevision();
-        }
-
-        return await GetSplitInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
+        return await GetSplitInstanceStateAsync(previousState, manager, request.HttpContext.RequestAborted);
     }
 
     public static async Task<IResult> GetInstanceStateAsync(
@@ -89,19 +87,13 @@ internal static class ManagementApiHandlers
     }
 
     internal static async Task<IResult> GetSplitInstanceStateAsync(
-        long? revision,
+        SplitWorkerOriginState? previousState,
         WorkerPodStateManager manager,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        WorkerPodState current = manager.State;
-        if (revision is { } lastKnownRevision
-            && (lastKnownRevision < 0 || lastKnownRevision > current.Revision))
-        {
-            return InvalidRevision();
-        }
-
-        if (SplitWorkerOriginState.FromState(current) is null)
+        SplitWorkerOriginState? current = SplitWorkerOriginState.FromState(manager.State);
+        if (current is null)
         {
             return Error(
                 StatusCodes.Status503ServiceUnavailable,
@@ -109,12 +101,12 @@ internal static class ManagementApiHandlers
                 "The worker has not received split worker static state.");
         }
 
-        if (revision is not { } revisionToWait)
+        if (previousState is null || previousState != current)
         {
             return SplitStateResponse(current);
         }
 
-        WorkerStatePollResult result = await manager.WaitForChangeAsync(revisionToWait, cancellationToken);
+        WorkerStatePollResult result = await manager.WaitForChangeAsync(current.DynamicState.RevisionId, cancellationToken);
         return result.State is { } state ? SplitStateResponse(state) : TypedResults.NoContent();
     }
 
@@ -159,6 +151,11 @@ internal static class ManagementApiHandlers
         SplitWorkerOriginState splitState = SplitWorkerOriginState.FromState(state)
             ?? throw new InvalidOperationException("Split worker static state was removed after assignment.");
 
-        return TypedResults.Json(splitState, WorkerProxyJsonContext.Default.SplitWorkerOriginState);
+        return SplitStateResponse(splitState);
+    }
+
+    private static IResult SplitStateResponse(SplitWorkerOriginState state)
+    {
+        return TypedResults.Json(state, WorkerProxyJsonContext.Default.SplitWorkerOriginState);
     }
 }
