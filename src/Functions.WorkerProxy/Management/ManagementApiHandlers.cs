@@ -106,7 +106,7 @@ internal static class ManagementApiHandlers
             return Error(
                 StatusCodes.Status503ServiceUnavailable,
                 WorkerApiErrorCodes.WorkerStateUnavailable,
-                "The worker has not received split signal identity.");
+                "The worker has not received split worker static state.");
         }
 
         if (revision is not { } revisionToWait)
@@ -157,7 +157,7 @@ internal static class ManagementApiHandlers
     private static IResult SplitStateResponse(WorkerPodState state)
     {
         SplitWorkerOriginState splitState = SplitWorkerOriginState.FromState(state)
-            ?? throw new InvalidOperationException("Split worker state identity was removed after assignment.");
+            ?? throw new InvalidOperationException("Split worker static state was removed after assignment.");
 
         return TypedResults.Json(splitState, WorkerProxyJsonContext.Default.SplitWorkerOriginState);
     }

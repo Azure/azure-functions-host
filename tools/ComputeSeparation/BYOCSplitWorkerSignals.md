@@ -30,7 +30,7 @@ The dependency chain must land or be superseded before this PR can target
 | Worker assignment | Assignment carries legacy app configuration only. | Assignment additively carries immutable split Worker static state; it does not declare runtime link state. |
 | Runtime link | WorkerProxy relays FunctionRpc but does not publish the runtime-side connection lifecycle. | The existing Host link opens the runtime-facing FunctionRpc stream; WorkerProxy observes attachment and initialization directly. |
 | Worker link signal | WorkerProxy does not expose the runtime-originated connection lifecycle. | WorkerProxy publishes `Unlinked`, then `Pending` on runtime attachment, then `Linked` after successful initialization reaches the runtime stream. |
-| Legacy management | `/admin/worker/state` is the only Worker state contract. | `/admin/worker/state` is unchanged; `/admin/infra/instanceState` additively publishes the Bala split shape. |
+| Legacy management | `/admin/worker/state` is the only Worker state contract. | Its JSON shape and status semantics are unchanged; `/admin/infra/instanceState` additively publishes the Bala split shape. Split-only transitions share the existing revision and can wake legacy long polls. |
 | Host headroom | The client registry accepts links without an app-scoped admission budget or published remaining capacity. | `WorkerConcurrencyOptions.MaxWorkerCount` is the Host link budget; pending and accepted links consume `AvailableWorkerLinks`. |
 | AppServer snapshot | #12073 publishes HTTP capacity and linked Worker count. | The same ordered request adds exact JSON member `availableWorkerLinks`. |
 
@@ -193,6 +193,8 @@ snapshot. `ComputeRuntimeState.AvailableWorkerLinks` is serialized by
 - WorkerProxy and Host state are process-local rather than durable.
 - A runtime stream opened before split assignment is outside the required
   ordering and cannot establish a split link signal.
+- Split link transitions use the existing Worker state revision, so they can
+  wake `/admin/worker/state` long polls even though its JSON shape is unchanged.
 - Runtime pod and Function App identity are not carried or published; the
   runtime listener connection is the link signal.
 - Host keeps terminal Worker IDs fenced until process restart.
@@ -227,12 +229,16 @@ snapshot. `ComputeRuntimeState.AvailableWorkerLinks` is serialized by
 ## Compatibility/rollout
 
 - Legacy assignment bodies can omit `staticState`.
+- An accepted assignment without `staticState` cannot be upgraded in place
+  because assignment identity is immutable. Recycle that WorkerProxy and make
+  the first assignment include `staticState` before Legion polls or links it.
 - The existing Host link request body is unchanged.
-- `/admin/worker/state` is unchanged.
+- `/admin/worker/state` keeps its existing JSON shape and status semantics;
+  split link transitions can advance its shared revision.
 - `/admin/infra/instanceState` and `availableWorkerLinks` are additive.
 - Deploy #12096 before this PR, then deploy compatible WorkerProxy and Host
   builds before Legion awaits split link state.
-- Deploy the #12073 Docker/AppServer consumer before using
+- Deploy the Docker/AppServer consumer from draft PR 17570797 before using
   `availableWorkerLinks` for scheduling.
 - Confirm the deployed `WorkerConcurrencyOptions.MaxWorkerCount` value is the
   approved per-app BYOC link budget before enabling admission from this signal;
@@ -256,9 +262,9 @@ unit-test method declarations:
 
 | Command | Result |
 | --- | --- |
-| `dotnet test test\Functions.WorkerProxy.Tests\Functions.WorkerProxy.Tests.csproj --no-restore` | 502 passed |
-| #12096: `dotnet test test\Functions.Rpc.Client.Tests\Functions.Rpc.Client.Tests.csproj --no-restore` | 261 passed |
-| #12096: `dotnet test test\Functions.Host.Tests\Functions.Host.Tests.csproj --no-restore` | 225 passed |
+| `dotnet test test\Functions.WorkerProxy.Tests\Functions.WorkerProxy.Tests.csproj --configuration Release --nologo --logger 'console;verbosity=minimal'` | 502 passed |
+| #12096: `dotnet test test\Functions.Rpc.Client.Tests\Functions.Rpc.Client.Tests.csproj --configuration Release --nologo --logger 'console;verbosity=minimal'` | 261 passed |
+| #12096: `dotnet test test\Functions.Host.Tests\Functions.Host.Tests.csproj --configuration Release --nologo --logger 'console;verbosity=minimal'` | 225 passed |
 
 Deployed WorkerProxy, Host, Legion, and Docker/AppServer validation remains a
 merge gate.
@@ -268,7 +274,7 @@ merge gate.
 | Layer | Area | Primary files | Review focus |
 | --- | --- | --- | --- |
 | #12095 | Worker static assignment | `WorkerAssignRequest.cs`, `WorkerAssignRequestValidator.cs`, `WorkerAssignment.cs` | Assignment owns immutable Worker state only |
-| #12095 | Worker link lifecycle | `FunctionRpcRelayService.cs`, `FunctionRpcRelay.cs`, `FunctionRpcRelay.Session.cs`, `WorkerPodStateManager.cs` | Runtime listener attachment and `Unlinked -> Pending -> Linked` timing |
+| #12095 | Worker link lifecycle | `FunctionRpcRelay.cs`, `FunctionRpcRelay.Session.cs`, `WorkerPodStateManager.cs` | Runtime listener attachment and `Unlinked -> Pending -> Linked` timing |
 | #12096 | Host admission | `IWorkerChannelRegistry.cs`, `WorkerChannelRegistry.cs` | Endpoint retry behavior, pending plus accepted headroom |
 | #12096 | Ordered publication | `ComputeRuntimeState.cs`, `ComputeRuntimeStateManager.cs`, `AppServerHostStateClient.cs` | Coherent registry-version reads and `availableWorkerLinks` |
 | Split | Behavioral tests | `FunctionRpcRelayTests.Management.cs`, `WorkerLinkEndpointIntegrationTests.cs` | Three WorkerProxy scenarios here; one Host scenario in #12096 |

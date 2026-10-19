@@ -253,9 +253,15 @@ public partial class FunctionRpcRelayTests
         Assert.Equal("FunctionsSplitWorkerProxy", root.GetProperty("functionsContainerType").GetString());
         JsonElement staticState = root.GetProperty("staticState");
         JsonElement self = staticState.GetProperty("self");
+        Assert.Equal("test-namespace", self.GetProperty("resourceNamespace").GetString());
         Assert.Equal("test-worker-pod", self.GetProperty("podName").GetString());
+        Assert.Equal(Guid.Parse("11111111-1111-1111-1111-111111111111"), self.GetProperty("podGuid").GetGuid());
+        Assert.Equal("legion-test", self.GetProperty("legionStampName").GetString());
         Assert.Equal("FunctionsSplitWorkerPod", self.GetProperty("podType").GetString());
-        Assert.Equal("test-app", self.GetProperty("app").GetProperty("functionAppName").GetString());
+        JsonElement app = self.GetProperty("app");
+        Assert.Equal("test-app", app.GetProperty("functionAppName").GetString());
+        Assert.Equal(42, app.GetProperty("functionAppSiteId").GetInt32());
+        Assert.Equal("antares-test", app.GetProperty("antaresStampName").GetString());
         Assert.False(staticState.GetProperty("isDiscoveryPod").GetBoolean());
         Assert.False(staticState.GetProperty("isAlwaysReady").GetBoolean());
         Assert.Equal("test-group", staticState.GetProperty("functionGroup").GetString());
@@ -378,6 +384,21 @@ public partial class FunctionRpcRelayTests
         Assert.True(legacy.RootElement.TryGetProperty("workerPodState", out _));
         Assert.False(legacy.RootElement.TryGetProperty("staticState", out _));
         Assert.False(legacy.RootElement.TryGetProperty("dynamicState", out _));
+
+        Task<HttpResponseMessage> terminationPoll =
+            management.GetAsync($"{InfraStatePath}?lastKnownRevision=4", timeout.Token);
+        await WaitForManagementPollAsync(manager, timeout.Token);
+        await worker.CompleteRequestAsync(timeout.Token);
+        Assert.Equal(StatusCode.Unavailable, await runtime.WaitForTerminationAsync(timeout.Token));
+
+        using HttpResponseMessage terminatedResponse = await terminationPoll;
+        Assert.Equal(HttpStatusCode.OK, terminatedResponse.StatusCode);
+        using JsonDocument terminated = JsonDocument.Parse(
+            await terminatedResponse.Content.ReadAsStringAsync(timeout.Token));
+        JsonElement terminatedDynamicState = terminated.RootElement.GetProperty("dynamicState");
+        Assert.Equal(5, terminatedDynamicState.GetProperty("revisionId").GetInt64());
+        Assert.Equal("RemovalRequested", terminatedDynamicState.GetProperty("status").GetString());
+        Assert.Equal("Unlinked", terminatedDynamicState.GetProperty("link").GetProperty("state").GetString());
     }
 
     private static async Task<HttpResponseMessage> PutManagementJsonAsync(
