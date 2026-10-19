@@ -11,10 +11,22 @@ namespace Microsoft.Azure.WebJobs.Logging
     /// Utility class for sanitizing logging strings.
     /// </summary>
     // Note: This file is shared between the WebJobs SDK and Script repos. Update both if changes are needed.
-    internal static class Sanitizer
+    internal static partial class Sanitizer
     {
         public const string SecretReplacement = "[Hidden Credential]";
         public const string EmailReplacement = "[Hidden Email]";
+        internal const string EmailSanitizationTimeoutReplacement = "[Redacted: email sanitization timed out]";
+        private const int EmailRegexTimeoutMilliseconds = 1000;
+
+        // Pattern of format : "<local-part>@<domain>.<tld>"
+        private const string EmailPattern = @"
+                                                [a-zA-Z0-9._%+-]+        # Capture local part
+                                                @                        # '@'
+                                                [a-zA-Z0-9-]+            # Capture the first domain label
+                                                (?:\.[a-zA-Z0-9-]+)*     # Capture any additional domain labels
+                                                \.[a-zA-Z]{2,}           # Capture the top level domain
+                                            ";
+
         private static readonly char[] ValueTerminators = new char[] { '<', '"', '\'' };
 
         // List of keywords that should not be replaced with [Hidden Credential]
@@ -37,16 +49,11 @@ namespace Microsoft.Azure.WebJobs.Logging
 
         private static readonly Regex Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
 
-        // Pattern of format : "<local-part>@<domain>.<tld>"
-        private static readonly string EmailPattern = @"
-                                                [a-zA-Z0-9._%+-]+        # Capture local part
-                                                @                        # '@'
-                                                [a-zA-Z0-9-]+            # Capture the first domain label
-                                                (?:\.[a-zA-Z0-9-]+)*     # Capture any additional domain labels
-                                                \.[a-zA-Z]{2,}           # Capture the top level domain
-                                            ";
+        private static readonly Func<string, string, string> DefaultEmailReplacer =
+            static (input, replacement) => EmailRegex().Replace(input, replacement);
 
-        private static readonly Regex EmailRegex = new Regex(EmailPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
+        [GeneratedRegex(EmailPattern, RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace, EmailRegexTimeoutMilliseconds)]
+        internal static partial Regex EmailRegex();
 
         /// <summary>
         /// Removes well-known credential strings and email addresses from strings.
@@ -54,6 +61,11 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// <param name="input">The string to sanitize.</param>
         /// <returns>The sanitized string.</returns>
         internal static string Sanitize(string input)
+        {
+            return Sanitize(input, DefaultEmailReplacer);
+        }
+
+        internal static string Sanitize(string input, Func<string, string, string> emailReplacer)
         {
             if (string.IsNullOrEmpty(input))
             {
@@ -110,13 +122,25 @@ namespace Microsoft.Azure.WebJobs.Logging
             // Credentials are redacted above, so "<protocol>://<user>:<password>@<host>:<port>" is already gone.
             if (MayContainEmail(t))
             {
-                t = EmailRegex.Replace(t, EmailReplacement);
+                try
+                {
+                    t = emailReplacer(t, EmailReplacement);
+                }
+                catch (RegexMatchTimeoutException)
+                {
+                    t = EmailSanitizationTimeoutReplacement;
+                }
             }
 
             return t;
         }
 
         internal static JObject Sanitize(JObject obj, Func<string, bool> selector = null)
+        {
+            return Sanitize(obj, selector, DefaultEmailReplacer);
+        }
+
+        internal static JObject Sanitize(JObject obj, Func<string, bool> selector, Func<string, string, string> emailReplacer)
         {
             static bool IsPotentialCredential(string name)
             {
@@ -131,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 return false;
             }
 
-            static JToken Sanitize(JToken token)
+            static JToken Sanitize(JToken token, Func<string, string, string> emailReplacer)
             {
                 if (token is JObject obj)
                 {
@@ -144,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                         }
                         else
                         {
-                            sanitized[prop.Key] = Sanitize(prop.Value);
+                            sanitized[prop.Key] = Sanitize(prop.Value, emailReplacer);
                         }
                     }
 
@@ -156,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                     JArray sanitized = new JArray();
                     foreach (var value in arr)
                     {
-                        sanitized.Add(Sanitize(value));
+                        sanitized.Add(Sanitize(value, emailReplacer));
                     }
 
                     return sanitized;
@@ -164,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Logging
 
                 if (token.Type == JTokenType.String)
                 {
-                    return Sanitizer.Sanitize(token.ToString());
+                    return Sanitizer.Sanitize(token.ToString(), emailReplacer);
                 }
 
                 return token;
@@ -182,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Logging
                 var propValue = prop.Value;
                 if (propValue != null)
                 {
-                    sanitizedObject[propName] = Sanitize(propValue);
+                    sanitizedObject[propName] = Sanitize(propValue, emailReplacer);
                 }
             }
 

@@ -1,7 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Logging;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -91,6 +94,70 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Assert.False(Sanitizer.MayContainCredentials("someone@contoso.com"));
             Assert.True(Sanitizer.MayContainEmail("someone@contoso.com"));
+        }
+
+        [Fact]
+        public void EmailRegex_HasExpectedOptionsAndTimeout()
+        {
+            Regex regex = Sanitizer.EmailRegex();
+
+            Assert.Equal(TimeSpan.FromMilliseconds(1000), regex.MatchTimeout);
+            Assert.True(regex.Options.HasFlag(RegexOptions.IgnoreCase));
+            Assert.True(regex.Options.HasFlag(RegexOptions.IgnorePatternWhitespace));
+            Assert.False(regex.Options.HasFlag(RegexOptions.Compiled));
+        }
+
+        [Fact]
+        public void SanitizeString_EmailReplacementTimesOut_ReturnsFailClosedMarker()
+        {
+            const string input = "Contact someone@contoso.com";
+
+            string sanitized = Sanitizer.Sanitize(
+                input,
+                static (value, _) => throw new RegexMatchTimeoutException(value, "email-pattern", TimeSpan.FromMilliseconds(1)));
+
+            Assert.Equal(Sanitizer.EmailSanitizationTimeoutReplacement, sanitized);
+            Assert.DoesNotContain("someone@contoso.com", sanitized, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        public void SanitizeString_EmailReplacementThrowsUnexpectedException_Propagates()
+        {
+            Assert.Throws<InvalidOperationException>(() =>
+                Sanitizer.Sanitize(
+                    "someone@contoso.com",
+                    static (_, _) => throw new InvalidOperationException("unexpected failure")));
+        }
+
+        [Fact]
+        public void SanitizeObject_EmailReplacementTimesOut_RedactsAffectedStringsWithoutMutatingInput()
+        {
+            JObject input = JObject.Parse(
+                """
+                {
+                  "contact": "someone@contoso.com",
+                  "status": "unchanged",
+                  "items": [
+                    "keep",
+                    "another@contoso.com",
+                    42
+                  ]
+                }
+                """);
+            JToken original = input.DeepClone();
+
+            JObject sanitized = Sanitizer.Sanitize(
+                input,
+                selector: null,
+                static (value, _) => throw new RegexMatchTimeoutException(value, "email-pattern", TimeSpan.FromMilliseconds(1)));
+
+            Assert.Equal(Sanitizer.EmailSanitizationTimeoutReplacement, sanitized["contact"]);
+            Assert.Equal("unchanged", sanitized["status"]);
+            Assert.Equal("keep", sanitized["items"][0]);
+            Assert.Equal(Sanitizer.EmailSanitizationTimeoutReplacement, sanitized["items"][1]);
+            Assert.Equal(42, sanitized["items"][2]);
+            Assert.True(JToken.DeepEquals(original, input));
+            Assert.NotSame(input, sanitized);
         }
     }
 }
