@@ -110,15 +110,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                                 hostSecrets = GenerateHostSecrets();
                                 await PersistSecretsAsync(hostSecrets);
                             }
+                            else if (hostSecrets.MasterKey is null)
+                            {
+                                _logger.LogDebug("Host master key is missing. Generating a new master key.");
+                                hostSecrets.MasterKey = GenerateMasterKey();
+                                await PersistSecretsAsync(hostSecrets);
+                            }
                         }
                         catch (Exception ex)
                         {
                             _logger.LogDebug(ex, "Exception while generating host secrets. This can happen if another instance is also generating secrets. Attempting to read secrets again.");
                             hostSecrets = await LoadSecretsAsync<HostSecrets>();
 
-                            if (hostSecrets == null)
+                            if (hostSecrets?.MasterKey is null)
                             {
-                                _logger.LogError("Host secrets are still null on second attempt.");
+                                _logger.LogError("Host secrets or master key are still missing on second attempt.");
                                 throw;
                             }
                         }
