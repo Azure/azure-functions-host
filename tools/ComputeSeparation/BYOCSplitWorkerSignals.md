@@ -1,26 +1,15 @@
 # BYOC split Worker signals
 
-## Context and dependency
+## Contract and ownership
 
-The Bala-first BYOC model has one app-scoped runtime that can connect to
-multiple Worker pods. Legion owns orchestration, the existing Host link API
-opens the runtime-facing FunctionRpc stream, and WorkerProxy publishes one
-Worker's connection lifecycle.
+The BYOC split Worker model has one app-scoped runtime that can connect to
+multiple Worker pods. The platform orchestrator owns assignment and link
+initiation, the existing Host link API opens the runtime-facing FunctionRpc
+stream, and WorkerProxy publishes each Worker's connection lifecycle.
 
-```mermaid
-flowchart LR
-    PR12071["#12071<br/>multi-worker late linking"]
-    PR12072["#12072<br/>ordered runtime state"]
-    PR12073["#12073<br/>Host state publication base"]
-    PR12095["#12095<br/>WorkerProxy split signals"]
-
-    PR12071 --> PR12072 --> PR12073 --> PR12095
-```
-
-This PR targets `shkr-microsoft-http-capacity-publication`, the current
-#12073 branch. It does not define Host dynamic scale-out, link admission
-budgeting, or scheduler headroom. Those contracts are deferred until their
-ownership and scaling semantics are defined.
+The implementation extends the existing assignment, Host link, FunctionRpc,
+and management paths. Host dynamic scale-out, link admission budgeting, and
+scheduler headroom remain separate contracts.
 
 ## Current vs target behavior
 
@@ -29,11 +18,11 @@ ownership and scaling semantics are defined.
 | Worker assignment | Assignment carries legacy app configuration only. | Assignment additively carries immutable split Worker static state; it does not declare runtime link state. |
 | Runtime link | WorkerProxy relays FunctionRpc but does not publish the runtime-side connection lifecycle. | The existing Host link opens the runtime-facing FunctionRpc stream; WorkerProxy observes attachment and initialization directly. |
 | Worker link signal | WorkerProxy does not expose the runtime-originated connection lifecycle. | WorkerProxy publishes `Unlinked`, then `Pending` on runtime attachment, then `Linked` when the first initialization response following the forwarded runtime initialization request is successful. |
-| Legacy management | `/admin/worker/state` is the only Worker state contract. | Its JSON shape and status semantics are unchanged; `/admin/infra/instanceState` additively publishes the Bala split shape. Split-only transitions share the existing revision and can wake legacy long polls. |
+| Legacy management | `/admin/worker/state` is the only Worker state contract. | Its JSON shape and status semantics are unchanged; `/admin/infra/instanceState` additively publishes the split Worker shape. Split-only transitions share the existing revision and can wake legacy long polls. |
 
-## Detailed PR changes
+## WorkerProxy changes
 
-This PR changes only WorkerProxy assignment, runtime-stream lifecycle
+The implementation changes only WorkerProxy assignment, runtime-stream lifecycle
 observation, link-state transitions, and split-state publication. It reuses
 the existing assignment, Host link, FunctionRpc relay, and management seams.
 
@@ -41,17 +30,17 @@ the existing assignment, Host link, FunctionRpc relay, and management seams.
 
 ```mermaid
 flowchart LR
-    Legion["Legion"]
+    Platform["Platform orchestrator"]
     Assignment["WorkerProxy management<br/>PUT /admin/worker/assignment"]
     LinkApi["Host management<br/>PUT /admin/workers/{workerId}"]
     FunctionRpc["runtime-facing FunctionRpc<br/>connection"]
     SplitState["WorkerProxy split state<br/>POST /admin/infra/instanceState"]
 
-    Legion -->|"Worker static state"| Assignment
-    Legion -->|"Worker endpoint"| LinkApi
+    Platform -->|"Worker static state"| Assignment
+    Platform -->|"Worker endpoint"| LinkApi
     LinkApi --> FunctionRpc
     FunctionRpc -->|"Pending / Linked lifecycle"| SplitState
-    SplitState -->|"Worker link signal"| Legion
+    SplitState -->|"Worker link signal"| Platform
 ```
 
 ### Assignment and link ownership
@@ -99,7 +88,7 @@ PUT /admin/workers/{workerId}
 }
 ```
 
-This PR does not change that request or define its future admission budget.
+The link request is unchanged and does not define its future admission budget.
 WorkerProxy determines stream ownership from the local listener port. The
 runtime listener attachment itself establishes `Pending`; no runtime pod or
 Function App identity is carried through FunctionRpc.
@@ -108,24 +97,24 @@ Function App identity is carried through FunctionRpc.
 
 ```mermaid
 sequenceDiagram
-    participant Legion
+    participant Platform as Platform orchestrator
     participant Proxy as WorkerProxy
     participant Host
     participant RuntimeStream as Runtime FunctionRpc stream
     participant WorkerStream as Worker FunctionRpc stream
 
-    Legion->>Proxy: PUT assignment with staticState
-    Proxy-->>Legion: 201 Created; state = Unlinked
-    Legion->>Host: PUT /admin/workers/{workerId}<br/>workerGrpcEndpoint
+    Platform->>Proxy: PUT assignment with staticState
+    Proxy-->>Platform: 201 Created; state = Unlinked
+    Platform->>Host: PUT /admin/workers/{workerId}<br/>workerGrpcEndpoint
     Host->>RuntimeStream: Open existing EventStream
     RuntimeStream->>Proxy: Runtime side attaches
     Proxy->>Proxy: Publish Pending
     RuntimeStream->>WorkerStream: WorkerInitRequest
     WorkerStream-->>RuntimeStream: first successful WorkerInitResponse
     Proxy->>Proxy: Write response, then publish Linked
-    Host-->>Legion: Existing link result
-    Legion->>Proxy: POST /admin/infra/instanceState<br/>previous full Worker state
-    Proxy-->>Legion: Linked
+    Host-->>Platform: Existing link result
+    Platform->>Proxy: POST /admin/infra/instanceState<br/>previous full Worker state
+    Proxy-->>Platform: Linked
 ```
 
 WorkerProxy expects a `WorkerInitResponse` only after forwarding a runtime
@@ -137,8 +126,9 @@ correlation and does not introduce a new request-ID contract.
 
 `FunctionsSplitWorkerDynamicState.Link` is WorkerProxy's authoritative
 process-local acknowledgement of the runtime-originated connection lifecycle.
-Legion can await `Linked` after the existing Host link succeeds. Host dynamic
-scale-out, admission, and link-budget ownership are outside this PR.
+The platform orchestrator can await `Linked` after the existing Host link
+succeeds. Host dynamic scale-out, admission, and link-budget ownership are
+outside this component's scope.
 
 ### Published Worker state
 
@@ -191,22 +181,22 @@ returns `204 No Content` if the existing long-poll timeout expires.
 
 ```mermaid
 sequenceDiagram
-    participant Legion
+    participant Platform as Platform orchestrator
     participant Proxy as WorkerProxy
 
-    Legion->>Proxy: POST instanceState<br/>empty body
-    Proxy-->>Legion: 200 Unlinked state
-    Legion->>Proxy: POST instanceState<br/>previous Unlinked state
+    Platform->>Proxy: POST instanceState<br/>empty body
+    Proxy-->>Platform: 200 Unlinked state
+    Platform->>Proxy: POST instanceState<br/>previous Unlinked state
     Note over Proxy: Runtime stream attaches
-    Proxy-->>Legion: 200 Pending state
-    Legion->>Proxy: POST instanceState<br/>previous Pending state
+    Proxy-->>Platform: 200 Pending state
+    Platform->>Proxy: POST instanceState<br/>previous Pending state
     Note over Proxy: Worker initialization reaches runtime
-    Proxy-->>Legion: 200 Linked state
+    Proxy-->>Platform: 200 Linked state
 ```
 
 `ReadyForWork` requires local Worker readiness and a `Linked` runtime stream.
-`Draining` remains in the Bala-compatible enum but is not emitted in this
-change.
+`Draining` is part of the split Worker status contract but is not emitted by
+this implementation.
 
 ### Why WorkerProxy owns this endpoint
 
@@ -226,12 +216,13 @@ gets an independent lifecycle or API owner.
 
 ## Assumptions
 
-- Legion assigns the Worker before invoking the existing Host link API.
+- The platform orchestrator assigns the Worker before invoking the existing
+  Host link API.
 - The Worker has produced a valid `StartStream` before assignment is accepted.
 - The existing Host link opens the runtime-facing FunctionRpc stream to the
   assigned WorkerProxy endpoint.
-- Activation uses an established deployment boundary that prevents customer
-  Worker code from reaching the Host-facing WorkerProxy listeners.
+- Deployments preserve the established trust boundary for Host-facing
+  WorkerProxy listeners.
 
 ## Known limitations/non-goals
 
@@ -247,14 +238,11 @@ gets an independent lifecycle or API owner.
 - Runtime pod and Function App identity are not carried or published; the
   runtime listener connection is the link signal.
 - `Draining` is not produced.
-- Legion producer deployment and end-to-end stamp validation are outside this
-  PR.
-- This PR does not add a new authentication protocol to the pre-existing
-  anonymous WorkerProxy listeners. Activation is blocked until deployment
-  topology proves customer Worker code cannot reach the management and runtime
-  listeners, or an established platform authentication/isolation mechanism is
-  supplied. Ordinary network policy cannot isolate containers that share the
-  Worker pod's network namespace.
+- Control-plane deployment and target-stamp validation are outside this
+  component.
+- Listener authentication and transport hardening are tracked separately by
+  #12052. This implementation preserves the existing WorkerProxy listener
+  trust boundary.
 
 ## Failure/conflict behavior
 
@@ -279,19 +267,17 @@ gets an independent lifecycle or API owner.
   split link transitions can advance its shared revision.
 - `POST /admin/infra/instanceState` is additive and uses the existing
   full-origin-state polling protocol.
-- Deploy compatible WorkerProxy and Host builds before Legion awaits split
-  Worker state.
+- Deploy compatible WorkerProxy and Host builds before the platform
+  orchestrator awaits split Worker state.
 - Define and validate the separate Host dynamic scale-out and link-budget
   contract before using this signal for scheduler admission.
-- **Activation gate:** prove that customer Worker code cannot reach the
-  anonymous management and runtime listeners, or provide an established
-  platform authentication/isolation mechanism. The current shared network
-  namespace does not provide that isolation by itself.
+- Apply the existing WorkerProxy listener security requirements; #12052 owns
+  additional authentication and transport hardening.
 
 ## Validation
 
-This PR adds exactly three behavioral HTTP/gRPC API test methods and zero new
-unit-test method declarations:
+The change adds exactly three behavioral HTTP/gRPC API test methods and zero
+new unit-test method declarations:
 
 1. `SplitInstanceStateReturnsUnlinkedWorkerAfterStaticAssignment`
 2. `SplitRuntimeLinkTransitionsPendingToLinkedState`
@@ -302,7 +288,8 @@ unit-test method declarations:
 | `dotnet test test\Functions.WorkerProxy.Tests\Functions.WorkerProxy.Tests.csproj --configuration Release --nologo --logger 'console;verbosity=minimal'` | 502 passed |
 | `git diff --check 9dd49fc1b915d5e500145ea32fdc40afa56373b4..HEAD --` | Passed |
 
-Deployed WorkerProxy, Host, and Legion validation remains a merge gate.
+Validate WorkerProxy, Host, and control-plane convergence in the target
+environment before production rollout.
 
 ## Changed-file review map
 

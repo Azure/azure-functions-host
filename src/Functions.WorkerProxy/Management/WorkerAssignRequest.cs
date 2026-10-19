@@ -38,7 +38,7 @@ internal sealed class WorkerAssignRequest
     public string? FunctionAppDirectory { get; init; }
 
     /// <summary>
-    /// Gets the optional Bala-compatible static worker state.
+    /// Gets the optional split Worker static state.
     /// </summary>
     public SplitWorkerStaticStateRequest? StaticState { get; init; }
 }
