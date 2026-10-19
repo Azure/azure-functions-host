@@ -225,6 +225,6 @@ namespace Microsoft.Azure.WebJobs.Logging
         /// This is deliberately separate from <see cref="MayContainCredentials(string)"/>: a bare email address such as
         /// "someone@contoso.com" contains neither '=' nor ':', and an email is not a credential.
         /// </summary>
-        internal static bool MayContainEmail(string input) => input.IndexOf('@') >= 0;
+        internal static bool MayContainEmail(string input) => input.Contains('@');
     }
 }

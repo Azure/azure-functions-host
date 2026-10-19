@@ -631,6 +631,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockEventGenerator.VerifyAll();
         }
 
+        [Theory]
+        [InlineData("alice@example.invalid")]
+        [InlineData("alice+tag@sub.example.invalid and bob@example.org")]
+        [InlineData("AccountKey=synthetic-secret' alice@example.invalid")]
+        public void Log_RpcException_RedactsRemoteMessageRepeatedInStack(string value)
+        {
+            const string customerMarker = "customer-record-12345";
+            string remoteMessage = $"{customerMarker}: {value}";
+            string stack = $"Error: {remoteMessage}\n    at execute (probe.js:42:7)";
+            var rpcException = new RpcException("Failure", remoteMessage, stack);
+            var exception = new FunctionInvocationException("Invocation failed", Guid.Empty, "Functions.TestFunction", rpcException);
+            string hash = EncryptionHelper.GetSHA256Base64String(Encoding.UTF8.GetBytes(rpcException.RemoteMessage));
+            const string formattedMessage = "Test log";
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, string.Empty, _category,
+                It.Is<string>(s => s.Contains(hash, StringComparison.Ordinal)
+                    && !s.Contains(customerMarker, StringComparison.Ordinal)
+                    && !s.Contains(Sanitizer.EmailReplacement, StringComparison.Ordinal)),
+                formattedMessage, typeof(RpcException).ToString(),
+                It.Is<string>(s => s.Contains(hash, StringComparison.Ordinal)
+                    && !s.Contains(customerMarker, StringComparison.Ordinal)
+                    && !s.Contains(Sanitizer.EmailReplacement, StringComparison.Ordinal)),
+                string.Empty, _hostInstanceId, string.Empty, _runtimeSiteName, _slotName, It.IsAny<DateTime>()));
+
+            _logger.LogError(exception, formattedMessage);
+
+            _mockEventGenerator.VerifyAll();
+        }
+
         [Fact]
         public void Log_NonRpcException()
         {
