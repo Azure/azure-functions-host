@@ -302,7 +302,7 @@ public class WorkerLinkControllerTests
         await controller.LinkWorker(WorkerId, request);
 
         Assert.Single(logger.Invocations.Where(call => string.Equals(call.Method.Name, nameof(ILogger.Log), StringComparison.Ordinal)));
-        Assert.Equal(fail ? 1 : 0, eventId.Id);
+        Assert.Equal(fail ? 701 : 700, eventId.Id);
         Dictionary<string, object> loggedState = Assert.IsType<Dictionary<string, object>>(state);
         Assert.Equal(WorkerId, loggedState["workerId"]);
         Assert.True(Assert.IsType<double>(loggedState["elapsedMilliseconds"]) >= 0);
@@ -351,12 +351,12 @@ public class WorkerLinkControllerTests
     [InlineData("   ")]
     [InlineData("\t\r\n")]
     [InlineData("\u00a0\u2003")]
-    public async Task LinkWorker_InvalidRouteWorkerPodName_ReturnsBadRequestWithoutLinking(string? workerPodName)
+    public async Task LinkWorker_InvalidRouteWorkerId_ReturnsBadRequestWithoutLinking(string? workerId)
     {
-        IReadOnlyList<RequestValidationError> errors = AssertBadRequest(await CreateController().LinkWorker(workerPodName!, ValidRequest()));
+        IReadOnlyList<RequestValidationError> errors = AssertBadRequest(await CreateController().LinkWorker(workerId!, ValidRequest()));
         RequestValidationError error = Assert.Single(errors);
         Assert.Equal("Required", error.Code);
-        Assert.Equal("workerPodName", error.Target);
+        Assert.Equal("workerId", error.Target);
         _registry.VerifyNoOtherCalls();
     }
 
@@ -379,15 +379,15 @@ public class WorkerLinkControllerTests
     [InlineData("worker\u007fpod")]
     [InlineData("worker\u009fpod")]
     [InlineData("\0")]
-    public async Task LinkWorker_ValidOpaqueWorkerPodName_PreservesIdentity(string workerPodName)
+    public async Task LinkWorker_ValidOpaqueWorkerId_PreservesIdentity(string workerId)
     {
-        _registry.Setup(registry => registry.LinkAsync(workerPodName, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
+        _registry.Setup(registry => registry.LinkAsync(workerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new WorkerLinkResult(null!, IsNewLink: true));
 
-        StatusCodeResult result = Assert.IsType<StatusCodeResult>(await CreateController().LinkWorker(workerPodName, ValidRequest()));
+        StatusCodeResult result = Assert.IsType<StatusCodeResult>(await CreateController().LinkWorker(workerId, ValidRequest()));
 
         Assert.Equal(StatusCodes.Status201Created, result.StatusCode);
-        _registry.Verify(registry => registry.LinkAsync(workerPodName, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()), Times.Once);
+        _registry.Verify(registry => registry.LinkAsync(workerId, new Uri(ValidGrpcEndpoint), It.IsAny<CancellationToken>()), Times.Once);
         _registry.VerifyNoOtherCalls();
     }
 
@@ -396,8 +396,8 @@ public class WorkerLinkControllerTests
     [InlineData(253)]
     [InlineData(254)]
     [InlineData(1024)]
-    public Task LinkWorker_WorkerPodNameLength_DoesNotRestrictIdentity(int length)
-        => LinkWorker_ValidOpaqueWorkerPodName_PreservesIdentity(new string('a', length));
+    public Task LinkWorker_WorkerIdLength_DoesNotRestrictIdentity(int length)
+        => LinkWorker_ValidOpaqueWorkerId_PreservesIdentity(new string('a', length));
 
     [Theory]
     [InlineData(null)]

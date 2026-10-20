@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 namespace Azure.Functions.Host.WorkerLink;
 
 /// <summary>
-/// Request body for linking a worker pod through <c>PUT /admin/workers/{workerPodName}</c>.
+/// Request body for linking a worker through <c>PUT /admin/workers/{workerId}</c>.
 /// </summary>
 public sealed class WorkerLinkRequest
 {

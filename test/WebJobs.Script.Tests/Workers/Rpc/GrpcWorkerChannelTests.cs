@@ -292,28 +292,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.HandlesWorkerTerminateMessage, "1" } });
 
-            StartStream startStream = new StartStream()
-            {
-                WorkerId = _workerId
-            };
-
-            StreamingMessage startStreamMessage = new StreamingMessage()
-            {
-                StartStream = startStream
-            };
-
-            // Send worker init request and enable the capabilities
-            _testFunctionRpcService.AutoReply(StreamingMessage.ContentOneofCase.WorkerInitRequest);
-            _workerChannel.SendWorkerInitRequest(startStreamMessage);
-
             var expectedLogMsg = $"Sending WorkerTerminate message with grace period of {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.";
 
             _workerChannel.Dispose();
+
+            // Reader completion follows consumption of the buffered termination message, not writer completion.
+            await Task.WhenAll(_channelLease.Reader.Completion, _serviceEndpoints.HostToWorkerReader.Completion)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+
             Assert.True(_channelLease.Reader.Completion.IsCompletedSuccessfully);
             Assert.True(_serviceEndpoints.HostToWorkerReader.Completion.IsCompletedSuccessfully);
             Assert.False(_channelRegistry.TryGetServiceEndpoints(_workerId, out _));
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg, StringComparison.Ordinal)));
         }
 
         [Fact]
@@ -594,6 +585,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 () => _logger.GetLogMessages().Any(m => string.Equals(m.FormattedMessage, _expectedSystemLogMessage) && m.Level.ToString().Equals(expectedLogLevel.ToString())),
                 timeout: 3000,
                 pollingInterval: 50);
+        }
+
+        [Fact]
+        public async Task Log_CustomMetric_LogsUsageMetricOncePerChannel()
+        {
+            await CreateDefaultWorkerChannel(autoStart: false);
+            await using var workerChannel = _workerChannel;
+            _metricsLogger.ClearCollections();
+
+            workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.CustomMetric));
+            workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.CustomMetric));
+            workerChannel.Log(CreateRpcLogEvent(RpcLog.Types.RpcLogCategory.User));
+
+            Assert.Equal(1, _metricsLogger.LoggedEvents.Count(e => string.Equals(e, MetricEventNames.WorkerCustomMetric, StringComparison.Ordinal)));
+            _mockRpcWorkerProcess.Verify(process => process.StartProcessAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -2318,6 +2324,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             return GetTestFunctionsList(runtime, numberOfFunctions: 2, addWorkerProperties);
         }
+
+        private static StreamingMessage CreateRpcLogEvent(RpcLog.Types.RpcLogCategory logCategory)
+            => new() { RpcLog = new RpcLog() { LogCategory = logCategory, InvocationId = Guid.NewGuid().ToString() } };
 
         public static ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource,
              CancellationToken? token = null, ILogger logger = null, string scriptRootPath = null)
