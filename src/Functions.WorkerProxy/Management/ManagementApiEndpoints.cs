@@ -30,7 +30,6 @@ internal static class ManagementApiEndpoints
         endpoints.MapGet("/admin/worker/state", ManagementApiHandlers.GetWorkerStateAsync)
             .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();
         endpoints.MapPost("/admin/infra/instanceState", ManagementApiHandlers.PostInfraInstanceStateAsync)
-            .WithMetadata(SiteTokenAuthenticationMetadata.Instance)
             .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();
     }
 

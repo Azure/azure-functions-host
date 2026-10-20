@@ -279,40 +279,12 @@ public partial class FunctionRpcRelayTests
     }
 
     [Fact]
-    public async Task SplitInstanceStateAuthenticatesPlaceholderAndAssignmentState()
+    public async Task SplitInstanceStatePublishesPlaceholderAndAssignmentState()
     {
         await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient management = factory.CreateWorkerProxyClient();
-        using HttpClient unauthenticated = factory.CreateWorkerProxyClient(includeSiteToken: false);
         using CancellationTokenSource timeout = new(TestTimeout);
-
-        string?[] invalidTokens =
-        [
-            null,
-            "not-a-token",
-            WorkerProxyWebApplicationFactory.CreateSiteToken(expires: DateTime.UtcNow.AddMinutes(-1)),
-            WorkerProxyWebApplicationFactory.CreateSiteToken(issuer: "https://invalid.example"),
-            WorkerProxyWebApplicationFactory.CreateSiteToken(audience: "another-worker-pod"),
-            WorkerProxyWebApplicationFactory.CreateSiteToken(signingKey: "fedcba9876543210fedcba9876543210"),
-            WorkerProxyWebApplicationFactory.CreateSiteToken(
-                signingKey: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                algorithm: Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha384)
-        ];
-        foreach (string? token in invalidTokens)
-        {
-            using HttpResponseMessage rejected = await SendSplitManagementRequestAsync(
-                unauthenticated,
-                token,
-                previousState: null,
-                timeout.Token);
-            Assert.Equal(HttpStatusCode.Unauthorized, rejected.StatusCode);
-        }
-
-        using (HttpResponseMessage legacy = await unauthenticated.GetAsync("/admin/worker/state", timeout.Token))
-        {
-            Assert.Equal(HttpStatusCode.OK, legacy.StatusCode);
-        }
 
         using JsonDocument placeholder = await ReadSplitManagementStateAsync(management, timeout.Token);
         JsonElement placeholderRoot = placeholder.RootElement;
@@ -337,15 +309,6 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(0, placeholderDynamic.GetProperty("revisionId").GetInt64());
         Assert.Equal("Starting", placeholderDynamic.GetProperty("status").GetString());
         Assert.Equal("Unlinked", placeholderDynamic.GetProperty("link").GetProperty("state").GetString());
-
-        using (HttpResponseMessage legion = await SendSplitManagementRequestAsync(
-            unauthenticated,
-            WorkerProxyWebApplicationFactory.CreateSiteToken(issuer: "https://legion.core.azurewebsites.net"),
-            previousState: null,
-            timeout.Token))
-        {
-            Assert.Equal(HttpStatusCode.OK, legion.StatusCode);
-        }
 
         await using RelayClient worker = CreateClient(factory, FunctionRpcRelaySide.Worker, timeout.Token);
         await worker.WriteAsync(CreateStartStream(), timeout.Token);
@@ -540,26 +503,6 @@ public partial class FunctionRpcRelayTests
         Assert.Equal(5, terminatedDynamicState.GetProperty("revisionId").GetInt64());
         Assert.Equal("Starting", terminatedDynamicState.GetProperty("status").GetString());
         Assert.Equal("Unlinked", terminatedDynamicState.GetProperty("link").GetProperty("state").GetString());
-    }
-
-    private static async Task<HttpResponseMessage> SendSplitManagementRequestAsync(
-        HttpClient client,
-        string? siteToken,
-        string? previousState,
-        CancellationToken cancellationToken)
-    {
-        using HttpRequestMessage request = new(HttpMethod.Post, InfraStatePath);
-        if (siteToken is not null)
-        {
-            request.Headers.Add(SiteTokenValidator.HeaderName, siteToken);
-        }
-
-        if (previousState is not null)
-        {
-            request.Content = new StringContent(previousState, Encoding.UTF8, "application/json");
-        }
-
-        return await client.SendAsync(request, cancellationToken);
     }
 
     private static async Task<HttpResponseMessage> PutManagementJsonAsync(

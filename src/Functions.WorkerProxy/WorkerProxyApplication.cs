@@ -45,7 +45,6 @@ internal static class WorkerProxyApplication
         builder.Services.AddSingleton<IValidateOptions<WorkerProxyOptions>, WorkerProxyOptionsValidator>();
         builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         builder.Services.AddSingleton<WorkerPodStateManager>();
-        builder.Services.AddSingleton<SiteTokenValidator>();
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, WorkerProxyJsonContext.Default));
         builder.Services.AddSingleton<WorkerProxyEndpointConfiguration>();
@@ -73,7 +72,6 @@ internal static class WorkerProxyApplication
     private static void ConfigureManagementPipeline(IApplicationBuilder app)
     {
         app.UseRouting();
-        app.UseMiddleware<SiteTokenAuthenticationMiddleware>();
         app.UseEndpoints(static endpoints =>
         {
             endpoints.MapGet(ReadyPath, static () => Results.Ok()).AllowAnonymous();

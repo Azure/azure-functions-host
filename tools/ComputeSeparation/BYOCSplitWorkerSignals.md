@@ -8,12 +8,9 @@ and WorkerProxy exposes the resulting signal through:
 
 ```http
 POST /admin/infra/instanceState
-x-ms-site-token: <NNA site token>
 ```
 
-The route is available only on WorkerProxy's management listener. The existing
-`/admin/worker/state`, readiness, and assignment routes keep their existing
-authentication and response behavior.
+The route is available only on WorkerProxy's management listener.
 
 Runtime capacity, `availableWorkerLinks`, admission budgeting, and link
 counting are not owned by this signal.
@@ -64,22 +61,6 @@ An empty polling body, or a body different from the current full state,
 returns the current state immediately. An equal body waits for the next
 revision and returns `204 No Content` when the existing long-poll timeout
 expires.
-
-## Poll authentication
-
-Only `POST /admin/infra/instanceState` requires the NNA
-`x-ms-site-token` contract:
-
-- signing key: `CONTAINER_ENCRYPTION_KEY`, decoded as a 32-byte hex or base64
-  key;
-- signing algorithm: `HS256`;
-- lifetime: an unexpired token with an `exp` claim;
-- audience: the Worker pod name; and
-- issuer: `https://appservice.core.azurewebsites.net` or
-  `https://legion.core.azurewebsites.net`.
-
-Missing or invalid tokens return `401 Unauthorized` before request-body
-binding. Token and key values are not logged.
 
 ## Link state transitions
 
@@ -153,7 +134,7 @@ to `Unlinked`.
 The retained behavioral coverage enters through WorkerProxy's management and
 gRPC APIs and the Host's public Worker link HTTP route. It covers:
 
-- authenticated placeholder polling and assignment replacement;
+- placeholder polling and assignment replacement;
 - required assignment static state;
 - direct `Unlinked -> Linked` transition on Runtime relay attachment;
 - `Linked -> Unlinked` transition on relay termination;
