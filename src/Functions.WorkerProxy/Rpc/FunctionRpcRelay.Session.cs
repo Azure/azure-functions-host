@@ -99,6 +99,11 @@ internal sealed partial class FunctionRpcRelay
                     return FunctionRpcRelayAttachResult.Duplicate;
                 }
 
+                if (side == FunctionRpcRelaySide.Runtime)
+                {
+                    stateManager.OnRuntimeAttached(id);
+                }
+
                 SetAttachedLocked(side, value: true);
                 if (side == FunctionRpcRelaySide.Worker)
                 {
@@ -182,10 +187,7 @@ internal sealed partial class FunctionRpcRelay
                 }
 
                 SetAttachedLocked(side, value: false);
-                if (side == FunctionRpcRelaySide.Worker)
-                {
-                    stateManager.OnSessionTerminated(id);
-                }
+                stateManager.OnSessionTerminated(id);
 
                 SignalReleasedIfCompleteLocked();
             }

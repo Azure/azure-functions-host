@@ -27,6 +27,7 @@ internal sealed class WorkerPodStateManager
     private readonly TimeProvider _timeProvider;
     private WorkerPodState _state;
     private WorkerAssignment? _assignment;
+    private long? _runtimeLinkSessionId;
     // High-water mark for accepted or terminated sessions, including sessions that never had a worker.
     private long _lastSessionId;
     private int _assignmentClaimed;
@@ -208,21 +209,56 @@ internal sealed class WorkerPodStateManager
                 throw new InvalidOperationException("A different worker session is still attached.");
             }
 
-            // A runtime-only session can terminate before any worker attaches. Fence off its late notifications.
+            bool ownsRuntimeLink = _runtimeLinkSessionId == sessionId;
+            if (ownsRuntimeLink)
+            {
+                _runtimeLinkSessionId = null;
+            }
+
             _lastSessionId = sessionId;
-            if (!_state.IsWorkerAttached)
+            if (!_state.IsWorkerAttached && !ownsRuntimeLink)
             {
                 return false;
             }
+
+            SplitWorkerLink link = ownsRuntimeLink
+                ? new(SplitWorkerLinkState.Unlinked)
+                : _state.SplitLink;
 
             UpdateStateAndNotifyWaitersLocked(_state with
             {
                 Revision = checked(_state.Revision + 1),
                 IsWorkerAttached = false,
+                SplitLink = link,
                 // Preserve assignment identity so equivalent retries report failure and different assignments still conflict.
                 AssignmentState = _assignment is null ? WorkerAssignmentState.Unassigned : WorkerAssignmentState.Failed
             });
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Records attachment of the runtime-facing FunctionRpc stream as the active Runtime link.
+    /// </summary>
+    public void OnRuntimeAttached(long sessionId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(sessionId);
+
+        lock (_stateLock)
+        {
+            if (_state.AssignmentState == WorkerAssignmentState.Failed
+                || _runtimeLinkSessionId is not null
+                || _state.SplitLink.State != SplitWorkerLinkState.Unlinked)
+            {
+                return;
+            }
+
+            _runtimeLinkSessionId = sessionId;
+            UpdateStateAndNotifyWaitersLocked(_state with
+            {
+                Revision = checked(_state.Revision + 1),
+                SplitLink = new(SplitWorkerLinkState.Linked)
+            });
         }
     }
 
@@ -261,7 +297,8 @@ internal sealed class WorkerPodStateManager
                 StartupMode = assignment.StartupMode,
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
-                IsAlwaysReady = assignment.IsAlwaysReady
+                IsAlwaysReady = assignment.IsAlwaysReady,
+                SplitStaticState = assignment.SplitStaticState
             };
 
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.

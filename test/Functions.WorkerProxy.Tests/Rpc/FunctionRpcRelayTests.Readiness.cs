@@ -39,14 +39,15 @@ public partial class FunctionRpcRelayTests
                 CreateMessageReader(runtimeInbound.Reader), CreateMessageWriter(runtimeOutbound.Writer), timeout.Token);
         }
 
-        Assert.Equal(0, manager.State.Revision);
+        long initialRevision = runtimeFirst ? 1 : 0;
+        Assert.Equal(initialRevision, manager.State.Revision);
         Assert.False(manager.State.IsWorkerReady);
         Assert.Equal(WorkerAssignmentResult.WorkerNotReady, manager.Assign(CreateWorkerAssignment()));
 
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
             CreateMessageReader(workerInbound.Reader), CreateMessageWriter(workerOutbound.Writer), timeout.Token);
         WorkerPodState attached = manager.State;
-        Assert.Equal(1, attached.Revision);
+        Assert.Equal(initialRevision + 1, attached.Revision);
         Assert.True(attached.IsWorkerAttached);
         Assert.False(attached.IsWorkerReady);
         Assert.Null(attached.WorkerId);
@@ -55,14 +56,14 @@ public partial class FunctionRpcRelayTests
         StreamingMessage start = CreateStartStream();
         await workerInbound.Writer.WriteAsync(start, timeout.Token);
         WorkerPodState ready = Assert.IsType<WorkerPodState>((await poll).State);
-        Assert.Equal(2, ready.Revision);
+        Assert.Equal(initialRevision + 2, ready.Revision);
         Assert.True(ready.IsWorkerReady);
         Assert.Equal(start.StartStream.WorkerId, ready.WorkerId);
         Assert.Equal(WorkerPodStatus.None, ready.PodStatus);
 
         Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(CreateWorkerAssignment()));
         Assert.Equal(WorkerPodStatus.ReadyForRequest, manager.State.PodStatus);
-        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(initialRevision + 3, manager.State.Revision);
         Assert.False(workerOutbound.Reader.TryRead(out _));
 
         runtimeTask ??= relay.AttachAsync(FunctionRpcRelaySide.Runtime,
@@ -77,7 +78,7 @@ public partial class FunctionRpcRelayTests
         await runtimeInbound.Writer.WriteAsync(init, timeout.Token);
         Assert.Same(init, await workerOutbound.Reader.ReadAsync(timeout.Token));
         Assert.False(workerOutbound.Reader.TryRead(out _));
-        Assert.Equal(3, manager.State.Revision);
+        Assert.Equal(4, manager.State.Revision);
 
         await relay.StopAsync(timeout.Token);
         await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
@@ -114,7 +115,7 @@ public partial class FunctionRpcRelayTests
         Assert.False(manager.State.IsWorkerReady);
         Assert.Null(manager.State.WorkerId);
         Assert.Equal(WorkerAssignmentState.Unassigned, manager.State.AssignmentState);
-        Assert.Equal(2, manager.State.Revision);
+        Assert.Equal(3, manager.State.Revision);
     }
 
     [Fact]
@@ -213,7 +214,7 @@ public partial class FunctionRpcRelayTests
         FunctionRpcRelayTerminalState[] terminalStates = await Task.WhenAll(runtimeTask, workerTask).WaitAsync(timeout.Token);
         Assert.All(terminalStates, state => Assert.Equal(expectedReason, state.Reason.ToString()));
         await stopTask.WaitAsync(timeout.Token);
-        Assert.Equal(4, manager.State.Revision);
+        Assert.Equal(5, manager.State.Revision);
     }
 
     [Theory]
@@ -255,7 +256,7 @@ public partial class FunctionRpcRelayTests
         {
             Assert.True(manager.State.IsWorkerReady);
             Assert.True(manager.State.SessionId > terminated.SessionId);
-            Assert.Equal(terminated.Revision + 2, manager.State.Revision);
+            Assert.Equal(terminated.Revision + 3, manager.State.Revision);
             Assert.Equal(WorkerAssignmentResult.Created, manager.Assign(assignment));
         }
     }
@@ -270,17 +271,17 @@ public partial class FunctionRpcRelayTests
         WorkerPodState initial = manager.State;
         Task<FunctionRpcRelayTerminalState> runtimeTask = relay.AttachAsync(FunctionRpcRelaySide.Runtime,
             new BlockingStreamReader(), new TestServerStreamWriter(), runtimeCancellation.Token);
-        Assert.Same(initial, manager.State);
+        Assert.Equal(initial.Revision + 1, manager.State.Revision);
 
         runtimeCancellation.Cancel();
         FunctionRpcRelayTerminalState terminated = await runtimeTask.WaitAsync(timeout.Token);
-        Assert.Same(initial, manager.State);
+        Assert.Equal(initial.Revision + 2, manager.State.Revision);
 
         Task<FunctionRpcRelayTerminalState> workerTask = relay.AttachAsync(FunctionRpcRelaySide.Worker,
             new SingleMessageThenBlockStreamReader(CreateStartStream()), new TestServerStreamWriter(), timeout.Token);
         Assert.True(manager.State.IsWorkerReady);
         Assert.True(manager.State.SessionId > terminated.SessionId);
-        Assert.Equal(2, manager.State.Revision);
+        Assert.Equal(4, manager.State.Revision);
         await relay.StopAsync(timeout.Token);
         await workerTask.WaitAsync(timeout.Token);
     }
@@ -349,7 +350,20 @@ public partial class FunctionRpcRelayTests
 
     private static WorkerAssignment CreateWorkerAssignment(string functionGroupName = "test-group")
         => new(WorkerStartupMode.SpecializationRequired, "test-app", functionGroupName, isAlwaysReady: false,
-            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot");
+            environment: new Dictionary<string, string>(), functionAppDirectory: "/home/site/wwwroot",
+            splitStaticState: new(
+                new(
+                    "test-namespace",
+                    "test-worker-pod",
+                    Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                    "test-stamp",
+                    "FunctionsSplitWorkerPod",
+                    new("test-app", 42, "test-antares-stamp")),
+                IsDiscoveryPod: false,
+                IsAlwaysReady: false,
+                functionGroupName,
+                ConfigLastModifiedTime: 100,
+                ContentLastModifiedTime: 200));
 
     private sealed class PumpingSynchronizationContext : SynchronizationContext
     {

@@ -16,7 +16,9 @@ internal sealed record WorkerPodState(
     WorkerStartupMode? StartupMode,
     string? FunctionAppName,
     string? FunctionGroupName,
-    bool? IsAlwaysReady)
+    bool? IsAlwaysReady,
+    SplitWorkerStaticState SplitStaticState,
+    SplitWorkerLink SplitLink)
 {
     // WorkerId is recorded only after validated StartStream. Retaining it after termination does not imply readiness.
     public bool IsWorkerReady => IsWorkerAttached && WorkerId is not null;
@@ -40,5 +42,7 @@ internal sealed record WorkerPodState(
             StartupMode: null,
             FunctionAppName: null,
             FunctionGroupName: null,
-            IsAlwaysReady: null);
+            IsAlwaysReady: null,
+            SplitStaticState: SplitWorkerStaticState.CreatePlaceholder(podName),
+            SplitLink: new(SplitWorkerLinkState.Unlinked));
 }

@@ -22,7 +22,10 @@ internal static class ManagementApiHandlers
     public static IResult AssignWorker(WorkerAssignRequest request, WorkerPodStateManager manager)
     {
         if (!WorkerAssignRequestValidator.TryCreateAssignment(
-            request, out WorkerAssignment? assignment, out IReadOnlyList<RequestValidationError> errors))
+            request,
+            manager.State.PodName,
+            out WorkerAssignment? assignment,
+            out IReadOnlyList<RequestValidationError> errors))
         {
             return ValidationError(errors);
         }
@@ -54,6 +57,14 @@ internal static class ManagementApiHandlers
         return await GetInstanceStateAsync(lastKnownRevision, manager, request.HttpContext.RequestAborted);
     }
 
+    public static async Task<IResult> PostInfraInstanceStateAsync(
+        SplitWorkerOriginState? previousState,
+        HttpRequest request,
+        WorkerPodStateManager manager)
+    {
+        return await GetSplitInstanceStateAsync(previousState, manager, request.HttpContext.RequestAborted);
+    }
+
     public static async Task<IResult> GetInstanceStateAsync(
         long? revision,
         WorkerPodStateManager manager,
@@ -73,6 +84,23 @@ internal static class ManagementApiHandlers
 
         WorkerStatePollResult result = await manager.WaitForChangeAsync(lastKnownRevision, cancellationToken);
         return result.State is { } state ? StateResponse(state) : TypedResults.NoContent();
+    }
+
+    internal static async Task<IResult> GetSplitInstanceStateAsync(
+        SplitWorkerOriginState? previousState,
+        WorkerPodStateManager manager,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        SplitWorkerOriginState current = SplitWorkerOriginState.FromState(manager.State);
+
+        if (previousState is null || previousState != current)
+        {
+            return TypedResults.Json(current, WorkerProxyJsonContext.Default.SplitWorkerOriginState);
+        }
+
+        WorkerStatePollResult result = await manager.WaitForChangeAsync(current.DynamicState.RevisionId, cancellationToken);
+        return result.State is { } state ? SplitStateResponse(state) : TypedResults.NoContent();
     }
 
     internal static IResult InvalidRevision() =>
@@ -110,4 +138,11 @@ internal static class ManagementApiHandlers
 
     private static IResult StateResponse(WorkerPodState state) =>
         TypedResults.Json(WorkerInstanceState.FromState(state), WorkerProxyJsonContext.Default.WorkerInstanceState);
+
+    private static IResult SplitStateResponse(WorkerPodState state)
+    {
+        return TypedResults.Json(
+            SplitWorkerOriginState.FromState(state),
+            WorkerProxyJsonContext.Default.SplitWorkerOriginState);
+    }
 }

@@ -55,7 +55,8 @@ public class WorkerAssignmentTests
             string.Equals(changedField, "group", StringComparison.Ordinal) ? "HTTP" : "http",
             string.Equals(changedField, "alwaysReady", StringComparison.Ordinal),
             environment,
-            string.Equals(changedField, "directory", StringComparison.Ordinal) ? "/HOME/site/wwwroot" : "/home/site/wwwroot");
+            string.Equals(changedField, "directory", StringComparison.Ordinal) ? "/HOME/site/wwwroot" : "/home/site/wwwroot",
+            CreateStaticState());
 
         Assert.False(original.IsEquivalentTo(changed));
         Assert.False(changed.IsEquivalentTo(original));
@@ -78,9 +79,9 @@ public class WorkerAssignmentTests
     public void Construction_RejectsMissingIdentity(string? value)
     {
         Dictionary<string, string> environment = [];
-        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.Preconfigured, value!, "http", false, environment, "/app"));
-        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.Preconfigured, "app", value!, false, environment, "/app"));
-        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.SpecializationRequired, "app", "http", false, environment, value!));
+        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.Preconfigured, value!, "http", false, environment, "/app", CreateStaticState()));
+        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.Preconfigured, "app", value!, false, environment, "/app", CreateStaticState()));
+        Assert.ThrowsAny<ArgumentException>(() => new WorkerAssignment(WorkerStartupMode.SpecializationRequired, "app", "http", false, environment, value!, CreateStaticState()));
     }
 
     [Theory]
@@ -89,7 +90,14 @@ public class WorkerAssignmentTests
     [InlineData("/app")]
     public void Construction_PreconfiguredPreservesDirectoryWithoutApplyingValidationForSpecialization(string directory)
     {
-        WorkerAssignment assignment = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), directory);
+        WorkerAssignment assignment = new(
+            WorkerStartupMode.Preconfigured,
+            "app",
+            "http",
+            false,
+            new Dictionary<string, string>(),
+            directory,
+            CreateStaticState());
 
         Assert.Equal(WorkerStartupMode.Preconfigured, assignment.StartupMode);
         Assert.Equal(directory, assignment.FunctionAppDirectory);
@@ -102,7 +110,7 @@ public class WorkerAssignmentTests
     {
         WorkerStartupMode startupMode = specializationRequired ? WorkerStartupMode.SpecializationRequired : WorkerStartupMode.Preconfigured;
         Assert.Throws<ArgumentNullException>(() =>
-            new WorkerAssignment(startupMode, "app", "http", false, new Dictionary<string, string>(), null!));
+            new WorkerAssignment(startupMode, "app", "http", false, new Dictionary<string, string>(), null!, CreateStaticState()));
     }
 
     [Theory]
@@ -111,14 +119,28 @@ public class WorkerAssignmentTests
     public void Construction_RejectsUndefinedStartupMode(int startupMode)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new WorkerAssignment((WorkerStartupMode)startupMode, "app", "http", false, new Dictionary<string, string>(), "/app"));
+            new WorkerAssignment((WorkerStartupMode)startupMode, "app", "http", false, new Dictionary<string, string>(), "/app", CreateStaticState()));
     }
 
     [Fact]
     public void Equality_PreconfiguredEmptyDirectoryStillParticipatesInIdentity()
     {
-        WorkerAssignment empty = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), string.Empty);
-        WorkerAssignment whitespace = new(WorkerStartupMode.Preconfigured, "app", "http", false, new Dictionary<string, string>(), " ");
+        WorkerAssignment empty = new(
+            WorkerStartupMode.Preconfigured,
+            "app",
+            "http",
+            false,
+            new Dictionary<string, string>(),
+            string.Empty,
+            CreateStaticState());
+        WorkerAssignment whitespace = new(
+            WorkerStartupMode.Preconfigured,
+            "app",
+            "http",
+            false,
+            new Dictionary<string, string>(),
+            " ",
+            CreateStaticState());
 
         Assert.False(empty.IsEquivalentTo(whitespace));
         Assert.False(whitespace.IsEquivalentTo(empty));
@@ -139,5 +161,27 @@ public class WorkerAssignmentTests
     }
 
     private static WorkerAssignment Create(IReadOnlyDictionary<string, string> environment)
-        => new(WorkerStartupMode.Preconfigured, "app", "http", false, environment, "/home/site/wwwroot");
+        => new(
+            WorkerStartupMode.Preconfigured,
+            "app",
+            "http",
+            false,
+            environment,
+            "/home/site/wwwroot",
+            CreateStaticState());
+
+    private static SplitWorkerStaticState CreateStaticState() =>
+        new(
+            new(
+                "namespace",
+                "pod",
+                Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                "stamp",
+                "FunctionsSplitWorkerPod",
+                new("app", 42, "antares-stamp")),
+            IsDiscoveryPod: false,
+            IsAlwaysReady: false,
+            FunctionGroup: "http",
+            ConfigLastModifiedTime: 100,
+            ContentLastModifiedTime: 200);
 }

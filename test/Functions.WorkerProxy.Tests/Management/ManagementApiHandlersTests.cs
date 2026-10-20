@@ -62,7 +62,8 @@ public class ManagementApiHandlersTests
                 new("Required", "functionGroupName"),
                 new("Required", "isAlwaysReady"),
                 new("Required", "functionAppDirectory"),
-                new("Required", "environment")
+                new("Required", "environment"),
+                new("Required", "staticState")
             ],
             errors);
         Assert.Same(before, manager.State);
@@ -79,7 +80,8 @@ public class ManagementApiHandlersTests
             FunctionAppName = " ",
             FunctionGroupName = string.Empty,
             FunctionAppDirectory = "\t",
-            Environment = new() { [string.Empty] = "private-value", ["PRIVATE_SETTING"] = null }
+            Environment = new() { [string.Empty] = "private-value", ["PRIVATE_SETTING"] = null },
+            StaticState = CreateStaticState()
         };
 
         IReadOnlyList<RequestValidationError> errors = AssertValidation(ManagementApiHandlers.AssignWorker(request, manager));
@@ -127,7 +129,8 @@ public class ManagementApiHandlersTests
                 FunctionAppName = "app",
                 FunctionGroupName = "group",
                 FunctionAppDirectory = "app-directory",
-                IsAlwaysReady = false
+                IsAlwaysReady = false,
+                StaticState = CreateStaticState()
             },
             "environmentKey" => CreateRequest(environment: new() { [string.Empty] = "private-value" }),
             "environmentValue" => CreateRequest(environment: new() { ["SETTING"] = value }),
@@ -228,7 +231,8 @@ public class ManagementApiHandlersTests
         WorkerAssignRequest request = new()
         {
             StartupMode = "private-unsupported-mode",
-            Environment = new() { ["PRIVATE_SETTING"] = null }
+            Environment = new() { ["PRIVATE_SETTING"] = null },
+            StaticState = CreateStaticState()
         };
 
         Assert.Equal<RequestValidationError>(
@@ -296,7 +300,8 @@ public class ManagementApiHandlersTests
             StartupMode = startupMode,
             FunctionAppName = "app",
             FunctionGroupName = "group",
-            IsAlwaysReady = false
+            IsAlwaysReady = false,
+            StaticState = CreateStaticState()
         };
 
         Assert.Equal<RequestValidationError>(
@@ -636,15 +641,49 @@ public class ManagementApiHandlersTests
         bool? isAlwaysReady = false,
         string? functionAppDirectory = "app-directory",
         Dictionary<string, string?>? environment = null,
-        string? startupMode = nameof(WorkerStartupMode.Preconfigured)) =>
-        new()
+        string? startupMode = nameof(WorkerStartupMode.Preconfigured))
+    {
+        string staticFunctionAppName = string.IsNullOrWhiteSpace(functionAppName) ? "app" : functionAppName;
+        string staticFunctionGroup = string.IsNullOrWhiteSpace(functionGroupName) ? "group" : functionGroupName;
+        bool staticIsAlwaysReady = isAlwaysReady ?? false;
+
+        return new()
         {
             StartupMode = startupMode,
             FunctionAppName = functionAppName,
             FunctionGroupName = functionGroupName,
             IsAlwaysReady = isAlwaysReady,
             FunctionAppDirectory = functionAppDirectory,
-            Environment = environment ?? new() { ["SETTING"] = "private-value" }
+            Environment = environment ?? new() { ["SETTING"] = "private-value" },
+            StaticState = CreateStaticState(staticFunctionAppName, staticFunctionGroup, staticIsAlwaysReady)
+        };
+    }
+
+    private static SplitWorkerStaticStateRequest CreateStaticState(
+        string functionAppName = "app",
+        string functionGroup = "group",
+        bool isAlwaysReady = false) =>
+        new()
+        {
+            Self = new()
+            {
+                ResourceNamespace = "namespace",
+                PodName = "pod",
+                PodGuid = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                LegionStampName = "legion-stamp",
+                PodType = "FunctionsSplitWorkerPod",
+                App = new()
+                {
+                    FunctionAppName = functionAppName,
+                    FunctionAppSiteId = 42,
+                    AntaresStampName = "antares-stamp"
+                }
+            },
+            IsDiscoveryPod = false,
+            IsAlwaysReady = isAlwaysReady,
+            FunctionGroup = functionGroup,
+            ConfigLastModifiedTime = 100,
+            ContentLastModifiedTime = 200
         };
 
     private static WorkerApiError AssertError(IResult result, int statusCode, string code)

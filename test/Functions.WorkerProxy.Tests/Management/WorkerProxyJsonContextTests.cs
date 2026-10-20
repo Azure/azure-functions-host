@@ -172,7 +172,9 @@ public class WorkerProxyJsonContextTests
             StartupMode: startupMode,
             FunctionAppName: "private-app",
             FunctionGroupName: "group",
-            IsAlwaysReady: isAlwaysReady);
+            IsAlwaysReady: isAlwaysReady,
+            SplitStaticState: SplitWorkerStaticState.CreatePlaceholder("pod"),
+            SplitLink: new(SplitWorkerLinkState.Unlinked));
         WorkerInstanceState response = WorkerInstanceState.FromState(state);
 
         string json = JsonSerializer.Serialize(response, WorkerProxyJsonContext.Default.WorkerInstanceState);
@@ -198,7 +200,19 @@ public class WorkerProxyJsonContextTests
     [Fact]
     public void FromState_RetainedResponseDoesNotChangeWhenSourceStateIsReplaced()
     {
-        WorkerPodState ready = new("pod", 3, 1, true, "worker", WorkerAssignmentState.Ready, WorkerStartupMode.Preconfigured, "app", "group", false);
+        WorkerPodState ready = new(
+            "pod",
+            3,
+            1,
+            true,
+            "worker",
+            WorkerAssignmentState.Ready,
+            WorkerStartupMode.Preconfigured,
+            "app",
+            "group",
+            false,
+            SplitWorkerStaticState.CreatePlaceholder("pod"),
+            new(SplitWorkerLinkState.Unlinked));
         WorkerInstanceState retained = WorkerInstanceState.FromState(ready);
         WorkerPodState terminated = ready with
         {

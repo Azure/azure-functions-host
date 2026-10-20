@@ -156,10 +156,11 @@ public partial class WorkerPodStateManagerTests
         WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
         WorkerPodState initial = manager.State;
 
-        Assert.False(manager.OnSessionTerminated(1));
+        manager.OnRuntimeAttached(1);
+        Assert.True(manager.OnSessionTerminated(1));
+        Assert.Equal(initial.Revision + 2, manager.State.Revision);
         Assert.False(manager.OnWorkerAttached(1));
         Assert.False(manager.OnWorkerStartStream(1, "late-worker"));
-        Assert.Same(initial, manager.State);
         Assert.True(manager.OnWorkerAttached(2));
     }
 
@@ -367,7 +368,26 @@ public partial class WorkerPodStateManagerTests
     }
 
     private static WorkerAssignment CreateAssignment(string appName = "app", WorkerStartupMode startupMode = WorkerStartupMode.Preconfigured)
-        => new(startupMode, appName, "http", false, new Dictionary<string, string> { ["SETTING"] = "value" }, "/home/site/wwwroot");
+        => new(
+            startupMode,
+            appName,
+            "http",
+            false,
+            new Dictionary<string, string> { ["SETTING"] = "value" },
+            "/home/site/wwwroot",
+            new(
+                new(
+                    "namespace",
+                    "pod",
+                    Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                    "stamp",
+                    "FunctionsSplitWorkerPod",
+                    new(appName, 42, "antares-stamp")),
+                IsDiscoveryPod: false,
+                IsAlwaysReady: false,
+                FunctionGroup: "http",
+                ConfigLastModifiedTime: 100,
+                ContentLastModifiedTime: 200));
 
     private static IOptions<WorkerProxyOptions> CreateOptions(string podName = "pod")
         => Options.Create(new WorkerProxyOptions { PodName = podName });
