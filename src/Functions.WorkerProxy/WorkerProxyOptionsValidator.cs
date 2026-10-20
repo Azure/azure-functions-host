@@ -38,11 +38,7 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
 
         if (!string.IsNullOrWhiteSpace(options.HttpProxyEndpoint))
         {
-            Uri? endpoint = WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, options.HttpProxyEndpoint);
-            if (endpoint is null
-                || !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal)
-                || (IPAddress.TryParse(endpoint.Host.Trim('[', ']'), out IPAddress? address)
-                    && (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))))
+            if (ResolveHttpProxyOrigin(options.HttpProxyEndpoint) is null)
             {
                 failures.Add($"{nameof(options.HttpProxyEndpoint)} must be an absolute HTTP or HTTPS origin with a concrete host, "
                     + "a nonzero port, and no credentials, path prefix, query, or fragment.");
@@ -50,6 +46,21 @@ internal sealed class WorkerProxyOptionsValidator : IValidateOptions<WorkerProxy
         }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
+    }
+
+    internal static Uri? ResolveHttpProxyOrigin(string? value)
+    {
+        Uri? endpoint = WorkerHttpDestinationResolver.Resolve(overrideEndpoint: null, value);
+        if (endpoint is null
+            || !string.Equals(endpoint.AbsolutePath, "/", StringComparison.Ordinal)
+            || endpoint.HostNameType is UriHostNameType.Unknown
+            || (IPAddress.TryParse(endpoint.Host.Trim('[', ']'), out IPAddress? address)
+                && (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))))
+        {
+            return null;
+        }
+
+        return endpoint;
     }
 
     private static void AddDistinctPort(int port, string propertyName, HashSet<int> configuredPorts, List<string> failures)

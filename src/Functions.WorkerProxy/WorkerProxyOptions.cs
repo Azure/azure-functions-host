@@ -45,7 +45,8 @@ internal sealed class WorkerProxyOptions
 
     /// <summary>
     /// Gets or sets the externally reachable HTTP origin advertised to the runtime.
-    /// Required when the worker advertises HTTP proxying. Each WorkerProxy owns a dedicated
+    /// Explicit legacy configuration for unassigned sessions only. Assigned workers use the mapped
+    /// origin in their accepted assignment instead. Each WorkerProxy owns a dedicated
     /// address and port, so this URL must not include a path prefix. It must route to
     /// <see cref="HttpPort"/>, but its external port may differ because of platform port mapping.
     /// </summary>

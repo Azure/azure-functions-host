@@ -49,6 +49,12 @@ internal static class WorkerAssignRequestValidator
 
         Dictionary<string, string> environment = ValidateAndCopyEnvironment(request.Environment, errors);
 
+        if (request.HttpProxyEndpoint is not null
+            && WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(request.HttpProxyEndpoint) is null)
+        {
+            errors.Add(new(WorkerApiErrorCodes.InvalidValue, "httpProxyEndpoint"));
+        }
+
         if (errors.Count > 0
             || startupMode is not { } selectedStartupMode
             || request.FunctionAppName is not { } functionAppName
@@ -65,7 +71,8 @@ internal static class WorkerAssignRequestValidator
             functionGroupName,
             isAlwaysReady,
             environment,
-            functionAppDirectory);
+            functionAppDirectory,
+            request.HttpProxyEndpoint);
 
         return true;
     }

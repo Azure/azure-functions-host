@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Azure.Functions.WorkerProxy.Rpc;
+using Azure.Functions.WorkerProxy.State;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -12,7 +13,9 @@ namespace Azure.Functions.WorkerProxy.Http;
 /// <summary>
 /// Captures the worker's HTTP destination before advertising WorkerProxy to the runtime.
 /// </summary>
-internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyOptions> options, ILogger<WorkerHttpCapabilityProvider> logger)
+internal sealed partial class WorkerHttpCapabilityProvider(
+    IOptions<WorkerProxyOptions> options,
+    ILogger<WorkerHttpCapabilityProvider> logger)
     : IWorkerCapabilityFinalizer
 {
     private const string HttpUriCapability = "HttpUri";
@@ -24,8 +27,9 @@ internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyO
     /// Finalizes the HTTP capability on a relay-owned copy of the successful initialization response.
     /// </summary>
     /// <param name="capabilities">The capabilities to advertise to the runtime.</param>
+    /// <param name="assignment">The accepted assignment, or null for the explicit legacy configuration path.</param>
     /// <returns>The real worker destination, or <see langword="null"/> when HTTP proxying is unavailable.</returns>
-    public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities)
+    public Uri? FinalizeCapabilities(IDictionary<string, string> capabilities, WorkerAssignment? assignment = null)
     {
         if (!capabilities.TryGetValue(HttpUriCapability, out string? advertisedEndpoint) || string.IsNullOrWhiteSpace(advertisedEndpoint))
         {
@@ -39,8 +43,22 @@ internal sealed partial class WorkerHttpCapabilityProvider(IOptions<WorkerProxyO
         Uri destination = string.IsNullOrWhiteSpace(_options.WorkerHttpEndpoint)
             ? advertisedDestination
             : ResolveRequiredEndpoint(_options.WorkerHttpEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.WorkerHttpEndpoint)}");
-        Uri proxyEndpoint = ResolveRequiredEndpoint(
-            _options.HttpProxyEndpoint, $"{WorkerProxyOptions.SectionName}:{nameof(WorkerProxyOptions.HttpProxyEndpoint)}");
+        // Assignment is authoritative, including an omitted endpoint. Only unassigned legacy sessions
+        // may use explicit configuration; never infer a mapping or silently fall back for an assignment.
+        Uri? proxyEndpoint = WorkerProxyOptionsValidator.ResolveHttpProxyOrigin(
+            assignment is null ? _options.HttpProxyEndpoint : assignment.HttpProxyEndpoint);
+        if (proxyEndpoint is null)
+        {
+            throw new InvalidOperationException($"{nameof(WorkerAssignment.HttpProxyEndpoint)} must supply the actual mapped "
+                + "HTTP origin in an accepted assignment before HTTP worker initialization. "
+                + "Only unassigned legacy sessions may use an explicit WorkerProxy:HttpProxyEndpoint.");
+        }
+
+        if (Uri.Compare(destination, proxyEndpoint, UriComponents.SchemeAndServer, UriFormat.UriEscaped,
+            StringComparison.OrdinalIgnoreCase) == 0)
+        {
+            throw new InvalidOperationException("The worker HTTP destination must not point back to the proxy HTTP origin.");
+        }
 
         capabilities[HttpUriCapability] = proxyEndpoint.AbsoluteUri;
         Log.HttpCapabilityFinalized(_logger,

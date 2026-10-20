@@ -71,6 +71,19 @@ internal sealed class WorkerPodStateManager
     }
 
     /// <summary>
+    /// Gets the accepted immutable assignment only for its live worker session.
+    /// </summary>
+    internal WorkerAssignment? GetAssignment(long sessionId)
+    {
+        lock (_stateLock)
+        {
+            return _state.SessionId == sessionId && _state.AssignmentState == WorkerAssignmentState.Ready
+                ? _assignment
+                : null;
+        }
+    }
+
+    /// <summary>
     /// Returns a newer snapshot immediately, or waits up to 60 seconds for a state change.
     /// </summary>
     /// <returns>A changed snapshot, or <see cref="WorkerStatePollResult.NoChange"/> on timeout.</returns>

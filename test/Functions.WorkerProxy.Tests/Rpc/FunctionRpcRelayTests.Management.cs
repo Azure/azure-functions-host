@@ -22,7 +22,8 @@ public partial class FunctionRpcRelayTests
 {
     private const string ManagementAssignment = """
         {"startupMode":"SpecializationRequired","functionAppName":"test-app","functionGroupName":"test-group","isAlwaysReady":false,
-         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot"}
+         "environment":{"B":"private-value","A":"1"},"functionAppDirectory":"/home/site/wwwroot",
+         "httpProxyEndpoint":"http://worker-pod:28080/"}
         """;
 
     [Theory]
@@ -34,7 +35,7 @@ public partial class FunctionRpcRelayTests
     {
         string assignmentBody = ManagementAssignment.Replace("SpecializationRequired", startupMode, StringComparison.Ordinal);
         const string proxyEndpoint = "http://worker-pod:28080/";
-        await using WorkerProxyWebApplicationFactory factory = CreateHttpCapabilityFactory(proxyEndpoint);
+        await using WorkerProxyWebApplicationFactory factory = CreateFactory();
         WorkerPodStateManager manager = factory.Services.GetRequiredService<WorkerPodStateManager>();
         using HttpClient management = factory.CreateWorkerProxyClient();
         using CancellationTokenSource timeout = new(TestTimeout);

@@ -23,6 +23,7 @@ public class WorkerProxyJsonContextTests
             FunctionAppName = "app",
             FunctionGroupName = "group",
             FunctionAppDirectory = "private-directory",
+            HttpProxyEndpoint = "http://mapped.example:49187/",
             IsAlwaysReady = false,
             Environment = new Dictionary<string, string?> { ["MixedCase_SETTING"] = string.Empty, ["SECRET"] = "private-value" }
         };
@@ -30,7 +31,8 @@ public class WorkerProxyJsonContextTests
         string json = JsonSerializer.Serialize(request, WorkerProxyJsonContext.Default.WorkerAssignRequest);
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
-        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "functionAppDirectory", "isAlwaysReady", "environment");
+        AssertProperties(root, "startupMode", "functionAppName", "functionGroupName", "functionAppDirectory", "isAlwaysReady", "environment", "httpProxyEndpoint");
+        Assert.Equal(request.HttpProxyEndpoint, root.GetProperty("httpProxyEndpoint").GetString());
         Assert.Equal(startupMode, root.GetProperty("startupMode").GetString());
         Assert.False(root.GetProperty("isAlwaysReady").GetBoolean());
         Assert.Equal(string.Empty, root.GetProperty("environment").GetProperty("MixedCase_SETTING").GetString());
@@ -42,6 +44,7 @@ public class WorkerProxyJsonContextTests
         Assert.Equal(request.FunctionAppName, copy.FunctionAppName);
         Assert.Equal(request.FunctionGroupName, copy.FunctionGroupName);
         Assert.Equal(request.FunctionAppDirectory, copy.FunctionAppDirectory);
+        Assert.Equal(request.HttpProxyEndpoint, copy.HttpProxyEndpoint);
         Assert.False(copy.IsAlwaysReady);
         Assert.Equal(request.Environment.OrderBy(pair => pair.Key), copy.Environment!.OrderBy(pair => pair.Key));
     }
