@@ -230,12 +230,12 @@ internal sealed partial class FunctionRpcRelay
 
         private StreamingMessage? ProcessInboundMessage(FunctionRpcRelaySide side, StreamingMessage message, bool isFirstMessage)
         {
-            if (side == FunctionRpcRelaySide.Runtime)
+            if (side != FunctionRpcRelaySide.Worker)
             {
                 return message;
             }
 
-            if (side == FunctionRpcRelaySide.Worker && isFirstMessage)
+            if (isFirstMessage)
             {
                 lock (_stateLock)
                 {

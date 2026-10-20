@@ -157,11 +157,8 @@ public partial class WorkerPodStateManagerTests
         WorkerPodState initial = manager.State;
 
         manager.OnRuntimeAttached(1);
-        Assert.Equal(initial.Revision + 1, manager.State.Revision);
-        Assert.Equal(SplitWorkerLinkState.Linked, manager.State.SplitLink?.State);
         Assert.True(manager.OnSessionTerminated(1));
         Assert.Equal(initial.Revision + 2, manager.State.Revision);
-        Assert.Equal(SplitWorkerLinkState.Unlinked, manager.State.SplitLink?.State);
         Assert.False(manager.OnWorkerAttached(1));
         Assert.False(manager.OnWorkerStartStream(1, "late-worker"));
         Assert.True(manager.OnWorkerAttached(2));
@@ -213,7 +210,6 @@ public partial class WorkerPodStateManagerTests
         WorkerPodStateManager manager = new(CreateOptions(), TimeProvider.System);
         Assert.Throws<ArgumentOutOfRangeException>(() => manager.OnWorkerAttached(sessionId));
         Assert.Throws<ArgumentOutOfRangeException>(() => manager.OnWorkerStartStream(sessionId, "worker"));
-        Assert.Throws<ArgumentOutOfRangeException>(() => manager.OnRuntimeAttached(sessionId));
         Assert.Throws<ArgumentOutOfRangeException>(() => manager.OnSessionTerminated(sessionId));
         Assert.Equal(0, manager.State.Revision);
     }

@@ -37,9 +37,6 @@ internal sealed class WorkerAssignRequest
 
     public string? FunctionAppDirectory { get; init; }
 
-    /// <summary>
-    /// Gets the required split Worker static state.
-    /// </summary>
     public SplitWorkerStaticStateRequest? StaticState { get; init; }
 }
 

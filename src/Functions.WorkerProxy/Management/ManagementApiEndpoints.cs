@@ -25,7 +25,8 @@ internal static class ManagementApiEndpoints
     {
         endpoints.MapGet("/admin/worker/ready", ManagementApiHandlers.GetWorkerReady)
             .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();
-        endpoints.MapPut("/admin/worker/assignment", ManagementApiHandlers.AssignWorker)
+        endpoints.MapPut("/admin/worker/assignment",
+            (WorkerAssignRequest request, WorkerPodStateManager manager) => ManagementApiHandlers.AssignWorker(request, manager))
             .AllowAnonymous();
         endpoints.MapGet("/admin/worker/state", ManagementApiHandlers.GetWorkerStateAsync)
             .AddEndpointFilter(DisableResponseCaching).AllowAnonymous();

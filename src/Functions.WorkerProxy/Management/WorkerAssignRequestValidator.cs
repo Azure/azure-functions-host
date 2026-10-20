@@ -106,7 +106,7 @@ internal static class WorkerAssignRequestValidator
 
         int initialErrorCount = errors.Count;
         SplitPodIdentity? self = ValidatePodIdentity(
-            staticRequest.Self, "staticState.self", SplitPodTypes.Worker, errors);
+            staticRequest.Self, "staticState.self", SplitWorkerStaticState.PodType, errors);
 
         if (staticRequest.FunctionGroup is { } splitFunctionGroup
             && string.IsNullOrWhiteSpace(splitFunctionGroup))
@@ -154,7 +154,7 @@ internal static class WorkerAssignRequestValidator
             self,
             isDiscoveryPod,
             staticAlwaysReady,
-            staticRequest.FunctionGroup,
+            staticRequest.FunctionGroup ?? request.FunctionGroupName,
             configLastModifiedTime,
             contentLastModifiedTime);
     }

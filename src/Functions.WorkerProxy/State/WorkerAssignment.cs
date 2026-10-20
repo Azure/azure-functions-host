@@ -81,7 +81,7 @@ internal sealed class WorkerAssignment
     public SplitWorkerStaticState SplitStaticState { get; }
 
     /// <summary>
-    /// Compares immutable assignment identity.
+    /// Compares all assignment fields without depending on dictionary order or the caller's comparer.
     /// </summary>
     public bool IsEquivalentTo(WorkerAssignment other)
     {

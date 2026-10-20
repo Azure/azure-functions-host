@@ -23,7 +23,6 @@ namespace Azure.Functions.WorkerProxy.Tests.Management;
 public class ManagementApiEndpointTests
 {
     private const string AssignPath = "/admin/worker/assignment";
-    private const string InfraStatePath = "/admin/infra/instanceState";
     private const string StatePath = "/admin/worker/state";
     private const string ValidAssignment = """
         {
@@ -397,7 +396,6 @@ public class ManagementApiEndpointTests
     [InlineData("/admin/worker/ready", "GET")]
     [InlineData(AssignPath, "PUT")]
     [InlineData(StatePath, "GET")]
-    [InlineData(InfraStatePath, "POST")]
     public async Task WorkerManagementRoutesAreUnavailableOnOtherListeners(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();
@@ -409,7 +407,7 @@ public class ManagementApiEndpointTests
             {
                 Version = HttpVersion.Version20,
                 VersionPolicy = HttpVersionPolicy.RequestVersionExact,
-                Content = method is "PUT" or "POST" ? JsonBody("{}") : null
+                Content = string.Equals(method, "PUT", StringComparison.Ordinal) ? JsonBody("{}") : null
             };
             using HttpResponseMessage response = await rpcClient.SendAsync(request, timeout.Token);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -418,7 +416,7 @@ public class ManagementApiEndpointTests
         using HttpClient forwardingClient = factory.CreateHttpForwardingClient();
         using HttpRequestMessage forwardingRequest = new(new HttpMethod(method), path)
         {
-            Content = method is "PUT" or "POST" ? JsonBody("{}") : null
+            Content = string.Equals(method, "PUT", StringComparison.Ordinal) ? JsonBody("{}") : null
         };
         using HttpResponseMessage forwardingResponse = await forwardingClient.SendAsync(forwardingRequest, timeout.Token);
         Assert.Equal(HttpStatusCode.NotFound, forwardingResponse.StatusCode);
@@ -434,9 +432,6 @@ public class ManagementApiEndpointTests
     [InlineData(StatePath, "POST")]
     [InlineData(StatePath, "PUT")]
     [InlineData(StatePath, "DELETE")]
-    [InlineData(InfraStatePath, "GET")]
-    [InlineData(InfraStatePath, "PUT")]
-    [InlineData(InfraStatePath, "DELETE")]
     public async Task ManagementRoutesRejectUnsupportedMethods(string path, string method)
     {
         await using WorkerProxyWebApplicationFactory factory = new();

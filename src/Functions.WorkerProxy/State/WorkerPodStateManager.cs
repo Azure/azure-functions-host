@@ -221,7 +221,7 @@ internal sealed class WorkerPodStateManager
                 return false;
             }
 
-            SplitWorkerLink? link = ownsRuntimeLink
+            SplitWorkerLink link = ownsRuntimeLink
                 ? new(SplitWorkerLinkState.Unlinked)
                 : _state.SplitLink;
 
@@ -248,7 +248,7 @@ internal sealed class WorkerPodStateManager
         {
             if (_state.AssignmentState == WorkerAssignmentState.Failed
                 || _runtimeLinkSessionId is not null
-                || _state.SplitLink?.State != SplitWorkerLinkState.Unlinked)
+                || _state.SplitLink.State != SplitWorkerLinkState.Unlinked)
             {
                 return;
             }
@@ -279,12 +279,9 @@ internal sealed class WorkerPodStateManager
                     return WorkerAssignmentResult.AssignmentConflict;
                 }
 
-                if (_state.AssignmentState == WorkerAssignmentState.Failed)
-                {
-                    return WorkerAssignmentResult.WorkerTerminated;
-                }
-
-                return WorkerAssignmentResult.AlreadyAssigned;
+                return _state.AssignmentState == WorkerAssignmentState.Failed
+                    ? WorkerAssignmentResult.WorkerTerminated
+                    : WorkerAssignmentResult.AlreadyAssigned;
             }
 
             if (!_state.IsWorkerReady)
@@ -301,8 +298,7 @@ internal sealed class WorkerPodStateManager
                 FunctionAppName = assignment.FunctionAppName,
                 FunctionGroupName = assignment.FunctionGroupName,
                 IsAlwaysReady = assignment.IsAlwaysReady,
-                SplitStaticState = assignment.SplitStaticState,
-                SplitLink = _state.SplitLink
+                SplitStaticState = assignment.SplitStaticState
             };
 
             // The gate and publication share the lifecycle lock, so a not-ready call never reserves identity.

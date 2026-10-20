@@ -17,34 +17,36 @@ internal enum SplitWorkerLinkState
 internal enum SplitWorkerStatus
 {
     Starting,
-    ReadyForWork,
-    Draining,
-    RemovalRequested
+    ReadyForWork
 }
 
-internal sealed record SplitWorkerLink(SplitWorkerLinkState State);
+internal sealed record SplitWorkerLink(
+    [property: JsonRequired] SplitWorkerLinkState State);
 
 internal sealed record SplitFunctionAppIdentity(
-    string FunctionAppName,
+    [property: JsonRequired] string FunctionAppName,
     [property: JsonRequired] int FunctionAppSiteId,
-    string AntaresStampName);
+    [property: JsonRequired] string AntaresStampName);
 
 internal sealed record SplitPodIdentity(
-    string ResourceNamespace,
-    string PodName,
-    Guid PodGuid,
-    string LegionStampName,
-    string PodType,
-    SplitFunctionAppIdentity App);
+    [property: JsonRequired] string ResourceNamespace,
+    [property: JsonRequired] string PodName,
+    [property: JsonRequired] Guid PodGuid,
+    [property: JsonRequired] string LegionStampName,
+    [property: JsonRequired] string PodType,
+    [property: JsonRequired] SplitFunctionAppIdentity App);
 
 internal sealed record SplitWorkerStaticState(
-    SplitPodIdentity Self,
-    bool IsDiscoveryPod,
-    bool IsAlwaysReady,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? FunctionGroup,
-    long ConfigLastModifiedTime,
-    long ContentLastModifiedTime)
+    [property: JsonRequired] SplitPodIdentity Self,
+    [property: JsonRequired] bool IsDiscoveryPod,
+    [property: JsonRequired] bool IsAlwaysReady,
+    [property: JsonRequired]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    string? FunctionGroup,
+    [property: JsonRequired] long ConfigLastModifiedTime,
+    [property: JsonRequired] long ContentLastModifiedTime)
 {
+    internal const string PodType = "FunctionsSplitWorkerPod";
     private const string PlaceholderIdentity = "unassigned";
 
     public static SplitWorkerStaticState CreatePlaceholder(string podName) =>
@@ -54,7 +56,7 @@ internal sealed record SplitWorkerStaticState(
                 podName,
                 Guid.Empty,
                 PlaceholderIdentity,
-                SplitPodTypes.Worker,
+                PodType,
                 new(PlaceholderIdentity, 0, PlaceholderIdentity)),
             IsDiscoveryPod: false,
             IsAlwaysReady: false,
@@ -64,31 +66,26 @@ internal sealed record SplitWorkerStaticState(
 }
 
 internal sealed record SplitWorkerDynamicState(
-    long RevisionId,
-    SplitWorkerStatus Status,
-    SplitWorkerLink Link);
+    [property: JsonRequired] long RevisionId,
+    [property: JsonRequired] SplitWorkerStatus Status,
+    [property: JsonRequired] SplitWorkerLink Link);
 
 internal sealed record SplitWorkerOriginState(
-    string FunctionsContainerType,
-    SplitWorkerStaticState StaticState,
-    SplitWorkerDynamicState DynamicState)
+    [property: JsonRequired] string FunctionsContainerType,
+    [property: JsonRequired] SplitWorkerStaticState StaticState,
+    [property: JsonRequired] SplitWorkerDynamicState DynamicState)
 {
     private const string ContainerType = "FunctionsSplitWorkerProxy";
 
     public static SplitWorkerOriginState FromState(WorkerPodState state)
     {
-        if (state.SplitStaticState is not { } staticState || state.SplitLink is not { } link)
-        {
-            throw new InvalidOperationException("WorkerProxy state must always contain split Worker signal state.");
-        }
-
         SplitWorkerStatus status =
             state.AssignmentState == WorkerAssignmentState.Ready
             && state.IsWorkerReady
-            && link.State == SplitWorkerLinkState.Linked
+            && state.SplitLink.State == SplitWorkerLinkState.Linked
                 ? SplitWorkerStatus.ReadyForWork
                 : SplitWorkerStatus.Starting;
 
-        return new(ContainerType, staticState, new(state.Revision, status, link));
+        return new(ContainerType, state.SplitStaticState, new(state.Revision, status, state.SplitLink));
     }
 }

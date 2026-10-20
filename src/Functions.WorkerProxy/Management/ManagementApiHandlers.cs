@@ -96,7 +96,7 @@ internal static class ManagementApiHandlers
 
         if (previousState is null || previousState != current)
         {
-            return SplitStateResponse(current);
+            return TypedResults.Json(current, WorkerProxyJsonContext.Default.SplitWorkerOriginState);
         }
 
         WorkerStatePollResult result = await manager.WaitForChangeAsync(current.DynamicState.RevisionId, cancellationToken);
@@ -141,11 +141,8 @@ internal static class ManagementApiHandlers
 
     private static IResult SplitStateResponse(WorkerPodState state)
     {
-        return SplitStateResponse(SplitWorkerOriginState.FromState(state));
-    }
-
-    private static IResult SplitStateResponse(SplitWorkerOriginState state)
-    {
-        return TypedResults.Json(state, WorkerProxyJsonContext.Default.SplitWorkerOriginState);
+        return TypedResults.Json(
+            SplitWorkerOriginState.FromState(state),
+            WorkerProxyJsonContext.Default.SplitWorkerOriginState);
     }
 }
