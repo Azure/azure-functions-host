@@ -135,22 +135,18 @@ All other states currently publish `Starting`.
 When the relay terminates, Worker readiness is withdrawn and the link returns
 to `Unlinked`.
 
-## Compatibility and deferred work
+## Contract boundaries
 
 - `/admin/worker/state` retains its existing JSON shape and error direction.
 - Split transitions use the existing shared revision and can wake legacy state
   polls.
 - Every accepted BYOC assignment requires complete Worker `staticState`.
-- No new Host-to-WorkerProxy acknowledgement RPC or Runtime identity contract
-  is introduced.
-- Exact Runtime association and proof that the Host completed `LinkAsync` are
-  deferred; `Linked` intentionally represents relay presence only.
+- The Host Worker-link request retains its established endpoint contract.
+- The Worker link object contains the relay state. Runtime identity is
+  published by the Runtime signal.
+- `Linked` represents an attached Runtime-facing FunctionRpc relay.
 - Runtime `availableWorkerLinks`, capacity, and link counting are owned by the
-  Runtime-side signal work.
-- Epoch/restart reconciliation, durable replay state, draining,
-  removal-requested transitions, and reconnect ownership are deferred.
-- Deployed control-plane convergence and stamp validation remain separate from
-  these in-memory behavioral tests.
+  Runtime signal.
 
 ## Validation
 
